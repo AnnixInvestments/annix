@@ -7,6 +7,7 @@ import type {
   CoatingAnalysis,
   JobCard,
   Requisition,
+  StaffMember,
   StockAllocation,
   StockItem,
 } from "@/app/lib/api/stockControlApi";
@@ -46,6 +47,7 @@ export default function JobCardDetailPage() {
   const [coatingAnalysis, setCoatingAnalysis] = useState<CoatingAnalysis | null>(null);
   const [requisition, setRequisition] = useState<Requisition | null>(null);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [activeStaff, setActiveStaff] = useState<StaffMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [showAllocateModal, setShowAllocateModal] = useState(false);
@@ -53,6 +55,7 @@ export default function JobCardDetailPage() {
     stockItemId: 0,
     quantityUsed: 1,
     notes: "",
+    staffMemberId: 0,
   });
   const [isAllocating, setIsAllocating] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -104,7 +107,13 @@ export default function JobCardDetailPage() {
 
   const openAllocateModal = async () => {
     await fetchStockItems();
-    setAllocateForm({ stockItemId: 0, quantityUsed: 1, notes: "" });
+    try {
+      const staff = await stockControlApiClient.staffMembers({ active: "true" });
+      setActiveStaff(Array.isArray(staff) ? staff : []);
+    } catch {
+      setActiveStaff([]);
+    }
+    setAllocateForm({ stockItemId: 0, quantityUsed: 1, notes: "", staffMemberId: 0 });
     setCapturedFile(null);
     setShowAllocateModal(true);
   };
@@ -117,6 +126,7 @@ export default function JobCardDetailPage() {
         stockItemId: allocateForm.stockItemId,
         quantityUsed: allocateForm.quantityUsed,
         notes: allocateForm.notes || undefined,
+        staffMemberId: allocateForm.staffMemberId || undefined,
       });
       if (capturedFile) {
         await stockControlApiClient.uploadAllocationPhoto(jobId, allocation.id, capturedFile);
@@ -680,6 +690,12 @@ export default function JobCardDetailPage() {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
+                  Staff
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Allocated By
                 </th>
                 <th
@@ -707,6 +723,9 @@ export default function JobCardDetailPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                     {allocation.quantityUsed}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {allocation.staffMember?.name || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {allocation.allocatedBy || "System"}
@@ -778,6 +797,31 @@ export default function JobCardDetailPage() {
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                   />
                 </div>
+                {activeStaff.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Allocated To (Staff)
+                    </label>
+                    <select
+                      value={allocateForm.staffMemberId}
+                      onChange={(e) =>
+                        setAllocateForm({
+                          ...allocateForm,
+                          staffMemberId: parseInt(e.target.value, 10) || 0,
+                        })
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    >
+                      <option value={0}>None</option>
+                      {activeStaff.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name}
+                          {member.employeeNumber ? ` (${member.employeeNumber})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
                   <PhotoCapture

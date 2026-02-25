@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { JobCard } from "./job-card.entity";
+import { StaffMember } from "./staff-member.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockItem } from "./stock-item.entity";
 
@@ -40,6 +41,20 @@ export class StockAllocation {
 
   @Column({ name: "allocated_by", type: "varchar", length: 255, nullable: true })
   allocatedBy: string | null;
+
+  @ManyToOne(
+    () => StaffMember,
+    (staffMember) => staffMember.allocations,
+    {
+      nullable: true,
+      onDelete: "SET NULL",
+    },
+  )
+  @JoinColumn({ name: "staff_member_id" })
+  staffMember: StaffMember | null;
+
+  @Column({ name: "staff_member_id", nullable: true })
+  staffMemberId: number | null;
 
   @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })

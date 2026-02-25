@@ -18,6 +18,7 @@ import { MovementsController } from "./controllers/movements.controller";
 import { QrCodeController } from "./controllers/qr-code.controller";
 import { ReportsController } from "./controllers/reports.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
+import { StaffController } from "./controllers/staff.controller";
 import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
 import { DeliveryNote } from "./entities/delivery-note.entity";
 import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
@@ -26,6 +27,7 @@ import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity"
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { Requisition } from "./entities/requisition.entity";
 import { RequisitionItem } from "./entities/requisition-item.entity";
+import { StaffMember } from "./entities/staff-member.entity";
 import { StockAllocation } from "./entities/stock-allocation.entity";
 import { StockControlCompany } from "./entities/stock-control-company.entity";
 import { StockControlInvitation } from "./entities/stock-control-invitation.entity";
@@ -50,6 +52,7 @@ import { MovementService } from "./services/movement.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
+import { StaffService } from "./services/staff.service";
 
 @Module({
   imports: [
@@ -68,6 +71,7 @@ import { RequisitionService } from "./services/requisition.service";
       JobCardCoatingAnalysis,
       Requisition,
       RequisitionItem,
+      StaffMember,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -99,6 +103,7 @@ import { RequisitionService } from "./services/requisition.service";
     InvitationController,
     QrCodeController,
     RequisitionsController,
+    StaffController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -118,6 +123,7 @@ import { RequisitionService } from "./services/requisition.service";
     QrCodeService,
     ReportsService,
     RequisitionService,
+    StaffService,
     ItemIdentificationService,
   ],
 })

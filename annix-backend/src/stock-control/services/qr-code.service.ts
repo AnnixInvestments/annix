@@ -2,14 +2,17 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { JobCard } from "../entities/job-card.entity";
+import { StaffMember } from "../entities/staff-member.entity";
+import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
 
 export interface QrCodeData {
-  type: "stock" | "job";
+  type: "stock" | "job" | "staff";
   id: number;
   name: string;
+  token?: string;
 }
 
 @Injectable()
@@ -19,6 +22,10 @@ export class QrCodeService {
     private readonly stockItemRepository: Repository<StockItem>,
     @InjectRepository(JobCard)
     private readonly jobCardRepository: Repository<JobCard>,
+    @InjectRepository(StaffMember)
+    private readonly staffMemberRepository: Repository<StaffMember>,
+    @InjectRepository(StockControlCompany)
+    private readonly companyRepository: Repository<StockControlCompany>,
   ) {}
 
   async stockItemQrCode(companyId: number, itemId: number): Promise<Buffer> {
@@ -378,6 +385,227 @@ export class QrCodeService {
           footerY,
           { align: "center", width: doc.page.width - 80 },
         );
+
+      doc.end();
+    });
+  }
+
+  async staffQrCode(companyId: number, staffId: number): Promise<Buffer> {
+    const member = await this.staffMemberRepository.findOne({
+      where: { id: staffId, companyId },
+    });
+
+    if (!member) {
+      throw new NotFoundException(`Staff member ${staffId} not found`);
+    }
+
+    const data: QrCodeData = {
+      type: "staff",
+      id: member.id,
+      name: member.name,
+      token: member.qrToken,
+    };
+
+    return QRCode.toBuffer(JSON.stringify(data), {
+      errorCorrectionLevel: "M",
+      type: "png",
+      width: 300,
+      margin: 2,
+    });
+  }
+
+  async staffIdCardPdf(companyId: number, staffId: number): Promise<Buffer> {
+    const member = await this.staffMemberRepository.findOne({
+      where: { id: staffId, companyId },
+    });
+
+    if (!member) {
+      throw new NotFoundException(`Staff member ${staffId} not found`);
+    }
+
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
+
+    const qrBuffer = await this.staffQrCode(companyId, staffId);
+
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ size: "A6", margin: 20 });
+      const chunks: Buffer[] = [];
+
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+
+      if (company?.name) {
+        doc
+          .fontSize(10)
+          .font("Helvetica")
+          .fillColor("#666666")
+          .text(company.name, { align: "center" });
+        doc.moveDown(0.3);
+      }
+
+      doc
+        .fontSize(16)
+        .font("Helvetica-Bold")
+        .fillColor("#000000")
+        .text("STAFF ID", { align: "center" });
+      doc.moveDown(0.5);
+
+      doc.fontSize(14).font("Helvetica-Bold").text(member.name, { align: "center" });
+      doc.moveDown(0.3);
+
+      if (member.employeeNumber) {
+        doc
+          .fontSize(10)
+          .font("Helvetica")
+          .text(`Emp #: ${member.employeeNumber}`, { align: "center" });
+        doc.moveDown(0.3);
+      }
+
+      if (member.department) {
+        doc.fontSize(10).font("Helvetica").text(member.department, { align: "center" });
+        doc.moveDown(0.3);
+      }
+
+      doc.moveDown(0.5);
+      const qrSize = 120;
+      const xPos = (doc.page.width - qrSize) / 2;
+      doc.image(qrBuffer, xPos, doc.y, { width: qrSize, height: qrSize });
+
+      doc.y += qrSize + 10;
+
+      doc.fontSize(7).fillColor("#666666").text("Scan to verify identity", { align: "center" });
+
+      doc.end();
+    });
+  }
+
+  async staffIdCardsBatchPdf(companyId: number, staffIds?: number[]): Promise<Buffer> {
+    let members: StaffMember[];
+
+    if (staffIds && staffIds.length > 0) {
+      members = await this.staffMemberRepository.find({
+        where: { id: In(staffIds), companyId },
+        order: { name: "ASC" },
+      });
+    } else {
+      members = await this.staffMemberRepository.find({
+        where: { companyId, active: true },
+        order: { name: "ASC" },
+      });
+    }
+
+    if (members.length === 0) {
+      throw new NotFoundException("No staff members found");
+    }
+
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
+
+    const qrBuffers = await Promise.all(
+      members.map((member) => {
+        const data: QrCodeData = {
+          type: "staff",
+          id: member.id,
+          name: member.name,
+          token: member.qrToken,
+        };
+        return QRCode.toBuffer(JSON.stringify(data), {
+          errorCorrectionLevel: "M",
+          type: "png",
+          width: 200,
+          margin: 1,
+        });
+      }),
+    );
+
+    const COLS = 2;
+    const ROWS = 4;
+    const CARDS_PER_PAGE = COLS * ROWS;
+    const PAGE_WIDTH = 595.28;
+    const PAGE_HEIGHT = 841.89;
+    const CARD_W_MM = 85.6;
+    const CARD_H_MM = 54;
+    const MM_TO_PT = 2.8346;
+    const CARD_W = CARD_W_MM * MM_TO_PT;
+    const CARD_H = CARD_H_MM * MM_TO_PT;
+    const MARGIN_X = (PAGE_WIDTH - COLS * CARD_W) / 2;
+    const MARGIN_Y = (PAGE_HEIGHT - ROWS * CARD_H) / 2;
+    const QR_SIZE = 55;
+    const CARD_PAD = 8;
+
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ size: "A4", margin: 0 });
+      const chunks: Buffer[] = [];
+
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+
+      members.forEach((member, idx) => {
+        if (idx > 0 && idx % CARDS_PER_PAGE === 0) {
+          doc.addPage();
+        }
+
+        const posOnPage = idx % CARDS_PER_PAGE;
+        const col = posOnPage % COLS;
+        const row = Math.floor(posOnPage / COLS);
+        const x = MARGIN_X + col * CARD_W;
+        const y = MARGIN_Y + row * CARD_H;
+
+        doc
+          .save()
+          .rect(x, y, CARD_W, CARD_H)
+          .strokeColor("#d1d5db")
+          .lineWidth(0.5)
+          .stroke()
+          .restore();
+
+        doc.image(qrBuffers[idx], x + CARD_PAD, y + (CARD_H - QR_SIZE) / 2, {
+          width: QR_SIZE,
+          height: QR_SIZE,
+        });
+
+        const textX = x + CARD_PAD + QR_SIZE + 8;
+        const textW = CARD_W - CARD_PAD * 2 - QR_SIZE - 8;
+        const textY = y + CARD_PAD;
+
+        if (company?.name) {
+          doc
+            .font("Helvetica")
+            .fontSize(6)
+            .fillColor("#6b7280")
+            .text(company.name, textX, textY, { width: textW, lineBreak: false });
+        }
+
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(9)
+          .fillColor("#000000")
+          .text(member.name, textX, textY + 10, { width: textW, lineBreak: false });
+
+        if (member.employeeNumber) {
+          doc
+            .font("Helvetica")
+            .fontSize(7)
+            .fillColor("#374151")
+            .text(`Emp #: ${member.employeeNumber}`, textX, textY + 22, {
+              width: textW,
+              lineBreak: false,
+            });
+        }
+
+        if (member.department) {
+          doc
+            .font("Helvetica")
+            .fontSize(7)
+            .fillColor("#6b7280")
+            .text(member.department, textX, textY + 32, { width: textW, lineBreak: false });
+        }
+      });
 
       doc.end();
     });

@@ -127,4 +127,66 @@ export class QrCodeController {
 
     res.send(buffer);
   }
+
+  @Get("staff/:id/qr")
+  @ApiOperation({ summary: "Download staff member QR code as PNG" })
+  @ApiParam({ name: "id", description: "Staff member ID" })
+  @ApiProduces("image/png")
+  async staffQr(@Req() req: any, @Param("id") id: string, @Res() res: Response) {
+    const companyId = req.user.companyId;
+    const buffer = await this.qrCodeService.staffQrCode(companyId, parseInt(id, 10));
+
+    res.set({
+      "Content-Type": "image/png",
+      "Content-Disposition": `attachment; filename="staff-${id}-qr.png"`,
+      "Content-Length": buffer.length,
+    });
+
+    res.send(buffer);
+  }
+
+  @Get("staff/:id/qr/pdf")
+  @ApiOperation({ summary: "Download single staff ID card PDF" })
+  @ApiParam({ name: "id", description: "Staff member ID" })
+  @ApiProduces("application/pdf")
+  async staffIdCardPdf(@Req() req: any, @Param("id") id: string, @Res() res: Response) {
+    const companyId = req.user.companyId;
+    const buffer = await this.qrCodeService.staffIdCardPdf(companyId, parseInt(id, 10));
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="staff-id-${id}.pdf"`,
+      "Content-Length": buffer.length,
+    });
+
+    res.send(buffer);
+  }
+
+  @Post("staff/id-cards/pdf")
+  @ApiOperation({ summary: "Download batch staff ID cards PDF" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        ids: { type: "array", items: { type: "number" } },
+      },
+    },
+  })
+  @ApiProduces("application/pdf")
+  async batchStaffIdCardsPdf(
+    @Req() req: any,
+    @Body() body: { ids?: number[] },
+    @Res() res: Response,
+  ) {
+    const companyId = req.user.companyId;
+    const buffer = await this.qrCodeService.staffIdCardsBatchPdf(companyId, body.ids);
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": 'attachment; filename="staff-id-cards.pdf"',
+      "Content-Length": buffer.length,
+    });
+
+    res.send(buffer);
+  }
 }
