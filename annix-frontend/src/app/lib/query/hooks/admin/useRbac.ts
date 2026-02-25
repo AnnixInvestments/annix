@@ -8,6 +8,7 @@ import {
   type RbacAppDetail,
   type RbacSearchUser,
   type RbacUserAccess,
+  type RbacUserWithAccessSummary,
   type UpdateUserAccessDto,
 } from "@/app/lib/api/adminApi";
 import { rbacKeys } from "../../keys";
@@ -35,6 +36,13 @@ export function useRbacUsersWithAccess(appCode: string) {
   });
 }
 
+export function useRbacAllUsers() {
+  return useQuery<RbacUserWithAccessSummary[]>({
+    queryKey: rbacKeys.users.list(),
+    queryFn: () => adminApiClient.rbacAllUsers(),
+  });
+}
+
 export function useRbacSearchUsers(query: string) {
   return useQuery<RbacSearchUser[]>({
     queryKey: rbacKeys.users.search(query),
@@ -50,6 +58,7 @@ export function useRbacAssignAccess() {
     mutationFn: ({ userId, dto }) => adminApiClient.rbacAssignAccess(userId, dto),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: rbacKeys.apps.users(variables.dto.appCode) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.users.list() });
     },
   });
 }
@@ -65,6 +74,7 @@ export function useRbacUpdateAccess() {
     mutationFn: ({ accessId, dto }) => adminApiClient.rbacUpdateAccess(accessId, dto),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: rbacKeys.apps.users(variables.appCode) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.users.list() });
     },
   });
 }
@@ -76,6 +86,7 @@ export function useRbacRevokeAccess() {
     mutationFn: ({ accessId }) => adminApiClient.rbacRevokeAccess(accessId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: rbacKeys.apps.users(variables.appCode) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.users.list() });
     },
   });
 }
@@ -87,6 +98,7 @@ export function useRbacInviteUser() {
     mutationFn: (dto) => adminApiClient.rbacInviteUser(dto),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: rbacKeys.apps.users(variables.appCode) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.users.list() });
     },
   });
 }

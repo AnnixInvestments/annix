@@ -8,6 +8,7 @@ export const rbacKeys = {
   },
   users: {
     all: ["rbac", "users"] as const,
+    list: () => [...rbacKeys.users.all, "list"] as const,
     search: (query: string) => [...rbacKeys.users.all, "search", query] as const,
   },
 } as const;

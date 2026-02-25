@@ -8,6 +8,7 @@ import {
   UserAccessResponseDto,
 } from "./dto/assign-user-access.dto";
 import { InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
+import { UserWithAccessSummaryDto } from "./dto/user-with-access-summary.dto";
 import {
   App,
   AppPermission,
@@ -96,6 +97,66 @@ export class RbacService {
       expiresAt: access.expiresAt,
       grantedById: access.grantedById,
     }));
+  }
+
+  async allUsersWithAccessSummary(): Promise<UserWithAccessSummaryDto[]> {
+    const users = await this.userRepo.find({
+      order: { email: "ASC" },
+    });
+
+    const allApps = await this.appRepo.find({
+      where: { isActive: true },
+      order: { displayOrder: "ASC" },
+    });
+
+    const allAccessRecords = await this.accessRepo.find({
+      relations: ["app", "role", "customPermissions"],
+    });
+
+    const accessByUserId = allAccessRecords.reduce(
+      (acc, record) => {
+        if (!acc[record.userId]) {
+          acc[record.userId] = [];
+        }
+        acc[record.userId].push(record);
+        return acc;
+      },
+      {} as Record<number, typeof allAccessRecords>,
+    );
+
+    return users.map((user) => {
+      const userAccessRecords = accessByUserId[user.id] ?? [];
+
+      const appAccess = userAccessRecords
+        .filter((access) => {
+          const app = allApps.find((a) => a.id === access.appId);
+          return app !== undefined;
+        })
+        .map((access) => {
+          const app = allApps.find((a) => a.id === access.appId)!;
+          return {
+            appCode: app.code,
+            appName: app.name,
+            roleCode: access.role?.code ?? null,
+            roleName: access.role?.name ?? null,
+            useCustomPermissions: access.useCustomPermissions,
+            permissionCount: access.useCustomPermissions ? access.customPermissions.length : null,
+            expiresAt: access.expiresAt,
+            accessId: access.id,
+          };
+        });
+
+      return {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName ?? null,
+        lastName: user.lastName ?? null,
+        status: user.status,
+        lastLoginAt: user.lastLoginAt ?? null,
+        createdAt: user.createdAt,
+        appAccess,
+      };
+    });
   }
 
   async searchUsers(

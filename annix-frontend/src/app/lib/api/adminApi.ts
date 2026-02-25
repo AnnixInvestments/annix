@@ -1227,6 +1227,10 @@ class AdminApiClient {
     );
   }
 
+  async rbacAllUsers(): Promise<RbacUserWithAccessSummary[]> {
+    return this.request<RbacUserWithAccessSummary[]>("/admin/rbac/users/all");
+  }
+
   async rbacAssignAccess(userId: number, dto: AssignUserAccessDto): Promise<RbacUserAccess> {
     return this.request<RbacUserAccess>(`/admin/rbac/users/${userId}/access`, {
       method: "POST",
@@ -1562,6 +1566,28 @@ export interface RbacSearchUser {
   email: string;
   firstName: string | null;
   lastName: string | null;
+}
+
+export interface RbacAppAccessSummary {
+  appCode: string;
+  appName: string;
+  roleCode: string | null;
+  roleName: string | null;
+  useCustomPermissions: boolean;
+  permissionCount: number | null;
+  expiresAt: string | null;
+  accessId: number;
+}
+
+export interface RbacUserWithAccessSummary {
+  id: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  status: string;
+  lastLoginAt: string | null;
+  createdAt: string;
+  appAccess: RbacAppAccessSummary[];
 }
 
 export interface AssignUserAccessDto {

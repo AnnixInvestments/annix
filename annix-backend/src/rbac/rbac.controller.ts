@@ -29,6 +29,7 @@ import {
   UserAccessResponseDto,
 } from "./dto/assign-user-access.dto";
 import { InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
+import { UserWithAccessSummaryDto } from "./dto/user-with-access-summary.dto";
 import { App, AppPermission, AppRole } from "./entities";
 import { RbacService } from "./rbac.service";
 
@@ -79,6 +80,17 @@ export class RbacController {
   @ApiResponse({ status: 404, description: "App not found" })
   async usersWithAccess(@Param("code") code: string): Promise<UserAccessResponseDto[]> {
     return this.rbacService.usersWithAccess(code);
+  }
+
+  @Get("users/all")
+  @ApiOperation({ summary: "List all users with their app access summary" })
+  @ApiResponse({
+    status: 200,
+    description: "All users with their access across all apps",
+    type: [UserWithAccessSummaryDto],
+  })
+  async allUsersWithAccessSummary(): Promise<UserWithAccessSummaryDto[]> {
+    return this.rbacService.allUsersWithAccessSummary();
   }
 
   @Get("users/search")

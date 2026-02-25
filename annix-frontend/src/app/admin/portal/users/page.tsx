@@ -1,44 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import type {
   AssignUserAccessDto,
-  RbacSearchUser,
-  RbacUserAccess,
+  RbacAppAccessSummary,
+  RbacUserWithAccessSummary,
   UpdateUserAccessDto,
 } from "@/app/lib/api/adminApi";
 import {
+  useRbacAllUsers,
   useRbacAppDetails,
   useRbacApps,
   useRbacAssignAccess,
   useRbacInviteUser,
   useRbacRevokeAccess,
   useRbacUpdateAccess,
-  useRbacUsersWithAccess,
 } from "@/app/lib/query/hooks";
-import { AppTabs } from "./components/AppTabs";
 import { EditAccessModal } from "./components/EditAccessModal";
 import { InviteUserModal } from "./components/InviteUserModal";
-import { UserAccessCard } from "./components/UserAccessCard";
-import { UserSearchDropdown } from "./components/UserSearchDropdown";
+import { UserRow } from "./components/UserRow";
+
+type FilterOption = "all" | "with-access" | "no-access";
 
 export default function AdminUsersPage() {
   const { admin } = useAdminAuth();
   const { showToast } = useToast();
 
-  const [selectedAppCode, setSelectedAppCode] = useState<string>("");
-  const [editingAccess, setEditingAccess] = useState<RbacUserAccess | null>(null);
-  const [selectedUser, setSelectedUser] = useState<RbacSearchUser | null>(null);
+  const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterOption, setFilterOption] = useState<FilterOption>("all");
   const [showEditModal, setShowEditModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [editingAppCode, setEditingAppCode] = useState<string | null>(null);
+  const [inviteAppCode, setInviteAppCode] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<RbacUserWithAccessSummary | null>(null);
+  const [editingAccess, setEditingAccess] = useState<RbacAppAccessSummary | null>(null);
 
   const { data: apps = [], isLoading: appsLoading } = useRbacApps();
-  const { data: appDetails } = useRbacAppDetails(selectedAppCode);
-  const { data: usersWithAccess = [], isLoading: usersLoading } =
-    useRbacUsersWithAccess(selectedAppCode);
+  const { data: allUsers = [], isLoading: usersLoading } = useRbacAllUsers();
+  const { data: appDetails } = useRbacAppDetails(editingAppCode ?? "");
+  const { data: inviteAppDetails } = useRbacAppDetails(inviteAppCode ?? "");
 
   const assignMutation = useRbacAssignAccess();
   const updateMutation = useRbacUpdateAccess();
@@ -46,6 +50,23 @@ export default function AdminUsersPage() {
   const inviteMutation = useRbacInviteUser();
 
   const isAdmin = admin?.roles?.includes("admin");
+
+  const filteredUsers = useMemo(() => {
+    return allUsers.filter((user) => {
+      const matchesSearch =
+        searchQuery === "" ||
+        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (user.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+        (user.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+
+      const matchesFilter =
+        filterOption === "all" ||
+        (filterOption === "with-access" && user.appAccess.length > 0) ||
+        (filterOption === "no-access" && user.appAccess.length === 0);
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [allUsers, searchQuery, filterOption]);
 
   if (!isAdmin) {
     return (
@@ -84,30 +105,32 @@ export default function AdminUsersPage() {
     );
   }
 
-  if (!selectedAppCode && apps.length > 0) {
-    setSelectedAppCode(apps[0].code);
-  }
+  const handleToggleUser = (userId: number) => {
+    setExpandedUserId((prev) => (prev === userId ? null : userId));
+  };
 
-  const handleEditAccess = (access: RbacUserAccess) => {
-    setEditingAccess(access);
-    setSelectedUser(null);
+  const handleEditAccess = (
+    user: RbacUserWithAccessSummary,
+    appCode: string,
+    existingAccess: RbacAppAccessSummary | null,
+  ) => {
+    setEditingUser(user);
+    setEditingAppCode(appCode);
+    setEditingAccess(existingAccess);
     setShowEditModal(true);
   };
 
-  const handleGrantAccess = (user: RbacSearchUser) => {
-    setSelectedUser(user);
-    setEditingAccess(null);
-    setShowEditModal(true);
-  };
-
-  const handleRevokeAccess = (access: RbacUserAccess) => {
-    if (!confirm(`Are you sure you want to revoke access for ${access.email}?`)) return;
+  const handleRevokeAccess = (user: RbacUserWithAccessSummary, access: RbacAppAccessSummary) => {
+    const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+    if (!confirm(`Are you sure you want to revoke ${userName}'s access to ${access.appName}?`)) {
+      return;
+    }
 
     revokeMutation.mutate(
-      { accessId: access.id, appCode: access.appCode },
+      { accessId: access.accessId, appCode: access.appCode },
       {
         onSuccess: () => {
-          showToast(`Access revoked for ${access.email}`, "success");
+          showToast(`Access to ${access.appName} revoked for ${userName}`, "success");
         },
         onError: (err) => {
           showToast(`Error: ${err.message}`, "error");
@@ -117,13 +140,21 @@ export default function AdminUsersPage() {
   };
 
   const handleSaveAccess = (dto: AssignUserAccessDto | UpdateUserAccessDto) => {
+    if (!editingUser || !editingAppCode) return;
+
     if (editingAccess) {
       updateMutation.mutate(
-        { accessId: editingAccess.id, dto: dto as UpdateUserAccessDto, appCode: selectedAppCode },
+        {
+          accessId: editingAccess.accessId,
+          dto: dto as UpdateUserAccessDto,
+          appCode: editingAppCode,
+        },
         {
           onSuccess: () => {
             showToast("Access updated successfully", "success");
             setShowEditModal(false);
+            setEditingUser(null);
+            setEditingAppCode(null);
             setEditingAccess(null);
           },
           onError: (err) => {
@@ -131,17 +162,22 @@ export default function AdminUsersPage() {
           },
         },
       );
-    } else if (selectedUser) {
+    } else {
       assignMutation.mutate(
         {
-          userId: selectedUser.id,
-          dto: { ...dto, appCode: selectedAppCode } as AssignUserAccessDto,
+          userId: editingUser.id,
+          dto: { ...dto, appCode: editingAppCode } as AssignUserAccessDto,
         },
         {
           onSuccess: () => {
-            showToast(`Access granted to ${selectedUser.email}`, "success");
+            const userName =
+              [editingUser.firstName, editingUser.lastName].filter(Boolean).join(" ") ||
+              editingUser.email;
+            showToast(`Access granted to ${userName}`, "success");
             setShowEditModal(false);
-            setSelectedUser(null);
+            setEditingUser(null);
+            setEditingAppCode(null);
+            setEditingAccess(null);
           },
           onError: (err) => {
             showToast(`Error: ${err.message}`, "error");
@@ -163,7 +199,10 @@ export default function AdminUsersPage() {
     });
   };
 
-  const existingUserIds = usersWithAccess.map((u) => u.userId);
+  const isLoading = appsLoading || usersLoading;
+
+  const usersWithAccess = allUsers.filter((u) => u.appAccess.length > 0).length;
+  const usersWithoutAccess = allUsers.filter((u) => u.appAccess.length === 0).length;
 
   return (
     <div className="space-y-6">
@@ -171,12 +210,15 @@ export default function AdminUsersPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Access Management</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Configure user access to each app with roles or custom permissions
+            View and manage user access across all applications
           </p>
         </div>
         <button
-          onClick={() => setShowInviteModal(true)}
-          disabled={!selectedAppCode}
+          onClick={() => {
+            setInviteAppCode(apps[0]?.code ?? null);
+            setShowInviteModal(true);
+          }}
+          disabled={apps.length === 0}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,7 +233,7 @@ export default function AdminUsersPage() {
         </button>
       </div>
 
-      {appsLoading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
@@ -200,26 +242,17 @@ export default function AdminUsersPage() {
           <p className="text-sm text-yellow-700">No apps configured. Please run migrations.</p>
         </div>
       ) : (
-        <div className="bg-white shadow rounded-lg">
-          <AppTabs apps={apps} selectedAppCode={selectedAppCode} onSelectApp={setSelectedAppCode} />
-
-          <div className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-medium text-gray-900">
-                    Users with Access ({usersWithAccess.length})
-                  </h2>
-                </div>
-
-                {usersLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-                  </div>
-                ) : usersWithAccess.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+        <>
+          <div className="bg-white shadow rounded-lg p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <label htmlFor="search" className="sr-only">
+                  Search users
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
+                      className="h-5 w-5 text-gray-400"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -228,80 +261,137 @@ export default function AdminUsersPage() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                       />
                     </svg>
-                    <p className="mt-2">No users have access to this app yet.</p>
-                    <p className="text-sm">Search for a user or invite a new one.</p>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {usersWithAccess.map((access) => (
-                      <UserAccessCard
-                        key={access.id}
-                        access={access}
-                        onEdit={() => handleEditAccess(access)}
-                        onRevoke={() => handleRevokeAccess(access)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="text-sm font-medium text-gray-900 mb-3">Add Existing User</h3>
-                  <UserSearchDropdown
-                    onSelectUser={handleGrantAccess}
-                    excludeUserIds={existingUserIds}
+                  <input
+                    id="search"
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
-                  <p className="text-xs text-gray-500 mt-2">
-                    Search for users already in the system to grant them access.
-                  </p>
                 </div>
-
-                {appDetails && (
-                  <div className="mt-4 bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-900 mb-3">Available Roles</h3>
-                    <div className="space-y-2">
-                      {appDetails.roles.map((role) => (
-                        <div key={role.code} className="text-sm">
-                          <span className="font-medium text-gray-700">{role.name}</span>
-                          {role.isDefault && (
-                            <span className="ml-1 text-xs text-blue-600">(Default)</span>
-                          )}
-                          {role.description && (
-                            <p className="text-xs text-gray-500">{role.description}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">Filter:</span>
+                <select
+                  value={filterOption}
+                  onChange={(e) => setFilterOption(e.target.value as FilterOption)}
+                  className="block w-full sm:w-auto rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                >
+                  <option value="all">All users ({allUsers.length})</option>
+                  <option value="with-access">With access ({usersWithAccess})</option>
+                  <option value="no-access">No access ({usersWithoutAccess})</option>
+                </select>
               </div>
             </div>
           </div>
-        </div>
+
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-900">
+                  Users ({filteredUsers.length})
+                </h2>
+                <span className="text-sm text-gray-500">{apps.length} apps available</span>
+              </div>
+            </div>
+
+            {filteredUsers.length === 0 ? (
+              <div className="text-center py-12">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                <p className="mt-2 text-sm text-gray-500">
+                  {searchQuery || filterOption !== "all"
+                    ? "No users match your search criteria"
+                    : "No users found in the system"}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200 p-4 space-y-3">
+                {filteredUsers.map((user) => (
+                  <UserRow
+                    key={user.id}
+                    user={user}
+                    apps={apps}
+                    isExpanded={expandedUserId === user.id}
+                    onToggle={() => handleToggleUser(user.id)}
+                    onEditAccess={(appCode, existingAccess) =>
+                      handleEditAccess(user, appCode, existingAccess)
+                    }
+                    onRevokeAccess={(access) => handleRevokeAccess(user, access)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       <EditAccessModal
         isOpen={showEditModal}
         onClose={() => {
           setShowEditModal(false);
+          setEditingUser(null);
+          setEditingAppCode(null);
           setEditingAccess(null);
-          setSelectedUser(null);
         }}
         appDetails={appDetails ?? null}
-        existingAccess={editingAccess}
-        selectedUser={selectedUser}
+        existingAccess={
+          editingAccess
+            ? {
+                id: editingAccess.accessId,
+                userId: editingUser?.id ?? 0,
+                email: editingUser?.email ?? "",
+                firstName: editingUser?.firstName ?? null,
+                lastName: editingUser?.lastName ?? null,
+                appCode: editingAccess.appCode,
+                roleCode: editingAccess.roleCode,
+                roleName: editingAccess.roleName,
+                useCustomPermissions: editingAccess.useCustomPermissions,
+                permissionCodes: null,
+                permissionCount: editingAccess.permissionCount,
+                grantedAt: "",
+                expiresAt: editingAccess.expiresAt,
+                grantedById: null,
+              }
+            : null
+        }
+        selectedUser={
+          editingUser && !editingAccess
+            ? {
+                id: editingUser.id,
+                email: editingUser.email,
+                firstName: editingUser.firstName,
+                lastName: editingUser.lastName,
+              }
+            : null
+        }
         onSave={handleSaveAccess}
         isSaving={assignMutation.isPending || updateMutation.isPending}
       />
 
       <InviteUserModal
         isOpen={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        appDetails={appDetails ?? null}
+        onClose={() => {
+          setShowInviteModal(false);
+          setInviteAppCode(null);
+        }}
+        appDetails={inviteAppDetails ?? null}
         onInvite={handleInviteUser}
         isInviting={inviteMutation.isPending}
       />

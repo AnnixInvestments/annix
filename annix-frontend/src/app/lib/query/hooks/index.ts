@@ -25,6 +25,7 @@ export { useAdminSupplierDetail } from "./admin/useAdminSupplierDetail";
 export { useAdminSuppliers, useInviteSupplier } from "./admin/useAdminSuppliers";
 export { useFeatureFlags, useToggleFeatureFlag } from "./admin/useFeatureFlags";
 export {
+  useRbacAllUsers,
   useRbacAppDetails,
   useRbacApps,
   useRbacAssignAccess,
