@@ -24,8 +24,8 @@ export default function ImportPage() {
 
     try {
       setIsUploading(true);
-      const rows = await stockControlApiClient.uploadImportFile(selectedFile);
-      setParsedRows(rows as Record<string, unknown>[]);
+      const response = await stockControlApiClient.uploadImportFile(selectedFile);
+      setParsedRows(response.rows ?? []);
       setStep("preview");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse file");
