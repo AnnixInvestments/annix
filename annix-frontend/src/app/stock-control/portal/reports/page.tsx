@@ -173,71 +173,75 @@ export default function ReportsPage() {
     const totalCost = costByJob.reduce((sum, j) => sum + j.totalCost, 0);
 
     return (
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Job Number
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Job Name
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Customer
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Items Allocated
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Total Cost
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {costByJob.map((job) => (
-            <tr key={job.jobCardId} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-teal-700">
-                {job.jobNumber}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+              >
+                Job Number
+              </th>
+              <th
+                scope="col"
+                className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
+              >
+                Job Name
+              </th>
+              <th
+                scope="col"
+                className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
+              >
+                Customer
+              </th>
+              <th
+                scope="col"
+                className="hidden px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+              >
+                Items Allocated
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+              >
+                Total Cost
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {costByJob.map((job) => (
+              <tr key={job.jobCardId} className="hover:bg-gray-50">
+                <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-teal-700 sm:px-6">
+                  {job.jobNumber}
+                </td>
+                <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-900 sm:table-cell sm:px-6">
+                  {job.jobName}
+                </td>
+                <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
+                  {job.customerName || "-"}
+                </td>
+                <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 lg:table-cell sm:px-6">
+                  {job.totalItemsAllocated}
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6">
+                  {formatZAR(job.totalCost)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="bg-gray-50">
+            <tr>
+              <td colSpan={4} className="px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6">
+                Grand Total
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{job.jobName}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {job.customerName || "-"}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                {job.totalItemsAllocated}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                {formatZAR(job.totalCost)}
+              <td className="px-3 py-4 text-right text-sm font-bold text-gray-900 sm:px-6">
+                {formatZAR(totalCost)}
               </td>
             </tr>
-          ))}
-        </tbody>
-        <tfoot className="bg-gray-50">
-          <tr>
-            <td colSpan={4} className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">
-              Grand Total
-            </td>
-            <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">
-              {formatZAR(totalCost)}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+          </tfoot>
+        </table>
+      </div>
     );
   };
 
@@ -268,115 +272,119 @@ export default function ReportsPage() {
     }
 
     return (
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              SKU
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Name
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Category
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Qty
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Cost/Unit
-            </th>
-            <th
-              scope="col"
-              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-            >
-              Total Value
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {valuation.items.map((item) => (
-            <tr key={item.id} className="hover:bg-gray-50">
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                {item.sku}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
+              >
+                SKU
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+              >
+                Name
+              </th>
+              <th
+                scope="col"
+                className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
+              >
+                Category
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+              >
+                Qty
+              </th>
+              <th
+                scope="col"
+                className="hidden px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+              >
+                Cost/Unit
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+              >
+                Total Value
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {valuation.items.map((item) => (
+              <tr key={item.id} className="hover:bg-gray-50">
+                <td className="hidden whitespace-nowrap px-3 py-4 font-mono text-sm text-gray-900 sm:table-cell sm:px-6">
+                  {item.sku}
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 sm:px-6">
+                  {item.name}
+                </td>
+                <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
+                  {item.category || "-"}
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 sm:px-6">
+                  {item.quantity}
+                </td>
+                <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 lg:table-cell sm:px-6">
+                  {formatZAR(item.costPerUnit)}
+                </td>
+                <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6">
+                  {formatZAR(item.totalValue)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="bg-gray-50">
+            <tr>
+              <td colSpan={5} className="px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6">
+                Total Valuation
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {item.category || "-"}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                {item.quantity}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                {formatZAR(item.costPerUnit)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                {formatZAR(item.totalValue)}
+              <td className="px-3 py-4 text-right text-sm font-bold text-gray-900 sm:px-6">
+                {formatZAR(valuation.totalValue)}
               </td>
             </tr>
-          ))}
-        </tbody>
-        <tfoot className="bg-gray-50">
-          <tr>
-            <td colSpan={5} className="px-6 py-4 text-sm font-semibold text-gray-900 text-right">
-              Total Valuation
-            </td>
-            <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">
-              {formatZAR(valuation.totalValue)}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+          </tfoot>
+        </table>
+      </div>
     );
   };
 
   const renderMovementHistory = () => (
     <>
-      <div className="p-4 border-b border-gray-200 bg-gray-50">
-        <div className="flex flex-wrap items-end gap-4">
+      <div className="border-b border-gray-200 bg-gray-50 p-3 sm:p-4">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end sm:gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Start Date</label>
             <input
               type="date"
               value={movementFilters.startDate}
               onChange={(e) =>
                 setMovementFilters({ ...movementFilters, startDate: e.target.value })
               }
-              className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">End Date</label>
             <input
               type="date"
               value={movementFilters.endDate}
               onChange={(e) => setMovementFilters({ ...movementFilters, endDate: e.target.value })}
-              className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Type</label>
             <select
               value={movementFilters.movementType}
               onChange={(e) =>
                 setMovementFilters({ ...movementFilters, movementType: e.target.value })
               }
-              className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
             >
               <option value="">All Types</option>
               <option value="delivery">Delivery</option>
@@ -386,7 +394,7 @@ export default function ReportsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Item</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Item</label>
             <select
               value={movementFilters.stockItemId}
               onChange={(e) =>
@@ -395,7 +403,7 @@ export default function ReportsPage() {
                   stockItemId: parseInt(e.target.value, 10) || 0,
                 })
               }
-              className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
             >
               <option value={0}>All Items</option>
               {stockItems.map((item) => (
@@ -409,7 +417,7 @@ export default function ReportsPage() {
             onClick={() =>
               setMovementFilters({ startDate: "", endDate: "", movementType: "", stockItemId: 0 })
             }
-            className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-100"
+            className="col-span-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 sm:col-span-1"
           >
             Clear Filters
           </button>
@@ -439,92 +447,94 @@ export default function ReportsPage() {
           <p className="mt-1 text-sm text-gray-500">Try adjusting your filters.</p>
         </div>
       ) : (
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Date
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Item
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Type
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Qty
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Reference
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Notes
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                By
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {movements.map((movement) => (
-              <tr key={movement.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {formatDateZA(movement.createdAt)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {movement.stockItem?.name || "-"}
-                  </div>
-                  <div className="text-xs text-gray-500 font-mono">
-                    {movement.stockItem?.sku || ""}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${movementTypeBadge(movement.movementType)}`}
-                  >
-                    {movement.movementType}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                  {movement.quantity}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {movement.referenceType
-                    ? `${movement.referenceType} #${movement.referenceId}`
-                    : "-"}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                  {movement.notes || "-"}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {movement.createdBy || "System"}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
+                >
+                  Date
+                </th>
+                <th
+                  scope="col"
+                  className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                >
+                  Item
+                </th>
+                <th
+                  scope="col"
+                  className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                >
+                  Type
+                </th>
+                <th
+                  scope="col"
+                  className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                >
+                  Qty
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
+                >
+                  Reference
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+                >
+                  Notes
+                </th>
+                <th
+                  scope="col"
+                  className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+                >
+                  By
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {movements.map((movement) => (
+                <tr key={movement.id} className="hover:bg-gray-50">
+                  <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 sm:table-cell sm:px-6">
+                    {formatDateZA(movement.createdAt)}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 sm:px-6">
+                    <div className="text-sm font-medium text-gray-900">
+                      {movement.stockItem?.name || "-"}
+                    </div>
+                    <div className="font-mono text-xs text-gray-500">
+                      {movement.stockItem?.sku || ""}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 sm:px-6">
+                    <span
+                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${movementTypeBadge(movement.movementType)}`}
+                    >
+                      {movement.movementType}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium text-gray-900 sm:px-6">
+                    {movement.quantity}
+                  </td>
+                  <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
+                    {movement.referenceType
+                      ? `${movement.referenceType} #${movement.referenceId}`
+                      : "-"}
+                  </td>
+                  <td className="hidden max-w-xs truncate px-3 py-4 text-sm text-gray-500 lg:table-cell sm:px-6">
+                    {movement.notes || "-"}
+                  </td>
+                  <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 lg:table-cell sm:px-6">
+                    {movement.createdBy || "System"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </>
   );
@@ -581,16 +591,16 @@ export default function ReportsPage() {
         </p>
       </div>
 
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="overflow-x-auto border-b border-gray-200">
+        <nav className="-mb-px flex space-x-4 sm:space-x-8">
           {REPORT_TABS.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+              className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${
                 activeTab === tab
                   ? "border-teal-500 text-teal-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
               }`}
             >
               {TAB_LABELS[tab]}

@@ -238,120 +238,124 @@ export default function StaffPage() {
             </p>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Staff Member
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Employee #
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Department
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Status
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Added
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {staffMembers.map((member) => (
-                <tr key={member.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        {member.photoUrl ? (
-                          <img
-                            className="h-10 w-10 rounded-full object-cover"
-                            src={member.photoUrl}
-                            alt={member.name}
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                            <span className="text-gray-500 font-medium text-sm">
-                              {member.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .toUpperCase()
-                                .slice(0, 2)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{member.name}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                    {member.employeeNumber || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {member.department || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        member.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {member.active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateZA(member.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => openEditModal(member)}
-                      className="text-teal-600 hover:text-teal-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleToggleActive(member)}
-                      className={
-                        member.active
-                          ? "text-red-600 hover:text-red-900"
-                          : "text-green-600 hover:text-green-900"
-                      }
-                    >
-                      {member.active ? "Deactivate" : "Reactivate"}
-                    </button>
-                    <button
-                      onClick={() => handlePrintIdCard(member.id)}
-                      className="text-gray-600 hover:text-gray-900"
-                    >
-                      ID Card
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-6"
+                  >
+                    Staff Member
+                  </th>
+                  <th
+                    scope="col"
+                    className="hidden px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell sm:px-6"
+                  >
+                    Employee #
+                  </th>
+                  <th
+                    scope="col"
+                    className="hidden px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell sm:px-6"
+                  >
+                    Department
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-6"
+                  >
+                    Status
+                  </th>
+                  <th
+                    scope="col"
+                    className="hidden px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider lg:table-cell sm:px-6"
+                  >
+                    Added
+                  </th>
+                  <th scope="col" className="relative px-3 py-3 sm:px-6">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {staffMembers.map((member) => (
+                  <tr key={member.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0">
+                          {member.photoUrl ? (
+                            <img
+                              className="h-10 w-10 rounded-full object-cover"
+                              src={member.photoUrl}
+                              alt={member.name}
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200">
+                              <span className="text-sm font-medium text-gray-500">
+                                {member.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{member.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="hidden px-3 py-4 whitespace-nowrap text-sm font-mono text-gray-500 sm:table-cell sm:px-6">
+                      {member.employeeNumber || "-"}
+                    </td>
+                    <td className="hidden px-3 py-4 whitespace-nowrap text-sm text-gray-500 md:table-cell sm:px-6">
+                      {member.department || "-"}
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                      <span
+                        className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                          member.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {member.active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="hidden px-3 py-4 whitespace-nowrap text-sm text-gray-500 lg:table-cell sm:px-6">
+                      {formatDateZA(member.createdAt)}
+                    </td>
+                    <td className="space-x-1 px-3 py-4 whitespace-nowrap text-right text-sm font-medium sm:space-x-2 sm:px-6">
+                      <button
+                        onClick={() => openEditModal(member)}
+                        className="text-teal-600 hover:text-teal-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(member)}
+                        className={
+                          member.active
+                            ? "text-red-600 hover:text-red-900"
+                            : "text-green-600 hover:text-green-900"
+                        }
+                      >
+                        <span className="hidden sm:inline">{member.active ? "Deactivate" : "Reactivate"}</span>
+                        <span className="sm:hidden">{member.active ? "Off" : "On"}</span>
+                      </button>
+                      <button
+                        onClick={() => handlePrintIdCard(member.id)}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
+                        <span className="hidden sm:inline">ID Card</span>
+                        <span className="sm:hidden">ID</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

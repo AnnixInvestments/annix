@@ -495,7 +495,7 @@ export default function StockControlSettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-4 sm:p-6 max-w-4xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Account Settings</h1>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -835,7 +835,7 @@ export default function StockControlSettingsPage() {
                 <h3 className="text-sm font-medium text-gray-700 mb-2">
                   Logo Candidates ({logoCandidates.length})
                 </h3>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {logoCandidates.map((candidate) => (
                     <CandidateThumbnail
                       key={candidate.url}
@@ -1029,16 +1029,16 @@ export default function StockControlSettingsPage() {
               <table className="min-w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">
+                    <th className="py-3 px-2 text-left text-xs font-medium uppercase text-gray-500">
                       Name
                     </th>
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">
+                    <th className="hidden py-3 px-2 text-left text-xs font-medium uppercase text-gray-500 sm:table-cell">
                       Email
                     </th>
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">
+                    <th className="py-3 px-2 text-left text-xs font-medium uppercase text-gray-500">
                       Role
                     </th>
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">
+                    <th className="hidden py-3 px-2 text-left text-xs font-medium uppercase text-gray-500 md:table-cell">
                       Joined
                     </th>
                   </tr>
@@ -1047,12 +1047,12 @@ export default function StockControlSettingsPage() {
                   {teamMembers.map((member) => (
                     <tr key={member.id} className="border-b border-gray-100">
                       <td className="py-3 px-2 text-sm text-gray-900">{member.name}</td>
-                      <td className="py-3 px-2 text-sm text-gray-500">{member.email}</td>
+                      <td className="hidden py-3 px-2 text-sm text-gray-500 sm:table-cell">{member.email}</td>
                       <td className="py-3 px-2">
                         <select
                           value={member.role}
                           onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                          className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                          className="rounded border border-gray-300 px-2 py-1 text-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500"
                         >
                           <option value="storeman">Storeman</option>
                           <option value="accounts">Accounts</option>
@@ -1060,7 +1060,7 @@ export default function StockControlSettingsPage() {
                           <option value="admin">Admin</option>
                         </select>
                       </td>
-                      <td className="py-3 px-2 text-sm text-gray-500">
+                      <td className="hidden py-3 px-2 text-sm text-gray-500 md:table-cell">
                         {new Date(member.createdAt).toLocaleDateString("en-ZA")}
                       </td>
                     </tr>
@@ -1076,9 +1076,9 @@ export default function StockControlSettingsPage() {
                   {invitations.map((inv) => (
                     <div
                       key={inv.id}
-                      className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg"
+                      className="flex flex-col gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div>
+                      <div className="min-w-0 truncate">
                         <span className="text-sm text-gray-900">{inv.email}</span>
                         <span className="ml-2 text-xs text-gray-500">({roleLabel(inv.role)})</span>
                       </div>
@@ -1086,14 +1086,14 @@ export default function StockControlSettingsPage() {
                         <button
                           type="button"
                           onClick={() => handleResendInvitation(inv.id)}
-                          className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+                          className="text-xs font-medium text-teal-600 hover:text-teal-800"
                         >
                           Resend
                         </button>
                         <button
                           type="button"
                           onClick={() => handleCancelInvitation(inv.id)}
-                          className="text-xs text-red-600 hover:text-red-800 font-medium"
+                          className="text-xs font-medium text-red-600 hover:text-red-800"
                         >
                           Cancel
                         </button>
