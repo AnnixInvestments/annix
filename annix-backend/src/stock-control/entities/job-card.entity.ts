@@ -8,7 +8,12 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { DispatchScan } from "./dispatch-scan.entity";
+import { JobCardApproval } from "./job-card-approval.entity";
+import { JobCardAttachment } from "./job-card-attachment.entity";
+import { JobCardDocument } from "./job-card-document.entity";
 import { JobCardLineItem } from "./job-card-line-item.entity";
+import { JobCardVersion } from "./job-card-version.entity";
 import { StockAllocation } from "./stock-allocation.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 
@@ -17,6 +22,18 @@ export enum JobCardStatus {
   ACTIVE = "active",
   COMPLETED = "completed",
   CANCELLED = "cancelled",
+}
+
+export enum JobCardWorkflowStatus {
+  DRAFT = "draft",
+  DOCUMENT_UPLOADED = "document_uploaded",
+  ADMIN_APPROVED = "admin_approved",
+  MANAGER_APPROVED = "manager_approved",
+  REQUISITION_SENT = "requisition_sent",
+  STOCK_ALLOCATED = "stock_allocated",
+  MANAGER_FINAL = "manager_final",
+  READY_FOR_DISPATCH = "ready_for_dispatch",
+  DISPATCHED = "dispatched",
 }
 
 @Entity("job_cards")
@@ -66,6 +83,18 @@ export class JobCard {
   @Column({ type: "varchar", length: 50, default: JobCardStatus.DRAFT })
   status: JobCardStatus;
 
+  @Column({ name: "workflow_status", type: "varchar", length: 50, default: JobCardWorkflowStatus.DRAFT })
+  workflowStatus: JobCardWorkflowStatus;
+
+  @Column({ name: "version_number", type: "integer", default: 1 })
+  versionNumber: number;
+
+  @Column({ name: "source_file_path", type: "varchar", length: 500, nullable: true })
+  sourceFilePath: string | null;
+
+  @Column({ name: "source_file_name", type: "varchar", length: 255, nullable: true })
+  sourceFileName: string | null;
+
   @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
@@ -84,6 +113,36 @@ export class JobCard {
     (li) => li.jobCard,
   )
   lineItems: JobCardLineItem[];
+
+  @OneToMany(
+    () => JobCardDocument,
+    (doc) => doc.jobCard,
+  )
+  documents: JobCardDocument[];
+
+  @OneToMany(
+    () => JobCardApproval,
+    (approval) => approval.jobCard,
+  )
+  approvals: JobCardApproval[];
+
+  @OneToMany(
+    () => DispatchScan,
+    (scan) => scan.jobCard,
+  )
+  dispatchScans: DispatchScan[];
+
+  @OneToMany(
+    () => JobCardVersion,
+    (version) => version.jobCard,
+  )
+  versions: JobCardVersion[];
+
+  @OneToMany(
+    () => JobCardAttachment,
+    (attachment) => attachment.jobCard,
+  )
+  attachments: JobCardAttachment[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

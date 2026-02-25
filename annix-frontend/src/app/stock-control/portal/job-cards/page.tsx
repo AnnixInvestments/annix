@@ -54,21 +54,37 @@ export default function JobCardsPage() {
 
   const handleImportDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      navigateWithFile(droppedFile);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      navigateWithFile(files[0]);
     }
   };
 
   const handleImportDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+    setIsDragging(true);
+  };
+
+  const handleImportDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
     setIsDragging(true);
   };
 
   const handleImportDragLeave = (e: React.DragEvent) => {
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-    setIsDragging(false);
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+      setIsDragging(false);
+    }
   };
 
   const handleImportFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,6 +182,7 @@ export default function JobCardsPage() {
       className="space-y-6 relative"
       onDrop={handleImportDrop}
       onDragOver={handleImportDragOver}
+      onDragEnter={handleImportDragEnter}
       onDragLeave={handleImportDragLeave}
     >
       {isDragging && (

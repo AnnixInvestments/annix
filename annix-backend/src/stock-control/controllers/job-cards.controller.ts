@@ -18,7 +18,9 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
+import { DrawingExtractionService } from "../services/drawing-extraction.service";
 import { JobCardService } from "../services/job-card.service";
+import { JobCardVersionService } from "../services/job-card-version.service";
 import { RequisitionService } from "../services/requisition.service";
 
 @ApiTags("Stock Control - Job Cards")
@@ -31,6 +33,8 @@ export class JobCardsController {
     private readonly jobCardService: JobCardService,
     private readonly coatingAnalysisService: CoatingAnalysisService,
     private readonly requisitionService: RequisitionService,
+    private readonly versionService: JobCardVersionService,
+    private readonly drawingExtractionService: DrawingExtractionService,
   ) {}
 
   @Get()
@@ -114,5 +118,87 @@ export class JobCardsController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return this.jobCardService.uploadAllocationPhoto(req.user.companyId, allocationId, file);
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Post(":id/amendment")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload an amendment to a job card" })
+  async uploadAmendment(
+    @Req() req: any,
+    @Param("id") id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { notes?: string },
+  ) {
+    return this.versionService.createAmendment(
+      req.user.companyId,
+      id,
+      file,
+      body.notes ?? null,
+      req.user.name,
+    );
+  }
+
+  @Get(":id/versions")
+  @ApiOperation({ summary: "Version history for a job card" })
+  async versionHistory(@Req() req: any, @Param("id") id: number) {
+    return this.versionService.versionHistory(req.user.companyId, id);
+  }
+
+  @Get(":id/versions/:versionId")
+  @ApiOperation({ summary: "Version details for a job card" })
+  async versionById(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("versionId") versionId: number,
+  ) {
+    return this.versionService.versionById(req.user.companyId, id, versionId);
+  }
+
+  @Get(":id/attachments")
+  @ApiOperation({ summary: "Attachments for a job card" })
+  async attachments(@Req() req: any, @Param("id") id: number) {
+    return this.drawingExtractionService.attachments(req.user.companyId, id);
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Post(":id/attachments")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload a drawing attachment" })
+  async uploadAttachment(
+    @Req() req: any,
+    @Param("id") id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { notes?: string },
+  ) {
+    return this.drawingExtractionService.uploadAttachment(
+      req.user.companyId,
+      id,
+      file,
+      req.user.name,
+      body.notes ?? null,
+    );
+  }
+
+  @Post(":id/attachments/:attachmentId/extract")
+  @ApiOperation({ summary: "Trigger dimension extraction from attachment" })
+  async triggerExtraction(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("attachmentId") attachmentId: number,
+  ) {
+    return this.drawingExtractionService.triggerExtraction(req.user.companyId, id, attachmentId);
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Delete(":id/attachments/:attachmentId")
+  @ApiOperation({ summary: "Delete an attachment" })
+  async deleteAttachment(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("attachmentId") attachmentId: number,
+  ) {
+    await this.drawingExtractionService.deleteAttachment(req.user.companyId, id, attachmentId);
+    return { message: "Attachment deleted" };
   }
 }

@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   DashboardStats,
+  JobCard,
   RecentActivity,
   SohSummary,
   StockItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateZA, formatDateLongZA } from "@/app/lib/datetime";
 import { useStockControlBranding } from "../../context/StockControlBrandingContext";
 
 function formatZAR(value: number): string {
@@ -37,6 +38,7 @@ export default function StockControlDashboard() {
   const [sohSummary, setSohSummary] = useState<SohSummary[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [reorderAlerts, setReorderAlerts] = useState<StockItem[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<JobCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -44,16 +46,18 @@ export default function StockControlDashboard() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [statsData, sohData, activityData, alertsData] = await Promise.all([
+        const [statsData, sohData, activityData, alertsData, approvalsData] = await Promise.all([
           stockControlApiClient.dashboardStats(),
           stockControlApiClient.sohSummary(),
           stockControlApiClient.recentActivity(),
           stockControlApiClient.reorderAlerts(),
+          stockControlApiClient.pendingApprovals().catch(() => []),
         ]);
         setStats(statsData);
         setSohSummary(Array.isArray(sohData) ? sohData : []);
         setRecentActivity(Array.isArray(activityData) ? activityData : []);
         setReorderAlerts(Array.isArray(alertsData) ? alertsData : []);
+        setPendingApprovals(Array.isArray(approvalsData) ? approvalsData : []);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err : new Error("Failed to load dashboard data"));
@@ -320,6 +324,44 @@ export default function StockControlDashboard() {
                   <p className="text-xs text-gray-500">{item.category}</p>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pendingApprovals.length > 0 && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Pending Approvals</h3>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+              {pendingApprovals.length} awaiting
+            </span>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {pendingApprovals.map((jobCard) => (
+              <Link
+                key={jobCard.id}
+                href={`/stock-control/portal/job-cards/${jobCard.id}`}
+                className="block px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-teal-700">{jobCard.jobNumber}</p>
+                    <p className="text-sm text-gray-600">{jobCard.jobName}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Status: {jobCard.status.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      Awaiting Approval
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatDateLongZA(new Date(jobCard.createdAt))}
+                    </p>
+                  </div>
+                </div>
+              </Link>
             ))}
           </div>
         </div>
