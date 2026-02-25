@@ -142,6 +142,50 @@ export class InventoryService {
     return result.map((r) => r.category);
   }
 
+  async groupedByCategory(
+    companyId: number,
+    search?: string,
+  ): Promise<{ category: string; items: StockItem[] }[]> {
+    const queryBuilder = this.stockItemRepo
+      .createQueryBuilder("item")
+      .where("item.company_id = :companyId", { companyId });
+
+    if (search) {
+      queryBuilder.andWhere(
+        "(item.name ILIKE :search OR item.sku ILIKE :search OR item.description ILIKE :search)",
+        { search: `%${search}%` },
+      );
+    }
+
+    queryBuilder.orderBy("item.category", "ASC").addOrderBy("item.name", "ASC");
+
+    const allItems = await queryBuilder.getMany();
+
+    const grouped = allItems.reduce(
+      (acc, item) => {
+        const cat = item.category || "Uncategorized";
+        const existing = acc.find((g) => g.category === cat);
+        if (existing) {
+          return acc.map((g) => (g.category === cat ? { ...g, items: [...g.items, item] } : g));
+        }
+        return [...acc, { category: cat, items: [item] }];
+      },
+      [] as { category: string; items: StockItem[] }[],
+    );
+
+    const uncategorizedIndex = grouped.findIndex((g) => g.category === "Uncategorized");
+    if (uncategorizedIndex > 0) {
+      const uncategorized = grouped[uncategorizedIndex];
+      return [
+        ...grouped.slice(0, uncategorizedIndex),
+        ...grouped.slice(uncategorizedIndex + 1),
+        uncategorized,
+      ];
+    }
+
+    return grouped;
+  }
+
   async adjustQuantity(companyId: number, id: number, delta: number): Promise<StockItem> {
     const item = await this.findById(companyId, id);
     item.quantity = Math.max(0, item.quantity + delta);

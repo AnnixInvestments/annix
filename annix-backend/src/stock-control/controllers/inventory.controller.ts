@@ -59,6 +59,12 @@ export class InventoryController {
     return this.inventoryService.categories(req.user.companyId);
   }
 
+  @Get("grouped")
+  @ApiOperation({ summary: "Stock items grouped by category" })
+  async grouped(@Req() req: any, @Query("search") search?: string) {
+    return this.inventoryService.groupedByCategory(req.user.companyId, search);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Stock item by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {

@@ -898,6 +898,11 @@ class StockControlApiClient {
     return this.request("/stock-control/inventory/categories");
   }
 
+  async stockItemsGrouped(search?: string): Promise<{ category: string; items: StockItem[] }[]> {
+    const query = search ? `?search=${encodeURIComponent(search)}` : "";
+    return this.request(`/stock-control/inventory/grouped${query}`);
+  }
+
   async jobCards(status?: string): Promise<JobCard[]> {
     const query = status ? `?status=${encodeURIComponent(status)}` : "";
     return this.request(`/stock-control/job-cards${query}`);

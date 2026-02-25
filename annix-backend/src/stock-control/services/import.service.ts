@@ -186,6 +186,17 @@ export class ImportService {
       errors: [],
     };
 
+    const existingCategories = await this.stockItemRepo
+      .createQueryBuilder("item")
+      .select("DISTINCT item.category", "category")
+      .where("item.company_id = :companyId", { companyId })
+      .andWhere("item.category IS NOT NULL")
+      .getRawMany()
+      .then((cats) => cats.map((c) => c.category as string));
+
+    const rowsNeedingCategory = rows.filter((r) => !r.category && r.name);
+    const categoryMap = await this.inferCategories(rowsNeedingCategory, existingCategories);
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
 
@@ -194,6 +205,10 @@ export class ImportService {
           continue;
         }
         row.name = row.sku;
+      }
+
+      if (!row.category && row.name && categoryMap.has(row.name)) {
+        row.category = categoryMap.get(row.name);
       }
 
       if (!row.sku) {
@@ -280,5 +295,64 @@ export class ImportService {
     }
 
     return result;
+  }
+
+  private async inferCategories(
+    rows: ImportRow[],
+    existingCategories: string[],
+  ): Promise<Map<string, string>> {
+    const categoryMap = new Map<string, string>();
+
+    if (rows.length === 0) {
+      return categoryMap;
+    }
+
+    try {
+      const available = await this.aiChatService.isAvailable();
+      if (!available) {
+        this.logger.warn("AI not available for category inference");
+        return categoryMap;
+      }
+
+      const itemNames = rows.map((r) => r.name).filter((n): n is string => !!n);
+      if (itemNames.length === 0) {
+        return categoryMap;
+      }
+
+      const systemPrompt = [
+        "You are a stock inventory categorization assistant.",
+        "Analyze item names and assign each to a category.",
+        existingCategories.length > 0
+          ? `Prefer using existing categories: ${existingCategories.join(", ")}.`
+          : "Create sensible general categories (e.g., Paint, Hardware, Electrical, PPE, Consumables, Tools, Chemicals, Fasteners).",
+        "For items that don't fit existing categories, suggest a new appropriate category name.",
+        "Return a JSON object mapping each item name to its category.",
+        "Respond with JSON only, no markdown fences.",
+      ].join(" ");
+
+      const userMessage = `Categorize these inventory items: ${JSON.stringify(itemNames.slice(0, 50))}`;
+
+      const { content } = await this.aiChatService.chat(
+        [{ role: "user", content: userMessage }],
+        systemPrompt,
+      );
+
+      const cleaned = content
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .trim();
+      const parsed = JSON.parse(cleaned) as Record<string, string>;
+
+      Object.entries(parsed).forEach(([name, category]) => {
+        if (typeof category === "string" && category.trim()) {
+          categoryMap.set(name, category.trim());
+        }
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.error(`AI category inference failed: ${message}`);
+    }
+
+    return categoryMap;
   }
 }
