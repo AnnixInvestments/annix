@@ -296,6 +296,27 @@ export interface ImportResult {
   errors: { row: number; message: string }[];
 }
 
+export interface InventoryColumnMapping {
+  sku: number | null;
+  name: number | null;
+  description: number | null;
+  category: number | null;
+  unitOfMeasure: number | null;
+  costPerUnit: number | null;
+  quantity: number | null;
+  minStockLevel: number | null;
+  location: number | null;
+}
+
+export interface ImportUploadResponse {
+  format: string;
+  headers?: string[];
+  rawRows?: string[][];
+  mapping?: InventoryColumnMapping;
+  rows?: Record<string, unknown>[];
+  error?: string;
+}
+
 export interface FieldMapping {
   column: number;
   startRow: number;
@@ -1019,7 +1040,7 @@ class StockControlApiClient {
     });
   }
 
-  async uploadImportFile(file: File): Promise<unknown[]> {
+  async uploadImportFile(file: File): Promise<ImportUploadResponse> {
     const formData = new FormData();
     formData.append("file", file);
 
@@ -1037,8 +1058,7 @@ class StockControlApiClient {
       throw new Error(`Import failed: ${errorText}`);
     }
 
-    const data = await response.json();
-    return data.rows ?? [];
+    return response.json();
   }
 
   async confirmImport(rows: unknown[]): Promise<ImportResult> {

@@ -30,8 +30,9 @@ export class ImportController {
     const isPdf = file.mimetype === "application/pdf";
 
     if (isExcel) {
-      const rows = await this.importService.parseExcel(file.buffer);
-      return { format: "excel", rows };
+      const { headers, rawRows } = await this.importService.parseExcelRaw(file.buffer);
+      const mapping = await this.importService.mapColumnsWithAi(headers);
+      return { format: "excel", headers, rawRows, mapping };
     } else if (isPdf) {
       const rows = await this.importService.parsePdf(file.buffer);
       return { format: "pdf", rows };
