@@ -1,6 +1,5 @@
 "use client";
 
-import { entries } from "es-toolkit/compat";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { RbacAppDetail, RbacAppRole } from "@/app/lib/api/adminApi";
@@ -20,20 +19,25 @@ interface RoleManagementPanelProps {
   appDetails: RbacAppDetail;
 }
 
-const RFQ_PRODUCT_FLAG_MAP = PRODUCTS_AND_SERVICES.reduce<
-  Record<
-    string,
-    { label: string; icon: React.ReactNode; description: string; comingSoon?: boolean }
-  >
->((acc, product) => {
-  acc[product.flagKey] = {
-    label: product.label,
-    icon: product.icon,
-    description: product.description,
-    comingSoon: product.comingSoon,
-  };
-  return acc;
-}, {});
+interface ProductFlagMeta {
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+  comingSoon?: boolean;
+}
+
+const RFQ_PRODUCT_FLAG_MAP = PRODUCTS_AND_SERVICES.reduce<Record<string, ProductFlagMeta>>(
+  (acc, product) => {
+    acc[product.flagKey] = {
+      label: product.label,
+      icon: product.icon,
+      description: product.description,
+      comingSoon: product.comingSoon,
+    };
+    return acc;
+  },
+  {},
+);
 
 type Tab = "roles" | "products";
 
@@ -155,7 +159,7 @@ export function RoleManagementPanel({ isOpen, onClose, appDetails }: RoleManagem
   if (!isOpen) return null;
 
   const isRfqPlatform = appDetails.code === "rfq-platform";
-  const productFlags = entries(RFQ_PRODUCT_FLAG_MAP);
+  const productFlags = Object.entries(RFQ_PRODUCT_FLAG_MAP) as [string, ProductFlagMeta][];
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
