@@ -45,10 +45,20 @@ function formatRandCell(value: string): string {
 
 const ITEMS_PER_PAGE = 20;
 
+type ViewMode = "list" | "grouped";
+
+interface CategoryGroup {
+  category: string;
+  items: StockItem[];
+  expanded: boolean;
+}
+
 export default function InventoryPage() {
   const [items, setItems] = useState<StockItem[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
+  const [groupedData, setGroupedData] = useState<CategoryGroup[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("grouped");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [search, setSearch] = useState("");
@@ -145,27 +155,42 @@ export default function InventoryPage() {
   const fetchItems = useCallback(async () => {
     try {
       setIsLoading(true);
-      const params: Record<string, string> = {
-        page: String(currentPage + 1),
-        limit: String(ITEMS_PER_PAGE),
-      };
-      if (search) params.search = search;
-      if (categoryFilter) params.category = categoryFilter;
 
-      const [result, cats] = await Promise.all([
-        stockControlApiClient.stockItems(params),
-        stockControlApiClient.categories(),
-      ]);
-      setItems(Array.isArray(result.items) ? result.items : []);
-      setTotal(result.total ?? 0);
-      setCategories(Array.isArray(cats) ? cats : []);
+      if (viewMode === "grouped") {
+        const [grouped, cats] = await Promise.all([
+          stockControlApiClient.stockItemsGrouped(search || undefined),
+          stockControlApiClient.categories(),
+        ]);
+        const withExpanded = grouped.map((g) => ({ ...g, expanded: true }));
+        setGroupedData(withExpanded);
+        setCategories(Array.isArray(cats) ? cats : []);
+        const totalItems = grouped.reduce((sum, g) => sum + g.items.length, 0);
+        setTotal(totalItems);
+        setItems([]);
+      } else {
+        const params: Record<string, string> = {
+          page: String(currentPage + 1),
+          limit: String(ITEMS_PER_PAGE),
+        };
+        if (search) params.search = search;
+        if (categoryFilter) params.category = categoryFilter;
+
+        const [result, cats] = await Promise.all([
+          stockControlApiClient.stockItems(params),
+          stockControlApiClient.categories(),
+        ]);
+        setItems(Array.isArray(result.items) ? result.items : []);
+        setTotal(result.total ?? 0);
+        setCategories(Array.isArray(cats) ? cats : []);
+        setGroupedData([]);
+      }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load inventory"));
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search, categoryFilter]);
+  }, [currentPage, search, categoryFilter, viewMode]);
 
   useEffect(() => {
     fetchItems();
@@ -181,6 +206,20 @@ export default function InventoryPage() {
   const handleCategoryChange = (value: string) => {
     setCategoryFilter(value);
     setCurrentPage(0);
+  };
+
+  const toggleCategoryExpanded = (category: string) => {
+    setGroupedData((prev) =>
+      prev.map((g) => (g.category === category ? { ...g, expanded: !g.expanded } : g)),
+    );
+  };
+
+  const expandAllCategories = () => {
+    setGroupedData((prev) => prev.map((g) => ({ ...g, expanded: true })));
+  };
+
+  const collapseAllCategories = () => {
+    setGroupedData((prev) => prev.map((g) => ({ ...g, expanded: false })));
   };
 
   const openCreateModal = () => {
@@ -798,18 +837,58 @@ export default function InventoryPage() {
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
           />
         </div>
-        <select
-          value={categoryFilter}
-          onChange={(e) => handleCategoryChange(e.target.value)}
-          className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-        >
-          <option value="">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
+        {viewMode === "list" && (
+          <select
+            value={categoryFilter}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        )}
+        <div className="flex rounded-md shadow-sm">
+          <button
+            onClick={() => setViewMode("grouped")}
+            className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+              viewMode === "grouped"
+                ? "bg-teal-600 text-white border-teal-600"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
+            title="Grouped view"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={() => setViewMode("list")}
+            className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
+              viewMode === "list"
+                ? "bg-teal-600 text-white border-teal-600"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
+            title="List view"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 10h16M4 14h16M4 18h16"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {selectedIds.size > 0 && (
@@ -843,26 +922,253 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        {items.length === 0 ? (
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+      {viewMode === "grouped" && groupedData.length > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-600">
+            {groupedData.length} categories, {total} items total
+          </span>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={expandAllCategories}
+              className="text-sm text-teal-600 hover:text-teal-800"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No items found</h3>
-            <p className="mt-1 text-sm text-gray-500">Add a stock item to get started.</p>
+              Expand All
+            </button>
+            <span className="text-gray-400">|</span>
+            <button
+              onClick={collapseAllCategories}
+              className="text-sm text-teal-600 hover:text-teal-800"
+            >
+              Collapse All
+            </button>
           </div>
-        ) : (
+        </div>
+      )}
+
+      {viewMode === "grouped" ? (
+        <div className="space-y-4">
+          {groupedData.length === 0 ? (
+            <div className="bg-white shadow rounded-lg text-center py-12">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No items found</h3>
+              <p className="mt-1 text-sm text-gray-500">Add a stock item to get started.</p>
+            </div>
+          ) : (
+            groupedData.map((group) => (
+              <div key={group.category} className="bg-white shadow rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleCategoryExpanded(group.category)}
+                  className="w-full px-6 py-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <svg
+                      className={`w-5 h-5 text-gray-500 transition-transform ${group.expanded ? "rotate-90" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                    <span className="font-semibold text-gray-900">{group.category}</span>
+                    <span className="text-sm text-gray-500">({group.items.length} items)</span>
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    {formatZAR(group.items.reduce((sum, i) => sum + i.costPerUnit * i.quantity, 0))}
+                  </span>
+                </button>
+                {group.expanded && (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-4 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={
+                              group.items.length > 0 &&
+                              group.items.every((item) => selectedIds.has(item.id))
+                            }
+                            onChange={() => {
+                              const groupIds = group.items.map((item) => item.id);
+                              const allSelected = groupIds.every((id) => selectedIds.has(id));
+                              if (allSelected) {
+                                setSelectedIds((prev) => {
+                                  const next = new Set(prev);
+                                  groupIds.forEach((id) => next.delete(id));
+                                  return next;
+                                });
+                              } else {
+                                setSelectedIds((prev) => {
+                                  const next = new Set(prev);
+                                  groupIds.forEach((id) => next.add(id));
+                                  return next;
+                                });
+                              }
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                          />
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          SKU
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          SOH
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Min Level
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Cost
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Location
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {group.items.map((item) => (
+                        <tr
+                          key={item.id}
+                          className={
+                            item.quantity <= item.minStockLevel
+                              ? "bg-amber-50 hover:bg-amber-100"
+                              : "hover:bg-gray-50"
+                          }
+                        >
+                          <td className="px-4 py-4 w-10">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(item.id)}
+                              onChange={() => toggleSelectItem(item.id)}
+                              className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                            />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                            {item.sku}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Link
+                              href={`/stock-control/portal/inventory/${item.id}`}
+                              className="text-sm font-medium text-teal-700 hover:text-teal-900"
+                            >
+                              {item.name}
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                            {item.quantity}
+                            {item.quantity <= item.minStockLevel && (
+                              <svg
+                                className="w-4 h-4 text-amber-500 inline ml-1"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                            {editingMinLevelId === item.id ? (
+                              <input
+                                type="number"
+                                min={0}
+                                value={editingMinLevelValue}
+                                onChange={(e) =>
+                                  setEditingMinLevelValue(parseInt(e.target.value, 10) || 0)
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveMinLevel(item.id);
+                                  if (e.key === "Escape") cancelEditingMinLevel();
+                                }}
+                                onBlur={() => saveMinLevel(item.id)}
+                                autoFocus
+                                className="w-16 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
+                              />
+                            ) : (
+                              <button
+                                onClick={() => startEditingMinLevel(item)}
+                                className="text-gray-500 hover:text-teal-700 cursor-pointer"
+                                title="Click to edit min stock level"
+                              >
+                                {item.minStockLevel}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                            {formatZAR(item.costPerUnit)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {item.location || "-"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                            <button
+                              onClick={() => openEditModal(item)}
+                              className="text-teal-600 hover:text-teal-900 mr-3"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          {items.length === 0 ? (
+            <div className="text-center py-12">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No items found</h3>
+              <p className="mt-1 text-sm text-gray-500">Add a stock item to get started.</p>
+            </div>
+          ) : (
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -1050,7 +1356,8 @@ export default function InventoryPage() {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
