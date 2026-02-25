@@ -130,7 +130,11 @@ export function useRbacCreateRole() {
 export function useRbacUpdateRole() {
   const queryClient = useQueryClient();
 
-  return useMutation<RbacRoleResponse, Error, { roleId: number; dto: UpdateRoleDto; appCode: string }>({
+  return useMutation<
+    RbacRoleResponse,
+    Error,
+    { roleId: number; dto: UpdateRoleDto; appCode: string }
+  >({
     mutationFn: ({ roleId, dto }) => adminApiClient.rbacUpdateRole(roleId, dto),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: rbacKeys.apps.detail(variables.appCode) });
@@ -155,7 +159,8 @@ export function useRbacSetRoleProducts() {
   const queryClient = useQueryClient();
 
   return useMutation<RbacRoleProductsResponse, Error, { roleId: number; productKeys: string[] }>({
-    mutationFn: ({ roleId, productKeys }) => adminApiClient.rbacSetRoleProducts(roleId, productKeys),
+    mutationFn: ({ roleId, productKeys }) =>
+      adminApiClient.rbacSetRoleProducts(roleId, productKeys),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: rbacKeys.roles.products(variables.roleId) });
     },

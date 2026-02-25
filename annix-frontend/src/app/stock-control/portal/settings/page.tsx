@@ -1047,7 +1047,9 @@ export default function StockControlSettingsPage() {
                   {teamMembers.map((member) => (
                     <tr key={member.id} className="border-b border-gray-100">
                       <td className="py-3 px-2 text-sm text-gray-900">{member.name}</td>
-                      <td className="hidden py-3 px-2 text-sm text-gray-500 sm:table-cell">{member.email}</td>
+                      <td className="hidden py-3 px-2 text-sm text-gray-500 sm:table-cell">
+                        {member.email}
+                      </td>
                       <td className="py-3 px-2">
                         <select
                           value={member.role}

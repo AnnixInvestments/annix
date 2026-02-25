@@ -1286,7 +1286,10 @@ class AdminApiClient {
     return this.request<RbacRoleProductsResponse>(`/admin/rbac/roles/${roleId}/products`);
   }
 
-  async rbacSetRoleProducts(roleId: number, productKeys: string[]): Promise<RbacRoleProductsResponse> {
+  async rbacSetRoleProducts(
+    roleId: number,
+    productKeys: string[],
+  ): Promise<RbacRoleProductsResponse> {
     return this.request<RbacRoleProductsResponse>(`/admin/rbac/roles/${roleId}/products`, {
       method: "PUT",
       body: JSON.stringify({ productKeys }),

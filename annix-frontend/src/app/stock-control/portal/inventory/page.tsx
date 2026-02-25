@@ -1169,193 +1169,195 @@ export default function InventoryPage() {
               <p className="mt-1 text-sm text-gray-500">Add a stock item to get started.</p>
             </div>
           ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-4 py-3 w-10">
-                  <input
-                    type="checkbox"
-                    checked={items.length > 0 && items.every((item) => selectedIds.has(item.id))}
-                    onChange={toggleSelectAll}
-                    className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                  />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  SKU
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Name
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Category
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  SOH
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Min Level
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Cost
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Location
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {items.map((item) => (
-                <tr
-                  key={item.id}
-                  className={
-                    item.quantity <= item.minStockLevel
-                      ? "bg-amber-50 hover:bg-amber-100"
-                      : "hover:bg-gray-50"
-                  }
-                >
-                  <td className="px-4 py-4 w-10">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-4 py-3 w-10">
                     <input
                       type="checkbox"
-                      checked={selectedIds.has(item.id)}
-                      onChange={() => toggleSelectItem(item.id)}
+                      checked={items.length > 0 && items.every((item) => selectedIds.has(item.id))}
+                      onChange={toggleSelectAll}
                       className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                     />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                    {item.sku}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/stock-control/portal/inventory/${item.id}`}
-                      className="text-sm font-medium text-teal-700 hover:text-teal-900"
-                    >
-                      {item.name}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.category || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                    {item.quantity}
-                    {item.quantity <= item.minStockLevel && (
-                      <svg
-                        className="w-4 h-4 text-amber-500 inline ml-1"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                    {editingMinLevelId === item.id ? (
-                      <input
-                        type="number"
-                        min={0}
-                        value={editingMinLevelValue}
-                        onChange={(e) => setEditingMinLevelValue(parseInt(e.target.value, 10) || 0)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") saveMinLevel(item.id);
-                          if (e.key === "Escape") cancelEditingMinLevel();
-                        }}
-                        onBlur={() => saveMinLevel(item.id)}
-                        autoFocus
-                        className="w-16 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
-                      />
-                    ) : (
-                      <button
-                        onClick={() => startEditingMinLevel(item)}
-                        className="text-gray-500 hover:text-teal-700 cursor-pointer"
-                        title="Click to edit min stock level"
-                      >
-                        {item.minStockLevel}
-                      </button>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {formatZAR(item.costPerUnit)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.location || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <button
-                      onClick={() => openEditModal(item)}
-                      className="text-teal-600 hover:text-teal-900 mr-3"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    SKU
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Name
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Category
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    SOH
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Min Level
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Cost
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Location
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {items.map((item) => (
+                  <tr
+                    key={item.id}
+                    className={
+                      item.quantity <= item.minStockLevel
+                        ? "bg-amber-50 hover:bg-amber-100"
+                        : "hover:bg-gray-50"
+                    }
+                  >
+                    <td className="px-4 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => toggleSelectItem(item.id)}
+                        className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                      {item.sku}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Link
+                        href={`/stock-control/portal/inventory/${item.id}`}
+                        className="text-sm font-medium text-teal-700 hover:text-teal-900"
+                      >
+                        {item.name}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.category || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                      {item.quantity}
+                      {item.quantity <= item.minStockLevel && (
+                        <svg
+                          className="w-4 h-4 text-amber-500 inline ml-1"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                      {editingMinLevelId === item.id ? (
+                        <input
+                          type="number"
+                          min={0}
+                          value={editingMinLevelValue}
+                          onChange={(e) =>
+                            setEditingMinLevelValue(parseInt(e.target.value, 10) || 0)
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveMinLevel(item.id);
+                            if (e.key === "Escape") cancelEditingMinLevel();
+                          }}
+                          onBlur={() => saveMinLevel(item.id)}
+                          autoFocus
+                          className="w-16 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
+                        />
+                      ) : (
+                        <button
+                          onClick={() => startEditingMinLevel(item)}
+                          className="text-gray-500 hover:text-teal-700 cursor-pointer"
+                          title="Click to edit min stock level"
+                        >
+                          {item.minStockLevel}
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                      {formatZAR(item.costPerUnit)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.location || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <button
+                        onClick={() => openEditModal(item)}
+                        className="text-teal-600 hover:text-teal-900 mr-3"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing {currentPage * ITEMS_PER_PAGE + 1} to{" "}
-              {Math.min((currentPage + 1) * ITEMS_PER_PAGE, total)} of {total} items
+          {totalPages > 1 && (
+            <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Showing {currentPage * ITEMS_PER_PAGE + 1} to{" "}
+                {Math.min((currentPage + 1) * ITEMS_PER_PAGE, total)} of {total} items
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                  className="px-3 py-1 text-sm border rounded-md text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600">
+                  Page {currentPage + 1} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={currentPage >= totalPages - 1}
+                  className="px-3 py-1 text-sm border rounded-md text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
-                disabled={currentPage === 0}
-                className="px-3 py-1 text-sm border rounded-md text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-gray-600">
-                Page {currentPage + 1} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={currentPage >= totalPages - 1}
-                className="px-3 py-1 text-sm border rounded-md text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+          )}
         </div>
       )}
 

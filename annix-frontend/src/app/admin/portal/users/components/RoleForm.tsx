@@ -86,7 +86,10 @@ export function RoleForm({ role, onSubmit, onCancel, isSubmitting }: RoleFormPro
   const isValid = name.trim().length >= 2 && (isEditing || code.trim().length >= 2);
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-4 space-y-4">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg p-4 space-y-4"
+    >
       <h4 className="font-medium text-gray-900 dark:text-white">
         {isEditing ? "Edit Role" : "Create New Role"}
       </h4>

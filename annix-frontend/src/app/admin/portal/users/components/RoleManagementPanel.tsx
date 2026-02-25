@@ -71,7 +71,12 @@ export function RoleManagementPanel({ isOpen, onClose, appDetails }: RoleManagem
     }
   }, [isOpen]);
 
-  const handleCreateRole = (data: { code: string; name: string; description?: string; isDefault?: boolean }) => {
+  const handleCreateRole = (data: {
+    code: string;
+    name: string;
+    description?: string;
+    isDefault?: boolean;
+  }) => {
     createMutation.mutate(
       { appCode: appDetails.code, dto: data },
       {
@@ -103,7 +108,11 @@ export function RoleManagementPanel({ isOpen, onClose, appDetails }: RoleManagem
   };
 
   const handleDeleteRole = (role: RbacAppRole) => {
-    if (!confirm(`Are you sure you want to delete the role "${role.name}"? Users with this role will be reassigned to the default role.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete the role "${role.name}"? Users with this role will be reassigned to the default role.`,
+      )
+    ) {
       return;
     }
     deleteMutation.mutate(
@@ -169,7 +178,13 @@ export function RoleManagementPanel({ isOpen, onClose, appDetails }: RoleManagem
                   className="rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
                 >
                   <span className="sr-only">Close panel</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="1.5"
+                    stroke="currentColor"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -289,7 +304,9 @@ export function RoleManagementPanel({ isOpen, onClose, appDetails }: RoleManagem
                     </label>
                     <select
                       value={selectedRoleId ?? ""}
-                      onChange={(e) => setSelectedRoleId(e.target.value ? Number(e.target.value) : null)}
+                      onChange={(e) =>
+                        setSelectedRoleId(e.target.value ? Number(e.target.value) : null)
+                      }
                       className="block w-full rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                     >
                       <option value="">Select a role...</option>

@@ -1,5 +1,11 @@
 Set-Location $PSScriptRoot
 
+if ($env:SWARM_WINDOW -ne "true") {
+    $env:SWARM_WINDOW = "true"
+    wt --window swarm new-tab --title "Swarm Manager" -d $PSScriptRoot powershell -ExecutionPolicy Bypass -NoExit -File $PSCommandPath
+    exit
+}
+
 $packageVersion = (Get-Content package.json | ConvertFrom-Json).devDependencies.'@annix/claude-swarm'
 $latestVersion = (npm view @annix/claude-swarm version 2>$null)
 $installedVersion = $null

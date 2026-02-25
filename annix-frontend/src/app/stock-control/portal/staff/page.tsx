@@ -316,7 +316,9 @@ export default function StaffPage() {
                     <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                       <span
                         className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                          member.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                          member.active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {member.active ? "Active" : "Inactive"}
@@ -340,7 +342,9 @@ export default function StaffPage() {
                             : "text-green-600 hover:text-green-900"
                         }
                       >
-                        <span className="hidden sm:inline">{member.active ? "Deactivate" : "Reactivate"}</span>
+                        <span className="hidden sm:inline">
+                          {member.active ? "Deactivate" : "Reactivate"}
+                        </span>
                         <span className="sm:hidden">{member.active ? "Off" : "On"}</span>
                       </button>
                       <button

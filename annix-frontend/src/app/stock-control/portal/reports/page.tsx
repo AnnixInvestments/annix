@@ -232,7 +232,10 @@ export default function ReportsPage() {
           </tbody>
           <tfoot className="bg-gray-50">
             <tr>
-              <td colSpan={4} className="px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6">
+              <td
+                colSpan={4}
+                className="px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6"
+              >
                 Grand Total
               </td>
               <td className="px-3 py-4 text-right text-sm font-bold text-gray-900 sm:px-6">
@@ -340,7 +343,10 @@ export default function ReportsPage() {
           </tbody>
           <tfoot className="bg-gray-50">
             <tr>
-              <td colSpan={5} className="px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6">
+              <td
+                colSpan={5}
+                className="px-3 py-4 text-right text-sm font-semibold text-gray-900 sm:px-6"
+              >
                 Total Valuation
               </td>
               <td className="px-3 py-4 text-right text-sm font-bold text-gray-900 sm:px-6">
