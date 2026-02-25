@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 
@@ -14,6 +15,18 @@ export interface ImportRow {
   quantity?: number;
   minStockLevel?: number;
   location?: string;
+}
+
+export interface ColumnMapping {
+  sku: number | null;
+  name: number | null;
+  description: number | null;
+  category: number | null;
+  unitOfMeasure: number | null;
+  costPerUnit: number | null;
+  quantity: number | null;
+  minStockLevel: number | null;
+  location: number | null;
 }
 
 export interface ImportResult {
@@ -32,7 +45,87 @@ export class ImportService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockMovement)
     private readonly movementRepo: Repository<StockMovement>,
+    private readonly aiChatService: AiChatService,
   ) {}
+
+  async parseExcelRaw(buffer: Buffer): Promise<{ headers: string[]; rawRows: string[][] }> {
+    const xlsx = await import("xlsx");
+    const workbook = xlsx.read(buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const allRows = xlsx.utils.sheet_to_json<string[]>(worksheet, {
+      header: 1,
+      defval: "",
+    });
+
+    if (allRows.length === 0) {
+      return { headers: [], rawRows: [] };
+    }
+
+    const headers = allRows[0].map((h) => String(h).trim());
+    const rawRows = allRows
+      .slice(1)
+      .filter((row) => row.some((cell) => String(cell).trim() !== ""));
+
+    return {
+      headers,
+      rawRows: rawRows.map((row) => row.map((cell) => String(cell))),
+    };
+  }
+
+  async mapColumnsWithAi(headers: string[]): Promise<ColumnMapping> {
+    const nullMapping: ColumnMapping = {
+      sku: null,
+      name: null,
+      description: null,
+      category: null,
+      unitOfMeasure: null,
+      costPerUnit: null,
+      quantity: null,
+      minStockLevel: null,
+      location: null,
+    };
+
+    try {
+      const available = await this.aiChatService.isAvailable();
+      if (!available) {
+        this.logger.warn("AI not available for column mapping, returning null mapping");
+        return nullMapping;
+      }
+
+      const systemPrompt = [
+        "Map spreadsheet column headers to inventory fields.",
+        "Fields: sku, name, description, category, unitOfMeasure, costPerUnit, quantity, minStockLevel, location.",
+        "Return JSON object mapping each field to the column index (0-based), or null if no match.",
+        "Respond with JSON only, no markdown fences.",
+      ].join(" ");
+
+      const userMessage = `Column headers: ${JSON.stringify(headers.map((h, i) => ({ index: i, header: h })))}`;
+
+      const { content } = await this.aiChatService.chat(
+        [{ role: "user", content: userMessage }],
+        systemPrompt,
+      );
+
+      const cleaned = content
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .trim();
+      const parsed = JSON.parse(cleaned);
+
+      return Object.keys(nullMapping).reduce((acc, key) => {
+        const value = parsed[key];
+        return {
+          ...acc,
+          [key]: typeof value === "number" && value >= 0 && value < headers.length ? value : null,
+        };
+      }, nullMapping);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.error(`AI column mapping failed: ${message}`);
+      return nullMapping;
+    }
+  }
 
   async parseExcel(buffer: Buffer): Promise<ImportRow[]> {
     const xlsx = await import("xlsx");

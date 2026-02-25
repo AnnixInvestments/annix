@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ImportResult, StockItem } from "@/app/lib/api/stockControlApi";
+import type {
+  ImportResult,
+  ImportUploadResponse,
+  InventoryColumnMapping,
+  StockItem,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 function formatZAR(value: number): string {
@@ -43,6 +48,10 @@ export default function InventoryPage() {
   >("idle");
   const [importFile, setImportFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<Record<string, unknown>[]>([]);
+  const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [importRawRows, setImportRawRows] = useState<string[][]>([]);
+  const [importMapping, setImportMapping] = useState<InventoryColumnMapping | null>(null);
+  const [importFormat, setImportFormat] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const dragCounterRef = useRef(0);
@@ -187,8 +196,22 @@ export default function InventoryPage() {
     setImportStep("parsing");
 
     try {
-      const rows = await stockControlApiClient.uploadImportFile(droppedFile);
-      setParsedRows(rows as Record<string, unknown>[]);
+      const response: ImportUploadResponse =
+        await stockControlApiClient.uploadImportFile(droppedFile);
+      setImportFormat(response.format);
+
+      if (response.format === "excel" && response.headers && response.rawRows) {
+        setImportHeaders(response.headers);
+        setImportRawRows(response.rawRows);
+        setImportMapping(response.mapping ?? null);
+        setParsedRows([]);
+      } else {
+        setParsedRows((response.rows as Record<string, unknown>[]) ?? []);
+        setImportHeaders([]);
+        setImportRawRows([]);
+        setImportMapping(null);
+      }
+
       setImportStep("preview");
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Failed to parse file");
@@ -200,7 +223,40 @@ export default function InventoryPage() {
     try {
       setImportStep("importing");
       setImportError(null);
-      const result = await stockControlApiClient.confirmImport(parsedRows);
+
+      const rowsToImport =
+        importFormat === "excel" && importMapping
+          ? importRawRows.map((row) => {
+              const cellAt = (idx: number | null): string | undefined => {
+                if (idx === null || idx < 0 || idx >= row.length) {
+                  return undefined;
+                }
+                const val = row[idx].trim();
+                return val === "" ? undefined : val;
+              };
+              const numAt = (idx: number | null): number | undefined => {
+                const val = cellAt(idx);
+                if (val === undefined) {
+                  return undefined;
+                }
+                const num = Number(val);
+                return Number.isNaN(num) ? undefined : num;
+              };
+              return {
+                sku: cellAt(importMapping.sku),
+                name: cellAt(importMapping.name),
+                description: cellAt(importMapping.description),
+                category: cellAt(importMapping.category),
+                unitOfMeasure: cellAt(importMapping.unitOfMeasure),
+                costPerUnit: numAt(importMapping.costPerUnit),
+                quantity: numAt(importMapping.quantity),
+                minStockLevel: numAt(importMapping.minStockLevel),
+                location: cellAt(importMapping.location),
+              };
+            })
+          : parsedRows;
+
+      const result = await stockControlApiClient.confirmImport(rowsToImport);
       setImportResult(result);
       setImportStep("result");
     } catch (err) {
@@ -213,6 +269,10 @@ export default function InventoryPage() {
     setImportStep("idle");
     setImportFile(null);
     setParsedRows([]);
+    setImportHeaders([]);
+    setImportRawRows([]);
+    setImportMapping(null);
+    setImportFormat(null);
     setImportResult(null);
     setImportError(null);
     fetchItems();
@@ -288,7 +348,9 @@ export default function InventoryPage() {
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">Import Preview</h3>
                   <p className="text-sm text-gray-500">
-                    {importFile?.name} - {parsedRows.length} rows parsed
+                    {importFile?.name} -{" "}
+                    {importFormat === "excel" ? importRawRows.length : parsedRows.length} rows
+                    parsed
                   </p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -300,49 +362,97 @@ export default function InventoryPage() {
                   </button>
                   <button
                     onClick={handleConfirmImport}
-                    disabled={parsedRows.length === 0}
+                    disabled={
+                      importFormat === "excel"
+                        ? importRawRows.length === 0
+                        : parsedRows.length === 0
+                    }
                     className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
                   >
-                    Confirm Import ({parsedRows.length} rows)
+                    Confirm Import (
+                    {importFormat === "excel" ? importRawRows.length : parsedRows.length} rows)
                   </button>
                 </div>
               </div>
+              {importMapping && (
+                <div className="mx-6 mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-700">
+                    AI mapped columns:{" "}
+                    {Object.entries(importMapping)
+                      .filter(([, v]) => v !== null)
+                      .map(([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`)
+                      .join(", ") || "No columns mapped"}
+                  </p>
+                </div>
+              )}
               {importError && (
                 <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
                   <p className="text-sm text-red-700">{importError}</p>
                 </div>
               )}
               <div className="overflow-x-auto max-h-96">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Row
-                      </th>
-                      {parsedRows.length > 0 &&
-                        Object.keys(parsedRows[0]).map((header) => (
+                {importFormat === "excel" ? (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Row
+                        </th>
+                        {importHeaders.map((header, idx) => (
                           <th
-                            key={header}
+                            key={idx}
                             className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
                           >
                             {header}
                           </th>
                         ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {parsedRows.map((row, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
-                        {Object.keys(parsedRows[0]).map((header) => (
-                          <td key={header} className="px-4 py-3 text-sm text-gray-900">
-                            {String(row[header] ?? "")}
-                          </td>
-                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {importRawRows.map((row, rowIdx) => (
+                        <tr key={rowIdx} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-500">{rowIdx + 1}</td>
+                          {importHeaders.map((_, colIdx) => (
+                            <td key={colIdx} className="px-4 py-3 text-sm text-gray-900">
+                              {row[colIdx] ?? ""}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Row
+                        </th>
+                        {parsedRows.length > 0 &&
+                          Object.keys(parsedRows[0]).map((header) => (
+                            <th
+                              key={header}
+                              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                            >
+                              {header}
+                            </th>
+                          ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {parsedRows.map((row, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
+                          {Object.keys(parsedRows[0]).map((header) => (
+                            <td key={header} className="px-4 py-3 text-sm text-gray-900">
+                              {String(row[header] ?? "")}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           </div>
