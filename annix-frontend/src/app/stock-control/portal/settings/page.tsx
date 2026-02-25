@@ -1334,9 +1334,7 @@ export default function StockControlSettingsPage() {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Locations</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Manage storage locations for inventory items.
-        </p>
+        <p className="text-sm text-gray-500 mb-4">Manage storage locations for inventory items.</p>
 
         <div className="space-y-2 mb-4">
           <input

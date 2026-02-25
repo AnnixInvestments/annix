@@ -1,13 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, Check, CheckCheck, X } from "lucide-react";
-import {
-  stockControlApiClient,
-  WorkflowNotification,
-} from "@/app/lib/api/stockControlApi";
-import { formatDateLongZA } from "@/app/lib/datetime";
+import { Bell, Check, CheckCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { stockControlApiClient, WorkflowNotification } from "@/app/lib/api/stockControlApi";
+import { formatDateLongZA } from "@/app/lib/datetime";
 
 export function NotificationBell() {
   const router = useRouter();
@@ -48,19 +45,16 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleMarkAsRead = useCallback(
-    async (notificationId: number, e: React.MouseEvent) => {
-      e.stopPropagation();
-      try {
-        await stockControlApiClient.markNotificationAsRead(notificationId);
-        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      } catch (error) {
-        console.error("Failed to mark notification as read:", error);
-      }
-    },
-    [],
-  );
+  const handleMarkAsRead = useCallback(async (notificationId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await stockControlApiClient.markNotificationAsRead(notificationId);
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  }, []);
 
   const handleMarkAllAsRead = useCallback(async () => {
     setIsLoading(true);

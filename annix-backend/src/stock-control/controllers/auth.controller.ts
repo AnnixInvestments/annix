@@ -207,10 +207,7 @@ export class StockControlAuthController {
   @StockControlRoles("admin")
   @Post("departments")
   @ApiOperation({ summary: "Create a department" })
-  async createDepartment(
-    @Req() req: any,
-    @Body() body: { name: string; displayOrder?: number },
-  ) {
+  async createDepartment(@Req() req: any, @Body() body: { name: string; displayOrder?: number }) {
     return this.lookupService.createDepartment(req.user.companyId, body.name, body.displayOrder);
   }
 
@@ -264,7 +261,12 @@ export class StockControlAuthController {
   async updateLocation(
     @Req() req: any,
     @Param("id") id: number,
-    @Body() body: { name?: string; description?: string | null; displayOrder?: number | null; active?: boolean },
+    @Body() body: {
+      name?: string;
+      description?: string | null;
+      displayOrder?: number | null;
+      active?: boolean;
+    },
   ) {
     return this.lookupService.updateLocation(req.user.companyId, id, body);
   }

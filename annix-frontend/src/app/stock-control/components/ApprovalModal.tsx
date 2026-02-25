@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { X } from "lucide-react";
+import { useCallback, useState } from "react";
 import { SignaturePad } from "./SignaturePad";
 
 interface ApprovalModalProps {
@@ -80,10 +80,7 @@ export function ApprovalModal({
               {mode === "approve" && `Approve: ${stepName}`}
               {mode === "reject" && `Reject: ${jobNumber}`}
             </h2>
-            <button
-              onClick={handleClose}
-              className="p-1 hover:bg-gray-100 rounded-full"
-            >
+            <button onClick={handleClose} className="p-1 hover:bg-gray-100 rounded-full">
               <X className="h-5 w-5 text-gray-500" />
             </button>
           </div>
@@ -91,9 +88,7 @@ export function ApprovalModal({
           <div className="p-6">
             {mode === "choice" && (
               <div className="space-y-4">
-                <p className="text-gray-600">
-                  What would you like to do with this job card?
-                </p>
+                <p className="text-gray-600">What would you like to do with this job card?</p>
                 <div className="flex space-x-4">
                   <button
                     onClick={() => setMode("approve")}
@@ -131,9 +126,7 @@ export function ApprovalModal({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Signature
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Signature</label>
                   <SignaturePad
                     onSave={handleApprove}
                     onCancel={() => setMode("choice")}
@@ -142,9 +135,7 @@ export function ApprovalModal({
                 </div>
 
                 {isSubmitting && (
-                  <div className="text-center text-gray-500">
-                    Processing approval...
-                  </div>
+                  <div className="text-center text-gray-500">Processing approval...</div>
                 )}
               </div>
             )}
@@ -152,7 +143,8 @@ export function ApprovalModal({
             {mode === "reject" && (
               <div className="space-y-4">
                 <p className="text-gray-600">
-                  Please provide a reason for rejecting this job card. This will be sent back to the submitter.
+                  Please provide a reason for rejecting this job card. This will be sent back to the
+                  submitter.
                 </p>
 
                 <div>

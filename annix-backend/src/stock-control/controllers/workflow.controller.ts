@@ -20,8 +20,8 @@ import { JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { DispatchService } from "../services/dispatch.service";
-import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
+import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { WorkflowNotificationService } from "../services/workflow-notification.service";
 
 @ApiTags("Stock Control - Workflow")
@@ -48,13 +48,7 @@ export class WorkflowController {
     @Body("documentType") documentType: string,
   ) {
     const docType = (documentType as JobCardDocumentType) || JobCardDocumentType.SCANNED_FORM;
-    return this.workflowService.uploadDocument(
-      req.user.companyId,
-      id,
-      req.user,
-      file,
-      docType,
-    );
+    return this.workflowService.uploadDocument(req.user.companyId, id, req.user, file, docType);
   }
 
   @Get("job-cards/:id/documents")
@@ -89,11 +83,7 @@ export class WorkflowController {
   @Post("job-cards/:id/reject")
   @StockControlRoles("admin", "manager")
   @ApiOperation({ summary: "Reject current workflow step" })
-  async reject(
-    @Req() req: any,
-    @Param("id") id: number,
-    @Body() body: { reason: string },
-  ) {
+  async reject(@Req() req: any, @Param("id") id: number, @Body() body: { reason: string }) {
     return this.workflowService.rejectStep(req.user.companyId, id, req.user, body.reason);
   }
 

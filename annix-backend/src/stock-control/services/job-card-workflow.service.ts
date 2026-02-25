@@ -9,19 +9,16 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { now } from "../../lib/datetime";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
+import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
 import {
   ApprovalStatus,
   JobCardApproval,
   WorkflowStep,
 } from "../entities/job-card-approval.entity";
-import {
-  JobCardDocument,
-  JobCardDocumentType,
-} from "../entities/job-card-document.entity";
-import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
-import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
+import { JobCardDocument, JobCardDocumentType } from "../entities/job-card-document.entity";
+import { StockControlRole } from "../entities/stock-control-user.entity";
 import { RequisitionService } from "./requisition.service";
 import { SignatureService } from "./signature.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
@@ -216,7 +213,10 @@ export class JobCardWorkflowService {
     return this.jobCardForWorkflow(companyId, jobCardId);
   }
 
-  async workflowStatus(companyId: number, jobCardId: number): Promise<{
+  async workflowStatus(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<{
     currentStatus: JobCardWorkflowStatus;
     currentStep: WorkflowStep | null;
     canApprove: boolean;

@@ -1,13 +1,13 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
-import { ConfigService } from "@nestjs/config";
-import { JobCard } from "../entities/job-card.entity";
-import { JobCardApproval, ApprovalStatus } from "../entities/job-card-approval.entity";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { Repository } from "typeorm";
 import { formatDateLongZA } from "../../lib/datetime";
+import { JobCard } from "../entities/job-card.entity";
+import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
+import { StockControlCompany } from "../entities/stock-control-company.entity";
 
 @Injectable()
 export class JobCardPdfService {
@@ -81,7 +81,11 @@ export class JobCardPdfService {
     });
   }
 
-  private drawHeader(doc: PDFKit.PDFDocument, company: StockControlCompany | null, jobCard: JobCard): void {
+  private drawHeader(
+    doc: PDFKit.PDFDocument,
+    company: StockControlCompany | null,
+    jobCard: JobCard,
+  ): void {
     const companyName = company?.name || "Stock Control";
 
     doc
@@ -92,10 +96,7 @@ export class JobCardPdfService {
       .font("Helvetica")
       .text("JOB CARD", 50, 75, { align: "left" });
 
-    doc
-      .fontSize(24)
-      .font("Helvetica-Bold")
-      .text(jobCard.jobNumber, 400, 50, { align: "right" });
+    doc.fontSize(24).font("Helvetica-Bold").text(jobCard.jobNumber, 400, 50, { align: "right" });
 
     if (jobCard.jcNumber) {
       doc
@@ -116,7 +117,11 @@ export class JobCardPdfService {
 
     const details = [
       { label: "Job Name:", value: jobCard.jobName, col: leftCol },
-      { label: "Status:", value: jobCard.workflowStatus.replace(/_/g, " ").toUpperCase(), col: rightCol },
+      {
+        label: "Status:",
+        value: jobCard.workflowStatus.replace(/_/g, " ").toUpperCase(),
+        col: rightCol,
+      },
       { label: "Customer:", value: jobCard.customerName || "-", col: leftCol },
       { label: "Due Date:", value: jobCard.dueDate || "-", col: rightCol },
       { label: "Site Location:", value: jobCard.siteLocation || "-", col: leftCol },
@@ -143,7 +148,9 @@ export class JobCardPdfService {
     }
 
     if (jobCard.notes) {
-      const descHeight = jobCard.description ? 30 + Math.ceil(jobCard.description.length / 80) * 12 : 0;
+      const descHeight = jobCard.description
+        ? 30 + Math.ceil(jobCard.description.length / 80) * 12
+        : 0;
       y += descHeight + 20;
       doc
         .font("Helvetica-Bold")
@@ -169,7 +176,10 @@ export class JobCardPdfService {
     }
 
     const startY = 280;
-    doc.moveTo(50, startY - 10).lineTo(545, startY - 10).stroke();
+    doc
+      .moveTo(50, startY - 10)
+      .lineTo(545, startY - 10)
+      .stroke();
 
     doc.fontSize(12).font("Helvetica-Bold").text("Line Items", 50, startY);
 
@@ -205,7 +215,10 @@ export class JobCardPdfService {
     }
 
     const startY = 500;
-    doc.moveTo(50, startY - 10).lineTo(545, startY - 10).stroke();
+    doc
+      .moveTo(50, startY - 10)
+      .lineTo(545, startY - 10)
+      .stroke();
 
     doc.fontSize(12).font("Helvetica-Bold").text("Stock Allocations", 50, startY);
 
@@ -237,7 +250,10 @@ export class JobCardPdfService {
     }
 
     const startY = 650;
-    doc.moveTo(50, startY - 10).lineTo(545, startY - 10).stroke();
+    doc
+      .moveTo(50, startY - 10)
+      .lineTo(545, startY - 10)
+      .stroke();
 
     doc.fontSize(12).font("Helvetica-Bold").text("Approvals", 50, startY);
 
@@ -245,9 +261,7 @@ export class JobCardPdfService {
 
     approvals.forEach((approval) => {
       const stepName = approval.step.replace(/_/g, " ");
-      const date = approval.approvedAt
-        ? formatDateLongZA(approval.approvedAt)
-        : "-";
+      const date = approval.approvedAt ? formatDateLongZA(approval.approvedAt) : "-";
 
       doc.fontSize(9).font("Helvetica-Bold").text(stepName, 50, y);
       doc.font("Helvetica").text(`${approval.approvedByName || "Unknown"} - ${date}`, 180, y);
@@ -266,12 +280,10 @@ export class JobCardPdfService {
     doc
       .fontSize(8)
       .font("Helvetica")
-      .text(
-        `Generated: ${formatDateLongZA(new Date())}`,
-        50,
-        pageHeight - 50,
-        { align: "center", width: 495 },
-      );
+      .text(`Generated: ${formatDateLongZA(new Date())}`, 50, pageHeight - 50, {
+        align: "center",
+        width: 495,
+      });
 
     doc.text("Page 1 of 1", 50, pageHeight - 35, { align: "center", width: 495 });
   }

@@ -61,7 +61,12 @@ export class JobCardAttachment {
   @Column({ name: "mime_type", type: "varchar", length: 100 })
   mimeType: string;
 
-  @Column({ name: "extraction_status", type: "varchar", length: 50, default: ExtractionStatus.PENDING })
+  @Column({
+    name: "extraction_status",
+    type: "varchar",
+    length: 50,
+    default: ExtractionStatus.PENDING,
+  })
   extractionStatus: ExtractionStatus;
 
   @Column({ name: "extracted_data", type: "jsonb", default: "{}" })

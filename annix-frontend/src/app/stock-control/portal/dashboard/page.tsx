@@ -11,7 +11,7 @@ import type {
   StockItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { formatDateZA, formatDateLongZA } from "@/app/lib/datetime";
+import { formatDateLongZA, formatDateZA } from "@/app/lib/datetime";
 import { useStockControlBranding } from "../../context/StockControlBrandingContext";
 
 function formatZAR(value: number): string {

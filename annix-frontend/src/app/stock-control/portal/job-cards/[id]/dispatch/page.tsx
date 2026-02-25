@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckCircle, Package, QrCode, Truck, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -11,7 +12,6 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
-import { CheckCircle, Package, QrCode, Truck, X } from "lucide-react";
 
 export default function DispatchPage() {
   const params = useParams();
@@ -189,7 +189,12 @@ export default function DispatchPage() {
             className="text-gray-500 hover:text-gray-700"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
           </Link>
           <div>
@@ -392,7 +397,10 @@ export default function DispatchPage() {
       {showScanModal && selectedItem && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setShowScanModal(false)} />
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50"
+              onClick={() => setShowScanModal(false)}
+            />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Confirm Dispatch</h3>

@@ -46,10 +46,7 @@ export class SignatureService {
       stream: null as never,
     };
 
-    const result = await this.storageService.upload(
-      file,
-      `stock-control/signatures/${companyId}`,
-    );
+    const result = await this.storageService.upload(file, `stock-control/signatures/${companyId}`);
 
     const existing = await this.findByUser(userId);
 

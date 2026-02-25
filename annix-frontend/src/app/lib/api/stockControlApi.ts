@@ -196,7 +196,6 @@ export interface JobCardAttachment {
   updatedAt: string;
 }
 
-
 export interface StaffMember {
   id: number;
   name: string;
@@ -944,7 +943,12 @@ class StockControlApiClient {
 
   async updateLocation(
     id: number,
-    data: { name?: string; description?: string | null; displayOrder?: number | null; active?: boolean },
+    data: {
+      name?: string;
+      description?: string | null;
+      displayOrder?: number | null;
+      active?: boolean;
+    },
   ): Promise<StockControlLocation> {
     return this.request(`/stock-control/auth/locations/${id}`, {
       method: "PUT",
@@ -1622,10 +1626,7 @@ class StockControlApiClient {
     });
   }
 
-  async rejectWorkflowStep(
-    jobCardId: number,
-    reason: string,
-  ): Promise<JobCard> {
+  async rejectWorkflowStep(jobCardId: number, reason: string): Promise<JobCard> {
     return this.request(`/stock-control/workflow/job-cards/${jobCardId}/reject`, {
       method: "POST",
       body: JSON.stringify({ reason }),
@@ -1741,11 +1742,7 @@ class StockControlApiClient {
     return this.request("/stock-control/signatures", { method: "DELETE" });
   }
 
-  async uploadJobCardAmendment(
-    jobCardId: number,
-    file: File,
-    notes?: string,
-  ): Promise<JobCard> {
+  async uploadJobCardAmendment(jobCardId: number, file: File, notes?: string): Promise<JobCard> {
     const formData = new FormData();
     formData.append("file", file);
     if (notes) {
@@ -1813,9 +1810,12 @@ class StockControlApiClient {
     jobCardId: number,
     attachmentId: number,
   ): Promise<JobCardAttachment> {
-    return this.request(`/stock-control/job-cards/${jobCardId}/attachments/${attachmentId}/extract`, {
-      method: "POST",
-    });
+    return this.request(
+      `/stock-control/job-cards/${jobCardId}/attachments/${attachmentId}/extract`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   async deleteJobCardAttachment(jobCardId: number, attachmentId: number): Promise<void> {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   CoatingAnalysis,
   JobCard,
@@ -17,7 +18,6 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
-import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
@@ -479,7 +479,12 @@ export default function JobCardDetailPage() {
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               Review &amp; Approve
             </button>
@@ -491,7 +496,12 @@ export default function JobCardDetailPage() {
                 className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                  />
                 </svg>
                 Print Signed JC
               </button>
@@ -500,7 +510,12 @@ export default function JobCardDetailPage() {
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                  />
                 </svg>
                 Start Dispatch
               </Link>
@@ -536,7 +551,10 @@ export default function JobCardDetailPage() {
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">
                   This job card is awaiting your approval at the{" "}
-                  <span className="font-medium">{workflowStatus.currentStep.replace(/_/g, " ")}</span> step.
+                  <span className="font-medium">
+                    {workflowStatus.currentStep.replace(/_/g, " ")}
+                  </span>{" "}
+                  step.
                 </p>
                 <button
                   onClick={() => openApprovalModal(workflowStatus.currentStep!)}
@@ -548,7 +566,9 @@ export default function JobCardDetailPage() {
             ) : (
               <div className="text-sm text-gray-500">
                 {workflowStatus.currentStatus === "dispatched" ? (
-                  <p className="text-green-600 font-medium">This job card has been fully dispatched.</p>
+                  <p className="text-green-600 font-medium">
+                    This job card has been fully dispatched.
+                  </p>
                 ) : (
                   <p>Awaiting action from another role.</p>
                 )}
@@ -945,7 +965,12 @@ export default function JobCardDetailPage() {
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
           {showVersionHistory && (
@@ -1106,16 +1131,26 @@ export default function JobCardDetailPage() {
                     </p>
                     {attachment.extractionStatus === "analysed" && attachment.extractedData && (
                       <div className="mt-2 text-xs text-gray-600">
-                        {(attachment.extractedData as { totalExternalM2?: number }).totalExternalM2 !==
-                          undefined && (
+                        {(attachment.extractedData as { totalExternalM2?: number })
+                          .totalExternalM2 !== undefined && (
                           <span className="mr-3">
-                            Ext: {(attachment.extractedData as { totalExternalM2: number }).totalExternalM2} m²
+                            Ext:{" "}
+                            {
+                              (attachment.extractedData as { totalExternalM2: number })
+                                .totalExternalM2
+                            }{" "}
+                            m²
                           </span>
                         )}
-                        {(attachment.extractedData as { totalInternalM2?: number }).totalInternalM2 !==
-                          undefined && (
+                        {(attachment.extractedData as { totalInternalM2?: number })
+                          .totalInternalM2 !== undefined && (
                           <span>
-                            Int: {(attachment.extractedData as { totalInternalM2: number }).totalInternalM2} m²
+                            Int:{" "}
+                            {
+                              (attachment.extractedData as { totalInternalM2: number })
+                                .totalInternalM2
+                            }{" "}
+                            m²
                           </span>
                         )}
                       </div>

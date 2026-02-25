@@ -5,8 +5,8 @@ import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
 import { JobCard } from "../entities/job-card.entity";
+import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PDFParse } = require("pdf-parse");
@@ -136,7 +136,11 @@ export class DrawingExtractionService {
     return attachment;
   }
 
-  async deleteAttachment(companyId: number, jobCardId: number, attachmentId: number): Promise<void> {
+  async deleteAttachment(
+    companyId: number,
+    jobCardId: number,
+    attachmentId: number,
+  ): Promise<void> {
     const attachment = await this.attachmentById(companyId, jobCardId, attachmentId);
     await this.attachmentRepo.remove(attachment);
     this.logger.log(`Deleted attachment ${attachmentId} from job card ${jobCardId}`);
@@ -176,8 +180,12 @@ export class DrawingExtractionService {
     }
   }
 
-  private async extractFromAttachment(attachment: JobCardAttachment): Promise<DrawingExtractionResult> {
-    const isPdf = attachment.mimeType === "application/pdf" || attachment.originalFilename.toLowerCase().endsWith(".pdf");
+  private async extractFromAttachment(
+    attachment: JobCardAttachment,
+  ): Promise<DrawingExtractionResult> {
+    const isPdf =
+      attachment.mimeType === "application/pdf" ||
+      attachment.originalFilename.toLowerCase().endsWith(".pdf");
 
     if (!isPdf) {
       return {
@@ -238,7 +246,10 @@ export class DrawingExtractionService {
       },
     ];
 
-    const { content: response } = await this.aiChatService.chat(messages, DRAWING_EXTRACTION_PROMPT);
+    const { content: response } = await this.aiChatService.chat(
+      messages,
+      DRAWING_EXTRACTION_PROMPT,
+    );
 
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

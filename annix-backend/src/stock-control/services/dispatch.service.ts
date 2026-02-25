@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { DispatchScan } from "../entities/dispatch-scan.entity";
@@ -109,10 +104,7 @@ export class DispatchService {
       where: { jobCardId, stockItemId },
     });
 
-    const alreadyDispatched = existingScans.reduce(
-      (sum, scan) => sum + scan.quantityDispatched,
-      0,
-    );
+    const alreadyDispatched = existingScans.reduce((sum, scan) => sum + scan.quantityDispatched, 0);
 
     const remaining = allocation.quantityUsed - alreadyDispatched;
 
@@ -199,9 +191,7 @@ export class DispatchService {
     const progress = await this.dispatchProgress(companyId, jobCardId);
 
     if (!progress.isComplete) {
-      throw new BadRequestException(
-        "Cannot complete dispatch. Not all items have been scanned.",
-      );
+      throw new BadRequestException("Cannot complete dispatch. Not all items have been scanned.");
     }
 
     const jobCard = await this.jobCardRepo.findOne({

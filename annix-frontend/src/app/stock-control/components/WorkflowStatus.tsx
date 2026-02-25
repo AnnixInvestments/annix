@@ -1,7 +1,5 @@
 "use client";
 
-import { JobCardApproval } from "@/app/lib/api/stockControlApi";
-import { formatDateLongZA } from "@/app/lib/datetime";
 import {
   CheckCircle,
   Circle,
@@ -12,6 +10,8 @@ import {
   UserCheck,
   XCircle,
 } from "lucide-react";
+import { JobCardApproval } from "@/app/lib/api/stockControlApi";
+import { formatDateLongZA } from "@/app/lib/datetime";
 
 const WORKFLOW_STEPS = [
   { key: "document_upload", label: "Document Upload", icon: FileText },

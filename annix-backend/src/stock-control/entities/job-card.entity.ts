@@ -83,7 +83,12 @@ export class JobCard {
   @Column({ type: "varchar", length: 50, default: JobCardStatus.DRAFT })
   status: JobCardStatus;
 
-  @Column({ name: "workflow_status", type: "varchar", length: 50, default: JobCardWorkflowStatus.DRAFT })
+  @Column({
+    name: "workflow_status",
+    type: "varchar",
+    length: 50,
+    default: JobCardWorkflowStatus.DRAFT,
+  })
   workflowStatus: JobCardWorkflowStatus;
 
   @Column({ name: "version_number", type: "integer", default: 1 })

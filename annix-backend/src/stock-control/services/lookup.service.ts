@@ -112,7 +112,12 @@ export class LookupService {
   async updateLocation(
     companyId: number,
     id: number,
-    data: { name?: string; description?: string | null; displayOrder?: number | null; active?: boolean },
+    data: {
+      name?: string;
+      description?: string | null;
+      displayOrder?: number | null;
+      active?: boolean;
+    },
   ): Promise<StockControlLocation> {
     const location = await this.locationById(companyId, id);
     Object.assign(location, data);

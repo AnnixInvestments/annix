@@ -1,7 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
@@ -38,15 +37,16 @@ export class JobCardVersionService {
       throw new NotFoundException("Job card not found");
     }
 
-    const lineItemsSnapshot = jobCard.lineItems?.map((li) => ({
-      id: li.id,
-      itemCode: li.itemCode,
-      itemDescription: li.itemDescription,
-      itemNo: li.itemNo,
-      quantity: li.quantity,
-      jtNo: li.jtNo,
-      sortOrder: li.sortOrder,
-    })) ?? [];
+    const lineItemsSnapshot =
+      jobCard.lineItems?.map((li) => ({
+        id: li.id,
+        itemCode: li.itemCode,
+        itemDescription: li.itemDescription,
+        itemNo: li.itemNo,
+        quantity: li.quantity,
+        jtNo: li.jtNo,
+        sortOrder: li.sortOrder,
+      })) ?? [];
 
     const version = this.versionRepo.create({
       jobCardId: jobCard.id,
@@ -63,7 +63,10 @@ export class JobCardVersionService {
     });
     await this.versionRepo.save(version);
 
-    const uploadResult = await this.storageService.upload(file, "stock-control/job-card-amendments");
+    const uploadResult = await this.storageService.upload(
+      file,
+      "stock-control/job-card-amendments",
+    );
 
     jobCard.versionNumber = jobCard.versionNumber + 1;
     jobCard.sourceFilePath = uploadResult.url;
@@ -71,7 +74,9 @@ export class JobCardVersionService {
 
     await this.jobCardRepo.save(jobCard);
 
-    this.logger.log(`Created amendment v${jobCard.versionNumber} for job card ${jobCard.jobNumber}`);
+    this.logger.log(
+      `Created amendment v${jobCard.versionNumber} for job card ${jobCard.jobNumber}`,
+    );
 
     return jobCard;
   }
@@ -91,7 +96,11 @@ export class JobCardVersionService {
     });
   }
 
-  async versionById(companyId: number, jobCardId: number, versionId: number): Promise<JobCardVersion> {
+  async versionById(
+    companyId: number,
+    jobCardId: number,
+    versionId: number,
+  ): Promise<JobCardVersion> {
     const version = await this.versionRepo.findOne({
       where: { id: versionId, jobCardId, companyId },
     });
