@@ -200,9 +200,7 @@ export class QrCodeService {
           margin: 1,
         });
         const departmentName = staff.departmentEntity?.name ?? staff.department ?? "";
-        const photoUrl = staff.photoUrl
-          ? await this.resolvePhotoUrl(staff.photoUrl)
-          : null;
+        const photoUrl = staff.photoUrl ? await this.resolvePhotoUrl(staff.photoUrl) : null;
         return `
           <div class="card">
             <div class="card-header">STAFF ID CARD</div>

@@ -203,7 +203,7 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
         }`}
         style={{ backgroundColor: colors.sidebar }}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div

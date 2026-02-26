@@ -52,7 +52,7 @@ export function StockControlHeader({
 
   return (
     <header
-      className="h-16 flex items-center justify-between px-6 shadow-md"
+      className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 shadow-md pt-[env(safe-area-inset-top)]"
       style={{ backgroundColor: colors.background }}
     >
       <div className="flex items-center">
@@ -84,7 +84,7 @@ export function StockControlHeader({
         <span className="ml-2 text-white text-lg font-medium hidden sm:inline">Stock Control</span>
       </div>
 
-      <div className="flex-1 max-w-xl mx-8">
+      <div className="hidden sm:block flex-1 max-w-xl mx-4 lg:mx-8">
         <div className="relative">
           <svg
             className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -109,7 +109,7 @@ export function StockControlHeader({
         </div>
       </div>
 
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-1 sm:space-x-3">
         <SyncStatus />
         <OfflineIndicator />
         <ThemeToggle
