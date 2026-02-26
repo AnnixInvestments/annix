@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, Res, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
@@ -51,6 +51,32 @@ export class QrCodeController {
     res.set({
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="job-card-${id}.pdf"`,
+    });
+    res.send(buffer);
+  }
+
+  @Get("staff/:id/qr/pdf")
+  @ApiOperation({ summary: "Printable staff ID card PDF" })
+  async staffIdCardPdf(@Param("id") id: string, @Req() req: any, @Res() res: Response) {
+    const buffer = await this.qrCodeService.staffIdCardPdf(Number(id), req.user.companyId);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="staff-id-${id}.pdf"`,
+    });
+    res.send(buffer);
+  }
+
+  @Post("staff/id-cards/pdf")
+  @ApiOperation({ summary: "Batch printable staff ID cards PDF" })
+  async batchStaffIdCardsPdf(
+    @Body() body: { ids?: number[] },
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.qrCodeService.batchStaffIdCardsPdf(req.user.companyId, body.ids);
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="staff-id-cards.pdf"`,
     });
     res.send(buffer);
   }

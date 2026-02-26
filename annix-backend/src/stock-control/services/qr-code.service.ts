@@ -1,8 +1,9 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as QRCode from "qrcode";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { JobCard } from "../entities/job-card.entity";
+import { StaffMember } from "../entities/staff-member.entity";
 import { StockItem } from "../entities/stock-item.entity";
 
 @Injectable()
@@ -14,6 +15,8 @@ export class QrCodeService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(StaffMember)
+    private readonly staffMemberRepo: Repository<StaffMember>,
   ) {}
 
   async stockItemQrPng(itemId: number, companyId: number): Promise<Buffer> {
@@ -160,6 +163,98 @@ export class QrCodeService {
 </html>`;
 
     return this.htmlToPdf(html, { format: "A4" });
+  }
+
+  async staffIdCardPdf(staffId: number, companyId: number): Promise<Buffer> {
+    const staff = await this.findStaffMember(staffId, companyId);
+    return this.generateStaffIdCardsPdf([staff]);
+  }
+
+  async batchStaffIdCardsPdf(companyId: number, ids?: number[]): Promise<Buffer> {
+    const whereClause: { companyId: number; active: boolean; id?: ReturnType<typeof In> } = {
+      companyId,
+      active: true,
+    };
+    if (ids && ids.length > 0) {
+      whereClause.id = In(ids);
+    }
+    const staffMembers = await this.staffMemberRepo.find({
+      where: whereClause,
+      relations: ["departmentEntity"],
+      order: { name: "ASC" },
+    });
+    if (staffMembers.length === 0) {
+      throw new NotFoundException("No staff members found");
+    }
+    return this.generateStaffIdCardsPdf(staffMembers);
+  }
+
+  private async generateStaffIdCardsPdf(staffMembers: StaffMember[]): Promise<Buffer> {
+    const cardsHtml = await Promise.all(
+      staffMembers.map(async (staff) => {
+        const qrDataUrl = await QRCode.toDataURL(`staff:${staff.qrToken}`, { width: 200, margin: 1 });
+        const departmentName = staff.departmentEntity?.name ?? staff.department ?? "";
+        return `
+          <div class="card">
+            <div class="card-header">STAFF ID CARD</div>
+            <div class="card-body">
+              <div class="photo-section">
+                ${staff.photoUrl ? `<img class="photo" src="${staff.photoUrl}" />` : '<div class="photo-placeholder"></div>'}
+              </div>
+              <div class="info-section">
+                <div class="name">${escapeHtml(staff.name)}</div>
+                ${staff.employeeNumber ? `<div class="employee-number">${escapeHtml(staff.employeeNumber)}</div>` : ""}
+                ${departmentName ? `<div class="department">${escapeHtml(departmentName)}</div>` : ""}
+              </div>
+              <div class="qr-section">
+                <img class="qr" src="${qrDataUrl}" />
+              </div>
+            </div>
+          </div>`;
+      }),
+    );
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    .cards-container { display: flex; flex-wrap: wrap; gap: 8mm; }
+    .card { width: 85mm; height: 54mm; border: 1px solid #d1d5db; border-radius: 3mm; overflow: hidden; page-break-inside: avoid; background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); }
+    .card-header { background: #0d9488; color: white; font-size: 8pt; font-weight: bold; text-align: center; padding: 2mm; letter-spacing: 1px; }
+    .card-body { display: flex; padding: 3mm; height: calc(100% - 10mm); box-sizing: border-box; }
+    .photo-section { width: 22mm; flex-shrink: 0; }
+    .photo { width: 22mm; height: 28mm; object-fit: cover; border-radius: 2mm; border: 1px solid #e5e7eb; }
+    .photo-placeholder { width: 22mm; height: 28mm; background: #e5e7eb; border-radius: 2mm; display: flex; align-items: center; justify-content: center; }
+    .info-section { flex: 1; padding: 0 3mm; display: flex; flex-direction: column; justify-content: center; }
+    .name { font-size: 11pt; font-weight: bold; color: #111827; margin-bottom: 1.5mm; line-height: 1.2; }
+    .employee-number { font-size: 9pt; font-family: monospace; color: #0d9488; font-weight: bold; margin-bottom: 1mm; }
+    .department { font-size: 8pt; color: #6b7280; }
+    .qr-section { width: 22mm; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .qr { width: 20mm; height: 20mm; }
+  </style>
+</head>
+<body>
+  <div class="cards-container">
+    ${cardsHtml.join("")}
+  </div>
+</body>
+</html>`;
+
+    return this.htmlToPdf(html, { format: "A4" });
+  }
+
+  private async findStaffMember(staffId: number, companyId: number): Promise<StaffMember> {
+    const staff = await this.staffMemberRepo.findOne({
+      where: { id: staffId, companyId },
+      relations: ["departmentEntity"],
+    });
+    if (!staff) {
+      throw new NotFoundException("Staff member not found");
+    }
+    return staff;
   }
 
   private async findStockItem(itemId: number, companyId: number): Promise<StockItem> {
