@@ -82,7 +82,7 @@ export class JobCardPdfService {
   }
 
   private drawHeader(
-    doc: PDFKit.PDFDocument,
+    doc: typeof PDFDocument,
     company: StockControlCompany | null,
     jobCard: JobCard,
   ): void {
@@ -108,7 +108,7 @@ export class JobCardPdfService {
     doc.moveTo(50, 100).lineTo(545, 100).stroke();
   }
 
-  private drawJobCardDetails(doc: PDFKit.PDFDocument, jobCard: JobCard): void {
+  private drawJobCardDetails(doc: typeof PDFDocument, jobCard: JobCard): void {
     let y = 115;
     const leftCol = 50;
     const rightCol = 300;
@@ -160,7 +160,7 @@ export class JobCardPdfService {
     }
   }
 
-  private drawQrCode(doc: PDFKit.PDFDocument, qrDataUrl: string): void {
+  private drawQrCode(doc: typeof PDFDocument, qrDataUrl: string): void {
     const qrBuffer = Buffer.from(qrDataUrl.split(",")[1], "base64");
     doc.image(qrBuffer, 450, 115, { width: 90, height: 90 });
 
@@ -170,7 +170,7 @@ export class JobCardPdfService {
       .text("Scan to dispatch", 450, 210, { width: 90, align: "center" });
   }
 
-  private drawLineItems(doc: PDFKit.PDFDocument, jobCard: JobCard): void {
+  private drawLineItems(doc: typeof PDFDocument, jobCard: JobCard): void {
     if (!jobCard.lineItems || jobCard.lineItems.length === 0) {
       return;
     }
@@ -209,7 +209,7 @@ export class JobCardPdfService {
     }
   }
 
-  private drawAllocations(doc: PDFKit.PDFDocument, jobCard: JobCard): void {
+  private drawAllocations(doc: typeof PDFDocument, jobCard: JobCard): void {
     if (!jobCard.allocations || jobCard.allocations.length === 0) {
       return;
     }
@@ -244,7 +244,7 @@ export class JobCardPdfService {
     });
   }
 
-  private drawApprovals(doc: PDFKit.PDFDocument, approvals: JobCardApproval[]): void {
+  private drawApprovals(doc: typeof PDFDocument, approvals: JobCardApproval[]): void {
     if (approvals.length === 0) {
       return;
     }
@@ -274,7 +274,7 @@ export class JobCardPdfService {
     });
   }
 
-  private drawFooter(doc: PDFKit.PDFDocument): void {
+  private drawFooter(doc: typeof PDFDocument): void {
     const pageHeight = doc.page.height;
 
     doc

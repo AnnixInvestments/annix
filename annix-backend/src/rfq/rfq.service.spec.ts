@@ -163,6 +163,7 @@ describe("RfqService", () => {
     delete: jest.fn(),
     exists: jest.fn(),
     getPublicUrl: jest.fn(),
+    getPresignedUrl: jest.fn(),
   };
 
   const mockBoqRepo = {
