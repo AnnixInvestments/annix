@@ -141,7 +141,13 @@ export class RbacService {
     });
 
     const allAccessRecords = await this.accessRepo.find({
-      relations: ["app", "role", "customPermissions", "customPermissions.permission", "userProducts"],
+      relations: [
+        "app",
+        "role",
+        "customPermissions",
+        "customPermissions.permission",
+        "userProducts",
+      ],
     });
 
     const accessByUserId = allAccessRecords.reduce(
