@@ -42,7 +42,7 @@ const STATUS_TRANSITIONS: Record<string, { label: string; next: string; color: s
     { label: "Cancel", next: "cancelled", color: "bg-red-600 hover:bg-red-700" },
   ],
   completed: [],
-  cancelled: [],
+  cancelled: [{ label: "Reinstate", next: "draft", color: "bg-amber-600 hover:bg-amber-700" }],
 };
 
 export default function JobCardDetailPage() {
