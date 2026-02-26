@@ -253,11 +253,45 @@ export class QrCodeService {
     return this.htmlToPdf(html, { format: "A4" });
   }
 
-  private async resolvePhotoUrl(photoUrl: string): Promise<string> {
-    if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
-      return photoUrl;
+  private async resolvePhotoUrl(photoUrl: string): Promise<string | null> {
+    try {
+      let imageBuffer: Buffer;
+
+      if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
+        const response = await fetch(photoUrl);
+        if (!response.ok) {
+          this.logger.warn(`Failed to fetch photo from URL: ${response.status}`);
+          return null;
+        }
+        imageBuffer = Buffer.from(await response.arrayBuffer());
+      } else {
+        imageBuffer = await this.storageService.download(photoUrl);
+      }
+
+      const mimeType = this.detectMimeType(imageBuffer);
+      return `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to resolve photo: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+      return null;
     }
-    return this.storageService.getPresignedUrl(photoUrl);
+  }
+
+  private detectMimeType(buffer: Buffer): string {
+    if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+      return "image/jpeg";
+    }
+    if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+      return "image/png";
+    }
+    if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46) {
+      return "image/gif";
+    }
+    if (buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46) {
+      return "image/webp";
+    }
+    return "image/jpeg";
   }
 
   private async findStaffMember(staffId: number, companyId: number): Promise<StaffMember> {

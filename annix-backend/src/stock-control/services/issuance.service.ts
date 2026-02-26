@@ -123,20 +123,33 @@ export class IssuanceService {
   }
 
   private async findStockItem(companyId: number, identifier: string): Promise<StockItem | null> {
-    const byId = await this.stockItemRepo
+    const cleanIdentifier = identifier.replace(/[{}"[\]]/g, "").trim();
+
+    if (/^\d+$/.test(cleanIdentifier)) {
+      const byId = await this.stockItemRepo
+        .createQueryBuilder("si")
+        .leftJoinAndSelect("si.locationEntity", "location")
+        .where("si.companyId = :companyId", { companyId })
+        .andWhere("si.id = :id", { id: parseInt(cleanIdentifier, 10) })
+        .getOne();
+
+      if (byId) return byId;
+    }
+
+    const bySku = await this.stockItemRepo
       .createQueryBuilder("si")
       .leftJoinAndSelect("si.locationEntity", "location")
       .where("si.companyId = :companyId", { companyId })
-      .andWhere("si.id::text = :identifier", { identifier })
+      .andWhere("LOWER(si.sku) = LOWER(:identifier)", { identifier: cleanIdentifier })
       .getOne();
 
-    if (byId) return byId;
+    if (bySku) return bySku;
 
     return this.stockItemRepo
       .createQueryBuilder("si")
       .leftJoinAndSelect("si.locationEntity", "location")
       .where("si.companyId = :companyId", { companyId })
-      .andWhere("LOWER(si.sku) = LOWER(:identifier)", { identifier })
+      .andWhere("LOWER(si.name) = LOWER(:identifier)", { identifier: cleanIdentifier })
       .getOne();
   }
 
