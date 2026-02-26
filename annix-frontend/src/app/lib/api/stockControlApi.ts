@@ -495,6 +495,25 @@ export interface IssuanceFilters {
   jobCardId?: number;
 }
 
+export interface IssuanceItemDto {
+  stockItemId: number;
+  quantity: number;
+}
+
+export interface BatchIssuanceDto {
+  issuerStaffId: number;
+  recipientStaffId: number;
+  jobCardId?: number | null;
+  items: IssuanceItemDto[];
+  notes?: string | null;
+}
+
+export interface BatchIssuanceResult {
+  created: number;
+  issuances: StockIssuance[];
+  errors: Array<{ stockItemId: number; message: string }>;
+}
+
 export interface InventoryColumnMapping {
   sku: number | null;
   name: number | null;
@@ -1883,6 +1902,13 @@ class StockControlApiClient {
 
   async createIssuance(dto: CreateIssuanceDto): Promise<StockIssuance> {
     return this.request("/stock-control/issuance", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async createBatchIssuance(dto: BatchIssuanceDto): Promise<BatchIssuanceResult> {
+    return this.request("/stock-control/issuance/batch", {
       method: "POST",
       body: JSON.stringify(dto),
     });

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type {
-  CreateIssuanceDto,
+  BatchIssuanceDto,
   IssuanceScanResult,
   JobCard,
   StaffMember,
@@ -11,12 +11,17 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { QrScanner } from "../../components/QrScanner";
 
-type Step = "issuer" | "recipient" | "stock_item" | "job_card" | "confirm";
+type Step = "issuer" | "recipient" | "stock_items" | "job_card" | "confirm";
+
+interface IssuanceItem {
+  stockItem: StockItem;
+  quantity: number;
+}
 
 const STEPS: { key: Step; label: string }[] = [
   { key: "issuer", label: "Issuer" },
   { key: "recipient", label: "Recipient" },
-  { key: "stock_item", label: "Stock Item" },
+  { key: "stock_items", label: "Items" },
   { key: "job_card", label: "Job Card" },
   { key: "confirm", label: "Confirm" },
 ];
@@ -33,9 +38,8 @@ export default function IssueStockPage() {
 
   const [issuer, setIssuer] = useState<StaffMember | null>(null);
   const [recipient, setRecipient] = useState<StaffMember | null>(null);
-  const [stockItem, setStockItem] = useState<StockItem | null>(null);
+  const [items, setItems] = useState<IssuanceItem[]>([]);
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
-  const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
 
   const currentStepIndex = STEPS.findIndex((s) => s.key === currentStep);
@@ -86,14 +90,19 @@ export default function IssueStockPage() {
           return;
         }
         setRecipient(staffData);
-        setCurrentStep("stock_item");
-      } else if (currentStep === "stock_item") {
+        setCurrentStep("stock_items");
+      } else if (currentStep === "stock_items") {
         if (result.type !== "stock_item") {
           setError("Please scan a stock item QR code");
           return;
         }
-        setStockItem(result.data as StockItem);
-        setCurrentStep("job_card");
+        const stockItem = result.data as StockItem;
+        const existingIndex = items.findIndex((i) => i.stockItem.id === stockItem.id);
+        if (existingIndex >= 0) {
+          setError(`${stockItem.name} is already in your list`);
+          return;
+        }
+        setItems([...items, { stockItem, quantity: 1 }]);
       } else if (currentStep === "job_card") {
         if (result.type !== "job_card") {
           setError("Please scan a job card QR code or click Skip");
@@ -112,6 +121,25 @@ export default function IssueStockPage() {
     }
   };
 
+  const handleRemoveItem = (index: number) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateQuantity = (index: number, quantity: number) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], quantity: Math.max(1, quantity) };
+    setItems(newItems);
+  };
+
+  const handleContinueToJobCard = () => {
+    if (items.length === 0) {
+      setError("Please add at least one item");
+      return;
+    }
+    setCurrentStep("job_card");
+    setError(null);
+  };
+
   const handleSkipJobCard = () => {
     setJobCard(null);
     setCurrentStep("confirm");
@@ -121,11 +149,11 @@ export default function IssueStockPage() {
     if (currentStep === "recipient") {
       setCurrentStep("issuer");
       setRecipient(null);
-    } else if (currentStep === "stock_item") {
+    } else if (currentStep === "stock_items") {
       setCurrentStep("recipient");
-      setStockItem(null);
+      setItems([]);
     } else if (currentStep === "job_card") {
-      setCurrentStep("stock_item");
+      setCurrentStep("stock_items");
       setJobCard(null);
     } else if (currentStep === "confirm") {
       setCurrentStep("job_card");
@@ -135,34 +163,52 @@ export default function IssueStockPage() {
   };
 
   const handleConfirm = async () => {
-    if (!issuer || !recipient || !stockItem || quantity <= 0) return;
+    if (!issuer || !recipient || items.length === 0) return;
+
+    const invalidItems = items.filter(
+      (item) => item.quantity > item.stockItem.quantity || item.quantity <= 0,
+    );
+    if (invalidItems.length > 0) {
+      setError("Some items have invalid quantities. Please check and try again.");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       setError(null);
 
-      const dto: CreateIssuanceDto = {
+      const dto: BatchIssuanceDto = {
         issuerStaffId: issuer.id,
         recipientStaffId: recipient.id,
-        stockItemId: stockItem.id,
         jobCardId: jobCard?.id ?? null,
-        quantity,
+        items: items.map((item) => ({
+          stockItemId: item.stockItem.id,
+          quantity: item.quantity,
+        })),
         notes: notes.trim() || null,
       };
 
-      await stockControlApiClient.createIssuance(dto);
+      const result = await stockControlApiClient.createBatchIssuance(dto);
 
-      setSuccessMessage(
-        `Successfully issued ${quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
-      );
+      if (result.errors.length > 0) {
+        setError(`Some items failed: ${result.errors.map((e) => e.message).join(", ")}`);
+      }
 
-      setIssuer(null);
-      setRecipient(null);
-      setStockItem(null);
-      setJobCard(null);
-      setQuantity(1);
-      setNotes("");
-      setCurrentStep("issuer");
+      if (result.created > 0) {
+        const itemSummary = items
+          .map((item) => `${item.quantity}x ${item.stockItem.name}`)
+          .join(", ");
+        setSuccessMessage(
+          `Successfully issued ${result.created} item(s) (${itemSummary}) from ${issuer.name} to ${recipient.name}`,
+        );
+
+        setIssuer(null);
+        setRecipient(null);
+        setItems([]);
+        setJobCard(null);
+        setNotes("");
+        setCurrentStep("issuer");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create issuance");
     } finally {
@@ -173,9 +219,8 @@ export default function IssueStockPage() {
   const handleReset = () => {
     setIssuer(null);
     setRecipient(null);
-    setStockItem(null);
+    setItems([]);
     setJobCard(null);
-    setQuantity(1);
     setNotes("");
     setCurrentStep("issuer");
     setError(null);
@@ -220,7 +265,7 @@ export default function IssueStockPage() {
     </div>
   );
 
-  const renderStockItemCard = (item: StockItem) => (
+  const renderStockItemCard = (item: StockItem, showCheckmark = true) => (
     <div className="bg-gray-50 rounded-lg p-4 flex items-center space-x-4">
       <div className="flex-shrink-0">
         {item.photoUrl ? (
@@ -250,13 +295,19 @@ export default function IssueStockPage() {
           SKU: {item.sku} | Available: {item.quantity} {item.unitOfMeasure}
         </p>
       </div>
-      <svg className="h-5 w-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-        <path
-          fillRule="evenodd"
-          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-          clipRule="evenodd"
-        />
-      </svg>
+      {showCheckmark && (
+        <svg
+          className="h-5 w-5 text-green-500 flex-shrink-0"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+            clipRule="evenodd"
+          />
+        </svg>
+      )}
     </div>
   );
 
@@ -294,8 +345,11 @@ export default function IssueStockPage() {
     </div>
   );
 
-  const isConfirmDisabled =
-    isSubmitting || quantity <= 0 || (stockItem !== null && quantity > stockItem.quantity);
+  const totalItemsQty = items.reduce((sum, item) => sum + item.quantity, 0);
+  const hasInvalidQuantities = items.some(
+    (item) => item.quantity > item.stockItem.quantity || item.quantity <= 0,
+  );
+  const isConfirmDisabled = isSubmitting || items.length === 0 || hasInvalidQuantities;
 
   return (
     <>
@@ -403,12 +457,23 @@ export default function IssueStockPage() {
           {recipient && currentStep !== "recipient" && currentStep !== "issuer" && (
             <div className="mb-4">{renderStaffCard(recipient, "Recipient (Receiving)")}</div>
           )}
-          {stockItem &&
-            currentStep !== "stock_item" &&
-            currentStep !== "issuer" &&
-            currentStep !== "recipient" && (
-              <div className="mb-4">{renderStockItemCard(stockItem)}</div>
-            )}
+          {items.length > 0 && currentStep === "confirm" && (
+            <div className="mb-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+                Stock Items ({items.length})
+              </p>
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <div key={item.stockItem.id} className="flex items-center gap-2">
+                    <div className="flex-1">{renderStockItemCard(item.stockItem, false)}</div>
+                    <div className="text-sm font-medium text-gray-700">
+                      x{item.quantity} {item.stockItem.unitOfMeasure}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {jobCard && currentStep === "confirm" && (
             <div className="mb-4">{renderJobCardCard(jobCard)}</div>
           )}
@@ -424,35 +489,26 @@ export default function IssueStockPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Quantity *</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max={stockItem?.quantity ?? 1}
-                      value={quantity}
-                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-lg py-3"
-                    />
-                    {stockItem && (
-                      <p className="mt-1 text-sm text-gray-500">
-                        Available: {stockItem.quantity} {stockItem.unitOfMeasure}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Notes (Optional)
-                    </label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={3}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
-                      placeholder="Add any notes about this issuance..."
-                    />
-                  </div>
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-gray-600">
+                    <strong>Total Items:</strong> {items.length}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Total Quantity:</strong> {totalItemsQty}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Notes (Optional)
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                    placeholder="Add any notes about this issuance..."
+                  />
                 </div>
               </div>
 
@@ -468,7 +524,130 @@ export default function IssueStockPage() {
                   disabled={isConfirmDisabled}
                   className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? "Issuing..." : "Issue Stock"}
+                  {isSubmitting ? "Issuing..." : `Issue ${items.length} Item(s)`}
+                </button>
+              </div>
+            </div>
+          ) : currentStep === "stock_items" ? (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Scan Stock Items</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Scan the QR code on each stock item to add it to the issuance
+                </p>
+
+                {items.length > 0 && (
+                  <div className="mb-4 space-y-3">
+                    <p className="text-sm font-medium text-gray-700">
+                      Items to issue ({items.length}):
+                    </p>
+                    {items.map((item, index) => (
+                      <div
+                        key={item.stockItem.id}
+                        className="bg-gray-50 rounded-lg p-3 flex items-center gap-3"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {item.stockItem.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            SKU: {item.stockItem.sku} | Available: {item.stockItem.quantity}{" "}
+                            {item.stockItem.unitOfMeasure}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-500">Qty:</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max={item.stockItem.quantity}
+                            value={item.quantity}
+                            onChange={(e) =>
+                              handleUpdateQuantity(index, parseInt(e.target.value, 10) || 1)
+                            }
+                            className={`w-16 text-center rounded-md border shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-1 ${
+                              item.quantity > item.stockItem.quantity
+                                ? "border-red-300 bg-red-50"
+                                : "border-gray-300"
+                            }`}
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleRemoveItem(index)}
+                          className="p-1 text-red-500 hover:text-red-700"
+                          title="Remove item"
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex space-x-3">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={scanInput}
+                    onChange={(e) => setScanInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Scan item QR code..."
+                    autoFocus
+                    className="flex-1 block rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-lg py-3"
+                  />
+                  <button
+                    onClick={() => setShowCameraScanner(true)}
+                    className="px-4 py-3 text-sm font-medium text-white bg-gray-700 border border-transparent rounded-md hover:bg-gray-800"
+                    title="Scan with camera"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleScan}
+                    disabled={isScanning || !scanInput.trim()}
+                    className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {isScanning ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    ) : (
+                      "Add"
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-between pt-4 border-t">
+                <button
+                  onClick={handleBack}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleContinueToJobCard}
+                  disabled={items.length === 0}
+                  className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Continue ({items.length} item{items.length !== 1 ? "s" : ""})
                 </button>
               </div>
             </div>
@@ -478,7 +657,6 @@ export default function IssueStockPage() {
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
                   {currentStep === "issuer" && "Scan Issuer's Staff ID"}
                   {currentStep === "recipient" && "Scan Recipient's Staff ID"}
-                  {currentStep === "stock_item" && "Scan Stock Item QR Code"}
                   {currentStep === "job_card" && "Scan Job Card QR Code (Optional)"}
                 </h3>
                 <p className="text-sm text-gray-500 mb-4">
@@ -486,8 +664,6 @@ export default function IssueStockPage() {
                     "Scan the staff ID card of the person issuing the stock"}
                   {currentStep === "recipient" &&
                     "Scan the staff ID card of the person receiving the stock"}
-                  {currentStep === "stock_item" &&
-                    "Scan the QR code on the stock item or shelf label"}
                   {currentStep === "job_card" &&
                     "Optionally scan a job card to link this issuance, or skip"}
                 </p>

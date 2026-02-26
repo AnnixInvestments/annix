@@ -29,6 +29,25 @@ export interface CreateIssuanceDto {
   notes?: string | null;
 }
 
+export interface IssuanceItemDto {
+  stockItemId: number;
+  quantity: number;
+}
+
+export interface BatchIssuanceDto {
+  issuerStaffId: number;
+  recipientStaffId: number;
+  jobCardId?: number | null;
+  items: IssuanceItemDto[];
+  notes?: string | null;
+}
+
+export interface BatchIssuanceResult {
+  created: number;
+  issuances: StockIssuance[];
+  errors: Array<{ stockItemId: number; message: string }>;
+}
+
 export interface IssuanceFilters {
   startDate?: string;
   endDate?: string;
@@ -299,6 +318,118 @@ export class IssuanceService {
       where: { id: savedIssuance.id },
       relations: ["stockItem", "issuerStaff", "recipientStaff", "jobCard", "issuedByUser"],
     }) as Promise<StockIssuance>;
+  }
+
+  async createBatchIssuance(
+    companyId: number,
+    dto: BatchIssuanceDto,
+    user: UserContext,
+  ): Promise<BatchIssuanceResult> {
+    const result: BatchIssuanceResult = {
+      created: 0,
+      issuances: [],
+      errors: [],
+    };
+
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException("At least one item is required");
+    }
+
+    const [issuer, recipient, jobCard] = await Promise.all([
+      this.staffRepo.findOne({ where: { id: dto.issuerStaffId, companyId } }),
+      this.staffRepo.findOne({ where: { id: dto.recipientStaffId, companyId } }),
+      dto.jobCardId
+        ? this.jobCardRepo.findOne({ where: { id: dto.jobCardId, companyId } })
+        : Promise.resolve(null),
+    ]);
+
+    if (!issuer) {
+      throw new NotFoundException("Issuer staff member not found");
+    }
+
+    if (!recipient) {
+      throw new NotFoundException("Recipient staff member not found");
+    }
+
+    if (dto.jobCardId && !jobCard) {
+      throw new NotFoundException("Job card not found");
+    }
+
+    const issuedAt = now().toJSDate();
+
+    for (const item of dto.items) {
+      const stockItem = await this.stockItemRepo.findOne({
+        where: { id: item.stockItemId, companyId },
+      });
+
+      if (!stockItem) {
+        result.errors.push({ stockItemId: item.stockItemId, message: "Stock item not found" });
+        continue;
+      }
+
+      if (item.quantity <= 0) {
+        result.errors.push({
+          stockItemId: item.stockItemId,
+          message: "Quantity must be greater than 0",
+        });
+        continue;
+      }
+
+      if (stockItem.quantity < item.quantity) {
+        result.errors.push({
+          stockItemId: item.stockItemId,
+          message: `Insufficient stock. Available: ${stockItem.quantity}, Requested: ${item.quantity}`,
+        });
+        continue;
+      }
+
+      const issuance = this.issuanceRepo.create({
+        companyId,
+        stockItemId: item.stockItemId,
+        issuerStaffId: dto.issuerStaffId,
+        recipientStaffId: dto.recipientStaffId,
+        jobCardId: dto.jobCardId ?? null,
+        quantity: item.quantity,
+        notes: dto.notes ?? null,
+        issuedByUserId: user.id,
+        issuedByName: user.name,
+        issuedAt,
+      });
+
+      const savedIssuance = await this.issuanceRepo.save(issuance);
+
+      stockItem.quantity = stockItem.quantity - item.quantity;
+      await this.stockItemRepo.save(stockItem);
+
+      const movement = this.movementRepo.create({
+        companyId,
+        stockItem,
+        movementType: MovementType.OUT,
+        quantity: item.quantity,
+        referenceType: ReferenceType.ISSUANCE,
+        referenceId: savedIssuance.id,
+        notes: `Issued to ${recipient.name} by ${issuer.name}${jobCard ? ` for job ${jobCard.jobNumber}` : ""}`,
+        createdBy: user.name,
+      });
+
+      await this.movementRepo.save(movement);
+
+      const fullIssuance = await this.issuanceRepo.findOne({
+        where: { id: savedIssuance.id },
+        relations: ["stockItem", "issuerStaff", "recipientStaff", "jobCard"],
+      });
+
+      if (fullIssuance) {
+        result.issuances.push(fullIssuance);
+        result.created++;
+      }
+
+      this.logger.log(
+        `Stock issuance created: ${item.quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
+      );
+    }
+
+    return result;
   }
 
   async findAll(companyId: number, filters?: IssuanceFilters): Promise<StockIssuance[]> {

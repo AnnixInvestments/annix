@@ -2,7 +2,12 @@ import { Body, Controller, Get, Logger, Param, Post, Query, Req, UseGuards } fro
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
-import { CreateIssuanceDto, IssuanceFilters, IssuanceService } from "../services/issuance.service";
+import {
+  BatchIssuanceDto,
+  CreateIssuanceDto,
+  IssuanceFilters,
+  IssuanceService,
+} from "../services/issuance.service";
 
 @ApiTags("Stock Control - Issuance")
 @Controller("stock-control/issuance")
@@ -24,6 +29,13 @@ export class IssuanceController {
   @ApiOperation({ summary: "Create a new stock issuance" })
   async createIssuance(@Req() req: any, @Body() dto: CreateIssuanceDto) {
     return this.issuanceService.createIssuance(req.user.companyId, dto, req.user);
+  }
+
+  @Post("batch")
+  @StockControlRoles("storeman", "manager", "admin")
+  @ApiOperation({ summary: "Create multiple stock issuances in batch" })
+  async createBatchIssuance(@Req() req: any, @Body() dto: BatchIssuanceDto) {
+    return this.issuanceService.createBatchIssuance(req.user.companyId, dto, req.user);
   }
 
   @Get()

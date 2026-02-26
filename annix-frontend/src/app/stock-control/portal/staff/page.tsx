@@ -22,6 +22,7 @@ export default function StaffPage() {
     employeeNumber: "",
     departmentId: null as number | null,
   });
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const fetchStaff = useCallback(async () => {
     try {
@@ -126,12 +127,15 @@ export default function StaffPage() {
 
   const handlePrintBatchIdCards = async () => {
     try {
+      setIsDownloadingPdf(true);
       const activeIds = staffMembers.filter((m) => m.active).map((m) => m.id);
       await stockControlApiClient.downloadBatchStaffIdCards(
         activeIds.length > 0 ? activeIds : undefined,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to download batch ID cards");
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
 
@@ -142,17 +146,22 @@ export default function StaffPage() {
         <div className="flex items-center space-x-3">
           <button
             onClick={handlePrintBatchIdCards}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            disabled={isDownloadingPdf}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-              />
-            </svg>
-            Print ID Cards
+            {isDownloadingPdf ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 mr-2"></div>
+            ) : (
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                />
+              </svg>
+            )}
+            {isDownloadingPdf ? "Generating..." : "Print ID Cards"}
           </button>
           <button
             onClick={openCreateModal}
@@ -369,6 +378,20 @@ export default function StaffPage() {
           </div>
         )}
       </div>
+
+      {isDownloadingPdf && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mb-4"></div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Generating ID Cards</h3>
+              <p className="text-sm text-gray-500 text-center">
+                Please wait while we prepare your PDF. This may take a moment...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
