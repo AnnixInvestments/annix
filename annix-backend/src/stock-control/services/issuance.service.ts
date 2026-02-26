@@ -57,6 +57,8 @@ export class IssuanceService {
   async parseAndValidateQr(companyId: number, rawQr: string): Promise<ScanResult> {
     const trimmed = rawQr.trim();
 
+    const jsonData = this.tryParseJsonQr(trimmed);
+
     if (trimmed.startsWith("staff:")) {
       const token = trimmed.substring(6);
       const staff = await this.staffRepo.findOne({
@@ -97,6 +99,24 @@ export class IssuanceService {
       return { type: "job_card", id: jobCard.id, data: jobCard };
     }
 
+    if (jsonData) {
+      if (jsonData.id || jsonData.sku || jsonData.name) {
+        const identifier = String(jsonData.id ?? jsonData.sku ?? jsonData.name);
+        const stockItem = await this.findStockItem(companyId, identifier);
+        if (stockItem) {
+          return { type: "stock_item", id: stockItem.id, data: stockItem };
+        }
+      }
+
+      if (jsonData.jobNumber || jsonData.job_number) {
+        const identifier = String(jsonData.jobNumber ?? jsonData.job_number);
+        const jobCard = await this.findJobCard(companyId, identifier);
+        if (jobCard) {
+          return { type: "job_card", id: jobCard.id, data: jobCard };
+        }
+      }
+    }
+
     const staff = await this.staffRepo.findOne({
       where: { companyId, qrToken: trimmed },
       relations: ["departmentEntity"],
@@ -119,7 +139,38 @@ export class IssuanceService {
       return { type: "job_card", id: jobCard.id, data: jobCard };
     }
 
-    throw new NotFoundException(`No matching entity found for QR code: ${trimmed}`);
+    throw new NotFoundException(
+      `No matching entity found for QR code: ${trimmed.substring(0, 50)}`,
+    );
+  }
+
+  private tryParseJsonQr(input: string): Record<string, unknown> | null {
+    let jsonStr = input;
+
+    if (!jsonStr.startsWith("{")) {
+      const braceIndex = input.indexOf("{");
+      if (braceIndex >= 0) {
+        jsonStr = input.substring(braceIndex);
+      }
+    }
+
+    if (!jsonStr.endsWith("}")) {
+      const lastBrace = jsonStr.lastIndexOf("}");
+      if (lastBrace >= 0) {
+        jsonStr = jsonStr.substring(0, lastBrace + 1);
+      }
+    }
+
+    try {
+      const parsed = JSON.parse(jsonStr);
+      if (typeof parsed === "object" && parsed !== null) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
   }
 
   private async findStockItem(companyId: number, identifier: string): Promise<StockItem | null> {
