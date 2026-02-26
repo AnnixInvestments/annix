@@ -141,7 +141,7 @@ export class RbacService {
     });
 
     const allAccessRecords = await this.accessRepo.find({
-      relations: ["app", "role", "customPermissions", "userProducts"],
+      relations: ["app", "role", "customPermissions", "customPermissions.permission", "userProducts"],
     });
 
     const accessByUserId = allAccessRecords.reduce(
@@ -171,6 +171,9 @@ export class RbacService {
             roleCode: access.role?.code ?? null,
             roleName: access.role?.name ?? null,
             useCustomPermissions: access.useCustomPermissions,
+            permissionCodes: access.useCustomPermissions
+              ? access.customPermissions.map((p) => p.permission.code)
+              : null,
             permissionCount: access.useCustomPermissions ? access.customPermissions.length : null,
             expiresAt: access.expiresAt,
             accessId: access.id,
@@ -227,6 +230,7 @@ export class RbacService {
                 roleCode: scUser.role,
                 roleName: roleNameMap[scUser.role] ?? scUser.role,
                 useCustomPermissions: false,
+                permissionCodes: null,
                 permissionCount: null,
                 expiresAt: null,
                 accessId: -scUser.id,

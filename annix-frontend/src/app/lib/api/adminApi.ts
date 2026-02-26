@@ -1613,6 +1613,7 @@ export interface RbacAppAccessSummary {
   roleCode: string | null;
   roleName: string | null;
   useCustomPermissions: boolean;
+  permissionCodes: string[] | null;
   permissionCount: number | null;
   expiresAt: string | null;
   accessId: number;

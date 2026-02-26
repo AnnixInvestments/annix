@@ -16,6 +16,9 @@ export class AppAccessSummaryDto {
   @ApiProperty({ description: "Whether user has custom permissions instead of a role" })
   useCustomPermissions: boolean;
 
+  @ApiProperty({ description: "Custom permission codes", nullable: true })
+  permissionCodes: string[] | null;
+
   @ApiProperty({ description: "Number of custom permissions if using custom", nullable: true })
   permissionCount: number | null;
 

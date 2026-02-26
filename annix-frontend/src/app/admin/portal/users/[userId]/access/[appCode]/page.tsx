@@ -84,7 +84,7 @@ export default function EditUserAccessPage() {
     if (existingAccess) {
       setUseCustomPermissions(existingAccess.useCustomPermissions);
       setSelectedRoleCode(existingAccess.roleCode);
-      setSelectedPermissions([]);
+      setSelectedPermissions(existingAccess.permissionCodes ?? []);
       setSelectedProducts(existingAccess.productKeys ?? []);
       setExpiresAt(existingAccess.expiresAt ?? "");
     } else if (appDetails) {
