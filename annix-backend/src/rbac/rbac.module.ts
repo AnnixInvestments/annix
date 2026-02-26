@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { StockControlUser } from "../stock-control/entities/stock-control-user.entity";
 import { User } from "../user/entities/user.entity";
+import { UserSyncModule } from "../user-sync/user-sync.module";
 import {
   App,
   AppPermission,
@@ -30,6 +31,7 @@ import { RbacService } from "./rbac.service";
       StockControlUser,
     ]),
     forwardRef(() => AdminModule),
+    UserSyncModule,
   ],
   controllers: [RbacController],
   providers: [RbacService, AppPermissionGuard],

@@ -16,6 +16,7 @@ import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
 import { User } from "../user/entities/user.entity";
 import { UserRole } from "../user-roles/entities/user-role.entity";
+import { UserSyncService } from "../user-sync/user-sync.service";
 import {
   AdminAuditItemDto,
   AdminLoginHistoryItemDto,
@@ -42,6 +43,7 @@ export class AdminUserManagementService {
     private readonly adminSessionRepo: Repository<AdminSession>,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
+    private readonly userSyncService: UserSyncService,
   ) {}
 
   /**
@@ -180,6 +182,16 @@ export class AdminUserManagementService {
     }
 
     this.logger.log(`Admin user ${savedUser.id} (${dto.email}) created by user ${createdBy}`);
+
+    this.userSyncService
+      .syncUserToPeer({
+        email: dto.email,
+        firstName: dto.firstName ?? null,
+        lastName: dto.lastName ?? null,
+        username: `${dto.firstName} ${dto.lastName}`,
+        status: "active",
+      })
+      .catch((error) => this.logger.error(`Peer sync failed for ${dto.email}: ${error.message}`));
 
     return savedUser;
   }

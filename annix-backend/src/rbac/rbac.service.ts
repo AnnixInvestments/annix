@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import {
@@ -6,6 +6,7 @@ import {
   StockControlUser,
 } from "../stock-control/entities/stock-control-user.entity";
 import { User } from "../user/entities/user.entity";
+import { UserSyncService } from "../user-sync/user-sync.service";
 import {
   AssignUserAccessDto,
   UpdateUserAccessDto,
@@ -31,6 +32,8 @@ import {
 
 @Injectable()
 export class RbacService {
+  private readonly logger = new Logger(RbacService.name);
+
   constructor(
     @InjectRepository(App)
     private readonly appRepo: Repository<App>,
@@ -50,6 +53,7 @@ export class RbacService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(StockControlUser)
     private readonly stockControlUserRepo: Repository<StockControlUser>,
+    private readonly userSyncService: UserSyncService,
   ) {}
 
   async allApps(): Promise<App[]> {
@@ -425,6 +429,16 @@ export class RbacService {
         status: "invited",
       });
       user = await this.userRepo.save(user);
+
+      this.userSyncService
+        .syncUserToPeer({
+          email: dto.email,
+          firstName: dto.firstName ?? null,
+          lastName: dto.lastName ?? null,
+          username: dto.email,
+          status: "active",
+        })
+        .catch((error) => this.logger.error(`Peer sync failed for ${dto.email}: ${error.message}`));
     }
 
     const existingAccess = await this.accessRepo.findOne({

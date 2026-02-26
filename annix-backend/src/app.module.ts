@@ -81,6 +81,7 @@ import { ThermalModule } from "./thermal/thermal.module";
 import { UnifiedApiModule } from "./unified-api/unified-api.module";
 import { UserModule } from "./user/user.module";
 import { UserRolesModule } from "./user-roles/user-roles.module";
+import { UserSyncModule } from "./user-sync/user-sync.module";
 import { WasherModule } from "./washer/washer.module";
 import { WeldJointEfficiencyModule } from "./weld-joint-efficiency/weld-joint-efficiency.module";
 import { WeldThicknessModule } from "./weld-thickness/weld-thickness.module";
@@ -184,6 +185,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     AnnixRepModule,
     StockControlModule,
     CvAssistantModule,
+    UserSyncModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],
