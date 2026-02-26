@@ -35,10 +35,14 @@ export class JobCardImportController {
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload and parse a file for job card import" })
   async upload(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
-    const { grid } = await this.jobCardImportService.parseFile(file.buffer, file.mimetype);
+    const { grid, documentNumber: pdfDocNumber } = await this.jobCardImportService.parseFile(
+      file.buffer,
+      file.mimetype,
+      file.originalname,
+    );
     const savedMapping = await this.jobCardImportService.mapping(req.user.companyId);
     const docMatch = file.originalname?.match(/^([A-Z]{1,5}\d{4,})/i);
-    const documentNumber = docMatch ? docMatch[1].toUpperCase() : null;
+    const documentNumber = pdfDocNumber || (docMatch ? docMatch[1].toUpperCase() : null);
     return { grid, savedMapping, documentNumber };
   }
 
