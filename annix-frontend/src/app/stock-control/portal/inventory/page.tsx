@@ -96,6 +96,7 @@ export default function InventoryPage() {
   const [isPrintingLabels, setIsPrintingLabels] = useState(false);
   const [editingMinLevelId, setEditingMinLevelId] = useState<number | null>(null);
   const [editingMinLevelValue, setEditingMinLevelValue] = useState<number>(0);
+  const [isSavingMinLevel, setIsSavingMinLevel] = useState(false);
   const [showPrintDropdown, setShowPrintDropdown] = useState(false);
   const [printPreviewItems, setPrintPreviewItems] = useState<StockItem[] | null>(null);
   const printDropdownRef = useRef<HTMLDivElement>(null);
@@ -322,12 +323,16 @@ export default function InventoryPage() {
   };
 
   const saveMinLevel = async (id: number) => {
+    if (isSavingMinLevel) return;
     try {
+      setIsSavingMinLevel(true);
       await stockControlApiClient.updateStockItem(id, { minStockLevel: editingMinLevelValue });
       setEditingMinLevelId(null);
       fetchItems();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to update min stock level"));
+    } finally {
+      setIsSavingMinLevel(false);
     }
   };
 
@@ -543,7 +548,7 @@ export default function InventoryPage() {
 
   return (
     <div
-      className="space-y-6 relative"
+      className="space-y-6 relative w-full max-w-full overflow-x-hidden"
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
@@ -1053,7 +1058,7 @@ export default function InventoryPage() {
             </div>
           ) : (
             groupedData.map((group) => (
-              <div key={group.category} className="bg-white shadow rounded-lg overflow-hidden">
+              <div key={group.category} className="bg-white shadow rounded-lg overflow-x-auto">
                 <button
                   onClick={() => toggleCategoryExpanded(group.category)}
                   className="w-full px-6 py-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
@@ -1189,8 +1194,14 @@ export default function InventoryPage() {
                                     setEditingMinLevelValue(parseInt(e.target.value, 10) || 0)
                                   }
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") saveMinLevel(item.id);
-                                    if (e.key === "Escape") cancelEditingMinLevel();
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      e.currentTarget.blur();
+                                    }
+                                    if (e.key === "Escape") {
+                                      e.preventDefault();
+                                      cancelEditingMinLevel();
+                                    }
                                   }}
                                   onBlur={() => saveMinLevel(item.id)}
                                   autoFocus
@@ -1381,8 +1392,14 @@ export default function InventoryPage() {
                               setEditingMinLevelValue(parseInt(e.target.value, 10) || 0)
                             }
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") saveMinLevel(item.id);
-                              if (e.key === "Escape") cancelEditingMinLevel();
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                e.currentTarget.blur();
+                              }
+                              if (e.key === "Escape") {
+                                e.preventDefault();
+                                cancelEditingMinLevel();
+                              }
                             }}
                             onBlur={() => saveMinLevel(item.id)}
                             autoFocus
