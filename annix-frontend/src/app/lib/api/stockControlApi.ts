@@ -131,6 +131,7 @@ export interface JobCardLineItem {
   itemNo: string | null;
   quantity: number | null;
   jtNo: string | null;
+  m2: number | null;
   sortOrder: number;
   companyId: number;
   createdAt: string;
@@ -1094,8 +1095,14 @@ class StockControlApiClient {
     return this.request("/stock-control/inventory/categories");
   }
 
-  async stockItemsGrouped(search?: string): Promise<{ category: string; items: StockItem[] }[]> {
-    const query = search ? `?search=${encodeURIComponent(search)}` : "";
+  async stockItemsGrouped(
+    search?: string,
+    locationId?: number,
+  ): Promise<{ category: string; items: StockItem[] }[]> {
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (locationId) params.append("locationId", String(locationId));
+    const query = params.toString() ? `?${params.toString()}` : "";
     return this.request(`/stock-control/inventory/grouped${query}`);
   }
 

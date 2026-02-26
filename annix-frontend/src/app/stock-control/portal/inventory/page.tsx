@@ -65,6 +65,7 @@ export default function InventoryPage() {
   const [error, setError] = useState<Error | null>(null);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState<number | "">("");
   const [currentPage, setCurrentPage] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
@@ -196,7 +197,7 @@ export default function InventoryPage() {
 
       if (viewMode === "grouped") {
         const [grouped, cats, locs] = await Promise.all([
-          stockControlApiClient.stockItemsGrouped(search || undefined),
+          stockControlApiClient.stockItemsGrouped(search || undefined, locationFilter || undefined),
           stockControlApiClient.categories(),
           stockControlApiClient.locations(),
         ]);
@@ -214,6 +215,7 @@ export default function InventoryPage() {
         };
         if (search) params.search = search;
         if (categoryFilter) params.category = categoryFilter;
+        if (locationFilter) params.locationId = String(locationFilter);
 
         const [result, cats, locs] = await Promise.all([
           stockControlApiClient.stockItems(params),
@@ -232,7 +234,7 @@ export default function InventoryPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search, categoryFilter, viewMode]);
+  }, [currentPage, search, categoryFilter, locationFilter, viewMode]);
 
   useEffect(() => {
     fetchItems();
@@ -247,6 +249,11 @@ export default function InventoryPage() {
 
   const handleCategoryChange = (value: string) => {
     setCategoryFilter(value);
+    setCurrentPage(0);
+  };
+
+  const handleLocationChange = (value: string) => {
+    setLocationFilter(value === "" ? "" : Number(value));
     setCurrentPage(0);
   };
 
@@ -927,6 +934,18 @@ export default function InventoryPage() {
           />
         </div>
         <div className="flex items-center gap-3">
+          <select
+            value={locationFilter}
+            onChange={(e) => handleLocationChange(e.target.value)}
+            className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+          >
+            <option value="">All Locations</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+              </option>
+            ))}
+          </select>
           {viewMode === "list" && (
             <select
               value={categoryFilter}

@@ -872,8 +872,43 @@ export default function JobCardDetailPage() {
       {jobCard.lineItems && jobCard.lineItems.length > 0 && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Line Items</h3>
-            <span className="text-sm text-gray-500">{jobCard.lineItems.length} items</span>
+            <div className="flex items-center space-x-4">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Line Items</h3>
+              <span className="text-sm text-gray-500">{jobCard.lineItems.length} items</span>
+            </div>
+            {attachments.some(
+              (a) =>
+                a.extractionStatus === "analysed" &&
+                ((a.extractedData as { totalExternalM2?: number })?.totalExternalM2 ?? 0) > 0,
+            ) && (
+              <div className="flex items-center space-x-4 text-sm">
+                <span className="text-gray-500">From drawings:</span>
+                <span className="font-semibold text-teal-700">
+                  Ext:{" "}
+                  {attachments
+                    .reduce(
+                      (sum, a) =>
+                        sum +
+                        ((a.extractedData as { totalExternalM2?: number })?.totalExternalM2 ?? 0),
+                      0,
+                    )
+                    .toFixed(2)}{" "}
+                  m²
+                </span>
+                <span className="font-semibold text-blue-700">
+                  Int:{" "}
+                  {attachments
+                    .reduce(
+                      (sum, a) =>
+                        sum +
+                        ((a.extractedData as { totalInternalM2?: number })?.totalInternalM2 ?? 0),
+                      0,
+                    )
+                    .toFixed(2)}{" "}
+                  m²
+                </span>
+              </div>
+            )}
           </div>
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -910,6 +945,12 @@ export default function JobCardDetailPage() {
                 </th>
                 <th
                   scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  m²
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   JT No
@@ -931,6 +972,9 @@ export default function JobCardDetailPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                     {li.quantity ?? "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                    {li.m2 ? Number(li.m2).toFixed(2) : "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {li.jtNo || "-"}

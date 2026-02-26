@@ -7,6 +7,7 @@ import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
+import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require("pdf-parse");
@@ -64,6 +65,8 @@ export class DrawingExtractionService {
     private readonly attachmentRepo: Repository<JobCardAttachment>,
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(JobCardLineItem)
+    private readonly lineItemRepo: Repository<JobCardLineItem>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
@@ -179,6 +182,8 @@ export class DrawingExtractionService {
       this.logger.log(
         `Extraction complete for attachment ${attachmentId}: ${result.dimensions.length} dimensions, totalExtM2=${result.totalExternalM2}`,
       );
+
+      await this.updateLineItemsFromExtraction(companyId, jobCardId, result);
 
       const signedUrl = await this.storageService.getPresignedUrl(saved.filePath, 3600);
       return { ...saved, filePath: signedUrl };
@@ -321,5 +326,86 @@ export class DrawingExtractionService {
     if (diameterMm <= 400) return 8.0;
     if (diameterMm <= 600) return 9.5;
     return 12.7;
+  }
+
+  private async updateLineItemsFromExtraction(
+    companyId: number,
+    jobCardId: number,
+    result: DrawingExtractionResult,
+  ): Promise<void> {
+    if (result.dimensions.length === 0) {
+      return;
+    }
+
+    const lineItems = await this.lineItemRepo.find({
+      where: { jobCardId, companyId },
+      order: { sortOrder: "ASC" },
+    });
+
+    if (lineItems.length === 0) {
+      return;
+    }
+
+    const updatedItems: JobCardLineItem[] = [];
+
+    lineItems.forEach((lineItem) => {
+      const description = (lineItem.itemDescription || "").toLowerCase();
+      const matchedDim = this.findMatchingDimension(description, result.dimensions);
+
+      if (matchedDim?.externalSurfaceM2) {
+        const totalM2 = matchedDim.externalSurfaceM2 * (lineItem.quantity || 1);
+        lineItem.m2 = Math.round(totalM2 * 100) / 100;
+        updatedItems.push(lineItem);
+      }
+    });
+
+    if (updatedItems.length > 0) {
+      await this.lineItemRepo.save(updatedItems);
+      this.logger.log(
+        `Updated ${updatedItems.length} line items with m² from extraction for job card ${jobCardId}`,
+      );
+    }
+  }
+
+  private findMatchingDimension(
+    lineItemDescription: string,
+    dimensions: ExtractedDimension[],
+  ): ExtractedDimension | null {
+    const nbMatch = lineItemDescription.match(/(\d+)\s*nb/i);
+    const lineItemNb = nbMatch ? parseInt(nbMatch[1], 10) : null;
+
+    const isBend = /bend/i.test(lineItemDescription);
+    const isPipe = /pipe|straight/i.test(lineItemDescription);
+    const isTee = /tee/i.test(lineItemDescription);
+    const isReducer = /reducer/i.test(lineItemDescription);
+
+    const lineItemType = isBend
+      ? "bend"
+      : isPipe
+        ? "pipe"
+        : isTee
+          ? "tee"
+          : isReducer
+            ? "reducer"
+            : null;
+
+    const matches = dimensions.filter((dim) => {
+      if (lineItemNb && dim.diameterMm) {
+        const dimNb = dim.diameterMm;
+        if (Math.abs(dimNb - lineItemNb) > 25) {
+          return false;
+        }
+      }
+
+      if (lineItemType && dim.itemType) {
+        if (dim.itemType.toLowerCase() !== lineItemType) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    return matches.length > 0 ? matches[0] : dimensions.length > 0 ? dimensions[0] : null;
   }
 }

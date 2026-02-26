@@ -192,7 +192,10 @@ export class QrCodeService {
   private async generateStaffIdCardsPdf(staffMembers: StaffMember[]): Promise<Buffer> {
     const cardsHtml = await Promise.all(
       staffMembers.map(async (staff) => {
-        const qrDataUrl = await QRCode.toDataURL(`staff:${staff.qrToken}`, { width: 200, margin: 1 });
+        const qrDataUrl = await QRCode.toDataURL(`staff:${staff.qrToken}`, {
+          width: 200,
+          margin: 1,
+        });
         const departmentName = staff.departmentEntity?.name ?? staff.department ?? "";
         return `
           <div class="card">

@@ -145,6 +145,7 @@ export class InventoryService {
   async groupedByCategory(
     companyId: number,
     search?: string,
+    locationId?: number,
   ): Promise<{ category: string; items: StockItem[] }[]> {
     const queryBuilder = this.stockItemRepo
       .createQueryBuilder("item")
@@ -155,6 +156,10 @@ export class InventoryService {
         "(item.name ILIKE :search OR item.sku ILIKE :search OR item.description ILIKE :search)",
         { search: `%${search}%` },
       );
+    }
+
+    if (locationId) {
+      queryBuilder.andWhere("item.location_id = :locationId", { locationId });
     }
 
     queryBuilder.orderBy("item.category", "ASC").addOrderBy("item.name", "ASC");
