@@ -9,7 +9,7 @@ import { JobCard } from "../entities/job-card.entity";
 import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PDFParse } = require("pdf-parse");
+const pdfParse = require("pdf-parse");
 
 interface ExtractedDimension {
   description: string;
@@ -235,10 +235,8 @@ export class DrawingExtractionService {
     const normalizedPath = this.normalizeStoragePath(storagePath);
     const dataBuffer = await this.storageService.download(normalizedPath);
 
-    const parser = new PDFParse({ data: dataBuffer });
-    await parser.load();
-    const textResult = await parser.getText();
-    return textResult?.text || "";
+    const pdfData = await pdfParse(dataBuffer);
+    return pdfData.text || "";
   }
 
   private normalizeStoragePath(pathOrUrl: string): string {
