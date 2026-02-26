@@ -89,7 +89,7 @@ export class DrawingExtractionService {
     const attachment = this.attachmentRepo.create({
       jobCardId,
       companyId,
-      filePath: uploadResult.url,
+      filePath: uploadResult.path,
       originalFilename: file.originalname,
       fileSizeBytes: file.size,
       mimeType: file.mimetype,
@@ -102,7 +102,8 @@ export class DrawingExtractionService {
     const saved = await this.attachmentRepo.save(attachment);
     this.logger.log(`Uploaded attachment ${saved.id} for job card ${jobCardId}`);
 
-    return saved;
+    const signedUrl = await this.storageService.getPresignedUrl(saved.filePath, 3600);
+    return { ...saved, filePath: signedUrl };
   }
 
   async attachments(companyId: number, jobCardId: number): Promise<JobCardAttachment[]> {
@@ -114,10 +115,20 @@ export class DrawingExtractionService {
       throw new NotFoundException("Job card not found");
     }
 
-    return this.attachmentRepo.find({
+    const attachmentRecords = await this.attachmentRepo.find({
       where: { jobCardId, companyId },
       order: { createdAt: "DESC" },
     });
+
+    const attachmentsWithUrls = await Promise.all(
+      attachmentRecords.map(async (attachment) => {
+        const normalizedPath = this.normalizeStoragePath(attachment.filePath);
+        const signedUrl = await this.storageService.getPresignedUrl(normalizedPath, 3600);
+        return { ...attachment, filePath: signedUrl };
+      }),
+    );
+
+    return attachmentsWithUrls;
   }
 
   async attachmentById(
@@ -169,7 +180,8 @@ export class DrawingExtractionService {
         `Extraction complete for attachment ${attachmentId}: ${result.dimensions.length} dimensions, totalExtM2=${result.totalExternalM2}`,
       );
 
-      return saved;
+      const signedUrl = await this.storageService.getPresignedUrl(saved.filePath, 3600);
+      return { ...saved, filePath: signedUrl };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       attachment.extractionStatus = ExtractionStatus.FAILED;
@@ -219,14 +231,22 @@ export class DrawingExtractionService {
     };
   }
 
-  private async extractPdfText(fileUrl: string): Promise<string> {
-    const pathFromUrl = fileUrl.replace(/^https?:\/\/[^/]+/, "");
-    const dataBuffer = await this.storageService.download(pathFromUrl);
+  private async extractPdfText(storagePath: string): Promise<string> {
+    const normalizedPath = this.normalizeStoragePath(storagePath);
+    const dataBuffer = await this.storageService.download(normalizedPath);
 
     const parser = new PDFParse({ data: dataBuffer });
     await parser.load();
     const textResult = await parser.getText();
     return textResult?.text || "";
+  }
+
+  private normalizeStoragePath(pathOrUrl: string): string {
+    if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+      const urlWithoutQuery = pathOrUrl.split("?")[0];
+      return urlWithoutQuery.replace(/^https?:\/\/[^/]+\//, "");
+    }
+    return pathOrUrl;
   }
 
   private async extractDimensionsWithAi(pdfText: string): Promise<{
