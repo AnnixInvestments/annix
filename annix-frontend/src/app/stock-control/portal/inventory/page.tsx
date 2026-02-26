@@ -95,9 +95,8 @@ export default function InventoryPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isPrintingLabels, setIsPrintingLabels] = useState(false);
-  const [editingMinLevelId, setEditingMinLevelId] = useState<number | null>(null);
-  const [editingMinLevelValue, setEditingMinLevelValue] = useState<number>(0);
-  const [isSavingMinLevel, setIsSavingMinLevel] = useState(false);
+  const [pendingMinLevels, setPendingMinLevels] = useState<Map<number, number>>(new Map());
+  const [isSavingMinLevels, setIsSavingMinLevels] = useState(false);
   const [showPrintDropdown, setShowPrintDropdown] = useState(false);
   const [printPreviewItems, setPrintPreviewItems] = useState<StockItem[] | null>(null);
   const printDropdownRef = useRef<HTMLDivElement>(null);
@@ -320,27 +319,45 @@ export default function InventoryPage() {
     }
   };
 
-  const startEditingMinLevel = (item: StockItem) => {
-    setEditingMinLevelId(item.id);
-    setEditingMinLevelValue(item.minStockLevel);
+  const updatePendingMinLevel = (itemId: number, value: number) => {
+    setPendingMinLevels((prev) => {
+      const next = new Map(prev);
+      next.set(itemId, value);
+      return next;
+    });
   };
 
-  const cancelEditingMinLevel = () => {
-    setEditingMinLevelId(null);
+  const clearPendingMinLevel = (itemId: number) => {
+    setPendingMinLevels((prev) => {
+      const next = new Map(prev);
+      next.delete(itemId);
+      return next;
+    });
   };
 
-  const saveMinLevel = async (id: number) => {
-    if (isSavingMinLevel) return;
+  const clearAllPendingMinLevels = () => {
+    setPendingMinLevels(new Map());
+  };
+
+  const saveAllMinLevels = async () => {
+    if (isSavingMinLevels || pendingMinLevels.size === 0) return;
     try {
-      setIsSavingMinLevel(true);
-      await stockControlApiClient.updateStockItem(id, { minStockLevel: editingMinLevelValue });
-      setEditingMinLevelId(null);
+      setIsSavingMinLevels(true);
+      const updates = Array.from(pendingMinLevels.entries()).map(([id, minStockLevel]) =>
+        stockControlApiClient.updateStockItem(id, { minStockLevel }),
+      );
+      await Promise.all(updates);
+      setPendingMinLevels(new Map());
       fetchItems();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to update min stock level"));
+      setError(err instanceof Error ? err : new Error("Failed to update min stock levels"));
     } finally {
-      setIsSavingMinLevel(false);
+      setIsSavingMinLevels(false);
     }
+  };
+
+  const minLevelForItem = (item: StockItem): number => {
+    return pendingMinLevels.has(item.id) ? pendingMinLevels.get(item.id)! : item.minStockLevel;
   };
 
   const handleDelete = async (id: number) => {
@@ -1032,6 +1049,37 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {pendingMinLevels.size > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span className="text-sm font-medium text-amber-800">
+            {pendingMinLevels.size} unsaved min level change{pendingMinLevels.size !== 1 ? "s" : ""}
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={clearAllPendingMinLevels}
+              className="text-sm text-amber-700 hover:text-amber-900"
+            >
+              Discard Changes
+            </button>
+            <button
+              onClick={saveAllMinLevels}
+              disabled={isSavingMinLevels}
+              className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
+            >
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              {isSavingMinLevels ? "Saving..." : "Save All Changes"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {viewMode === "grouped" && groupedData.length > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">
@@ -1207,37 +1255,19 @@ export default function InventoryPage() {
                               )}
                             </td>
                             <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right">
-                              {editingMinLevelId === item.id ? (
-                                <input
-                                  type="number"
-                                  min={0}
-                                  value={editingMinLevelValue}
-                                  onChange={(e) =>
-                                    setEditingMinLevelValue(parseInt(e.target.value, 10) || 0)
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      e.currentTarget.blur();
-                                    }
-                                    if (e.key === "Escape") {
-                                      e.preventDefault();
-                                      cancelEditingMinLevel();
-                                    }
-                                  }}
-                                  onBlur={() => saveMinLevel(item.id)}
-                                  autoFocus
-                                  className="w-16 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
-                                />
-                              ) : (
-                                <button
-                                  onClick={() => startEditingMinLevel(item)}
-                                  className="text-gray-500 hover:text-teal-700 cursor-pointer"
-                                  title="Click to edit min stock level"
-                                >
-                                  {item.minStockLevel}
-                                </button>
-                              )}
+                              <input
+                                type="number"
+                                min={0}
+                                value={minLevelForItem(item)}
+                                onChange={(e) =>
+                                  updatePendingMinLevel(item.id, parseInt(e.target.value, 10) || 0)
+                                }
+                                className={`w-16 rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right ${
+                                  pendingMinLevels.has(item.id)
+                                    ? "border-teal-500 bg-teal-50"
+                                    : "border-gray-300"
+                                }`}
+                              />
                             </td>
                             <td className="hidden md:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                               {formatZAR(item.costPerUnit)}
@@ -1408,37 +1438,19 @@ export default function InventoryPage() {
                         )}
                       </td>
                       <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right">
-                        {editingMinLevelId === item.id ? (
-                          <input
-                            type="number"
-                            min={0}
-                            value={editingMinLevelValue}
-                            onChange={(e) =>
-                              setEditingMinLevelValue(parseInt(e.target.value, 10) || 0)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                e.currentTarget.blur();
-                              }
-                              if (e.key === "Escape") {
-                                e.preventDefault();
-                                cancelEditingMinLevel();
-                              }
-                            }}
-                            onBlur={() => saveMinLevel(item.id)}
-                            autoFocus
-                            className="w-16 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
-                          />
-                        ) : (
-                          <button
-                            onClick={() => startEditingMinLevel(item)}
-                            className="text-gray-500 hover:text-teal-700 cursor-pointer"
-                            title="Click to edit min stock level"
-                          >
-                            {item.minStockLevel}
-                          </button>
-                        )}
+                        <input
+                          type="number"
+                          min={0}
+                          value={minLevelForItem(item)}
+                          onChange={(e) =>
+                            updatePendingMinLevel(item.id, parseInt(e.target.value, 10) || 0)
+                          }
+                          className={`w-16 rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right ${
+                            pendingMinLevels.has(item.id)
+                              ? "border-teal-500 bg-teal-50"
+                              : "border-gray-300"
+                          }`}
+                        />
                       </td>
                       <td className="hidden md:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                         {formatZAR(item.costPerUnit)}
