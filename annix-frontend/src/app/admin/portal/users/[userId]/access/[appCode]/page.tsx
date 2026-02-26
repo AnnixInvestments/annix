@@ -16,21 +16,6 @@ import {
 } from "@/app/lib/query/hooks";
 import { RoleManagementPanel } from "../../../components/RoleManagementPanel";
 
-const RFQ_PRODUCT_FLAG_MAP = PRODUCTS_AND_SERVICES.reduce<
-  Record<
-    string,
-    { label: string; icon: React.ReactNode; description: string; comingSoon?: boolean }
-  >
->((acc, product) => {
-  acc[product.flagKey] = {
-    label: product.label,
-    icon: product.icon,
-    description: product.description,
-    comingSoon: product.comingSoon,
-  };
-  return acc;
-}, {});
-
 const RFQ_TYPE_FLAG_MAP = PROJECT_TYPES.reduce<Record<string, { label: string }>>((acc, type) => {
   acc[type.flagKey] = { label: type.label };
   return acc;
@@ -48,6 +33,7 @@ export default function EditUserAccessPage() {
   const [selectedRoleCode, setSelectedRoleCode] = useState<string | null>(null);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [expiresAt, setExpiresAt] = useState<string>("");
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string>("");
   const [isRoleManagementOpen, setIsRoleManagementOpen] = useState(false);
 
@@ -84,12 +70,10 @@ export default function EditUserAccessPage() {
   const isRfqPlatform = appCode === "rfq-platform";
 
   const rfqFlags = useMemo(() => {
-    if (!isRfqPlatform || !flagsQuery.data)
-      return { typeFlags: [], productFlags: [], otherFlags: [] };
+    if (!isRfqPlatform || !flagsQuery.data) return { typeFlags: [], otherFlags: [] };
     const allFlags = flagsQuery.data.flags ?? [];
     return {
       typeFlags: allFlags.filter((f) => f.flagKey.startsWith("RFQ_TYPE_")),
-      productFlags: allFlags.filter((f) => f.flagKey.startsWith("RFQ_PRODUCT_")),
       otherFlags: allFlags.filter((f) =>
         ["FEEDBACK_WIDGET", "RFQ_RESTRICT_UNREGISTERED"].includes(f.flagKey),
       ),
@@ -101,6 +85,7 @@ export default function EditUserAccessPage() {
       setUseCustomPermissions(existingAccess.useCustomPermissions);
       setSelectedRoleCode(existingAccess.roleCode);
       setSelectedPermissions([]);
+      setSelectedProducts(existingAccess.productKeys ?? []);
       setExpiresAt(existingAccess.expiresAt ?? "");
     } else if (appDetails) {
       setUseCustomPermissions(false);
@@ -119,6 +104,12 @@ export default function EditUserAccessPage() {
   const togglePermission = (code: string) => {
     setSelectedPermissions((prev) =>
       prev.includes(code) ? prev.filter((p) => p !== code) : [...prev, code],
+    );
+  };
+
+  const toggleProduct = (flagKey: string) => {
+    setSelectedProducts((prev) =>
+      prev.includes(flagKey) ? prev.filter((k) => k !== flagKey) : [...prev, flagKey],
     );
   };
 
@@ -142,6 +133,7 @@ export default function EditUserAccessPage() {
       useCustomPermissions,
       roleCode: useCustomPermissions ? null : selectedRoleCode,
       permissionCodes: useCustomPermissions ? selectedPermissions : undefined,
+      productKeys: isRfqPlatform ? selectedProducts : undefined,
       expiresAt: expiresAt || null,
     };
 
@@ -217,7 +209,7 @@ export default function EditUserAccessPage() {
   }
 
   const enabledTypes = rfqFlags.typeFlags.filter((f) => f.enabled).length;
-  const enabledProducts = rfqFlags.productFlags.filter((f) => f.enabled).length;
+  const enabledProducts = selectedProducts.length;
 
   return (
     <div className="space-y-6">
@@ -467,46 +459,42 @@ export default function EditUserAccessPage() {
               </div>
             )}
 
-            {rfqFlags.productFlags.length > 0 && (
+            {PRODUCTS_AND_SERVICES.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-sm font-semibold text-gray-900 dark:text-white">
                     Products & Services
                   </label>
                   <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {enabledProducts} of {rfqFlags.productFlags.length} enabled
+                    {enabledProducts} of {PRODUCTS_AND_SERVICES.length} enabled
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Select which products and services users can request quotes for
+                  Select which products and services this user can request quotes for
                 </p>
                 <div className="grid grid-cols-2 gap-3">
-                  {rfqFlags.productFlags.map((flag) => {
-                    const meta = RFQ_PRODUCT_FLAG_MAP[flag.flagKey];
-                    const isUpdating =
-                      toggleMutation.isPending &&
-                      toggleMutation.variables?.flagKey === flag.flagKey;
+                  {PRODUCTS_AND_SERVICES.map((product) => {
+                    const isEnabled = selectedProducts.includes(product.flagKey);
 
                     return (
                       <button
-                        key={flag.flagKey}
+                        key={product.flagKey}
                         type="button"
-                        onClick={() => handleToggleFlag(flag.flagKey, flag.enabled)}
-                        disabled={isUpdating}
+                        onClick={() => toggleProduct(product.flagKey)}
                         className={`flex items-start gap-3 px-4 py-3 border-2 rounded-lg transition-all text-left ${
-                          flag.enabled
+                          isEnabled
                             ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 cursor-pointer"
                             : "border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 cursor-pointer opacity-60"
-                        } ${isUpdating ? "opacity-50 cursor-not-allowed" : ""}`}
+                        }`}
                       >
                         <div
                           className={`w-5 h-5 border-2 rounded flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                            flag.enabled
+                            isEnabled
                               ? "border-blue-600 bg-blue-600"
                               : "border-gray-300 dark:border-slate-500"
                           }`}
                         >
-                          {flag.enabled && (
+                          {isEnabled && (
                             <svg
                               className="w-3 h-3 text-white"
                               fill="currentColor"
@@ -522,31 +510,31 @@ export default function EditUserAccessPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className={flag.enabled ? "" : "grayscale"}>{meta?.icon}</span>
+                            <span className={isEnabled ? "" : "grayscale"}>{product.icon}</span>
                             <span
                               className={`font-medium text-sm ${
-                                flag.enabled
+                                isEnabled
                                   ? "text-gray-900 dark:text-white"
                                   : "text-gray-400 dark:text-gray-500"
                               }`}
                             >
-                              {meta?.label || flag.flagKey}
+                              {product.label}
                             </span>
-                            {meta?.comingSoon && (
+                            {product.comingSoon && (
                               <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
                                 Coming Soon
                               </span>
                             )}
                           </div>
-                          {meta?.description && (
+                          {product.description && (
                             <p
                               className={`text-xs mt-1 ${
-                                flag.enabled
+                                isEnabled
                                   ? "text-gray-500 dark:text-gray-400"
                                   : "text-gray-400 dark:text-gray-500"
                               }`}
                             >
-                              {meta.description}
+                              {product.description}
                             </p>
                           )}
                         </div>

@@ -26,6 +26,7 @@ import {
   AppRole,
   AppRolePermission,
   AppRoleProduct,
+  UserAccessProduct,
   UserAppAccess,
   UserAppPermission,
 } from "./entities";
@@ -49,6 +50,8 @@ export class RbacService {
     private readonly accessRepo: Repository<UserAppAccess>,
     @InjectRepository(UserAppPermission)
     private readonly userPermissionRepo: Repository<UserAppPermission>,
+    @InjectRepository(UserAccessProduct)
+    private readonly userProductRepo: Repository<UserAccessProduct>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(StockControlUser)
@@ -94,7 +97,13 @@ export class RbacService {
 
     const accessRecords = await this.accessRepo.find({
       where: { appId: app.id },
-      relations: ["user", "role", "customPermissions", "customPermissions.permission"],
+      relations: [
+        "user",
+        "role",
+        "customPermissions",
+        "customPermissions.permission",
+        "userProducts",
+      ],
       order: { grantedAt: "DESC" },
     });
 
@@ -115,6 +124,9 @@ export class RbacService {
       grantedAt: access.grantedAt,
       expiresAt: access.expiresAt,
       grantedById: access.grantedById,
+      productKeys: access.userProducts?.length
+        ? access.userProducts.map((p) => p.productKey)
+        : null,
     }));
   }
 
@@ -129,7 +141,7 @@ export class RbacService {
     });
 
     const allAccessRecords = await this.accessRepo.find({
-      relations: ["app", "role", "customPermissions"],
+      relations: ["app", "role", "customPermissions", "userProducts"],
     });
 
     const accessByUserId = allAccessRecords.reduce(
@@ -162,6 +174,9 @@ export class RbacService {
             permissionCount: access.useCustomPermissions ? access.customPermissions.length : null,
             expiresAt: access.expiresAt,
             accessId: access.id,
+            productKeys: access.userProducts?.length
+              ? access.userProducts.map((p) => p.productKey)
+              : null,
           };
         });
 
@@ -215,6 +230,7 @@ export class RbacService {
                 permissionCount: null,
                 expiresAt: null,
                 accessId: -scUser.id,
+                productKeys: null,
               },
             ]
           : [],
@@ -295,6 +311,10 @@ export class RbacService {
       await this.setCustomPermissions(savedAccess.id, app.id, dto.permissionCodes);
     }
 
+    if (dto.productKeys) {
+      await this.setUserProducts(savedAccess.id, dto.productKeys);
+    }
+
     return this.accessResponseDto(savedAccess.id);
   }
 
@@ -342,6 +362,10 @@ export class RbacService {
       await this.setCustomPermissions(accessId, access.appId, dto.permissionCodes ?? []);
     } else if (dto.useCustomPermissions === false) {
       await this.userPermissionRepo.delete({ userAccessId: accessId });
+    }
+
+    if (dto.productKeys !== undefined) {
+      await this.setUserProducts(accessId, dto.productKeys ?? []);
     }
 
     return this.accessResponseDto(accessId);
@@ -400,6 +424,7 @@ export class RbacService {
       expiresAt: null,
       grantedAt: scUser.createdAt,
       grantedById: null,
+      productKeys: null,
     };
   }
 
@@ -576,10 +601,31 @@ export class RbacService {
     await this.userPermissionRepo.save(userPermissions);
   }
 
+  private async setUserProducts(accessId: number, productKeys: string[]): Promise<void> {
+    await this.userProductRepo.delete({ userAccessId: accessId });
+
+    if (productKeys.length === 0) {
+      return;
+    }
+
+    const uniqueKeys = [...new Set(productKeys)];
+    const newProducts = uniqueKeys.map((productKey) =>
+      this.userProductRepo.create({ userAccessId: accessId, productKey }),
+    );
+    await this.userProductRepo.save(newProducts);
+  }
+
   private async accessResponseDto(accessId: number): Promise<UserAccessResponseDto> {
     const access = await this.accessRepo.findOne({
       where: { id: accessId },
-      relations: ["user", "app", "role", "customPermissions", "customPermissions.permission"],
+      relations: [
+        "user",
+        "app",
+        "role",
+        "customPermissions",
+        "customPermissions.permission",
+        "userProducts",
+      ],
     });
 
     if (!access) {
@@ -603,6 +649,9 @@ export class RbacService {
       grantedAt: access.grantedAt,
       expiresAt: access.expiresAt,
       grantedById: access.grantedById,
+      productKeys: access.userProducts?.length
+        ? access.userProducts.map((p) => p.productKey)
+        : null,
     };
   }
 

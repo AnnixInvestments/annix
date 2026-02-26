@@ -1597,6 +1597,7 @@ export interface RbacUserAccess {
   grantedAt: string;
   expiresAt: string | null;
   grantedById: number | null;
+  productKeys: string[] | null;
 }
 
 export interface RbacSearchUser {
@@ -1615,6 +1616,7 @@ export interface RbacAppAccessSummary {
   permissionCount: number | null;
   expiresAt: string | null;
   accessId: number;
+  productKeys: string[] | null;
 }
 
 export interface RbacUserWithAccessSummary {
@@ -1633,6 +1635,7 @@ export interface AssignUserAccessDto {
   roleCode?: string | null;
   useCustomPermissions?: boolean;
   permissionCodes?: string[];
+  productKeys?: string[];
   expiresAt?: string | null;
 }
 
@@ -1640,6 +1643,7 @@ export interface UpdateUserAccessDto {
   roleCode?: string | null;
   useCustomPermissions?: boolean;
   permissionCodes?: string[];
+  productKeys?: string[];
   expiresAt?: string | null;
 }
 

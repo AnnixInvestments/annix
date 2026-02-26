@@ -41,6 +41,15 @@ export class AssignUserAccessDto {
   permissionCodes?: string[];
 
   @ApiPropertyOptional({
+    description: "Product keys to enable for this user",
+    example: ["RFQ_PRODUCT_FABRICATED_STEEL", "RFQ_PRODUCT_VALVES_METERS"],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  productKeys?: string[];
+
+  @ApiPropertyOptional({
     description: "When access expires (null = never)",
     example: "2025-12-31T23:59:59Z",
   })
@@ -74,6 +83,15 @@ export class UpdateUserAccessDto {
   @IsArray()
   @IsString({ each: true })
   permissionCodes?: string[];
+
+  @ApiPropertyOptional({
+    description: "Product keys to enable for this user",
+    example: ["RFQ_PRODUCT_FABRICATED_STEEL", "RFQ_PRODUCT_VALVES_METERS"],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  productKeys?: string[];
 
   @ApiPropertyOptional({
     description: "When access expires (null = never)",
@@ -129,4 +147,10 @@ export class UserAccessResponseDto {
 
   @ApiPropertyOptional({ description: "ID of user who granted access", example: 1 })
   grantedById: number | null;
+
+  @ApiPropertyOptional({
+    description: "Product keys enabled for this user",
+    example: ["RFQ_PRODUCT_FABRICATED_STEEL"],
+  })
+  productKeys: string[] | null;
 }

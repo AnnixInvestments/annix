@@ -24,6 +24,9 @@ export class AppAccessSummaryDto {
 
   @ApiProperty({ description: "User app access record ID" })
   accessId: number;
+
+  @ApiProperty({ description: "Product keys enabled for this user", nullable: true })
+  productKeys: string[] | null;
 }
 
 export class UserWithAccessSummaryDto {

@@ -13,6 +13,7 @@ import {
 import { User } from "../../user/entities/user.entity";
 import { App } from "./app.entity";
 import { AppRole } from "./app-role.entity";
+import { UserAccessProduct } from "./user-access-product.entity";
 import { UserAppPermission } from "./user-app-permission.entity";
 
 @Entity("user_app_access")
@@ -89,4 +90,11 @@ export class UserAppAccess {
     { cascade: true },
   )
   customPermissions: UserAppPermission[];
+
+  @OneToMany(
+    () => UserAccessProduct,
+    (userProduct) => userProduct.userAccess,
+    { cascade: true },
+  )
+  userProducts: UserAccessProduct[];
 }
