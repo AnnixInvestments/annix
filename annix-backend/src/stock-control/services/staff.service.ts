@@ -39,13 +39,52 @@ export class StaffService {
       where.push(baseWhere);
     }
 
-    return this.staffRepo.find({
+    const members = await this.staffRepo.find({
       where,
       order: { name: "ASC" },
     });
+
+    return this.withPresignedPhotoUrls(members);
   }
 
   async findById(companyId: number, id: number): Promise<StaffMember> {
+    const member = await this.findByIdInternal(companyId, id);
+    return this.withPresignedPhotoUrl(member);
+  }
+
+  async findAllActive(companyId: number): Promise<StaffMember[]> {
+    const members = await this.staffRepo.find({
+      where: { companyId, active: true },
+      order: { name: "ASC" },
+    });
+    return this.withPresignedPhotoUrls(members);
+  }
+
+  async create(companyId: number, data: Partial<StaffMember>): Promise<StaffMember> {
+    const member = this.staffRepo.create({
+      ...data,
+      companyId,
+      qrToken: randomUUID(),
+    });
+    const saved = await this.staffRepo.save(member);
+    return this.withPresignedPhotoUrl(saved);
+  }
+
+  async update(companyId: number, id: number, data: Partial<StaffMember>): Promise<StaffMember> {
+    const member = await this.findByIdInternal(companyId, id);
+    Object.assign(member, data);
+    const saved = await this.staffRepo.save(member);
+    return this.withPresignedPhotoUrl(saved);
+  }
+
+  async softDelete(companyId: number, id: number): Promise<StaffMember> {
+    const member = await this.findByIdInternal(companyId, id);
+    member.active = false;
+    const saved = await this.staffRepo.save(member);
+    return this.withPresignedPhotoUrl(saved);
+  }
+
+  private async findByIdInternal(companyId: number, id: number): Promise<StaffMember> {
     const member = await this.staffRepo.findOne({
       where: { id, companyId },
     });
@@ -57,42 +96,29 @@ export class StaffService {
     return member;
   }
 
-  async findAllActive(companyId: number): Promise<StaffMember[]> {
-    return this.staffRepo.find({
-      where: { companyId, active: true },
-      order: { name: "ASC" },
-    });
-  }
-
-  async create(companyId: number, data: Partial<StaffMember>): Promise<StaffMember> {
-    const member = this.staffRepo.create({
-      ...data,
-      companyId,
-      qrToken: randomUUID(),
-    });
-    return this.staffRepo.save(member);
-  }
-
-  async update(companyId: number, id: number, data: Partial<StaffMember>): Promise<StaffMember> {
-    const member = await this.findById(companyId, id);
-    Object.assign(member, data);
-    return this.staffRepo.save(member);
-  }
-
-  async softDelete(companyId: number, id: number): Promise<StaffMember> {
-    const member = await this.findById(companyId, id);
-    member.active = false;
-    return this.staffRepo.save(member);
-  }
-
   async uploadPhoto(
     companyId: number,
     id: number,
     file: Express.Multer.File,
   ): Promise<StaffMember> {
-    const member = await this.findById(companyId, id);
+    const member = await this.staffRepo.findOne({ where: { id, companyId } });
+    if (!member) {
+      throw new NotFoundException(`Staff member ${id} not found`);
+    }
     const result = await this.storageService.upload(file, "stock-control/staff");
     member.photoUrl = result.path;
-    return this.staffRepo.save(member);
+    const saved = await this.staffRepo.save(member);
+    return this.withPresignedPhotoUrl(saved);
+  }
+
+  private async withPresignedPhotoUrl(member: StaffMember): Promise<StaffMember> {
+    if (member.photoUrl && !member.photoUrl.startsWith("http")) {
+      member.photoUrl = await this.storageService.getPresignedUrl(member.photoUrl, 3600);
+    }
+    return member;
+  }
+
+  private async withPresignedPhotoUrls(members: StaffMember[]): Promise<StaffMember[]> {
+    return Promise.all(members.map((m) => this.withPresignedPhotoUrl(m)));
   }
 }
