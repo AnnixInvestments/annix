@@ -29,7 +29,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
           : undefined
       }
     >
-      <div className="max-w-7xl mx-auto">{children}</div>
+      <div className="w-full">{children}</div>
     </main>
   );
 }

@@ -614,7 +614,7 @@ export default function StockControlSettingsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl">
+    <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Account Settings</h1>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
