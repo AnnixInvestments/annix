@@ -92,7 +92,7 @@ export class StaffService {
   ): Promise<StaffMember> {
     const member = await this.findById(companyId, id);
     const result = await this.storageService.upload(file, "stock-control/staff");
-    member.photoUrl = result.url;
+    member.photoUrl = result.path;
     return this.staffRepo.save(member);
   }
 }

@@ -1,7 +1,8 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as QRCode from "qrcode";
 import { In, Repository } from "typeorm";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockItem } from "../entities/stock-item.entity";
@@ -17,6 +18,8 @@ export class QrCodeService {
     private readonly jobCardRepo: Repository<JobCard>,
     @InjectRepository(StaffMember)
     private readonly staffMemberRepo: Repository<StaffMember>,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
 
   async stockItemQrPng(itemId: number, companyId: number): Promise<Buffer> {
@@ -197,12 +200,15 @@ export class QrCodeService {
           margin: 1,
         });
         const departmentName = staff.departmentEntity?.name ?? staff.department ?? "";
+        const photoUrl = staff.photoUrl
+          ? await this.resolvePhotoUrl(staff.photoUrl)
+          : null;
         return `
           <div class="card">
             <div class="card-header">STAFF ID CARD</div>
             <div class="card-body">
               <div class="photo-section">
-                ${staff.photoUrl ? `<img class="photo" src="${staff.photoUrl}" />` : '<div class="photo-placeholder"></div>'}
+                ${photoUrl ? `<img class="photo" src="${photoUrl}" />` : '<div class="photo-placeholder"></div>'}
               </div>
               <div class="info-section">
                 <div class="name">${escapeHtml(staff.name)}</div>
@@ -247,6 +253,13 @@ export class QrCodeService {
 </html>`;
 
     return this.htmlToPdf(html, { format: "A4" });
+  }
+
+  private async resolvePhotoUrl(photoUrl: string): Promise<string> {
+    if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
+      return photoUrl;
+    }
+    return this.storageService.getPresignedUrl(photoUrl);
   }
 
   private async findStaffMember(staffId: number, companyId: number): Promise<StaffMember> {
