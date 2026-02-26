@@ -34,7 +34,8 @@ class FeatureFlagsApiClient {
     };
 
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("adminAccessToken");
+      const token =
+        localStorage.getItem("adminAccessToken") ?? sessionStorage.getItem("adminAccessToken");
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
