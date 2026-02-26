@@ -136,6 +136,55 @@ export function MaterialSpecificationsSection({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [steelSpecDropdownOpen, flangeStandardDropdownOpen]);
 
+  // Re-validate selected steel spec when temperature or pressure changes
+  useEffect(() => {
+    const currentSpecId = globalSpecs?.steelSpecificationId;
+    const temp = globalSpecs?.workingTemperatureC;
+    const pressure = globalSpecs?.workingPressureBar;
+
+    if (!currentSpecId || !allLimits || (temp === undefined && pressure === undefined)) {
+      return;
+    }
+
+    const currentSpec = masterData.steelSpecs?.find((s) => s.id === currentSpecId);
+    if (!currentSpec) return;
+
+    const suitability = checkSuitabilityFromCache(
+      allLimits,
+      currentSpec.steelSpecName,
+      temp,
+      pressure,
+    );
+
+    if (!suitability.isSuitable) {
+      const mappedLimits = suitability.limits
+        ? {
+            minTempC: suitability.limits.minTemperatureCelsius,
+            maxTempC: suitability.limits.maxTemperatureCelsius,
+            maxPressureBar: suitability.limits.maxPressureBar,
+            type: suitability.limits.materialType,
+            notes: suitability.limits.notes ?? undefined,
+          }
+        : undefined;
+
+      onMaterialWarning({
+        show: true,
+        specName: currentSpec.steelSpecName,
+        specId: currentSpecId,
+        warnings: suitability.warnings,
+        recommendation: suitability.recommendation,
+        limits: mappedLimits,
+      });
+    }
+  }, [
+    globalSpecs?.workingTemperatureC,
+    globalSpecs?.workingPressureBar,
+    globalSpecs?.steelSpecificationId,
+    allLimits,
+    masterData.steelSpecs,
+    onMaterialWarning,
+  ]);
+
   const pressureClassInfoMap = new Map<number, ValidPressureClassInfo>(
     ptRecommendations?.validPressureClasses.map((c) => [c.id, c]) || [],
   );
@@ -692,6 +741,7 @@ export function MaterialSpecificationsSection({
                 <option value="">Select class...</option>
                 {(() => {
                   const seen = new Set<string>();
+                  const isSabs1123 = standardCode.includes("SABS 1123");
                   const extractNumeric = (designation: string) => {
                     const match = designation?.match(/^(\d+)/);
                     return match ? parseInt(match[1], 10) : 0;
@@ -704,8 +754,14 @@ export function MaterialSpecificationsSection({
                       return (a.designation || "").localeCompare(b.designation || "");
                     })
                     .map((pc) => {
-                      const displayValue = pc.designation.replace(/\/\d+$/, "");
-                      return { ...pc, displayValue };
+                      const numericPart = pc.designation.replace(/\/\d+$/, "");
+                      const numericValue = extractNumeric(numericPart);
+                      // SABS 1123 uses kPa (divide by 100 for bar), BS 4504 uses bar directly
+                      const barValue = isSabs1123 ? numericValue / 100 : numericValue;
+                      const displayValue = isSabs1123
+                        ? `${numericPart} kPa (${barValue} bar)`
+                        : numericPart;
+                      return { ...pc, displayValue, barValue };
                     })
                     .filter((pc) => {
                       if (seen.has(pc.displayValue)) return false;

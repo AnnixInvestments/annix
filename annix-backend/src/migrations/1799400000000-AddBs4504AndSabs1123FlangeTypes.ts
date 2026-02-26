@@ -13,9 +13,9 @@ export class AddBs4504AndSabs1123FlangeTypes1799400000000 implements MigrationIn
        WHERE constraint_name = 'flange_types_code_key' AND table_name = 'flange_types'`,
     );
     if (constraintExists.length > 0) {
-      await queryRunner.query(`ALTER TABLE flange_types DROP CONSTRAINT flange_types_code_key`);
+      await queryRunner.query("ALTER TABLE flange_types DROP CONSTRAINT flange_types_code_key");
       await queryRunner.query(
-        `ALTER TABLE flange_types ADD CONSTRAINT flange_types_code_standard_key UNIQUE (code, standard_reference)`,
+        "ALTER TABLE flange_types ADD CONSTRAINT flange_types_code_standard_key UNIQUE (code, standard_reference)",
       );
       console.warn("Updated unique constraint to (code, standard_reference)");
     }
@@ -70,7 +70,7 @@ export class AddBs4504AndSabs1123FlangeTypes1799400000000 implements MigrationIn
     // Insert BS 4504 flange types
     for (const type of bs4504Types) {
       const existing = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = $1 AND standard_reference = $2`,
+        "SELECT id FROM flange_types WHERE code = $1 AND standard_reference = $2",
         [type.code, type.standardReference],
       );
       if (existing.length === 0) {
@@ -91,7 +91,7 @@ export class AddBs4504AndSabs1123FlangeTypes1799400000000 implements MigrationIn
 
     for (const type of sabs1123Types) {
       const existing = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = $1 AND standard_reference = $2`,
+        "SELECT id FROM flange_types WHERE code = $1 AND standard_reference = $2",
         [type.code, type.standardReference],
       );
       if (existing.length === 0) {
@@ -119,10 +119,10 @@ export class AddBs4504AndSabs1123FlangeTypes1799400000000 implements MigrationIn
     );
     if (newConstraintExists.length > 0) {
       await queryRunner.query(
-        `ALTER TABLE flange_types DROP CONSTRAINT flange_types_code_standard_key`,
+        "ALTER TABLE flange_types DROP CONSTRAINT flange_types_code_standard_key",
       );
       await queryRunner.query(
-        `ALTER TABLE flange_types ADD CONSTRAINT flange_types_code_key UNIQUE (code)`,
+        "ALTER TABLE flange_types ADD CONSTRAINT flange_types_code_key UNIQUE (code)",
       );
     }
   }

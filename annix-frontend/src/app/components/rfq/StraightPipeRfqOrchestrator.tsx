@@ -1281,21 +1281,22 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         // These standards have multiple variants per pressure level (e.g., 10/1, 10/3, 10/5)
         // The dropdown deduplicates by displayValue (numeric prefix), keeping the first after sort
         // We must select the same ID that survives deduplication to match the dropdown
-        if (
-          standardCode === "BS 4504" ||
-          standardCode.includes("BS 4504") ||
-          standardCode === "SABS 1123" ||
-          standardCode.includes("SABS 1123")
-        ) {
+        const isBs4504 = standardCode === "BS 4504" || standardCode.includes("BS 4504");
+        const isSabs1123 = standardCode === "SABS 1123" || standardCode.includes("SABS 1123");
+        if (isBs4504 || isSabs1123) {
           console.log("[PT-DEBUG] BS 4504/SABS 1123 detected, using direct selection");
           const targetPressure = workingPressureBar;
 
           // Map designations to bar ratings and displayValues (matching dropdown logic)
+          // SABS 1123 uses kPa notation (600/3 = 6 bar), BS 4504 uses bar notation (10/3 = 10 bar)
           const classesWithRatings = classes
             .map((c: any) => {
               const designation = c.designation?.trim() || "";
               const match = designation.match(/^(?:PN)?(\d+)/i);
-              const barRating = match ? parseInt(match[1], 10) : 0;
+              const numericValue = match ? parseInt(match[1], 10) : 0;
+              // SABS 1123 values are in kPa (divide by 100 to get bar)
+              // BS 4504 values are already in bar
+              const barRating = isSabs1123 ? numericValue / 100 : numericValue;
               const displayValue = designation.replace(/\/\d+$/, "");
               return { ...c, barRating, displayValue };
             })
