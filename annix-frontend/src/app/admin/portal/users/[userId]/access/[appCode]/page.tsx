@@ -151,7 +151,7 @@ export default function EditUserAccessPage() {
         {
           onSuccess: () => {
             showToast("Access updated successfully", "success");
-            router.push("/admin/portal/users");
+            router.push(`/admin/portal/users?userId=${userId}`);
           },
           onError: (err) => {
             showToast(`Error: ${err.message}`, "error");
@@ -167,7 +167,7 @@ export default function EditUserAccessPage() {
         {
           onSuccess: () => {
             showToast(`Access granted to ${userDisplayName(user)}`, "success");
-            router.push("/admin/portal/users");
+            router.push(`/admin/portal/users?userId=${userId}`);
           },
           onError: (err) => {
             showToast(`Error: ${err.message}`, "error");

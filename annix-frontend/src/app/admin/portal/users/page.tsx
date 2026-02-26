@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import type { RbacAppAccessSummary, RbacUserWithAccessSummary } from "@/app/lib/api/adminApi";
@@ -39,6 +39,9 @@ export default function AdminUsersPage() {
   const { admin } = useAdminAuth();
   const { showToast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialUserIdFromUrl = searchParams.get("userId");
+  const hasInitializedRef = useRef(false);
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -54,10 +57,13 @@ export default function AdminUsersPage() {
   const isAdmin = admin?.roles?.includes("admin");
 
   useEffect(() => {
-    if (allUsers.length > 0 && selectedUserId === null) {
-      setSelectedUserId(allUsers[0].id);
+    if (allUsers.length > 0 && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      const urlUserId = initialUserIdFromUrl ? Number(initialUserIdFromUrl) : null;
+      const userFromUrl = urlUserId ? allUsers.find((u) => u.id === urlUserId) : null;
+      setSelectedUserId(userFromUrl ? userFromUrl.id : allUsers[0].id);
     }
-  }, [allUsers, selectedUserId]);
+  }, [allUsers, initialUserIdFromUrl]);
 
   const selectedUser = useMemo(
     () => allUsers.find((u) => u.id === selectedUserId) ?? null,
