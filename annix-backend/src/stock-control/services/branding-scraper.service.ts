@@ -102,6 +102,9 @@ export class BrandingScraperService {
       const classPattern = /class=["']([^"']+)["']/i;
       const idPattern = /id=["']([^"']+)["']/i;
 
+      const widthPattern = /width=["']?(\d+)/i;
+      const heightPattern = /height=["']?(\d+)/i;
+
       const imgTags = html.match(imgTagPattern) ?? [];
       imgTags.forEach((tag) => {
         const srcMatch = tag.match(srcPattern);
@@ -121,9 +124,21 @@ export class BrandingScraperService {
           combined.includes("hero") ||
           combined.includes("banner") ||
           combined.includes("slider") ||
-          combined.includes("carousel")
+          combined.includes("carousel") ||
+          combined.includes("featured")
         ) {
           addHero(src, "hero-selector");
+        }
+
+        const widthMatch = tag.match(widthPattern);
+        const heightMatch = tag.match(heightPattern);
+        const width = widthMatch ? parseInt(widthMatch[1], 10) : 0;
+        const height = heightMatch ? parseInt(heightMatch[1], 10) : 0;
+
+        if (width >= 600 || height >= 300) {
+          if (!combined.includes("logo") && !combined.includes("icon")) {
+            addHero(src, "large-img");
+          }
         }
       });
 
@@ -167,6 +182,40 @@ export class BrandingScraperService {
         const url = resolveUrl(bgMatch[1]);
         if (url) addHero(url, "bg-image");
       }
+
+      const sectionPattern = /<section[^>]*>[\s\S]*?<\/section>/gi;
+      const sectionBlocks = html.match(sectionPattern) ?? [];
+      sectionBlocks.slice(0, 3).forEach((block) => {
+        const sectionImgs = block.match(imgTagPattern) ?? [];
+        sectionImgs.forEach((tag) => {
+          const srcMatch = tag.match(srcPattern);
+          const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
+          if (src && !src.toLowerCase().includes("logo")) {
+            addHero(src, "section-img");
+          }
+        });
+      });
+
+      const srcsetPattern = /srcset=["']([^"']+)["']/gi;
+      let srcsetMatch: RegExpExecArray | null = null;
+      while ((srcsetMatch = srcsetPattern.exec(html)) !== null) {
+        const srcset = srcsetMatch[1];
+        const urls = srcset.split(",").map((s) => s.trim().split(/\s+/)[0]);
+        const largestUrl = urls[urls.length - 1];
+        const resolved = resolveUrl(largestUrl);
+        if (resolved && !resolved.toLowerCase().includes("logo")) {
+          addHero(resolved, "srcset-img");
+        }
+      }
+
+      const wpFeaturedPattern = /wp-post-image|attachment-full|size-full/i;
+      imgTags.forEach((tag) => {
+        if (wpFeaturedPattern.test(tag)) {
+          const srcMatch = tag.match(srcPattern);
+          const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
+          if (src) addHero(src, "wp-featured");
+        }
+      });
 
       let primaryColor: string | null = null;
       const themeColorPattern = /<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["']/i;
