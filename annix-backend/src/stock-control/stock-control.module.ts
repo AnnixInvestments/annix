@@ -13,6 +13,7 @@ import { DeliveriesController } from "./controllers/deliveries.controller";
 import { ImportController } from "./controllers/import.controller";
 import { InventoryController } from "./controllers/inventory.controller";
 import { InvitationController } from "./controllers/invitation.controller";
+import { IssuanceController } from "./controllers/issuance.controller";
 import { JobCardImportController } from "./controllers/job-card-import.controller";
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
@@ -43,6 +44,7 @@ import { StockControlDepartment } from "./entities/stock-control-department.enti
 import { StockControlInvitation } from "./entities/stock-control-invitation.entity";
 import { StockControlLocation } from "./entities/stock-control-location.entity";
 import { StockControlUser } from "./entities/stock-control-user.entity";
+import { StockIssuance } from "./entities/stock-issuance.entity";
 import { StockItem } from "./entities/stock-item.entity";
 import { StockMovement } from "./entities/stock-movement.entity";
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
@@ -58,6 +60,7 @@ import { DrawingExtractionService } from "./services/drawing-extraction.service"
 import { ImportService } from "./services/import.service";
 import { InventoryService } from "./services/inventory.service";
 import { StockControlInvitationService } from "./services/invitation.service";
+import { IssuanceService } from "./services/issuance.service";
 import { ItemIdentificationService } from "./services/item-identification.service";
 import { JobCardService } from "./services/job-card.service";
 import { JobCardImportService } from "./services/job-card-import.service";
@@ -101,6 +104,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       WorkflowNotification,
       DispatchScan,
       StaffSignature,
+      StockIssuance,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -127,6 +131,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     DeliveriesController,
     MovementsController,
     ImportController,
+    IssuanceController,
     JobCardImportController,
     DashboardController,
     ReportsController,
@@ -144,6 +149,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     BrandingScraperService,
     StockControlInvitationService,
     InventoryService,
+    IssuanceService,
     JobCardService,
     DeliveryService,
     MovementService,

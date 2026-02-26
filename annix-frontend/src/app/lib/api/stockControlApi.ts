@@ -451,6 +451,48 @@ export interface ImportResult {
   errors: { row: number; message: string }[];
 }
 
+export interface StockIssuance {
+  id: number;
+  companyId: number;
+  stockItemId: number;
+  stockItem?: StockItem;
+  issuerStaffId: number;
+  issuerStaff?: StaffMember;
+  recipientStaffId: number;
+  recipientStaff?: StaffMember;
+  jobCardId: number | null;
+  jobCard?: JobCard | null;
+  quantity: number;
+  notes: string | null;
+  issuedByUserId: number | null;
+  issuedByName: string | null;
+  issuedAt: string;
+  createdAt: string;
+}
+
+export interface IssuanceScanResult {
+  type: "staff" | "stock_item" | "job_card";
+  id: number;
+  data: StaffMember | StockItem | JobCard;
+}
+
+export interface CreateIssuanceDto {
+  issuerStaffId: number;
+  recipientStaffId: number;
+  stockItemId: number;
+  jobCardId?: number | null;
+  quantity: number;
+  notes?: string | null;
+}
+
+export interface IssuanceFilters {
+  startDate?: string;
+  endDate?: string;
+  staffId?: number;
+  stockItemId?: number;
+  jobCardId?: number;
+}
+
 export interface InventoryColumnMapping {
   sku: number | null;
   name: number | null;
@@ -1828,6 +1870,35 @@ class StockControlApiClient {
     return this.request(`/stock-control/job-cards/${jobCardId}/attachments/${attachmentId}`, {
       method: "DELETE",
     });
+  }
+
+  async scanIssuanceQr(qrCode: string): Promise<IssuanceScanResult> {
+    return this.request("/stock-control/issuance/scan-qr", {
+      method: "POST",
+      body: JSON.stringify({ qrCode }),
+    });
+  }
+
+  async createIssuance(dto: CreateIssuanceDto): Promise<StockIssuance> {
+    return this.request("/stock-control/issuance", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async issuanceHistory(filters?: IssuanceFilters): Promise<StockIssuance[]> {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append("startDate", filters.startDate);
+    if (filters?.endDate) params.append("endDate", filters.endDate);
+    if (filters?.staffId) params.append("staffId", String(filters.staffId));
+    if (filters?.stockItemId) params.append("stockItemId", String(filters.stockItemId));
+    if (filters?.jobCardId) params.append("jobCardId", String(filters.jobCardId));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/stock-control/issuance${query}`);
+  }
+
+  async issuanceById(id: number): Promise<StockIssuance> {
+    return this.request(`/stock-control/issuance/${id}`);
   }
 }
 

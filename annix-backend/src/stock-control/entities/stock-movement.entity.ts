@@ -19,6 +19,7 @@ export enum ReferenceType {
   ALLOCATION = "allocation",
   DELIVERY = "delivery",
   IMPORT = "import",
+  ISSUANCE = "issuance",
   MANUAL = "manual",
 }
 
