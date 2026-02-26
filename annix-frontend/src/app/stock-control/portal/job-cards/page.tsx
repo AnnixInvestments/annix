@@ -46,6 +46,8 @@ export default function JobCardsPage() {
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isModalDragging, setIsModalDragging] = useState(false);
+  const modalFileInputRef = useRef<HTMLInputElement>(null);
 
   const navigateWithFile = (file: File) => {
     setPendingImportFile(file);
@@ -90,6 +92,43 @@ export default function JobCardsPage() {
   const handleImportFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      navigateWithFile(selectedFile);
+    }
+  };
+
+  const handleModalDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsModalDragging(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      setShowCreateForm(false);
+      navigateWithFile(files[0]);
+    }
+  };
+
+  const handleModalDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+    setIsModalDragging(true);
+  };
+
+  const handleModalDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+      setIsModalDragging(false);
+    }
+  };
+
+  const handleModalFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setShowCreateForm(false);
       navigateWithFile(selectedFile);
     }
   };
@@ -432,8 +471,58 @@ export default function JobCardsPage() {
               className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
               onClick={() => setShowCreateForm(false)}
             ></div>
-            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+            <div
+              className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6"
+              onDrop={handleModalDrop}
+              onDragOver={handleModalDragOver}
+              onDragEnter={handleModalDragOver}
+              onDragLeave={handleModalDragLeave}
+            >
               <h3 className="text-lg font-medium text-gray-900 mb-4">New Job Card</h3>
+
+              <input
+                ref={modalFileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.pdf,.csv"
+                onChange={handleModalFileInput}
+                className="hidden"
+              />
+              <div
+                onClick={() => modalFileInputRef.current?.click()}
+                className={`mb-6 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                  isModalDragging
+                    ? "border-teal-500 bg-teal-50"
+                    : "border-gray-300 hover:border-teal-400 hover:bg-gray-50"
+                }`}
+              >
+                <svg
+                  className={`mx-auto h-10 w-10 ${isModalDragging ? "text-teal-500" : "text-gray-400"}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+                <p className="mt-2 text-sm font-medium text-gray-700">
+                  {isModalDragging ? "Drop to import" : "Drag & drop or click to import"}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">Excel, CSV, or PDF</p>
+              </div>
+
+              <div className="relative flex items-center justify-center mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <span className="relative bg-white px-3 text-sm text-gray-500">
+                  or create manually
+                </span>
+              </div>
+
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>

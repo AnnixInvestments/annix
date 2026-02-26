@@ -23,11 +23,15 @@ export class RequisitionsController {
   }
 
   @Put(":id/items/:itemId")
-  @ApiOperation({ summary: "Update requisition item pack size" })
+  @ApiOperation({ summary: "Update requisition item" })
   async updateItem(
     @Req() req: any,
     @Param("itemId") itemId: number,
-    @Body() body: { packSizeLitres: number },
+    @Body() body: {
+      packSizeLitres?: number;
+      reorderQty?: number | null;
+      reqNumber?: string | null;
+    },
   ) {
     return this.requisitionService.updateItem(req.user.companyId, itemId, body);
   }

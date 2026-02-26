@@ -303,6 +303,8 @@ export interface RequisitionItem {
   packSizeLitres: number;
   packsToOrder: number;
   quantityRequired: number | null;
+  reorderQty: number | null;
+  reqNumber: string | null;
   companyId: number;
   stockItem: StockItem | null;
 }
@@ -1588,7 +1590,7 @@ class StockControlApiClient {
   async updateRequisitionItem(
     reqId: number,
     itemId: number,
-    data: { packSizeLitres: number },
+    data: { packSizeLitres?: number; reorderQty?: number | null; reqNumber?: string | null },
   ): Promise<RequisitionItem> {
     return this.request(`/stock-control/requisitions/${reqId}/items/${itemId}`, {
       method: "PUT",

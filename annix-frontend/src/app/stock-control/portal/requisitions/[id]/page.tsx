@@ -31,6 +31,8 @@ export default function RequisitionDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [pendingReorderQty, setPendingReorderQty] = useState<Map<number, string>>(new Map());
+  const [pendingReqNumber, setPendingReqNumber] = useState<Map<number, string>>(new Map());
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -84,12 +86,72 @@ export default function RequisitionDetailPage() {
     setEditingItemId(null);
   };
 
+  const handleReorderQtyChange = (itemId: number, value: string) => {
+    setPendingReorderQty((prev) => new Map(prev).set(itemId, value));
+  };
+
+  const handleReorderQtyBlur = async (itemId: number) => {
+    const value = pendingReorderQty.get(itemId);
+    if (value === undefined) return;
+
+    const item = requisition?.items.find((i) => i.id === itemId);
+    const currentValue = item?.reorderQty?.toString() ?? "";
+    if (value === currentValue) return;
+
+    try {
+      setIsSaving(true);
+      const reorderQty = value === "" ? null : parseInt(value, 10);
+      await stockControlApiClient.updateRequisitionItem(reqId, itemId, { reorderQty });
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to update reorder qty"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReqNumberChange = (itemId: number, value: string) => {
+    setPendingReqNumber((prev) => new Map(prev).set(itemId, value));
+  };
+
+  const handleReqNumberBlur = async (itemId: number) => {
+    const value = pendingReqNumber.get(itemId);
+    if (value === undefined) return;
+
+    const item = requisition?.items.find((i) => i.id === itemId);
+    const currentValue = item?.reqNumber ?? "";
+    if (value === currentValue) return;
+
+    try {
+      setIsSaving(true);
+      const reqNumber = value === "" ? null : value;
+      await stockControlApiClient.updateRequisitionItem(reqId, itemId, { reqNumber });
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to update req number"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const reorderQtyValue = (itemId: number, dbValue: number | null): string => {
+    const pending = pendingReorderQty.get(itemId);
+    return pending !== undefined ? pending : (dbValue?.toString() ?? "");
+  };
+
+  const reqNumberValue = (itemId: number, dbValue: string | null): string => {
+    const pending = pendingReqNumber.get(itemId);
+    return pending !== undefined ? pending : (dbValue ?? "");
+  };
+
   const exportColumns = [
     { header: "Product Name", accessorKey: "productName" },
     { header: "Area", accessorKey: "area" },
     { header: "Litres Req.", accessorKey: "litresRequired" },
     { header: "Pack Size (L)", accessorKey: "packSizeLitres" },
     { header: "Packs to Order", accessorKey: "packsToOrder" },
+    { header: "Reorder Qty", accessorKey: "reorderQty" },
+    { header: "Req Number", accessorKey: "reqNumber" },
     { header: "Stock Match", accessorKey: "stockMatch" },
   ];
 
@@ -100,6 +162,8 @@ export default function RequisitionDetailPage() {
       litresRequired: Number(item.litresRequired).toFixed(1),
       packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
       packsToOrder: item.packsToOrder,
+      reorderQty: item.reorderQty ?? "-",
+      reqNumber: item.reqNumber ?? "-",
       stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
     }));
 
@@ -356,6 +420,18 @@ export default function RequisitionDetailPage() {
                 )}
                 <th
                   scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Reorder Qty
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Req Number
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Stock Match
@@ -452,6 +528,30 @@ export default function RequisitionDetailPage() {
                       </td>
                     </>
                   )}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={reorderQtyValue(item.id, item.reorderQty)}
+                      onChange={(e) => handleReorderQtyChange(item.id, e.target.value)}
+                      onBlur={() => handleReorderQtyBlur(item.id)}
+                      placeholder="-"
+                      className="w-20 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
+                      disabled={isSaving}
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <input
+                      type="text"
+                      value={reqNumberValue(item.id, item.reqNumber)}
+                      onChange={(e) => handleReqNumberChange(item.id, e.target.value)}
+                      onBlur={() => handleReqNumberBlur(item.id)}
+                      placeholder="-"
+                      className="w-28 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      disabled={isSaving}
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {item.stockItem ? (
                       <span className="text-gray-700">{item.stockItem.name}</span>

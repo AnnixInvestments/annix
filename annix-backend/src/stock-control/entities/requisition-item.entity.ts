@@ -44,6 +44,12 @@ export class RequisitionItem {
   @Column({ name: "quantity_required", type: "integer", nullable: true })
   quantityRequired: number | null;
 
+  @Column({ name: "reorder_qty", type: "integer", nullable: true })
+  reorderQty: number | null;
+
+  @Column({ name: "req_number", type: "varchar", length: 100, nullable: true })
+  reqNumber: string | null;
+
   @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;

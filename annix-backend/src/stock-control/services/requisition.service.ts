@@ -198,7 +198,7 @@ export class RequisitionService {
   async updateItem(
     companyId: number,
     itemId: number,
-    data: { packSizeLitres: number },
+    data: { packSizeLitres?: number; reorderQty?: number | null; reqNumber?: string | null },
   ): Promise<RequisitionItem> {
     const item = await this.itemRepo.findOne({
       where: { id: itemId, companyId },
@@ -208,8 +208,18 @@ export class RequisitionService {
       throw new NotFoundException("Requisition item not found");
     }
 
-    item.packSizeLitres = data.packSizeLitres;
-    item.packsToOrder = Math.ceil(Number(item.litresRequired) / data.packSizeLitres);
+    if (data.packSizeLitres !== undefined) {
+      item.packSizeLitres = data.packSizeLitres;
+      item.packsToOrder = Math.ceil(Number(item.litresRequired) / data.packSizeLitres);
+    }
+
+    if (data.reorderQty !== undefined) {
+      item.reorderQty = data.reorderQty;
+    }
+
+    if (data.reqNumber !== undefined) {
+      item.reqNumber = data.reqNumber;
+    }
 
     return this.itemRepo.save(item);
   }

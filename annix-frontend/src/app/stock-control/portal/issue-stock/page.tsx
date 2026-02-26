@@ -9,6 +9,7 @@ import type {
   StockItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { QrScanner } from "../../components/QrScanner";
 
 type Step = "issuer" | "recipient" | "stock_item" | "job_card" | "confirm";
 
@@ -24,6 +25,7 @@ export default function IssueStockPage() {
   const [currentStep, setCurrentStep] = useState<Step>("issuer");
   const [scanInput, setScanInput] = useState("");
   const [isScanning, setIsScanning] = useState(false);
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -39,15 +41,32 @@ export default function IssueStockPage() {
   const currentStepIndex = STEPS.findIndex((s) => s.key === currentStep);
 
   const handleScan = async () => {
-    if (!scanInput.trim()) return;
+    await processScanResult(scanInput);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleScan();
+    }
+  };
+
+  const handleCameraScan = (result: string) => {
+    setShowCameraScanner(false);
+    setScanInput(result);
+    setTimeout(() => {
+      processScanResult(result);
+    }, 100);
+  };
+
+  const processScanResult = async (input: string) => {
+    if (!input.trim()) return;
 
     try {
       setIsScanning(true);
       setError(null);
 
-      const result: IssuanceScanResult = await stockControlApiClient.scanIssuanceQr(
-        scanInput.trim(),
-      );
+      const result: IssuanceScanResult = await stockControlApiClient.scanIssuanceQr(input.trim());
 
       if (currentStep === "issuer") {
         if (result.type !== "staff") {
@@ -90,13 +109,6 @@ export default function IssueStockPage() {
     } finally {
       setIsScanning(false);
       inputRef.current?.focus();
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleScan();
     }
   };
 
@@ -286,244 +298,269 @@ export default function IssueStockPage() {
     isSubmitting || quantity <= 0 || (stockItem !== null && quantity > stockItem.quantity);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Issue Stock</h1>
-        {currentStep !== "issuer" && (
-          <button onClick={handleReset} className="text-sm text-gray-500 hover:text-gray-700">
-            Start Over
-          </button>
-        )}
-      </div>
-
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm flex items-center justify-between">
-          <div className="flex items-center">
-            <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {successMessage}
-          </div>
-          <button
-            onClick={() => setSuccessMessage(null)}
-            className="text-green-500 hover:text-green-700 font-medium"
-          >
-            Dismiss
-          </button>
-        </div>
+    <>
+      {showCameraScanner && (
+        <QrScanner onScan={handleCameraScan} onClose={() => setShowCameraScanner(false)} />
       )}
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm flex items-center justify-between">
-          <div className="flex items-center">
-            <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-            {error}
-          </div>
-          <button
-            onClick={() => setError(null)}
-            className="text-red-500 hover:text-red-700 font-medium"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between mb-6">
-        {STEPS.map((step, index) => (
-          <div key={step.key} className="flex items-center">
-            <div
-              className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
-                index < currentStepIndex
-                  ? "bg-teal-600 text-white"
-                  : index === currentStepIndex
-                    ? "bg-teal-600 text-white ring-4 ring-teal-100"
-                    : "bg-gray-200 text-gray-500"
-              }`}
-            >
-              {index < currentStepIndex ? (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              ) : (
-                index + 1
-              )}
-            </div>
-            <span
-              className={`ml-2 text-sm font-medium hidden sm:inline ${
-                index <= currentStepIndex ? "text-gray-900" : "text-gray-500"
-              }`}
-            >
-              {step.label}
-            </span>
-            {index < STEPS.length - 1 && (
-              <div
-                className={`w-8 sm:w-16 h-0.5 mx-2 ${
-                  index < currentStepIndex ? "bg-teal-600" : "bg-gray-200"
-                }`}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-white shadow rounded-lg p-6">
-        {issuer && currentStep !== "issuer" && (
-          <div className="mb-4">{renderStaffCard(issuer, "Issuer (Giving)")}</div>
-        )}
-        {recipient && currentStep !== "recipient" && currentStep !== "issuer" && (
-          <div className="mb-4">{renderStaffCard(recipient, "Recipient (Receiving)")}</div>
-        )}
-        {stockItem &&
-          currentStep !== "stock_item" &&
-          currentStep !== "issuer" &&
-          currentStep !== "recipient" && (
-            <div className="mb-4">{renderStockItemCard(stockItem)}</div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Issue Stock</h1>
+          {currentStep !== "issuer" && (
+            <button onClick={handleReset} className="text-sm text-gray-500 hover:text-gray-700">
+              Start Over
+            </button>
           )}
-        {jobCard && currentStep === "confirm" && (
-          <div className="mb-4">{renderJobCardCard(jobCard)}</div>
+        </div>
+
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              {successMessage}
+            </div>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="text-green-500 hover:text-green-700 font-medium"
+            >
+              Dismiss
+            </button>
+          </div>
         )}
 
-        {currentStep === "confirm" ? (
-          <div className="space-y-6">
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Issuance</h3>
-
-              {!jobCard && (
-                <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md text-sm mb-4">
-                  No job card selected - stock will be issued without job reference
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Quantity *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max={stockItem?.quantity ?? 1}
-                    value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-lg py-3"
-                  />
-                  {stockItem && (
-                    <p className="mt-1 text-sm text-gray-500">
-                      Available: {stockItem.quantity} {stockItem.unitOfMeasure}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Notes (Optional)
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
-                    placeholder="Add any notes about this issuance..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between pt-4 border-t">
-              <button
-                onClick={handleBack}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={isConfirmDisabled}
-                className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "Issuing..." : "Issue Stock"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {currentStep === "issuer" && "Scan Issuer's Staff ID"}
-                {currentStep === "recipient" && "Scan Recipient's Staff ID"}
-                {currentStep === "stock_item" && "Scan Stock Item QR Code"}
-                {currentStep === "job_card" && "Scan Job Card QR Code (Optional)"}
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">
-                {currentStep === "issuer" &&
-                  "Scan the staff ID card of the person issuing the stock"}
-                {currentStep === "recipient" &&
-                  "Scan the staff ID card of the person receiving the stock"}
-                {currentStep === "stock_item" &&
-                  "Scan the QR code on the stock item or shelf label"}
-                {currentStep === "job_card" &&
-                  "Optionally scan a job card to link this issuance, or skip"}
-              </p>
-
-              <div className="flex space-x-3">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={scanInput}
-                  onChange={(e) => setScanInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Scan QR code or enter ID..."
-                  autoFocus
-                  className="flex-1 block rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-lg py-3"
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
                 />
-                <button
-                  onClick={handleScan}
-                  disabled={isScanning || !scanInput.trim()}
-                  className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {isScanning ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  ) : (
-                    "Scan"
-                  )}
-                </button>
-              </div>
+              </svg>
+              {error}
             </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-500 hover:text-red-700 font-medium"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
-            <div className="flex justify-between pt-4 border-t">
-              {currentStep !== "issuer" ? (
+        <div className="flex items-center justify-between mb-6">
+          {STEPS.map((step, index) => (
+            <div key={step.key} className="flex items-center">
+              <div
+                className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
+                  index < currentStepIndex
+                    ? "bg-teal-600 text-white"
+                    : index === currentStepIndex
+                      ? "bg-teal-600 text-white ring-4 ring-teal-100"
+                      : "bg-gray-200 text-gray-500"
+                }`}
+              >
+                {index < currentStepIndex ? (
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                ) : (
+                  index + 1
+                )}
+              </div>
+              <span
+                className={`ml-2 text-sm font-medium hidden sm:inline ${
+                  index <= currentStepIndex ? "text-gray-900" : "text-gray-500"
+                }`}
+              >
+                {step.label}
+              </span>
+              {index < STEPS.length - 1 && (
+                <div
+                  className={`w-8 sm:w-16 h-0.5 mx-2 ${
+                    index < currentStepIndex ? "bg-teal-600" : "bg-gray-200"
+                  }`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-white shadow rounded-lg p-6">
+          {issuer && currentStep !== "issuer" && (
+            <div className="mb-4">{renderStaffCard(issuer, "Issuer (Giving)")}</div>
+          )}
+          {recipient && currentStep !== "recipient" && currentStep !== "issuer" && (
+            <div className="mb-4">{renderStaffCard(recipient, "Recipient (Receiving)")}</div>
+          )}
+          {stockItem &&
+            currentStep !== "stock_item" &&
+            currentStep !== "issuer" &&
+            currentStep !== "recipient" && (
+              <div className="mb-4">{renderStockItemCard(stockItem)}</div>
+            )}
+          {jobCard && currentStep === "confirm" && (
+            <div className="mb-4">{renderJobCardCard(jobCard)}</div>
+          )}
+
+          {currentStep === "confirm" ? (
+            <div className="space-y-6">
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Issuance</h3>
+
+                {!jobCard && (
+                  <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md text-sm mb-4">
+                    No job card selected - stock will be issued without job reference
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Quantity *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={stockItem?.quantity ?? 1}
+                      value={quantity}
+                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-lg py-3"
+                    />
+                    {stockItem && (
+                      <p className="mt-1 text-sm text-gray-500">
+                        Available: {stockItem.quantity} {stockItem.unitOfMeasure}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Notes (Optional)
+                    </label>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                      placeholder="Add any notes about this issuance..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between pt-4 border-t">
                 <button
                   onClick={handleBack}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   Back
                 </button>
-              ) : (
-                <div />
-              )}
-              {currentStep === "job_card" && (
                 <button
-                  onClick={handleSkipJobCard}
-                  className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  onClick={handleConfirm}
+                  disabled={isConfirmDisabled}
+                  className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  Skip - No Job Card
+                  {isSubmitting ? "Issuing..." : "Issue Stock"}
                 </button>
-              )}
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {currentStep === "issuer" && "Scan Issuer's Staff ID"}
+                  {currentStep === "recipient" && "Scan Recipient's Staff ID"}
+                  {currentStep === "stock_item" && "Scan Stock Item QR Code"}
+                  {currentStep === "job_card" && "Scan Job Card QR Code (Optional)"}
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  {currentStep === "issuer" &&
+                    "Scan the staff ID card of the person issuing the stock"}
+                  {currentStep === "recipient" &&
+                    "Scan the staff ID card of the person receiving the stock"}
+                  {currentStep === "stock_item" &&
+                    "Scan the QR code on the stock item or shelf label"}
+                  {currentStep === "job_card" &&
+                    "Optionally scan a job card to link this issuance, or skip"}
+                </p>
+
+                <div className="flex space-x-3">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={scanInput}
+                    onChange={(e) => setScanInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Scan QR code or enter ID..."
+                    autoFocus
+                    className="flex-1 block rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-lg py-3"
+                  />
+                  <button
+                    onClick={() => setShowCameraScanner(true)}
+                    className="px-4 py-3 text-sm font-medium text-white bg-gray-700 border border-transparent rounded-md hover:bg-gray-800"
+                    title="Scan with camera"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={handleScan}
+                    disabled={isScanning || !scanInput.trim()}
+                    className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {isScanning ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    ) : (
+                      "Submit"
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-between pt-4 border-t">
+                {currentStep !== "issuer" ? (
+                  <button
+                    onClick={handleBack}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Back
+                  </button>
+                ) : (
+                  <div />
+                )}
+                {currentStep === "job_card" && (
+                  <button
+                    onClick={handleSkipJobCard}
+                    className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Skip - No Job Card
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
