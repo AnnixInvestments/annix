@@ -574,18 +574,7 @@ export function MaterialSpecificationsSection({
           {globalSpecs?.steelSpecificationId &&
             (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC) &&
             (() => {
-              const currentSpec = masterData.steelSpecs?.find(
-                (s) => s.id === globalSpecs.steelSpecificationId,
-              );
-              if (!currentSpec) return null;
-              if (!allLimits) return null;
-              const suitability = checkSuitabilityFromCache(
-                allLimits,
-                currentSpec.steelSpecName,
-                globalSpecs?.workingTemperatureC,
-                globalSpecs?.workingPressureBar,
-              );
-              if (suitability.isSuitable) {
+              if (selectedSpecSuitability.isSuitable) {
                 return (
                   <p className="mt-1 text-xs text-green-600 flex items-center">
                     <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -599,20 +588,42 @@ export function MaterialSpecificationsSection({
                     {globalSpecs.workingPressureBar} bar
                   </p>
                 );
-              } else {
-                return (
-                  <p className="mt-1 text-xs text-red-600 flex items-center">
-                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              }
+              const limits = selectedSpecSuitability.limits;
+              const maxTemp = limits?.maxTemperatureCelsius;
+              const tempExceeded =
+                maxTemp !== undefined &&
+                globalSpecs?.workingTemperatureC !== undefined &&
+                globalSpecs.workingTemperatureC > maxTemp;
+              return (
+                <div className="mt-1.5 p-2 bg-red-50 border border-red-300 rounded text-xs">
+                  <div className="flex items-start gap-2">
+                    <svg
+                      className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
                       <path
                         fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
                         clipRule="evenodd"
                       />
                     </svg>
-                    Not recommended for current conditions
-                  </p>
-                );
-              }
+                    <div className="flex-1">
+                      <p className="text-red-800 font-semibold">
+                        {tempExceeded
+                          ? `Temperature ${globalSpecs.workingTemperatureC}°C exceeds max ${maxTemp}°C for ${selectedSteelSpecName}`
+                          : `${selectedSteelSpecName} is not suitable for current conditions`}
+                      </p>
+                      {selectedSpecSuitability.recommendation && (
+                        <p className="text-red-700 mt-1">
+                          {selectedSpecSuitability.recommendation}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
             })()}
         </div>
 
