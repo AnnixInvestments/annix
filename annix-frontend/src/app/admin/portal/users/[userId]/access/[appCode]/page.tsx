@@ -90,8 +90,8 @@ export default function EditUserAccessPage() {
     return {
       typeFlags: allFlags.filter((f) => f.flagKey.startsWith("RFQ_TYPE_")),
       productFlags: allFlags.filter((f) => f.flagKey.startsWith("RFQ_PRODUCT_")),
-      otherFlags: allFlags.filter(
-        (f) => !f.flagKey.startsWith("RFQ_TYPE_") && !f.flagKey.startsWith("RFQ_PRODUCT_"),
+      otherFlags: allFlags.filter((f) =>
+        ["FEEDBACK_WIDGET", "RFQ_RESTRICT_UNREGISTERED"].includes(f.flagKey),
       ),
     };
   }, [isRfqPlatform, flagsQuery.data]);
