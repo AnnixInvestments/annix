@@ -1211,7 +1211,7 @@ export default function InventoryPage() {
                           <tr
                             key={item.id}
                             className={
-                              item.quantity <= item.minStockLevel
+                              item.minStockLevel > 0 && item.quantity <= item.minStockLevel
                                 ? "bg-amber-50 hover:bg-amber-100"
                                 : "hover:bg-gray-50"
                             }
@@ -1240,7 +1240,7 @@ export default function InventoryPage() {
                             </td>
                             <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                               {item.quantity}
-                              {item.quantity <= item.minStockLevel && (
+                              {item.minStockLevel > 0 && item.quantity <= item.minStockLevel && (
                                 <svg
                                   className="w-4 h-4 text-amber-500 inline ml-1"
                                   fill="currentColor"
@@ -1391,7 +1391,7 @@ export default function InventoryPage() {
                     <tr
                       key={item.id}
                       className={
-                        item.quantity <= item.minStockLevel
+                        item.minStockLevel > 0 && item.quantity <= item.minStockLevel
                           ? "bg-amber-50 hover:bg-amber-100"
                           : "hover:bg-gray-50"
                       }
@@ -1423,7 +1423,7 @@ export default function InventoryPage() {
                       </td>
                       <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                         {item.quantity}
-                        {item.quantity <= item.minStockLevel && (
+                        {item.minStockLevel > 0 && item.quantity <= item.minStockLevel && (
                           <svg
                             className="w-4 h-4 text-amber-500 inline ml-1"
                             fill="currentColor"
@@ -1732,7 +1732,11 @@ export default function InventoryPage() {
                       {printPreviewItems.map((item) => (
                         <tr
                           key={item.id}
-                          className={item.quantity <= item.minStockLevel ? "bg-amber-50" : ""}
+                          className={
+                            item.minStockLevel > 0 && item.quantity <= item.minStockLevel
+                              ? "bg-amber-50"
+                              : ""
+                          }
                         >
                           <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-900 print:px-2 print:py-1">
                             {item.sku}
@@ -1745,7 +1749,7 @@ export default function InventoryPage() {
                           </td>
                           <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900 print:px-2 print:py-1">
                             {item.quantity}
-                            {item.quantity <= item.minStockLevel && " *"}
+                            {item.minStockLevel > 0 && item.quantity <= item.minStockLevel && " *"}
                           </td>
                           <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-500 print:px-2 print:py-1">
                             {item.minStockLevel}

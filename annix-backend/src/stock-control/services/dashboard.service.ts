@@ -49,6 +49,7 @@ export class DashboardService {
     const lowStockCount = await this.stockItemRepo
       .createQueryBuilder("item")
       .where("item.company_id = :companyId", { companyId })
+      .andWhere("item.min_stock_level > 0")
       .andWhere("item.quantity <= item.min_stock_level")
       .getCount();
 
@@ -108,6 +109,7 @@ export class DashboardService {
     return this.stockItemRepo
       .createQueryBuilder("item")
       .where("item.company_id = :companyId", { companyId })
+      .andWhere("item.min_stock_level > 0")
       .andWhere("item.quantity <= item.min_stock_level")
       .orderBy("item.quantity", "ASC")
       .getMany();
