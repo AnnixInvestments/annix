@@ -189,7 +189,7 @@ export function PhotoCapture({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
           onChange={handleFileChange}
           className="hidden"
         />
@@ -227,7 +227,7 @@ export function PhotoCapture({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
           capture="environment"
           onChange={handleFileChange}
           className="hidden"
@@ -275,7 +275,7 @@ export function PhotoCapture({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
         capture="environment"
         onChange={handleFileChange}
         className="hidden"
