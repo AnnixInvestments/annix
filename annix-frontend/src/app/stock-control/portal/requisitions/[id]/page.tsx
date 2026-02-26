@@ -96,8 +96,7 @@ export default function RequisitionDetailPage() {
   const exportData = () =>
     (requisition?.items ?? []).map((item) => ({
       productName: item.productName,
-      area:
-        item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : (item.area || "-"),
+      area: item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : item.area || "-",
       litresRequired: Number(item.litresRequired).toFixed(1),
       packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
       packsToOrder: item.packsToOrder,
@@ -105,10 +104,10 @@ export default function RequisitionDetailPage() {
     }));
 
   const exportMetadata = () => ({
-    "Requisition": requisition?.requisitionNumber ?? "",
-    "Status": requisition?.status ?? "",
+    Requisition: requisition?.requisitionNumber ?? "",
+    Status: requisition?.status ?? "",
     "Created By": requisition?.createdBy ?? "-",
-    "Created": requisition ? formatDateZA(requisition.createdAt) : "",
+    Created: requisition ? formatDateZA(requisition.createdAt) : "",
     ...(requisition?.jobCard
       ? { "Job Card": `${requisition.jobCard.jobNumber} - ${requisition.jobCard.jobName}` }
       : {}),

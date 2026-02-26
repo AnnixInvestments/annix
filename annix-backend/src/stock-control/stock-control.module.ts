@@ -7,7 +7,6 @@ import { EmailModule } from "../email/email.module";
 import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
-import { QrCodeController } from "./controllers/qr-code.controller";
 import { StockControlAuthController } from "./controllers/auth.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
@@ -67,7 +66,6 @@ import { JobCardVersionService } from "./services/job-card-version.service";
 import { JobCardWorkflowService } from "./services/job-card-workflow.service";
 import { LookupService } from "./services/lookup.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
-import { QrCodeService } from "./services/qr-code.service";
 import { MovementService } from "./services/movement.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { ReportsService } from "./services/reports.service";
@@ -135,7 +133,9 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     InvitationController,
     QrCodeController,
     RequisitionsController,
-    QrCodeController,
+    StaffController,
+    WorkflowController,
+    SignatureController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -155,7 +155,16 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     QrCodeService,
     ReportsService,
     RequisitionService,
-    QrCodeService,
+    StaffService,
+    ItemIdentificationService,
+    LookupService,
+    SignatureService,
+    WorkflowNotificationService,
+    JobCardWorkflowService,
+    DispatchService,
+    JobCardPdfService,
+    JobCardVersionService,
+    DrawingExtractionService,
   ],
 })
 export class StockControlModule {}
