@@ -4,6 +4,7 @@ export * from "./complianceValidation";
 export * from "./constants";
 export * from "./expansionJointOptions";
 export * from "./hdpeDimensions";
+export * from "./hdpeFittings";
 export * from "./hdpeGrades";
 export * from "./hdpeSdrRatings";
 export * from "./hdpeTemperatureDerating";

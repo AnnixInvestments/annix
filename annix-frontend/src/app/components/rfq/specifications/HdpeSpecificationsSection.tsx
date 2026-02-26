@@ -5,11 +5,24 @@ import {
   HDPE_JOINING_OPTIONS,
   HDPE_MATERIALS,
   HDPE_SDR_OPTIONS,
+  HDPE_WALL_THICKNESS_DATA,
   type HdpeGrade,
   type HdpeJoiningMethod,
   type HdpeSdr,
   hdpePressureRatingForSdr,
+  hdpeWallThickness,
 } from "@/app/lib/config/rfq/hdpe";
+import {
+  deratedPressure,
+  HDPE_MAX_CONTINUOUS_TEMP_C,
+  HDPE_TEMPERATURE_DERATING,
+} from "@/app/lib/config/rfq/hdpeTemperatureDerating";
+import { buttFusionParametersForDn } from "@/app/lib/config/rfq/hdpeWelding";
+import {
+  WELDING_STANDARD_LIST,
+  WELDING_STANDARDS,
+  type WeldingStandardCode,
+} from "@/app/lib/config/rfq/hdpeWeldingStandards";
 import type { GlobalSpecs } from "@/app/lib/hooks/useRfqForm";
 
 export interface HdpeSpecificationsSectionProps {
@@ -17,17 +30,89 @@ export interface HdpeSpecificationsSectionProps {
   onUpdateGlobalSpecs: (specs: GlobalSpecs) => void;
 }
 
+interface ColorOption {
+  value: "black" | "blue" | "yellow" | "orange" | "green";
+  label: string;
+  bgClass: string;
+  textClass: string;
+  description: string;
+  application: string;
+}
+
+const COLOR_OPTIONS: ColorOption[] = [
+  {
+    value: "black",
+    label: "Black",
+    bgClass: "bg-gray-900",
+    textClass: "text-white",
+    description: "Standard industrial",
+    application: "General industrial, mining, slurry",
+  },
+  {
+    value: "blue",
+    label: "Blue",
+    bgClass: "bg-blue-500",
+    textClass: "text-white",
+    description: "Potable water",
+    application: "Drinking water systems",
+  },
+  {
+    value: "yellow",
+    label: "Yellow",
+    bgClass: "bg-yellow-400",
+    textClass: "text-gray-900",
+    description: "Gas distribution",
+    application: "Natural gas and LPG",
+  },
+  {
+    value: "orange",
+    label: "Orange",
+    bgClass: "bg-orange-500",
+    textClass: "text-white",
+    description: "Electrical conduit",
+    application: "Cable protection",
+  },
+  {
+    value: "green",
+    label: "Green",
+    bgClass: "bg-green-600",
+    textClass: "text-white",
+    description: "Sewer/drainage",
+    application: "Sewerage and drainage systems",
+  },
+];
+
 export function HdpeSpecificationsSection({
   globalSpecs,
   onUpdateGlobalSpecs,
 }: HdpeSpecificationsSectionProps) {
   const selectedGrade = globalSpecs.hdpeGrade ?? "PE100";
   const selectedSdr = globalSpecs.hdpeSdr;
+  const operatingTemp = globalSpecs.hdpeOperatingTempC ?? 20;
+  const selectedColorCode = globalSpecs.hdpeColorCode ?? "black";
+  const selectedWeldingStandard = globalSpecs.hdpeWeldingStandard ?? "ISO_21307";
 
-  const pressureRating =
+  const basePressureRating =
     selectedSdr && selectedGrade
       ? hdpePressureRatingForSdr(selectedSdr as HdpeSdr, selectedGrade)
       : null;
+
+  const deratingResult = basePressureRating
+    ? deratedPressure(basePressureRating, operatingTemp)
+    : null;
+
+  const sampleOd = 110;
+  const wallThickness = selectedSdr ? hdpeWallThickness(sampleOd, selectedSdr as HdpeSdr) : null;
+  const innerDiameter = wallThickness ? sampleOd - 2 * wallThickness : null;
+
+  const selectedMaterial = HDPE_MATERIALS.find((m) => m.id === selectedGrade);
+  const density = selectedMaterial?.densityKgM3 ?? 950;
+  const weightPerMeter =
+    wallThickness && innerDiameter
+      ? ((Math.PI * (sampleOd ** 2 - innerDiameter ** 2)) / 4) * (density / 1e6)
+      : null;
+
+  const fusionParams = buttFusionParametersForDn(sampleOd);
 
   const handleGradeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const grade = e.target.value as HdpeGrade;
@@ -58,10 +143,35 @@ export function HdpeSpecificationsSection({
     });
   };
 
+  const handleOperatingTempChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const temp = e.target.value ? parseInt(e.target.value, 10) : undefined;
+    onUpdateGlobalSpecs({
+      ...globalSpecs,
+      hdpeOperatingTempC: temp,
+    });
+  };
+
+  const handleColorCodeChange = (colorValue: ColorOption["value"]) => {
+    onUpdateGlobalSpecs({
+      ...globalSpecs,
+      hdpeColorCode: colorValue,
+    });
+  };
+
+  const handleWeldingStandardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const standard = e.target.value as WeldingStandardCode;
+    onUpdateGlobalSpecs({
+      ...globalSpecs,
+      hdpeWeldingStandard: standard,
+    });
+  };
+
   const isComplete = globalSpecs.hdpeGrade && globalSpecs.hdpeSdr && globalSpecs.hdpeJoiningMethod;
 
+  const selectedWeldingStandardData = WELDING_STANDARDS[selectedWeldingStandard];
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4">
+    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
           <span className="w-6 h-6 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center">
@@ -76,6 +186,7 @@ export function HdpeSpecificationsSection({
         )}
       </div>
 
+      {/* Primary Specifications */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className="block text-xs font-semibold text-gray-900 mb-1">
@@ -116,9 +227,9 @@ export function HdpeSpecificationsSection({
               </option>
             ))}
           </select>
-          {pressureRating && (
+          {basePressureRating && (
             <p className="mt-1 text-xs text-blue-600 font-medium">
-              Pressure rating: PN{pressureRating} ({pressureRating} bar)
+              Base pressure rating: PN{basePressureRating} ({basePressureRating} bar @ 20°C)
             </p>
           )}
         </div>
@@ -150,8 +261,226 @@ export function HdpeSpecificationsSection({
         </div>
       </div>
 
-      <div className="mt-4 p-3 bg-gray-50 rounded-md">
-        <h4 className="text-xs font-semibold text-gray-700 mb-2">HDPE Material Properties</h4>
+      {/* Operating Temperature with Derating */}
+      <div className="border-t border-gray-200 pt-4">
+        <h4 className="text-xs font-semibold text-gray-700 mb-3">
+          Operating Temperature & Derating
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              Operating Temperature (°C)
+            </label>
+            <input
+              type="number"
+              value={operatingTemp}
+              onChange={handleOperatingTempChange}
+              min={-40}
+              max={80}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Max continuous: {HDPE_MAX_CONTINUOUS_TEMP_C}°C
+            </p>
+          </div>
+          <div className="bg-gray-50 rounded-md p-3">
+            <div className="text-xs font-semibold text-gray-700 mb-2">Derating Preview</div>
+            {deratingResult ? (
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600">Derating Factor:</span>
+                  <span
+                    className={`font-medium ${deratingResult.factor < 0.8 ? "text-orange-600" : "text-gray-900"}`}
+                  >
+                    {deratingResult.factor.toFixed(3)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-600">Derated Pressure:</span>
+                  <span
+                    className={`font-bold ${deratingResult.deratedPnBar < (basePressureRating ?? 0) * 0.8 ? "text-orange-600" : "text-blue-600"}`}
+                  >
+                    PN{deratingResult.deratedPnBar} ({deratingResult.deratedPnBar} bar)
+                  </span>
+                </div>
+                {deratingResult.warning && (
+                  <p className="text-xs text-orange-600 mt-2">{deratingResult.warning}</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">Select SDR to see derated pressure</p>
+            )}
+          </div>
+        </div>
+
+        {/* Derating Reference Table */}
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-full text-xs">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="px-2 py-1 text-left text-gray-600">Temp (°C)</th>
+                {HDPE_TEMPERATURE_DERATING.map((point) => (
+                  <th
+                    key={point.temperatureC}
+                    className={`px-2 py-1 text-center ${point.temperatureC === operatingTemp ? "bg-blue-100 text-blue-800" : "text-gray-600"}`}
+                  >
+                    {point.temperatureC}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="px-2 py-1 text-gray-600">Factor</td>
+                {HDPE_TEMPERATURE_DERATING.map((point) => (
+                  <td
+                    key={point.temperatureC}
+                    className={`px-2 py-1 text-center ${point.temperatureC === operatingTemp ? "bg-blue-100 font-bold text-blue-800" : "text-gray-900"}`}
+                  >
+                    {point.factor.toFixed(2)}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Welding Standard Selection */}
+      {(globalSpecs.hdpeJoiningMethod === "butt_fusion" ||
+        globalSpecs.hdpeJoiningMethod === "electrofusion") && (
+        <div className="border-t border-gray-200 pt-4">
+          <h4 className="text-xs font-semibold text-gray-700 mb-3">Welding Standard</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-900 mb-1">
+                Welding Standard
+              </label>
+              <select
+                value={selectedWeldingStandard}
+                onChange={handleWeldingStandardChange}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+              >
+                {WELDING_STANDARD_LIST.map((code) => {
+                  const std = WELDING_STANDARDS[code];
+                  return (
+                    <option key={code} value={code}>
+                      {std.name} ({std.region})
+                    </option>
+                  );
+                })}
+              </select>
+              {selectedWeldingStandardData && (
+                <p className="mt-1 text-xs text-gray-500">
+                  {selectedWeldingStandardData.description}
+                </p>
+              )}
+            </div>
+            <div className="bg-gray-50 rounded-md p-3">
+              <div className="text-xs font-semibold text-gray-700 mb-2">Standard Parameters</div>
+              {selectedWeldingStandardData && (
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Heat Plate Temp:</span>
+                    <span className="text-gray-900">
+                      {selectedWeldingStandardData.heatPlateTemperatureC.min}-
+                      {selectedWeldingStandardData.heatPlateTemperatureC.max}°C
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Interface Pressure:</span>
+                    <span className="text-gray-900">
+                      {selectedWeldingStandardData.interfacialPressureNMm2.min}-
+                      {selectedWeldingStandardData.interfacialPressureNMm2.max} N/mm²
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Procedures:</span>
+                    <span className="text-gray-900">
+                      {selectedWeldingStandardData.procedureTypes.join(", ")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Data Logger:</span>
+                    <span className="text-gray-900">
+                      {selectedWeldingStandardData.dataLoggerRequired ? "Required" : "Optional"}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Fusion Parameters for Sample Size */}
+          {fusionParams && globalSpecs.hdpeJoiningMethod === "butt_fusion" && (
+            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
+              <div className="text-xs font-semibold text-blue-800 mb-2">
+                Butt Fusion Parameters (DN{sampleOd} reference)
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                <div>
+                  <span className="text-gray-600">Heat Time:</span>
+                  <span className="ml-1 text-gray-900">
+                    {fusionParams.heatingTimeSec.min}-{fusionParams.heatingTimeSec.max}s
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Changeover:</span>
+                  <span className="ml-1 text-gray-900">≤{fusionParams.changeoverTimeSec}s</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Cool Time:</span>
+                  <span className="ml-1 text-gray-900">{fusionParams.coolingTimeMin} min</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Bead Size:</span>
+                  <span className="ml-1 text-gray-900">
+                    {fusionParams.beadSizeMm.min}-{fusionParams.beadSizeMm.max}mm
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Color Code Selection */}
+      <div className="border-t border-gray-200 pt-4">
+        <h4 className="text-xs font-semibold text-gray-700 mb-3">Pipe Color Code</h4>
+        <div className="flex flex-wrap gap-2">
+          {COLOR_OPTIONS.map((color) => (
+            <button
+              key={color.value}
+              type="button"
+              onClick={() => handleColorCodeChange(color.value)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-md border-2 transition-all ${
+                selectedColorCode === color.value
+                  ? `${color.bgClass} ${color.textClass} border-gray-900`
+                  : "bg-white border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              <span
+                className={`w-4 h-4 rounded-full ${color.bgClass} ${selectedColorCode !== color.value ? "border border-gray-400" : ""}`}
+              />
+              <span
+                className={`text-xs font-medium ${selectedColorCode === color.value ? color.textClass : "text-gray-700"}`}
+              >
+                {color.label}
+              </span>
+            </button>
+          ))}
+        </div>
+        {selectedColorCode && (
+          <p className="mt-2 text-xs text-gray-500">
+            {COLOR_OPTIONS.find((c) => c.value === selectedColorCode)?.description} -{" "}
+            {COLOR_OPTIONS.find((c) => c.value === selectedColorCode)?.application}
+          </p>
+        )}
+      </div>
+
+      {/* Material Properties & Calculations */}
+      <div className="border-t border-gray-200 pt-4">
+        <h4 className="text-xs font-semibold text-gray-700 mb-2">Material Properties</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
             <span className="text-gray-500">Density:</span>
@@ -175,10 +504,74 @@ export function HdpeSpecificationsSection({
           <div>
             <span className="text-gray-500">Pressure Rating:</span>
             <span className="ml-1 text-gray-900">
-              {pressureRating ? `PN${pressureRating}` : "-"}
+              {deratingResult
+                ? `PN${deratingResult.deratedPnBar}`
+                : basePressureRating
+                  ? `PN${basePressureRating}`
+                  : "-"}
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Calculations Display (for reference DN110 pipe) */}
+      {selectedSdr && (
+        <div className="border-t border-gray-200 pt-4">
+          <h4 className="text-xs font-semibold text-gray-700 mb-2">
+            Sample Calculations (DN{sampleOd})
+          </h4>
+          <div className="bg-gray-50 rounded-md p-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <div>
+                <span className="text-gray-500">Outside Diameter:</span>
+                <span className="ml-1 font-medium text-gray-900">{sampleOd} mm</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Wall Thickness:</span>
+                <span className="ml-1 font-medium text-gray-900">
+                  {wallThickness?.toFixed(1) ?? "-"} mm
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Inside Diameter:</span>
+                <span className="ml-1 font-medium text-gray-900">
+                  {innerDiameter?.toFixed(1) ?? "-"} mm
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Weight:</span>
+                <span className="ml-1 font-medium text-gray-900">
+                  {weightPerMeter?.toFixed(2) ?? "-"} kg/m
+                </span>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Wall thickness = OD / SDR = {sampleOd} / {selectedSdr} ={" "}
+              {(sampleOd / selectedSdr).toFixed(1)} mm
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Available Pipe Sizes Reference */}
+      <div className="border-t border-gray-200 pt-4">
+        <details className="text-xs">
+          <summary className="font-semibold text-gray-700 cursor-pointer hover:text-gray-900">
+            Available Pipe Sizes (click to expand)
+          </summary>
+          <div className="mt-2 max-h-48 overflow-y-auto">
+            <div className="grid grid-cols-6 gap-1">
+              {HDPE_WALL_THICKNESS_DATA.map((size) => (
+                <span
+                  key={size.nominalBoreMm}
+                  className="px-2 py-1 bg-gray-100 rounded text-center text-gray-700"
+                >
+                  DN{size.nominalBoreMm}
+                </span>
+              ))}
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   );

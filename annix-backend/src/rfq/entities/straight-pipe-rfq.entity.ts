@@ -338,6 +338,61 @@ export class StraightPipeRfq {
   @Column({ name: "length_type", type: "varchar", length: 10, nullable: true })
   lengthType?: string;
 
+  // HDPE-specific fields
+  @ApiProperty({ description: "HDPE PE grade (PE100, PE4710, etc.)", required: false })
+  @Column({ name: "hdpe_pe_grade", type: "varchar", length: 20, nullable: true })
+  hdpePeGrade?: string;
+
+  @ApiProperty({ description: "HDPE SDR (Standard Dimension Ratio)", required: false })
+  @Column({ name: "hdpe_sdr", type: "decimal", precision: 4, scale: 1, nullable: true })
+  hdpeSdr?: number;
+
+  @ApiProperty({
+    description: "HDPE PN rating in bar (calculated from SDR/grade)",
+    required: false,
+  })
+  @Column({ name: "hdpe_pn_rating", type: "decimal", precision: 4, scale: 1, nullable: true })
+  hdpePnRating?: number;
+
+  @ApiProperty({ description: "HDPE color code (black, blue, yellow)", required: false })
+  @Column({ name: "hdpe_color_code", type: "varchar", length: 20, nullable: true })
+  hdpeColorCode?: string;
+
+  @ApiProperty({
+    description: "HDPE operating temperature in Celsius for derating",
+    required: false,
+  })
+  @Column({
+    name: "hdpe_operating_temp_c",
+    type: "decimal",
+    precision: 4,
+    scale: 1,
+    nullable: true,
+  })
+  hdpeOperatingTempC?: number;
+
+  @ApiProperty({ description: "HDPE derated PN after temperature adjustment", required: false })
+  @Column({ name: "hdpe_derated_pn", type: "decimal", precision: 4, scale: 1, nullable: true })
+  hdpeDeratedPn?: number;
+
+  @ApiProperty({
+    description: "HDPE welding method (butt_fusion, electrofusion)",
+    required: false,
+  })
+  @Column({ name: "hdpe_welding_method", type: "varchar", length: 30, nullable: true })
+  hdpeWeldingMethod?: string;
+
+  @ApiProperty({
+    description: "HDPE welding standard (ASTM_F2620, ISO_21307, DVS_2207_1)",
+    required: false,
+  })
+  @Column({ name: "hdpe_welding_standard", type: "varchar", length: 30, nullable: true })
+  hdpeWeldingStandard?: string;
+
+  @ApiProperty({ description: "Number of HDPE fusion joints", required: false })
+  @Column({ name: "hdpe_joint_count", type: "int", nullable: true })
+  hdpeJointCount?: number;
+
   // Relationships
   @ApiProperty({ description: "Parent RFQ item", type: () => RfqItem })
   @OneToOne(

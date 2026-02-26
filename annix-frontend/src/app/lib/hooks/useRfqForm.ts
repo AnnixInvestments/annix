@@ -7,6 +7,7 @@ import type {
 } from "@/app/lib/api/client";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import type { HdpeGrade, HdpeJoiningMethod, HdpeSdr } from "../config/rfq/hdpe";
+import type { WeldingStandardCode } from "../config/rfq/hdpeWeldingStandards";
 import type { PvcJoiningMethod, PvcPressureClass, PvcType } from "../config/rfq/pvc";
 import type {
   AirSaltContentResult,
@@ -394,6 +395,9 @@ export interface GlobalSpecs {
   hdpeSdr?: HdpeSdr;
   hdpePressureRating?: string;
   hdpeJoiningMethod?: HdpeJoiningMethod;
+  hdpeOperatingTempC?: number;
+  hdpeWeldingStandard?: WeldingStandardCode;
+  hdpeColorCode?: "black" | "blue" | "yellow" | "orange" | "green";
   hdpeSpecsConfirmed?: boolean;
 
   pvcType?: PvcType;

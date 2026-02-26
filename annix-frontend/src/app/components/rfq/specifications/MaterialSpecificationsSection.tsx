@@ -408,6 +408,18 @@ export function MaterialSpecificationsSection({
   const isArSteelSelected =
     selectedSteelSpecName && allLimits ? isWearResistant(allLimits, selectedSteelSpecName) : false;
 
+  // Check if currently selected steel spec is unsuitable for current conditions
+  const selectedSpecSuitability = (() => {
+    if (!selectedSteelSpecName || !allLimits) return { isSuitable: true, warnings: [] };
+    return checkSuitabilityFromCache(
+      allLimits,
+      selectedSteelSpecName,
+      globalSpecs?.workingTemperatureC,
+      globalSpecs?.workingPressureBar,
+    );
+  })();
+  const isSelectedSpecUnsuitable = !selectedSpecSuitability.isSuitable;
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3">
       <h3 className="text-xs font-semibold text-gray-800 mb-2">Material Specifications</h3>
@@ -418,13 +430,19 @@ export function MaterialSpecificationsSection({
 
       <div className="grid grid-cols-4 gap-3">
         <div ref={steelSpecDropdownRef} className="relative">
-          <label className="block text-xs font-semibold text-gray-900 mb-1">
+          <label
+            className={`block text-xs font-semibold mb-1 ${isSelectedSpecUnsuitable ? "text-red-700" : "text-gray-900"}`}
+          >
             Steel Specification <span className="text-red-500">*</span>
           </label>
           <button
             type="button"
             onClick={() => setSteelSpecDropdownOpen(!steelSpecDropdownOpen)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white text-left flex items-center justify-between"
+            className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 text-left flex items-center justify-between ${
+              isSelectedSpecUnsuitable
+                ? "border-red-500 bg-red-50 focus:ring-red-500"
+                : "border-gray-300 bg-white focus:ring-blue-500"
+            }`}
           >
             <span className={globalSpecs?.steelSpecificationId ? "text-gray-900" : "text-gray-400"}>
               {globalSpecs?.steelSpecificationId

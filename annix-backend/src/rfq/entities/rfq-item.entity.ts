@@ -34,6 +34,11 @@ export enum RfqItemType {
   SURFACE_PROTECTION = "surface_protection",
 }
 
+export enum MaterialType {
+  STEEL = "steel",
+  HDPE = "hdpe",
+}
+
 @Entity("rfq_items")
 export class RfqItem {
   @ApiProperty({ description: "Primary key", example: 1 })
@@ -54,6 +59,19 @@ export class RfqItem {
   @ApiProperty({ description: "Type of RFQ item", enum: RfqItemType })
   @Column({ name: "item_type", type: "enum", enum: RfqItemType })
   itemType: RfqItemType;
+
+  @ApiProperty({
+    description: "Material type (steel or hdpe)",
+    enum: MaterialType,
+    default: MaterialType.STEEL,
+  })
+  @Column({
+    name: "material_type",
+    type: "enum",
+    enum: MaterialType,
+    default: MaterialType.STEEL,
+  })
+  materialType: MaterialType;
 
   @ApiProperty({ description: "Quantity required", example: 656 })
   @Column({ name: "quantity", type: "int" })
