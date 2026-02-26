@@ -84,11 +84,15 @@ export default function EditUserAccessPage() {
   const isRfqPlatform = appCode === "rfq-platform";
 
   const rfqFlags = useMemo(() => {
-    if (!isRfqPlatform || !flagsQuery.data) return { typeFlags: [], productFlags: [] };
+    if (!isRfqPlatform || !flagsQuery.data)
+      return { typeFlags: [], productFlags: [], otherFlags: [] };
     const allFlags = flagsQuery.data.flags ?? [];
     return {
       typeFlags: allFlags.filter((f) => f.flagKey.startsWith("RFQ_TYPE_")),
       productFlags: allFlags.filter((f) => f.flagKey.startsWith("RFQ_PRODUCT_")),
+      otherFlags: allFlags.filter(
+        (f) => !f.flagKey.startsWith("RFQ_TYPE_") && !f.flagKey.startsWith("RFQ_PRODUCT_"),
+      ),
     };
   }, [isRfqPlatform, flagsQuery.data]);
 
@@ -547,6 +551,56 @@ export default function EditUserAccessPage() {
                           )}
                         </div>
                       </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {rfqFlags.otherFlags.length > 0 && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                  Other Settings
+                </label>
+                <div className="space-y-3">
+                  {rfqFlags.otherFlags.map((flag) => {
+                    const isUpdating =
+                      toggleMutation.isPending &&
+                      toggleMutation.variables?.flagKey === flag.flagKey;
+
+                    return (
+                      <div
+                        key={flag.flagKey}
+                        className="flex items-center justify-between p-4 border rounded-lg border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {flag.flagKey}
+                          </span>
+                          {flag.description && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              {flag.description}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleFlag(flag.flagKey, flag.enabled)}
+                          disabled={isUpdating}
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            flag.enabled ? "bg-blue-600" : "bg-gray-200 dark:bg-slate-600"
+                          } ${isUpdating ? "opacity-50 cursor-not-allowed" : ""}`}
+                          role="switch"
+                          aria-checked={flag.enabled}
+                          aria-label={`Toggle ${flag.flagKey}`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              flag.enabled ? "translate-x-5" : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
