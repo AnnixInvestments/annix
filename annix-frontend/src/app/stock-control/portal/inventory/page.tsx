@@ -1116,25 +1116,25 @@ export default function InventoryPage() {
                               className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                             />
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="hidden sm:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             SKU
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Name
                           </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             SOH
                           </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Min Level
+                          <th className="px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Min
                           </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="hidden md:table-cell px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Cost
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="hidden lg:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Location
                           </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th className="px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Actions
                           </th>
                         </tr>
@@ -1157,18 +1157,21 @@ export default function InventoryPage() {
                                 className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                               />
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                            <td className="hidden sm:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
                               {item.sku}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-3 lg:px-6 py-4">
                               <Link
                                 href={`/stock-control/portal/inventory/${item.id}`}
-                                className="text-sm font-medium text-teal-700 hover:text-teal-900"
+                                className="text-sm font-medium text-teal-700 hover:text-teal-900 break-words"
                               >
                                 {item.name}
                               </Link>
+                              <span className="sm:hidden block text-xs text-gray-500 font-mono mt-0.5">
+                                {item.sku}
+                              </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                            <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                               {item.quantity}
                               {item.quantity <= item.minStockLevel && (
                                 <svg
@@ -1184,7 +1187,7 @@ export default function InventoryPage() {
                                 </svg>
                               )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                            <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right">
                               {editingMinLevelId === item.id ? (
                                 <input
                                   type="number"
@@ -1217,18 +1220,18 @@ export default function InventoryPage() {
                                 </button>
                               )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                            <td className="hidden md:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                               {formatZAR(item.costPerUnit)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {item.locationId
                                 ? (locations.find((l) => l.id === item.locationId)?.name ?? "-")
                                 : "-"}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                            <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-right text-sm">
                               <button
                                 onClick={() => openEditModal(item)}
-                                className="text-teal-600 hover:text-teal-900 mr-3"
+                                className="text-teal-600 hover:text-teal-900 mr-2 lg:mr-3"
                               >
                                 Edit
                               </button>
@@ -1236,7 +1239,7 @@ export default function InventoryPage() {
                                 onClick={() => handleDelete(item.id)}
                                 className="text-red-600 hover:text-red-900"
                               >
-                                Delete
+                                Del
                               </button>
                             </td>
                           </tr>
@@ -1250,7 +1253,7 @@ export default function InventoryPage() {
           )}
         </div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white shadow rounded-lg overflow-x-auto">
           {items.length === 0 ? (
             <div className="text-center py-12">
               <svg
@@ -1286,49 +1289,49 @@ export default function InventoryPage() {
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="hidden sm:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       SKU
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Name
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="hidden lg:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Category
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       SOH
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
-                      Min Level
+                      Min
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="hidden md:table-cell px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Cost
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="hidden xl:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Location
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Actions
                     </th>
@@ -1352,21 +1355,24 @@ export default function InventoryPage() {
                           className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                         />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                      <td className="hidden sm:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
                         {item.sku}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 lg:px-6 py-4">
                         <Link
                           href={`/stock-control/portal/inventory/${item.id}`}
-                          className="text-sm font-medium text-teal-700 hover:text-teal-900"
+                          className="text-sm font-medium text-teal-700 hover:text-teal-900 break-words"
                         >
                           {item.name}
                         </Link>
+                        <span className="sm:hidden block text-xs text-gray-500 font-mono mt-0.5">
+                          {item.sku}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {item.category || "-"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                         {item.quantity}
                         {item.quantity <= item.minStockLevel && (
                           <svg
@@ -1382,7 +1388,7 @@ export default function InventoryPage() {
                           </svg>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right">
                         {editingMinLevelId === item.id ? (
                           <input
                             type="number"
@@ -1415,18 +1421,18 @@ export default function InventoryPage() {
                           </button>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                      <td className="hidden md:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                         {formatZAR(item.costPerUnit)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="hidden xl:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {item.locationId
                           ? (locations.find((l) => l.id === item.locationId)?.name ?? "-")
                           : "-"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-right text-sm">
                         <button
                           onClick={() => openEditModal(item)}
-                          className="text-teal-600 hover:text-teal-900 mr-3"
+                          className="text-teal-600 hover:text-teal-900 mr-2 lg:mr-3"
                         >
                           Edit
                         </button>
@@ -1434,7 +1440,7 @@ export default function InventoryPage() {
                           onClick={() => handleDelete(item.id)}
                           className="text-red-600 hover:text-red-900"
                         >
-                          Delete
+                          Del
                         </button>
                       </td>
                     </tr>
