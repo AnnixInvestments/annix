@@ -1,7 +1,10 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
-import { StockControlUser } from "../stock-control/entities/stock-control-user.entity";
+import {
+  StockControlRole,
+  StockControlUser,
+} from "../stock-control/entities/stock-control-user.entity";
 import { User } from "../user/entities/user.entity";
 import {
   AssignUserAccessDto,
@@ -292,6 +295,10 @@ export class RbacService {
   }
 
   async updateAccess(accessId: number, dto: UpdateUserAccessDto): Promise<UserAccessResponseDto> {
+    if (accessId < 0) {
+      return this.updateStockControlUserAccess(-accessId, dto);
+    }
+
     const access = await this.accessRepo.findOne({
       where: { id: accessId },
       relations: ["app", "user"],
@@ -334,6 +341,62 @@ export class RbacService {
     }
 
     return this.accessResponseDto(accessId);
+  }
+
+  private async updateStockControlUserAccess(
+    scUserId: number,
+    dto: UpdateUserAccessDto,
+  ): Promise<UserAccessResponseDto> {
+    const scUser = await this.stockControlUserRepo.findOne({
+      where: { id: scUserId },
+      relations: ["company"],
+    });
+
+    if (!scUser) {
+      throw new NotFoundException(`Stock control user ${scUserId} not found`);
+    }
+
+    if (dto.roleCode) {
+      const roleCodeToEnum: Record<string, StockControlRole> = {
+        storeman: StockControlRole.STOREMAN,
+        accounts: StockControlRole.ACCOUNTS,
+        manager: StockControlRole.MANAGER,
+        admin: StockControlRole.ADMIN,
+      };
+      const newRole = roleCodeToEnum[dto.roleCode];
+      if (newRole) {
+        scUser.role = newRole;
+        await this.stockControlUserRepo.save(scUser);
+      }
+    }
+
+    const roleNameMap: Record<string, string> = {
+      storeman: "Storeman",
+      accounts: "Accounts",
+      manager: "Manager",
+      admin: "Administrator",
+    };
+
+    const nameParts = scUser.name.split(" ");
+    const firstName = nameParts[0] ?? null;
+    const lastName = nameParts.slice(1).join(" ") || null;
+
+    return {
+      id: -scUserId,
+      userId: -scUserId,
+      email: scUser.email,
+      firstName,
+      lastName,
+      appCode: "stock-control",
+      roleCode: scUser.role,
+      roleName: roleNameMap[scUser.role] ?? scUser.role,
+      useCustomPermissions: false,
+      permissionCodes: null,
+      permissionCount: null,
+      expiresAt: null,
+      grantedAt: scUser.createdAt,
+      grantedById: null,
+    };
   }
 
   async revokeAccess(accessId: number): Promise<void> {
