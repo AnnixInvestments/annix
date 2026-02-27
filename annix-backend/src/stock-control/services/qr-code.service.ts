@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as QRCode from "qrcode";
-import { In, Repository } from "typeorm";
+import { ILike, In, Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { StaffMember } from "../entities/staff-member.entity";
@@ -301,6 +301,91 @@ export class QrCodeService {
       return "image/webp";
     }
     return "image/jpeg";
+  }
+
+  async batchStockItemLabelsPdf(
+    companyId: number,
+    ids?: number[],
+    search?: string,
+    category?: string,
+  ): Promise<Buffer> {
+    const whereClause: Record<string, unknown> = { companyId };
+
+    if (ids && ids.length > 0) {
+      whereClause.id = In(ids);
+    }
+    if (category) {
+      whereClause.category = category;
+    }
+
+    let stockItems: StockItem[];
+
+    if (search) {
+      const pattern = ILike(`%${search}%`);
+      stockItems = await this.stockItemRepo.find({
+        where: [
+          { ...whereClause, name: pattern },
+          { ...whereClause, sku: pattern },
+        ],
+        relations: ["locationEntity"],
+        order: { name: "ASC" },
+      });
+    } else {
+      stockItems = await this.stockItemRepo.find({
+        where: whereClause,
+        relations: ["locationEntity"],
+        order: { name: "ASC" },
+      });
+    }
+
+    if (stockItems.length === 0) {
+      throw new NotFoundException("No stock items found");
+    }
+
+    const labelsHtml = await Promise.all(
+      stockItems.map(async (item) => {
+        const qrDataUrl = await QRCode.toDataURL(`stock:${item.id}`, {
+          width: 200,
+          margin: 1,
+        });
+        const locationName = item.locationEntity?.name ?? item.location ?? "";
+        return `
+          <div class="label">
+            <div class="qr"><img src="${qrDataUrl}" /></div>
+            <div class="info">
+              <div class="name">${escapeHtml(item.name)}</div>
+              <div class="sku">${escapeHtml(item.sku)}</div>
+              ${locationName ? `<div class="location">${escapeHtml(locationName)}</div>` : ""}
+            </div>
+          </div>`;
+      }),
+    );
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    .labels-container { display: flex; flex-wrap: wrap; gap: 5mm; }
+    .label { width: 62mm; height: 30mm; border: 1px solid #d1d5db; border-radius: 2mm; overflow: hidden; page-break-inside: avoid; display: flex; padding: 2mm; box-sizing: border-box; }
+    .qr { width: 24mm; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .qr img { width: 22mm; height: 22mm; }
+    .info { flex: 1; padding-left: 2mm; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+    .name { font-size: 9pt; font-weight: bold; color: #111827; line-height: 1.2; margin-bottom: 1mm; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .sku { font-size: 8pt; font-family: monospace; color: #0d9488; margin-bottom: 1mm; }
+    .location { font-size: 7pt; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="labels-container">
+    ${labelsHtml.join("")}
+  </div>
+</body>
+</html>`;
+
+    return this.htmlToPdf(html, { format: "A4" });
   }
 
   private async findStaffMember(staffId: number, companyId: number): Promise<StaffMember> {

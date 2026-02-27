@@ -80,4 +80,24 @@ export class QrCodeController {
     });
     res.send(buffer);
   }
+
+  @Post("inventory/labels/pdf")
+  @ApiOperation({ summary: "Batch printable QR code labels for stock items" })
+  async batchStockLabelsPdf(
+    @Body() body: { ids?: number[]; search?: string; category?: string },
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.qrCodeService.batchStockItemLabelsPdf(
+      req.user.companyId,
+      body.ids,
+      body.search,
+      body.category,
+    );
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="shelf-labels.pdf"`,
+    });
+    res.send(buffer);
+  }
 }
