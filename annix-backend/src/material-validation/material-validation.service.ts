@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { MaterialLimitResponseDto } from "./dto/material-limit-response.dto";
 import { MaterialLimit } from "./entities/material-limit.entity";
 
 export interface MaterialSuitabilityResult {
@@ -31,10 +32,11 @@ export class MaterialValidationService {
     private materialLimitRepository: Repository<MaterialLimit>,
   ) {}
 
-  async findAll(): Promise<MaterialLimit[]> {
-    return this.materialLimitRepository.find({
+  async findAll(): Promise<MaterialLimitResponseDto[]> {
+    const entities = await this.materialLimitRepository.find({
       relations: ["steelSpecification"],
     });
+    return MaterialLimitResponseDto.fromEntities(entities);
   }
 
   async findBySpecName(steelSpecName: string): Promise<MaterialLimit | null> {

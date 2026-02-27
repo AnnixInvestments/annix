@@ -256,20 +256,25 @@ export class QrCodeService {
   private async resolvePhotoUrl(photoUrl: string): Promise<string | null> {
     this.logger.log(`Resolving photo URL: ${photoUrl}`);
     try {
-      let imageBuffer: Buffer;
+      let s3Path: string | null = null;
 
       if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
-        this.logger.log(`Fetching photo from HTTP URL`);
-        const response = await fetch(photoUrl);
-        if (!response.ok) {
-          this.logger.warn(`Failed to fetch photo from URL: ${response.status}`);
-          return null;
+        const s3Match = photoUrl.match(/\.amazonaws\.com\/(.+?)(\?|$)/);
+        if (s3Match) {
+          s3Path = decodeURIComponent(s3Match[1]);
+          this.logger.log(`Extracted S3 path from URL: ${s3Path}`);
         }
-        imageBuffer = Buffer.from(await response.arrayBuffer());
       } else {
-        this.logger.log(`Downloading photo from storage: ${photoUrl}`);
-        imageBuffer = await this.storageService.download(photoUrl);
+        s3Path = photoUrl;
       }
+
+      if (!s3Path) {
+        this.logger.warn(`Could not determine S3 path from: ${photoUrl}`);
+        return null;
+      }
+
+      this.logger.log(`Downloading photo from storage: ${s3Path}`);
+      const imageBuffer = await this.storageService.download(s3Path);
 
       const mimeType = this.detectMimeType(imageBuffer);
       this.logger.log(`Photo resolved successfully: ${imageBuffer.length} bytes, ${mimeType}`);

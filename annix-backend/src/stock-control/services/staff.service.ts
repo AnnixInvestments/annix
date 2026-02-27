@@ -114,19 +114,33 @@ export class StaffService {
   }
 
   private async withPresignedPhotoUrl(member: StaffMember): Promise<StaffMember> {
-    if (member.photoUrl && !member.photoUrl.startsWith("http")) {
-      const originalPath = member.photoUrl;
-      this.logger.log(`Generating presigned URL for ${member.name}: ${originalPath}`);
+    if (!member.photoUrl) {
+      return member;
+    }
+
+    let s3Path: string | null = null;
+
+    if (member.photoUrl.startsWith("http")) {
+      const s3Match = member.photoUrl.match(/\.amazonaws\.com\/(.+?)(\?|$)/);
+      if (s3Match) {
+        s3Path = decodeURIComponent(s3Match[1]);
+        this.logger.log(`Extracted S3 path from URL for ${member.name}: ${s3Path}`);
+      }
+    } else {
+      s3Path = member.photoUrl;
+    }
+
+    if (s3Path) {
       try {
-        member.photoUrl = await this.storageService.getPresignedUrl(originalPath, 3600);
+        member.photoUrl = await this.storageService.getPresignedUrl(s3Path, 3600);
         this.logger.log(`Presigned URL generated for ${member.name}`);
       } catch (error) {
         this.logger.error(
-          `Failed to generate presigned URL for ${member.name} (${originalPath}): ${error instanceof Error ? error.message : "Unknown error"}`,
+          `Failed to generate presigned URL for ${member.name} (${s3Path}): ${error instanceof Error ? error.message : "Unknown error"}`,
         );
-        member.photoUrl = null;
       }
     }
+
     return member;
   }
 
