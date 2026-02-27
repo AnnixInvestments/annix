@@ -3,11 +3,13 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   NotFoundException,
   Param,
   Post,
   Put,
   Query,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -18,6 +20,7 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { Response } from "express";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import {
   LineCalloutDto,
@@ -73,7 +76,7 @@ import { RubberOrderStatus } from "./entities/rubber-order.entity";
 import { ProductCodingType } from "./entities/rubber-product-coding.entity";
 import { RubberProductionStatus } from "./entities/rubber-production.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
-import { ExtractedBranding, RubberBrandingService } from "./rubber-branding.service";
+import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-branding.service";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberStockService } from "./rubber-stock.service";
 
@@ -1160,10 +1163,34 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @Post("portal/extract-branding")
-  @ApiOperation({ summary: "Extract branding from a website URL" })
-  @ApiResponse({ status: 200, description: "Extracted branding information" })
-  async extractBranding(@Body() body: { url: string }): Promise<ExtractedBranding> {
-    return this.rubberBrandingService.extractBrandingFromUrl(body.url);
+  @Post("portal/scrape-branding")
+  @ApiOperation({ summary: "Scrape branding candidates from a website" })
+  @ApiResponse({ status: 200, description: "Scraped branding candidates" })
+  async scrapeBranding(@Body() body: { websiteUrl: string }): Promise<ScrapedBrandingCandidates> {
+    return this.rubberBrandingService.scrapeCandidates(body.websiteUrl);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/proxy-image")
+  @ApiOperation({ summary: "Proxy an external image to avoid CORS issues" })
+  async proxyImage(@Query("url") url: string, @Res() res: Response) {
+    if (!url) {
+      res.status(HttpStatus.BAD_REQUEST).json({ message: "url query parameter is required" });
+      return;
+    }
+
+    const result = await this.rubberBrandingService.proxyImage(url);
+    if (!result) {
+      res.status(HttpStatus.BAD_GATEWAY).json({ message: "Failed to fetch image" });
+      return;
+    }
+
+    res.set({
+      "Content-Type": result.contentType,
+      "Cache-Control": "public, max-age=300",
+      "Content-Length": result.buffer.length.toString(),
+    });
+    res.send(result.buffer);
   }
 }

@@ -1,180 +1,469 @@
 import { Injectable, Logger } from "@nestjs/common";
 import * as puppeteer from "puppeteer";
 
-export interface ExtractedBranding {
+export interface CandidateImage {
   url: string;
-  companyName: string | null;
-  tagline: string | null;
-  logoUrl: string | null;
-  colors: {
-    primary: string[];
-    background: string[];
-    text: string[];
-    accent: string[];
-  };
-  extractedAt: string;
+  source: string;
+  width: number | null;
+  height: number | null;
+}
+
+export interface ScrapedBrandingCandidates {
+  logoCandidates: CandidateImage[];
+  heroCandidates: CandidateImage[];
+  primaryColor: string | null;
 }
 
 @Injectable()
 export class RubberBrandingService {
   private readonly logger = new Logger(RubberBrandingService.name);
 
-  async extractBrandingFromUrl(url: string): Promise<ExtractedBranding> {
-    this.logger.log(`Extracting branding from: ${url}`);
+  async scrapeCandidates(websiteUrl: string): Promise<ScrapedBrandingCandidates> {
+    try {
+      this.logger.log(`Starting candidate scrape for ${websiteUrl}`);
+      return await this.scrapeCandidatesWithPuppeteer(websiteUrl);
+    } catch (error) {
+      this.logger.warn(
+        `Puppeteer scraping failed, falling back to fetch-based extraction: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return this.scrapeCandidatesWithFetch(websiteUrl);
+    }
+  }
 
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+  private async scrapeCandidatesWithFetch(websiteUrl: string): Promise<ScrapedBrandingCandidates> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(websiteUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml",
+        },
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        this.logger.warn(`Fetch scraping failed: HTTP ${response.status}`);
+        return { logoCandidates: [], heroCandidates: [], primaryColor: null };
+      }
+
+      const html = await response.text();
+      const baseUrl = new URL(websiteUrl);
+
+      const resolveUrl = (raw: string): string | null => {
+        if (!raw || raw.startsWith("data:")) {
+          return null;
+        }
+        try {
+          return new URL(raw, baseUrl.origin).href;
+        } catch {
+          return null;
+        }
+      };
+
+      const logoCandidates: CandidateImage[] = [];
+      const heroCandidates: CandidateImage[] = [];
+      const seenLogos = new Set<string>();
+      const seenHeroes = new Set<string>();
+
+      const addLogo = (url: string | null, source: string) => {
+        if (!url || seenLogos.has(url) || logoCandidates.length >= 20) return;
+        seenLogos.add(url);
+        logoCandidates.push({ url, source, width: null, height: null });
+      };
+
+      const addHero = (url: string | null, source: string) => {
+        if (!url || seenHeroes.has(url) || heroCandidates.length >= 20) return;
+        seenHeroes.add(url);
+        heroCandidates.push({ url, source, width: null, height: null });
+      };
+
+      const imgTagPattern = /<img\s[^>]*?>/gi;
+      const srcPattern = /src=["']([^"']+)["']/i;
+      const altPattern = /alt=["']([^"']+)["']/i;
+      const classPattern = /class=["']([^"']+)["']/i;
+      const idPattern = /id=["']([^"']+)["']/i;
+      const widthPattern = /width=["']?(\d+)/i;
+      const heightPattern = /height=["']?(\d+)/i;
+
+      const imgTags = html.match(imgTagPattern) ?? [];
+      imgTags.forEach((tag) => {
+        const srcMatch = tag.match(srcPattern);
+        const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
+        if (!src) return;
+
+        const alt = tag.match(altPattern)?.[1] ?? "";
+        const cls = tag.match(classPattern)?.[1] ?? "";
+        const id = tag.match(idPattern)?.[1] ?? "";
+        const combined = `${src} ${alt} ${cls} ${id}`.toLowerCase();
+
+        if (combined.includes("logo")) {
+          addLogo(src, "logo-attr");
+        }
+
+        if (
+          combined.includes("hero") ||
+          combined.includes("banner") ||
+          combined.includes("slider") ||
+          combined.includes("carousel") ||
+          combined.includes("featured")
+        ) {
+          addHero(src, "hero-selector");
+        }
+
+        const widthMatch = tag.match(widthPattern);
+        const heightMatch = tag.match(heightPattern);
+        const width = widthMatch ? parseInt(widthMatch[1], 10) : 0;
+        const height = heightMatch ? parseInt(heightMatch[1], 10) : 0;
+
+        if (width >= 600 || height >= 300) {
+          if (!combined.includes("logo") && !combined.includes("icon")) {
+            addHero(src, "large-img");
+          }
+        }
+      });
+
+      const headerPattern = /<(?:header|nav)[^>]*>[\s\S]*?<\/(?:header|nav)>/gi;
+      const headerBlocks = html.match(headerPattern) ?? [];
+      headerBlocks.forEach((block) => {
+        const headerImgs = block.match(imgTagPattern) ?? [];
+        headerImgs.forEach((tag) => {
+          const srcMatch = tag.match(srcPattern);
+          const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
+          if (src) addLogo(src, "header-img");
+        });
+      });
+
+      const ogImagePattern = /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i;
+      const ogImageAlt = /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i;
+      const ogMatch = html.match(ogImagePattern) ?? html.match(ogImageAlt);
+      if (ogMatch?.[1]) {
+        const ogUrl = resolveUrl(ogMatch[1]);
+        addLogo(ogUrl, "og-image");
+        addHero(ogUrl, "og-image");
+      }
+
+      const faviconPattern =
+        /<link[^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)["'][^>]*href=["']([^"']+)["']/gi;
+      const faviconAltPattern =
+        /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)["']/gi;
+      [faviconPattern, faviconAltPattern].forEach((pattern) => {
+        let match: RegExpExecArray | null = null;
+        while ((match = pattern.exec(html)) !== null) {
+          const url = resolveUrl(match[1]);
+          if (url) addLogo(url, "favicon");
+        }
+      });
+
+      addLogo(resolveUrl("/favicon.ico"), "favicon");
+
+      const bgUrlPattern = /background(?:-image)?\s*:[^;]*url\(["']?([^"')]+)["']?\)/gi;
+      let bgMatch: RegExpExecArray | null = null;
+      while ((bgMatch = bgUrlPattern.exec(html)) !== null) {
+        const url = resolveUrl(bgMatch[1]);
+        if (url) addHero(url, "bg-image");
+      }
+
+      const sectionPattern = /<section[^>]*>[\s\S]*?<\/section>/gi;
+      const sectionBlocks = html.match(sectionPattern) ?? [];
+      sectionBlocks.slice(0, 3).forEach((block) => {
+        const sectionImgs = block.match(imgTagPattern) ?? [];
+        sectionImgs.forEach((tag) => {
+          const srcMatch = tag.match(srcPattern);
+          const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
+          if (src && !src.toLowerCase().includes("logo")) {
+            addHero(src, "section-img");
+          }
+        });
+      });
+
+      const srcsetPattern = /srcset=["']([^"']+)["']/gi;
+      let srcsetMatch: RegExpExecArray | null = null;
+      while ((srcsetMatch = srcsetPattern.exec(html)) !== null) {
+        const srcset = srcsetMatch[1];
+        const urls = srcset.split(",").map((s) => s.trim().split(/\s+/)[0]);
+        const largestUrl = urls[urls.length - 1];
+        const resolved = resolveUrl(largestUrl);
+        if (resolved && !resolved.toLowerCase().includes("logo")) {
+          addHero(resolved, "srcset-img");
+        }
+      }
+
+      const wpFeaturedPattern = /wp-post-image|attachment-full|size-full/i;
+      imgTags.forEach((tag) => {
+        if (wpFeaturedPattern.test(tag)) {
+          const srcMatch = tag.match(srcPattern);
+          const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
+          if (src) addHero(src, "wp-featured");
+        }
+      });
+
+      let primaryColor: string | null = null;
+      const themeColorPattern = /<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["']/i;
+      const themeColorAlt = /<meta[^>]*content=["']([^"']+)["'][^>]*name=["']theme-color["']/i;
+      const themeMatch = html.match(themeColorPattern) ?? html.match(themeColorAlt);
+      if (themeMatch?.[1]) {
+        primaryColor = themeMatch[1];
+      }
+
+      this.logger.log(
+        `Fetch-based scrape found ${logoCandidates.length} logo candidates, ${heroCandidates.length} hero candidates`,
+      );
+
+      return { logoCandidates, heroCandidates, primaryColor };
+    } catch (error) {
+      this.logger.error(
+        `Fetch-based scraping also failed for ${websiteUrl}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return { logoCandidates: [], heroCandidates: [], primaryColor: null };
+    }
+  }
+
+  private async scrapeCandidatesWithPuppeteer(
+    websiteUrl: string,
+  ): Promise<ScrapedBrandingCandidates> {
+    let browser: puppeteer.Browser | null = null;
 
     try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+      });
+
       const page = await browser.newPage();
       await page.setUserAgent(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       );
 
-      await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+      await page.goto(websiteUrl, { waitUntil: "networkidle2", timeout: 30000 });
 
-      const branding = await page.evaluate(() => {
-        const hexColorRegex = /#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\b/g;
-        const rgbColorRegex = /rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)/gi;
-        const rgbaColorRegex =
-          /rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*[\d.]+\s*\)/gi;
+      const extracted = await page.evaluate(() => {
+        const seen = new Set<string>();
 
-        const rgbToHex = (r: number, g: number, b: number): string => {
-          return (
-            "#" +
-            [r, g, b]
-              .map((x) => {
-                const hex = x.toString(16);
-                return hex.length === 1 ? `0${hex}` : hex;
-              })
-              .join("")
-          );
-        };
-
-        const colorCounts: Record<string, number> = {};
-        const backgroundColors: string[] = [];
-        const textColors: string[] = [];
-
-        const processColor = (color: string, isBackground: boolean, isText: boolean) => {
-          const hex = color.toUpperCase();
-          if (hex === "#FFFFFF" || hex === "#FFF" || hex === "#000000" || hex === "#000") {
+        const addCandidate = (
+          list: { url: string; source: string; width: number | null; height: number | null }[],
+          url: string | null | undefined,
+          source: string,
+          width: number | null = null,
+          height: number | null = null,
+        ) => {
+          if (!url || url.startsWith("data:") || seen.has(url) || list.length >= 20) {
             return;
           }
-          colorCounts[hex] = (colorCounts[hex] || 0) + 1;
-          if (isBackground && !backgroundColors.includes(hex)) {
-            backgroundColors.push(hex);
-          }
-          if (isText && !textColors.includes(hex)) {
-            textColors.push(hex);
-          }
+          seen.add(url);
+          list.push({ url, source, width, height });
         };
 
-        const extractColorsFromStyle = (
-          style: CSSStyleDeclaration,
-          isBackground: boolean,
-          isText: boolean,
-        ) => {
-          const bgColor = style.backgroundColor;
-          const textColor = style.color;
-          const borderColor = style.borderColor;
+        const logoCandidates: {
+          url: string;
+          source: string;
+          width: number | null;
+          height: number | null;
+        }[] = [];
 
-          [bgColor, textColor, borderColor].forEach((colorStr) => {
-            if (!colorStr) return;
+        const allImgs = Array.from(document.querySelectorAll<HTMLImageElement>("img"));
+        allImgs
+          .filter((img) => {
+            const src = (img.src || "").toLowerCase();
+            const alt = (img.alt || "").toLowerCase();
+            const className = (img.className || "").toLowerCase();
+            const id = (img.id || "").toLowerCase();
+            return (
+              src.includes("logo") ||
+              alt.includes("logo") ||
+              className.includes("logo") ||
+              id.includes("logo")
+            );
+          })
+          .forEach((img) =>
+            addCandidate(logoCandidates, img.src, "logo-attr", img.naturalWidth, img.naturalHeight),
+          );
 
-            const hexMatches = colorStr.match(hexColorRegex);
-            if (hexMatches) {
-              hexMatches.forEach((hex) => processColor(hex, isBackground, isText));
-            }
-
-            let match;
-            const rgbRegex = /rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)/gi;
-            while ((match = rgbRegex.exec(colorStr)) !== null) {
-              const hex = rgbToHex(
-                parseInt(match[1], 10),
-                parseInt(match[2], 10),
-                parseInt(match[3], 10),
-              );
-              processColor(hex, isBackground, isText);
-            }
-
-            const rgbaRegex =
-              /rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*[\d.]+\s*\)/gi;
-            while ((match = rgbaRegex.exec(colorStr)) !== null) {
-              const hex = rgbToHex(
-                parseInt(match[1], 10),
-                parseInt(match[2], 10),
-                parseInt(match[3], 10),
-              );
-              processColor(hex, isBackground, isText);
-            }
-          });
-        };
-
-        const elements = document.querySelectorAll("*");
-        elements.forEach((el) => {
-          const style = window.getComputedStyle(el);
-          const isHeader =
-            el.tagName === "HEADER" || el.tagName === "NAV" || el.classList.contains("header");
-          const isText =
-            el.tagName === "P" ||
-            el.tagName === "H1" ||
-            el.tagName === "H2" ||
-            el.tagName === "A" ||
-            el.tagName === "SPAN";
-          extractColorsFromStyle(style, isHeader, isText);
-        });
-
-        const sortedColors = Object.entries(colorCounts)
-          .sort((a, b) => b[1] - a[1])
-          .map(([color]) => color);
-
-        const title = document.querySelector("title")?.textContent || null;
-        const h1 = document.querySelector("h1")?.textContent?.trim() || null;
-        const metaDesc =
-          document.querySelector('meta[name="description"]')?.getAttribute("content") || null;
-
-        const logoImg = document.querySelector(
-          'img[class*="logo"], img[alt*="logo"], header img, .logo img',
+        Array.from(
+          document.querySelectorAll<HTMLImageElement>("header img, nav img, .header img, .nav img"),
+        ).forEach((img) =>
+          addCandidate(logoCandidates, img.src, "header-img", img.naturalWidth, img.naturalHeight),
         );
-        let logoUrl: string | null = null;
-        if (logoImg) {
-          logoUrl = (logoImg as HTMLImageElement).src;
+
+        const ogImage = document.querySelector<HTMLMetaElement>('meta[property="og:image"]');
+        if (ogImage?.content) {
+          addCandidate(logoCandidates, ogImage.content, "og-image");
         }
 
-        const primaryColors = sortedColors.slice(0, 5);
-        const accentColors = sortedColors.filter((c) => {
-          const r = parseInt(c.slice(1, 3), 16);
-          const g = parseInt(c.slice(3, 5), 16);
-          const b = parseInt(c.slice(5, 7), 16);
-          const saturation = (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
-          return saturation > 0.3;
+        Array.from(
+          document.querySelectorAll<HTMLLinkElement>(
+            'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]',
+          ),
+        ).forEach((link) => addCandidate(logoCandidates, link.href, "favicon"));
+
+        const faviconUrl = new URL("/favicon.ico", window.location.origin).href;
+        addCandidate(logoCandidates, faviconUrl, "favicon");
+
+        const heroCandidates: {
+          url: string;
+          source: string;
+          width: number | null;
+          height: number | null;
+        }[] = [];
+        const heroSeen = new Set<string>();
+
+        const addHero = (
+          url: string | null | undefined,
+          source: string,
+          width: number | null = null,
+          height: number | null = null,
+        ) => {
+          if (!url || url.startsWith("data:") || heroSeen.has(url) || heroCandidates.length >= 20) {
+            return;
+          }
+          heroSeen.add(url);
+          heroCandidates.push({ url, source, width, height });
+        };
+
+        if (ogImage?.content) {
+          addHero(ogImage.content, "og-image");
+        }
+
+        const heroSelectors = [
+          ".hero img",
+          ".banner img",
+          "[class*='hero'] img",
+          "[class*='banner'] img",
+          "[class*='slider'] img",
+          "[class*='carousel'] img",
+          "section:first-of-type img",
+        ];
+        heroSelectors.forEach((sel) => {
+          Array.from(document.querySelectorAll<HTMLImageElement>(sel)).forEach((img) => {
+            if (img.naturalWidth >= 400) {
+              addHero(img.src, "hero-selector", img.naturalWidth, img.naturalHeight);
+            }
+          });
         });
 
-        return {
-          companyName: h1 || title?.split("|")[0]?.trim() || title?.split("-")[0]?.trim() || null,
-          tagline: metaDesc,
-          logoUrl,
-          colors: {
-            primary: primaryColors,
-            background: backgroundColors.slice(0, 5),
-            text: textColors.slice(0, 5),
-            accent: accentColors.slice(0, 5),
-          },
-        };
+        const bgElements = document.querySelectorAll("section, div, header");
+        Array.from(bgElements).forEach((el) => {
+          const style = window.getComputedStyle(el);
+          const bgImg = style.backgroundImage;
+          if (bgImg && bgImg !== "none") {
+            const urlMatch = bgImg.match(/url\(["']?(.*?)["']?\)/);
+            if (urlMatch?.[1] && !urlMatch[1].startsWith("data:")) {
+              addHero(urlMatch[1], "bg-image");
+            }
+          }
+        });
+
+        Array.from(document.querySelectorAll<HTMLImageElement>("img"))
+          .filter((img) => img.naturalWidth >= 600 && img.naturalHeight >= 300)
+          .filter((img) => !(img.src || "").toLowerCase().includes("logo"))
+          .forEach((img) => addHero(img.src, "large-img", img.naturalWidth, img.naturalHeight));
+
+        let primaryColor: string | null = null;
+        const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+        if (themeColor?.content) {
+          primaryColor = themeColor.content;
+        } else {
+          const header = document.querySelector("header") || document.querySelector("nav");
+          if (header) {
+            const computed = window.getComputedStyle(header);
+            const bg = computed.backgroundColor;
+            if (
+              bg &&
+              bg !== "rgba(0, 0, 0, 0)" &&
+              bg !== "transparent" &&
+              bg !== "rgb(255, 255, 255)"
+            ) {
+              primaryColor = bg;
+            }
+          }
+        }
+
+        return { logoCandidates, heroCandidates, primaryColor };
       });
 
-      return {
-        url,
-        ...branding,
-        extractedAt: new Date().toISOString(),
-      };
-    } catch (error) {
-      this.logger.error(`Failed to extract branding: ${error}`);
-      throw error;
-    } finally {
+      this.logger.log(
+        `Found ${extracted.logoCandidates.length} logo candidates, ${extracted.heroCandidates.length} hero candidates`,
+      );
+
       await browser.close();
+      browser = null;
+
+      return {
+        logoCandidates: extracted.logoCandidates,
+        heroCandidates: extracted.heroCandidates,
+        primaryColor: extracted.primaryColor,
+      };
+    } finally {
+      if (browser) {
+        try {
+          await browser.close();
+        } catch {
+          this.logger.warn("Browser close failed");
+        }
+      }
     }
+  }
+
+  async proxyImage(url: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const contentType = response.headers.get("content-type") || "image/png";
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      if (buffer.length > 5 * 1024 * 1024) {
+        return null;
+      }
+
+      return { buffer, contentType };
+    } catch {
+      return null;
+    }
+  }
+
+  normalizeToHex(color: string): string | null {
+    if (color.startsWith("#")) {
+      return color.length === 4
+        ? `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
+        : color;
+    }
+
+    const rgbMatch = color.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (rgbMatch) {
+      const [, r, g, b] = rgbMatch;
+      return `#${[r, g, b].map((c) => parseInt(c, 10).toString(16).padStart(2, "0")).join("")}`;
+    }
+
+    return null;
+  }
+
+  lightenColor(hex: string): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+
+    const lighten = (c: number) => Math.min(255, Math.round(c + (255 - c) * 0.4));
+
+    return `#${[lighten(r), lighten(g), lighten(b)].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
   }
 }

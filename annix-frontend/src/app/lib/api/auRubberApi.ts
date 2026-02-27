@@ -102,18 +102,17 @@ export interface CompoundCalculationResultDto {
   kgPerUnit: number;
 }
 
-export interface ExtractedBrandingDto {
+export interface CandidateImage {
   url: string;
-  companyName: string | null;
-  tagline: string | null;
-  logoUrl: string | null;
-  colors: {
-    primary: string[];
-    background: string[];
-    text: string[];
-    accent: string[];
-  };
-  extractedAt: string;
+  source: string;
+  width: number | null;
+  height: number | null;
+}
+
+export interface ScrapedBrandingCandidates {
+  logoCandidates: CandidateImage[];
+  heroCandidates: CandidateImage[];
+  primaryColor: string | null;
 }
 
 export interface AuRubberLoginDto {
@@ -766,11 +765,19 @@ class AuRubberApiClient {
     return this.request("/rubber-lining/portal/compound-order-statuses");
   }
 
-  async extractBranding(url: string): Promise<ExtractedBrandingDto> {
-    return this.request("/rubber-lining/portal/extract-branding", {
+  async scrapeBranding(websiteUrl: string): Promise<ScrapedBrandingCandidates> {
+    return this.request("/rubber-lining/portal/scrape-branding", {
       method: "POST",
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ websiteUrl }),
     });
+  }
+
+  proxyImageUrl(url: string): string {
+    return `${this.baseURL}/rubber-lining/portal/proxy-image?url=${encodeURIComponent(url)}`;
+  }
+
+  authHeaders(): Record<string, string> {
+    return this.headers();
   }
 }
 
