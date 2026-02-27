@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import * as QRCode from "qrcode";
 import { ILike, In, Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
+import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockItem } from "../entities/stock-item.entity";
@@ -18,6 +19,8 @@ export class QrCodeService {
     private readonly jobCardRepo: Repository<JobCard>,
     @InjectRepository(StaffMember)
     private readonly staffMemberRepo: Repository<StaffMember>,
+    @InjectRepository(JobCardCoatingAnalysis)
+    private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -69,6 +72,10 @@ export class QrCodeService {
     const jobCard = await this.findJobCard(jobId, companyId);
     const qrDataUrl = await QRCode.toDataURL(`job:${jobId}`, { width: 200, margin: 2 });
 
+    const coatingAnalysis = await this.coatingAnalysisRepo.findOne({
+      where: { jobCardId: jobId, companyId },
+    });
+
     const lineItemsHtml = (jobCard.lineItems ?? [])
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map(
@@ -83,6 +90,8 @@ export class QrCodeService {
         </tr>`,
       )
       .join("");
+
+    const coatingSpecHtml = this.buildCoatingSpecHtml(coatingAnalysis);
 
     const html = `
 <!DOCTYPE html>
@@ -153,6 +162,8 @@ export class QrCodeService {
   </table>`
       : ""
   }
+
+  ${coatingSpecHtml}
 
   <div class="notes-area">
     <div class="label">Notes</div>
@@ -397,6 +408,40 @@ export class QrCodeService {
 </html>`;
 
     return this.htmlToPdf(html, { format: "A4" });
+  }
+
+  private buildCoatingSpecHtml(coatingAnalysis: JobCardCoatingAnalysis | null): string {
+    if (!coatingAnalysis || !coatingAnalysis.coats || coatingAnalysis.coats.length === 0) {
+      return "";
+    }
+
+    const coatsRows = coatingAnalysis.coats
+      .map(
+        (coat) => `
+        <tr>
+          <td>${escapeHtml(coat.product)}</td>
+          <td class="right">${coat.minDftUm}-${coat.maxDftUm}</td>
+          <td class="right">${coat.coverageM2PerLiter.toFixed(2)}</td>
+          <td class="right">${coat.litersRequired.toFixed(2)}</td>
+        </tr>`,
+      )
+      .join("");
+
+    return `
+  <div class="section-title" style="margin-top: 6mm;">Coating Specification</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th style="text-align: right;">DFT (µm)</th>
+        <th style="text-align: right;">Coverage (m²/L)</th>
+        <th style="text-align: right;">Allowed Litres</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${coatsRows}
+    </tbody>
+  </table>`;
   }
 
   private async findStaffMember(staffId: number, companyId: number): Promise<StaffMember> {
