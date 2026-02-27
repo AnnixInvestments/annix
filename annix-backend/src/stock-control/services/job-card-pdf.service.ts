@@ -5,6 +5,7 @@ import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
 import { Repository } from "typeorm";
 import { formatDateLongZA } from "../../lib/datetime";
+import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
@@ -20,6 +21,8 @@ export class JobCardPdfService {
     private readonly approvalRepo: Repository<JobCardApproval>,
     @InjectRepository(StockControlCompany)
     private readonly companyRepo: Repository<StockControlCompany>,
+    @InjectRepository(JobCardCoatingAnalysis)
+    private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -45,11 +48,15 @@ export class JobCardPdfService {
       order: { approvedAt: "ASC" },
     });
 
+    const coatingAnalysis = await this.coatingAnalysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const qrUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}/dispatch`;
     const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 120, margin: 1 });
 
-    const buffer = await this.createPdf(jobCard, company, approvals, qrDataUrl);
+    const buffer = await this.createPdf(jobCard, company, approvals, coatingAnalysis, qrDataUrl);
     const filename = `JC-${jobCard.jobNumber}-${jobCard.id}.pdf`;
 
     return { buffer, filename };
@@ -59,6 +66,7 @@ export class JobCardPdfService {
     jobCard: JobCard,
     company: StockControlCompany | null,
     approvals: JobCardApproval[],
+    coatingAnalysis: JobCardCoatingAnalysis | null,
     qrDataUrl: string,
   ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
@@ -73,6 +81,7 @@ export class JobCardPdfService {
       this.drawJobCardDetails(doc, jobCard);
       this.drawQrCode(doc, qrDataUrl);
       this.drawLineItems(doc, jobCard);
+      this.drawCoatingSpecification(doc, coatingAnalysis);
       this.drawAllocations(doc, jobCard);
       this.drawApprovals(doc, approvals);
       this.drawFooter(doc);
@@ -209,12 +218,69 @@ export class JobCardPdfService {
     }
   }
 
+  private drawCoatingSpecification(
+    doc: typeof PDFDocument,
+    coatingAnalysis: JobCardCoatingAnalysis | null,
+  ): void {
+    if (!coatingAnalysis || !coatingAnalysis.coats || coatingAnalysis.coats.length === 0) {
+      return;
+    }
+
+    const startY = 390;
+    doc
+      .moveTo(50, startY - 10)
+      .lineTo(545, startY - 10)
+      .stroke();
+
+    doc.fontSize(12).font("Helvetica-Bold").text("Coating Specification", 50, startY);
+
+    let y = startY + 15;
+    doc.fontSize(9).font("Helvetica");
+
+    const areaInfo: string[] = [];
+    if (coatingAnalysis.extM2 > 0) {
+      areaInfo.push(`Ext: ${Number(coatingAnalysis.extM2).toFixed(2)} m²`);
+    }
+    if (coatingAnalysis.intM2 > 0) {
+      areaInfo.push(`Int: ${Number(coatingAnalysis.intM2).toFixed(2)} m²`);
+    }
+    if (areaInfo.length > 0) {
+      doc.text(`Surface Area: ${areaInfo.join(", ")}`, 50, y);
+      y += 15;
+    }
+
+    y += 5;
+    doc.fontSize(9).font("Helvetica-Bold");
+    doc.text("Product", 50, y);
+    doc.text("DFT (µm)", 280, y);
+    doc.text("Coverage (m²/L)", 350, y);
+    doc.text("Allowed Litres", 460, y);
+
+    y += 15;
+    doc.moveTo(50, y).lineTo(545, y).stroke();
+    y += 5;
+
+    doc.font("Helvetica").fontSize(8);
+    coatingAnalysis.coats.forEach((coat) => {
+      const dftRange =
+        coat.minDftUm === coat.maxDftUm
+          ? String(coat.minDftUm)
+          : `${coat.minDftUm}-${coat.maxDftUm}`;
+
+      doc.text(coat.product, 50, y, { width: 220 });
+      doc.text(dftRange, 280, y);
+      doc.text(String(coat.coverageM2PerLiter.toFixed(2)), 350, y);
+      doc.text(String(coat.litersRequired.toFixed(1)), 460, y);
+      y += 15;
+    });
+  }
+
   private drawAllocations(doc: typeof PDFDocument, jobCard: JobCard): void {
     if (!jobCard.allocations || jobCard.allocations.length === 0) {
       return;
     }
 
-    const startY = 500;
+    const startY = 540;
     doc
       .moveTo(50, startY - 10)
       .lineTo(545, startY - 10)
@@ -249,7 +315,7 @@ export class JobCardPdfService {
       return;
     }
 
-    const startY = 650;
+    const startY = 690;
     doc
       .moveTo(50, startY - 10)
       .lineTo(545, startY - 10)

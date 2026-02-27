@@ -119,6 +119,7 @@ export interface StockItem {
   location: string | null;
   locationId: number | null;
   photoUrl: string | null;
+  needsQrPrint: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -222,6 +223,12 @@ export interface StockAllocation {
   createdAt: string;
   stockItem?: StockItem;
   jobCard?: JobCard;
+  pendingApproval: boolean;
+  allowedLitres: number | null;
+  approvedByManagerId: number | null;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
 }
 
 export interface CoatDetail {
@@ -1254,6 +1261,31 @@ class StockControlApiClient {
     return response.json();
   }
 
+  async pendingAllocations(): Promise<StockAllocation[]> {
+    return this.request("/stock-control/job-cards/allocations/pending");
+  }
+
+  async approveOverAllocation(jobCardId: number, allocationId: number): Promise<StockAllocation> {
+    return this.request(
+      `/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/approve`,
+      { method: "POST" },
+    );
+  }
+
+  async rejectOverAllocation(
+    jobCardId: number,
+    allocationId: number,
+    reason: string,
+  ): Promise<StockAllocation> {
+    return this.request(
+      `/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/reject`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      },
+    );
+  }
+
   async deliveryNotes(): Promise<DeliveryNote[]> {
     return this.request("/stock-control/deliveries");
   }
@@ -1350,10 +1382,17 @@ class StockControlApiClient {
     return response.json();
   }
 
-  async confirmImport(rows: unknown[]): Promise<ImportResult> {
+  async confirmImport(rows: unknown[], isStockTake: boolean = false): Promise<ImportResult> {
     return this.request("/stock-control/import/confirm", {
       method: "POST",
-      body: JSON.stringify({ rows }),
+      body: JSON.stringify({ rows, isStockTake }),
+    });
+  }
+
+  async clearQrPrintFlag(ids: number[]): Promise<{ cleared: number }> {
+    return this.request("/stock-control/inventory/clear-qr-print", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
     });
   }
 

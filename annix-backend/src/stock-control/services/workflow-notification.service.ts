@@ -171,6 +171,68 @@ export class WorkflowNotificationService {
     );
   }
 
+  async notifyOverAllocationApproval(
+    companyId: number,
+    jobCardId: number,
+    allocationId: number,
+    productName: string,
+    quantityRequested: number,
+    allowedLitres: number,
+    alreadyAllocated: number,
+  ): Promise<void> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+    });
+
+    if (!jobCard) {
+      this.logger.warn(`Job card ${jobCardId} not found for over-allocation notification`);
+      return;
+    }
+
+    const managers = await this.userRepo.find({
+      where: { companyId, role: StockControlRole.MANAGER },
+    });
+
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
+
+    const totalAfter = alreadyAllocated + quantityRequested;
+    const overBy = (totalAfter - allowedLitres).toFixed(1);
+
+    const notifications = managers.map((user) =>
+      this.notificationRepo.create({
+        companyId,
+        userId: user.id,
+        jobCardId,
+        title: `Over-Allocation Approval: ${jobCard.jobName}`,
+        message: `Stock allocation request for ${productName} exceeds allowed limit. Requested: ${quantityRequested}L, Allowed: ${allowedLitres}L (${overBy}L over). Allocation ID: ${allocationId}`,
+        actionType: NotificationActionType.OVER_ALLOCATION_APPROVAL,
+        actionUrl,
+      }),
+    );
+
+    await this.notificationRepo.save(notifications);
+    this.logger.log(
+      `Created ${notifications.length} over-allocation notifications for job card ${jobCardId}`,
+    );
+
+    await Promise.all(
+      managers.map((user) =>
+        this.sendOverAllocationEmail(
+          user.email,
+          user.name,
+          jobCard.jobNumber,
+          jobCard.jobName,
+          productName,
+          quantityRequested,
+          allowedLitres,
+          alreadyAllocated,
+          actionUrl,
+        ),
+      ),
+    );
+  }
+
   async notifyDispatchReady(companyId: number, jobCardId: number): Promise<void> {
     const jobCard = await this.jobCardRepo.findOne({
       where: { id: jobCardId, companyId },
@@ -370,6 +432,75 @@ export class WorkflowNotificationService {
     return this.emailService.sendEmail({
       to: email,
       subject: `Job Card Rejected: ${jobNumber} - ${jobName}`,
+      html,
+    });
+  }
+
+  private async sendOverAllocationEmail(
+    email: string,
+    recipientName: string,
+    jobNumber: string,
+    jobName: string,
+    productName: string,
+    quantityRequested: number,
+    allowedLitres: number,
+    alreadyAllocated: number,
+    actionUrl: string,
+  ): Promise<boolean> {
+    const totalAfter = alreadyAllocated + quantityRequested;
+    const overBy = (totalAfter - allowedLitres).toFixed(1);
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Over-Allocation Approval Required - Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #f59e0b;">Over-Allocation Approval Required</h1>
+          <p>Hello ${recipientName},</p>
+          <p>A stock allocation request exceeds the allowed limit and requires your approval.</p>
+
+          <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+            <strong>Job Card Details:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Job Number:</strong> ${jobNumber}<br/>
+              <strong>Job Name:</strong> ${jobName}
+            </p>
+          </div>
+
+          <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0;">
+            <strong>Allocation Details:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Product:</strong> ${productName}<br/>
+              <strong>Already Allocated:</strong> ${alreadyAllocated}L<br/>
+              <strong>Requested:</strong> ${quantityRequested}L<br/>
+              <strong>Allowed:</strong> ${allowedLitres}L<br/>
+              <strong style="color: #ef4444;">Over by:</strong> ${overBy}L
+            </p>
+          </div>
+
+          <p style="margin: 30px 0;">
+            <a href="${actionUrl}"
+               style="background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Review &amp; Approve
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated notification from Stock Control.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.emailService.sendEmail({
+      to: email,
+      subject: `Over-Allocation Approval Required: ${jobNumber} - ${productName}`,
       html,
     });
   }

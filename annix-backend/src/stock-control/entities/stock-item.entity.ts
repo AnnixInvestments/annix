@@ -56,6 +56,9 @@ export class StockItem {
   @Column({ name: "photo_url", type: "text", nullable: true })
   photoUrl: string | null;
 
+  @Column({ name: "needs_qr_print", type: "boolean", default: false })
+  needsQrPrint: boolean;
+
   @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;

@@ -303,6 +303,17 @@ export class QrCodeService {
     return "image/jpeg";
   }
 
+  async clearNeedsQrPrint(companyId: number, ids: number[]): Promise<{ cleared: number }> {
+    if (ids.length === 0) {
+      return { cleared: 0 };
+    }
+    const result = await this.stockItemRepo.update(
+      { id: In(ids), companyId },
+      { needsQrPrint: false },
+    );
+    return { cleared: result.affected ?? 0 };
+  }
+
   async batchStockItemLabelsPdf(
     companyId: number,
     ids?: number[],

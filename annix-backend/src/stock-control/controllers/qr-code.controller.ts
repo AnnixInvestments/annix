@@ -100,4 +100,10 @@ export class QrCodeController {
     });
     res.send(buffer);
   }
+
+  @Post("inventory/clear-qr-print")
+  @ApiOperation({ summary: "Clear needsQrPrint flag for specified stock items" })
+  async clearQrPrintFlag(@Body() body: { ids: number[] }, @Req() req: any) {
+    return this.qrCodeService.clearNeedsQrPrint(req.user.companyId, body.ids);
+  }
 }

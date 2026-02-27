@@ -178,6 +178,7 @@ export class ImportService {
     companyId: number,
     rows: ImportRow[],
     createdBy?: string,
+    isStockTake: boolean = false,
   ): Promise<ImportResult> {
     const result: ImportResult = {
       totalRows: rows.length,
@@ -248,8 +249,8 @@ export class ImportService {
               stockItem: existing,
               movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
               quantity: Math.abs(delta),
-              referenceType: ReferenceType.IMPORT,
-              notes: "Updated via import",
+              referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
+              notes: isStockTake ? "Stock take adjustment" : "Updated via import",
               createdBy: createdBy || null,
               companyId,
             });
@@ -270,6 +271,7 @@ export class ImportService {
             minStockLevel: row.minStockLevel || 0,
             location: row.location || null,
             companyId,
+            needsQrPrint: isStockTake,
           });
           const saved = await this.stockItemRepo.save(item);
 
@@ -278,8 +280,8 @@ export class ImportService {
               stockItem: saved,
               movementType: MovementType.IN,
               quantity: row.quantity,
-              referenceType: ReferenceType.IMPORT,
-              notes: "Initial import",
+              referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
+              notes: isStockTake ? "Stock take - new item" : "Initial import",
               createdBy: createdBy || null,
               companyId,
             });

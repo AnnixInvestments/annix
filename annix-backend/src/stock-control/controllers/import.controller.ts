@@ -43,7 +43,12 @@ export class ImportController {
 
   @Post("confirm")
   @ApiOperation({ summary: "Confirm and import parsed rows into inventory" })
-  async confirm(@Body() body: { rows: any[] }, @Req() req: any) {
-    return this.importService.importRows(req.user.companyId, body.rows, req.user.name);
+  async confirm(@Body() body: { rows: any[]; isStockTake?: boolean }, @Req() req: any) {
+    return this.importService.importRows(
+      req.user.companyId,
+      body.rows,
+      req.user.name,
+      body.isStockTake ?? false,
+    );
   }
 }

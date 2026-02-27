@@ -109,6 +109,31 @@ export class JobCardsController {
     return this.jobCardService.allocationsByJobCard(req.user.companyId, id);
   }
 
+  @Get("allocations/pending")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "All pending over-allocation approvals" })
+  async pendingAllocations(@Req() req: any) {
+    return this.jobCardService.pendingAllocations(req.user.companyId);
+  }
+
+  @Post(":id/allocations/:allocationId/approve")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Approve an over-allocation request" })
+  async approveOverAllocation(@Req() req: any, @Param("allocationId") allocationId: number) {
+    return this.jobCardService.approveOverAllocation(req.user.companyId, allocationId, req.user.id);
+  }
+
+  @Post(":id/allocations/:allocationId/reject")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Reject an over-allocation request" })
+  async rejectOverAllocation(
+    @Req() req: any,
+    @Param("allocationId") allocationId: number,
+    @Body() body: { reason: string },
+  ) {
+    return this.jobCardService.rejectOverAllocation(req.user.companyId, allocationId, body.reason);
+  }
+
   @Post(":id/allocations/:allocationId/photo")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload a photo for an allocation" })

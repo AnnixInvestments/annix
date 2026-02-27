@@ -99,6 +99,7 @@ export default function InventoryPage() {
   const [isSavingMinLevels, setIsSavingMinLevels] = useState(false);
   const [showPrintDropdown, setShowPrintDropdown] = useState(false);
   const [printPreviewItems, setPrintPreviewItems] = useState<StockItem[] | null>(null);
+  const [isStockTakeMode, setIsStockTakeMode] = useState(false);
   const printDropdownRef = useRef<HTMLDivElement>(null);
   const dragCounterRef = useRef(0);
 
@@ -526,9 +527,10 @@ export default function InventoryPage() {
               })
           : parsedRows;
 
-      const result = await stockControlApiClient.confirmImport(rowsToImport);
+      const result = await stockControlApiClient.confirmImport(rowsToImport, isStockTakeMode);
       setImportResult(result);
       setImportStep("result");
+      setIsStockTakeMode(false);
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Failed to import data");
       setImportStep("preview");
@@ -648,6 +650,23 @@ export default function InventoryPage() {
                     rows)
                   </button>
                 </div>
+              </div>
+              <div className="mx-6 mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isStockTakeMode}
+                    onChange={(e) => setIsStockTakeMode(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-amber-800">Monthly Stock Take</span>
+                    <p className="text-xs text-amber-600">
+                      Overwrites quantities instead of adding. New items will be highlighted until
+                      labels are printed.
+                    </p>
+                  </div>
+                </label>
               </div>
               {importMapping && (
                 <div className="mx-6 mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">

@@ -21,6 +21,7 @@ export enum ReferenceType {
   IMPORT = "import",
   ISSUANCE = "issuance",
   MANUAL = "manual",
+  STOCK_TAKE = "stock_take",
 }
 
 @Entity("stock_movements")
