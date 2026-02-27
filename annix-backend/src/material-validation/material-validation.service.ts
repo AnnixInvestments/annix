@@ -33,16 +33,12 @@ export class MaterialValidationService {
   ) {}
 
   async findAll(): Promise<MaterialLimitResponseDto[]> {
-    const entities = await this.materialLimitRepository.find({
-      relations: ["steelSpecification"],
-    });
+    const entities = await this.materialLimitRepository.find();
     return MaterialLimitResponseDto.fromEntities(entities);
   }
 
   async findBySpecName(steelSpecName: string): Promise<MaterialLimit | null> {
-    const allLimits = await this.materialLimitRepository.find({
-      relations: ["steelSpecification"],
-    });
+    const allLimits = await this.materialLimitRepository.find();
 
     const specNameLower = steelSpecName.toLowerCase();
 

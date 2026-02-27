@@ -24,10 +24,10 @@ export class MaterialLimit {
   @Column({ type: "varchar", length: 100 })
   material_type: string;
 
-  @Column({ type: "integer" })
+  @Column({ type: "numeric", precision: 8, scale: 2 })
   min_temp_c: number;
 
-  @Column({ type: "integer" })
+  @Column({ type: "numeric", precision: 8, scale: 2 })
   max_temp_c: number;
 
   @Column({ type: "decimal", precision: 10, scale: 2 })
