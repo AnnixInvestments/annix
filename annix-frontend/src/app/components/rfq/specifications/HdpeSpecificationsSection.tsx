@@ -625,11 +625,23 @@ export function HdpeSpecificationsSection({
                         ? "Select standard first"
                         : "Select pressure class..."}
                   </option>
-                  {availablePressureClasses.map((pc) => (
-                    <option key={pc.id} value={pc.id}>
-                      {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
-                    </option>
-                  ))}
+                  {availablePressureClasses
+                    .reduce<{ seen: Set<string>; items: typeof availablePressureClasses }>(
+                      (acc, pc) => {
+                        const display = pc.designation?.replace(/\/\d+$/, "") || pc.designation;
+                        if (!acc.seen.has(display)) {
+                          acc.seen.add(display);
+                          acc.items.push(pc);
+                        }
+                        return acc;
+                      },
+                      { seen: new Set(), items: [] },
+                    )
+                    .items.map((pc) => (
+                      <option key={pc.id} value={pc.id}>
+                        {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -650,7 +662,7 @@ export function HdpeSpecificationsSection({
                   </option>
                   {availableFlangeTypes.map((ft) => (
                     <option key={ft.code} value={ft.code}>
-                      {ft.name}
+                      {ft.code} - {ft.name}
                     </option>
                   ))}
                 </select>
