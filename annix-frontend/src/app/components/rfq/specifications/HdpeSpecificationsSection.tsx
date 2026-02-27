@@ -7,7 +7,6 @@ import {
   HDPE_JOINING_OPTIONS,
   HDPE_MATERIALS,
   HDPE_SDR_OPTIONS,
-  HDPE_WALL_THICKNESS_DATA,
   type HdpeFlangeDrillingStandard,
   type HdpeFlangeType,
   type HdpeGrade,
@@ -18,10 +17,8 @@ import {
 } from "@/app/lib/config/rfq/hdpe";
 import {
   deratedPressure,
-  HDPE_MAX_CONTINUOUS_TEMP_C,
   HDPE_TEMPERATURE_DERATING,
 } from "@/app/lib/config/rfq/hdpeTemperatureDerating";
-import { buttFusionParametersForDn } from "@/app/lib/config/rfq/hdpeWelding";
 import {
   WELDING_STANDARD_LIST,
   WELDING_STANDARDS,
@@ -116,7 +113,10 @@ export function HdpeSpecificationsSection({
       ? ((Math.PI * (sampleOd ** 2 - innerDiameter ** 2)) / 4) * (density / 1e6)
       : null;
 
-  const fusionParams = buttFusionParametersForDn(sampleOd);
+  const maxTempForGrade = selectedMaterial?.maxTemperatureC ?? 60;
+  const temperatureOptions = HDPE_TEMPERATURE_DERATING.filter(
+    (point) => point.temperatureC <= maxTempForGrade,
+  );
 
   const handleGradeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const grade = e.target.value as HdpeGrade;
@@ -147,7 +147,7 @@ export function HdpeSpecificationsSection({
     });
   };
 
-  const handleOperatingTempChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOperatingTempChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const temp = e.target.value ? parseInt(e.target.value, 10) : undefined;
     onUpdateGlobalSpecs({
       ...globalSpecs,
@@ -385,16 +385,19 @@ export function HdpeSpecificationsSection({
             <label className="block text-xs font-semibold text-gray-900 mb-1">
               Operating Temperature (°C)
             </label>
-            <input
-              type="number"
+            <select
               value={operatingTemp}
               onChange={handleOperatingTempChange}
-              min={-40}
-              max={80}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-            />
+            >
+              {temperatureOptions.map((point) => (
+                <option key={point.temperatureC} value={point.temperatureC}>
+                  {point.temperatureC}°C (derating factor: {point.factor.toFixed(2)})
+                </option>
+              ))}
+            </select>
             <p className="mt-1 text-xs text-gray-500">
-              Max continuous: {HDPE_MAX_CONTINUOUS_TEMP_C}°C
+              Max for {selectedGrade}: {maxTempForGrade}°C
             </p>
           </div>
           <div className="bg-gray-50 rounded-md p-3">
@@ -465,96 +468,30 @@ export function HdpeSpecificationsSection({
         globalSpecs.hdpeJoiningMethod === "electrofusion") && (
         <div className="border-t border-gray-200 pt-4">
           <h4 className="text-xs font-semibold text-gray-700 mb-3">Welding Standard</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-900 mb-1">
-                Welding Standard
-              </label>
-              <select
-                value={selectedWeldingStandard}
-                onChange={handleWeldingStandardChange}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-              >
-                {WELDING_STANDARD_LIST.map((code) => {
-                  const std = WELDING_STANDARDS[code];
-                  return (
-                    <option key={code} value={code}>
-                      {std.name} ({std.region})
-                    </option>
-                  );
-                })}
-              </select>
-              {selectedWeldingStandardData && (
-                <p className="mt-1 text-xs text-gray-500">
-                  {selectedWeldingStandardData.description}
-                </p>
-              )}
-            </div>
-            <div className="bg-gray-50 rounded-md p-3">
-              <div className="text-xs font-semibold text-gray-700 mb-2">Standard Parameters</div>
-              {selectedWeldingStandardData && (
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Heat Plate Temp:</span>
-                    <span className="text-gray-900">
-                      {selectedWeldingStandardData.heatPlateTemperatureC.min}-
-                      {selectedWeldingStandardData.heatPlateTemperatureC.max}°C
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Interface Pressure:</span>
-                    <span className="text-gray-900">
-                      {selectedWeldingStandardData.interfacialPressureNMm2.min}-
-                      {selectedWeldingStandardData.interfacialPressureNMm2.max} N/mm²
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Procedures:</span>
-                    <span className="text-gray-900">
-                      {selectedWeldingStandardData.procedureTypes.join(", ")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Data Logger:</span>
-                    <span className="text-gray-900">
-                      {selectedWeldingStandardData.dataLoggerRequired ? "Required" : "Optional"}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              Welding Standard
+            </label>
+            <select
+              value={selectedWeldingStandard}
+              onChange={handleWeldingStandardChange}
+              className="w-full md:w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+            >
+              {WELDING_STANDARD_LIST.map((code) => {
+                const std = WELDING_STANDARDS[code];
+                return (
+                  <option key={code} value={code}>
+                    {std.name} ({std.region})
+                  </option>
+                );
+              })}
+            </select>
+            {selectedWeldingStandardData && (
+              <p className="mt-1 text-xs text-gray-500">
+                {selectedWeldingStandardData.description}
+              </p>
+            )}
           </div>
-
-          {/* Fusion Parameters for Sample Size */}
-          {fusionParams && globalSpecs.hdpeJoiningMethod === "butt_fusion" && (
-            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
-              <div className="text-xs font-semibold text-blue-800 mb-2">
-                Butt Fusion Parameters (DN{sampleOd} reference)
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                <div>
-                  <span className="text-gray-600">Heat Time:</span>
-                  <span className="ml-1 text-gray-900">
-                    {fusionParams.heatingTimeSec.min}-{fusionParams.heatingTimeSec.max}s
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Changeover:</span>
-                  <span className="ml-1 text-gray-900">≤{fusionParams.changeoverTimeSec}s</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Cool Time:</span>
-                  <span className="ml-1 text-gray-900">{fusionParams.coolingTimeMin} min</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Bead Size:</span>
-                  <span className="ml-1 text-gray-900">
-                    {fusionParams.beadSizeMm.min}-{fusionParams.beadSizeMm.max}mm
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -666,27 +603,6 @@ export function HdpeSpecificationsSection({
           </div>
         </div>
       )}
-
-      {/* Available Pipe Sizes Reference */}
-      <div className="border-t border-gray-200 pt-4">
-        <details className="text-xs">
-          <summary className="font-semibold text-gray-700 cursor-pointer hover:text-gray-900">
-            Available Pipe Sizes (click to expand)
-          </summary>
-          <div className="mt-2 max-h-48 overflow-y-auto">
-            <div className="grid grid-cols-6 gap-1">
-              {HDPE_WALL_THICKNESS_DATA.map((size) => (
-                <span
-                  key={size.nominalBoreMm}
-                  className="px-2 py-1 bg-gray-100 rounded text-center text-gray-700"
-                >
-                  DN{size.nominalBoreMm}
-                </span>
-              ))}
-            </div>
-          </div>
-        </details>
-      </div>
     </div>
   );
 }

@@ -19,7 +19,7 @@ export const HDPE_MATERIALS: HdpeMaterial[] = [
     description: "Standard polyethylene for water and gas distribution",
     densityKgM3: 950,
     minDesignStress: 6.3,
-    maxTemperatureC: 40,
+    maxTemperatureC: 60,
     applications: ["Water distribution", "Gas distribution", "Low pressure systems"],
   },
   {
@@ -29,7 +29,7 @@ export const HDPE_MATERIALS: HdpeMaterial[] = [
     description: "High-performance polyethylene for demanding applications",
     densityKgM3: 960,
     minDesignStress: 8.0,
-    maxTemperatureC: 40,
+    maxTemperatureC: 60,
     applications: ["High pressure water mains", "Industrial pipelines", "Mining applications"],
   },
   {
@@ -39,7 +39,7 @@ export const HDPE_MATERIALS: HdpeMaterial[] = [
     description: "Crack-resistant PE100 for trenchless installations",
     densityKgM3: 960,
     minDesignStress: 8.0,
-    maxTemperatureC: 40,
+    maxTemperatureC: 60,
     applications: [
       "Trenchless installation",
       "Directional drilling",
