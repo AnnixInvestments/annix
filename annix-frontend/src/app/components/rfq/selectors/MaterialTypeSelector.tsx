@@ -1,12 +1,16 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { PipeMaterialType } from "@/app/lib/hooks/useRfqForm";
+
+export type ItemType = "pipe" | "bend" | "fitting";
 
 export interface MaterialTypeSelectorProps {
   selectedMaterials: string[];
   onSelectMaterial: (material: PipeMaterialType) => void;
+  onAddItem?: (material: PipeMaterialType, itemType: ItemType) => void;
   disabled?: boolean;
+  fittingsDisabled?: boolean;
 }
 
 interface MaterialOption {
@@ -62,10 +66,109 @@ const MATERIAL_OPTIONS: MaterialOption[] = [
   },
 ];
 
+function MaterialDropdownButton({
+  material,
+  disabled,
+  fittingsDisabled,
+  onAddItem,
+}: {
+  material: MaterialOption;
+  disabled?: boolean;
+  fittingsDisabled?: boolean;
+  onAddItem: (itemType: ItemType) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const itemTypes: { type: ItemType; label: string }[] = [
+    { type: "pipe", label: "Pipe" },
+    { type: "bend", label: "Bend" },
+    { type: "fitting", label: "Fitting" },
+  ];
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors ${
+          disabled
+            ? "bg-gray-100 border-gray-300 cursor-not-allowed opacity-50"
+            : `${material.bgColor} ${material.hoverColor} ${material.borderColor}`
+        }`}
+      >
+        <svg
+          className={`w-4 h-4 ${disabled ? "text-gray-400" : material.textColor}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        <span
+          className={`text-xs font-semibold ${disabled ? "text-gray-500" : material.textColor}`}
+        >
+          {material.shortLabel}
+        </span>
+        <svg
+          className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""} ${disabled ? "text-gray-400" : material.textColor}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[120px]">
+          {itemTypes.map((item) => {
+            const isDisabled = item.type === "fitting" && fittingsDisabled;
+            return (
+              <button
+                key={item.type}
+                type="button"
+                onClick={() => {
+                  if (!isDisabled) {
+                    onAddItem(item.type);
+                    setIsOpen(false);
+                  }
+                }}
+                disabled={isDisabled}
+                className={`w-full px-3 py-2 text-left text-sm transition-colors ${
+                  isDisabled
+                    ? "text-gray-400 cursor-not-allowed"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MaterialTypeSelector({
   selectedMaterials,
   onSelectMaterial,
+  onAddItem,
   disabled,
+  fittingsDisabled,
 }: MaterialTypeSelectorProps) {
   const availableMaterials = MATERIAL_OPTIONS.filter((opt) => {
     const productKey = opt.value === "steel" ? "fabricated_steel" : opt.value;
@@ -80,31 +183,19 @@ export function MaterialTypeSelector({
     <div className="flex gap-2 items-center">
       <span className="text-xs text-gray-500 font-medium">Add:</span>
       {availableMaterials.map((material) => (
-        <button
+        <MaterialDropdownButton
           key={material.value}
-          type="button"
-          onClick={() => onSelectMaterial(material.value)}
+          material={material}
           disabled={disabled}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors ${
-            disabled
-              ? "bg-gray-100 border-gray-300 cursor-not-allowed opacity-50"
-              : `${material.bgColor} ${material.hoverColor} ${material.borderColor}`
-          }`}
-        >
-          <svg
-            className={`w-4 h-4 ${disabled ? "text-gray-400" : material.textColor}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span
-            className={`text-xs font-semibold ${disabled ? "text-gray-500" : material.textColor}`}
-          >
-            {material.shortLabel}
-          </span>
-        </button>
+          fittingsDisabled={fittingsDisabled}
+          onAddItem={(itemType) => {
+            if (onAddItem) {
+              onAddItem(material.value, itemType);
+            } else {
+              onSelectMaterial(material.value);
+            }
+          }}
+        />
       ))}
     </div>
   );

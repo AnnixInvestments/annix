@@ -68,11 +68,7 @@ import {
   StraightPipeForm,
   ValveForm,
 } from "@/app/components/rfq/forms";
-import {
-  ItemTypeButtons,
-  MaterialBadge,
-  MaterialTypeSelector,
-} from "@/app/components/rfq/selectors/MaterialTypeSelector";
+import { MaterialTypeSelector } from "@/app/components/rfq/selectors/MaterialTypeSelector";
 import type { PipeMaterialType } from "@/app/lib/hooks/useRfqForm";
 
 interface ItemWrapperProps {
@@ -416,13 +412,6 @@ export default function ItemUploadStep({
 
   const PIPE_MATERIALS = ["fabricated_steel", "hdpe", "pvc"];
   const selectedPipeMaterials = requiredProducts.filter((p) => PIPE_MATERIALS.includes(p));
-  const [activeMaterial, setActiveMaterial] = useState<PipeMaterialType | null>(
-    selectedPipeMaterials.length === 1
-      ? selectedPipeMaterials[0] === "fabricated_steel"
-        ? "steel"
-        : (selectedPipeMaterials[0] as PipeMaterialType)
-      : null,
-  );
 
   // Authentication status for unregistered customer restrictions
   // Don't apply restrictions while auth is still loading to prevent flash of restricted state
@@ -1401,61 +1390,37 @@ export default function ItemUploadStep({
 
   const addItemButtons = (insertAtStart?: boolean) => {
     const hasPipeMaterials = selectedPipeMaterials.length > 0;
-    const hasMultipleMaterials = selectedPipeMaterials.length > 1;
-
-    const currentMaterial: PipeMaterialType | null = hasMultipleMaterials
-      ? activeMaterial
-      : selectedPipeMaterials.length === 1
-        ? selectedPipeMaterials[0] === "fabricated_steel"
-          ? "steel"
-          : (selectedPipeMaterials[0] as PipeMaterialType)
-        : null;
 
     return (
       <div
         className="flex gap-2 items-center flex-wrap"
         data-nix-target={insertAtStart ? "add-item-section-top" : undefined}
       >
-        {hasPipeMaterials &&
-          (hasMultipleMaterials && !activeMaterial ? (
-            <MaterialTypeSelector
-              selectedMaterials={requiredProducts}
-              onSelectMaterial={(material) => setActiveMaterial(material)}
-              disabled={!canAddMoreItems}
-            />
-          ) : currentMaterial ? (
-            <div className="flex gap-2 items-center">
-              {hasMultipleMaterials && (
-                <MaterialBadge material={currentMaterial} onClear={() => setActiveMaterial(null)} />
-              )}
-              <ItemTypeButtons
-                material={currentMaterial}
-                onAddPipe={() => {
-                  if (!canAddMoreItems) {
-                    showRestrictionPopup("itemLimit")({} as React.MouseEvent);
-                    return;
-                  }
-                  handleAddPipe(currentMaterial, insertAtStart);
-                }}
-                onAddBend={() => {
-                  if (!canAddMoreItems) {
-                    showRestrictionPopup("itemLimit")({} as React.MouseEvent);
-                    return;
-                  }
-                  onAddBendEntry(undefined, insertAtStart, currentMaterial);
-                }}
-                onAddFitting={() => {
-                  if (isUnregisteredCustomer) {
-                    showRestrictionPopup("fittings")({} as React.MouseEvent);
-                    return;
-                  }
-                  onAddFittingEntry(undefined, insertAtStart, currentMaterial);
-                }}
-                disabled={!canAddMoreItems}
-                fittingsDisabled={isUnregisteredCustomer}
-              />
-            </div>
-          ) : null)}
+        {hasPipeMaterials && (
+          <MaterialTypeSelector
+            selectedMaterials={requiredProducts}
+            onSelectMaterial={() => {}}
+            onAddItem={(material, itemType) => {
+              if (!canAddMoreItems) {
+                showRestrictionPopup("itemLimit")({} as React.MouseEvent);
+                return;
+              }
+              if (itemType === "fitting" && isUnregisteredCustomer) {
+                showRestrictionPopup("fittings")({} as React.MouseEvent);
+                return;
+              }
+              if (itemType === "pipe") {
+                handleAddPipe(material, insertAtStart);
+              } else if (itemType === "bend") {
+                onAddBendEntry(undefined, insertAtStart, material);
+              } else if (itemType === "fitting") {
+                onAddFittingEntry(undefined, insertAtStart, material);
+              }
+            }}
+            disabled={!canAddMoreItems}
+            fittingsDisabled={isUnregisteredCustomer}
+          />
+        )}
         {requiredProducts.includes("pipe_steel_work") && onAddPipeSteelWorkEntry && (
           <button
             onClick={() => onAddPipeSteelWorkEntry(undefined, insertAtStart)}
