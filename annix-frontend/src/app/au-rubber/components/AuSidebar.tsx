@@ -34,6 +34,25 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    label: "Stock Control",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
+        />
+      </svg>
+    ),
+    items: [
+      { href: "/au-rubber/portal/compound-stocks", label: "Compound Inventory" },
+      { href: "/au-rubber/portal/compound-orders", label: "Compound Orders" },
+      { href: "/au-rubber/portal/productions", label: "Production" },
+      { href: "/au-rubber/portal/stock-movements", label: "Movement History" },
+    ],
+  },
+  {
     label: "Prices",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

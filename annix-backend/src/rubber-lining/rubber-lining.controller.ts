@@ -30,35 +30,59 @@ import {
   RubberTypeDto,
 } from "./dto/rubber-lining.dto";
 import {
+  AdjustCompoundDto,
+  CalculateCompoundDto,
+  CompoundCalculationResultDto,
   CreateRubberCompanyDto,
+  CreateRubberCompoundOrderDto,
+  CreateRubberCompoundStockDto,
   CreateRubberOrderDto,
   CreateRubberPricingTierDto,
   CreateRubberProductCodingDto,
   CreateRubberProductDto,
+  CreateRubberProductionDto,
   ImportProductsRequestDto,
   ImportProductsResultDto,
+  ReceiveCompoundDto,
+  ReceiveCompoundOrderDto,
   RubberCompanyDto,
+  RubberCompoundMovementDto,
+  RubberCompoundOrderDto,
+  RubberCompoundStockDto,
   RubberOrderDto,
   RubberPriceCalculationDto,
   RubberPriceCalculationRequestDto,
   RubberPricingTierDto,
   RubberProductCodingDto,
   RubberProductDto,
+  RubberProductionDto,
   UpdateRubberCompanyDto,
+  UpdateRubberCompoundOrderStatusDto,
+  UpdateRubberCompoundStockDto,
   UpdateRubberOrderDto,
   UpdateRubberPricingTierDto,
   UpdateRubberProductCodingDto,
   UpdateRubberProductDto,
 } from "./dto/rubber-portal.dto";
+import {
+  CompoundMovementReferenceType,
+  CompoundMovementType,
+} from "./entities/rubber-compound-movement.entity";
+import { RubberCompoundOrderStatus } from "./entities/rubber-compound-order.entity";
 import { RubberOrderStatus } from "./entities/rubber-order.entity";
 import { ProductCodingType } from "./entities/rubber-product-coding.entity";
+import { RubberProductionStatus } from "./entities/rubber-production.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberLiningService } from "./rubber-lining.service";
+import { RubberStockService } from "./rubber-stock.service";
 
 @ApiTags("Rubber Lining")
 @Controller("rubber-lining")
 export class RubberLiningController {
-  constructor(private readonly rubberLiningService: RubberLiningService) {}
+  constructor(
+    private readonly rubberLiningService: RubberLiningService,
+    private readonly rubberStockService: RubberStockService,
+  ) {}
 
   @Get("types")
   @ApiOperation({
@@ -884,5 +908,251 @@ Formula: totalPrice = totalKg × salePricePerKg
     const result = await this.rubberLiningService.calculatePrice(request);
     if (!result) throw new NotFoundException("Product or company not found");
     return result;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/compound-stocks")
+  @ApiOperation({ summary: "List compound stocks" })
+  async compoundStocks(): Promise<RubberCompoundStockDto[]> {
+    return this.rubberStockService.allCompoundStocks();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/compound-stocks/low-stock")
+  @ApiOperation({ summary: "List compounds below reorder point" })
+  async lowStockCompounds(): Promise<RubberCompoundStockDto[]> {
+    return this.rubberStockService.lowStockCompounds();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/compound-stocks/:id")
+  @ApiOperation({ summary: "Get compound stock by ID" })
+  @ApiParam({ name: "id", description: "Compound stock ID" })
+  async compoundStockById(@Param("id") id: string): Promise<RubberCompoundStockDto> {
+    const stock = await this.rubberStockService.compoundStockById(Number(id));
+    if (!stock) throw new NotFoundException("Compound stock not found");
+    return stock;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/compound-stocks")
+  @ApiOperation({ summary: "Create compound stock" })
+  async createCompoundStock(
+    @Body() dto: CreateRubberCompoundStockDto,
+  ): Promise<RubberCompoundStockDto> {
+    return this.rubberStockService.createCompoundStock(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/compound-stocks/:id")
+  @ApiOperation({ summary: "Update compound stock" })
+  @ApiParam({ name: "id", description: "Compound stock ID" })
+  async updateCompoundStock(
+    @Param("id") id: string,
+    @Body() dto: UpdateRubberCompoundStockDto,
+  ): Promise<RubberCompoundStockDto> {
+    const stock = await this.rubberStockService.updateCompoundStock(Number(id), dto);
+    if (!stock) throw new NotFoundException("Compound stock not found");
+    return stock;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/compound-stocks/:id")
+  @ApiOperation({ summary: "Delete compound stock" })
+  @ApiParam({ name: "id", description: "Compound stock ID" })
+  async deleteCompoundStock(@Param("id") id: string): Promise<void> {
+    const deleted = await this.rubberStockService.deleteCompoundStock(Number(id));
+    if (!deleted) throw new NotFoundException("Compound stock not found");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/compound-movements")
+  @ApiOperation({ summary: "List compound movements" })
+  @ApiQuery({ name: "compoundStockId", required: false })
+  @ApiQuery({ name: "movementType", required: false, enum: CompoundMovementType })
+  @ApiQuery({ name: "referenceType", required: false, enum: CompoundMovementReferenceType })
+  async compoundMovements(
+    @Query("compoundStockId") compoundStockId?: string,
+    @Query("movementType") movementType?: CompoundMovementType,
+    @Query("referenceType") referenceType?: CompoundMovementReferenceType,
+  ): Promise<RubberCompoundMovementDto[]> {
+    return this.rubberStockService.allMovements({
+      compoundStockId: compoundStockId ? Number(compoundStockId) : undefined,
+      movementType,
+      referenceType,
+    });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/compound-movements/receive")
+  @ApiOperation({ summary: "Receive compound into stock" })
+  async receiveCompound(@Body() dto: ReceiveCompoundDto): Promise<RubberCompoundMovementDto> {
+    return this.rubberStockService.receiveCompound(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/compound-movements/adjust")
+  @ApiOperation({ summary: "Manually adjust compound stock" })
+  async adjustCompound(@Body() dto: AdjustCompoundDto): Promise<RubberCompoundMovementDto> {
+    return this.rubberStockService.manualAdjustment(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/productions")
+  @ApiOperation({ summary: "List productions" })
+  @ApiQuery({ name: "status", required: false, enum: RubberProductionStatus })
+  async productions(
+    @Query("status") status?: RubberProductionStatus,
+  ): Promise<RubberProductionDto[]> {
+    return this.rubberStockService.allProductions(status);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/productions/:id")
+  @ApiOperation({ summary: "Get production by ID" })
+  @ApiParam({ name: "id", description: "Production ID" })
+  async productionById(@Param("id") id: string): Promise<RubberProductionDto> {
+    const production = await this.rubberStockService.productionById(Number(id));
+    if (!production) throw new NotFoundException("Production not found");
+    return production;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/productions")
+  @ApiOperation({ summary: "Create production" })
+  async createProduction(@Body() dto: CreateRubberProductionDto): Promise<RubberProductionDto> {
+    return this.rubberStockService.createProduction(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/productions/:id/start")
+  @ApiOperation({ summary: "Start production" })
+  @ApiParam({ name: "id", description: "Production ID" })
+  async startProduction(@Param("id") id: string): Promise<RubberProductionDto> {
+    return this.rubberStockService.startProduction(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/productions/:id/complete")
+  @ApiOperation({ summary: "Complete production (deducts compound)" })
+  @ApiParam({ name: "id", description: "Production ID" })
+  async completeProduction(@Param("id") id: string): Promise<RubberProductionDto> {
+    return this.rubberStockService.completeProduction(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/productions/:id/cancel")
+  @ApiOperation({ summary: "Cancel production" })
+  @ApiParam({ name: "id", description: "Production ID" })
+  async cancelProduction(@Param("id") id: string): Promise<RubberProductionDto> {
+    return this.rubberStockService.cancelProduction(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/productions/calculate-compound")
+  @ApiOperation({ summary: "Calculate compound required for production" })
+  async calculateCompoundRequired(
+    @Body() dto: CalculateCompoundDto,
+  ): Promise<CompoundCalculationResultDto> {
+    return this.rubberStockService.calculateCompoundRequired(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/compound-orders")
+  @ApiOperation({ summary: "List compound orders" })
+  @ApiQuery({ name: "status", required: false, enum: RubberCompoundOrderStatus })
+  async compoundOrders(
+    @Query("status") status?: RubberCompoundOrderStatus,
+  ): Promise<RubberCompoundOrderDto[]> {
+    return this.rubberStockService.allCompoundOrders(status);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/compound-orders/:id")
+  @ApiOperation({ summary: "Get compound order by ID" })
+  @ApiParam({ name: "id", description: "Compound order ID" })
+  async compoundOrderById(@Param("id") id: string): Promise<RubberCompoundOrderDto> {
+    const order = await this.rubberStockService.compoundOrderById(Number(id));
+    if (!order) throw new NotFoundException("Compound order not found");
+    return order;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/compound-orders")
+  @ApiOperation({ summary: "Create compound order" })
+  async createCompoundOrder(
+    @Body() dto: CreateRubberCompoundOrderDto,
+  ): Promise<RubberCompoundOrderDto> {
+    return this.rubberStockService.createCompoundOrder(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/compound-orders/:id/status")
+  @ApiOperation({ summary: "Update compound order status" })
+  @ApiParam({ name: "id", description: "Compound order ID" })
+  async updateCompoundOrderStatus(
+    @Param("id") id: string,
+    @Body() dto: UpdateRubberCompoundOrderStatusDto,
+  ): Promise<RubberCompoundOrderDto> {
+    return this.rubberStockService.updateCompoundOrderStatus(Number(id), dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/compound-orders/:id/receive")
+  @ApiOperation({ summary: "Receive compound order" })
+  @ApiParam({ name: "id", description: "Compound order ID" })
+  async receiveCompoundOrder(
+    @Param("id") id: string,
+    @Body() dto: ReceiveCompoundOrderDto,
+  ): Promise<RubberCompoundOrderDto> {
+    return this.rubberStockService.receiveCompoundOrder(Number(id), dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/production-statuses")
+  @ApiOperation({ summary: "List production statuses" })
+  async productionStatuses(): Promise<{ value: string; label: string }[]> {
+    return [
+      { value: "PENDING", label: "Pending" },
+      { value: "IN_PROGRESS", label: "In Progress" },
+      { value: "COMPLETED", label: "Completed" },
+      { value: "CANCELLED", label: "Cancelled" },
+    ];
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/compound-order-statuses")
+  @ApiOperation({ summary: "List compound order statuses" })
+  async compoundOrderStatuses(): Promise<{ value: string; label: string }[]> {
+    return [
+      { value: "PENDING", label: "Pending" },
+      { value: "APPROVED", label: "Approved" },
+      { value: "ORDERED", label: "Ordered" },
+      { value: "RECEIVED", label: "Received" },
+      { value: "CANCELLED", label: "Cancelled" },
+    ];
   }
 }
