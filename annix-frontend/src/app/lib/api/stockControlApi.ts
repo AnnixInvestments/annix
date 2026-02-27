@@ -364,6 +364,51 @@ export interface CostByJob {
   totalItemsAllocated: number;
 }
 
+export interface StaffStockFilters {
+  startDate?: string;
+  endDate?: string;
+  staffMemberId?: number;
+  departmentId?: number;
+  stockItemId?: number;
+  anomalyThreshold?: number;
+}
+
+export interface StaffItemBreakdown {
+  stockItemId: number;
+  stockItemName: string;
+  sku: string;
+  category: string | null;
+  totalQuantity: number;
+  totalValue: number;
+}
+
+export interface StaffStockSummary {
+  staffMemberId: number;
+  staffName: string;
+  employeeNumber: string | null;
+  department: string | null;
+  departmentId: number | null;
+  totalQuantityReceived: number;
+  totalValue: number;
+  issuanceCount: number;
+  anomalyScore: number;
+  isAnomaly: boolean;
+  items: StaffItemBreakdown[];
+}
+
+export interface StaffStockReportResult {
+  summaries: StaffStockSummary[];
+  totals: {
+    totalStaff: number;
+    totalQuantityIssued: number;
+    totalValue: number;
+    anomalyCount: number;
+  };
+  averagePerStaff: number;
+  anomalyThreshold: number;
+  standardDeviation: number;
+}
+
 export interface JobCardDocument {
   id: number;
   jobCardId: number;
@@ -1651,6 +1696,30 @@ class StockControlApiClient {
           .join("&")
       : "";
     return this.request(`/stock-control/reports/movement-history${query}`);
+  }
+
+  async staffStockReport(filters?: StaffStockFilters): Promise<StaffStockReportResult> {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append("startDate", filters.startDate);
+    if (filters?.endDate) params.append("endDate", filters.endDate);
+    if (filters?.staffMemberId) params.append("staffMemberId", String(filters.staffMemberId));
+    if (filters?.departmentId) params.append("departmentId", String(filters.departmentId));
+    if (filters?.stockItemId) params.append("stockItemId", String(filters.stockItemId));
+    if (filters?.anomalyThreshold)
+      params.append("anomalyThreshold", String(filters.anomalyThreshold));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/stock-control/reports/staff-stock${query}`);
+  }
+
+  async staffStockDetail(
+    staffMemberId: number,
+    filters?: { startDate?: string; endDate?: string },
+  ): Promise<StockIssuance[]> {
+    const params = new URLSearchParams();
+    if (filters?.startDate) params.append("startDate", filters.startDate);
+    if (filters?.endDate) params.append("endDate", filters.endDate);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/stock-control/reports/staff-stock/${staffMemberId}/detail${query}`);
   }
 
   async requisitions(): Promise<Requisition[]> {

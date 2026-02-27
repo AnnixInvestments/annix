@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
@@ -37,6 +37,41 @@ export class ReportsController {
       endDate,
       movementType,
       stockItemId: stockItemId ? Number(stockItemId) : undefined,
+    });
+  }
+
+  @Get("staff-stock")
+  @ApiOperation({ summary: "Staff stock usage report with anomaly detection" })
+  async staffStockReport(
+    @Req() req: any,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+    @Query("staffMemberId") staffMemberId?: string,
+    @Query("departmentId") departmentId?: string,
+    @Query("stockItemId") stockItemId?: string,
+    @Query("anomalyThreshold") anomalyThreshold?: string,
+  ) {
+    return this.reportsService.staffStockReport(req.user.companyId, {
+      startDate,
+      endDate,
+      staffMemberId: staffMemberId ? Number(staffMemberId) : undefined,
+      departmentId: departmentId ? Number(departmentId) : undefined,
+      stockItemId: stockItemId ? Number(stockItemId) : undefined,
+      anomalyThreshold: anomalyThreshold ? Number(anomalyThreshold) : undefined,
+    });
+  }
+
+  @Get("staff-stock/:staffMemberId/detail")
+  @ApiOperation({ summary: "Detailed issuance history for a specific staff member" })
+  async staffStockDetail(
+    @Req() req: any,
+    @Param("staffMemberId") staffMemberId: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+  ) {
+    return this.reportsService.staffStockDetail(req.user.companyId, Number(staffMemberId), {
+      startDate,
+      endDate,
     });
   }
 }
