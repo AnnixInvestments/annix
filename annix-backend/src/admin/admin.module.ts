@@ -9,6 +9,8 @@ import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { CustomerSession } from "../customer/entities/customer-session.entity";
 import { FeedbackModule } from "../feedback/feedback.module";
 import { MessagingModule } from "../messaging/messaging.module";
+import { App } from "../rbac/entities/app.entity";
+import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import { AnonymousDraft } from "../rfq/entities/anonymous-draft.entity";
 import { Rfq } from "../rfq/entities/rfq.entity";
 import { RfqDocument } from "../rfq/entities/rfq-document.entity";
@@ -37,7 +39,9 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
     forwardRef(() => RfqModule),
     TypeOrmModule.forFeature([
       AdminSession,
+      App,
       User,
+      UserAppAccess,
       CustomerProfile,
       CustomerOnboarding,
       CustomerSession,

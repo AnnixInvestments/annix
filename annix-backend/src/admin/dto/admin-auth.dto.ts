@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
 
 export class AdminLoginDto {
   @IsEmail()
@@ -9,6 +9,10 @@ export class AdminLoginDto {
   @IsNotEmpty()
   @MinLength(6)
   password: string;
+
+  @IsString()
+  @IsOptional()
+  appCode?: string;
 }
 
 export class AdminLoginResponseDto {

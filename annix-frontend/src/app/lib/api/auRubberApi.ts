@@ -15,6 +15,7 @@ import type {
 export interface AuRubberLoginDto {
   email: string;
   password: string;
+  appCode?: string;
 }
 
 export interface AuRubberUser {
@@ -210,7 +211,7 @@ class AuRubberApiClient {
   async login(dto: AuRubberLoginDto): Promise<AuRubberLoginResponse> {
     const response = await this.request<AuRubberLoginResponse>("/admin/auth/login", {
       method: "POST",
-      body: JSON.stringify(dto),
+      body: JSON.stringify({ ...dto, appCode: "au-rubber" }),
     });
 
     this.setTokens(response.accessToken, response.refreshToken);

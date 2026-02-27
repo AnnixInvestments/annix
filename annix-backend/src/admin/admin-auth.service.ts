@@ -5,6 +5,8 @@ import { v4 as uuidv4 } from "uuid";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { fromJSDate, now } from "../lib/datetime";
+import { App } from "../rbac/entities/app.entity";
+import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import {
   AUTH_CONSTANTS,
   AuthConfigService,
@@ -23,6 +25,10 @@ export class AdminAuthService {
     private readonly adminSessionRepo: Repository<AdminSession>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(App)
+    private readonly appRepo: Repository<App>,
+    @InjectRepository(UserAppAccess)
+    private readonly userAppAccessRepo: Repository<UserAppAccess>,
     private readonly auditService: AuditService,
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
@@ -72,9 +78,10 @@ export class AdminAuthService {
     }
 
     const roleNames = user.roles?.map((r) => r.name) || [];
-    const hasAdminAccess = roleNames.includes("admin") || roleNames.includes("employee");
 
-    if (!hasAdminAccess) {
+    const hasAccess = await this.checkAppAccess(user.id, roleNames, loginDto.appCode);
+
+    if (!hasAccess.allowed) {
       await this.auditService.log({
         action: AuditAction.ADMIN_LOGIN_FAILED,
         entityType: "auth",
@@ -83,11 +90,12 @@ export class AdminAuthService {
         newValues: {
           email: loginDto.email,
           reason: "insufficient_permissions",
+          appCode: loginDto.appCode,
         },
         ipAddress: clientIp,
         userAgent,
       });
-      throw new ForbiddenException("You do not have permission to access the admin portal");
+      throw new ForbiddenException(hasAccess.message);
     }
 
     if (!this.authConfigService.isAccountStatusCheckDisabled() && user.status !== "active") {
@@ -268,5 +276,47 @@ export class AdminAuthService {
       status: user.status,
       lastLoginAt: user.lastLoginAt,
     };
+  }
+
+  private async checkAppAccess(
+    userId: number,
+    roleNames: string[],
+    appCode?: string,
+  ): Promise<{ allowed: boolean; message: string }> {
+    if (!appCode) {
+      const hasAdminAccess = roleNames.includes("admin") || roleNames.includes("employee");
+      if (hasAdminAccess) {
+        return { allowed: true, message: "" };
+      }
+      return {
+        allowed: false,
+        message: "You do not have permission to access the admin portal",
+      };
+    }
+
+    const app = await this.appRepo.findOne({ where: { code: appCode, isActive: true } });
+    if (!app) {
+      return { allowed: false, message: `Application "${appCode}" not found or is inactive` };
+    }
+
+    const userAccess = await this.userAppAccessRepo.findOne({
+      where: { userId, appId: app.id },
+    });
+
+    if (!userAccess) {
+      return {
+        allowed: false,
+        message: `You do not have permission to access the ${app.name}.`,
+      };
+    }
+
+    if (userAccess.expiresAt && userAccess.expiresAt < now().toJSDate()) {
+      return {
+        allowed: false,
+        message: `Your access to ${app.name} has expired. Please contact your administrator.`,
+      };
+    }
+
+    return { allowed: true, message: "" };
   }
 }
