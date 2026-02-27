@@ -52,6 +52,13 @@ export class JobCardPdfService {
       where: { jobCardId, companyId },
     });
 
+    this.logger.log(
+      `Coating analysis for job card ${jobCardId}: ${coatingAnalysis ? `found with ${coatingAnalysis.coats?.length || 0} coats` : "not found"}`,
+    );
+    if (coatingAnalysis) {
+      this.logger.log(`Coats: ${JSON.stringify(coatingAnalysis.coats)}`);
+    }
+
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const qrUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}/dispatch`;
     const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 120, margin: 1 });
@@ -222,7 +229,11 @@ export class JobCardPdfService {
     doc: typeof PDFDocument,
     coatingAnalysis: JobCardCoatingAnalysis | null,
   ): void {
+    this.logger.log(
+      `drawCoatingSpecification called with: ${coatingAnalysis ? `analysis id=${coatingAnalysis.id}, coats=${JSON.stringify(coatingAnalysis.coats)}` : "null"}`,
+    );
     if (!coatingAnalysis || !coatingAnalysis.coats || coatingAnalysis.coats.length === 0) {
+      this.logger.log("Skipping coating specification - no data");
       return;
     }
 
