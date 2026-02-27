@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { type FlangePressureClass, masterDataApi } from "@/app/lib/api/client";
 import {
   HDPE_FLANGE_DRILLING_OPTIONS,
   HDPE_FLANGE_OPTIONS,
@@ -25,7 +26,6 @@ import {
   type WeldingStandardCode,
 } from "@/app/lib/config/rfq/hdpeWeldingStandards";
 import type { GlobalSpecs } from "@/app/lib/hooks/useRfqForm";
-import { masterDataApi, type FlangePressureClass } from "@/app/lib/api/client";
 import { flangeTypesForStandardCode, useAllFlangeTypes } from "@/app/lib/query/hooks";
 
 interface FlangeStandard {

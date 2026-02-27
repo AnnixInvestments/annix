@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
@@ -12,8 +12,6 @@ import { StockControlCompany } from "../entities/stock-control-company.entity";
 
 @Injectable()
 export class JobCardPdfService {
-  private readonly logger = new Logger(JobCardPdfService.name);
-
   constructor(
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
@@ -52,13 +50,6 @@ export class JobCardPdfService {
       where: { jobCardId, companyId },
     });
 
-    this.logger.log(
-      `Coating analysis for job card ${jobCardId}: ${coatingAnalysis ? `found with ${coatingAnalysis.coats?.length || 0} coats` : "not found"}`,
-    );
-    if (coatingAnalysis) {
-      this.logger.log(`Coats: ${JSON.stringify(coatingAnalysis.coats)}`);
-    }
-
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const qrUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}/dispatch`;
     const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 120, margin: 1 });
@@ -87,10 +78,12 @@ export class JobCardPdfService {
       this.drawHeader(doc, company, jobCard);
       this.drawJobCardDetails(doc, jobCard);
       this.drawQrCode(doc, qrDataUrl);
-      this.drawLineItems(doc, jobCard);
-      this.drawCoatingSpecification(doc, coatingAnalysis);
-      this.drawAllocations(doc, jobCard);
-      this.drawApprovals(doc, approvals);
+
+      let currentY = 280;
+      currentY = this.drawLineItems(doc, jobCard, currentY);
+      currentY = this.drawCoatingSpecification(doc, coatingAnalysis, currentY);
+      currentY = this.drawAllocations(doc, jobCard, currentY);
+      this.drawApprovals(doc, approvals, currentY);
       this.drawFooter(doc);
 
       doc.end();
@@ -186,12 +179,11 @@ export class JobCardPdfService {
       .text("Scan to dispatch", 450, 210, { width: 90, align: "center" });
   }
 
-  private drawLineItems(doc: typeof PDFDocument, jobCard: JobCard): void {
+  private drawLineItems(doc: typeof PDFDocument, jobCard: JobCard, startY: number): number {
     if (!jobCard.lineItems || jobCard.lineItems.length === 0) {
-      return;
+      return startY;
     }
 
-    const startY = 280;
     doc
       .moveTo(50, startY - 10)
       .lineTo(545, startY - 10)
@@ -222,22 +214,20 @@ export class JobCardPdfService {
 
     if (jobCard.lineItems.length > 15) {
       doc.text(`... and ${jobCard.lineItems.length - 15} more items`, 50, y);
+      y += 15;
     }
+
+    return y + 10;
   }
 
   private drawCoatingSpecification(
     doc: typeof PDFDocument,
     coatingAnalysis: JobCardCoatingAnalysis | null,
-  ): void {
-    this.logger.log(
-      `drawCoatingSpecification called with: ${coatingAnalysis ? `analysis id=${coatingAnalysis.id}, coats=${JSON.stringify(coatingAnalysis.coats)}` : "null"}`,
-    );
+    startY: number,
+  ): number {
     if (!coatingAnalysis || !coatingAnalysis.coats || coatingAnalysis.coats.length === 0) {
-      this.logger.log("Skipping coating specification - no data");
-      return;
+      return startY;
     }
-
-    const startY = 390;
     doc
       .moveTo(50, startY - 10)
       .lineTo(545, startY - 10)
@@ -284,14 +274,14 @@ export class JobCardPdfService {
       doc.text(String(coat.litersRequired.toFixed(1)), 460, y);
       y += 15;
     });
+
+    return y + 10;
   }
 
-  private drawAllocations(doc: typeof PDFDocument, jobCard: JobCard): void {
+  private drawAllocations(doc: typeof PDFDocument, jobCard: JobCard, startY: number): number {
     if (!jobCard.allocations || jobCard.allocations.length === 0) {
-      return;
+      return startY;
     }
-
-    const startY = 540;
     doc
       .moveTo(50, startY - 10)
       .lineTo(545, startY - 10)
@@ -319,14 +309,18 @@ export class JobCardPdfService {
       doc.text(alloc.allocatedBy || "-", 450, y, { width: 90 });
       y += 15;
     });
+
+    return y + 10;
   }
 
-  private drawApprovals(doc: typeof PDFDocument, approvals: JobCardApproval[]): void {
+  private drawApprovals(
+    doc: typeof PDFDocument,
+    approvals: JobCardApproval[],
+    startY: number,
+  ): void {
     if (approvals.length === 0) {
       return;
     }
-
-    const startY = 690;
     doc
       .moveTo(50, startY - 10)
       .lineTo(545, startY - 10)
