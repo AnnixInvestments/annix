@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useVoiceFilterAuth } from "@/app/context/VoiceFilterAuthContext";
@@ -19,6 +20,7 @@ const MicrophoneIcon = () => (
 );
 
 export default function VoiceFilterPage() {
+  const router = useRouter();
   const { isAuthenticated, isLoading, user, logout } = useVoiceFilterAuth();
   const [upcomingEvents, setUpcomingEvents] = useState<VoiceFilterCalendarEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -38,10 +40,15 @@ export default function VoiceFilterPage() {
   useEffect(() => {
     document.title = "Voice Filter - Annix";
 
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/voice-filter/login");
+      return;
+    }
+
     if (isAuthenticated) {
       loadUpcomingEvents();
     }
-  }, [isAuthenticated, loadUpcomingEvents]);
+  }, [isAuthenticated, isLoading, router, loadUpcomingEvents]);
 
   const handleLogout = async () => {
     await logout();

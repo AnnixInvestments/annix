@@ -1,11 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useVoiceFilterAuth } from "@/app/context/VoiceFilterAuthContext";
-
-const VOICE_FILTER_API_URL = "http://localhost:47823";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -15,14 +12,11 @@ function LoginPageContent() {
     isAuthenticated,
     isLoading: authLoading,
     login,
-    register,
     oauthLogin,
   } = useVoiceFilterAuth();
 
-  const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -57,26 +51,16 @@ function LoginPageContent() {
       return;
     }
 
-    if (mode === "register" && password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      let success: boolean;
-      if (mode === "login") {
-        success = await login(email, password);
-      } else {
-        success = await register(email, password);
-      }
+      const success = await login(email, password);
 
       if (success) {
-        setSuccess(mode === "login" ? "Signed in!" : "Account created!");
+        setSuccess("Signed in!");
         router.replace(redirectPath);
       } else {
-        setError(mode === "login" ? "Invalid email or password." : "Registration failed.");
+        setError("Invalid email or password.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -124,31 +108,6 @@ function LoginPageContent() {
         </div>
 
         <div className="bg-[#16181c] border border-[#2f3336] rounded-2xl p-7">
-          <div className="flex gap-2 mb-6">
-            <button
-              type="button"
-              onClick={() => setMode("login")}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-full border transition-all ${
-                mode === "login"
-                  ? "bg-[#1d9bf0] border-[#1d9bf0] text-white"
-                  : "border-[#2f3336] text-[#71767b] hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("register")}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-full border transition-all ${
-                mode === "register"
-                  ? "bg-[#1d9bf0] border-[#1d9bf0] text-white"
-                  : "border-[#2f3336] text-[#71767b] hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
-
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-[13px] text-[#71767b] mb-1.5">Email</label>
@@ -173,37 +132,14 @@ function LoginPageContent() {
                 minLength={8}
                 className="w-full px-3.5 py-3 text-[15px] bg-[#0f1419] border border-[#2f3336] rounded-lg text-white placeholder-[#536471] focus:border-[#1d9bf0] outline-none transition-colors"
               />
-              {mode === "register" && (
-                <p className="text-[11px] text-[#536471] mt-1">Minimum 8 characters</p>
-              )}
             </div>
-
-            {mode === "register" && (
-              <div className="mb-4">
-                <label className="block text-[13px] text-[#71767b] mb-1.5">Confirm Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
-                  required
-                  className="w-full px-3.5 py-3 text-[15px] bg-[#0f1419] border border-[#2f3336] rounded-lg text-white placeholder-[#536471] focus:border-[#1d9bf0] outline-none transition-colors"
-                />
-              </div>
-            )}
 
             <button
               type="submit"
               disabled={isSubmitting}
               className="w-full py-3 text-[15px] font-semibold bg-[#1d9bf0] text-white rounded-full hover:bg-[#1a8cd8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-2"
             >
-              {isSubmitting
-                ? mode === "login"
-                  ? "Signing in..."
-                  : "Creating account..."
-                : mode === "login"
-                  ? "Sign In"
-                  : "Create Account"}
+              {isSubmitting ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
@@ -284,9 +220,9 @@ function LoginPageContent() {
         </div>
 
         <div className="text-center mt-6">
-          <Link href="/voice-filter" className="text-sm text-[#1d9bf0] hover:underline">
-            Back to Voice Filter
-          </Link>
+          <a href="/" className="text-sm text-[#1d9bf0] hover:underline">
+            Back to Annix
+          </a>
         </div>
       </div>
     </div>
