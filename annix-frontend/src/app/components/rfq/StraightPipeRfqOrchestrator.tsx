@@ -1276,63 +1276,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       if (workingPressureBar && classes.length > 0) {
         const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
         const standardCode = standard?.code || String(standardId);
-
-        // DIRECT BS 4504/SABS 1123 HANDLING - bypass complex P/T logic
-        // These standards have multiple variants per pressure level (e.g., 10/1, 10/3, 10/5)
-        // The dropdown deduplicates by displayValue (numeric prefix), keeping the first after sort
-        // We must select the same ID that survives deduplication to match the dropdown
         const isBs4504 = standardCode === "BS 4504" || standardCode.includes("BS 4504");
         const isSabs1123 = standardCode === "SABS 1123" || standardCode.includes("SABS 1123");
-        if (isBs4504 || isSabs1123) {
-          console.log("[PT-DEBUG] BS 4504/SABS 1123 detected, using direct selection");
-          const targetPressure = workingPressureBar;
 
-          // Map designations to bar ratings and displayValues (matching dropdown logic)
-          // SABS 1123 uses kPa notation (600/3 = 6 bar), BS 4504 uses bar notation (10/3 = 10 bar)
-          const classesWithRatings = classes
-            .map((c: any) => {
-              const designation = c.designation?.trim() || "";
-              const match = designation.match(/^(?:PN)?(\d+)/i);
-              const numericValue = match ? parseInt(match[1], 10) : 0;
-              // SABS 1123 values are in kPa (divide by 100 to get bar)
-              // BS 4504 values are already in bar
-              const barRating = isSabs1123 ? numericValue / 100 : numericValue;
-              const displayValue = designation.replace(/\/\d+$/, "");
-              return { ...c, barRating, displayValue };
-            })
-            .filter((c: any) => c.barRating > 0);
-
-          // Sort exactly like the dropdown does: by numeric value first, then by designation
-          classesWithRatings.sort((a: any, b: any) => {
-            if (a.barRating !== b.barRating) return a.barRating - b.barRating;
-            return (a.designation || "").localeCompare(b.designation || "");
-          });
-
-          // Deduplicate by displayValue - keep first ID for each (matching dropdown logic)
-          const seen = new Set<string>();
-          const deduplicatedClasses = classesWithRatings.filter((c: any) => {
-            if (seen.has(c.displayValue)) return false;
-            seen.add(c.displayValue);
-            return true;
-          });
-
-          console.log(
-            "[PT-DEBUG] Deduplicated classes:",
-            deduplicatedClasses.map((c: any) => `${c.designation}(ID ${c.id})=${c.barRating}bar`),
-          );
-
-          if (deduplicatedClasses.length > 0) {
-            // Find lowest class that can handle the pressure
-            const suitable = deduplicatedClasses.find((c: any) => c.barRating >= targetPressure);
-            const selected = suitable || deduplicatedClasses[deduplicatedClasses.length - 1];
-            console.log(
-              `[PT-DEBUG] SELECTED: ${selected.designation} (ID ${selected.id}) for ${targetPressure} bar`,
-            );
-            return selected.id;
-          }
-        }
-
-        // Try P/T rating API for temperature-based selection - works for all standards with P-T data
+        // Try P/T rating API FIRST for temperature-based selection - works for all standards with P-T data
         // The API will return null if no P-T data exists for this standard, triggering fallback
         if (temperatureCelsius !== undefined) {
           try {

@@ -145,9 +145,12 @@ export class FlangePtRatingService {
       return Number(lower.maxPressureBar);
     }
 
-    // If above maximum temperature
+    // If above maximum temperature - rating is 0 (no valid rating exists)
     if (temperatureCelsius > Number(upper.temperatureCelsius)) {
-      return Number(upper.maxPressureBar);
+      this.logger.warn(
+        `Temperature ${temperatureCelsius}°C exceeds max ${upper.temperatureCelsius}°C for pressure class ${pressureClassId}, returning 0`,
+      );
+      return 0;
     }
 
     // Linear interpolation

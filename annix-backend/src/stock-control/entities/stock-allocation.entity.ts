@@ -63,6 +63,24 @@ export class StockAllocation {
   @Column({ name: "company_id" })
   companyId: number;
 
+  @Column({ name: "pending_approval", type: "boolean", default: false })
+  pendingApproval: boolean;
+
+  @Column({ name: "allowed_litres", type: "decimal", precision: 10, scale: 2, nullable: true })
+  allowedLitres: number | null;
+
+  @Column({ name: "approved_by_manager_id", type: "integer", nullable: true })
+  approvedByManagerId: number | null;
+
+  @Column({ name: "approved_at", type: "timestamp", nullable: true })
+  approvedAt: Date | null;
+
+  @Column({ name: "rejected_at", type: "timestamp", nullable: true })
+  rejectedAt: Date | null;
+
+  @Column({ name: "rejection_reason", type: "text", nullable: true })
+  rejectionReason: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }
