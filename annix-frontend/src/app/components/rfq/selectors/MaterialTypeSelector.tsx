@@ -334,3 +334,147 @@ export function ItemTypeButtons({
     </div>
   );
 }
+
+export interface FirstItemMaterialSelectorProps {
+  selectedMaterials: string[];
+  onAddItem: (material: PipeMaterialType, itemType: ItemType) => void;
+  fittingsDisabled?: boolean;
+}
+
+function FirstItemMaterialCard({
+  material,
+  fittingsDisabled,
+  onAddItem,
+}: {
+  material: MaterialOption;
+  fittingsDisabled?: boolean;
+  onAddItem: (itemType: ItemType) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const itemTypes: { type: ItemType; label: string; description: string }[] = [
+    { type: "pipe", label: "Straight Pipe", description: "Straight pipe section" },
+    { type: "bend", label: "Bend Section", description: "Pipe bends and elbows" },
+    { type: "fitting", label: "Fitting", description: "Tees, reducers, laterals" },
+  ];
+
+  const bgColorMap: Record<string, string> = {
+    steel: "bg-blue-600 hover:bg-blue-700",
+    hdpe: "bg-gray-800 hover:bg-gray-900",
+    pvc: "bg-blue-400 hover:bg-blue-500",
+  };
+
+  const ringColorMap: Record<string, string> = {
+    steel: "focus:ring-blue-300",
+    hdpe: "focus:ring-gray-500",
+    pvc: "focus:ring-blue-200",
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex flex-col items-center justify-center w-48 h-40 text-white rounded-xl focus:outline-none focus:ring-4 transition-all shadow-lg hover:shadow-xl ${bgColorMap[material.value]} ${ringColorMap[material.value]}`}
+      >
+        <div className="w-12 h-12 mb-3 flex items-center justify-center">
+          {material.value === "steel" ? (
+            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              />
+            </svg>
+          ) : (
+            <span className="text-2xl font-bold">{material.shortLabel}</span>
+          )}
+        </div>
+        <span className="text-lg font-semibold">{material.label}</span>
+        <span className="text-xs text-white/70 mt-1 flex items-center gap-1">
+          Select type
+          <svg
+            className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </span>
+      </button>
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+          {itemTypes.map((item) => {
+            const isDisabled = item.type === "fitting" && fittingsDisabled;
+            return (
+              <button
+                key={item.type}
+                type="button"
+                onClick={() => {
+                  if (!isDisabled) {
+                    onAddItem(item.type);
+                    setIsOpen(false);
+                  }
+                }}
+                disabled={isDisabled}
+                className={`w-full px-4 py-3 text-left transition-colors border-b border-gray-100 last:border-b-0 ${
+                  isDisabled
+                    ? "text-gray-400 cursor-not-allowed bg-gray-50"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <div className="font-medium">{item.label}</div>
+                <div className={`text-xs ${isDisabled ? "text-gray-400" : "text-gray-500"}`}>
+                  {item.description}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function FirstItemMaterialSelector({
+  selectedMaterials,
+  onAddItem,
+  fittingsDisabled,
+}: FirstItemMaterialSelectorProps) {
+  const availableMaterials = MATERIAL_OPTIONS.filter((opt) => {
+    const productKey = opt.value === "steel" ? "fabricated_steel" : opt.value;
+    return selectedMaterials.includes(productKey);
+  });
+
+  if (availableMaterials.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {availableMaterials.map((material) => (
+        <FirstItemMaterialCard
+          key={material.value}
+          material={material}
+          fittingsDisabled={fittingsDisabled}
+          onAddItem={(itemType) => onAddItem(material.value, itemType)}
+        />
+      ))}
+    </>
+  );
+}

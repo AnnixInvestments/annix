@@ -19,8 +19,6 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
-import { Roles } from "../auth/roles.decorator";
-import { RolesGuard } from "../auth/roles.guard";
 import {
   LineCalloutDto,
   RubberAdhesionRequirementDto,
@@ -54,6 +52,7 @@ import {
 } from "./dto/rubber-portal.dto";
 import { RubberOrderStatus } from "./entities/rubber-order.entity";
 import { ProductCodingType } from "./entities/rubber-product-coding.entity";
+import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberLiningService } from "./rubber-lining.service";
 
 @ApiTags("Rubber Lining")
@@ -475,8 +474,7 @@ export class RubberLiningController {
     ];
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/product-codings")
   @ApiOperation({
@@ -495,8 +493,7 @@ export class RubberLiningController {
     return this.rubberLiningService.allProductCodings(codingType);
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/product-codings/:id")
   @ApiOperation({ summary: "Get product coding by ID" })
@@ -508,8 +505,7 @@ export class RubberLiningController {
     return coding;
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Post("portal/product-codings")
   @ApiOperation({
@@ -522,8 +518,7 @@ export class RubberLiningController {
     return this.rubberLiningService.createProductCoding(dto);
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Put("portal/product-codings/:id")
   @ApiOperation({ summary: "Update product coding" })
@@ -538,8 +533,7 @@ export class RubberLiningController {
     return coding;
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Delete("portal/product-codings/:id")
   @ApiOperation({ summary: "Delete product coding" })
@@ -550,8 +544,7 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException("Product coding not found");
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/pricing-tiers")
   @ApiOperation({
@@ -563,8 +556,7 @@ export class RubberLiningController {
     return this.rubberLiningService.allPricingTiers();
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/pricing-tiers/:id")
   @ApiOperation({ summary: "Get pricing tier by ID" })
@@ -576,8 +568,7 @@ export class RubberLiningController {
     return tier;
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Post("portal/pricing-tiers")
   @ApiOperation({
@@ -588,8 +579,7 @@ export class RubberLiningController {
     return this.rubberLiningService.createPricingTier(dto);
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Put("portal/pricing-tiers/:id")
   @ApiOperation({ summary: "Update pricing tier" })
@@ -604,8 +594,7 @@ export class RubberLiningController {
     return tier;
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Delete("portal/pricing-tiers/:id")
   @ApiOperation({ summary: "Delete pricing tier" })
@@ -616,8 +605,7 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException("Pricing tier not found");
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/companies")
   @ApiOperation({
@@ -628,8 +616,7 @@ export class RubberLiningController {
     return this.rubberLiningService.allCompanies();
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/companies/:id")
   @ApiOperation({ summary: "Get company by ID" })
@@ -641,8 +628,7 @@ export class RubberLiningController {
     return company;
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Post("portal/companies")
   @ApiOperation({
@@ -654,8 +640,7 @@ export class RubberLiningController {
     return this.rubberLiningService.createCompany(dto);
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Put("portal/companies/:id")
   @ApiOperation({ summary: "Update company" })
@@ -670,8 +655,7 @@ export class RubberLiningController {
     return company;
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Delete("portal/companies/:id")
   @ApiOperation({ summary: "Delete company" })
@@ -682,8 +666,7 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException("Company not found");
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/products")
   @ApiOperation({
@@ -694,8 +677,7 @@ export class RubberLiningController {
     return this.rubberLiningService.allProducts();
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/products/:id")
   @ApiOperation({ summary: "Get product by ID" })
@@ -707,8 +689,7 @@ export class RubberLiningController {
     return product;
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Post("portal/products")
   @ApiOperation({
@@ -724,8 +705,7 @@ export class RubberLiningController {
     return this.rubberLiningService.createProduct(dto);
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Put("portal/products/:id")
   @ApiOperation({ summary: "Update product" })
@@ -744,8 +724,7 @@ export class RubberLiningController {
     return product;
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Delete("portal/products/:id")
   @ApiOperation({ summary: "Delete product" })
@@ -756,8 +735,7 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException("Product not found");
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Post("portal/products/import")
   @ApiOperation({
@@ -773,8 +751,7 @@ export class RubberLiningController {
     return this.rubberLiningService.importProducts(dto.rows, dto.updateExisting ?? false);
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/orders")
   @ApiOperation({
@@ -793,8 +770,7 @@ export class RubberLiningController {
     return this.rubberLiningService.allOrders(orderStatus);
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/orders/:id")
   @ApiOperation({
@@ -809,8 +785,7 @@ export class RubberLiningController {
     return order;
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Post("portal/orders")
   @ApiOperation({
@@ -821,8 +796,7 @@ export class RubberLiningController {
     return this.rubberLiningService.createOrder(dto);
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Put("portal/orders/:id")
   @ApiOperation({
@@ -841,8 +815,7 @@ export class RubberLiningController {
     return order;
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Delete("portal/orders/:id")
   @ApiOperation({ summary: "Delete order" })
@@ -853,8 +826,7 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException("Order not found");
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/order-statuses")
   @ApiOperation({
@@ -874,8 +846,7 @@ export class RubberLiningController {
     ];
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Get("portal/coding-types")
   @ApiOperation({
@@ -893,8 +864,7 @@ export class RubberLiningController {
     ];
   }
 
-  @UseGuards(AdminAuthGuard, RolesGuard)
-  @Roles("admin", "employee")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Post("portal/calculate-price")
   @ApiOperation({

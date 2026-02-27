@@ -68,7 +68,10 @@ import {
   StraightPipeForm,
   ValveForm,
 } from "@/app/components/rfq/forms";
-import { MaterialTypeSelector } from "@/app/components/rfq/selectors/MaterialTypeSelector";
+import {
+  FirstItemMaterialSelector,
+  MaterialTypeSelector,
+} from "@/app/components/rfq/selectors/MaterialTypeSelector";
 import type { PipeMaterialType } from "@/app/lib/hooks/useRfqForm";
 
 interface ItemWrapperProps {
@@ -1601,99 +1604,24 @@ export default function ItemUploadStep({
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Add Your First Item</h2>
           <p className="text-gray-600 mb-8">Select the type of item you want to add to this RFQ</p>
           <div className="flex flex-wrap gap-6 justify-center">
-            {requiredProducts.includes("fabricated_steel") && (
-              <>
-                <button
-                  onClick={() => onAddEntry()}
-                  className="flex flex-col items-center justify-center w-48 h-40 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl"
-                >
-                  <svg
-                    className="w-12 h-12 mb-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  </svg>
-                  <span className="text-lg font-semibold">Straight Pipe</span>
-                  <span className="text-xs text-blue-200 mt-1">Standard pipeline sections</span>
-                </button>
-                <button
-                  onClick={() => onAddBendEntry()}
-                  className="flex flex-col items-center justify-center w-48 h-40 bg-purple-600 text-white rounded-xl hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all shadow-lg hover:shadow-xl"
-                >
-                  <svg
-                    className="w-12 h-12 mb-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 10h4l3-7 4 14 3-7h4"
-                    />
-                  </svg>
-                  <span className="text-lg font-semibold">Bend Section</span>
-                  <span className="text-xs text-purple-200 mt-1">Elbows and custom bends</span>
-                </button>
-                <button
-                  onClick={
-                    isUnregisteredCustomer
-                      ? showRestrictionPopup("fittings")
-                      : () => onAddFittingEntry()
+            {selectedPipeMaterials.length > 0 && (
+              <FirstItemMaterialSelector
+                selectedMaterials={requiredProducts}
+                onAddItem={(material, itemType) => {
+                  if (itemType === "fitting" && isUnregisteredCustomer) {
+                    showRestrictionPopup("fittings")({} as React.MouseEvent);
+                    return;
                   }
-                  onMouseEnter={
-                    isUnregisteredCustomer ? showRestrictionPopup("fittings") : undefined
+                  if (itemType === "pipe") {
+                    handleAddPipe(material);
+                  } else if (itemType === "bend") {
+                    onAddBendEntry(undefined, false, material);
+                  } else if (itemType === "fitting") {
+                    onAddFittingEntry(undefined, false, material);
                   }
-                  className={`flex flex-col items-center justify-center w-48 h-40 rounded-xl focus:outline-none focus:ring-4 transition-all shadow-lg relative ${
-                    isUnregisteredCustomer
-                      ? "bg-gray-400 text-gray-200 cursor-not-allowed focus:ring-gray-300"
-                      : "bg-green-600 text-white hover:bg-green-700 hover:shadow-xl focus:ring-green-300"
-                  }`}
-                >
-                  {isUnregisteredCustomer && (
-                    <div className="absolute top-2 right-2">
-                      <svg
-                        className="w-5 h-5 text-gray-300"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                  <svg
-                    className="w-12 h-12 mb-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  <span className="text-lg font-semibold">Fittings</span>
-                  <span
-                    className={`text-xs mt-1 ${isUnregisteredCustomer ? "text-gray-300" : "text-green-200"}`}
-                  >
-                    {isUnregisteredCustomer ? "Coming soon" : "Tees, laterals, and other fittings"}
-                  </span>
-                </button>
-              </>
+                }}
+                fittingsDisabled={isUnregisteredCustomer}
+              />
             )}
             {requiredProducts.includes("valves_meters_instruments") && onAddValveEntry && (
               <button
