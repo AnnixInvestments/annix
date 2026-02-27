@@ -1831,9 +1831,10 @@ class StockControlApiClient {
 
   async downloadSignedJobCardPdf(jobCardId: number): Promise<void> {
     const headers = this.headers();
+    const cacheBuster = Date.now();
     const response = await fetch(
-      `${API_BASE_URL}/stock-control/workflow/job-cards/${jobCardId}/print`,
-      { headers: { Authorization: headers.Authorization ?? "" } },
+      `${API_BASE_URL}/stock-control/workflow/job-cards/${jobCardId}/print?_t=${cacheBuster}`,
+      { headers: { Authorization: headers.Authorization ?? "" }, cache: "no-store" },
     );
 
     if (!response.ok) {
