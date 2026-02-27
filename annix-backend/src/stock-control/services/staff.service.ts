@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -7,6 +7,8 @@ import { StaffMember } from "../entities/staff-member.entity";
 
 @Injectable()
 export class StaffService {
+  private readonly logger = new Logger(StaffService.name);
+
   constructor(
     @InjectRepository(StaffMember)
     private readonly staffRepo: Repository<StaffMember>,
@@ -113,7 +115,17 @@ export class StaffService {
 
   private async withPresignedPhotoUrl(member: StaffMember): Promise<StaffMember> {
     if (member.photoUrl && !member.photoUrl.startsWith("http")) {
-      member.photoUrl = await this.storageService.getPresignedUrl(member.photoUrl, 3600);
+      const originalPath = member.photoUrl;
+      this.logger.log(`Generating presigned URL for ${member.name}: ${originalPath}`);
+      try {
+        member.photoUrl = await this.storageService.getPresignedUrl(originalPath, 3600);
+        this.logger.log(`Presigned URL generated for ${member.name}`);
+      } catch (error) {
+        this.logger.error(
+          `Failed to generate presigned URL for ${member.name} (${originalPath}): ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+        member.photoUrl = null;
+      }
     }
     return member;
   }

@@ -254,10 +254,12 @@ export class QrCodeService {
   }
 
   private async resolvePhotoUrl(photoUrl: string): Promise<string | null> {
+    this.logger.log(`Resolving photo URL: ${photoUrl}`);
     try {
       let imageBuffer: Buffer;
 
       if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
+        this.logger.log(`Fetching photo from HTTP URL`);
         const response = await fetch(photoUrl);
         if (!response.ok) {
           this.logger.warn(`Failed to fetch photo from URL: ${response.status}`);
@@ -265,14 +267,16 @@ export class QrCodeService {
         }
         imageBuffer = Buffer.from(await response.arrayBuffer());
       } else {
+        this.logger.log(`Downloading photo from storage: ${photoUrl}`);
         imageBuffer = await this.storageService.download(photoUrl);
       }
 
       const mimeType = this.detectMimeType(imageBuffer);
+      this.logger.log(`Photo resolved successfully: ${imageBuffer.length} bytes, ${mimeType}`);
       return `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
     } catch (error) {
-      this.logger.warn(
-        `Failed to resolve photo: ${error instanceof Error ? error.message : "Unknown error"}`,
+      this.logger.error(
+        `Failed to resolve photo "${photoUrl}": ${error instanceof Error ? error.message : "Unknown error"}`,
       );
       return null;
     }
