@@ -98,24 +98,24 @@ export class QrCodeService {
 <html>
 <head>
   <style>
-    body { margin: 0; padding: 15mm 12mm; font-family: Arial, sans-serif; font-size: 10pt; color: #111827; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8mm; border-bottom: 2px solid #0d9488; padding-bottom: 6mm; }
-    .header-left h1 { font-size: 18pt; margin: 0 0 2mm 0; color: #0d9488; }
-    .header-left .subtitle { font-size: 10pt; color: #6b7280; }
+    body { margin: 0; padding: 10mm 10mm; font-family: Arial, sans-serif; font-size: 9pt; color: #111827; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5mm; border-bottom: 2px solid #0d9488; padding-bottom: 4mm; }
+    .header-left h1 { font-size: 16pt; margin: 0 0 1mm 0; color: #0d9488; }
+    .header-left .subtitle { font-size: 9pt; color: #6b7280; }
     .header-right { text-align: right; }
-    .header-right img { width: 25mm; height: 25mm; }
+    .header-right img { width: 20mm; height: 20mm; }
     .header-right .code { font-size: 7pt; font-family: monospace; color: #9ca3af; margin-top: 1mm; }
-    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 8mm; margin-bottom: 8mm; }
-    .details .label { font-size: 8pt; font-weight: bold; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-    .details .value { font-size: 10pt; color: #111827; margin-bottom: 2mm; }
-    table { width: 100%; border-collapse: collapse; margin-top: 4mm; }
-    th { background-color: #f3f4f6; font-weight: 600; text-align: left; padding: 2mm 3mm; border: 1px solid #d1d5db; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; color: #374151; }
-    td { padding: 2mm 3mm; border: 1px solid #d1d5db; font-size: 9pt; }
+    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm 6mm; margin-bottom: 5mm; }
+    .details .label { font-size: 7pt; font-weight: bold; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+    .details .value { font-size: 9pt; color: #111827; margin-bottom: 1mm; }
+    table { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+    th { background-color: #f3f4f6; font-weight: 600; text-align: left; padding: 1.5mm 2mm; border: 1px solid #d1d5db; font-size: 7pt; text-transform: uppercase; letter-spacing: 0.5px; color: #374151; }
+    td { padding: 1.5mm 2mm; border: 1px solid #d1d5db; font-size: 8pt; }
     td.right { text-align: right; }
-    .section-title { font-size: 12pt; font-weight: bold; color: #111827; margin-bottom: 3mm; }
-    .notes-area { margin-top: 8mm; border: 1px solid #d1d5db; border-radius: 2mm; padding: 4mm; min-height: 25mm; }
-    .notes-area .label { font-size: 8pt; font-weight: bold; color: #6b7280; text-transform: uppercase; margin-bottom: 2mm; }
-    .footer { margin-top: 10mm; text-align: center; font-size: 8pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 4mm; }
+    .section-title { font-size: 10pt; font-weight: bold; color: #111827; margin-bottom: 2mm; margin-top: 4mm; }
+    .notes-area { margin-top: 5mm; border: 1px solid #d1d5db; border-radius: 2mm; padding: 3mm; min-height: 15mm; }
+    .notes-area .label { font-size: 7pt; font-weight: bold; color: #6b7280; text-transform: uppercase; margin-bottom: 1mm; }
+    .footer { margin-top: 5mm; text-align: center; font-size: 7pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 2mm; }
   </style>
 </head>
 <body>
@@ -428,7 +428,7 @@ export class QrCodeService {
       .join("");
 
     return `
-  <div class="section-title" style="margin-top: 6mm;">Coating Specification</div>
+  <div class="section-title">Coating Specification</div>
   <table>
     <thead>
       <tr>
