@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
@@ -12,6 +12,8 @@ import { StockControlCompany } from "../entities/stock-control-company.entity";
 
 @Injectable()
 export class JobCardPdfService {
+  private readonly logger = new Logger(JobCardPdfService.name);
+
   constructor(
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
@@ -49,6 +51,13 @@ export class JobCardPdfService {
     const coatingAnalysis = await this.coatingAnalysisRepo.findOne({
       where: { jobCardId, companyId },
     });
+
+    this.logger.log(
+      `PDF for job card ${jobCardId}: coatingAnalysis=${coatingAnalysis ? "found" : "null"}, coats=${coatingAnalysis?.coats ? coatingAnalysis.coats.length : "none"}`,
+    );
+    if (coatingAnalysis?.coats) {
+      this.logger.log(`Coats data: ${JSON.stringify(coatingAnalysis.coats)}`);
+    }
 
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const qrUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}/dispatch`;
