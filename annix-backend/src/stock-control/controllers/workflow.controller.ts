@@ -222,13 +222,18 @@ export class WorkflowController {
   @StockControlRoles("manager", "admin")
   @ApiOperation({ summary: "Download signed job card PDF" })
   async printJobCard(@Req() req: any, @Param("id") id: number, @Res() res: Response) {
+    this.logger.log(`Print request received for job card ${id} by user ${req.user.id}`);
     const { buffer, filename } = await this.pdfService.generatePrintableJobCard(
       req.user.companyId,
       id,
     );
+    this.logger.log(`PDF generated: ${filename}, size: ${buffer.length} bytes`);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     res.send(buffer);
   }
 }
