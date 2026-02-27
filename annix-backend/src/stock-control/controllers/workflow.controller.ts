@@ -16,12 +16,14 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
+import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { DispatchService } from "../services/dispatch.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
+import { WorkflowAssignmentService } from "../services/workflow-assignment.service";
 import { WorkflowNotificationService } from "../services/workflow-notification.service";
 
 @ApiTags("Stock Control - Workflow")
@@ -35,6 +37,7 @@ export class WorkflowController {
     private readonly dispatchService: DispatchService,
     private readonly notificationService: WorkflowNotificationService,
     private readonly pdfService: JobCardPdfService,
+    private readonly assignmentService: WorkflowAssignmentService,
   ) {}
 
   @Post("job-cards/:id/documents")
@@ -130,6 +133,37 @@ export class WorkflowController {
   @ApiOperation({ summary: "Mark all notifications as read" })
   async markAllAsRead(@Req() req: any) {
     await this.notificationService.markAllAsRead(req.user.id);
+    return { success: true };
+  }
+
+  @Get("assignments")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Get all workflow step assignments for company" })
+  async allAssignments(@Req() req: any) {
+    return this.assignmentService.allAssignments(req.user.companyId);
+  }
+
+  @Get("assignments/:step/eligible-users")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Get users eligible for a workflow step" })
+  async eligibleUsersForStep(@Req() req: any, @Param("step") step: string) {
+    return this.assignmentService.eligibleUsersForStep(req.user.companyId, step as WorkflowStep);
+  }
+
+  @Put("assignments/:step")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update users assigned to a workflow step" })
+  async updateStepAssignments(
+    @Req() req: any,
+    @Param("step") step: string,
+    @Body() body: { userIds: number[]; primaryUserId?: number },
+  ) {
+    await this.assignmentService.updateAssignments(
+      req.user.companyId,
+      step as WorkflowStep,
+      body.userIds,
+      body.primaryUserId,
+    );
     return { success: true };
   }
 

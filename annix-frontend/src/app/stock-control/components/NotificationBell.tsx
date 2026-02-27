@@ -168,9 +168,16 @@ export function NotificationBell() {
                             {notification.message}
                           </p>
                         )}
-                        <p className="text-xs text-gray-400 mt-1">
-                          {formatDateLongZA(new Date(notification.createdAt))}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {notification.senderName && (
+                            <span className="text-xs text-teal-600">
+                              From: {notification.senderName}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-400">
+                            {formatDateLongZA(new Date(notification.createdAt))}
+                          </span>
+                        </div>
                       </div>
                       <button
                         onClick={(e) => handleMarkAsRead(notification.id, e)}

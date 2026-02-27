@@ -10,6 +10,12 @@ import {
   NotificationActionType,
   WorkflowNotification,
 } from "../entities/workflow-notification.entity";
+import { WorkflowAssignmentService } from "./workflow-assignment.service";
+
+interface SenderInfo {
+  id: number;
+  name: string;
+}
 
 @Injectable()
 export class WorkflowNotificationService {
@@ -24,12 +30,14 @@ export class WorkflowNotificationService {
     private readonly jobCardRepo: Repository<JobCard>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly assignmentService: WorkflowAssignmentService,
   ) {}
 
   async notifyApprovalRequired(
     companyId: number,
     jobCardId: number,
     step: WorkflowStep,
+    sender?: SenderInfo,
   ): Promise<void> {
     const jobCard = await this.jobCardRepo.findOne({
       where: { id: jobCardId, companyId },
@@ -40,23 +48,23 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const targetRoles = this.rolesForStep(step);
-    const users = await this.userRepo.find({
-      where: targetRoles.map((role) => ({ companyId, role })),
-    });
+    const users = await this.assignmentService.usersForStep(companyId, step);
 
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
 
+    const senderContext = sender ? ` (from ${sender.name})` : "";
     const notifications = users.map((user) =>
       this.notificationRepo.create({
         companyId,
         userId: user.id,
         jobCardId,
         title: `Approval Required: ${jobCard.jobName}`,
-        message: `Job card ${jobCard.jobNumber} requires your approval for ${this.stepDisplayName(step)}.`,
+        message: `Job card ${jobCard.jobNumber} requires your approval for ${this.stepDisplayName(step)}.${senderContext}`,
         actionType: NotificationActionType.APPROVAL_REQUIRED,
         actionUrl,
+        senderId: sender?.id ?? null,
+        senderName: sender?.name ?? null,
       }),
     );
 
@@ -74,6 +82,7 @@ export class WorkflowNotificationService {
           jobCard.jobName,
           this.stepDisplayName(step),
           actionUrl,
+          sender?.name,
         ),
       ),
     );
@@ -83,7 +92,7 @@ export class WorkflowNotificationService {
     companyId: number,
     jobCardId: number,
     step: WorkflowStep,
-    approvedByName: string,
+    sender: SenderInfo,
   ): Promise<void> {
     const jobCard = await this.jobCardRepo.findOne({
       where: { id: jobCardId, companyId },
@@ -109,9 +118,11 @@ export class WorkflowNotificationService {
         userId: user.id,
         jobCardId,
         title: `Approved: ${jobCard.jobName}`,
-        message: `${approvedByName} approved ${this.stepDisplayName(step)} for job card ${jobCard.jobNumber}.`,
+        message: `${sender.name} approved ${this.stepDisplayName(step)} for job card ${jobCard.jobNumber}.`,
         actionType: NotificationActionType.APPROVAL_COMPLETED,
         actionUrl,
+        senderId: sender.id,
+        senderName: sender.name,
       }),
     );
 
@@ -121,7 +132,7 @@ export class WorkflowNotificationService {
   async notifyRejection(
     companyId: number,
     jobCardId: number,
-    rejectedByName: string,
+    sender: SenderInfo,
     reason: string,
   ): Promise<void> {
     const jobCard = await this.jobCardRepo.findOne({
@@ -148,9 +159,11 @@ export class WorkflowNotificationService {
         userId: user.id,
         jobCardId,
         title: `Rejected: ${jobCard.jobName}`,
-        message: `${rejectedByName} rejected job card ${jobCard.jobNumber}. Reason: ${reason}`,
+        message: `${sender.name} rejected job card ${jobCard.jobNumber}. Reason: ${reason}`,
         actionType: NotificationActionType.APPROVAL_REJECTED,
         actionUrl,
+        senderId: sender.id,
+        senderName: sender.name,
       }),
     );
 
@@ -163,7 +176,7 @@ export class WorkflowNotificationService {
           user.name,
           jobCard.jobNumber,
           jobCard.jobName,
-          rejectedByName,
+          sender.name,
           reason,
           actionUrl,
         ),
@@ -179,6 +192,7 @@ export class WorkflowNotificationService {
     quantityRequested: number,
     allowedLitres: number,
     alreadyAllocated: number,
+    sender?: SenderInfo,
   ): Promise<void> {
     const jobCard = await this.jobCardRepo.findOne({
       where: { id: jobCardId, companyId },
@@ -208,6 +222,8 @@ export class WorkflowNotificationService {
         message: `Stock allocation request for ${productName} exceeds allowed limit. Requested: ${quantityRequested}L, Allowed: ${allowedLitres}L (${overBy}L over). Allocation ID: ${allocationId}`,
         actionType: NotificationActionType.OVER_ALLOCATION_APPROVAL,
         actionUrl,
+        senderId: sender?.id ?? null,
+        senderName: sender?.name ?? null,
       }),
     );
 
@@ -332,7 +348,9 @@ export class WorkflowNotificationService {
     jobName: string,
     stepName: string,
     actionUrl: string,
+    senderName?: string,
   ): Promise<boolean> {
+    const senderLine = senderName ? `<br/><strong>Sent By:</strong> ${senderName}` : "";
     const html = `
       <!DOCTYPE html>
       <html>
@@ -350,7 +368,7 @@ export class WorkflowNotificationService {
             <strong>Job Card Details:</strong>
             <p style="margin: 5px 0 0 0;">
               <strong>Job Number:</strong> ${jobNumber}<br/>
-              <strong>Job Name:</strong> ${jobName}
+              <strong>Job Name:</strong> ${jobName}${senderLine}
             </p>
           </div>
 

@@ -398,8 +398,24 @@ export interface WorkflowNotification {
   actionType: string;
   actionUrl: string | null;
   readAt: string | null;
+  senderId: number | null;
+  senderName: string | null;
   createdAt: string;
   jobCard?: JobCard;
+}
+
+export interface WorkflowStepAssignment {
+  step: string;
+  userIds: number[];
+  primaryUserId: number | null;
+  users: { id: number; name: string; email: string; role: string }[];
+}
+
+export interface EligibleUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
 }
 
 export interface WorkflowStatus {
@@ -1966,6 +1982,27 @@ class StockControlApiClient {
 
   async issuanceById(id: number): Promise<StockIssuance> {
     return this.request(`/stock-control/issuance/${id}`);
+  }
+
+  async workflowAssignments(): Promise<WorkflowStepAssignment[]> {
+    return this.request("/stock-control/workflow/assignments");
+  }
+
+  async eligibleUsersForStep(step: string): Promise<EligibleUser[]> {
+    return this.request(
+      `/stock-control/workflow/assignments/${encodeURIComponent(step)}/eligible-users`,
+    );
+  }
+
+  async updateWorkflowAssignments(
+    step: string,
+    userIds: number[],
+    primaryUserId?: number,
+  ): Promise<{ success: boolean }> {
+    return this.request(`/stock-control/workflow/assignments/${encodeURIComponent(step)}`, {
+      method: "PUT",
+      body: JSON.stringify({ userIds, primaryUserId }),
+    });
   }
 }
 

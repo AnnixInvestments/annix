@@ -48,6 +48,7 @@ import { StockIssuance } from "./entities/stock-issuance.entity";
 import { StockItem } from "./entities/stock-item.entity";
 import { StockMovement } from "./entities/stock-movement.entity";
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
+import { WorkflowStepAssignment } from "./entities/workflow-step-assignment.entity";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { StockControlAuthService } from "./services/auth.service";
@@ -75,6 +76,7 @@ import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
 import { SignatureService } from "./services/signature.service";
 import { StaffService } from "./services/staff.service";
+import { WorkflowAssignmentService } from "./services/workflow-assignment.service";
 import { WorkflowNotificationService } from "./services/workflow-notification.service";
 
 @Module({
@@ -102,6 +104,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       JobCardVersion,
       JobCardAttachment,
       WorkflowNotification,
+      WorkflowStepAssignment,
       DispatchScan,
       StaffSignature,
       StockIssuance,
@@ -165,6 +168,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     ItemIdentificationService,
     LookupService,
     SignatureService,
+    WorkflowAssignmentService,
     WorkflowNotificationService,
     JobCardWorkflowService,
     DispatchService,

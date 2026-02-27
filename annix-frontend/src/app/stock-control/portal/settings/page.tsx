@@ -5,11 +5,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import {
   CandidateImage,
+  EligibleUser,
   StockControlDepartment,
   StockControlInvitation,
   StockControlLocation,
   StockControlTeamMember,
   stockControlApiClient,
+  WorkflowStepAssignment,
 } from "@/app/lib/api/stockControlApi";
 import { syncStatus } from "../../lib/offline/syncManager";
 
@@ -1456,7 +1458,257 @@ export default function StockControlSettingsPage() {
         )}
       </div>
 
+      <WorkflowAssignmentsSection />
       <AppInfoSection />
+    </div>
+  );
+}
+
+const WORKFLOW_STEPS = [
+  { key: "DOCUMENT_UPLOAD", label: "Document Upload" },
+  { key: "ADMIN_APPROVAL", label: "Admin Approval" },
+  { key: "MANAGER_APPROVAL", label: "Manager Approval" },
+  { key: "REQUISITION_SENT", label: "Requisition Sent" },
+  { key: "STOCK_ALLOCATION", label: "Stock Allocation" },
+  { key: "MANAGER_FINAL", label: "Final Manager Approval" },
+  { key: "READY_FOR_DISPATCH", label: "Ready for Dispatch" },
+  { key: "DISPATCHED", label: "Dispatched" },
+];
+
+function WorkflowAssignmentsSection() {
+  const [assignments, setAssignments] = useState<WorkflowStepAssignment[]>([]);
+  const [eligibleUsers, setEligibleUsers] = useState<Record<string, EligibleUser[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [editingStep, setEditingStep] = useState<string | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
+  const [primaryUserId, setPrimaryUserId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const loadAssignments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await stockControlApiClient.workflowAssignments();
+      setAssignments(data);
+    } catch {
+      setError("Failed to load workflow assignments");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadEligibleUsers = useCallback(
+    async (step: string) => {
+      if (eligibleUsers[step]) {
+        return;
+      }
+      try {
+        const users = await stockControlApiClient.eligibleUsersForStep(step);
+        setEligibleUsers((prev) => ({ ...prev, [step]: users }));
+      } catch {
+        setError("Failed to load eligible users");
+      }
+    },
+    [eligibleUsers],
+  );
+
+  useEffect(() => {
+    loadAssignments();
+  }, [loadAssignments]);
+
+  const handleEditStep = async (step: string) => {
+    await loadEligibleUsers(step);
+    const assignment = assignments.find((a) => a.step === step);
+    setSelectedUserIds(assignment?.userIds || []);
+    setPrimaryUserId(assignment?.primaryUserId || null);
+    setEditingStep(step);
+    setError("");
+    setSuccess(false);
+  };
+
+  const handleSave = async () => {
+    if (!editingStep) return;
+
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      await stockControlApiClient.updateWorkflowAssignments(
+        editingStep,
+        selectedUserIds,
+        primaryUserId ?? undefined,
+      );
+      await loadAssignments();
+      setEditingStep(null);
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save assignments");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUserToggle = (userId: number) => {
+    setSelectedUserIds((prev) => {
+      const isSelected = prev.includes(userId);
+      if (isSelected) {
+        if (primaryUserId === userId) {
+          setPrimaryUserId(null);
+        }
+        return prev.filter((id) => id !== userId);
+      }
+      return [...prev, userId];
+    });
+  };
+
+  const handlePrimaryChange = (userId: number) => {
+    if (!selectedUserIds.includes(userId)) {
+      setSelectedUserIds((prev) => [...prev, userId]);
+    }
+    setPrimaryUserId(userId);
+  };
+
+  const stepLabel = (step: string) => WORKFLOW_STEPS.find((s) => s.key === step)?.label || step;
+
+  const roleLabel = (role: string) => {
+    const labels: Record<string, string> = {
+      admin: "Admin",
+      manager: "Manager",
+      accounts: "Accounts",
+      storeman: "Storeman",
+    };
+    return labels[role] || role;
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">Workflow Assignments</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Assign specific users to workflow steps. If no users are assigned, the system will notify
+        all users with the appropriate role.
+      </p>
+
+      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+      {success && (
+        <p className="text-sm text-green-600 mb-4">Workflow assignments updated successfully.</p>
+      )}
+
+      {loading ? (
+        <div className="text-center py-4 text-gray-500">Loading workflow assignments...</div>
+      ) : (
+        <div className="space-y-3">
+          {assignments.map((assignment) => (
+            <div key={assignment.step} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-medium text-gray-900">{stepLabel(assignment.step)}</h3>
+                <button
+                  type="button"
+                  onClick={() => handleEditStep(assignment.step)}
+                  className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                >
+                  {editingStep === assignment.step ? "Cancel" : "Edit"}
+                </button>
+              </div>
+
+              {editingStep === assignment.step ? (
+                <div className="space-y-3">
+                  <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
+                    {eligibleUsers[assignment.step]?.length === 0 ? (
+                      <p className="text-sm text-gray-500 p-3">No eligible users found</p>
+                    ) : (
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 sticky top-0">
+                          <tr>
+                            <th className="text-left px-3 py-2 font-medium text-gray-700">
+                              Assign
+                            </th>
+                            <th className="text-left px-3 py-2 font-medium text-gray-700">Name</th>
+                            <th className="text-left px-3 py-2 font-medium text-gray-700">Role</th>
+                            <th className="text-left px-3 py-2 font-medium text-gray-700">
+                              Primary
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {eligibleUsers[assignment.step]?.map((user) => (
+                            <tr key={user.id} className="hover:bg-gray-50">
+                              <td className="px-3 py-2">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedUserIds.includes(user.id)}
+                                  onChange={() => handleUserToggle(user.id)}
+                                  className="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                                />
+                              </td>
+                              <td className="px-3 py-2 text-gray-900">{user.name}</td>
+                              <td className="px-3 py-2 text-gray-500">{roleLabel(user.role)}</td>
+                              <td className="px-3 py-2">
+                                <input
+                                  type="radio"
+                                  name={`primary-${assignment.step}`}
+                                  checked={primaryUserId === user.id}
+                                  onChange={() => handlePrimaryChange(user.id)}
+                                  disabled={!selectedUserIds.includes(user.id)}
+                                  className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500 disabled:opacity-50"
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                    >
+                      {saving ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingStep(null)}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {assignment.users.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">
+                      Using role-based assignment (default)
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {assignment.users.map((user) => (
+                        <span
+                          key={user.id}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            assignment.primaryUserId === user.id
+                              ? "bg-teal-100 text-teal-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {user.name}
+                          {assignment.primaryUserId === user.id && (
+                            <span className="ml-1 text-teal-600">(Primary)</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

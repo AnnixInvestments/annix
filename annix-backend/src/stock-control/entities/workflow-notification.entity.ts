@@ -61,6 +61,16 @@ export class WorkflowNotification {
   @Column({ name: "read_at", type: "timestamp", nullable: true })
   readAt: Date | null;
 
+  @ManyToOne(() => StockControlUser, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "sender_id" })
+  sender: StockControlUser | null;
+
+  @Column({ name: "sender_id", nullable: true })
+  senderId: number | null;
+
+  @Column({ name: "sender_name", type: "varchar", length: 255, nullable: true })
+  senderName: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

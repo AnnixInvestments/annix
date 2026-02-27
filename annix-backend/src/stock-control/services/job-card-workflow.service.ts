@@ -100,6 +100,7 @@ export class JobCardWorkflowService {
         companyId,
         jobCardId,
         WorkflowStep.ADMIN_APPROVAL,
+        { id: user.id, name: user.name },
       );
     }
 
@@ -148,11 +149,13 @@ export class JobCardWorkflowService {
     jobCard.workflowStatus = nextStatus;
     await this.jobCardRepo.save(jobCard);
 
+    const senderInfo = { id: user.id, name: user.name };
+
     await this.notificationService.notifyApprovalCompleted(
       companyId,
       jobCardId,
       currentStep,
-      user.name,
+      senderInfo,
     );
 
     if (nextStatus === JobCardWorkflowStatus.REQUISITION_SENT) {
@@ -161,7 +164,12 @@ export class JobCardWorkflowService {
 
     const nextStep = this.currentStepForStatus(nextStatus);
     if (nextStep) {
-      await this.notificationService.notifyApprovalRequired(companyId, jobCardId, nextStep);
+      await this.notificationService.notifyApprovalRequired(
+        companyId,
+        jobCardId,
+        nextStep,
+        senderInfo,
+      );
     }
 
     if (nextStatus === JobCardWorkflowStatus.READY_FOR_DISPATCH) {
@@ -206,7 +214,12 @@ export class JobCardWorkflowService {
     jobCard.workflowStatus = JobCardWorkflowStatus.DOCUMENT_UPLOADED;
     await this.jobCardRepo.save(jobCard);
 
-    await this.notificationService.notifyRejection(companyId, jobCardId, user.name, reason);
+    await this.notificationService.notifyRejection(
+      companyId,
+      jobCardId,
+      { id: user.id, name: user.name },
+      reason,
+    );
 
     this.logger.log(`Job card ${jobCardId} rejected at step ${currentStep} by ${user.name}`);
 
