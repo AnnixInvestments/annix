@@ -7169,6 +7169,7 @@ export default function SpecificationsStep({
                 <HdpeSpecificationsSection
                   globalSpecs={globalSpecs}
                   onUpdateGlobalSpecs={onUpdateGlobalSpecs}
+                  flangeStandards={masterData?.flangeStandards}
                 />
                 <div className="flex justify-end">
                   <button

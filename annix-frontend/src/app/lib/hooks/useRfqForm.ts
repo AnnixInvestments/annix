@@ -406,6 +406,9 @@ export interface GlobalSpecs {
   hdpeColorCode?: "black" | "blue" | "yellow" | "orange" | "green";
   hdpeFlangeType?: HdpeFlangeType;
   hdpeFlangeDrillingStandard?: HdpeFlangeDrillingStandard;
+  hdpeSteelFlangeStandardId?: number;
+  hdpeSteelFlangePressureClassId?: number;
+  hdpeSteelFlangeTypeCode?: string;
   hdpeSpecsConfirmed?: boolean;
 
   pvcType?: PvcType;

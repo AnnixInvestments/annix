@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   HDPE_FLANGE_DRILLING_OPTIONS,
   HDPE_FLANGE_OPTIONS,
@@ -25,10 +25,18 @@ import {
   type WeldingStandardCode,
 } from "@/app/lib/config/rfq/hdpeWeldingStandards";
 import type { GlobalSpecs } from "@/app/lib/hooks/useRfqForm";
+import { masterDataApi, type FlangePressureClass } from "@/app/lib/api/client";
+import { flangeTypesForStandardCode, useAllFlangeTypes } from "@/app/lib/query/hooks";
+
+interface FlangeStandard {
+  id: number;
+  code: string;
+}
 
 export interface HdpeSpecificationsSectionProps {
   globalSpecs: GlobalSpecs;
   onUpdateGlobalSpecs: (specs: GlobalSpecs) => void;
+  flangeStandards?: FlangeStandard[];
 }
 
 interface ColorOption {
@@ -86,12 +94,56 @@ const COLOR_OPTIONS: ColorOption[] = [
 export function HdpeSpecificationsSection({
   globalSpecs,
   onUpdateGlobalSpecs,
+  flangeStandards = [],
 }: HdpeSpecificationsSectionProps) {
   const selectedGrade = globalSpecs.hdpeGrade ?? "PE100";
   const selectedSdr = globalSpecs.hdpeSdr;
   const operatingTemp = globalSpecs.hdpeOperatingTempC ?? 20;
   const selectedColorCode = globalSpecs.hdpeColorCode ?? "black";
   const selectedWeldingStandard = globalSpecs.hdpeWeldingStandard ?? "ISO_21307";
+
+  const [availablePressureClasses, setAvailablePressureClasses] = useState<FlangePressureClass[]>(
+    [],
+  );
+  const [isLoadingPressureClasses, setIsLoadingPressureClasses] = useState(false);
+  const { data: allFlangeTypes = [] } = useAllFlangeTypes();
+
+  const selectedSteelFlangeStandardId = globalSpecs.hdpeSteelFlangeStandardId;
+  const selectedSteelFlangePressureClassId = globalSpecs.hdpeSteelFlangePressureClassId;
+  const selectedSteelFlangeTypeCode = globalSpecs.hdpeSteelFlangeTypeCode;
+
+  const selectedStandardCode = useMemo(() => {
+    const standard = flangeStandards.find((s) => s.id === selectedSteelFlangeStandardId);
+    return standard?.code || "";
+  }, [flangeStandards, selectedSteelFlangeStandardId]);
+
+  const availableFlangeTypes = useMemo(() => {
+    if (!selectedStandardCode) return [];
+    return flangeTypesForStandardCode(allFlangeTypes, selectedStandardCode) || [];
+  }, [allFlangeTypes, selectedStandardCode]);
+
+  useEffect(() => {
+    const fetchPressureClasses = async () => {
+      if (!selectedSteelFlangeStandardId) {
+        setAvailablePressureClasses([]);
+        return;
+      }
+
+      setIsLoadingPressureClasses(true);
+      try {
+        const classes = await masterDataApi.getFlangePressureClassesByStandard(
+          selectedSteelFlangeStandardId,
+        );
+        setAvailablePressureClasses(classes);
+      } catch {
+        setAvailablePressureClasses([]);
+      } finally {
+        setIsLoadingPressureClasses(false);
+      }
+    };
+
+    fetchPressureClasses();
+  }, [selectedSteelFlangeStandardId]);
 
   const basePressureRating =
     selectedSdr && selectedGrade
@@ -189,6 +241,37 @@ export function HdpeSpecificationsSection({
       hdpeFlangeDrillingStandard: drilling,
     });
   };
+
+  const handleSteelFlangeStandardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const standardId = e.target.value ? parseInt(e.target.value, 10) : undefined;
+    onUpdateGlobalSpecs({
+      ...globalSpecs,
+      hdpeSteelFlangeStandardId: standardId,
+      hdpeSteelFlangePressureClassId: undefined,
+      hdpeSteelFlangeTypeCode: undefined,
+    });
+  };
+
+  const handleSteelFlangePressureClassChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const classId = e.target.value ? parseInt(e.target.value, 10) : undefined;
+    onUpdateGlobalSpecs({
+      ...globalSpecs,
+      hdpeSteelFlangePressureClassId: classId,
+    });
+  };
+
+  const handleSteelFlangeTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const typeCode = e.target.value || undefined;
+    onUpdateGlobalSpecs({
+      ...globalSpecs,
+      hdpeSteelFlangeTypeCode: typeCode,
+    });
+  };
+
+  const requiresSteelBackingFlange =
+    globalSpecs.hdpeFlangeType === "stub_backing_steel" ||
+    globalSpecs.hdpeFlangeType === "stub_backing_gi" ||
+    globalSpecs.hdpeFlangeType === "stub_backing_ss";
 
   const isComplete = globalSpecs.hdpeGrade && globalSpecs.hdpeSdr && globalSpecs.hdpeJoiningMethod;
 
@@ -373,6 +456,39 @@ export function HdpeSpecificationsSection({
             </div>
           </div>
         )}
+
+        {/* Welding Standard - shown for butt_fusion or electrofusion joining methods */}
+        {(globalSpecs.hdpeJoiningMethod === "butt_fusion" ||
+          globalSpecs.hdpeJoiningMethod === "electrofusion") && (
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-900 mb-1">
+                  Welding Standard
+                </label>
+                <select
+                  value={selectedWeldingStandard}
+                  onChange={handleWeldingStandardChange}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                >
+                  {WELDING_STANDARD_LIST.map((code) => {
+                    const std = WELDING_STANDARDS[code];
+                    return (
+                      <option key={code} value={code}>
+                        {std.name} ({std.region})
+                      </option>
+                    );
+                  })}
+                </select>
+                {selectedWeldingStandardData && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {selectedWeldingStandardData.description}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Operating Temperature with Derating */}
@@ -463,35 +579,118 @@ export function HdpeSpecificationsSection({
         </div>
       </div>
 
-      {/* Welding Standard Selection */}
-      {(globalSpecs.hdpeJoiningMethod === "butt_fusion" ||
-        globalSpecs.hdpeJoiningMethod === "electrofusion") && (
+      {/* Steel Backing Flange Specifications - shown when flange type requires steel backing */}
+      {requiresSteelBackingFlange && (
         <div className="border-t border-gray-200 pt-4">
-          <h4 className="text-xs font-semibold text-gray-700 mb-3">Welding Standard</h4>
-          <div>
-            <label className="block text-xs font-semibold text-gray-900 mb-1">
-              Welding Standard
-            </label>
-            <select
-              value={selectedWeldingStandard}
-              onChange={handleWeldingStandardChange}
-              className="w-full md:w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-            >
-              {WELDING_STANDARD_LIST.map((code) => {
-                const std = WELDING_STANDARDS[code];
-                return (
-                  <option key={code} value={code}>
-                    {std.name} ({std.region})
+          <h4 className="text-xs font-semibold text-gray-700 mb-3">
+            Steel Backing Flange Specifications
+          </h4>
+          <p className="text-xs text-gray-500 mb-3">
+            Specify the steel flange that will mate with the HDPE stub flange.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-900 mb-1">
+                Flange Standard
+              </label>
+              <select
+                value={selectedSteelFlangeStandardId ?? ""}
+                onChange={handleSteelFlangeStandardChange}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+              >
+                <option value="">Select standard...</option>
+                {flangeStandards.map((standard) => (
+                  <option key={standard.id} value={standard.id}>
+                    {standard.code}
                   </option>
-                );
-              })}
-            </select>
-            {selectedWeldingStandardData && (
-              <p className="mt-1 text-xs text-gray-500">
-                {selectedWeldingStandardData.description}
-              </p>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-900 mb-1">
+                Pressure Class
+              </label>
+              <select
+                value={selectedSteelFlangePressureClassId ?? ""}
+                onChange={handleSteelFlangePressureClassChange}
+                disabled={!selectedSteelFlangeStandardId || isLoadingPressureClasses}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">
+                  {isLoadingPressureClasses
+                    ? "Loading..."
+                    : !selectedSteelFlangeStandardId
+                      ? "Select standard first"
+                      : "Select pressure class..."}
+                </option>
+                {availablePressureClasses.map((pc) => (
+                  <option key={pc.id} value={pc.id}>
+                    {pc.designation}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {availableFlangeTypes.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-900 mb-1">
+                  Flange Type
+                </label>
+                <select
+                  value={selectedSteelFlangeTypeCode ?? ""}
+                  onChange={handleSteelFlangeTypeChange}
+                  disabled={!selectedSteelFlangeStandardId}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">Select flange type...</option>
+                  {availableFlangeTypes.map((ft) => (
+                    <option key={ft.code} value={ft.code}>
+                      {ft.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedSteelFlangeTypeCode && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {availableFlangeTypes.find((ft) => ft.code === selectedSteelFlangeTypeCode)
+                      ?.description || ""}
+                  </p>
+                )}
+              </div>
             )}
           </div>
+
+          {selectedSteelFlangeStandardId && selectedSteelFlangePressureClassId && (
+            <div className="mt-3 bg-green-50 border border-green-200 rounded-md p-3">
+              <div className="text-xs font-semibold text-green-800 mb-1">
+                Steel Backing Flange Configuration
+              </div>
+              <div className="text-xs text-gray-700">
+                <span className="font-medium">
+                  {flangeStandards.find((s) => s.id === selectedSteelFlangeStandardId)?.code}
+                </span>
+                {" - "}
+                <span className="font-medium">
+                  {
+                    availablePressureClasses.find(
+                      (pc) => pc.id === selectedSteelFlangePressureClassId,
+                    )?.designation
+                  }
+                </span>
+                {selectedSteelFlangeTypeCode && (
+                  <>
+                    {" - "}
+                    <span className="font-medium">
+                      {
+                        availableFlangeTypes.find((ft) => ft.code === selectedSteelFlangeTypeCode)
+                          ?.name
+                      }
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
