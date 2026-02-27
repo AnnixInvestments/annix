@@ -664,9 +664,18 @@ export default function JobCardDetailPage() {
             coatingAnalysis.status === "analysed" &&
             coatingAnalysis.coats.length > 0 && (
               <div className="mt-6 pt-4 border-t border-gray-200">
-                <div className="flex items-center space-x-2 mb-4">
-                  <h4 className="text-sm font-medium text-gray-900">Coating Specification</h4>
-                  <span className="text-xs text-gray-400 italic">extracted by Nix</span>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <h4 className="text-sm font-medium text-gray-900">Coating Specification</h4>
+                    <span className="text-xs text-gray-400 italic">extracted by Nix</span>
+                  </div>
+                  <button
+                    onClick={handleRunAnalysis}
+                    disabled={isAnalysing}
+                    className="text-xs text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                  >
+                    {isAnalysing ? "Analysing..." : "Re-analyse"}
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4 text-sm">
                   {coatingAnalysis.applicationType && (
