@@ -54,6 +54,14 @@ export default function VoiceFilterPage() {
     await logout();
   };
 
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1d9bf0]" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0f1419] text-[#e7e9ea]">
       {/* Header */}
