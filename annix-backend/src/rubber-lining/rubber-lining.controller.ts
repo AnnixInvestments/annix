@@ -73,6 +73,7 @@ import { RubberOrderStatus } from "./entities/rubber-order.entity";
 import { ProductCodingType } from "./entities/rubber-product-coding.entity";
 import { RubberProductionStatus } from "./entities/rubber-production.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
+import { ExtractedBranding, RubberBrandingService } from "./rubber-branding.service";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberStockService } from "./rubber-stock.service";
 
@@ -82,6 +83,7 @@ export class RubberLiningController {
   constructor(
     private readonly rubberLiningService: RubberLiningService,
     private readonly rubberStockService: RubberStockService,
+    private readonly rubberBrandingService: RubberBrandingService,
   ) {}
 
   @Get("types")
@@ -1154,5 +1156,14 @@ Formula: totalPrice = totalKg × salePricePerKg
       { value: "RECEIVED", label: "Received" },
       { value: "CANCELLED", label: "Cancelled" },
     ];
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/extract-branding")
+  @ApiOperation({ summary: "Extract branding from a website URL" })
+  @ApiResponse({ status: 200, description: "Extracted branding information" })
+  async extractBranding(@Body() body: { url: string }): Promise<ExtractedBranding> {
+    return this.rubberBrandingService.extractBrandingFromUrl(body.url);
   }
 }

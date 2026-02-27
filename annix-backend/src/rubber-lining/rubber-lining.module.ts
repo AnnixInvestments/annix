@@ -21,6 +21,7 @@ import { RubberProduction } from "./entities/rubber-production.entity";
 import { RubberSpecification } from "./entities/rubber-specification.entity";
 import { RubberType } from "./entities/rubber-type.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
+import { RubberBrandingService } from "./rubber-branding.service";
 import { RubberLiningController } from "./rubber-lining.controller";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberStockService } from "./rubber-stock.service";
@@ -49,7 +50,7 @@ import { RubberStockService } from "./rubber-stock.service";
     ]),
   ],
   controllers: [RubberLiningController],
-  providers: [RubberLiningService, RubberStockService, AuRubberAccessGuard],
-  exports: [RubberLiningService, RubberStockService],
+  providers: [RubberLiningService, RubberStockService, RubberBrandingService, AuRubberAccessGuard],
+  exports: [RubberLiningService, RubberStockService, RubberBrandingService],
 })
 export class RubberLiningModule {}

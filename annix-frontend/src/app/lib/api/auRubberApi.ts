@@ -102,6 +102,20 @@ export interface CompoundCalculationResultDto {
   kgPerUnit: number;
 }
 
+export interface ExtractedBrandingDto {
+  url: string;
+  companyName: string | null;
+  tagline: string | null;
+  logoUrl: string | null;
+  colors: {
+    primary: string[];
+    background: string[];
+    text: string[];
+    accent: string[];
+  };
+  extractedAt: string;
+}
+
 export interface AuRubberLoginDto {
   email: string;
   password: string;
@@ -750,6 +764,13 @@ class AuRubberApiClient {
 
   async compoundOrderStatuses(): Promise<{ value: string; label: string }[]> {
     return this.request("/rubber-lining/portal/compound-order-statuses");
+  }
+
+  async extractBranding(url: string): Promise<ExtractedBrandingDto> {
+    return this.request("/rubber-lining/portal/extract-branding", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    });
   }
 }
 
