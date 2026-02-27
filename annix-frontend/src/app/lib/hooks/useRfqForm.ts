@@ -6,7 +6,13 @@ import type {
   StraightPipeCalculationResult,
 } from "@/app/lib/api/client";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
-import type { HdpeGrade, HdpeJoiningMethod, HdpeSdr } from "../config/rfq/hdpe";
+import type {
+  HdpeFlangeDrillingStandard,
+  HdpeFlangeType,
+  HdpeGrade,
+  HdpeJoiningMethod,
+  HdpeSdr,
+} from "../config/rfq/hdpe";
 import type { WeldingStandardCode } from "../config/rfq/hdpeWeldingStandards";
 import type { PvcJoiningMethod, PvcPressureClass, PvcType } from "../config/rfq/pvc";
 import type {
@@ -398,6 +404,8 @@ export interface GlobalSpecs {
   hdpeOperatingTempC?: number;
   hdpeWeldingStandard?: WeldingStandardCode;
   hdpeColorCode?: "black" | "blue" | "yellow" | "orange" | "green";
+  hdpeFlangeType?: HdpeFlangeType;
+  hdpeFlangeDrillingStandard?: HdpeFlangeDrillingStandard;
   hdpeSpecsConfirmed?: boolean;
 
   pvcType?: PvcType;

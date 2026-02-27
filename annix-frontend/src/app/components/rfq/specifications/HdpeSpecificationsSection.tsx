@@ -2,10 +2,14 @@
 
 import React from "react";
 import {
+  HDPE_FLANGE_DRILLING_OPTIONS,
+  HDPE_FLANGE_OPTIONS,
   HDPE_JOINING_OPTIONS,
   HDPE_MATERIALS,
   HDPE_SDR_OPTIONS,
   HDPE_WALL_THICKNESS_DATA,
+  type HdpeFlangeDrillingStandard,
+  type HdpeFlangeType,
   type HdpeGrade,
   type HdpeJoiningMethod,
   type HdpeSdr,
@@ -166,6 +170,26 @@ export function HdpeSpecificationsSection({
     });
   };
 
+  const handleFlangeTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const flangeType = e.target.value as HdpeFlangeType;
+    const needsDrilling = flangeType !== "none";
+    onUpdateGlobalSpecs({
+      ...globalSpecs,
+      hdpeFlangeType: flangeType || undefined,
+      hdpeFlangeDrillingStandard: needsDrilling
+        ? (globalSpecs.hdpeFlangeDrillingStandard ?? "SANS1123")
+        : undefined,
+    });
+  };
+
+  const handleFlangeDrillingStandardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const drilling = e.target.value as HdpeFlangeDrillingStandard;
+    onUpdateGlobalSpecs({
+      ...globalSpecs,
+      hdpeFlangeDrillingStandard: drilling,
+    });
+  };
+
   const isComplete = globalSpecs.hdpeGrade && globalSpecs.hdpeSdr && globalSpecs.hdpeJoiningMethod;
 
   const selectedWeldingStandardData = WELDING_STANDARDS[selectedWeldingStandard];
@@ -259,6 +283,96 @@ export function HdpeSpecificationsSection({
             </p>
           )}
         </div>
+      </div>
+
+      {/* Flange Options */}
+      <div className="border-t border-gray-200 pt-4">
+        <h4 className="text-xs font-semibold text-gray-700 mb-3">Flange Connection Options</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">Flange Type</label>
+            <select
+              value={globalSpecs.hdpeFlangeType ?? "none"}
+              onChange={handleFlangeTypeChange}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+            >
+              {HDPE_FLANGE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {globalSpecs.hdpeFlangeType && globalSpecs.hdpeFlangeType !== "none" && (
+              <p className="mt-1 text-xs text-gray-500">
+                {
+                  HDPE_FLANGE_OPTIONS.find((o) => o.value === globalSpecs.hdpeFlangeType)
+                    ?.description
+                }
+              </p>
+            )}
+          </div>
+
+          {globalSpecs.hdpeFlangeType && globalSpecs.hdpeFlangeType !== "none" && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-900 mb-1">
+                Flange Drilling Standard
+              </label>
+              <select
+                value={globalSpecs.hdpeFlangeDrillingStandard ?? "SANS1123"}
+                onChange={handleFlangeDrillingStandardChange}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+              >
+                {HDPE_FLANGE_DRILLING_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} ({option.region})
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                {
+                  HDPE_FLANGE_DRILLING_OPTIONS.find(
+                    (o) => o.value === globalSpecs.hdpeFlangeDrillingStandard,
+                  )?.description
+                }
+              </p>
+            </div>
+          )}
+        </div>
+
+        {globalSpecs.hdpeFlangeType && globalSpecs.hdpeFlangeType !== "none" && (
+          <div className="mt-3 bg-blue-50 border border-blue-200 rounded-md p-3">
+            <div className="text-xs font-semibold text-blue-800 mb-2">
+              Flange Assembly Information
+            </div>
+            <div className="text-xs text-gray-700 space-y-1">
+              <p>
+                <span className="font-medium">Backing Material:</span>{" "}
+                {
+                  HDPE_FLANGE_OPTIONS.find((o) => o.value === globalSpecs.hdpeFlangeType)
+                    ?.backingMaterial
+                }
+              </p>
+              <p>
+                <span className="font-medium">Pressure Ratings:</span>{" "}
+                {HDPE_FLANGE_OPTIONS.find(
+                  (o) => o.value === globalSpecs.hdpeFlangeType,
+                )?.pressureRatings.join(", ")}
+              </p>
+              <p>
+                <span className="font-medium">Size Range:</span> DN
+                {
+                  HDPE_FLANGE_OPTIONS.find((o) => o.value === globalSpecs.hdpeFlangeType)
+                    ?.suitableForSizes.min
+                }{" "}
+                - DN
+                {
+                  HDPE_FLANGE_OPTIONS.find((o) => o.value === globalSpecs.hdpeFlangeType)
+                    ?.suitableForSizes.max
+                }
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Operating Temperature with Derating */}
