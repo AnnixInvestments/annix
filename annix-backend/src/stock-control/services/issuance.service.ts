@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { JobCard } from "../entities/job-card.entity";
 import { StaffMember } from "../entities/staff-member.entity";
+import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
@@ -71,6 +72,8 @@ export class IssuanceService {
     private readonly jobCardRepo: Repository<JobCard>,
     @InjectRepository(StockMovement)
     private readonly movementRepo: Repository<StockMovement>,
+    @InjectRepository(StockAllocation)
+    private readonly allocationRepo: Repository<StockAllocation>,
   ) {}
 
   async parseAndValidateQr(companyId: number, rawQr: string): Promise<ScanResult> {
@@ -310,6 +313,21 @@ export class IssuanceService {
 
     await this.movementRepo.save(movement);
 
+    if (jobCard) {
+      const allocation = this.allocationRepo.create({
+        stockItem,
+        jobCard,
+        quantityUsed: dto.quantity,
+        notes: dto.notes ?? `Issued via mobile by ${issuer.name}`,
+        allocatedBy: user.name,
+        staffMemberId: dto.recipientStaffId,
+        companyId,
+        pendingApproval: false,
+      });
+      await this.allocationRepo.save(allocation);
+      this.logger.log(`Stock allocation auto-created for job card ${jobCard.jobNumber}`);
+    }
+
     this.logger.log(
       `Stock issuance created: ${dto.quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
     );
@@ -413,6 +431,20 @@ export class IssuanceService {
       });
 
       await this.movementRepo.save(movement);
+
+      if (jobCard) {
+        const allocation = this.allocationRepo.create({
+          stockItem,
+          jobCard,
+          quantityUsed: item.quantity,
+          notes: dto.notes ?? `Issued via mobile by ${issuer.name}`,
+          allocatedBy: user.name,
+          staffMemberId: dto.recipientStaffId,
+          companyId,
+          pendingApproval: false,
+        });
+        await this.allocationRepo.save(allocation);
+      }
 
       const fullIssuance = await this.issuanceRepo.findOne({
         where: { id: savedIssuance.id },
