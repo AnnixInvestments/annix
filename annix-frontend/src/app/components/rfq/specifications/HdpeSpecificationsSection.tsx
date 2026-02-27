@@ -627,7 +627,7 @@ export function HdpeSpecificationsSection({
                   </option>
                   {availablePressureClasses.map((pc) => (
                     <option key={pc.id} value={pc.id}>
-                      {pc.designation}
+                      {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
                     </option>
                   ))}
                 </select>
