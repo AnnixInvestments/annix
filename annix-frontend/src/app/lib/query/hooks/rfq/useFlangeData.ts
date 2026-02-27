@@ -103,10 +103,21 @@ export function flangeTypesForStandardCode(
 ): FlangeTypeInfo[] | null {
   if (!standardCode) return null;
   const code = standardCode.toUpperCase();
+
+  const standardsUsingAsmeTypes = ["SABS 1123", "BS 4504", "BS 10"];
+  const useAsmeTypes = code.startsWith("ASME") || standardsUsingAsmeTypes.includes(code);
+
   const filtered = allTypes.filter((t) => {
     const ref = (t.standardReference || "").toUpperCase();
-    return ref === code || code.includes(ref) || ref.includes(code);
+    if (!ref) return false;
+
+    if (useAsmeTypes) {
+      return ref.startsWith("ASME");
+    }
+
+    return ref === code;
   });
+
   return filtered.length > 0
     ? filtered.map((t) => ({ code: t.code, name: t.name, description: t.description || "" }))
     : null;
