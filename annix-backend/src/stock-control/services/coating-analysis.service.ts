@@ -217,8 +217,10 @@ export class CoatingAnalysisService {
 
   private calculateCoatVolume(coat: AiCoatResult, totalM2: number): CoatDetail {
     const midDftUm = (coat.minDftUm + coat.maxDftUm) / 2;
-    const solidsDecimal = (coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME) / 100;
-    const coverageM2PerLiter = midDftUm > 0 ? (1000 / midDftUm) * solidsDecimal : 0;
+    const volumeSolids = coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME;
+    const pipingLossFactor = 0.55;
+    const coverageM2PerLiter =
+      midDftUm > 0 ? ((volumeSolids * 10) / midDftUm) * pipingLossFactor : 0;
     const litersRequired =
       coverageM2PerLiter > 0 ? Math.ceil((totalM2 / coverageM2PerLiter) * 10) / 10 : 0;
 

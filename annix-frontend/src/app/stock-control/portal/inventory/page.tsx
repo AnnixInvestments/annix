@@ -814,6 +814,20 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {isPrintingLabels && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mb-4"></div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Generating Labels</h3>
+              <p className="text-sm text-gray-500 text-center">
+                Please wait while we prepare your PDF. This may take a moment...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {importError && importStep === "idle" && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
           <div className="flex items-center">
