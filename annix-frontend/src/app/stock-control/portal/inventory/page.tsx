@@ -169,7 +169,15 @@ export default function InventoryPage() {
     if (selectedIds.size === 0) return;
     try {
       setIsPrintingLabels(true);
-      await stockControlApiClient.downloadBatchLabelsPdf({ ids: [...selectedIds] });
+      const idsArray = [...selectedIds];
+      await stockControlApiClient.downloadBatchLabelsPdf({ ids: idsArray });
+      const itemsNeedingClear = allItems()
+        .filter((item) => idsArray.includes(item.id) && item.needsQrPrint)
+        .map((item) => item.id);
+      if (itemsNeedingClear.length > 0) {
+        await stockControlApiClient.clearQrPrintFlag(itemsNeedingClear);
+        fetchItems();
+      }
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to download labels"));
     } finally {
@@ -184,6 +192,13 @@ export default function InventoryPage() {
         search: search || undefined,
         category: categoryFilter || undefined,
       });
+      const itemsNeedingClear = allItems()
+        .filter((item) => item.needsQrPrint)
+        .map((item) => item.id);
+      if (itemsNeedingClear.length > 0) {
+        await stockControlApiClient.clearQrPrintFlag(itemsNeedingClear);
+        fetchItems();
+      }
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to download labels"));
     } finally {
@@ -1244,9 +1259,11 @@ export default function InventoryPage() {
                           <tr
                             key={item.id}
                             className={
-                              item.minStockLevel > 0 && item.quantity <= item.minStockLevel
-                                ? "bg-amber-50 hover:bg-amber-100"
-                                : "hover:bg-gray-50"
+                              item.needsQrPrint
+                                ? "bg-red-50 hover:bg-red-100"
+                                : item.minStockLevel > 0 && item.quantity <= item.minStockLevel
+                                  ? "bg-amber-50 hover:bg-amber-100"
+                                  : "hover:bg-gray-50"
                             }
                           >
                             <td className="px-4 py-4 w-10">
@@ -1261,12 +1278,19 @@ export default function InventoryPage() {
                               {item.sku}
                             </td>
                             <td className="px-3 lg:px-6 py-4">
-                              <Link
-                                href={`/stock-control/portal/inventory/${item.id}`}
-                                className="text-sm font-medium text-teal-700 hover:text-teal-900 break-words"
-                              >
-                                {item.name}
-                              </Link>
+                              <div className="flex items-center space-x-2">
+                                <Link
+                                  href={`/stock-control/portal/inventory/${item.id}`}
+                                  className="text-sm font-medium text-teal-700 hover:text-teal-900 break-words"
+                                >
+                                  {item.name}
+                                </Link>
+                                {item.needsQrPrint && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                                    NEW
+                                  </span>
+                                )}
+                              </div>
                               <span className="sm:hidden block text-xs text-gray-500 font-mono mt-0.5">
                                 {item.sku}
                               </span>
@@ -1424,9 +1448,11 @@ export default function InventoryPage() {
                     <tr
                       key={item.id}
                       className={
-                        item.minStockLevel > 0 && item.quantity <= item.minStockLevel
-                          ? "bg-amber-50 hover:bg-amber-100"
-                          : "hover:bg-gray-50"
+                        item.needsQrPrint
+                          ? "bg-red-50 hover:bg-red-100"
+                          : item.minStockLevel > 0 && item.quantity <= item.minStockLevel
+                            ? "bg-amber-50 hover:bg-amber-100"
+                            : "hover:bg-gray-50"
                       }
                     >
                       <td className="px-4 py-4 w-10">
@@ -1441,12 +1467,19 @@ export default function InventoryPage() {
                         {item.sku}
                       </td>
                       <td className="px-3 lg:px-6 py-4">
-                        <Link
-                          href={`/stock-control/portal/inventory/${item.id}`}
-                          className="text-sm font-medium text-teal-700 hover:text-teal-900 break-words"
-                        >
-                          {item.name}
-                        </Link>
+                        <div className="flex items-center space-x-2">
+                          <Link
+                            href={`/stock-control/portal/inventory/${item.id}`}
+                            className="text-sm font-medium text-teal-700 hover:text-teal-900 break-words"
+                          >
+                            {item.name}
+                          </Link>
+                          {item.needsQrPrint && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                              NEW
+                            </span>
+                          )}
+                        </div>
                         <span className="sm:hidden block text-xs text-gray-500 font-mono mt-0.5">
                           {item.sku}
                         </span>
