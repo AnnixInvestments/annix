@@ -44,6 +44,31 @@
 /* Respect system color scheme preference */
 html {
   color-scheme: light dark;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+/* Always show scrollbars - desktop only */
+@media (pointer: fine) {
+  html {
+    overflow-y: scroll;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 transparent;
+  }
+
+  .dark * {
+    scrollbar-color: #4b5563 transparent;
+  }
+}
+
+/* Mobile/touch devices - use native scrolling behavior */
+@media (pointer: coarse) {
+  html {
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 body {
