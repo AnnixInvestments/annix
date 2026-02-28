@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { App } from "../rbac/entities/app.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
+import { RbacModule } from "../rbac/rbac.module";
 import {
   RubberAdhesionRequirement,
   RubberApplicationRating,
@@ -21,6 +22,7 @@ import { RubberProduction } from "./entities/rubber-production.entity";
 import { RubberSpecification } from "./entities/rubber-specification.entity";
 import { RubberType } from "./entities/rubber-type.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
+import { RubberAdminController } from "./rubber-admin.controller";
 import { RubberBrandingService } from "./rubber-branding.service";
 import { RubberLiningController } from "./rubber-lining.controller";
 import { RubberLiningService } from "./rubber-lining.service";
@@ -29,6 +31,7 @@ import { RubberStockService } from "./rubber-stock.service";
 @Module({
   imports: [
     AdminModule,
+    RbacModule,
     TypeOrmModule.forFeature([
       App,
       UserAppAccess,
@@ -49,7 +52,7 @@ import { RubberStockService } from "./rubber-stock.service";
       RubberCompoundOrder,
     ]),
   ],
-  controllers: [RubberLiningController],
+  controllers: [RubberLiningController, RubberAdminController],
   providers: [RubberLiningService, RubberStockService, RubberBrandingService, AuRubberAccessGuard],
   exports: [RubberLiningService, RubberStockService, RubberBrandingService],
 })

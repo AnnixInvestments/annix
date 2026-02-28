@@ -580,6 +580,145 @@ export class RbacService {
     return [];
   }
 
+  async userAccessDetails(
+    userId: number,
+    appCode: string,
+  ): Promise<{
+    roleCode: string | null;
+    roleName: string | null;
+    permissions: string[];
+    isAdmin: boolean;
+  }> {
+    const permissions = await this.userPermissions(userId, appCode);
+
+    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    if (!app) {
+      return { roleCode: null, roleName: null, permissions: [], isAdmin: false };
+    }
+
+    const access = await this.accessRepo.findOne({
+      where: { userId, appId: app.id },
+      relations: ["role"],
+    });
+
+    if (!access) {
+      return { roleCode: null, roleName: null, permissions: [], isAdmin: false };
+    }
+
+    const roleCode = access.role?.code ?? null;
+    const roleName = access.role?.name ?? null;
+    const isAdmin = roleCode === "administrator" || permissions.includes("settings:manage");
+
+    return { roleCode, roleName, permissions, isAdmin };
+  }
+
+  async appPermissions(appCode: string): Promise<AppPermission[]> {
+    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    if (!app) {
+      return [];
+    }
+
+    return this.permissionRepo.find({
+      where: { appId: app.id },
+      order: { displayOrder: "ASC" },
+    });
+  }
+
+  async setRolePermissions(roleId: number, permissionCodes: string[]): Promise<void> {
+    const role = await this.roleRepo.findOne({ where: { id: roleId } });
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${roleId} not found`);
+    }
+
+    await this.rolePermissionRepo.delete({ appRoleId: roleId });
+
+    if (permissionCodes.length === 0) {
+      return;
+    }
+
+    const permissions = await this.permissionRepo.find({
+      where: { appId: role.appId, code: In(permissionCodes) },
+    });
+
+    const foundCodes = permissions.map((p) => p.code);
+    const missingCodes = permissionCodes.filter((c) => !foundCodes.includes(c));
+    if (missingCodes.length > 0) {
+      throw new NotFoundException(`Permissions not found: ${missingCodes.join(", ")}`);
+    }
+
+    const rolePermissions = permissions.map((p) =>
+      this.rolePermissionRepo.create({
+        appRoleId: roleId,
+        appPermissionId: p.id,
+      }),
+    );
+
+    await this.rolePermissionRepo.save(rolePermissions);
+  }
+
+  async roleWithPermissions(
+    roleId: number,
+  ): Promise<RoleResponseDto & { permissions: string[] }> {
+    const role = await this.roleRepo.findOne({
+      where: { id: roleId },
+      relations: ["rolePermissions", "rolePermissions.permission"],
+    });
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${roleId} not found`);
+    }
+
+    return {
+      id: role.id,
+      appId: role.appId,
+      code: role.code,
+      name: role.name,
+      description: role.description,
+      isDefault: role.isDefault,
+      displayOrder: role.displayOrder,
+      createdAt: role.createdAt,
+      updatedAt: role.updatedAt,
+      permissions: role.rolePermissions.map((rp) => rp.permission.code),
+    };
+  }
+
+  async rolesWithPermissions(
+    appCode: string,
+  ): Promise<(RoleResponseDto & { permissions: string[]; userCount: number })[]> {
+    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    if (!app) {
+      throw new NotFoundException(`App '${appCode}' not found`);
+    }
+
+    const roles = await this.roleRepo.find({
+      where: { appId: app.id },
+      relations: ["rolePermissions", "rolePermissions.permission"],
+      order: { displayOrder: "ASC" },
+    });
+
+    const userCounts = await Promise.all(
+      roles.map(async (role) => {
+        const count = await this.accessRepo.count({ where: { roleId: role.id } });
+        return { roleId: role.id, count };
+      }),
+    );
+
+    const countMap = new Map(userCounts.map((uc) => [uc.roleId, uc.count]));
+
+    return roles.map((role) => ({
+      id: role.id,
+      appId: role.appId,
+      code: role.code,
+      name: role.name,
+      description: role.description,
+      isDefault: role.isDefault,
+      displayOrder: role.displayOrder,
+      createdAt: role.createdAt,
+      updatedAt: role.updatedAt,
+      permissions: role.rolePermissions.map((rp) => rp.permission.code),
+      userCount: countMap.get(role.id) ?? 0,
+    }));
+  }
+
   private async setCustomPermissions(
     accessId: number,
     appId: number,

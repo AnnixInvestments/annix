@@ -1,19 +1,27 @@
 "use client";
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
-import { AuRubberUser, AuRubberUserProfile, auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import {
+  AuRubberUser,
+  AuRubberUserProfile,
+  auRubberApiClient,
+} from "@/app/lib/api/auRubberApi";
 
 interface AuRubberAuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: AuRubberUser | null;
   profile: AuRubberUserProfile | null;
+  permissions: string[];
+  roleCode: string | null;
+  isAdmin: boolean;
 }
 
 interface AuRubberAuthContextType extends AuRubberAuthState {
   login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  hasPermission: (permission: string) => boolean;
 }
 
 const AuRubberAuthContext = createContext<AuRubberAuthContextType | undefined>(undefined);
@@ -24,6 +32,9 @@ export function AuRubberAuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
     user: null,
     profile: null,
+    permissions: [],
+    roleCode: null,
+    isAdmin: false,
   });
 
   const checkAuth = useCallback(async () => {
@@ -33,12 +44,18 @@ export function AuRubberAuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         user: null,
         profile: null,
+        permissions: [],
+        roleCode: null,
+        isAdmin: false,
       });
       return;
     }
 
     try {
-      const profile = await auRubberApiClient.currentUser();
+      const [profile, accessInfo] = await Promise.all([
+        auRubberApiClient.currentUser(),
+        auRubberApiClient.myAccess(),
+      ]);
       setState({
         isAuthenticated: true,
         isLoading: false,
@@ -50,6 +67,9 @@ export function AuRubberAuthProvider({ children }: { children: ReactNode }) {
           roles: profile.roles,
         },
         profile,
+        permissions: accessInfo.permissions,
+        roleCode: accessInfo.roleCode,
+        isAdmin: accessInfo.isAdmin,
       });
     } catch {
       auRubberApiClient.clearTokens();
@@ -58,6 +78,9 @@ export function AuRubberAuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         user: null,
         profile: null,
+        permissions: [],
+        roleCode: null,
+        isAdmin: false,
       });
     }
   }, []);
@@ -73,13 +96,19 @@ export function AuRubberAuthProvider({ children }: { children: ReactNode }) {
       auRubberApiClient.setRememberMe(rememberMe);
       const response = await auRubberApiClient.login({ email, password });
 
-      const profile = await auRubberApiClient.currentUser();
+      const [profile, accessInfo] = await Promise.all([
+        auRubberApiClient.currentUser(),
+        auRubberApiClient.myAccess(),
+      ]);
 
       setState({
         isAuthenticated: true,
         isLoading: false,
         user: response.user,
         profile,
+        permissions: accessInfo.permissions,
+        roleCode: accessInfo.roleCode,
+        isAdmin: accessInfo.isAdmin,
       });
     } catch (error) {
       setState((prev) => ({ ...prev, isLoading: false }));
@@ -98,18 +127,34 @@ export function AuRubberAuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         user: null,
         profile: null,
+        permissions: [],
+        roleCode: null,
+        isAdmin: false,
       });
     }
   };
+
+  const hasPermission = useCallback(
+    (permission: string): boolean => {
+      return state.permissions.includes(permission);
+    },
+    [state.permissions],
+  );
 
   const refreshProfile = async () => {
     if (!auRubberApiClient.isAuthenticated()) return;
 
     try {
-      const profile = await auRubberApiClient.currentUser();
+      const [profile, accessInfo] = await Promise.all([
+        auRubberApiClient.currentUser(),
+        auRubberApiClient.myAccess(),
+      ]);
       setState((prev) => ({
         ...prev,
         profile,
+        permissions: accessInfo.permissions,
+        roleCode: accessInfo.roleCode,
+        isAdmin: accessInfo.isAdmin,
         user: prev.user
           ? {
               ...prev.user,
@@ -131,6 +176,7 @@ export function AuRubberAuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         refreshProfile,
+        hasPermission,
       }}
     >
       {children}

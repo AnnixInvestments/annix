@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { App } from "../../rbac/entities/app.entity";
 import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
+import { RbacService } from "../../rbac/rbac.service";
 
 @Injectable()
 export class AuRubberAccessGuard implements CanActivate {
@@ -12,10 +13,12 @@ export class AuRubberAccessGuard implements CanActivate {
     private readonly appRepo: Repository<App>,
     @InjectRepository(UserAppAccess)
     private readonly userAppAccessRepo: Repository<UserAppAccess>,
+    private readonly rbacService: RbacService,
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
-    const { user } = ctx.switchToHttp().getRequest();
+    const request = ctx.switchToHttp().getRequest();
+    const { user } = request;
 
     if (!user?.id) {
       return false;
@@ -23,6 +26,9 @@ export class AuRubberAccessGuard implements CanActivate {
 
     const userRoles = user.roles || [];
     if (userRoles.includes("admin") || userRoles.includes("employee")) {
+      const permissions = await this.rbacService.userPermissions(user.id, "au-rubber");
+      request.auRubberPermissions = permissions;
+      request.auRubberRole = "administrator";
       return true;
     }
 
@@ -46,6 +52,10 @@ export class AuRubberAccessGuard implements CanActivate {
     if (userAccess.expiresAt && userAccess.expiresAt < now().toJSDate()) {
       return false;
     }
+
+    const permissions = await this.rbacService.userPermissions(user.id, "au-rubber");
+    request.auRubberPermissions = permissions;
+    request.auRubberRole = userAccess.role?.code ?? null;
 
     return true;
   }

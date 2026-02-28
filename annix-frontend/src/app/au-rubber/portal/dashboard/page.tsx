@@ -7,6 +7,7 @@ import {
 } from "@annix/product-data/rubber/orderStatus";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type {
   RubberCompanyDto,
@@ -24,6 +25,7 @@ interface StatusCount {
 const ORDERS_PER_PAGE = 5;
 
 export default function AuRubberDashboard() {
+  const { hasPermission, isLoading: authLoading } = useAuRubberAuth();
   const [orders, setOrders] = useState<RubberOrderDto[]>([]);
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
   const [products, setProducts] = useState<RubberProductDto[]>([]);
@@ -52,6 +54,36 @@ export default function AuRubberDashboard() {
     };
     fetchData();
   }, []);
+
+  if (!authLoading && !hasPermission("dashboard:view")) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-96 text-center">
+        <svg
+          className="mx-auto h-16 w-16 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+          />
+        </svg>
+        <h2 className="mt-4 text-xl font-semibold text-gray-900">Access Denied</h2>
+        <p className="mt-2 text-sm text-gray-600">
+          Dashboard access requires administrator privileges.
+        </p>
+        <Link
+          href="/au-rubber/portal/orders"
+          className="mt-6 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
+        >
+          Go to Orders
+        </Link>
+      </div>
+    );
+  }
 
   const ordersByStatus: StatusCount[] = Object.entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
     status: value,

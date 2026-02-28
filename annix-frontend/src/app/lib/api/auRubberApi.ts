@@ -145,6 +145,62 @@ export interface AuRubberUserProfile {
   lastActiveAt?: string;
 }
 
+export interface AuRubberAccessInfo {
+  roleCode: string | null;
+  roleName: string | null;
+  permissions: string[];
+  isAdmin: boolean;
+}
+
+export interface AuRubberRoleDto {
+  id: number;
+  appId: number;
+  code: string;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  displayOrder: number;
+  permissions: string[];
+  userCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuRubberPermissionDto {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  displayOrder: number;
+}
+
+export interface AuRubberUserAccessDto {
+  id: number;
+  userId: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  appCode: string;
+  roleCode: string | null;
+  roleName: string | null;
+  useCustomPermissions: boolean;
+  permissionCodes: string[] | null;
+  permissionCount: number | null;
+  grantedAt: string;
+  expiresAt: string | null;
+  grantedById: number | null;
+  productKeys: string[] | null;
+}
+
+export interface AuRubberInviteUserResponse {
+  userId: number;
+  email: string;
+  accessId: number;
+  isNewUser: boolean;
+  message: string;
+}
+
 const TOKEN_KEYS = {
   accessToken: "auRubberAccessToken",
   refreshToken: "auRubberRefreshToken",
@@ -778,6 +834,95 @@ class AuRubberApiClient {
 
   authHeaders(): Record<string, string> {
     return this.headers();
+  }
+
+  async myAccess(): Promise<AuRubberAccessInfo> {
+    return this.request("/rubber-lining/admin/access/me");
+  }
+
+  async accessUsers(): Promise<AuRubberUserAccessDto[]> {
+    return this.request("/rubber-lining/admin/access/users");
+  }
+
+  async accessRoles(): Promise<AuRubberRoleDto[]> {
+    return this.request("/rubber-lining/admin/access/roles");
+  }
+
+  async accessPermissions(): Promise<AuRubberPermissionDto[]> {
+    return this.request("/rubber-lining/admin/access/permissions");
+  }
+
+  async createRole(data: {
+    code: string;
+    name: string;
+    description?: string;
+    isDefault?: boolean;
+  }): Promise<AuRubberRoleDto> {
+    return this.request("/rubber-lining/admin/access/roles", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRole(
+    roleId: number,
+    data: { name?: string; description?: string; isDefault?: boolean },
+  ): Promise<AuRubberRoleDto> {
+    return this.request(`/rubber-lining/admin/access/roles/${roleId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async setRolePermissions(roleId: number, permissionCodes: string[]): Promise<void> {
+    return this.request(`/rubber-lining/admin/access/roles/${roleId}/permissions`, {
+      method: "PUT",
+      body: JSON.stringify({ permissionCodes }),
+    });
+  }
+
+  async deleteRole(roleId: number): Promise<{ message: string; reassignedUsers: number }> {
+    return this.request(`/rubber-lining/admin/access/roles/${roleId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async grantUserAccess(userId: number, roleCode: string): Promise<AuRubberUserAccessDto> {
+    return this.request(`/rubber-lining/admin/access/users/${userId}`, {
+      method: "POST",
+      body: JSON.stringify({ roleCode }),
+    });
+  }
+
+  async updateUserAccess(accessId: number, roleCode: string): Promise<AuRubberUserAccessDto> {
+    return this.request(`/rubber-lining/admin/access/users/${accessId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ roleCode }),
+    });
+  }
+
+  async revokeUserAccess(accessId: number): Promise<void> {
+    return this.request(`/rubber-lining/admin/access/users/${accessId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async inviteUser(data: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    roleCode: string;
+  }): Promise<AuRubberInviteUserResponse> {
+    return this.request("/rubber-lining/admin/access/invite", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async searchUsers(
+    query: string,
+  ): Promise<{ id: number; email: string; firstName: string | null; lastName: string | null }[]> {
+    return this.request(`/rubber-lining/admin/users/search?q=${encodeURIComponent(query)}`);
   }
 }
 
