@@ -277,6 +277,8 @@ export interface DeliveryNote {
   notes: string | null;
   photoUrl: string | null;
   receivedBy: string | null;
+  extractionStatus: string | null;
+  extractedData: Record<string, unknown> | null;
   createdAt: string;
   items: DeliveryNoteItem[];
 }
@@ -727,6 +729,129 @@ export interface ProcessedBrandingResult {
   heroImageUrl: string | null;
   primaryColor: string | null;
   accentColor: string | null;
+}
+
+export interface SupplierInvoice {
+  id: number;
+  invoiceNumber: string;
+  supplierName: string;
+  invoiceDate: string | null;
+  totalAmount: number | null;
+  vatAmount: number | null;
+  scanUrl: string | null;
+  extractionStatus: "pending" | "processing" | "needs_clarification" | "awaiting_approval" | "completed" | "failed";
+  extractedData: Record<string, unknown> | null;
+  deliveryNoteId: number;
+  deliveryNote?: DeliveryNote;
+  approvedBy: number | null;
+  approvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items?: SupplierInvoiceItem[];
+  clarifications?: InvoiceClarification[];
+}
+
+export interface SupplierInvoiceItem {
+  id: number;
+  invoiceId: number;
+  lineNumber: number;
+  extractedDescription: string | null;
+  extractedSku: string | null;
+  quantity: number;
+  unitPrice: number | null;
+  matchStatus: "matched" | "unmatched" | "clarification_needed" | "manually_matched" | "new_item_created";
+  matchConfidence: number | null;
+  stockItemId: number | null;
+  stockItem?: StockItem | null;
+  isPartA: boolean;
+  isPartB: boolean;
+  linkedItemId: number | null;
+  priceUpdated: boolean;
+  previousPrice: number | null;
+}
+
+export interface InvoiceClarification {
+  id: number;
+  invoiceId: number;
+  invoiceItemId: number | null;
+  clarificationType: "item_match" | "price_confirmation" | "new_item" | "part_linking";
+  status: "pending" | "answered" | "skipped";
+  question: string;
+  context: ClarificationContext | null;
+  selectedStockItemId: number | null;
+  responseData: Record<string, unknown> | null;
+  answeredBy: number | null;
+  answeredAt: string | null;
+  invoiceItem?: SupplierInvoiceItem | null;
+}
+
+export interface ClarificationContext {
+  suggestedMatches?: SuggestedMatch[];
+  priceChangePercent?: number;
+  oldPrice?: number;
+  newPrice?: number;
+  extractedDescription?: string;
+  extractedSku?: string;
+  isPartA?: boolean;
+  isPartB?: boolean;
+}
+
+export interface SuggestedMatch {
+  stockItemId: number;
+  stockItemName: string;
+  stockItemSku: string;
+  confidence: number;
+  currentPrice: number;
+}
+
+export interface PriceChangeSummary {
+  items: {
+    id: number;
+    description: string;
+    stockItemName: string;
+    oldPrice: number;
+    newPrice: number;
+    changePercent: number;
+    needsApproval: boolean;
+  }[];
+  totalOldValue: number;
+  totalNewValue: number;
+}
+
+export interface StockPriceHistory {
+  id: number;
+  stockItemId: number;
+  oldPrice: number | null;
+  newPrice: number;
+  changeReason: "invoice" | "manual" | "import";
+  referenceType: string | null;
+  referenceId: number | null;
+  supplierName: string | null;
+  changedBy: number | null;
+  createdAt: string;
+  stockItem?: StockItem;
+}
+
+export interface CreateInvoiceDto {
+  deliveryNoteId: number;
+  invoiceNumber: string;
+  supplierName: string;
+  invoiceDate?: string;
+  totalAmount?: number;
+  vatAmount?: number;
+}
+
+export interface SubmitClarificationDto {
+  selectedStockItemId?: number;
+  createNewItem?: {
+    sku: string;
+    name: string;
+    description?: string;
+    category?: string;
+    unitOfMeasure?: string;
+  };
+  skipPriceUpdate?: boolean;
+  confirmed?: boolean;
 }
 
 const TOKEN_KEYS = {
@@ -2073,6 +2198,109 @@ class StockControlApiClient {
       method: "PUT",
       body: JSON.stringify({ userIds, primaryUserId }),
     });
+  }
+
+  async supplierInvoices(): Promise<SupplierInvoice[]> {
+    return this.request("/stock-control/invoices");
+  }
+
+  async supplierInvoiceById(id: number): Promise<SupplierInvoice> {
+    return this.request(`/stock-control/invoices/${id}`);
+  }
+
+  async createSupplierInvoice(dto: CreateInvoiceDto): Promise<SupplierInvoice> {
+    return this.request("/stock-control/invoices", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async uploadInvoiceScan(id: number, file: File): Promise<SupplierInvoice> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/invoices/${id}/scan`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async invoiceClarifications(invoiceId: number): Promise<InvoiceClarification[]> {
+    return this.request(`/stock-control/invoices/${invoiceId}/clarifications`);
+  }
+
+  async submitInvoiceClarification(
+    invoiceId: number,
+    clarificationId: number,
+    dto: SubmitClarificationDto,
+  ): Promise<InvoiceClarification> {
+    return this.request(`/stock-control/invoices/${invoiceId}/clarifications/${clarificationId}`, {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async skipInvoiceClarification(
+    invoiceId: number,
+    clarificationId: number,
+  ): Promise<InvoiceClarification> {
+    return this.request(
+      `/stock-control/invoices/${invoiceId}/clarifications/${clarificationId}/skip`,
+      { method: "POST" },
+    );
+  }
+
+  async invoicePriceSummary(invoiceId: number): Promise<PriceChangeSummary> {
+    return this.request(`/stock-control/invoices/${invoiceId}/price-summary`);
+  }
+
+  async approveInvoice(invoiceId: number): Promise<SupplierInvoice> {
+    return this.request(`/stock-control/invoices/${invoiceId}/approve`, {
+      method: "POST",
+    });
+  }
+
+  async manualMatchInvoiceItem(
+    invoiceId: number,
+    itemId: number,
+    stockItemId: number,
+  ): Promise<SupplierInvoiceItem> {
+    return this.request(`/stock-control/invoices/${invoiceId}/items/${itemId}/match`, {
+      method: "POST",
+      body: JSON.stringify({ stockItemId }),
+    });
+  }
+
+  async deleteSupplierInvoice(id: number): Promise<void> {
+    return this.request(`/stock-control/invoices/${id}`, { method: "DELETE" });
+  }
+
+  async stockItemPriceHistory(stockItemId: number, limit?: number): Promise<StockPriceHistory[]> {
+    const query = limit ? `?limit=${limit}` : "";
+    return this.request(`/stock-control/inventory/${stockItemId}/price-history${query}`);
+  }
+
+  async triggerDeliveryExtraction(deliveryNoteId: number): Promise<DeliveryNote> {
+    return this.request(`/stock-control/deliveries/${deliveryNoteId}/extract`, {
+      method: "POST",
+    });
+  }
+
+  async deliveryExtractionStatus(
+    deliveryNoteId: number,
+  ): Promise<{ status: string | null; extractedData: Record<string, unknown> | null }> {
+    return this.request(`/stock-control/deliveries/${deliveryNoteId}/extraction`);
   }
 }
 

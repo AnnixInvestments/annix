@@ -9,6 +9,15 @@ import {
 } from "typeorm";
 import { DeliveryNoteItem } from "./delivery-note-item.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
+import { SupplierInvoice } from "./supplier-invoice.entity";
+
+export interface ExtractedDeliveryData {
+  deliveryNumber?: string;
+  supplierName?: string;
+  receivedDate?: string;
+  lineItems?: { description: string; quantity: number; sku?: string }[];
+  rawText?: string;
+}
 
 @Entity("delivery_notes")
 export class DeliveryNote {
@@ -45,6 +54,15 @@ export class DeliveryNote {
     (item) => item.deliveryNote,
   )
   items: DeliveryNoteItem[];
+
+  @Column({ name: "extraction_status", type: "varchar", length: 50, nullable: true })
+  extractionStatus: string | null;
+
+  @Column({ name: "extracted_data", type: "jsonb", nullable: true })
+  extractedData: ExtractedDeliveryData | null;
+
+  @OneToMany(() => SupplierInvoice, (invoice) => invoice.deliveryNote)
+  invoices: SupplierInvoice[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -18,6 +18,7 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { InventoryService } from "../services/inventory.service";
 import { ItemIdentificationService } from "../services/item-identification.service";
+import { PriceHistoryService } from "../services/price-history.service";
 
 @ApiTags("Stock Control - Inventory")
 @Controller("stock-control/inventory")
@@ -26,6 +27,7 @@ export class InventoryController {
   constructor(
     private readonly inventoryService: InventoryService,
     private readonly itemIdentificationService: ItemIdentificationService,
+    private readonly priceHistoryService: PriceHistoryService,
   ) {}
 
   @Get()
@@ -127,5 +129,17 @@ export class InventoryController {
       mediaType,
       context,
     );
+  }
+
+  @Get(":id/price-history")
+  @ApiOperation({ summary: "Price history for a stock item" })
+  async priceHistory(@Req() req: any, @Param("id") id: number) {
+    return this.priceHistoryService.historyForItem(req.user.companyId, id);
+  }
+
+  @Get(":id/price-statistics")
+  @ApiOperation({ summary: "Price statistics for a stock item" })
+  async priceStatistics(@Req() req: any, @Param("id") id: number) {
+    return this.priceHistoryService.priceStatistics(req.user.companyId, id);
   }
 }

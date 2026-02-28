@@ -13,6 +13,7 @@ import { DeliveriesController } from "./controllers/deliveries.controller";
 import { ImportController } from "./controllers/import.controller";
 import { InventoryController } from "./controllers/inventory.controller";
 import { InvitationController } from "./controllers/invitation.controller";
+import { InvoicesController } from "./controllers/invoices.controller";
 import { IssuanceController } from "./controllers/issuance.controller";
 import { JobCardImportController } from "./controllers/job-card-import.controller";
 import { JobCardsController } from "./controllers/job-cards.controller";
@@ -49,6 +50,10 @@ import { StockItem } from "./entities/stock-item.entity";
 import { StockMovement } from "./entities/stock-movement.entity";
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
 import { WorkflowStepAssignment } from "./entities/workflow-step-assignment.entity";
+import { SupplierInvoice } from "./entities/supplier-invoice.entity";
+import { SupplierInvoiceItem } from "./entities/supplier-invoice-item.entity";
+import { InvoiceClarification } from "./entities/invoice-clarification.entity";
+import { StockPriceHistory } from "./entities/stock-price-history.entity";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { StockControlAuthService } from "./services/auth.service";
@@ -78,6 +83,9 @@ import { SignatureService } from "./services/signature.service";
 import { StaffService } from "./services/staff.service";
 import { WorkflowAssignmentService } from "./services/workflow-assignment.service";
 import { WorkflowNotificationService } from "./services/workflow-notification.service";
+import { InvoiceExtractionService } from "./services/invoice-extraction.service";
+import { InvoiceService } from "./services/invoice.service";
+import { PriceHistoryService } from "./services/price-history.service";
 
 @Module({
   imports: [
@@ -108,6 +116,10 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       DispatchScan,
       StaffSignature,
       StockIssuance,
+      SupplierInvoice,
+      SupplierInvoiceItem,
+      InvoiceClarification,
+      StockPriceHistory,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -144,6 +156,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     StaffController,
     WorkflowController,
     SignatureController,
+    InvoicesController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -175,6 +188,9 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     JobCardPdfService,
     JobCardVersionService,
     DrawingExtractionService,
+    InvoiceExtractionService,
+    InvoiceService,
+    PriceHistoryService,
   ],
 })
 export class StockControlModule {}

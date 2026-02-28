@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -6,6 +6,7 @@ import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { InvoiceExtractionService } from "./invoice-extraction.service";
 
 @Injectable()
 export class DeliveryService {
@@ -20,6 +21,7 @@ export class DeliveryService {
     private readonly movementRepo: Repository<StockMovement>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    private readonly extractionService: InvoiceExtractionService,
   ) {}
 
   async create(
@@ -119,5 +121,57 @@ export class DeliveryService {
     note.photoUrl = result.url;
     await this.deliveryNoteRepo.save(note);
     return this.findById(companyId, id);
+  }
+
+  async extractFromPhoto(companyId: number, id: number): Promise<DeliveryNote> {
+    const note = await this.findById(companyId, id);
+
+    if (!note.photoUrl) {
+      throw new BadRequestException("Delivery note has no photo to extract from");
+    }
+
+    note.extractionStatus = "processing";
+    await this.deliveryNoteRepo.save(note);
+
+    try {
+      const photoBuffer = await this.storageService.download(note.photoUrl);
+      const imageBase64 = photoBuffer.toString("base64");
+      const mediaType = this.inferMediaTypeFromUrl(note.photoUrl);
+
+      const extractedData = await this.extractionService.extractDeliveryNoteFromImage(
+        imageBase64,
+        mediaType,
+      );
+
+      note.extractedData = extractedData;
+      note.extractionStatus = "completed";
+      await this.deliveryNoteRepo.save(note);
+
+      return this.findById(companyId, id);
+    } catch (error) {
+      note.extractionStatus = "failed";
+      note.extractedData = { rawText: error.message };
+      await this.deliveryNoteRepo.save(note);
+      throw error;
+    }
+  }
+
+  private inferMediaTypeFromUrl(url: string): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
+    const lower = url.toLowerCase();
+    if (lower.includes(".png")) return "image/png";
+    if (lower.includes(".gif")) return "image/gif";
+    if (lower.includes(".webp")) return "image/webp";
+    return "image/jpeg";
+  }
+
+  async extractionStatus(
+    companyId: number,
+    id: number,
+  ): Promise<{ status: string | null; data: unknown }> {
+    const note = await this.findById(companyId, id);
+    return {
+      status: note.extractionStatus,
+      data: note.extractedData,
+    };
   }
 }

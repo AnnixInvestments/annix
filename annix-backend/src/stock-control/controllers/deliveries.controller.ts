@@ -57,4 +57,16 @@ export class DeliveriesController {
   ) {
     return this.deliveryService.uploadPhoto(req.user.companyId, id, file);
   }
+
+  @Post(":id/extract")
+  @ApiOperation({ summary: "Extract data from delivery note photo using AI" })
+  async extractFromPhoto(@Req() req: any, @Param("id") id: number) {
+    return this.deliveryService.extractFromPhoto(req.user.companyId, id);
+  }
+
+  @Get(":id/extraction")
+  @ApiOperation({ summary: "Get extraction status for delivery note" })
+  async extractionStatus(@Req() req: any, @Param("id") id: number) {
+    return this.deliveryService.extractionStatus(req.user.companyId, id);
+  }
 }
