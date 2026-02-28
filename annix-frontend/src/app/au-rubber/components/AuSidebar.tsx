@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
-import { corpId } from "@/app/lib/corpId";
+import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 
 interface NavSection {
   label: string;
@@ -105,9 +105,8 @@ const singleNavItems = [
 export function AuSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuRubberAuth();
+  const { colors } = useAuRubberBranding();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["Products"]));
-
-  const colors = corpId.colors.portal.auRubber;
 
   const toggleSection = (label: string) => {
     const newExpanded = new Set(expandedSections);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { auRubberApiClient, type CandidateImage } from "@/app/lib/api/auRubberApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
@@ -112,6 +113,8 @@ function CandidateThumbnail({
 
 export default function SettingsPage() {
   const { showToast } = useToast();
+  const { branding, setBranding, resetBranding, colors } = useAuRubberBranding();
+
   const [websiteUrl, setWebsiteUrl] = useState("https://auind.co.za/");
   const [brandingAuthorized, setBrandingAuthorized] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -119,12 +122,12 @@ export default function SettingsPage() {
 
   const [logoCandidates, setLogoCandidates] = useState<CandidateImage[]>([]);
   const [heroCandidates, setHeroCandidates] = useState<CandidateImage[]>([]);
-  const [selectedLogoUrl, setSelectedLogoUrl] = useState<string | null>(null);
-  const [selectedHeroUrl, setSelectedHeroUrl] = useState<string | null>(null);
+  const [selectedLogoUrl, setSelectedLogoUrl] = useState<string | null>(branding.logoUrl);
+  const [selectedHeroUrl, setSelectedHeroUrl] = useState<string | null>(branding.heroUrl);
   const [scrapedPrimaryColor, setScrapedPrimaryColor] = useState<string | null>(null);
 
-  const [primaryColor, setPrimaryColor] = useState("#323288");
-  const [accentColor, setAccentColor] = useState("#FFD700");
+  const [primaryColor, setPrimaryColor] = useState(branding.primaryColor);
+  const [accentColor, setAccentColor] = useState(branding.accentColor);
 
   const isValidUrl = (url: string): boolean => {
     try {
@@ -229,10 +232,22 @@ export default function SettingsPage() {
   };
 
   const handleApplyBranding = () => {
-    showToast(
-      `Branding applied: Primary ${primaryColor}, Accent ${accentColor}${selectedLogoUrl ? ", Logo selected" : ""}${selectedHeroUrl ? ", Hero selected" : ""}`,
-      "success",
-    );
+    setBranding({
+      primaryColor,
+      accentColor,
+      logoUrl: selectedLogoUrl,
+      heroUrl: selectedHeroUrl,
+    });
+    showToast("Branding applied successfully", "success");
+  };
+
+  const handleResetBranding = () => {
+    resetBranding();
+    setPrimaryColor("#323288");
+    setAccentColor("#FFD700");
+    setSelectedLogoUrl(null);
+    setSelectedHeroUrl(null);
+    showToast("Branding reset to defaults", "success");
   };
 
   const ColorSwatch = ({ color, label }: { color: string; label?: string }) => (
@@ -408,12 +423,18 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="mt-6 pt-4 border-t">
+        <div className="mt-6 pt-4 border-t flex gap-3">
           <button
             onClick={handleApplyBranding}
             className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
           >
             Apply Branding
+          </button>
+          <button
+            onClick={handleResetBranding}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+          >
+            Reset to Default
           </button>
         </div>
       </div>
@@ -427,19 +448,19 @@ export default function SettingsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-2">Background</h3>
-            <ColorSwatch color="#323288" label="#323288 (Navy)" />
+            <ColorSwatch color={colors.background} />
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-2">Accent</h3>
-            <ColorSwatch color="#FFD700" label="#FFD700 (Gold)" />
+            <ColorSwatch color={colors.accent} />
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-2">Sidebar</h3>
-            <ColorSwatch color="#FFFFFF" label="#FFFFFF (White)" />
+            <ColorSwatch color={colors.sidebar} />
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-2">Text</h3>
-            <ColorSwatch color="#1f2937" label="#1f2937 (Gray)" />
+            <ColorSwatch color={colors.sidebarText} />
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
-import { corpId } from "@/app/lib/corpId";
+import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 
 interface AuHeaderProps {
   onSearch?: (query: string) => void;
@@ -12,7 +12,7 @@ interface AuHeaderProps {
 
 export function AuHeader({ onSearch, onExport, onImport }: AuHeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const colors = corpId.colors.portal.auRubber;
+  const { colors } = useAuRubberBranding();
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
