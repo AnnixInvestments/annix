@@ -283,15 +283,20 @@ export class AdminAuthService {
     roleNames: string[],
     appCode?: string,
   ): Promise<{ allowed: boolean; message: string }> {
+    const hasGlobalAccess = roleNames.includes("admin") || roleNames.includes("employee");
+
     if (!appCode) {
-      const hasAdminAccess = roleNames.includes("admin") || roleNames.includes("employee");
-      if (hasAdminAccess) {
+      if (hasGlobalAccess) {
         return { allowed: true, message: "" };
       }
       return {
         allowed: false,
         message: "You do not have permission to access the admin portal",
       };
+    }
+
+    if (hasGlobalAccess) {
+      return { allowed: true, message: "" };
     }
 
     const app = await this.appRepo.findOne({ where: { code: appCode, isActive: true } });
