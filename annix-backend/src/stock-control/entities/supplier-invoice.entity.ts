@@ -101,10 +101,16 @@ export class SupplierInvoice {
   @Column({ name: "approved_at", type: "timestamp", nullable: true })
   approvedAt: Date | null;
 
-  @OneToMany(() => SupplierInvoiceItem, (item) => item.invoice)
+  @OneToMany(
+    () => SupplierInvoiceItem,
+    (item) => item.invoice,
+  )
   items: SupplierInvoiceItem[];
 
-  @OneToMany(() => InvoiceClarification, (clarification) => clarification.invoice)
+  @OneToMany(
+    () => InvoiceClarification,
+    (clarification) => clarification.invoice,
+  )
   clarifications: InvoiceClarification[];
 
   @CreateDateColumn({ name: "created_at" })

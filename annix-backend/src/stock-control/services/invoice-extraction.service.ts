@@ -9,15 +9,18 @@ import {
   InvoiceClarification,
   SuggestedMatch,
 } from "../entities/invoice-clarification.entity";
-import { PriceChangeReason, StockPriceHistory } from "../entities/stock-price-history.entity";
 import { StockItem } from "../entities/stock-item.entity";
+import { PriceChangeReason, StockPriceHistory } from "../entities/stock-price-history.entity";
 import {
   ExtractedInvoiceData,
   ExtractedLineItem,
   InvoiceExtractionStatus,
   SupplierInvoice,
 } from "../entities/supplier-invoice.entity";
-import { InvoiceItemMatchStatus, SupplierInvoiceItem } from "../entities/supplier-invoice-item.entity";
+import {
+  InvoiceItemMatchStatus,
+  SupplierInvoiceItem,
+} from "../entities/supplier-invoice-item.entity";
 
 const INVOICE_EXTRACTION_PROMPT = `You are an industrial supplier invoice parser. Extract line items from scanned invoices.
 
@@ -272,7 +275,9 @@ export class InvoiceExtractionService {
       return { stockItem, confidence: Math.min(score, 100) };
     });
 
-    const best = scored.filter((s) => s.confidence >= MIN_MATCH_CONFIDENCE).sort((a, b) => b.confidence - a.confidence)[0];
+    const best = scored
+      .filter((s) => s.confidence >= MIN_MATCH_CONFIDENCE)
+      .sort((a, b) => b.confidence - a.confidence)[0];
 
     return best || null;
   }
@@ -507,7 +512,9 @@ export class InvoiceExtractionService {
         clarification.invoiceItem.stockItemId = response.selectedStockItemId;
         clarification.invoiceItem.matchStatus = InvoiceItemMatchStatus.MANUALLY_MATCHED;
 
-        const stockItem = await this.stockItemRepo.findOne({ where: { id: response.selectedStockItemId } });
+        const stockItem = await this.stockItemRepo.findOne({
+          where: { id: response.selectedStockItemId },
+        });
         if (stockItem) {
           clarification.invoiceItem.previousPrice = Number(stockItem.costPerUnit) || null;
         }
@@ -610,7 +617,8 @@ export class InvoiceExtractionService {
         !item.priceUpdated &&
         !skippedItemIds.has(item.id)
       ) {
-        const stockItem = item.stockItem || (await this.stockItemRepo.findOne({ where: { id: item.stockItemId } }));
+        const stockItem =
+          item.stockItem || (await this.stockItemRepo.findOne({ where: { id: item.stockItemId } }));
 
         if (stockItem) {
           const oldPrice = Number(stockItem.costPerUnit) || null;
@@ -658,9 +666,7 @@ export class InvoiceExtractionService {
     const lower = description.toLowerCase();
 
     const isPartA =
-      /part\s*a\b/i.test(lower) ||
-      /comp(onent)?\s*a\b/i.test(lower) ||
-      /\bbase\b/i.test(lower);
+      /part\s*a\b/i.test(lower) || /comp(onent)?\s*a\b/i.test(lower) || /\bbase\b/i.test(lower);
 
     const isPartB =
       /part\s*b\b/i.test(lower) ||

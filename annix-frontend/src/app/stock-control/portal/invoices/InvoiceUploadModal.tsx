@@ -72,7 +72,10 @@ export default function InvoiceUploadModal({
         invoiceDate: form.invoiceDate || undefined,
       });
 
-      const updatedInvoice = await stockControlApiClient.uploadInvoiceScan(invoice.id, selectedFile);
+      const updatedInvoice = await stockControlApiClient.uploadInvoiceScan(
+        invoice.id,
+        selectedFile,
+      );
 
       if (
         updatedInvoice.extractionStatus === "needs_clarification" ||

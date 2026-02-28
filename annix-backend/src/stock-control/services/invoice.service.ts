@@ -116,7 +116,10 @@ export class InvoiceService {
     return mimeMap[mime] || "image/jpeg";
   }
 
-  async pendingClarifications(companyId: number, invoiceId: number): Promise<InvoiceClarification[]> {
+  async pendingClarifications(
+    companyId: number,
+    invoiceId: number,
+  ): Promise<InvoiceClarification[]> {
     await this.findById(companyId, invoiceId);
     return this.extractionService.pendingClarifications(invoiceId);
   }

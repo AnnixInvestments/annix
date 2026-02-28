@@ -124,10 +124,10 @@ export class CreateSupplierInvoiceTables1772000000000 implements MigrationInterf
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS stock_price_history`);
-    await queryRunner.query(`DROP TABLE IF EXISTS invoice_clarifications`);
-    await queryRunner.query(`DROP TABLE IF EXISTS supplier_invoice_items`);
-    await queryRunner.query(`DROP TABLE IF EXISTS supplier_invoices`);
+    await queryRunner.query("DROP TABLE IF EXISTS stock_price_history");
+    await queryRunner.query("DROP TABLE IF EXISTS invoice_clarifications");
+    await queryRunner.query("DROP TABLE IF EXISTS supplier_invoice_items");
+    await queryRunner.query("DROP TABLE IF EXISTS supplier_invoices");
     await queryRunner.query(`
       ALTER TABLE delivery_notes
       DROP COLUMN IF EXISTS extraction_status,

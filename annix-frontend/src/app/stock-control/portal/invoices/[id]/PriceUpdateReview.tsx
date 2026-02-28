@@ -16,11 +16,7 @@ export default function PriceUpdateReview({ priceSummary, onApprove }: PriceUpda
   const hasSignificantChanges = itemsNeedingApproval.length > 0;
 
   if (items.length === 0) {
-    return (
-      <div className="text-center py-4 text-gray-500 text-sm">
-        No price updates to review
-      </div>
-    );
+    return <div className="text-center py-4 text-gray-500 text-sm">No price updates to review</div>;
   }
 
   return (
@@ -88,16 +84,14 @@ export default function PriceUpdateReview({ priceSummary, onApprove }: PriceUpda
           </thead>
           <tbody className="divide-y divide-gray-100">
             {items.map((item) => (
-              <tr
-                key={item.id}
-                className={item.needsApproval ? "bg-yellow-50" : ""}
-              >
-                <td className="px-2 py-2 text-gray-900 truncate max-w-[120px]" title={item.stockItemName}>
+              <tr key={item.id} className={item.needsApproval ? "bg-yellow-50" : ""}>
+                <td
+                  className="px-2 py-2 text-gray-900 truncate max-w-[120px]"
+                  title={item.stockItemName}
+                >
                   {item.stockItemName}
                 </td>
-                <td className="px-2 py-2 text-right text-gray-500">
-                  R{item.oldPrice.toFixed(2)}
-                </td>
+                <td className="px-2 py-2 text-right text-gray-500">R{item.oldPrice.toFixed(2)}</td>
                 <td className="px-2 py-2 text-right text-gray-900 font-medium">
                   R{item.newPrice.toFixed(2)}
                 </td>

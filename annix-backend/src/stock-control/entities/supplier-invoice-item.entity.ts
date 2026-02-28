@@ -24,7 +24,11 @@ export class SupplierInvoiceItem {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => SupplierInvoice, (invoice) => invoice.items, { onDelete: "CASCADE" })
+  @ManyToOne(
+    () => SupplierInvoice,
+    (invoice) => invoice.items,
+    { onDelete: "CASCADE" },
+  )
   @JoinColumn({ name: "invoice_id" })
   invoice: SupplierInvoice;
 

@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { StockPriceHistory, PriceChangeReason } from "../entities/stock-price-history.entity";
 import { StockItem } from "../entities/stock-item.entity";
+import { PriceChangeReason, StockPriceHistory } from "../entities/stock-price-history.entity";
 
 @Injectable()
 export class PriceHistoryService {
@@ -64,7 +64,10 @@ export class PriceHistoryService {
     return this.priceHistoryRepo.save(history);
   }
 
-  async priceStatistics(companyId: number, stockItemId: number): Promise<{
+  async priceStatistics(
+    companyId: number,
+    stockItemId: number,
+  ): Promise<{
     currentPrice: number;
     averagePrice: number;
     minPrice: number;

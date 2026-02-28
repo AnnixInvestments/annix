@@ -739,7 +739,13 @@ export interface SupplierInvoice {
   totalAmount: number | null;
   vatAmount: number | null;
   scanUrl: string | null;
-  extractionStatus: "pending" | "processing" | "needs_clarification" | "awaiting_approval" | "completed" | "failed";
+  extractionStatus:
+    | "pending"
+    | "processing"
+    | "needs_clarification"
+    | "awaiting_approval"
+    | "completed"
+    | "failed";
   extractedData: Record<string, unknown> | null;
   deliveryNoteId: number;
   deliveryNote?: DeliveryNote;
@@ -759,7 +765,12 @@ export interface SupplierInvoiceItem {
   extractedSku: string | null;
   quantity: number;
   unitPrice: number | null;
-  matchStatus: "matched" | "unmatched" | "clarification_needed" | "manually_matched" | "new_item_created";
+  matchStatus:
+    | "matched"
+    | "unmatched"
+    | "clarification_needed"
+    | "manually_matched"
+    | "new_item_created";
   matchConfidence: number | null;
   stockItemId: number | null;
   stockItem?: StockItem | null;

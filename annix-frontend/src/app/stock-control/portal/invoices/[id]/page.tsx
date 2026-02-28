@@ -193,10 +193,7 @@ export default function InvoiceDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Link
-            href="/stock-control/portal/invoices"
-            className="text-gray-500 hover:text-gray-700"
-          >
+          <Link href="/stock-control/portal/invoices" className="text-gray-500 hover:text-gray-700">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -344,9 +341,7 @@ export default function InvoiceDetailPage() {
                 </tbody>
               </table>
             ) : (
-              <div className="px-6 py-8 text-center text-gray-500">
-                No line items extracted yet
-              </div>
+              <div className="px-6 py-8 text-center text-gray-500">No line items extracted yet</div>
             )}
           </div>
         </div>

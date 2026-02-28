@@ -251,9 +251,7 @@ export class RubberBrandingService {
         }
       }
 
-      this.logger.log(
-        `Fetch-based scrape found primaryColor: ${primaryColor}`,
-      );
+      this.logger.log(`Fetch-based scrape found primaryColor: ${primaryColor}`);
       this.logger.log(
         `Fetch-based scrape found ${logoCandidates.length} logo candidates, ${heroCandidates.length} hero candidates`,
       );

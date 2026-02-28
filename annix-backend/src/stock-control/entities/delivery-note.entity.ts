@@ -61,7 +61,10 @@ export class DeliveryNote {
   @Column({ name: "extracted_data", type: "jsonb", nullable: true })
   extractedData: ExtractedDeliveryData | null;
 
-  @OneToMany(() => SupplierInvoice, (invoice) => invoice.deliveryNote)
+  @OneToMany(
+    () => SupplierInvoice,
+    (invoice) => invoice.deliveryNote,
+  )
   invoices: SupplierInvoice[];
 
   @CreateDateColumn({ name: "created_at" })

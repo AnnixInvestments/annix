@@ -96,7 +96,12 @@ export default function InvoiceClarificationPopup({
         <div className="px-4 py-3 flex items-center justify-between flex-shrink-0 bg-teal-700">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -141,8 +146,18 @@ export default function InvoiceClarificationPopup({
                     R{clarification.context.oldPrice?.toFixed(2)}
                   </p>
                 </div>
-                <svg className="w-6 h-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                <svg
+                  className="w-6 h-6 text-yellow-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
                 </svg>
                 <div className="text-right">
                   <p className="text-sm text-gray-600">New Price</p>
@@ -293,7 +308,9 @@ export default function InvoiceClarificationPopup({
                   <label className="block text-xs font-medium text-gray-500 mb-1">Unit</label>
                   <select
                     value={newItemForm.unitOfMeasure}
-                    onChange={(e) => setNewItemForm({ ...newItemForm, unitOfMeasure: e.target.value })}
+                    onChange={(e) =>
+                      setNewItemForm({ ...newItemForm, unitOfMeasure: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-teal-500 focus:border-teal-500"
                   >
                     <option value="each">Each</option>

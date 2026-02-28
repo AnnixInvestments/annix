@@ -156,7 +156,9 @@ export class DeliveryService {
     }
   }
 
-  private inferMediaTypeFromUrl(url: string): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
+  private inferMediaTypeFromUrl(
+    url: string,
+  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
     const lower = url.toLowerCase();
     if (lower.includes(".png")) return "image/png";
     if (lower.includes(".gif")) return "image/gif";
