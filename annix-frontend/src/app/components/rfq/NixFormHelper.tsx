@@ -1494,18 +1494,7 @@ export default function NixFormHelper({
 
   useEffect(() => {
     if (typeof window !== "undefined" && position === null) {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const savedPosition = JSON.parse(saved);
-          setPosition(savedPosition);
-          setHasBeenDragged(true);
-        } catch {
-          setDefaultPosition();
-        }
-      } else {
-        setDefaultPosition();
-      }
+      setDefaultPosition();
     }
   }, [position]);
 

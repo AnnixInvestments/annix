@@ -280,6 +280,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     nixCloseClarification,
     nixProcessDocuments,
     nixSubmitClarification,
+    nixSubmitClarificationBatch,
     nixSkipClarification,
     nixItemsPageReady,
     nixChatSessionId,
@@ -290,6 +291,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     nixSetChatSessionId,
     nixSetChatPanelGeometry,
     nixGuidedModeActive,
+    nixFormHelperMinimized,
+    nixFormHelperReactivate,
     currentDraftId,
     draftNumber,
     isSavingDraft,
@@ -3450,11 +3453,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       {showNixClarification && (
         <NixClarificationPopup
           clarification={nixClarifications[currentClarificationIndex] || null}
+          allClarifications={nixClarifications}
           totalClarifications={nixClarifications.length}
           currentIndex={currentClarificationIndex}
+          pendingDocuments={pendingDocuments}
           onSubmit={(id: number, response: string) =>
             nixSubmitClarification(id, response, showToast)
           }
+          onSubmitBatch={(responses) => nixSubmitClarificationBatch(responses, showToast)}
           onSkip={(id: number) => nixSkipClarification(id, showToast)}
           onClose={nixCloseClarification}
         />
@@ -3751,6 +3757,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                     />
                   </svg>
                   Save Progress
+                </button>
+              )}
+              {rfqData?.useNix && nixFormHelperMinimized && (
+                <button
+                  onClick={nixFormHelperReactivate}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200 transition-colors"
+                  title="Reopen Nix AI Assistant"
+                >
+                  <img src="/nix-avatar.png" alt="Nix" className="w-4 h-4 rounded-full" />
+                  Open Nix
                 </button>
               )}
               <div className="text-sm text-gray-500">{rfqData?.projectName || "New RFQ"}</div>

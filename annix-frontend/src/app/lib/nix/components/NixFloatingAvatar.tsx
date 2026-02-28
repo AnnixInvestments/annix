@@ -115,7 +115,7 @@ export default function NixFloatingAvatar({ isVisible, onOpenChat }: NixFloating
   return (
     <div
       ref={avatarRef}
-      className={`fixed z-[9998] cursor-pointer select-none ${isDragging ? "cursor-grabbing" : ""} ${position === null ? "right-6 top-1/3" : ""}`}
+      className={`fixed z-[9998] cursor-pointer select-none ${isDragging ? "cursor-grabbing" : ""} ${position === null ? "left-6 bottom-24" : ""}`}
       style={
         position !== null
           ? {

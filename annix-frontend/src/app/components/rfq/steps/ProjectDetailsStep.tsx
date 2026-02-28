@@ -77,7 +77,6 @@ const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 export type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
 
 export default function ProjectDetailsStep() {
-  const nixShowPopup = useRfqWizardStore((s) => s.nixShowPopup);
   const nixStopUsing = useRfqWizardStore((s) => s.nixStopUsing);
   const nixProcessDocuments = useRfqWizardStore((s) => s.nixProcessDocuments);
   const isNixProcessing = useRfqWizardStore((s) => s.isNixProcessing);
@@ -836,15 +835,6 @@ export default function ProjectDetailsStep() {
     };
     fetchMines();
   }, []);
-
-  useEffect(() => {
-    const nixProjectTypes = ["phase1", "retender", "feasibility"];
-    const isNixType = nixProjectTypes.includes(rfqData.projectType as string);
-
-    if (isNixType && nixShowPopup && !rfqData.useNix) {
-      nixShowPopup();
-    }
-  }, [rfqData.projectType, rfqData.useNix, nixShowPopup]);
 
   // Fallback slurry profiles by commodity when API is unavailable
   const fallbackSlurryProfiles: Record<string, any> = {
@@ -1880,18 +1870,10 @@ export default function ProjectDetailsStep() {
                       onUpdate("projectType", selectedType);
 
                       const nixProjectTypes = ["phase1", "retender", "feasibility"];
-                      if (
-                        nixProjectTypes.includes(selectedType) &&
-                        nixShowPopup &&
-                        !rfqData.nixPopupShown
-                      ) {
-                        log.debug("🤖 Triggering Nix popup from onChange");
-                        nixShowPopup();
-                      } else if (
-                        !nixProjectTypes.includes(selectedType) &&
-                        useNix &&
-                        nixStopUsing
-                      ) {
+                      if (nixProjectTypes.includes(selectedType)) {
+                        log.debug("🤖 Enabling Nix for tender project type");
+                        onUpdate("useNix", true);
+                      } else if (useNix && nixStopUsing) {
                         log.debug("🤖 Disabling Nix - switched to non-Nix project type");
                         nixStopUsing();
                       }

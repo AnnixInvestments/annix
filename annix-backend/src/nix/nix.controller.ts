@@ -1,3 +1,4 @@
+import * as fs from "node:fs";
 import {
   BadRequestException,
   Body,
@@ -755,14 +756,15 @@ export class NixController {
       throw new BadRequestException("No file provided");
     }
 
-    if (!file.buffer) {
+    if (!file.path) {
       throw new BadRequestException(
-        `File buffer is empty. File: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}`,
+        `File path is empty. File: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}`,
       );
     }
 
+    const buffer = fs.readFileSync(file.path);
     const scale = body.scale ? parseFloat(body.scale) : 1.5;
-    return this.documentAnnotationService.convertPdfToImages(file.buffer, scale);
+    return this.documentAnnotationService.convertPdfToImages(buffer, scale);
   }
 
   @Post("extract-from-region")
@@ -800,11 +802,8 @@ export class NixController {
       throw new BadRequestException("Invalid regionCoordinates JSON");
     }
 
-    return this.documentAnnotationService.extractFromRegion(
-      file.buffer,
-      coordinates,
-      body.fieldName,
-    );
+    const buffer = fs.readFileSync(file.path);
+    return this.documentAnnotationService.extractFromRegion(buffer, coordinates, body.fieldName);
   }
 
   @Post("save-extraction-region")

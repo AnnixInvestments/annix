@@ -3,7 +3,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ExtractedItem, ExtractionResult, SpecificationCellData } from "./excel-extractor.service";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PDFParse } = require("pdf-parse");
+const pdfParseModule = require("pdf-parse");
+const pdfParse = pdfParseModule.default ?? pdfParseModule;
 
 @Injectable()
 export class PdfExtractorService {
@@ -84,15 +85,11 @@ export class PdfExtractorService {
     this.logger.log(`Extracting from PDF: ${filePath}`);
 
     const dataBuffer = fs.readFileSync(filePath);
-    const parser = new PDFParse({ data: dataBuffer });
-    await parser.load();
-    const textResult = await parser.getText();
-    const pdfText = textResult?.text || "";
-    const pdfInfo = await parser.getInfo();
+    const pdfData = await pdfParse(dataBuffer);
+    const pdfText = pdfData.text || "";
+    const numPages = pdfData.numpages || 0;
 
-    this.logger.log(
-      `PDF has ${pdfInfo.numPages || textResult?.total || "unknown"} pages, extracted ${pdfText.length} characters`,
-    );
+    this.logger.log(`PDF has ${numPages} pages, extracted ${pdfText.length} characters`);
 
     const lines = pdfText.split("\n").filter((line: string) => line.trim().length > 0);
     this.logger.log(`PDF has ${lines.length} non-empty lines`);

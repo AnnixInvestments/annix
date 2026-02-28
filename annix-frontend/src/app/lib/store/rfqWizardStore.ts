@@ -284,6 +284,10 @@ interface RfqWizardActions {
     response: string,
     showToast: (msg: string, type: "success" | "error" | "info") => void,
   ) => Promise<void>;
+  nixSubmitClarificationBatch: (
+    responses: Array<{ clarificationId: number; response: string }>,
+    showToast: (msg: string, type: "success" | "error" | "info") => void,
+  ) => Promise<void>;
   nixSkipClarification: (
     clarificationId: number,
     showToast: (msg: string, type: "success" | "error" | "info") => void,
@@ -1541,33 +1545,18 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             } else {
               set(
                 {
-                  nixProcessingProgress: 98,
-                  nixProcessingStatus: "Loading Items page...",
+                  isNixProcessing: false,
+                  nixProcessingProgress: 100,
+                  nixProcessingStatus: "Complete!",
                   nixProcessingTimeRemaining: 0,
                 },
                 false,
-                "nixProcessDocuments/loadingItems",
+                "nixProcessDocuments/complete",
               );
-              setCurrentStep(2);
-
-              setTimeout(() => {
-                const { isNixProcessing: stillProcessing } = get();
-                if (stillProcessing) {
-                  set(
-                    {
-                      isNixProcessing: false,
-                      nixProcessingProgress: 100,
-                      nixProcessingStatus: "Complete!",
-                    },
-                    false,
-                    "nixProcessDocuments/complete",
-                  );
-                  showToast(
-                    `Nix processed ${pendingDocuments.length} document(s) successfully!`,
-                    "success",
-                  );
-                }
-              }, 3000);
+              showToast(
+                `Nix processed ${pendingDocuments.length} document(s). Please complete the details below and click Next.`,
+                "success",
+              );
             }
           } catch (error) {
             log.error("Nix processing error:", error);
@@ -1607,6 +1596,40 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           } else {
             log.debug("Closing clarification popup and returning to step 1");
             set({ showNixClarification: false }, false, "nixSubmitClarification/done");
+            setCurrentStep(1);
+            showToast(
+              "All clarifications completed! Please confirm the project location before continuing.",
+              "success",
+            );
+          }
+        },
+
+        nixSubmitClarificationBatch: async (responses, showToast) => {
+          const { currentClarificationIndex, nixClarifications, setCurrentStep } = get();
+          const skipCount = responses.length;
+          const newIndex = currentClarificationIndex + skipCount;
+          const isLastBatch = newIndex >= nixClarifications.length;
+
+          log.debug(
+            `Submitting batch of ${skipCount} clarifications, new index will be ${newIndex}, total: ${nixClarifications.length}`,
+          );
+
+          try {
+            await Promise.all(
+              responses.map(({ clarificationId, response }) =>
+                nixApi.submitClarification(clarificationId, response, true),
+              ),
+            );
+            log.debug("Batch clarifications submitted");
+          } catch (error) {
+            log.error("Failed to submit batch clarifications:", error);
+          }
+
+          if (!isLastBatch) {
+            set({ currentClarificationIndex: newIndex }, false, "nixSubmitClarificationBatch/next");
+          } else {
+            log.debug("Closing clarification popup after batch and returning to step 1");
+            set({ showNixClarification: false }, false, "nixSubmitClarificationBatch/done");
             setCurrentStep(1);
             showToast(
               "All clarifications completed! Please confirm the project location before continuing.",

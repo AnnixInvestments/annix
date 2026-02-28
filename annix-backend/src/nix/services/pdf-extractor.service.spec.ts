@@ -2,31 +2,32 @@ import * as fs from "node:fs";
 import { PdfExtractorService } from "./pdf-extractor.service";
 
 jest.mock("node:fs");
-jest.mock("pdf-parse", () => ({
-  PDFParse: jest.fn(),
-}));
+
+jest.mock("pdf-parse", () => {
+  const mockFn = jest.fn();
+  return Object.assign(mockFn, { default: mockFn });
+});
 
 describe("PdfExtractorService", () => {
   let service: PdfExtractorService;
-  let mockPDFParse: jest.Mock;
+  let mockPdfParse: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    mockPdfParse = require("pdf-parse");
+    mockPdfParse.mockReset();
     service = new PdfExtractorService();
-
-    const pdfParseMock = require("pdf-parse");
-    mockPDFParse = pdfParseMock.PDFParse;
   });
 
   describe("extractFromPdf", () => {
     const setupMockPdf = (text: string) => {
       (fs.readFileSync as jest.Mock).mockReturnValue(Buffer.from("fake-pdf"));
 
-      mockPDFParse.mockImplementation(() => ({
-        load: jest.fn().mockResolvedValue(undefined),
-        getText: jest.fn().mockResolvedValue({ text, total: 1 }),
-        getInfo: jest.fn().mockResolvedValue({ numPages: 1 }),
-      }));
+      mockPdfParse.mockResolvedValue({
+        text,
+        numpages: 1,
+      });
     };
 
     it("should extract items from PDF text", async () => {

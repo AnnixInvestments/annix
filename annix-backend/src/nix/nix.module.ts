@@ -1,7 +1,9 @@
+import * as os from "node:os";
+import * as path from "node:path";
 import { forwardRef, Module } from "@nestjs/common";
 import { MulterModule } from "@nestjs/platform-express";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { memoryStorage } from "multer";
+import { diskStorage } from "multer";
 import { AdminModule } from "../admin/admin.module";
 import { AuditModule } from "../audit/audit.module";
 import { AnyUserAuthGuard } from "../auth/guards/any-user-auth.guard";
@@ -62,7 +64,14 @@ import { WordExtractorService } from "./services/word-extractor.service";
       SupplierOnboarding,
     ]),
     MulterModule.register({
-      storage: memoryStorage(),
+      storage: diskStorage({
+        destination: os.tmpdir(),
+        filename: (_req, file, cb) => {
+          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          const ext = path.extname(file.originalname);
+          cb(null, `nix-${uniqueSuffix}${ext}`);
+        },
+      }),
       limits: {
         fileSize: 100 * 1024 * 1024, // 100 MB for tender documents
       },

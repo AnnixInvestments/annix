@@ -252,13 +252,12 @@ export class NixService {
 
         const fs = await import("node:fs");
         // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { PDFParse } = require("pdf-parse");
+        const pdfParseModule = require("pdf-parse");
+        const pdfParse = pdfParseModule.default ?? pdfParseModule;
         const dataBuffer = fs.readFileSync(documentPath);
-        const parser = new PDFParse({ data: dataBuffer });
-        await parser.load();
-        const textResult = await parser.getText();
-        const pdfText = textResult?.text || "";
-        const pdfInfo = await parser.getInfo();
+        const pdfData = await pdfParse(dataBuffer);
+        const pdfText = pdfData.text || "";
+        const pdfInfo = { numPages: pdfData.numpages };
 
         const aiResult = await this.aiExtractor.extractWithAi(
           pdfText,
@@ -276,7 +275,7 @@ export class NixService {
 
         return {
           extractedData: {
-            totalLines: pdfInfo.numPages || textResult?.total || 0,
+            totalLines: pdfInfo.numPages || 0,
             itemCount: aiResult.items.length,
             clarificationsNeeded,
             metadata: aiResult.metadata,
