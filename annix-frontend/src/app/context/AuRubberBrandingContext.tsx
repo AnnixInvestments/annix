@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { corpId } from "@/app/lib/corpId";
 
 const STORAGE_KEY = "auRubberBranding";
@@ -77,48 +85,51 @@ export function AuRubberBrandingProvider({ children }: { children: ReactNode }) 
     }
   }, []);
 
+  useEffect(() => {
+    if (isLoaded && typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(branding));
+    }
+  }, [branding, isLoaded]);
+
   const setBranding = useCallback((updates: Partial<AuRubberBranding>) => {
-    setBrandingState((prev) => {
-      const newBranding = { ...prev, ...updates };
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newBranding));
-      }
-      return newBranding;
-    });
+    setBrandingState((prev) => ({ ...prev, ...updates }));
   }, []);
 
   const resetBranding = useCallback(() => {
     setBrandingState(defaultBranding);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(STORAGE_KEY);
-    }
   }, []);
 
-  const colors = {
-    background: branding.primaryColor,
-    text: "#FFFFFF",
-    accent: branding.accentColor,
-    hover: lightenColor(branding.primaryColor),
-    active: darkenColor(branding.primaryColor),
-    sidebar: "#FFFFFF",
-    sidebarText: "#1f2937",
-    sidebarHover: "#f3f4f6",
-    sidebarActive: branding.accentColor,
-  };
+  const colors = useMemo(
+    () => ({
+      background: branding.primaryColor,
+      text: "#FFFFFF",
+      accent: branding.accentColor,
+      hover: lightenColor(branding.primaryColor),
+      active: darkenColor(branding.primaryColor),
+      sidebar: "#FFFFFF",
+      sidebarText: "#1f2937",
+      sidebarHover: "#f3f4f6",
+      sidebarActive: branding.accentColor,
+    }),
+    [branding.primaryColor, branding.accentColor],
+  );
+
+  const contextValue = useMemo(
+    () => ({
+      branding,
+      setBranding,
+      resetBranding,
+      colors,
+    }),
+    [branding, setBranding, resetBranding, colors],
+  );
 
   if (!isLoaded) {
     return null;
   }
 
   return (
-    <AuRubberBrandingContext.Provider
-      value={{
-        branding,
-        setBranding,
-        resetBranding,
-        colors,
-      }}
-    >
+    <AuRubberBrandingContext.Provider value={contextValue}>
       {children}
     </AuRubberBrandingContext.Provider>
   );

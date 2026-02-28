@@ -232,13 +232,14 @@ export default function SettingsPage() {
   };
 
   const handleApplyBranding = () => {
-    setBranding({
+    const updates = {
       primaryColor,
       accentColor,
       logoUrl: selectedLogoUrl,
       heroUrl: selectedHeroUrl,
-    });
-    showToast("Branding applied successfully", "success");
+    };
+    setBranding(updates);
+    showToast(`Applied: Primary=${primaryColor}, Accent=${accentColor}`, "success");
   };
 
   const handleResetBranding = () => {
