@@ -1,12 +1,5 @@
+import { AudioLines, FileText, MapPinned, Package, ShieldCheck, UserSearch } from "lucide-react";
 import type { Metadata } from "next";
-import {
-  FileText,
-  ShieldCheck,
-  Package,
-  AudioLines,
-  MapPinned,
-  UserSearch,
-} from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
