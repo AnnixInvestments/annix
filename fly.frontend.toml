@@ -3,8 +3,6 @@ primary_region = 'jnb'
 
 [build]
   dockerfile = 'Dockerfile.frontend'
-  [build.args]
-    NEXT_PUBLIC_API_URL = 'https://annix-backend.fly.dev'
 
 [env]
   NODE_ENV = 'production'
