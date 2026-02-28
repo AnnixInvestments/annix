@@ -5,10 +5,10 @@ import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import {
-  auRubberApiClient,
   type AuRubberPermissionDto,
   type AuRubberRoleDto,
   type AuRubberUserAccessDto,
+  auRubberApiClient,
   type CandidateImage,
 } from "@/app/lib/api/auRubberApi";
 import { Breadcrumb } from "../../components/Breadcrumb";

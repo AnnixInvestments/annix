@@ -131,9 +131,10 @@ export function AuSidebar() {
     window.location.href = "/au-rubber/login";
   };
 
-  const fullName = user?.firstName && user?.lastName
-    ? `${user.firstName} ${user.lastName}`
-    : user?.email?.split("@")[0] || "AU Rubber";
+  const fullName =
+    user?.firstName && user?.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user?.email?.split("@")[0] || "AU Rubber";
   const firstInitial = user?.firstName?.[0] || user?.email?.[0] || "A";
   const lastInitial = user?.lastName?.[0] || user?.email?.[1] || "U";
   const userInitials = `${firstInitial}${lastInitial}`.toUpperCase();
@@ -276,7 +277,6 @@ export function AuSidebar() {
           ))}
         </div>
       </nav>
-
     </div>
   );
 }

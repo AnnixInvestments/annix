@@ -48,7 +48,8 @@ export class EmailService {
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     const fromEmail = this.configService.get<string>("EMAIL_FROM") || "noreply@annix.com";
-    const fromName = options.fromName || this.configService.get<string>("EMAIL_FROM_NAME") || "Annix";
+    const fromName =
+      options.fromName || this.configService.get<string>("EMAIL_FROM_NAME") || "Annix";
     const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || fromEmail;
     const replyTo = options.replyTo || supportEmail;
     const isTransactional = options.isTransactional !== false;

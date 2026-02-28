@@ -1,11 +1,7 @@
 "use client";
 
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
-import {
-  AuRubberUser,
-  AuRubberUserProfile,
-  auRubberApiClient,
-} from "@/app/lib/api/auRubberApi";
+import { AuRubberUser, AuRubberUserProfile, auRubberApiClient } from "@/app/lib/api/auRubberApi";
 
 interface AuRubberAuthState {
   isAuthenticated: boolean;

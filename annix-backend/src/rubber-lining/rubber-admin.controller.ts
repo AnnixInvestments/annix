@@ -20,11 +20,7 @@ import {
   UserAccessResponseDto,
 } from "../rbac/dto/assign-user-access.dto";
 import { InviteUserDto, InviteUserResponseDto } from "../rbac/dto/invite-user.dto";
-import {
-  CreateRoleDto,
-  RoleResponseDto,
-  UpdateRoleDto,
-} from "../rbac/dto/role-management.dto";
+import { CreateRoleDto, RoleResponseDto, UpdateRoleDto } from "../rbac/dto/role-management.dto";
 import { AppPermission } from "../rbac/entities";
 import { AppPermissionGuard } from "../rbac/guards/app-permission.guard";
 import { RbacService } from "../rbac/rbac.service";

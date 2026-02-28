@@ -630,7 +630,7 @@ export class RbacService {
       throw new NotFoundException(`Role with ID ${roleId} not found`);
     }
 
-    await this.rolePermissionRepo.delete({ appRoleId: roleId });
+    await this.rolePermissionRepo.delete({ roleId });
 
     if (permissionCodes.length === 0) {
       return;
@@ -648,17 +648,15 @@ export class RbacService {
 
     const rolePermissions = permissions.map((p) =>
       this.rolePermissionRepo.create({
-        appRoleId: roleId,
-        appPermissionId: p.id,
+        roleId,
+        permissionId: p.id,
       }),
     );
 
     await this.rolePermissionRepo.save(rolePermissions);
   }
 
-  async roleWithPermissions(
-    roleId: number,
-  ): Promise<RoleResponseDto & { permissions: string[] }> {
+  async roleWithPermissions(roleId: number): Promise<RoleResponseDto & { permissions: string[] }> {
     const role = await this.roleRepo.findOne({
       where: { id: roleId },
       relations: ["rolePermissions", "rolePermissions.permission"],

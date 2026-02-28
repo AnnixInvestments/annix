@@ -52,9 +52,9 @@ export class AddDashboardViewPermission1795200000000 implements MigrationInterfa
 
     const appId = appResult[0].id;
 
-    await queryRunner.query(
-      `DELETE FROM "app_permissions" WHERE app_id = $1 AND code = $2`,
-      [appId, "dashboard:view"],
-    );
+    await queryRunner.query(`DELETE FROM "app_permissions" WHERE app_id = $1 AND code = $2`, [
+      appId,
+      "dashboard:view",
+    ]);
   }
 }
