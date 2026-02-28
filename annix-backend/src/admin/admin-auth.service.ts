@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
@@ -6,6 +6,7 @@ import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { fromJSDate, now } from "../lib/datetime";
 import { App } from "../rbac/entities/app.entity";
+import { AppRole } from "../rbac/entities/app-role.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import {
   AUTH_CONSTANTS,
@@ -20,6 +21,8 @@ import { AdminSession } from "./entities/admin-session.entity";
 
 @Injectable()
 export class AdminAuthService {
+  private readonly logger = new Logger(AdminAuthService.name);
+
   constructor(
     @InjectRepository(AdminSession)
     private readonly adminSessionRepo: Repository<AdminSession>,
@@ -27,6 +30,8 @@ export class AdminAuthService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(App)
     private readonly appRepo: Repository<App>,
+    @InjectRepository(AppRole)
+    private readonly appRoleRepo: Repository<AppRole>,
     @InjectRepository(UserAppAccess)
     private readonly userAppAccessRepo: Repository<UserAppAccess>,
     private readonly auditService: AuditService,
@@ -309,6 +314,10 @@ export class AdminAuthService {
     });
 
     if (!userAccess) {
+      const shouldAutoAssignAdmin = await this.autoAssignFirstUserAsAdmin(userId, app);
+      if (shouldAutoAssignAdmin) {
+        return { allowed: true, message: "" };
+      }
       return {
         allowed: false,
         message: `You do not have permission to access the ${app.name}.`,
@@ -323,5 +332,41 @@ export class AdminAuthService {
     }
 
     return { allowed: true, message: "" };
+  }
+
+  private async autoAssignFirstUserAsAdmin(userId: number, app: App): Promise<boolean> {
+    const existingAccessCount = await this.userAppAccessRepo.count({
+      where: { appId: app.id },
+    });
+
+    if (existingAccessCount > 0) {
+      return false;
+    }
+
+    const adminRole = await this.appRoleRepo.findOne({
+      where: { appId: app.id, code: "administrator" },
+    });
+
+    if (!adminRole) {
+      this.logger.warn(
+        `No administrator role found for app ${app.code}, cannot auto-assign first user`,
+      );
+      return false;
+    }
+
+    const newAccess = this.userAppAccessRepo.create({
+      userId,
+      appId: app.id,
+      roleId: adminRole.id,
+      grantedById: userId,
+    });
+
+    await this.userAppAccessRepo.save(newAccess);
+
+    this.logger.log(
+      `Auto-assigned administrator role to first user (userId: ${userId}) for app ${app.code}`,
+    );
+
+    return true;
   }
 }
