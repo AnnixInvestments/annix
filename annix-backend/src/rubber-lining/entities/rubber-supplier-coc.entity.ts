@@ -27,6 +27,7 @@ export interface ExtractedCocData {
   customerName?: string;
   compoundCode?: string;
   batchNumbers?: string[];
+  rollNumbers?: string[];
   orderNumber?: string;
   ticketNumber?: string;
   hasGraph?: boolean;
@@ -45,6 +46,7 @@ export interface ExtractedCocData {
     rheometerTc90?: number;
     passFailStatus?: string;
   }>;
+  linkedCompounderCocIds?: number[];
 }
 
 @Entity("rubber_supplier_cocs")

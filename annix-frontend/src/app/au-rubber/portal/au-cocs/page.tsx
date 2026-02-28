@@ -243,7 +243,7 @@ export default function AuCocsPage() {
           <TableLoadingState message="Loading certificates..." />
         ) : filteredCocs.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.document}
+            icon={<TableIcons.document />}
             title="No certificates found"
             subtitle={
               searchQuery || filterStatus

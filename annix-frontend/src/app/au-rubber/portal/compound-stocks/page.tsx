@@ -250,7 +250,7 @@ export default function CompoundStocksPage() {
           <TableLoadingState message="Loading compound stocks..." />
         ) : filteredStocks.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.document}
+            icon={<TableIcons.document />}
             title="No compound stocks found"
             subtitle={
               searchQuery || showLowStockOnly

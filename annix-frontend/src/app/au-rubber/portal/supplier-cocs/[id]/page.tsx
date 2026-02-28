@@ -1,5 +1,6 @@
 "use client";
 
+import { Download, FileText } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -23,6 +24,7 @@ export default function SupplierCocDetailPage() {
   const [error, setError] = useState<Error | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const cocId = Number(params.id);
 
@@ -35,6 +37,12 @@ export default function SupplierCocDetailPage() {
       ]);
       setCoc(cocData);
       setBatches(Array.isArray(batchesData) ? batchesData : []);
+
+      if (cocData.documentPath) {
+        const url = await auRubberApiClient.documentUrl(cocData.documentPath);
+        setPdfUrl(url);
+      }
+
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));
@@ -171,6 +179,35 @@ export default function SupplierCocDetailPage() {
             >
               {isApproving ? "Approving..." : "Approve"}
             </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <FileText className="w-5 h-5 text-gray-500" />
+            <span className="font-medium text-gray-900">Document</span>
+          </div>
+          {pdfUrl && (
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-yellow-600 hover:text-yellow-800"
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Download
+            </a>
+          )}
+        </div>
+        <div className="h-[600px] bg-gray-100">
+          {pdfUrl ? (
+            <iframe src={pdfUrl} className="w-full h-full" title="CoC Document" />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              No document available
+            </div>
           )}
         </div>
       </div>

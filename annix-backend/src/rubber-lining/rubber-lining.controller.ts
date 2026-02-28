@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   HttpStatus,
+  Inject,
   NotFoundException,
   Param,
   Post,
@@ -112,6 +113,7 @@ import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.s
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService, StockLocationDto } from "./rubber-stock-location.service";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 
 @ApiTags("Rubber Lining")
 @Controller("rubber-lining")
@@ -126,6 +128,7 @@ export class RubberLiningController {
     private readonly rubberAuCocService: RubberAuCocService,
     private readonly rubberRequisitionService: RubberRequisitionService,
     private readonly rubberStockLocationService: RubberStockLocationService,
+    @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
   @Get("types")
@@ -1235,6 +1238,20 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/documents/url")
+  @ApiOperation({ summary: "Get presigned URL for a document" })
+  @ApiQuery({ name: "path", description: "Document path in storage" })
+  @ApiResponse({ status: 200, description: "Presigned URL for the document" })
+  async documentUrl(@Query("path") path: string): Promise<{ url: string }> {
+    if (!path) {
+      throw new NotFoundException("Document path is required");
+    }
+    const url = await this.storageService.getPresignedUrl(path);
+    return { url };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/supplier-cocs")
   @ApiOperation({ summary: "List supplier CoCs" })
   @ApiQuery({ name: "cocType", required: false, enum: SupplierCocType })
@@ -1322,11 +1339,39 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Delete("portal/supplier-cocs")
+  @ApiOperation({ summary: "Clear all supplier CoCs and reset numbering" })
+  async clearAllSupplierCocs(): Promise<{ deletedBatches: number; deletedCocs: number }> {
+    return this.rubberCocService.clearAllSupplierCocs();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/supplier-cocs/:id/batches")
   @ApiOperation({ summary: "Get batches for a supplier CoC" })
   @ApiParam({ name: "id", description: "Supplier CoC ID" })
   async batchesByCocId(@Param("id") id: string) {
     return this.rubberCocService.batchesByCocId(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/supplier-cocs/:id/link-compounder")
+  @ApiOperation({ summary: "Link calendarer CoC to compounder CoCs based on batch numbers" })
+  @ApiParam({ name: "id", description: "Calendarer CoC ID" })
+  async linkCalendererToCompounderCocs(
+    @Param("id") id: string,
+  ): Promise<{ linkedCocIds: number[]; linkedBatches: string[] }> {
+    return this.rubberCocService.linkCalendererToCompounderCocs(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/traceability/roll/:rollNumber")
+  @ApiOperation({ summary: "Get full traceability chain for a roll number" })
+  @ApiParam({ name: "rollNumber", description: "Roll number to trace" })
+  async traceabilityForRoll(@Param("rollNumber") rollNumber: string) {
+    return this.rubberCocService.traceabilityForRoll(rollNumber);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

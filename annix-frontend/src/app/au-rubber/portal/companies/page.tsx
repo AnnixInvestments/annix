@@ -311,7 +311,7 @@ export default function AuRubberCompaniesPage() {
           <TableLoadingState message="Loading companies..." />
         ) : filteredCompanies.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.building}
+            icon={<TableIcons.building />}
             title="No companies found"
             subtitle={
               searchQuery

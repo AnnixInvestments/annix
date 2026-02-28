@@ -1,5 +1,6 @@
 "use client";
 
+import { FileText, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
@@ -11,6 +12,7 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
+import { FileDropZone } from "../../components/FileDropZone";
 import {
   ITEMS_PER_PAGE,
   Pagination,
@@ -45,6 +47,7 @@ export default function DeliveryNotesPage() {
   const [uploadSupplierId, setUploadSupplierId] = useState<number | null>(null);
   const [uploadDnNumber, setUploadDnNumber] = useState("");
   const [uploadDeliveryDate, setUploadDeliveryDate] = useState("");
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
   const fetchData = async () => {
@@ -121,6 +124,17 @@ export default function DeliveryNotesPage() {
     setCurrentPage(0);
   }, [searchQuery, filterType, filterStatus]);
 
+  const handleFilesSelected = (files: File[]) => {
+    setUploadFiles((prev) => [...prev, ...files]);
+    if (!showUploadModal) {
+      setShowUploadModal(true);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleUpload = async () => {
     if (!uploadSupplierId) {
       showToast("Please select a supplier", "error");
@@ -128,17 +142,31 @@ export default function DeliveryNotesPage() {
     }
     try {
       setIsUploading(true);
-      await auRubberApiClient.uploadDeliveryNote({
-        deliveryNoteType: uploadType,
-        supplierCompanyId: uploadSupplierId,
-        deliveryNoteNumber: uploadDnNumber || undefined,
-        deliveryDate: uploadDeliveryDate || undefined,
-      });
-      showToast("Delivery note created", "success");
+      if (uploadFiles.length > 0) {
+        await auRubberApiClient.uploadDeliveryNoteWithFiles(uploadFiles, {
+          deliveryNoteType: uploadType,
+          supplierCompanyId: uploadSupplierId,
+          deliveryNoteNumber: uploadDnNumber || undefined,
+          deliveryDate: uploadDeliveryDate || undefined,
+        });
+        showToast(
+          `${uploadFiles.length} delivery note${uploadFiles.length > 1 ? "s" : ""} uploaded`,
+          "success",
+        );
+      } else {
+        await auRubberApiClient.uploadDeliveryNote({
+          deliveryNoteType: uploadType,
+          supplierCompanyId: uploadSupplierId,
+          deliveryNoteNumber: uploadDnNumber || undefined,
+          deliveryDate: uploadDeliveryDate || undefined,
+        });
+        showToast("Delivery note created", "success");
+      }
       setShowUploadModal(false);
       setUploadSupplierId(null);
       setUploadDnNumber("");
       setUploadDeliveryDate("");
+      setUploadFiles([]);
       fetchData();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create delivery note", "error");
@@ -259,24 +287,45 @@ export default function DeliveryNotesPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <FileDropZone
+        onFilesSelected={handleFilesSelected}
+        className="bg-white shadow rounded-lg overflow-hidden border-2 border-dashed"
+      >
         {isLoading ? (
           <TableLoadingState message="Loading delivery notes..." />
         ) : filteredNotes.length === 0 ? (
-          <TableEmptyState
-            icon={TableIcons.document}
-            title="No delivery notes found"
-            subtitle={
-              searchQuery || filterType || filterStatus
-                ? "Try adjusting your filters"
-                : "Get started by adding a delivery note"
-            }
-            action={
-              !searchQuery && !filterType && !filterStatus
-                ? { label: "Add Delivery Note", onClick: () => setShowUploadModal(true) }
-                : undefined
-            }
-          />
+          <div className="p-8">
+            <div className="flex flex-col items-center justify-center py-12">
+              <TableIcons.document className="w-12 h-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No delivery notes found</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                {searchQuery || filterType || filterStatus
+                  ? "Try adjusting your filters"
+                  : "Drag & drop PDF files here or click to upload"}
+              </p>
+              {!searchQuery && !filterType && !filterStatus && (
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Add Delivery Note
+                </button>
+              )}
+            </div>
+          </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -391,7 +440,7 @@ export default function DeliveryNotesPage() {
           itemName="notes"
           onPageChange={setCurrentPage}
         />
-      </div>
+      </FileDropZone>
 
       {showUploadModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -400,9 +449,45 @@ export default function DeliveryNotesPage() {
               className="fixed inset-0 bg-gray-500 bg-opacity-75"
               onClick={() => setShowUploadModal(false)}
             />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Add Delivery Note</h3>
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    PDF Documents
+                  </label>
+                  <FileDropZone
+                    onFilesSelected={(files) => setUploadFiles((prev) => [...prev, ...files])}
+                    className="border-2 border-dashed rounded-lg"
+                    disabled={isUploading}
+                  />
+                  {uploadFiles.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {uploadFiles.map((file, index) => (
+                        <div
+                          key={`${file.name}-${index}`}
+                          className="flex items-center justify-between bg-gray-50 rounded-md px-3 py-2"
+                        >
+                          <div className="flex items-center space-x-2 min-w-0">
+                            <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                            <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                            <span className="text-xs text-gray-400 flex-shrink-0">
+                              ({(file.size / 1024).toFixed(1)} KB)
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                            disabled={isUploading}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Type</label>
                   <select
@@ -453,7 +538,10 @@ export default function DeliveryNotesPage() {
               </div>
               <div className="mt-6 flex justify-end space-x-3">
                 <button
-                  onClick={() => setShowUploadModal(false)}
+                  onClick={() => {
+                    setShowUploadModal(false);
+                    setUploadFiles([]);
+                  }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   Cancel
@@ -463,7 +551,11 @@ export default function DeliveryNotesPage() {
                   disabled={isUploading || !uploadSupplierId}
                   className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
                 >
-                  {isUploading ? "Creating..." : "Create"}
+                  {isUploading
+                    ? "Uploading..."
+                    : uploadFiles.length > 0
+                      ? `Upload ${uploadFiles.length} File${uploadFiles.length > 1 ? "s" : ""}`
+                      : "Create"}
                 </button>
               </div>
             </div>

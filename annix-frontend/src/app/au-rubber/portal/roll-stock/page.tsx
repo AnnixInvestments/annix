@@ -281,7 +281,7 @@ export default function RollStockPage() {
           <TableLoadingState message="Loading roll stock..." />
         ) : filteredRolls.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.document}
+            icon={<TableIcons.document />}
             title="No rolls found"
             subtitle={
               searchQuery || filterStatus

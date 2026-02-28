@@ -40,8 +40,9 @@ export class CreateSupplierCocDto {
   @IsEnum(SupplierCocType)
   cocType: SupplierCocType;
 
+  @IsOptional()
   @IsNumber()
-  supplierCompanyId: number;
+  supplierCompanyId?: number;
 
   @IsString()
   documentPath: string;

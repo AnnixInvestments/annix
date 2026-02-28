@@ -25,7 +25,7 @@ interface GeminiResponse {
 export class RubberCocExtractionService {
   private readonly logger = new Logger(RubberCocExtractionService.name);
   private readonly apiKey: string;
-  private readonly model = "gemini-1.5-flash";
+  private readonly model = "gemini-2.0-flash";
   private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
   constructor() {

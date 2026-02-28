@@ -393,7 +393,7 @@ export default function AuRubberProductsPage() {
           <TableLoadingState message="Loading products..." />
         ) : filteredProducts.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.cube}
+            icon={<TableIcons.cube />}
             title="No products found"
             subtitle={
               searchQuery || typeFilter || compoundFilter

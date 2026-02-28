@@ -225,7 +225,7 @@ export default function StockLocationsPage() {
           <TableLoadingState message="Loading stock locations..." />
         ) : filteredLocations.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.document}
+            icon={<TableIcons.document />}
             title="No stock locations found"
             subtitle={
               searchQuery ? "Try adjusting your search" : "Get started by adding a stock location"

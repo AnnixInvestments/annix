@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
+import { NixModule } from "../nix/nix.module";
 import { App } from "../rbac/entities/app.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import { RbacModule } from "../rbac/rbac.module";
@@ -40,6 +41,9 @@ import { RubberBrandingService } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
+import { RubberEmailMonitorService } from "./rubber-email-monitor.service";
+import { RubberInboundEmailController } from "./rubber-inbound-email.controller";
+import { RubberInboundEmailService } from "./rubber-inbound-email.service";
 import { RubberLiningController } from "./rubber-lining.controller";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberRequisitionService } from "./rubber-requisition.service";
@@ -50,6 +54,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
 @Module({
   imports: [
     AdminModule,
+    NixModule,
     RbacModule,
     TypeOrmModule.forFeature([
       App,
@@ -81,7 +86,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
       RubberStockLocation,
     ]),
   ],
-  controllers: [RubberLiningController, RubberAdminController],
+  controllers: [RubberLiningController, RubberAdminController, RubberInboundEmailController],
   providers: [
     RubberLiningService,
     RubberStockService,
@@ -93,6 +98,8 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     RubberAuCocService,
     RubberRequisitionService,
     RubberStockLocationService,
+    RubberInboundEmailService,
+    RubberEmailMonitorService,
     AuRubberAccessGuard,
   ],
   exports: [

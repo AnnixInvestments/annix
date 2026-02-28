@@ -547,6 +547,77 @@ class AuRubberApiClient {
     return JSON.parse(text) as T;
   }
 
+  private async requestWithFiles<T>(
+    endpoint: string,
+    files: File[],
+    data?: Record<string, string | number | undefined>,
+    fieldName: string = "files",
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+    const formData = new FormData();
+
+    files.forEach((file) => {
+      formData.append(fieldName, file);
+    });
+
+    if (data) {
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          formData.append(key, String(value));
+        }
+      });
+    }
+
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (response.status === 401 && this.refreshToken) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        headers["Authorization"] = `Bearer ${this.accessToken}`;
+        const retryResponse = await fetch(url, {
+          method: "POST",
+          headers,
+          body: formData,
+        });
+        if (!retryResponse.ok) {
+          const errorText = await retryResponse.text();
+          throw new Error(`API Error (${retryResponse.status}): ${errorText}`);
+        }
+        return retryResponse.json();
+      }
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `API Error (${response.status}): ${errorText}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch {
+        // Use raw error text if not JSON
+      }
+      throw new Error(errorMessage);
+    }
+
+    const text = await response.text();
+    if (!text || text.trim() === "") {
+      return {} as T;
+    }
+
+    return JSON.parse(text) as T;
+  }
+
   private async refreshAccessToken(): Promise<boolean> {
     if (!this.refreshToken) return false;
 
@@ -1155,7 +1226,7 @@ class AuRubberApiClient {
 
   async uploadSupplierCoc(data: {
     cocType: SupplierCocType;
-    supplierCompanyId: number;
+    supplierCompanyId?: number;
     cocNumber?: string;
     productionDate?: string;
     compoundCode?: string;
@@ -1166,6 +1237,95 @@ class AuRubberApiClient {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  async uploadSupplierCocWithFiles(
+    files: File[],
+    data: {
+      cocType: SupplierCocType;
+      supplierCompanyId?: number;
+      cocNumber?: string;
+      productionDate?: string;
+      compoundCode?: string;
+      orderNumber?: string;
+      ticketNumber?: string;
+    },
+  ): Promise<RubberSupplierCocDto[]> {
+    return this.requestWithFiles("/rubber-lining/portal/supplier-cocs/upload", files, {
+      cocType: data.cocType,
+      supplierCompanyId: data.supplierCompanyId,
+      cocNumber: data.cocNumber,
+      productionDate: data.productionDate,
+      compoundCode: data.compoundCode,
+      orderNumber: data.orderNumber,
+      ticketNumber: data.ticketNumber,
+    });
+  }
+
+  async analyzeSupplierCocs(
+    files: File[],
+  ): Promise<{
+    files: Array<{
+      filename: string;
+      isGraph: boolean;
+      cocType: SupplierCocType | null;
+      companyId: number | null;
+      companyName: string | null;
+      batchNumbers: string[];
+      linkedToIndex: number | null;
+      compoundCode: string | null;
+      extractedData: Record<string, unknown> | null;
+    }>;
+    dataPdfs: number[];
+    graphPdfs: number[];
+  }> {
+    return this.requestWithFiles("/rubber-lining/portal/supplier-cocs/analyze", files);
+  }
+
+  async createCocsFromAnalysis(
+    files: File[],
+    analysis: {
+      files: Array<{
+        filename: string;
+        isGraph: boolean;
+        cocType: SupplierCocType | null;
+        companyId: number | null;
+        companyName: string | null;
+        batchNumbers: string[];
+        linkedToIndex: number | null;
+        compoundCode: string | null;
+        extractedData: Record<string, unknown> | null;
+      }>;
+      dataPdfs: number[];
+      graphPdfs: number[];
+    },
+  ): Promise<{ cocIds: number[] }> {
+    const url = `${this.baseURL}/rubber-lining/portal/supplier-cocs/create-from-analysis`;
+    const formData = new FormData();
+
+    files.forEach((file) => {
+      formData.append("files", file);
+    });
+
+    formData.append("analysis", JSON.stringify(analysis));
+
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error (${response.status}): ${errorText}`);
+    }
+
+    return response.json();
   }
 
   async extractSupplierCoc(id: number): Promise<RubberSupplierCocDto> {
@@ -1252,6 +1412,23 @@ class AuRubberApiClient {
     return this.request("/rubber-lining/portal/delivery-notes", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  async uploadDeliveryNoteWithFiles(
+    files: File[],
+    data: {
+      deliveryNoteType: DeliveryNoteType;
+      supplierCompanyId: number;
+      deliveryNoteNumber?: string;
+      deliveryDate?: string;
+    },
+  ): Promise<RubberDeliveryNoteDto[]> {
+    return this.requestWithFiles("/rubber-lining/portal/delivery-notes/upload", files, {
+      deliveryNoteType: data.deliveryNoteType,
+      supplierCompanyId: data.supplierCompanyId,
+      deliveryNoteNumber: data.deliveryNoteNumber,
+      deliveryDate: data.deliveryDate,
     });
   }
 
@@ -1371,6 +1548,13 @@ class AuRubberApiClient {
 
   auCocPdfUrl(id: number): string {
     return `${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`;
+  }
+
+  async documentUrl(documentPath: string): Promise<string> {
+    const response = await this.request<{ url: string }>(
+      `/rubber-lining/portal/documents/url?path=${encodeURIComponent(documentPath)}`,
+    );
+    return response.url;
   }
 
   cocProcessingStatuses(): Promise<{ value: string; label: string }[]> {

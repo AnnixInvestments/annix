@@ -144,9 +144,13 @@ export const TABLE_HEADER_CLASSES =
 export const TABLE_CELL_CLASSES = "px-6 py-4 whitespace-nowrap";
 export const ITEMS_PER_PAGE = 15;
 
+interface IconProps {
+  className?: string;
+}
+
 export const TableIcons = {
-  document: (
-    <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  document: ({ className = "h-12 w-12" }: IconProps) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -155,8 +159,8 @@ export const TableIcons = {
       />
     </svg>
   ),
-  building: (
-    <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  building: ({ className = "h-12 w-12" }: IconProps) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -165,8 +169,8 @@ export const TableIcons = {
       />
     </svg>
   ),
-  cube: (
-    <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  cube: ({ className = "h-12 w-12" }: IconProps) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -175,8 +179,8 @@ export const TableIcons = {
       />
     </svg>
   ),
-  tag: (
-    <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  tag: ({ className = "h-12 w-12" }: IconProps) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -185,8 +189,8 @@ export const TableIcons = {
       />
     </svg>
   ),
-  currency: (
-    <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  currency: ({ className = "h-12 w-12" }: IconProps) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

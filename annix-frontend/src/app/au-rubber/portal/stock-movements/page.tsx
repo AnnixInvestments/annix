@@ -219,7 +219,7 @@ export default function StockMovementsPage() {
           <TableLoadingState message="Loading movements..." />
         ) : movements.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.document}
+            icon={<TableIcons.document />}
             title="No movements found"
             subtitle={hasFilters ? "Try adjusting your filters" : "No stock movements recorded yet"}
           />

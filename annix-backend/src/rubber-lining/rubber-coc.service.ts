@@ -88,17 +88,24 @@ export class RubberCocService {
     dto: CreateSupplierCocDto,
     createdBy?: string,
   ): Promise<RubberSupplierCocDto> {
-    const company = await this.companyRepository.findOne({
-      where: { id: dto.supplierCompanyId },
-    });
-    if (!company) {
-      throw new BadRequestException("Supplier company not found");
+    let supplierCompanyId = dto.supplierCompanyId;
+
+    if (!supplierCompanyId) {
+      const company = await this.resolveOrCreateSupplierForType(dto.cocType);
+      supplierCompanyId = company.id;
+    } else {
+      const company = await this.companyRepository.findOne({
+        where: { id: supplierCompanyId },
+      });
+      if (!company) {
+        throw new BadRequestException("Supplier company not found");
+      }
     }
 
     const coc = this.supplierCocRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       cocType: dto.cocType,
-      supplierCompanyId: dto.supplierCompanyId,
+      supplierCompanyId,
       documentPath: dto.documentPath,
       graphPdfPath: dto.graphPdfPath ?? null,
       cocNumber: dto.cocNumber ?? null,
@@ -215,6 +222,28 @@ export class RubberCocService {
     return (result.affected || 0) > 0;
   }
 
+  async clearAllSupplierCocs(): Promise<{ deletedBatches: number; deletedCocs: number }> {
+    const batchResult = await this.compoundBatchRepository
+      .createQueryBuilder()
+      .delete()
+      .where("supplier_coc_id IS NOT NULL")
+      .execute();
+
+    const cocResult = await this.supplierCocRepository
+      .createQueryBuilder()
+      .delete()
+      .execute();
+
+    await this.supplierCocRepository.query(
+      "ALTER SEQUENCE rubber_supplier_cocs_id_seq RESTART WITH 1",
+    );
+
+    return {
+      deletedBatches: batchResult.affected || 0,
+      deletedCocs: cocResult.affected || 0,
+    };
+  }
+
   async batchesByCocId(supplierCocId: number): Promise<RubberCompoundBatchDto[]> {
     const batches = await this.compoundBatchRepository.find({
       where: { supplierCocId },
@@ -284,6 +313,30 @@ export class RubberCocService {
     return batches.map((batch) => this.mapCompoundBatchToDto(batch));
   }
 
+  private async resolveOrCreateSupplierForType(cocType: SupplierCocType): Promise<RubberCompany> {
+    const supplierNames: Record<SupplierCocType, string> = {
+      [SupplierCocType.COMPOUNDER]: "S&N Rubber",
+      [SupplierCocType.CALENDARER]: "Impilo",
+    };
+
+    const supplierName = supplierNames[cocType];
+
+    let company = await this.companyRepository
+      .createQueryBuilder("company")
+      .where("LOWER(company.name) LIKE LOWER(:name)", { name: `%${supplierName}%` })
+      .getOne();
+
+    if (!company) {
+      company = this.companyRepository.create({
+        firebaseUid: `pg_${generateUniqueId()}`,
+        name: supplierName,
+      });
+      await this.companyRepository.save(company);
+    }
+
+    return company;
+  }
+
   private async createBatchesFromExtractedData(coc: RubberSupplierCoc): Promise<void> {
     const extractedBatches = coc.extractedData?.batches || [];
 
@@ -314,6 +367,123 @@ export class RubberCocService {
     await this.compoundBatchRepository.save(batchesToCreate);
   }
 
+  async linkCalendererToCompounderCocs(
+    calendererCocId: number,
+  ): Promise<{ linkedCocIds: number[]; linkedBatches: string[] }> {
+    const calendererCoc = await this.supplierCocRepository.findOne({
+      where: { id: calendererCocId },
+    });
+
+    if (!calendererCoc || calendererCoc.cocType !== SupplierCocType.CALENDARER) {
+      return { linkedCocIds: [], linkedBatches: [] };
+    }
+
+    const batchNumbers = calendererCoc.extractedData?.batchNumbers || [];
+    if (batchNumbers.length === 0) {
+      return { linkedCocIds: [], linkedBatches: [] };
+    }
+
+    const compounderCocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
+      .getMany();
+
+    const linkedCocIds: number[] = [];
+    const linkedBatches: string[] = [];
+
+    compounderCocs.forEach((compCoc) => {
+      const compBatches = compCoc.extractedData?.batchNumbers || [];
+      const compBatchesFromData =
+        compCoc.extractedData?.batches?.map((b) => b.batchNumber) || [];
+      const allCompBatches = [...new Set([...compBatches, ...compBatchesFromData])];
+
+      const matchingBatches = batchNumbers.filter((bn) =>
+        allCompBatches.some(
+          (cb) => cb.toLowerCase().trim() === bn.toLowerCase().trim(),
+        ),
+      );
+
+      if (matchingBatches.length > 0) {
+        linkedCocIds.push(compCoc.id);
+        linkedBatches.push(...matchingBatches);
+      }
+    });
+
+    if (linkedCocIds.length > 0) {
+      const updatedExtractedData = {
+        ...calendererCoc.extractedData,
+        linkedCompounderCocIds: linkedCocIds,
+      };
+      calendererCoc.extractedData = updatedExtractedData;
+      await this.supplierCocRepository.save(calendererCoc);
+    }
+
+    return {
+      linkedCocIds: [...new Set(linkedCocIds)],
+      linkedBatches: [...new Set(linkedBatches)],
+    };
+  }
+
+  async traceabilityForRoll(
+    rollNumber: string,
+  ): Promise<{
+    rollNumber: string;
+    calendererCoc: RubberSupplierCocDto | null;
+    compounderCocs: RubberSupplierCocDto[];
+    batches: RubberCompoundBatchDto[];
+  }> {
+    const calendererCocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .leftJoinAndSelect("coc.supplierCompany", "company")
+      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
+      .getMany();
+
+    const matchingCalendererCoc = calendererCocs.find((coc) => {
+      const rollNumbers = coc.extractedData?.rollNumbers || [];
+      return rollNumbers.some(
+        (rn) => rn.toLowerCase().trim() === rollNumber.toLowerCase().trim(),
+      );
+    });
+
+    if (!matchingCalendererCoc) {
+      return {
+        rollNumber,
+        calendererCoc: null,
+        compounderCocs: [],
+        batches: [],
+      };
+    }
+
+    const linkedCocIds = matchingCalendererCoc.extractedData?.linkedCompounderCocIds || [];
+    const batchNumbers = matchingCalendererCoc.extractedData?.batchNumbers || [];
+
+    const compounderCocs =
+      linkedCocIds.length > 0
+        ? await this.supplierCocRepository
+            .createQueryBuilder("coc")
+            .leftJoinAndSelect("coc.supplierCompany", "company")
+            .whereInIds(linkedCocIds)
+            .getMany()
+        : [];
+
+    const batches =
+      batchNumbers.length > 0
+        ? await this.compoundBatchRepository
+            .createQueryBuilder("batch")
+            .leftJoinAndSelect("batch.compoundStock", "stock")
+            .leftJoinAndSelect("stock.compoundCoding", "coding")
+            .where("batch.batch_number IN (:...batchNumbers)", { batchNumbers })
+            .getMany()
+        : [];
+
+    return {
+      rollNumber,
+      calendererCoc: this.mapSupplierCocToDto(matchingCalendererCoc),
+      compounderCocs: compounderCocs.map((c) => this.mapSupplierCocToDto(c)),
+      batches: batches.map((b) => this.mapCompoundBatchToDto(b)),
+    };
+  }
+
   private mapSupplierCocToDto(coc: RubberSupplierCoc): RubberSupplierCocDto {
     return {
       id: coc.id,
@@ -325,7 +495,11 @@ export class RubberCocService {
       documentPath: coc.documentPath,
       graphPdfPath: coc.graphPdfPath,
       cocNumber: coc.cocNumber,
-      productionDate: coc.productionDate?.toISOString().split("T")[0] ?? null,
+      productionDate: coc.productionDate
+        ? (coc.productionDate instanceof Date
+            ? coc.productionDate.toISOString().split("T")[0]
+            : String(coc.productionDate).split("T")[0])
+        : null,
       compoundCode: coc.compoundCode,
       orderNumber: coc.orderNumber,
       ticketNumber: coc.ticketNumber,

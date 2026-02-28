@@ -140,7 +140,7 @@ export default function AuRubberPricingTiersPage() {
           <TableLoadingState message="Loading pricing tiers..." />
         ) : tiers.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.currency}
+            icon={<TableIcons.currency />}
             title="No pricing tiers found"
             subtitle="Get started by adding your first pricing tier."
             action={{ label: "Add Pricing Tier", onClick: openNewModal }}

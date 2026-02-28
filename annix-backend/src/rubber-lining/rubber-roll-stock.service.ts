@@ -453,7 +453,11 @@ export class RubberRollStockService {
       documentPath: coc.documentPath,
       graphPdfPath: coc.graphPdfPath,
       cocNumber: coc.cocNumber,
-      productionDate: coc.productionDate?.toISOString().split("T")[0] ?? null,
+      productionDate: coc.productionDate
+        ? (coc.productionDate instanceof Date
+            ? coc.productionDate.toISOString().split("T")[0]
+            : String(coc.productionDate).split("T")[0])
+        : null,
       compoundCode: coc.compoundCode,
       orderNumber: coc.orderNumber,
       ticketNumber: coc.ticketNumber,

@@ -39,27 +39,46 @@ Guidelines:
 - PASS/FAIL status may be explicitly stated or inferred from values vs limits
 - Return ONLY the JSON object, no additional text`;
 
-export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from rubber calendaring Certificates of Conformance (CoC) from calendaring suppliers like Impilo.
+export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from Impilo Industries rubber Batch Certificates.
 
-Extract information from the CoC PDF text and return a valid JSON object.
+These are calendarer COCs that show test results for compound batches used in rubber roll production.
 
 Return a JSON object with this structure:
 {
-  "customerName": string or null,
+  "supplierName": string or null (e.g., "Impilo Industries"),
+  "customerName": string or null (e.g., "AU INDUSTRIES"),
   "productionDate": string or null (ISO date format YYYY-MM-DD),
-  "orderNumber": string or null,
-  "ticketNumber": string or null,
-  "compoundCode": string or null,
-  "batchNumbers": string[] (batch numbers of compound used),
-  "rollNumbers": string[] (roll numbers produced),
-  "hasGraph": boolean (true if rheometer/cure graph data is referenced)
+  "orderNumber": string or null (e.g., "154"),
+  "ticketNumber": string or null (e.g., "41210"),
+  "compoundCode": string or null (e.g., "RSCA40", "AU-NR-60"),
+  "batchNumbers": string[] (individual batch numbers like ["209", "210", "211"] or parse range "209-227" into individual numbers),
+  "rollNumbers": string[] (roll numbers if present),
+  "hasGraph": boolean (true if rheometer/cure graph page exists),
+  "batches": [
+    {
+      "batchNumber": string,
+      "shoreA": number or null,
+      "specificGravity": number or null,
+      "reboundPercent": number or null,
+      "tearStrengthKnM": number or null,
+      "tensileStrengthMpa": number or null,
+      "elongationPercent": number or null,
+      "rheometerSMin": number or null (S' min in dNm),
+      "rheometerSMax": number or null (S' max in dNm),
+      "rheometerTs2": number or null (TS 2 in min),
+      "rheometerTc90": number or null (TC 90 in min),
+      "passFailStatus": "PASS" or "FAIL" or null
+    }
+  ]
 }
 
 Guidelines:
-- Calendaring CoCs link compound batches to rubber rolls
-- Order numbers and ticket numbers are internal references
-- Roll numbers typically follow a pattern like "177-40649"
-- Batch numbers refer to compound batches from the compounder
+- Look for "IMPILO INDUSTRIES" header to confirm this is a calendarer CoC
+- Batch Number field may show a range like "209-227" - expand this to individual batch numbers
+- Page 1 has order details (Customer, Date, Order Number, Ticket Number, Compound, Batch Number range)
+- Page 2 has batch test results table with individual batch data
+- Page 3 has rheometer graph (set hasGraph: true if graph page exists)
+- Extract all batch rows from the results table
 - Return ONLY the JSON object, no additional text`;
 
 export const DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes for rubber compound or rubber rolls.

@@ -256,7 +256,7 @@ export default function CompoundOrdersPage() {
           <TableLoadingState message="Loading orders..." />
         ) : orders.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.document}
+            icon={<TableIcons.document />}
             title="No orders found"
             subtitle={
               statusFilter ? "Try adjusting your filter" : "Create your first compound order"

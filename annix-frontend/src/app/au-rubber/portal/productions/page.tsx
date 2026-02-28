@@ -196,7 +196,7 @@ export default function ProductionsPage() {
           <TableLoadingState message="Loading productions..." />
         ) : productions.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.document}
+            icon={<TableIcons.document />}
             title="No productions found"
             subtitle={statusFilter ? "Try adjusting your filter" : "Create your first production"}
             action={

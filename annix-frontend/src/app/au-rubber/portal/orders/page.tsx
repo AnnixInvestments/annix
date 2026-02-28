@@ -349,7 +349,7 @@ export default function AuRubberOrdersPage() {
           <TableLoadingState message="Loading orders..." />
         ) : filteredOrders.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.document}
+            icon={<TableIcons.document />}
             title="No orders found"
             subtitle={
               searchQuery ||

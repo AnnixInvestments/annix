@@ -342,7 +342,7 @@ export default function PurchaseRequisitionsPage() {
           <TableLoadingState message="Loading requisitions..." />
         ) : filteredRequisitions.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.document}
+            icon={<TableIcons.document />}
             title="No requisitions found"
             subtitle={
               searchQuery || statusFilter || sourceFilter
