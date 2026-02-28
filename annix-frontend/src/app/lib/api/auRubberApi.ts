@@ -13,7 +13,13 @@ import type {
 } from "./rubberPortalApi";
 
 export type CompoundMovementType = "IN" | "OUT" | "ADJUSTMENT";
-export type CompoundMovementReferenceType = "PURCHASE" | "PRODUCTION" | "MANUAL" | "STOCK_TAKE";
+export type CompoundMovementReferenceType =
+  | "PURCHASE"
+  | "PRODUCTION"
+  | "MANUAL"
+  | "STOCK_TAKE"
+  | "COC_RECEIPT"
+  | "CALENDARING";
 export type RubberProductionStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type RubberCompoundOrderStatus =
   | "PENDING"
@@ -21,6 +27,211 @@ export type RubberCompoundOrderStatus =
   | "ORDERED"
   | "RECEIVED"
   | "CANCELLED";
+export type SupplierCocType = "COMPOUNDER" | "CALENDARER";
+export type CocProcessingStatus = "PENDING" | "EXTRACTED" | "NEEDS_REVIEW" | "APPROVED";
+export type DeliveryNoteType = "COMPOUND" | "ROLL";
+export type DeliveryNoteStatus = "PENDING" | "LINKED" | "STOCK_CREATED";
+export type RollStockStatus = "IN_STOCK" | "RESERVED" | "SOLD" | "SCRAPPED";
+export type AuCocStatus = "DRAFT" | "GENERATED" | "SENT";
+export type RequisitionStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "ORDERED"
+  | "PARTIALLY_RECEIVED"
+  | "RECEIVED"
+  | "CANCELLED";
+export type RequisitionSourceType = "LOW_STOCK" | "MANUAL" | "EXTERNAL_PO";
+export type RequisitionItemType = "COMPOUND" | "ROLL";
+
+export interface RubberSupplierCocDto {
+  id: number;
+  firebaseUid: string;
+  cocType: SupplierCocType;
+  cocTypeLabel: string;
+  supplierCompanyId: number;
+  supplierCompanyName: string | null;
+  documentPath: string | null;
+  graphPdfPath: string | null;
+  cocNumber: string | null;
+  productionDate: string | null;
+  compoundCode: string | null;
+  orderNumber: string | null;
+  ticketNumber: string | null;
+  processingStatus: CocProcessingStatus;
+  processingStatusLabel: string;
+  extractedData: Record<string, unknown> | null;
+  reviewNotes: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  linkedDeliveryNoteId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RubberCompoundBatchDto {
+  id: number;
+  firebaseUid: string;
+  supplierCocId: number;
+  batchNumber: string;
+  compoundStockId: number | null;
+  shoreAHardness: number | null;
+  specificGravity: number | null;
+  reboundPercent: number | null;
+  tearStrengthKnM: number | null;
+  tensileStrengthMpa: number | null;
+  elongationPercent: number | null;
+  rheometerSMin: number | null;
+  rheometerSMax: number | null;
+  rheometerTs2: number | null;
+  rheometerTc90: number | null;
+  passFailStatus: string;
+  passFailStatusLabel: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RubberDeliveryNoteDto {
+  id: number;
+  firebaseUid: string;
+  deliveryNoteType: DeliveryNoteType;
+  deliveryNoteTypeLabel: string;
+  deliveryNoteNumber: string | null;
+  supplierCompanyId: number;
+  supplierCompanyName: string | null;
+  deliveryDate: string | null;
+  documentPath: string | null;
+  status: DeliveryNoteStatus;
+  statusLabel: string;
+  extractedData: Record<string, unknown> | null;
+  linkedCocId: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RubberDeliveryNoteItemDto {
+  id: number;
+  deliveryNoteId: number;
+  batchNumberStart: string | null;
+  batchNumberEnd: string | null;
+  weightKg: number | null;
+  rollNumber: string | null;
+  rollWeightKg: number | null;
+  widthMm: number | null;
+  thicknessMm: number | null;
+  lengthM: number | null;
+  linkedBatchIds: number[] | null;
+  createdAt: string;
+}
+
+export interface RubberRollStockDto {
+  id: number;
+  firebaseUid: string;
+  rollNumber: string;
+  compoundCodingId: number;
+  compoundName: string | null;
+  compoundCode: string | null;
+  weightKg: number;
+  widthMm: number | null;
+  thicknessMm: number | null;
+  lengthM: number | null;
+  status: RollStockStatus;
+  statusLabel: string;
+  linkedBatchIds: number[] | null;
+  deliveryNoteItemId: number | null;
+  soldToCompanyId: number | null;
+  soldToCompanyName: string | null;
+  auCocId: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RubberAuCocDto {
+  id: number;
+  firebaseUid: string;
+  cocNumber: string;
+  customerCompanyId: number;
+  customerCompanyName: string | null;
+  poNumber: string | null;
+  deliveryNoteRef: string | null;
+  status: AuCocStatus;
+  statusLabel: string;
+  generatedPdfPath: string | null;
+  sentAt: string | null;
+  sentTo: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: RubberAuCocItemDto[];
+}
+
+export interface RubberAuCocItemDto {
+  id: number;
+  auCocId: number;
+  rollStockId: number;
+  rollNumber: string | null;
+  testDataSummary: Record<string, unknown> | null;
+}
+
+export interface RollTraceabilityDto {
+  roll: RubberRollStockDto;
+  batches: RubberCompoundBatchDto[];
+  supplierCocs: RubberSupplierCocDto[];
+  auCoc: RubberAuCocDto | null;
+}
+
+export interface StockLocationDto {
+  id: number;
+  name: string;
+  description: string | null;
+  displayOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RequisitionItemDto {
+  id: number;
+  requisitionId: number;
+  itemType: RequisitionItemType;
+  compoundStockId: number | null;
+  compoundCodingId: number | null;
+  compoundName: string | null;
+  quantityKg: number;
+  quantityReceivedKg: number;
+  unitPrice: number | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface RequisitionDto {
+  id: number;
+  firebaseUid: string;
+  requisitionNumber: string;
+  sourceType: RequisitionSourceType;
+  sourceTypeLabel: string;
+  status: RequisitionStatus;
+  statusLabel: string;
+  supplierCompanyId: number | null;
+  supplierCompanyName: string | null;
+  externalPoNumber: string | null;
+  externalPoDocumentPath: string | null;
+  expectedDeliveryDate: string | null;
+  notes: string | null;
+  createdBy: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  rejectionReason: string | null;
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  orderedAt: string | null;
+  receivedAt: string | null;
+  items: RequisitionItemDto[];
+  totalQuantityKg: number;
+  totalReceivedKg: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface RubberCompoundStockDto {
   id: number;
@@ -923,6 +1134,413 @@ class AuRubberApiClient {
     query: string,
   ): Promise<{ id: number; email: string; firstName: string | null; lastName: string | null }[]> {
     return this.request(`/rubber-lining/admin/users/search?q=${encodeURIComponent(query)}`);
+  }
+
+  async supplierCocs(filters?: {
+    cocType?: SupplierCocType;
+    processingStatus?: CocProcessingStatus;
+    supplierId?: number;
+  }): Promise<RubberSupplierCocDto[]> {
+    const params = new URLSearchParams();
+    if (filters?.cocType) params.set("cocType", filters.cocType);
+    if (filters?.processingStatus) params.set("processingStatus", filters.processingStatus);
+    if (filters?.supplierId) params.set("supplierId", String(filters.supplierId));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/rubber-lining/portal/supplier-cocs${query}`);
+  }
+
+  async supplierCocById(id: number): Promise<RubberSupplierCocDto> {
+    return this.request(`/rubber-lining/portal/supplier-cocs/${id}`);
+  }
+
+  async uploadSupplierCoc(data: {
+    cocType: SupplierCocType;
+    supplierCompanyId: number;
+    cocNumber?: string;
+    productionDate?: string;
+    compoundCode?: string;
+    orderNumber?: string;
+    ticketNumber?: string;
+  }): Promise<RubberSupplierCocDto> {
+    return this.request("/rubber-lining/portal/supplier-cocs", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async extractSupplierCoc(id: number): Promise<RubberSupplierCocDto> {
+    return this.request(`/rubber-lining/portal/supplier-cocs/${id}/extract`, {
+      method: "POST",
+    });
+  }
+
+  async reviewSupplierCoc(
+    id: number,
+    data: { extractedData?: Record<string, unknown>; reviewNotes?: string },
+  ): Promise<RubberSupplierCocDto> {
+    return this.request(`/rubber-lining/portal/supplier-cocs/${id}/review`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async approveSupplierCoc(id: number): Promise<RubberSupplierCocDto> {
+    return this.request(`/rubber-lining/portal/supplier-cocs/${id}/approve`, {
+      method: "PUT",
+    });
+  }
+
+  async linkCocToDeliveryNote(
+    cocId: number,
+    deliveryNoteId: number,
+  ): Promise<RubberSupplierCocDto> {
+    return this.request(`/rubber-lining/portal/supplier-cocs/${cocId}/link-dn`, {
+      method: "PUT",
+      body: JSON.stringify({ deliveryNoteId }),
+    });
+  }
+
+  async compoundBatchesByCocId(cocId: number): Promise<RubberCompoundBatchDto[]> {
+    return this.request(`/rubber-lining/portal/supplier-cocs/${cocId}/batches`);
+  }
+
+  async createCompoundBatch(data: {
+    supplierCocId: number;
+    batchNumber: string;
+    compoundStockId?: number;
+    shoreAHardness?: number;
+    specificGravity?: number;
+    reboundPercent?: number;
+    tearStrengthKnM?: number;
+    tensileStrengthMpa?: number;
+    elongationPercent?: number;
+    rheometerSMin?: number;
+    rheometerSMax?: number;
+    rheometerTs2?: number;
+    rheometerTc90?: number;
+    passFailStatus?: string;
+  }): Promise<RubberCompoundBatchDto> {
+    return this.request("/rubber-lining/portal/compound-batches", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deliveryNotes(filters?: {
+    deliveryNoteType?: DeliveryNoteType;
+    status?: DeliveryNoteStatus;
+    supplierId?: number;
+  }): Promise<RubberDeliveryNoteDto[]> {
+    const params = new URLSearchParams();
+    if (filters?.deliveryNoteType) params.set("deliveryNoteType", filters.deliveryNoteType);
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.supplierId) params.set("supplierId", String(filters.supplierId));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/rubber-lining/portal/delivery-notes${query}`);
+  }
+
+  async deliveryNoteById(id: number): Promise<RubberDeliveryNoteDto> {
+    return this.request(`/rubber-lining/portal/delivery-notes/${id}`);
+  }
+
+  async uploadDeliveryNote(data: {
+    deliveryNoteType: DeliveryNoteType;
+    supplierCompanyId: number;
+    deliveryNoteNumber?: string;
+    deliveryDate?: string;
+  }): Promise<RubberDeliveryNoteDto> {
+    return this.request("/rubber-lining/portal/delivery-notes", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async extractDeliveryNote(id: number): Promise<RubberDeliveryNoteDto> {
+    return this.request(`/rubber-lining/portal/delivery-notes/${id}/extract`, {
+      method: "POST",
+    });
+  }
+
+  async linkDeliveryNoteToCoc(
+    deliveryNoteId: number,
+    cocId: number,
+  ): Promise<RubberDeliveryNoteDto> {
+    return this.request(`/rubber-lining/portal/delivery-notes/${deliveryNoteId}/link-coc`, {
+      method: "PUT",
+      body: JSON.stringify({ cocId }),
+    });
+  }
+
+  async finalizeDeliveryNote(id: number): Promise<RubberDeliveryNoteDto> {
+    return this.request(`/rubber-lining/portal/delivery-notes/${id}/finalize`, {
+      method: "PUT",
+    });
+  }
+
+  async deliveryNoteItems(deliveryNoteId: number): Promise<RubberDeliveryNoteItemDto[]> {
+    return this.request(`/rubber-lining/portal/delivery-notes/${deliveryNoteId}/items`);
+  }
+
+  async rollStock(filters?: {
+    status?: RollStockStatus;
+    compoundCodingId?: number;
+    customerId?: number;
+  }): Promise<RubberRollStockDto[]> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.compoundCodingId) params.set("compoundCodingId", String(filters.compoundCodingId));
+    if (filters?.customerId) params.set("customerId", String(filters.customerId));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/rubber-lining/portal/roll-stock${query}`);
+  }
+
+  async rollStockById(id: number): Promise<RubberRollStockDto> {
+    return this.request(`/rubber-lining/portal/roll-stock/${id}`);
+  }
+
+  async rollTraceability(id: number): Promise<RollTraceabilityDto> {
+    return this.request(`/rubber-lining/portal/roll-stock/${id}/traceability`);
+  }
+
+  async reserveRoll(id: number, customerId: number): Promise<RubberRollStockDto> {
+    return this.request(`/rubber-lining/portal/roll-stock/${id}/reserve`, {
+      method: "PUT",
+      body: JSON.stringify({ customerId }),
+    });
+  }
+
+  async unreserveRoll(id: number): Promise<RubberRollStockDto> {
+    return this.request(`/rubber-lining/portal/roll-stock/${id}/unreserve`, {
+      method: "PUT",
+    });
+  }
+
+  async sellRoll(
+    id: number,
+    data: { customerId: number; poNumber?: string; auCocId?: number },
+  ): Promise<RubberRollStockDto> {
+    return this.request(`/rubber-lining/portal/roll-stock/${id}/sell`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async scrapRoll(id: number, reason?: string): Promise<RubberRollStockDto> {
+    return this.request(`/rubber-lining/portal/roll-stock/${id}/scrap`, {
+      method: "PUT",
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async auCocs(filters?: { status?: AuCocStatus; customerId?: number }): Promise<RubberAuCocDto[]> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.customerId) params.set("customerId", String(filters.customerId));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/rubber-lining/portal/au-cocs${query}`);
+  }
+
+  async auCocById(id: number): Promise<RubberAuCocDto> {
+    return this.request(`/rubber-lining/portal/au-cocs/${id}`);
+  }
+
+  async createAuCoc(data: {
+    customerCompanyId: number;
+    rollStockIds: number[];
+    poNumber?: string;
+    deliveryNoteRef?: string;
+  }): Promise<RubberAuCocDto> {
+    return this.request("/rubber-lining/portal/au-cocs", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async generateAuCocPdf(id: number): Promise<RubberAuCocDto> {
+    return this.request(`/rubber-lining/portal/au-cocs/${id}/generate-pdf`, {
+      method: "POST",
+    });
+  }
+
+  async sendAuCoc(id: number, recipientEmail: string): Promise<RubberAuCocDto> {
+    return this.request(`/rubber-lining/portal/au-cocs/${id}/send`, {
+      method: "POST",
+      body: JSON.stringify({ recipientEmail }),
+    });
+  }
+
+  auCocPdfUrl(id: number): string {
+    return `${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`;
+  }
+
+  cocProcessingStatuses(): Promise<{ value: string; label: string }[]> {
+    return this.request("/rubber-lining/portal/coc-processing-statuses");
+  }
+
+  deliveryNoteStatuses(): Promise<{ value: string; label: string }[]> {
+    return this.request("/rubber-lining/portal/delivery-note-statuses");
+  }
+
+  rollStockStatuses(): Promise<{ value: string; label: string }[]> {
+    return this.request("/rubber-lining/portal/roll-stock-statuses");
+  }
+
+  auCocStatuses(): Promise<{ value: string; label: string }[]> {
+    return this.request("/rubber-lining/portal/au-coc-statuses");
+  }
+
+  async stockLocations(includeInactive = false): Promise<StockLocationDto[]> {
+    const query = includeInactive ? "?includeInactive=true" : "";
+    return this.request(`/rubber-lining/portal/stock-locations${query}`);
+  }
+
+  async stockLocationById(id: number): Promise<StockLocationDto> {
+    return this.request(`/rubber-lining/portal/stock-locations/${id}`);
+  }
+
+  async createStockLocation(data: {
+    name: string;
+    description?: string;
+    displayOrder?: number;
+  }): Promise<StockLocationDto> {
+    return this.request("/rubber-lining/portal/stock-locations", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateStockLocation(
+    id: number,
+    data: { name?: string; description?: string; displayOrder?: number; active?: boolean },
+  ): Promise<StockLocationDto> {
+    return this.request(`/rubber-lining/portal/stock-locations/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteStockLocation(id: number): Promise<void> {
+    return this.request(`/rubber-lining/portal/stock-locations/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async purchaseRequisitions(filters?: {
+    status?: RequisitionStatus;
+    sourceType?: RequisitionSourceType;
+  }): Promise<RequisitionDto[]> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.sourceType) params.set("sourceType", filters.sourceType);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/rubber-lining/portal/purchase-requisitions${query}`);
+  }
+
+  async purchaseRequisitionById(id: number): Promise<RequisitionDto> {
+    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}`);
+  }
+
+  async pendingRequisitions(): Promise<RequisitionDto[]> {
+    return this.request("/rubber-lining/portal/purchase-requisitions/pending");
+  }
+
+  async createManualRequisition(data: {
+    supplierCompanyId?: number;
+    externalPoNumber?: string;
+    expectedDeliveryDate?: string;
+    notes?: string;
+    createdBy?: string;
+    items: {
+      itemType: RequisitionItemType;
+      compoundStockId?: number;
+      compoundCodingId?: number;
+      compoundName?: string;
+      quantityKg: number;
+      unitPrice?: number;
+      notes?: string;
+    }[];
+  }): Promise<RequisitionDto> {
+    return this.request("/rubber-lining/portal/purchase-requisitions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async createExternalPoRequisition(data: {
+    supplierCompanyId?: number;
+    externalPoNumber: string;
+    externalPoDocumentPath?: string;
+    expectedDeliveryDate?: string;
+    notes?: string;
+    createdBy?: string;
+    items: {
+      itemType: RequisitionItemType;
+      compoundStockId?: number;
+      compoundCodingId?: number;
+      compoundName?: string;
+      quantityKg: number;
+      unitPrice?: number;
+      notes?: string;
+    }[];
+  }): Promise<RequisitionDto> {
+    return this.request("/rubber-lining/portal/purchase-requisitions/external-po", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async checkLowStockRequisitions(): Promise<RequisitionDto[]> {
+    return this.request("/rubber-lining/portal/purchase-requisitions/check-low-stock", {
+      method: "POST",
+    });
+  }
+
+  async approveRequisition(id: number, approvedBy: string): Promise<RequisitionDto> {
+    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}/approve`, {
+      method: "PUT",
+      body: JSON.stringify({ approvedBy }),
+    });
+  }
+
+  async rejectRequisition(id: number, rejectedBy: string, reason: string): Promise<RequisitionDto> {
+    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}/reject`, {
+      method: "PUT",
+      body: JSON.stringify({ rejectedBy, reason }),
+    });
+  }
+
+  async markRequisitionOrdered(
+    id: number,
+    data?: { externalPoNumber?: string; expectedDeliveryDate?: string },
+  ): Promise<RequisitionDto> {
+    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}/mark-ordered`, {
+      method: "PUT",
+      body: JSON.stringify(data || {}),
+    });
+  }
+
+  async receiveRequisitionItems(
+    id: number,
+    itemReceipts: { itemId: number; quantityReceivedKg: number }[],
+  ): Promise<RequisitionDto> {
+    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}/receive`, {
+      method: "PUT",
+      body: JSON.stringify({ itemReceipts }),
+    });
+  }
+
+  async cancelRequisition(id: number): Promise<RequisitionDto> {
+    return this.request(`/rubber-lining/portal/purchase-requisitions/${id}/cancel`, {
+      method: "PUT",
+    });
+  }
+
+  requisitionStatuses(): Promise<{ value: string; label: string }[]> {
+    return this.request("/rubber-lining/portal/requisition-statuses");
+  }
+
+  requisitionSourceTypes(): Promise<{ value: string; label: string }[]> {
+    return this.request("/rubber-lining/portal/requisition-source-types");
   }
 }
 

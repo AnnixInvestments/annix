@@ -1,0 +1,367 @@
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { generateUniqueId } from "../lib/datetime";
+import {
+  CreateCompoundBatchDto,
+  CreateSupplierCocDto,
+  ReviewExtractionDto,
+  RubberCompoundBatchDto,
+  RubberSupplierCocDto,
+  UpdateSupplierCocDto,
+} from "./dto/rubber-coc.dto";
+import { RubberCompany } from "./entities/rubber-company.entity";
+import { BatchPassFailStatus, RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
+import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
+import {
+  CocProcessingStatus,
+  ExtractedCocData,
+  RubberSupplierCoc,
+  SupplierCocType,
+} from "./entities/rubber-supplier-coc.entity";
+
+const COC_TYPE_LABELS: Record<SupplierCocType, string> = {
+  [SupplierCocType.COMPOUNDER]: "Compounder",
+  [SupplierCocType.CALENDARER]: "Calendarer",
+};
+
+const PROCESSING_STATUS_LABELS: Record<CocProcessingStatus, string> = {
+  [CocProcessingStatus.PENDING]: "Pending",
+  [CocProcessingStatus.EXTRACTED]: "Extracted",
+  [CocProcessingStatus.NEEDS_REVIEW]: "Needs Review",
+  [CocProcessingStatus.APPROVED]: "Approved",
+};
+
+const BATCH_PASS_FAIL_LABELS: Record<BatchPassFailStatus, string> = {
+  [BatchPassFailStatus.PASS]: "Pass",
+  [BatchPassFailStatus.FAIL]: "Fail",
+};
+
+@Injectable()
+export class RubberCocService {
+  constructor(
+    @InjectRepository(RubberSupplierCoc)
+    private supplierCocRepository: Repository<RubberSupplierCoc>,
+    @InjectRepository(RubberCompoundBatch)
+    private compoundBatchRepository: Repository<RubberCompoundBatch>,
+    @InjectRepository(RubberCompany)
+    private companyRepository: Repository<RubberCompany>,
+    @InjectRepository(RubberCompoundStock)
+    private compoundStockRepository: Repository<RubberCompoundStock>,
+  ) {}
+
+  async allSupplierCocs(filters?: {
+    cocType?: SupplierCocType;
+    processingStatus?: CocProcessingStatus;
+    supplierCompanyId?: number;
+  }): Promise<RubberSupplierCocDto[]> {
+    const query = this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .leftJoinAndSelect("coc.supplierCompany", "company")
+      .orderBy("coc.created_at", "DESC");
+
+    if (filters?.cocType) {
+      query.andWhere("coc.coc_type = :cocType", { cocType: filters.cocType });
+    }
+    if (filters?.processingStatus) {
+      query.andWhere("coc.processing_status = :status", { status: filters.processingStatus });
+    }
+    if (filters?.supplierCompanyId) {
+      query.andWhere("coc.supplier_company_id = :companyId", {
+        companyId: filters.supplierCompanyId,
+      });
+    }
+
+    const cocs = await query.getMany();
+    return cocs.map((coc) => this.mapSupplierCocToDto(coc));
+  }
+
+  async supplierCocById(id: number): Promise<RubberSupplierCocDto | null> {
+    const coc = await this.supplierCocRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany"],
+    });
+    return coc ? this.mapSupplierCocToDto(coc) : null;
+  }
+
+  async createSupplierCoc(
+    dto: CreateSupplierCocDto,
+    createdBy?: string,
+  ): Promise<RubberSupplierCocDto> {
+    const company = await this.companyRepository.findOne({
+      where: { id: dto.supplierCompanyId },
+    });
+    if (!company) {
+      throw new BadRequestException("Supplier company not found");
+    }
+
+    const coc = this.supplierCocRepository.create({
+      firebaseUid: `pg_${generateUniqueId()}`,
+      cocType: dto.cocType,
+      supplierCompanyId: dto.supplierCompanyId,
+      documentPath: dto.documentPath,
+      graphPdfPath: dto.graphPdfPath ?? null,
+      cocNumber: dto.cocNumber ?? null,
+      productionDate: dto.productionDate ? new Date(dto.productionDate) : null,
+      compoundCode: dto.compoundCode ?? null,
+      orderNumber: dto.orderNumber ?? null,
+      ticketNumber: dto.ticketNumber ?? null,
+      processingStatus: CocProcessingStatus.PENDING,
+      createdBy: createdBy ?? null,
+    });
+
+    const saved = await this.supplierCocRepository.save(coc);
+    const result = await this.supplierCocRepository.findOne({
+      where: { id: saved.id },
+      relations: ["supplierCompany"],
+    });
+    return this.mapSupplierCocToDto(result!);
+  }
+
+  async updateSupplierCoc(
+    id: number,
+    dto: UpdateSupplierCocDto,
+  ): Promise<RubberSupplierCocDto | null> {
+    const coc = await this.supplierCocRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany"],
+    });
+    if (!coc) return null;
+
+    if (dto.graphPdfPath !== undefined) coc.graphPdfPath = dto.graphPdfPath;
+    if (dto.cocNumber !== undefined) coc.cocNumber = dto.cocNumber;
+    if (dto.productionDate !== undefined) {
+      coc.productionDate = dto.productionDate ? new Date(dto.productionDate) : null;
+    }
+    if (dto.compoundCode !== undefined) coc.compoundCode = dto.compoundCode;
+    if (dto.orderNumber !== undefined) coc.orderNumber = dto.orderNumber;
+    if (dto.ticketNumber !== undefined) coc.ticketNumber = dto.ticketNumber;
+    if (dto.processingStatus !== undefined) coc.processingStatus = dto.processingStatus;
+
+    await this.supplierCocRepository.save(coc);
+    return this.mapSupplierCocToDto(coc);
+  }
+
+  async setExtractedData(
+    id: number,
+    extractedData: ExtractedCocData,
+  ): Promise<RubberSupplierCocDto | null> {
+    const coc = await this.supplierCocRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany"],
+    });
+    if (!coc) return null;
+
+    coc.extractedData = extractedData;
+    coc.processingStatus = CocProcessingStatus.EXTRACTED;
+
+    if (extractedData.cocNumber) coc.cocNumber = extractedData.cocNumber;
+    if (extractedData.productionDate) coc.productionDate = new Date(extractedData.productionDate);
+    if (extractedData.compoundCode) coc.compoundCode = extractedData.compoundCode;
+    if (extractedData.orderNumber) coc.orderNumber = extractedData.orderNumber;
+    if (extractedData.ticketNumber) coc.ticketNumber = extractedData.ticketNumber;
+
+    await this.supplierCocRepository.save(coc);
+    return this.mapSupplierCocToDto(coc);
+  }
+
+  async reviewExtraction(
+    id: number,
+    dto: ReviewExtractionDto,
+  ): Promise<RubberSupplierCocDto | null> {
+    const coc = await this.supplierCocRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany"],
+    });
+    if (!coc) return null;
+
+    if (dto.extractedData) {
+      coc.extractedData = dto.extractedData;
+      if (dto.extractedData.cocNumber) coc.cocNumber = dto.extractedData.cocNumber;
+      if (dto.extractedData.productionDate) {
+        coc.productionDate = new Date(dto.extractedData.productionDate);
+      }
+      if (dto.extractedData.compoundCode) coc.compoundCode = dto.extractedData.compoundCode;
+      if (dto.extractedData.orderNumber) coc.orderNumber = dto.extractedData.orderNumber;
+      if (dto.extractedData.ticketNumber) coc.ticketNumber = dto.extractedData.ticketNumber;
+    }
+    if (dto.processingStatus) {
+      coc.processingStatus = dto.processingStatus;
+    }
+
+    await this.supplierCocRepository.save(coc);
+    return this.mapSupplierCocToDto(coc);
+  }
+
+  async approveCoc(id: number): Promise<RubberSupplierCocDto | null> {
+    const coc = await this.supplierCocRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany"],
+    });
+    if (!coc) return null;
+
+    coc.processingStatus = CocProcessingStatus.APPROVED;
+    await this.supplierCocRepository.save(coc);
+
+    if (coc.extractedData?.batches) {
+      await this.createBatchesFromExtractedData(coc);
+    }
+
+    return this.mapSupplierCocToDto(coc);
+  }
+
+  async deleteSupplierCoc(id: number): Promise<boolean> {
+    const result = await this.supplierCocRepository.delete(id);
+    return (result.affected || 0) > 0;
+  }
+
+  async batchesByCocId(supplierCocId: number): Promise<RubberCompoundBatchDto[]> {
+    const batches = await this.compoundBatchRepository.find({
+      where: { supplierCocId },
+      relations: ["compoundStock", "compoundStock.compoundCoding"],
+      order: { batchNumber: "ASC" },
+    });
+    return batches.map((batch) => this.mapCompoundBatchToDto(batch));
+  }
+
+  async createCompoundBatch(dto: CreateCompoundBatchDto): Promise<RubberCompoundBatchDto> {
+    const coc = await this.supplierCocRepository.findOne({
+      where: { id: dto.supplierCocId },
+    });
+    if (!coc) {
+      throw new BadRequestException("Supplier CoC not found");
+    }
+
+    if (dto.compoundStockId) {
+      const stock = await this.compoundStockRepository.findOne({
+        where: { id: dto.compoundStockId },
+      });
+      if (!stock) {
+        throw new BadRequestException("Compound stock not found");
+      }
+    }
+
+    const batch = this.compoundBatchRepository.create({
+      firebaseUid: `pg_${generateUniqueId()}`,
+      supplierCocId: dto.supplierCocId,
+      batchNumber: dto.batchNumber,
+      compoundStockId: dto.compoundStockId ?? null,
+      shoreAHardness: dto.shoreAHardness ?? null,
+      specificGravity: dto.specificGravity ?? null,
+      reboundPercent: dto.reboundPercent ?? null,
+      tearStrengthKnM: dto.tearStrengthKnM ?? null,
+      tensileStrengthMpa: dto.tensileStrengthMpa ?? null,
+      elongationPercent: dto.elongationPercent ?? null,
+      rheometerSMin: dto.rheometerSMin ?? null,
+      rheometerSMax: dto.rheometerSMax ?? null,
+      rheometerTs2: dto.rheometerTs2 ?? null,
+      rheometerTc90: dto.rheometerTc90 ?? null,
+      passFailStatus: dto.passFailStatus ?? null,
+    });
+
+    const saved = await this.compoundBatchRepository.save(batch);
+    const result = await this.compoundBatchRepository.findOne({
+      where: { id: saved.id },
+      relations: ["compoundStock", "compoundStock.compoundCoding"],
+    });
+    return this.mapCompoundBatchToDto(result!);
+  }
+
+  async batchById(id: number): Promise<RubberCompoundBatchDto | null> {
+    const batch = await this.compoundBatchRepository.findOne({
+      where: { id },
+      relations: ["compoundStock", "compoundStock.compoundCoding"],
+    });
+    return batch ? this.mapCompoundBatchToDto(batch) : null;
+  }
+
+  async batchesByBatchNumber(batchNumber: string): Promise<RubberCompoundBatchDto[]> {
+    const batches = await this.compoundBatchRepository.find({
+      where: { batchNumber },
+      relations: ["supplierCoc", "compoundStock", "compoundStock.compoundCoding"],
+      order: { createdAt: "DESC" },
+    });
+    return batches.map((batch) => this.mapCompoundBatchToDto(batch));
+  }
+
+  private async createBatchesFromExtractedData(coc: RubberSupplierCoc): Promise<void> {
+    const extractedBatches = coc.extractedData?.batches || [];
+
+    const batchesToCreate = extractedBatches.map((batchData) =>
+      this.compoundBatchRepository.create({
+        firebaseUid: `pg_${generateUniqueId()}`,
+        supplierCocId: coc.id,
+        batchNumber: batchData.batchNumber,
+        shoreAHardness: batchData.shoreA ?? null,
+        specificGravity: batchData.specificGravity ?? null,
+        reboundPercent: batchData.reboundPercent ?? null,
+        tearStrengthKnM: batchData.tearStrengthKnM ?? null,
+        tensileStrengthMpa: batchData.tensileStrengthMpa ?? null,
+        elongationPercent: batchData.elongationPercent ?? null,
+        rheometerSMin: batchData.rheometerSMin ?? null,
+        rheometerSMax: batchData.rheometerSMax ?? null,
+        rheometerTs2: batchData.rheometerTs2 ?? null,
+        rheometerTc90: batchData.rheometerTc90 ?? null,
+        passFailStatus:
+          batchData.passFailStatus === "PASS"
+            ? BatchPassFailStatus.PASS
+            : batchData.passFailStatus === "FAIL"
+              ? BatchPassFailStatus.FAIL
+              : null,
+      }),
+    );
+
+    await this.compoundBatchRepository.save(batchesToCreate);
+  }
+
+  private mapSupplierCocToDto(coc: RubberSupplierCoc): RubberSupplierCocDto {
+    return {
+      id: coc.id,
+      firebaseUid: coc.firebaseUid,
+      cocType: coc.cocType,
+      cocTypeLabel: COC_TYPE_LABELS[coc.cocType],
+      supplierCompanyId: coc.supplierCompanyId,
+      supplierCompanyName: coc.supplierCompany?.name ?? null,
+      documentPath: coc.documentPath,
+      graphPdfPath: coc.graphPdfPath,
+      cocNumber: coc.cocNumber,
+      productionDate: coc.productionDate?.toISOString().split("T")[0] ?? null,
+      compoundCode: coc.compoundCode,
+      orderNumber: coc.orderNumber,
+      ticketNumber: coc.ticketNumber,
+      processingStatus: coc.processingStatus,
+      processingStatusLabel: PROCESSING_STATUS_LABELS[coc.processingStatus],
+      extractedData: coc.extractedData,
+      createdBy: coc.createdBy,
+      createdAt: coc.createdAt.toISOString(),
+      updatedAt: coc.updatedAt.toISOString(),
+    };
+  }
+
+  private mapCompoundBatchToDto(batch: RubberCompoundBatch): RubberCompoundBatchDto {
+    return {
+      id: batch.id,
+      firebaseUid: batch.firebaseUid,
+      supplierCocId: batch.supplierCocId,
+      batchNumber: batch.batchNumber,
+      compoundStockId: batch.compoundStockId,
+      compoundStockName: batch.compoundStock?.compoundCoding?.name ?? null,
+      shoreAHardness: batch.shoreAHardness ? Number(batch.shoreAHardness) : null,
+      specificGravity: batch.specificGravity ? Number(batch.specificGravity) : null,
+      reboundPercent: batch.reboundPercent ? Number(batch.reboundPercent) : null,
+      tearStrengthKnM: batch.tearStrengthKnM ? Number(batch.tearStrengthKnM) : null,
+      tensileStrengthMpa: batch.tensileStrengthMpa ? Number(batch.tensileStrengthMpa) : null,
+      elongationPercent: batch.elongationPercent ? Number(batch.elongationPercent) : null,
+      rheometerSMin: batch.rheometerSMin ? Number(batch.rheometerSMin) : null,
+      rheometerSMax: batch.rheometerSMax ? Number(batch.rheometerSMax) : null,
+      rheometerTs2: batch.rheometerTs2 ? Number(batch.rheometerTs2) : null,
+      rheometerTc90: batch.rheometerTc90 ? Number(batch.rheometerTc90) : null,
+      passFailStatus: batch.passFailStatus,
+      passFailStatusLabel: batch.passFailStatus
+        ? BATCH_PASS_FAIL_LABELS[batch.passFailStatus]
+        : null,
+      createdAt: batch.createdAt.toISOString(),
+      updatedAt: batch.updatedAt.toISOString(),
+    };
+  }
+}

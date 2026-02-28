@@ -23,6 +23,24 @@ import {
 import { Response } from "express";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import {
+  CreateAuCocDto,
+  CreateDeliveryNoteDto,
+  CreateRollStockDto,
+  CreateSupplierCocDto,
+  ReserveRollDto,
+  ReviewExtractionDto,
+  RollTraceabilityDto,
+  RubberAuCocDto,
+  RubberDeliveryNoteDto,
+  RubberRollStockDto,
+  RubberSupplierCocDto,
+  SellRollDto,
+  SendAuCocDto,
+  UpdateDeliveryNoteDto,
+  UpdateRollStockDto,
+  UpdateSupplierCocDto,
+} from "./dto/rubber-coc.dto";
+import {
   LineCalloutDto,
   RubberAdhesionRequirementDto,
   RubberApplicationRatingDto,
@@ -67,18 +85,33 @@ import {
   UpdateRubberProductCodingDto,
   UpdateRubberProductDto,
 } from "./dto/rubber-portal.dto";
+import { AuCocStatus } from "./entities/rubber-au-coc.entity";
 import {
   CompoundMovementReferenceType,
   CompoundMovementType,
 } from "./entities/rubber-compound-movement.entity";
 import { RubberCompoundOrderStatus } from "./entities/rubber-compound-order.entity";
+import { DeliveryNoteStatus, DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
 import { RubberOrderStatus } from "./entities/rubber-order.entity";
 import { ProductCodingType } from "./entities/rubber-product-coding.entity";
 import { RubberProductionStatus } from "./entities/rubber-production.entity";
+import {
+  RequisitionItemType,
+  RequisitionSourceType,
+  RequisitionStatus,
+} from "./entities/rubber-purchase-requisition.entity";
+import { RollStockStatus } from "./entities/rubber-roll-stock.entity";
+import { CocProcessingStatus, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
+import { RubberAuCocService } from "./rubber-au-coc.service";
 import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-branding.service";
+import { RubberCocService } from "./rubber-coc.service";
+import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberLiningService } from "./rubber-lining.service";
+import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.service";
+import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
+import { RubberStockLocationService, StockLocationDto } from "./rubber-stock-location.service";
 
 @ApiTags("Rubber Lining")
 @Controller("rubber-lining")
@@ -87,6 +120,12 @@ export class RubberLiningController {
     private readonly rubberLiningService: RubberLiningService,
     private readonly rubberStockService: RubberStockService,
     private readonly rubberBrandingService: RubberBrandingService,
+    private readonly rubberCocService: RubberCocService,
+    private readonly rubberDeliveryNoteService: RubberDeliveryNoteService,
+    private readonly rubberRollStockService: RubberRollStockService,
+    private readonly rubberAuCocService: RubberAuCocService,
+    private readonly rubberRequisitionService: RubberRequisitionService,
+    private readonly rubberStockLocationService: RubberStockLocationService,
   ) {}
 
   @Get("types")
@@ -1192,5 +1231,643 @@ Formula: totalPrice = totalKg × salePricePerKg
       "Content-Length": result.buffer.length.toString(),
     });
     res.send(result.buffer);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/supplier-cocs")
+  @ApiOperation({ summary: "List supplier CoCs" })
+  @ApiQuery({ name: "cocType", required: false, enum: SupplierCocType })
+  @ApiQuery({ name: "processingStatus", required: false, enum: CocProcessingStatus })
+  @ApiQuery({ name: "supplierCompanyId", required: false })
+  async supplierCocs(
+    @Query("cocType") cocType?: SupplierCocType,
+    @Query("processingStatus") processingStatus?: CocProcessingStatus,
+    @Query("supplierCompanyId") supplierCompanyId?: string,
+  ): Promise<RubberSupplierCocDto[]> {
+    return this.rubberCocService.allSupplierCocs({
+      cocType,
+      processingStatus,
+      supplierCompanyId: supplierCompanyId ? Number(supplierCompanyId) : undefined,
+    });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/supplier-cocs/:id")
+  @ApiOperation({ summary: "Get supplier CoC by ID" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async supplierCocById(@Param("id") id: string): Promise<RubberSupplierCocDto> {
+    const coc = await this.rubberCocService.supplierCocById(Number(id));
+    if (!coc) throw new NotFoundException("Supplier CoC not found");
+    return coc;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/supplier-cocs")
+  @ApiOperation({ summary: "Create supplier CoC" })
+  async createSupplierCoc(@Body() dto: CreateSupplierCocDto): Promise<RubberSupplierCocDto> {
+    return this.rubberCocService.createSupplierCoc(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/supplier-cocs/:id")
+  @ApiOperation({ summary: "Update supplier CoC" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async updateSupplierCoc(
+    @Param("id") id: string,
+    @Body() dto: UpdateSupplierCocDto,
+  ): Promise<RubberSupplierCocDto> {
+    const coc = await this.rubberCocService.updateSupplierCoc(Number(id), dto);
+    if (!coc) throw new NotFoundException("Supplier CoC not found");
+    return coc;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/supplier-cocs/:id/review")
+  @ApiOperation({ summary: "Review extracted data and update CoC" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async reviewSupplierCocExtraction(
+    @Param("id") id: string,
+    @Body() dto: ReviewExtractionDto,
+  ): Promise<RubberSupplierCocDto> {
+    const coc = await this.rubberCocService.reviewExtraction(Number(id), dto);
+    if (!coc) throw new NotFoundException("Supplier CoC not found");
+    return coc;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/supplier-cocs/:id/approve")
+  @ApiOperation({ summary: "Approve supplier CoC (creates batches from extracted data)" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async approveSupplierCoc(@Param("id") id: string): Promise<RubberSupplierCocDto> {
+    const coc = await this.rubberCocService.approveCoc(Number(id));
+    if (!coc) throw new NotFoundException("Supplier CoC not found");
+    return coc;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/supplier-cocs/:id")
+  @ApiOperation({ summary: "Delete supplier CoC" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async deleteSupplierCoc(@Param("id") id: string): Promise<void> {
+    const deleted = await this.rubberCocService.deleteSupplierCoc(Number(id));
+    if (!deleted) throw new NotFoundException("Supplier CoC not found");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/supplier-cocs/:id/batches")
+  @ApiOperation({ summary: "Get batches for a supplier CoC" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async batchesByCocId(@Param("id") id: string) {
+    return this.rubberCocService.batchesByCocId(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/delivery-notes")
+  @ApiOperation({ summary: "List delivery notes" })
+  @ApiQuery({ name: "deliveryNoteType", required: false, enum: DeliveryNoteType })
+  @ApiQuery({ name: "status", required: false, enum: DeliveryNoteStatus })
+  @ApiQuery({ name: "supplierCompanyId", required: false })
+  async deliveryNotes(
+    @Query("deliveryNoteType") deliveryNoteType?: DeliveryNoteType,
+    @Query("status") status?: DeliveryNoteStatus,
+    @Query("supplierCompanyId") supplierCompanyId?: string,
+  ): Promise<RubberDeliveryNoteDto[]> {
+    return this.rubberDeliveryNoteService.allDeliveryNotes({
+      deliveryNoteType,
+      status,
+      supplierCompanyId: supplierCompanyId ? Number(supplierCompanyId) : undefined,
+    });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/delivery-notes/:id")
+  @ApiOperation({ summary: "Get delivery note by ID" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async deliveryNoteById(@Param("id") id: string): Promise<RubberDeliveryNoteDto> {
+    const note = await this.rubberDeliveryNoteService.deliveryNoteById(Number(id));
+    if (!note) throw new NotFoundException("Delivery note not found");
+    return note;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/delivery-notes")
+  @ApiOperation({ summary: "Create delivery note" })
+  async createDeliveryNote(@Body() dto: CreateDeliveryNoteDto): Promise<RubberDeliveryNoteDto> {
+    return this.rubberDeliveryNoteService.createDeliveryNote(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id")
+  @ApiOperation({ summary: "Update delivery note" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async updateDeliveryNote(
+    @Param("id") id: string,
+    @Body() dto: UpdateDeliveryNoteDto,
+  ): Promise<RubberDeliveryNoteDto> {
+    const note = await this.rubberDeliveryNoteService.updateDeliveryNote(Number(id), dto);
+    if (!note) throw new NotFoundException("Delivery note not found");
+    return note;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id/link-coc")
+  @ApiOperation({ summary: "Link delivery note to CoC" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async linkDeliveryNoteToCoc(
+    @Param("id") id: string,
+    @Body() body: { cocId: number },
+  ): Promise<RubberDeliveryNoteDto> {
+    const note = await this.rubberDeliveryNoteService.linkToCoc(Number(id), body.cocId);
+    if (!note) throw new NotFoundException("Delivery note not found");
+    return note;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id/finalize")
+  @ApiOperation({ summary: "Finalize delivery note (marks as stock created)" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async finalizeDeliveryNote(@Param("id") id: string): Promise<RubberDeliveryNoteDto> {
+    const note = await this.rubberDeliveryNoteService.finalizeDeliveryNote(Number(id));
+    if (!note) throw new NotFoundException("Delivery note not found");
+    return note;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/delivery-notes/:id")
+  @ApiOperation({ summary: "Delete delivery note" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async deleteDeliveryNote(@Param("id") id: string): Promise<void> {
+    const deleted = await this.rubberDeliveryNoteService.deleteDeliveryNote(Number(id));
+    if (!deleted) throw new NotFoundException("Delivery note not found");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/delivery-notes/:id/items")
+  @ApiOperation({ summary: "Get items for a delivery note" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async deliveryNoteItems(@Param("id") id: string) {
+    return this.rubberDeliveryNoteService.itemsByDeliveryNoteId(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/roll-stock")
+  @ApiOperation({ summary: "List roll stock" })
+  @ApiQuery({ name: "status", required: false, enum: RollStockStatus })
+  @ApiQuery({ name: "compoundCodingId", required: false })
+  @ApiQuery({ name: "soldToCompanyId", required: false })
+  async rollStock(
+    @Query("status") status?: RollStockStatus,
+    @Query("compoundCodingId") compoundCodingId?: string,
+    @Query("soldToCompanyId") soldToCompanyId?: string,
+  ): Promise<RubberRollStockDto[]> {
+    return this.rubberRollStockService.allRollStock({
+      status,
+      compoundCodingId: compoundCodingId ? Number(compoundCodingId) : undefined,
+      soldToCompanyId: soldToCompanyId ? Number(soldToCompanyId) : undefined,
+    });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/roll-stock/:id")
+  @ApiOperation({ summary: "Get roll stock by ID" })
+  @ApiParam({ name: "id", description: "Roll stock ID" })
+  async rollStockById(@Param("id") id: string): Promise<RubberRollStockDto> {
+    const roll = await this.rubberRollStockService.rollById(Number(id));
+    if (!roll) throw new NotFoundException("Roll stock not found");
+    return roll;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/roll-stock/:id/traceability")
+  @ApiOperation({ summary: "Get full traceability for a roll" })
+  @ApiParam({ name: "id", description: "Roll stock ID" })
+  async rollTraceability(@Param("id") id: string): Promise<RollTraceabilityDto> {
+    const traceability = await this.rubberRollStockService.rollTraceability(Number(id));
+    if (!traceability) throw new NotFoundException("Roll stock not found");
+    return traceability;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/roll-stock")
+  @ApiOperation({ summary: "Create roll stock" })
+  async createRollStock(@Body() dto: CreateRollStockDto): Promise<RubberRollStockDto> {
+    return this.rubberRollStockService.createRollStock(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/roll-stock/:id")
+  @ApiOperation({ summary: "Update roll stock" })
+  @ApiParam({ name: "id", description: "Roll stock ID" })
+  async updateRollStock(
+    @Param("id") id: string,
+    @Body() dto: UpdateRollStockDto,
+  ): Promise<RubberRollStockDto> {
+    const roll = await this.rubberRollStockService.updateRollStock(Number(id), dto);
+    if (!roll) throw new NotFoundException("Roll stock not found");
+    return roll;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/roll-stock/:id/reserve")
+  @ApiOperation({ summary: "Reserve roll for customer" })
+  @ApiParam({ name: "id", description: "Roll stock ID" })
+  async reserveRoll(
+    @Param("id") id: string,
+    @Body() dto: ReserveRollDto,
+  ): Promise<RubberRollStockDto> {
+    const roll = await this.rubberRollStockService.reserveRoll(Number(id), dto);
+    if (!roll) throw new NotFoundException("Roll stock not found");
+    return roll;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/roll-stock/:id/unreserve")
+  @ApiOperation({ summary: "Unreserve roll" })
+  @ApiParam({ name: "id", description: "Roll stock ID" })
+  async unreserveRoll(@Param("id") id: string): Promise<RubberRollStockDto> {
+    const roll = await this.rubberRollStockService.unreserveRoll(Number(id));
+    if (!roll) throw new NotFoundException("Roll stock not found");
+    return roll;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/roll-stock/:id/sell")
+  @ApiOperation({ summary: "Sell roll to customer" })
+  @ApiParam({ name: "id", description: "Roll stock ID" })
+  async sellRoll(@Param("id") id: string, @Body() dto: SellRollDto): Promise<RubberRollStockDto> {
+    const roll = await this.rubberRollStockService.sellRoll(Number(id), dto);
+    if (!roll) throw new NotFoundException("Roll stock not found");
+    return roll;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/roll-stock/:id")
+  @ApiOperation({ summary: "Delete roll stock" })
+  @ApiParam({ name: "id", description: "Roll stock ID" })
+  async deleteRollStock(@Param("id") id: string): Promise<void> {
+    const deleted = await this.rubberRollStockService.deleteRollStock(Number(id));
+    if (!deleted) throw new NotFoundException("Roll stock not found");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/au-cocs")
+  @ApiOperation({ summary: "List AU CoCs" })
+  @ApiQuery({ name: "status", required: false, enum: AuCocStatus })
+  @ApiQuery({ name: "customerCompanyId", required: false })
+  async auCocs(
+    @Query("status") status?: AuCocStatus,
+    @Query("customerCompanyId") customerCompanyId?: string,
+  ): Promise<RubberAuCocDto[]> {
+    return this.rubberAuCocService.allAuCocs({
+      status,
+      customerCompanyId: customerCompanyId ? Number(customerCompanyId) : undefined,
+    });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/au-cocs/:id")
+  @ApiOperation({ summary: "Get AU CoC by ID" })
+  @ApiParam({ name: "id", description: "AU CoC ID" })
+  async auCocById(@Param("id") id: string): Promise<RubberAuCocDto> {
+    const coc = await this.rubberAuCocService.auCocById(Number(id));
+    if (!coc) throw new NotFoundException("AU CoC not found");
+    return coc;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/au-cocs")
+  @ApiOperation({ summary: "Create AU CoC for rolls" })
+  async createAuCoc(@Body() dto: CreateAuCocDto): Promise<RubberAuCocDto> {
+    return this.rubberAuCocService.createAuCoc(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/au-cocs/:id/generate-pdf")
+  @ApiOperation({ summary: "Generate PDF for AU CoC" })
+  @ApiParam({ name: "id", description: "AU CoC ID" })
+  async generateAuCocPdf(@Param("id") id: string, @Res() res: Response): Promise<void> {
+    const { buffer, filename } = await this.rubberAuCocService.generatePdf(Number(id));
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Length": buffer.length.toString(),
+    });
+    res.send(buffer);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/au-cocs/:id/send")
+  @ApiOperation({ summary: "Mark AU CoC as sent to customer" })
+  @ApiParam({ name: "id", description: "AU CoC ID" })
+  async sendAuCoc(@Param("id") id: string, @Body() dto: SendAuCocDto): Promise<RubberAuCocDto> {
+    return this.rubberAuCocService.sendToCustomer(Number(id), dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/au-cocs/:id")
+  @ApiOperation({ summary: "Delete AU CoC" })
+  @ApiParam({ name: "id", description: "AU CoC ID" })
+  async deleteAuCoc(@Param("id") id: string): Promise<void> {
+    const deleted = await this.rubberAuCocService.deleteAuCoc(Number(id));
+    if (!deleted) throw new NotFoundException("AU CoC not found");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/coc-statuses")
+  @ApiOperation({ summary: "List CoC processing statuses" })
+  async cocStatuses(): Promise<{ value: string; label: string }[]> {
+    return [
+      { value: "PENDING", label: "Pending" },
+      { value: "EXTRACTED", label: "Extracted" },
+      { value: "NEEDS_REVIEW", label: "Needs Review" },
+      { value: "APPROVED", label: "Approved" },
+    ];
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/roll-stock-statuses")
+  @ApiOperation({ summary: "List roll stock statuses" })
+  async rollStockStatuses(): Promise<{ value: string; label: string }[]> {
+    return [
+      { value: "IN_STOCK", label: "In Stock" },
+      { value: "RESERVED", label: "Reserved" },
+      { value: "SOLD", label: "Sold" },
+      { value: "SCRAPPED", label: "Scrapped" },
+    ];
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/au-coc-statuses")
+  @ApiOperation({ summary: "List AU CoC statuses" })
+  async auCocStatuses(): Promise<{ value: string; label: string }[]> {
+    return [
+      { value: "DRAFT", label: "Draft" },
+      { value: "GENERATED", label: "Generated" },
+      { value: "SENT", label: "Sent" },
+    ];
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/stock-locations")
+  @ApiOperation({ summary: "List stock locations" })
+  @ApiQuery({ name: "includeInactive", required: false, type: Boolean })
+  async stockLocations(
+    @Query("includeInactive") includeInactive?: string,
+  ): Promise<StockLocationDto[]> {
+    return this.rubberStockLocationService.allLocations(includeInactive === "true");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/stock-locations/:id")
+  @ApiOperation({ summary: "Get stock location by ID" })
+  @ApiParam({ name: "id", description: "Stock location ID" })
+  async stockLocationById(@Param("id") id: string): Promise<StockLocationDto> {
+    return this.rubberStockLocationService.locationById(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/stock-locations")
+  @ApiOperation({ summary: "Create stock location" })
+  async createStockLocation(
+    @Body() body: { name: string; description?: string; displayOrder?: number },
+  ): Promise<StockLocationDto> {
+    return this.rubberStockLocationService.createLocation(body);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/stock-locations/:id")
+  @ApiOperation({ summary: "Update stock location" })
+  @ApiParam({ name: "id", description: "Stock location ID" })
+  async updateStockLocation(
+    @Param("id") id: string,
+    @Body() body: { name?: string; description?: string; displayOrder?: number; active?: boolean },
+  ): Promise<StockLocationDto> {
+    return this.rubberStockLocationService.updateLocation(Number(id), body);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/stock-locations/:id")
+  @ApiOperation({ summary: "Delete stock location" })
+  @ApiParam({ name: "id", description: "Stock location ID" })
+  async deleteStockLocation(@Param("id") id: string): Promise<void> {
+    await this.rubberStockLocationService.deleteLocation(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/purchase-requisitions")
+  @ApiOperation({ summary: "List purchase requisitions" })
+  @ApiQuery({ name: "status", required: false, enum: RequisitionStatus })
+  @ApiQuery({ name: "sourceType", required: false, enum: RequisitionSourceType })
+  async purchaseRequisitions(
+    @Query("status") status?: RequisitionStatus,
+    @Query("sourceType") sourceType?: RequisitionSourceType,
+  ): Promise<RequisitionDto[]> {
+    return this.rubberRequisitionService.allRequisitions({ status, sourceType });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/purchase-requisitions/pending")
+  @ApiOperation({ summary: "List requisitions pending approval" })
+  async pendingRequisitions(): Promise<RequisitionDto[]> {
+    return this.rubberRequisitionService.pendingApprovals();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/purchase-requisitions/:id")
+  @ApiOperation({ summary: "Get purchase requisition by ID" })
+  @ApiParam({ name: "id", description: "Purchase requisition ID" })
+  async purchaseRequisitionById(@Param("id") id: string): Promise<RequisitionDto> {
+    return this.rubberRequisitionService.requisitionById(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/purchase-requisitions")
+  @ApiOperation({ summary: "Create manual purchase requisition" })
+  async createManualRequisition(
+    @Body()
+    body: {
+      supplierCompanyId?: number;
+      externalPoNumber?: string;
+      expectedDeliveryDate?: string;
+      notes?: string;
+      createdBy?: string;
+      items: {
+        itemType: RequisitionItemType;
+        compoundStockId?: number;
+        compoundCodingId?: number;
+        compoundName?: string;
+        quantityKg: number;
+        unitPrice?: number;
+        notes?: string;
+      }[];
+    },
+  ): Promise<RequisitionDto> {
+    return this.rubberRequisitionService.createManualRequisition(body);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/purchase-requisitions/external-po")
+  @ApiOperation({ summary: "Create requisition from external PO" })
+  async createExternalPoRequisition(
+    @Body()
+    body: {
+      supplierCompanyId?: number;
+      externalPoNumber: string;
+      externalPoDocumentPath?: string;
+      expectedDeliveryDate?: string;
+      notes?: string;
+      createdBy?: string;
+      items: {
+        itemType: RequisitionItemType;
+        compoundStockId?: number;
+        compoundCodingId?: number;
+        compoundName?: string;
+        quantityKg: number;
+        unitPrice?: number;
+        notes?: string;
+      }[];
+    },
+  ): Promise<RequisitionDto> {
+    return this.rubberRequisitionService.createExternalPoRequisition(body);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/purchase-requisitions/check-low-stock")
+  @ApiOperation({ summary: "Check and create requisitions for low stock items" })
+  async checkLowStockRequisitions(): Promise<RequisitionDto[]> {
+    return this.rubberRequisitionService.checkAndCreateLowStockRequisitions();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/purchase-requisitions/:id/approve")
+  @ApiOperation({ summary: "Approve purchase requisition" })
+  @ApiParam({ name: "id", description: "Purchase requisition ID" })
+  async approveRequisition(
+    @Param("id") id: string,
+    @Body() body: { approvedBy: string },
+  ): Promise<RequisitionDto> {
+    return this.rubberRequisitionService.approveRequisition(Number(id), body.approvedBy);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/purchase-requisitions/:id/reject")
+  @ApiOperation({ summary: "Reject purchase requisition" })
+  @ApiParam({ name: "id", description: "Purchase requisition ID" })
+  async rejectRequisition(
+    @Param("id") id: string,
+    @Body() body: { rejectedBy: string; reason: string },
+  ): Promise<RequisitionDto> {
+    return this.rubberRequisitionService.rejectRequisition(
+      Number(id),
+      body.rejectedBy,
+      body.reason,
+    );
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/purchase-requisitions/:id/mark-ordered")
+  @ApiOperation({ summary: "Mark requisition as ordered" })
+  @ApiParam({ name: "id", description: "Purchase requisition ID" })
+  async markRequisitionOrdered(
+    @Param("id") id: string,
+    @Body() body: { externalPoNumber?: string; expectedDeliveryDate?: string },
+  ): Promise<RequisitionDto> {
+    return this.rubberRequisitionService.markAsOrdered(Number(id), body);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/purchase-requisitions/:id/receive")
+  @ApiOperation({ summary: "Receive items for requisition" })
+  @ApiParam({ name: "id", description: "Purchase requisition ID" })
+  async receiveRequisitionItems(
+    @Param("id") id: string,
+    @Body() body: { itemReceipts: { itemId: number; quantityReceivedKg: number }[] },
+  ): Promise<RequisitionDto> {
+    return this.rubberRequisitionService.receiveItems(Number(id), body.itemReceipts);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/purchase-requisitions/:id/cancel")
+  @ApiOperation({ summary: "Cancel purchase requisition" })
+  @ApiParam({ name: "id", description: "Purchase requisition ID" })
+  async cancelRequisition(@Param("id") id: string): Promise<RequisitionDto> {
+    return this.rubberRequisitionService.cancelRequisition(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/requisition-statuses")
+  @ApiOperation({ summary: "List requisition statuses" })
+  async requisitionStatuses(): Promise<{ value: string; label: string }[]> {
+    return [
+      { value: "PENDING", label: "Pending Approval" },
+      { value: "APPROVED", label: "Approved" },
+      { value: "ORDERED", label: "Ordered" },
+      { value: "PARTIALLY_RECEIVED", label: "Partially Received" },
+      { value: "RECEIVED", label: "Received" },
+      { value: "CANCELLED", label: "Cancelled" },
+    ];
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/requisition-source-types")
+  @ApiOperation({ summary: "List requisition source types" })
+  async requisitionSourceTypes(): Promise<{ value: string; label: string }[]> {
+    return [
+      { value: "LOW_STOCK", label: "Low Stock Alert" },
+      { value: "MANUAL", label: "Manual Request" },
+      { value: "EXTERNAL_PO", label: "External PO" },
+    ];
   }
 }

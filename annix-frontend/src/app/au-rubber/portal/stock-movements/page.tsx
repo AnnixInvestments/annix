@@ -47,6 +47,8 @@ const referenceLabel = (type: CompoundMovementReferenceType) => {
     PRODUCTION: "Production",
     MANUAL: "Manual Receipt",
     STOCK_TAKE: "Stock Take",
+    COC_RECEIPT: "CoC Receipt",
+    CALENDARING: "Calendaring",
   };
   return labels[type] || type;
 };

@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { RubberProductCoding } from "./rubber-product-coding.entity";
+import { RubberStockLocation } from "./rubber-stock-location.entity";
 
 @Entity("rubber_compound_stock")
 export class RubberCompoundStock {
@@ -62,6 +63,13 @@ export class RubberCompoundStock {
 
   @Column({ name: "location", type: "varchar", length: 100, nullable: true })
   location: string | null;
+
+  @Column({ name: "location_id", type: "int", nullable: true })
+  locationId: number | null;
+
+  @ManyToOne(() => RubberStockLocation, { nullable: true })
+  @JoinColumn({ name: "location_id" })
+  stockLocation: RubberStockLocation | null;
 
   @Column({ name: "batch_number", type: "varchar", length: 100, nullable: true })
   batchNumber: string | null;

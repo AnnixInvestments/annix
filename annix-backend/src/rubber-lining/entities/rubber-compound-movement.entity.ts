@@ -19,6 +19,8 @@ export enum CompoundMovementReferenceType {
   PRODUCTION = "PRODUCTION",
   MANUAL = "MANUAL",
   STOCK_TAKE = "STOCK_TAKE",
+  COC_RECEIPT = "COC_RECEIPT",
+  CALENDARING = "CALENDARING",
 }
 
 @Entity("rubber_compound_movements")
