@@ -56,7 +56,6 @@ timed_step "test suite" run_tests
 
 cd "$ROOT_DIR/annix-backend"
 timed_step "backend build" pnpm run build
-echo "Skipping migrations (local DB out of sync - pre-existing migration ordering issue)"
 
 cd "$ROOT_DIR/annix-frontend"
 timed_step "frontend build" pnpm run build
