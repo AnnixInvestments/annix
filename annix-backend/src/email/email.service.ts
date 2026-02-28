@@ -8,6 +8,9 @@ export interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  replyTo?: string;
+  fromName?: string;
+  isTransactional?: boolean;
 }
 
 @Injectable()
@@ -44,13 +47,37 @@ export class EmailService {
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
-    const from = this.configService.get<string>("EMAIL_FROM") || "noreply@annix.com";
+    const fromEmail = this.configService.get<string>("EMAIL_FROM") || "noreply@annix.com";
+    const fromName = options.fromName || this.configService.get<string>("EMAIL_FROM_NAME") || "Annix";
+    const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || fromEmail;
+    const replyTo = options.replyTo || supportEmail;
+    const isTransactional = options.isTransactional !== false;
+
+    const from = `"${fromName}" <${fromEmail}>`;
+
+    const domain = fromEmail.split("@")[1] || "annix.com";
+    const messageId = `<${Date.now()}.${Math.random().toString(36).substring(2)}@${domain}>`;
+
+    const headers: Record<string, string> = {
+      "X-Mailer": "Annix Platform",
+      "Message-ID": messageId,
+    };
+
+    if (isTransactional) {
+      headers["X-Auto-Response-Suppress"] = "OOF, AutoReply";
+    } else {
+      headers["List-Unsubscribe"] = `<mailto:${supportEmail}?subject=Unsubscribe>`;
+      headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+      headers["Precedence"] = "bulk";
+    }
 
     if (!this.isConfigured) {
       this.logger.log("=== EMAIL (Console Mode) ===");
       this.logger.log(`To: ${options.to}`);
       this.logger.log(`From: ${from}`);
+      this.logger.log(`Reply-To: ${replyTo}`);
       this.logger.log(`Subject: ${options.subject}`);
+      this.logger.log(`Type: ${isTransactional ? "Transactional" : "Bulk"}`);
       this.logger.log(`Body: ${options.text || options.html}`);
       this.logger.log("=== END EMAIL ===");
       return true;
@@ -60,9 +87,12 @@ export class EmailService {
       await this.transporter.sendMail({
         from,
         to: options.to,
+        replyTo,
         subject: options.subject,
         html: options.html,
         text: options.text,
+        messageId,
+        headers,
       });
       this.logger.log(`Email sent successfully to ${options.to}`);
       return true;
