@@ -6,7 +6,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "./admin/admin.module";
 import { AngleRangeModule } from "./angle-range/angle-range.module";
 import { AppController } from "./app.controller";
-import { AppService } from "./app.service";
+
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
 import { BendCenterToFaceModule } from "./bend-center-to-face/bend-center-to-face.module";
@@ -188,6 +188,6 @@ import { WorkflowModule } from "./workflow/workflow.module";
     UserSyncModule,
   ],
   controllers: [AppController, BendDimensionController],
-  providers: [AppService, BendDimensionService],
+  providers: [BendDimensionService],
 })
 export class AppModule {}

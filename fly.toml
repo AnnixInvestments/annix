@@ -1,17 +1,17 @@
-app = 'annix-backend'
+app = 'annix-app'
 primary_region = 'jnb'
 
 [build]
-  dockerfile = 'Dockerfile.backend'
 
 [deploy]
-  release_command = 'npx ts-node --project tsconfig.json --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run'
+  release_command = 'sh -c "cd annix-backend && npx ts-node --project tsconfig.json --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run"'
   release_command_timeout = '40m'
 
 [env]
   NODE_ENV = 'production'
   PORT = '4000'
-  FRONTEND_URL = 'https://annix-frontend.fly.dev'
+  NEXT_PUBLIC_API_URL = '/api'
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = '__NEXT_PUBLIC_GOOGLE_MAPS_API_KEY__'
 
 [http_service]
   internal_port = 4000
@@ -26,12 +26,12 @@ primary_region = 'jnb'
     grace_period = '30s'
     interval = '30s'
     method = 'GET'
-    path = '/'
+    path = '/health'
     port = 4000
     timeout = '10s'
     type = 'http'
 
 [[vm]]
-  memory = '1gb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1

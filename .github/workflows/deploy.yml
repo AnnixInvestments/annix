@@ -22,8 +22,7 @@ permissions:
 
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-  BACKEND_IMAGE: ghcr.io/annixinvestments/annix/backend
-  FRONTEND_IMAGE: ghcr.io/annixinvestments/annix/frontend
+  APP_IMAGE: ghcr.io/annixinvestments/annix/app
 
 jobs:
   set-environments:
@@ -76,8 +75,8 @@ jobs:
       - name: Run frontend type check
         run: pnpm --filter annix-frontend type-check
 
-  build-backend:
-    name: Build Backend Image
+  build-image:
+    name: Build App Image
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -98,7 +97,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.BACKEND_IMAGE }}
+          images: ${{ env.APP_IMAGE }}
           tags: |
             type=sha,format=long,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
@@ -107,55 +106,17 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.backend
+          file: Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
 
-  build-frontend:
-    name: Build Frontend Image
+  deploy:
+    name: Deploy (${{ matrix.environment }})
     runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.FRONTEND_IMAGE }}
-          tags: |
-            type=sha,format=long,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.frontend
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
-
-  deploy-backend:
-    name: Deploy Backend (${{ matrix.environment }})
-    runs-on: ubuntu-latest
-    needs: [build-backend, set-environments]
+    needs: [build-image, set-environments]
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -163,9 +124,9 @@ jobs:
         environment: ${{ fromJson(needs.set-environments.outputs.matrix) }}
         include:
           - environment: prod
-            config: fly.backend.toml
+            app_name: annix-app
           - environment: test
-            config: fly.backend.test.toml
+            app_name: annix-app-test
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -177,17 +138,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull backend image
-        run: docker pull ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+      - name: Pull app image
+        run: docker pull ${{ env.APP_IMAGE }}:${{ github.sha }}
 
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy Backend to Fly.io (${{ matrix.environment }})
+      - name: Deploy to Fly.io (${{ matrix.environment }})
         run: |
           for i in 1 2 3; do
-            if flyctl deploy -c ${{ matrix.config }} \
-              --image ${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
+            if flyctl deploy -a ${{ matrix.app_name }} \
+              --image ${{ env.APP_IMAGE }}:${{ github.sha }} \
               --local-only; then
               exit 0
             fi
@@ -197,53 +158,6 @@ jobs:
           echo "All deploy attempts failed"
           exit 1
 
-  deploy-frontend:
-    name: Deploy Frontend (${{ matrix.environment }})
-    runs-on: ubuntu-latest
-    needs: [build-frontend, deploy-backend, set-environments]
-    strategy:
-      fail-fast: false
-      max-parallel: 3
-      matrix:
-        environment: ${{ fromJson(needs.set-environments.outputs.matrix) }}
-        include:
-          - environment: prod
-            config: fly.frontend.toml
-          - environment: test
-            config: fly.frontend.test.toml
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull frontend image
-        run: docker pull ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-
-      - name: Setup Fly.io CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Deploy Frontend to Fly.io (${{ matrix.environment }})
-        run: |
-          for i in 1 2 3; do
-            if flyctl deploy -c ${{ matrix.config }} \
-              --image ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
-              --local-only; then
-              exit 0
-            fi
-            echo "Deploy attempt $i failed, retrying in 10s..."
-            sleep 10
-          done
-          echo "All deploy attempts failed"
-          exit 1
-
-      - name: Get Frontend Logs on Failure
+      - name: Get Logs on Failure
         if: failure()
-        run: |
-          APP_NAME=$(grep '^app' ${{ matrix.config }} | head -1 | sed "s/app = '//;s/'//")
-          flyctl logs -a "$APP_NAME" --no-tail 2>&1 | tail -100 || echo "Could not fetch logs"
+        run: flyctl logs -a ${{ matrix.app_name }} --no-tail 2>&1 | tail -100 || echo "Could not fetch logs"
