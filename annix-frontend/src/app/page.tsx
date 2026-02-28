@@ -1,4 +1,12 @@
 import type { Metadata } from "next";
+import {
+  FileText,
+  ShieldCheck,
+  Package,
+  AudioLines,
+  MapPinned,
+  UserSearch,
+} from "lucide-react";
 import Link from "next/link";
 
 export const metadata: Metadata = {
@@ -7,95 +15,7 @@ export const metadata: Metadata = {
     "Your trusted partner for industrial solutions. Manage RFQs, field sales, inventory, and more from a single platform.",
 };
 
-function RfqIcon() {
-  return (
-    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-      />
-    </svg>
-  );
-}
-
-function RubberIcon() {
-  return (
-    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"
-      />
-    </svg>
-  );
-}
-
-function VoiceFilterIcon() {
-  return (
-    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
-      />
-    </svg>
-  );
-}
-
-function StockControlIcon() {
-  return (
-    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-      />
-    </svg>
-  );
-}
-
-function AnnixRepIcon() {
-  return (
-    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-      />
-    </svg>
-  );
-}
-
-function CvAssistantIcon() {
-  return (
-    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M15 3v5a1 1 0 001 1h5"
-      />
-    </svg>
-  );
-}
+const iconProps = { className: "w-12 h-12", strokeWidth: 1.5 };
 
 export default function HomePage() {
   return (
@@ -118,7 +38,7 @@ export default function HomePage() {
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-blue-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-2xl text-blue-600 mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                  <RfqIcon />
+                  <FileText {...iconProps} />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">RFQ Platform</h3>
                 <p className="text-gray-600 mb-6">
@@ -149,7 +69,7 @@ export default function HomePage() {
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-yellow-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 rounded-2xl text-yellow-600 mb-6 group-hover:bg-yellow-600 group-hover:text-white transition-colors">
-                  <RubberIcon />
+                  <ShieldCheck {...iconProps} />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">AU Rubber App</h3>
                 <p className="text-gray-600 mb-6">
@@ -157,67 +77,6 @@ export default function HomePage() {
                 </p>
                 <span className="inline-flex items-center text-yellow-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Login
-                  <svg
-                    className="w-5 h-5 ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </span>
-              </div>
-            </div>
-          </Link>
-
-          <Link href="/voice-filter/login" className="group">
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-cyan-400 hover:shadow-xl transition-all duration-300 h-full">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-cyan-100 rounded-2xl text-cyan-600 mb-6 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
-                  <VoiceFilterIcon />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Voice Filter</h3>
-                <p className="text-gray-600 mb-6">
-                  Speaker verification filter that only passes through your authorized voice.
-                </p>
-                <span className="inline-flex items-center text-cyan-600 font-semibold group-hover:translate-x-1 transition-transform">
-                  Login
-                  <svg
-                    className="w-5 h-5 ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </span>
-              </div>
-            </div>
-          </Link>
-
-          <Link href="/annix-rep/setup" target="_blank" rel="noopener noreferrer" className="group">
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-emerald-400 hover:shadow-xl transition-all duration-300 h-full">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 rounded-2xl text-emerald-600 mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                  <AnnixRepIcon />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Annix Rep</h3>
-                <p className="text-gray-600 mb-6">
-                  Mobile sales field assistant with smart prospecting, route planning, and meeting
-                  AI.
-                </p>
-                <span className="inline-flex items-center text-emerald-600 font-semibold group-hover:translate-x-1 transition-transform">
-                  Open App
                   <svg
                     className="w-5 h-5 ml-2"
                     fill="none"
@@ -245,13 +104,74 @@ export default function HomePage() {
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-teal-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-teal-100 rounded-2xl text-teal-600 mb-6 group-hover:bg-teal-600 group-hover:text-white transition-colors">
-                  <StockControlIcon />
+                  <Package {...iconProps} />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">Stock Control</h3>
                 <p className="text-gray-600 mb-6">
                   Manage stock items, job allocations, deliveries, and inventory tracking with ASCA.
                 </p>
                 <span className="inline-flex items-center text-teal-600 font-semibold group-hover:translate-x-1 transition-transform">
+                  Login
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/annix-rep/setup" target="_blank" rel="noopener noreferrer" className="group">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-emerald-400 hover:shadow-xl transition-all duration-300 h-full">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 rounded-2xl text-emerald-600 mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                  <MapPinned {...iconProps} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Annix Rep</h3>
+                <p className="text-gray-600 mb-6">
+                  Mobile sales field assistant with smart prospecting, route planning, and meeting
+                  AI.
+                </p>
+                <span className="inline-flex items-center text-emerald-600 font-semibold group-hover:translate-x-1 transition-transform">
+                  Open App
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/voice-filter/login" className="group">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-cyan-400 hover:shadow-xl transition-all duration-300 h-full">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-cyan-100 rounded-2xl text-cyan-600 mb-6 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
+                  <AudioLines {...iconProps} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Voice Filter</h3>
+                <p className="text-gray-600 mb-6">
+                  Speaker verification filter that only passes through your authorized voice.
+                </p>
+                <span className="inline-flex items-center text-cyan-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Login
                   <svg
                     className="w-5 h-5 ml-2"
@@ -280,7 +200,7 @@ export default function HomePage() {
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-violet-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-violet-100 rounded-2xl text-violet-600 mb-6 group-hover:bg-violet-600 group-hover:text-white transition-colors">
-                  <CvAssistantIcon />
+                  <UserSearch {...iconProps} />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">CV Assistant</h3>
                 <p className="text-gray-600 mb-6">
