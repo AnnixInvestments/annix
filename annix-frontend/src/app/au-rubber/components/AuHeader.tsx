@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 
 interface AuHeaderProps {
   onSearch?: (query: string) => void;
@@ -12,7 +13,32 @@ interface AuHeaderProps {
 
 export function AuHeader({ onSearch, onExport, onImport }: AuHeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const { colors } = useAuRubberBranding();
+  const { colors, branding } = useAuRubberBranding();
+  const [logoObjectUrl, setLogoObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let revoked = false;
+    if (branding.logoUrl) {
+      const proxyUrl = auRubberApiClient.proxyImageUrl(branding.logoUrl);
+      const headers = auRubberApiClient.authHeaders();
+      fetch(proxyUrl, { headers })
+        .then((res) => (res.ok ? res.blob() : null))
+        .then((blob) => {
+          if (!revoked && blob) {
+            setLogoObjectUrl(URL.createObjectURL(blob));
+          }
+        })
+        .catch(() => {
+          if (!revoked) setLogoObjectUrl(null);
+        });
+    } else {
+      setLogoObjectUrl(null);
+    }
+    return () => {
+      revoked = true;
+      if (logoObjectUrl) URL.revokeObjectURL(logoObjectUrl);
+    };
+  }, [branding.logoUrl]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -25,9 +51,13 @@ export function AuHeader({ onSearch, onExport, onImport }: AuHeaderProps) {
       style={{ backgroundColor: colors.background }}
     >
       <div className="flex items-center">
-        <div className="text-2xl font-bold" style={{ color: colors.accent }}>
-          AU
-        </div>
+        {logoObjectUrl ? (
+          <img src={logoObjectUrl} alt="Logo" className="h-10 max-w-[120px] object-contain" />
+        ) : (
+          <div className="text-2xl font-bold" style={{ color: colors.accent }}>
+            AU
+          </div>
+        )}
         <span className="ml-2 text-white text-lg font-medium">Rubber App</span>
       </div>
 

@@ -76,7 +76,11 @@ export function AuRubberBrandingProvider({ children }: { children: ReactNode }) 
       if (stored) {
         try {
           const parsed = JSON.parse(stored) as AuRubberBranding;
-          setBrandingState(parsed);
+          setBrandingState({
+            ...parsed,
+            primaryColor: parsed.primaryColor?.trim() || defaultBranding.primaryColor,
+            accentColor: parsed.accentColor?.trim() || defaultBranding.accentColor,
+          });
         } catch {
           localStorage.removeItem(STORAGE_KEY);
         }

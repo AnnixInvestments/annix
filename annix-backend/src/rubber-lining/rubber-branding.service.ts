@@ -203,13 +203,57 @@ export class RubberBrandingService {
       });
 
       let primaryColor: string | null = null;
+
+      const isValidColorValue = (color: string): boolean => {
+        const invalid = ["transparent", "#fff", "#ffffff", "#000", "#000000", "white", "black"];
+        return !invalid.includes(color.toLowerCase().trim());
+      };
+
       const themeColorPattern = /<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["']/i;
       const themeColorAlt = /<meta[^>]*content=["']([^"']+)["'][^>]*name=["']theme-color["']/i;
       const themeMatch = html.match(themeColorPattern) ?? html.match(themeColorAlt);
-      if (themeMatch?.[1]) {
+      if (themeMatch?.[1] && isValidColorValue(themeMatch[1])) {
         primaryColor = themeMatch[1];
       }
 
+      if (!primaryColor) {
+        const colorPatterns = [
+          /\.(?:btn|button)[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+          /\.(?:primary|accent|brand)[^{]*\{[^}]*(?:background-)?color:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+          /--(?:primary|brand|accent|main)(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+          /header[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+          /nav[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
+        ];
+
+        for (const pattern of colorPatterns) {
+          const match = pattern.exec(html);
+          if (match?.[1] && isValidColorValue(match[1])) {
+            primaryColor = match[1];
+            break;
+          }
+        }
+      }
+
+      if (!primaryColor) {
+        const hexColors = html.match(/#[0-9a-fA-F]{6}\b/g) ?? [];
+        const colorCounts: Record<string, number> = {};
+        hexColors.forEach((c) => {
+          const lower = c.toLowerCase();
+          if (isValidColorValue(lower)) {
+            colorCounts[lower] = (colorCounts[lower] || 0) + 1;
+          }
+        });
+        const sorted = Object.entries(colorCounts)
+          .filter(([c]) => !["#f0f0f0", "#e0e0e0", "#cccccc", "#333333"].includes(c))
+          .sort((a, b) => b[1] - a[1]);
+        if (sorted.length > 0 && sorted[0][1] >= 3) {
+          primaryColor = sorted[0][0];
+        }
+      }
+
+      this.logger.log(
+        `Fetch-based scrape found primaryColor: ${primaryColor}`,
+      );
       this.logger.log(
         `Fetch-based scrape found ${logoCandidates.length} logo candidates, ${heroCandidates.length} hero candidates`,
       );
@@ -363,22 +407,90 @@ export class RubberBrandingService {
           .forEach((img) => addHero(img.src, "large-img", img.naturalWidth, img.naturalHeight));
 
         let primaryColor: string | null = null;
+
+        const isValidColor = (color: string | null): boolean => {
+          if (!color) return false;
+          const invalid = [
+            "rgba(0, 0, 0, 0)",
+            "transparent",
+            "rgb(255, 255, 255)",
+            "rgb(0, 0, 0)",
+            "#ffffff",
+            "#fff",
+            "#000000",
+            "#000",
+          ];
+          return !invalid.includes(color.toLowerCase());
+        };
+
         const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-        if (themeColor?.content) {
+        if (themeColor?.content && isValidColor(themeColor.content)) {
           primaryColor = themeColor.content;
-        } else {
+        }
+
+        if (!primaryColor) {
           const header = document.querySelector("header") || document.querySelector("nav");
           if (header) {
             const computed = window.getComputedStyle(header);
-            const bg = computed.backgroundColor;
-            if (
-              bg &&
-              bg !== "rgba(0, 0, 0, 0)" &&
-              bg !== "transparent" &&
-              bg !== "rgb(255, 255, 255)"
-            ) {
-              primaryColor = bg;
+            if (isValidColor(computed.backgroundColor)) {
+              primaryColor = computed.backgroundColor;
             }
+          }
+        }
+
+        if (!primaryColor) {
+          const buttons = Array.from(
+            document.querySelectorAll<HTMLElement>(
+              'button, .btn, [class*="button"], a[class*="btn"], input[type="submit"]',
+            ),
+          );
+          for (const btn of buttons.slice(0, 10)) {
+            const computed = window.getComputedStyle(btn);
+            if (isValidColor(computed.backgroundColor)) {
+              primaryColor = computed.backgroundColor;
+              break;
+            }
+          }
+        }
+
+        if (!primaryColor) {
+          const links = Array.from(document.querySelectorAll<HTMLAnchorElement>("a")).slice(0, 20);
+          const colorCounts: Record<string, number> = {};
+          links.forEach((link) => {
+            const color = window.getComputedStyle(link).color;
+            if (isValidColor(color) && color !== "rgb(0, 0, 238)") {
+              colorCounts[color] = (colorCounts[color] || 0) + 1;
+            }
+          });
+          const sortedColors = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]);
+          if (sortedColors.length > 0) {
+            primaryColor = sortedColors[0][0];
+          }
+        }
+
+        if (!primaryColor) {
+          const accentSelectors = [
+            "[class*='primary']",
+            "[class*='accent']",
+            "[class*='brand']",
+            "[class*='highlight']",
+            ".active",
+            ".selected",
+          ];
+          for (const sel of accentSelectors) {
+            const els = document.querySelectorAll<HTMLElement>(sel);
+            for (const el of Array.from(els).slice(0, 5)) {
+              const computed = window.getComputedStyle(el);
+              if (isValidColor(computed.backgroundColor)) {
+                primaryColor = computed.backgroundColor;
+                break;
+              }
+              if (isValidColor(computed.color)) {
+                primaryColor = computed.color;
+                break;
+              }
+            }
+            if (primaryColor) break;
           }
         }
 
