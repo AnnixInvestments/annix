@@ -35,6 +35,7 @@ export default function AuCocsPage() {
   const [sendEmail, setSendEmail] = useState("");
   const [showSendModal, setShowSendModal] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   const fetchData = async () => {
     try {
@@ -110,6 +111,17 @@ export default function AuCocsPage() {
       fetchData();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to generate PDF", "error");
+    }
+  };
+
+  const handleDownload = async (coc: RubberAuCocDto) => {
+    try {
+      setDownloadingId(coc.id);
+      await auRubberApiClient.downloadAuCocPdf(coc.id, coc.cocNumber);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to download PDF", "error");
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -356,14 +368,13 @@ export default function AuCocsPage() {
                     )}
                     {coc.status === "GENERATED" && (
                       <>
-                        <a
-                          href={auRubberApiClient.auCocPdfUrl(coc.id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-green-600 hover:text-green-800"
+                        <button
+                          onClick={() => handleDownload(coc)}
+                          disabled={downloadingId === coc.id}
+                          className="text-green-600 hover:text-green-800 disabled:opacity-50"
                         >
-                          Download
-                        </a>
+                          {downloadingId === coc.id ? "Downloading..." : "Download"}
+                        </button>
                         <button
                           onClick={() => {
                             setSendingId(coc.id);
@@ -376,14 +387,13 @@ export default function AuCocsPage() {
                       </>
                     )}
                     {coc.status === "SENT" && coc.generatedPdfPath && (
-                      <a
-                        href={auRubberApiClient.auCocPdfUrl(coc.id)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-green-600 hover:text-green-800"
+                      <button
+                        onClick={() => handleDownload(coc)}
+                        disabled={downloadingId === coc.id}
+                        className="text-green-600 hover:text-green-800 disabled:opacity-50"
                       >
-                        Download
-                      </a>
+                        {downloadingId === coc.id ? "Downloading..." : "Download"}
+                      </button>
                     )}
                   </td>
                 </tr>

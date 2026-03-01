@@ -22,6 +22,7 @@ export default function AuCocDetailPage() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendEmail, setSendEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const cocId = Number(params.id);
 
@@ -73,6 +74,18 @@ export default function AuCocDetailPage() {
       showToast(err instanceof Error ? err.message : "Failed to send certificate", "error");
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!coc) return;
+    try {
+      setIsDownloading(true);
+      await auRubberApiClient.downloadAuCocPdf(coc.id, coc.cocNumber);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to download PDF", "error");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -147,11 +160,10 @@ export default function AuCocDetailPage() {
           )}
           {coc.status === "GENERATED" && (
             <>
-              <a
-                href={auRubberApiClient.auCocPdfUrl(coc.id)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              <button
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -161,8 +173,8 @@ export default function AuCocDetailPage() {
                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                   />
                 </svg>
-                Download PDF
-              </a>
+                {isDownloading ? "Downloading..." : "Download PDF"}
+              </button>
               <button
                 onClick={() => setShowSendModal(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
@@ -180,11 +192,10 @@ export default function AuCocDetailPage() {
             </>
           )}
           {coc.status === "SENT" && coc.generatedPdfPath && (
-            <a
-              href={auRubberApiClient.auCocPdfUrl(coc.id)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            <button
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -194,8 +205,8 @@ export default function AuCocDetailPage() {
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                 />
               </svg>
-              Download PDF
-            </a>
+              {isDownloading ? "Downloading..." : "Download PDF"}
+            </button>
           )}
         </div>
       </div>

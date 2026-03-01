@@ -8,6 +8,7 @@ import {
   IsString,
   MaxLength,
   MinLength,
+  ValidateIf,
 } from "class-validator";
 import { RoleTargetType } from "../entities/app-role.entity";
 
@@ -56,7 +57,7 @@ export class CreateRoleDto {
     example: "CUSTOMER",
     enum: RoleTargetType,
   })
-  @IsOptional()
+  @ValidateIf((o) => o.targetType !== null && o.targetType !== undefined)
   @IsEnum(RoleTargetType)
   targetType?: RoleTargetType | null;
 }
@@ -103,7 +104,7 @@ export class UpdateRoleDto {
     example: "CUSTOMER",
     enum: RoleTargetType,
   })
-  @IsOptional()
+  @ValidateIf((o) => o.targetType !== null && o.targetType !== undefined)
   @IsEnum(RoleTargetType)
   targetType?: RoleTargetType | null;
 }

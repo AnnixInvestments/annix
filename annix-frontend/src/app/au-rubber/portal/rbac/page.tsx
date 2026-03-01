@@ -124,7 +124,7 @@ export default function RbacPage() {
         code: newRoleCode.toLowerCase().replace(/\s+/g, "-"),
         name: newRoleName,
         description: newRoleDescription || undefined,
-        targetType: newRoleTargetType || null,
+        targetType: newRoleTargetType || undefined,
       });
       showToast("Role created", "success");
       setShowNewRoleModal(false);

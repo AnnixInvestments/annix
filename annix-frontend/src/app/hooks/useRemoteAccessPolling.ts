@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type PendingAccessRequestsResponse,
   type RemoteAccessRequestResponse,
@@ -21,10 +21,12 @@ export function useRemoteAccessPolling({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
+  const mountedRef = useRef(true);
 
   const checkPendingRequests = useCallback(async () => {
     if (!enabled) return;
 
+    if (typeof window === "undefined") return;
     const token = localStorage.getItem("customerAccessToken");
     if (!token) return;
 
@@ -33,22 +35,35 @@ export function useRemoteAccessPolling({
 
     try {
       const result: PendingAccessRequestsResponse = await remoteAccessApi.pendingRequests();
-      setPendingRequests(result.requests);
-      setCount(result.count);
+      if (mountedRef.current) {
+        setPendingRequests(result.requests);
+        setCount(result.count);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to check pending requests");
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : "Failed to check pending requests");
+      }
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [enabled]);
 
   useEffect(() => {
+    mountedRef.current = true;
     checkPendingRequests();
 
     if (enabled && pollIntervalMs > 0) {
       const interval = setInterval(checkPendingRequests, pollIntervalMs);
-      return () => clearInterval(interval);
+      return () => {
+        mountedRef.current = false;
+        clearInterval(interval);
+      };
     }
+    return () => {
+      mountedRef.current = false;
+    };
   }, [checkPendingRequests, enabled, pollIntervalMs]);
 
   const dismissRequest = useCallback((requestId: number) => {

@@ -87,20 +87,28 @@ export class RubberAuCocService {
   }
 
   async auCocById(id: number): Promise<RubberAuCocDto | null> {
-    const coc = await this.auCocRepository.findOne({
-      where: { id },
-      relations: ["customerCompany"],
-    });
-    if (!coc) return null;
+    try {
+      this.logger.debug(`Fetching AU CoC with id: ${id}`);
+      const coc = await this.auCocRepository.findOne({
+        where: { id },
+        relations: ["customerCompany"],
+      });
+      if (!coc) return null;
 
-    const items = await this.auCocItemRepository.find({
-      where: { auCocId: id },
-      relations: ["rollStock", "rollStock.compoundCoding"],
-    });
+      this.logger.debug(`Found AU CoC: ${coc.cocNumber}, fetching items...`);
+      const items = await this.auCocItemRepository.find({
+        where: { auCocId: id },
+        relations: ["rollStock", "rollStock.compoundCoding"],
+      });
 
-    const dto = this.mapAuCocToDto(coc);
-    dto.items = items.map((item) => this.mapAuCocItemToDto(item));
-    return dto;
+      this.logger.debug(`Found ${items.length} items, mapping to DTO...`);
+      const dto = this.mapAuCocToDto(coc);
+      dto.items = items.map((item) => this.mapAuCocItemToDto(item));
+      return dto;
+    } catch (error) {
+      this.logger.error(`Error fetching AU CoC ${id}:`, error);
+      throw error;
+    }
   }
 
   async createAuCoc(dto: CreateAuCocDto, createdBy?: string): Promise<RubberAuCocDto> {
@@ -173,32 +181,43 @@ export class RubberAuCocService {
   }
 
   async generatePdf(id: number): Promise<{ buffer: Buffer; filename: string }> {
-    const coc = await this.auCocRepository.findOne({
-      where: { id },
-      relations: ["customerCompany"],
-    });
-    if (!coc) {
-      throw new BadRequestException("AU CoC not found");
+    try {
+      this.logger.debug(`Generating PDF for AU CoC ${id}...`);
+      const coc = await this.auCocRepository.findOne({
+        where: { id },
+        relations: ["customerCompany"],
+      });
+      if (!coc) {
+        throw new BadRequestException("AU CoC not found");
+      }
+
+      this.logger.debug(`Found CoC ${coc.cocNumber}, fetching items...`);
+      const items = await this.auCocItemRepository.find({
+        where: { auCocId: id },
+        relations: ["rollStock", "rollStock.compoundCoding"],
+      });
+
+      if (items.length === 0) {
+        throw new BadRequestException("No rolls found for this CoC");
+      }
+
+      this.logger.debug(`Found ${items.length} items, preparing PDF data...`);
+      const pdfData = await this.preparePdfData(coc, items);
+      this.logger.debug("PDF data prepared, creating PDF...");
+      const buffer = await this.createPdf(pdfData);
+      const filename = `${coc.cocNumber}.pdf`;
+
+      this.logger.debug(`PDF created (${buffer.length} bytes), updating status...`);
+      coc.status = AuCocStatus.GENERATED;
+      coc.generatedPdfPath = `au-cocs/${filename}`;
+      await this.auCocRepository.save(coc);
+
+      this.logger.log(`PDF generated for AU CoC ${coc.cocNumber}`);
+      return { buffer, filename };
+    } catch (error) {
+      this.logger.error(`Error generating PDF for AU CoC ${id}:`, error);
+      throw error;
     }
-
-    const items = await this.auCocItemRepository.find({
-      where: { auCocId: id },
-      relations: ["rollStock", "rollStock.compoundCoding"],
-    });
-
-    if (items.length === 0) {
-      throw new BadRequestException("No rolls found for this CoC");
-    }
-
-    const pdfData = await this.preparePdfData(coc, items);
-    const buffer = await this.createPdf(pdfData);
-    const filename = `${coc.cocNumber}.pdf`;
-
-    coc.status = AuCocStatus.GENERATED;
-    coc.generatedPdfPath = `au-cocs/${filename}`;
-    await this.auCocRepository.save(coc);
-
-    return { buffer, filename };
   }
 
   async pdfBuffer(id: number): Promise<{ buffer: Buffer; filename: string }> {

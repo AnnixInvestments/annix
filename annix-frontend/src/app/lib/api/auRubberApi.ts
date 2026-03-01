@@ -1712,6 +1712,24 @@ class AuRubberApiClient {
     return `${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`;
   }
 
+  async downloadAuCocPdf(id: number, cocNumber: string): Promise<void> {
+    const response = await fetch(`${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`, {
+      headers: this.authHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to download PDF: ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${cocNumber}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   async documentUrl(documentPath: string): Promise<string> {
     const response = await this.request<{ url: string }>(
       `/rubber-lining/portal/documents/url?path=${encodeURIComponent(documentPath)}`,

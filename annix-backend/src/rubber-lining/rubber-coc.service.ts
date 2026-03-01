@@ -131,7 +131,10 @@ export class RubberCocService {
       where: { id: saved.id },
       relations: ["supplierCompany"],
     });
-    return this.mapSupplierCocToDto(result!);
+    if (!result) {
+      throw new BadRequestException("Failed to retrieve created supplier CoC");
+    }
+    return this.mapSupplierCocToDto(result);
   }
 
   async updateSupplierCoc(
@@ -342,7 +345,10 @@ export class RubberCocService {
         relations: ["supplierCompany"],
       });
 
-      return { coc: this.mapSupplierCocToDto(refreshed!), wasUpdated: true };
+      if (!refreshed) {
+        throw new BadRequestException("Failed to retrieve updated supplier CoC");
+      }
+      return { coc: this.mapSupplierCocToDto(refreshed), wasUpdated: true };
     }
 
     const newCoc = this.supplierCocRepository.create({
@@ -366,7 +372,10 @@ export class RubberCocService {
       relations: ["supplierCompany"],
     });
 
-    return { coc: this.mapSupplierCocToDto(result!), wasUpdated: false };
+    if (!result) {
+      throw new BadRequestException("Failed to retrieve created supplier CoC");
+    }
+    return { coc: this.mapSupplierCocToDto(result), wasUpdated: false };
   }
 
   async clearAllSupplierCocs(): Promise<{ deletedBatches: number; deletedCocs: number }> {
@@ -463,7 +472,10 @@ export class RubberCocService {
       where: { id: saved.id },
       relations: ["compoundStock", "compoundStock.compoundCoding"],
     });
-    return this.mapCompoundBatchToDto(result!);
+    if (!result) {
+      throw new BadRequestException("Failed to retrieve created compound batch");
+    }
+    return this.mapCompoundBatchToDto(result);
   }
 
   async batchById(id: number): Promise<RubberCompoundBatchDto | null> {

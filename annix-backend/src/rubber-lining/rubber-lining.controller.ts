@@ -1663,14 +1663,11 @@ Formula: totalPrice = totalKg × salePricePerKg
   @Post("portal/au-cocs/:id/generate-pdf")
   @ApiOperation({ summary: "Generate PDF for AU CoC" })
   @ApiParam({ name: "id", description: "AU CoC ID" })
-  async generateAuCocPdf(@Param("id") id: string, @Res() res: Response): Promise<void> {
-    const { buffer, filename } = await this.rubberAuCocService.generatePdf(Number(id));
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "Content-Length": buffer.length.toString(),
-    });
-    res.send(buffer);
+  async generateAuCocPdf(@Param("id") id: string): Promise<RubberAuCocDto> {
+    await this.rubberAuCocService.generatePdf(Number(id));
+    const coc = await this.rubberAuCocService.auCocById(Number(id));
+    if (!coc) throw new NotFoundException("AU CoC not found");
+    return coc;
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

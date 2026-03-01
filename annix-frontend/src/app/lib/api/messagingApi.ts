@@ -198,6 +198,10 @@ function getAuthHeaders(portalType: PortalType): Record<string, string> {
     "Content-Type": "application/json",
   };
 
+  if (typeof window === "undefined") {
+    return headers;
+  }
+
   const tokenKey =
     portalType === "admin"
       ? "adminAccessToken"

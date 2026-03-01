@@ -152,7 +152,10 @@ export class RubberRollStockService {
       where: { id: saved.id },
       relations: ["compoundCoding", "soldToCompany"],
     });
-    return this.mapRollStockToDto(result!);
+    if (!result) {
+      throw new BadRequestException("Failed to retrieve created roll stock");
+    }
+    return this.mapRollStockToDto(result);
   }
 
   async updateRollStock(id: number, dto: UpdateRollStockDto): Promise<RubberRollStockDto | null> {
@@ -186,7 +189,10 @@ export class RubberRollStockService {
       where: { id },
       relations: ["compoundCoding", "soldToCompany"],
     });
-    return this.mapRollStockToDto(result!);
+    if (!result) {
+      throw new BadRequestException("Failed to retrieve updated roll stock");
+    }
+    return this.mapRollStockToDto(result);
   }
 
   async reserveRoll(id: number, dto: ReserveRollDto): Promise<RubberRollStockDto | null> {
@@ -215,7 +221,10 @@ export class RubberRollStockService {
       where: { id },
       relations: ["compoundCoding", "soldToCompany"],
     });
-    return this.mapRollStockToDto(result!);
+    if (!result) {
+      throw new BadRequestException("Failed to retrieve reserved roll stock");
+    }
+    return this.mapRollStockToDto(result);
   }
 
   async unreserveRoll(id: number): Promise<RubberRollStockDto | null> {
@@ -239,7 +248,10 @@ export class RubberRollStockService {
       where: { id },
       relations: ["compoundCoding", "soldToCompany"],
     });
-    return this.mapRollStockToDto(result!);
+    if (!result) {
+      throw new BadRequestException("Failed to retrieve unreserved roll stock");
+    }
+    return this.mapRollStockToDto(result);
   }
 
   async sellRoll(id: number, dto: SellRollDto): Promise<RubberRollStockDto | null> {
@@ -267,7 +279,10 @@ export class RubberRollStockService {
       where: { id },
       relations: ["compoundCoding", "soldToCompany"],
     });
-    return this.mapRollStockToDto(result!);
+    if (!result) {
+      throw new BadRequestException("Failed to retrieve sold roll stock");
+    }
+    return this.mapRollStockToDto(result);
   }
 
   async scrapRoll(id: number, notes?: string): Promise<RubberRollStockDto | null> {
@@ -428,7 +443,10 @@ export class RubberRollStockService {
       where: { id: saved.id },
       relations: ["compoundCoding", "soldToCompany"],
     });
-    return this.mapRollStockToDto(result!);
+    if (!result) {
+      throw new BadRequestException("Failed to retrieve created opening stock");
+    }
+    return this.mapRollStockToDto(result);
   }
 
   async importOpeningStock(rows: ImportOpeningStockRowDto[]): Promise<ImportOpeningStockResultDto> {
@@ -519,7 +537,11 @@ export class RubberRollStockService {
       notes: roll.notes,
       costZar: roll.costZar ? Number(roll.costZar) : null,
       priceZar: roll.priceZar ? Number(roll.priceZar) : null,
-      productionDate: roll.productionDate?.toISOString() ?? null,
+      productionDate: roll.productionDate
+        ? roll.productionDate instanceof Date
+          ? roll.productionDate.toISOString()
+          : String(roll.productionDate)
+        : null,
       createdAt: roll.createdAt.toISOString(),
       updatedAt: roll.updatedAt.toISOString(),
     };
