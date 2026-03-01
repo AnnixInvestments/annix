@@ -49,6 +49,7 @@ import { RubberInboundEmailController } from "./rubber-inbound-email.controller"
 import { RubberInboundEmailService } from "./rubber-inbound-email.service";
 import { RubberLiningController } from "./rubber-lining.controller";
 import { RubberLiningService } from "./rubber-lining.service";
+import { RubberOrderImportService } from "./rubber-order-import.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
@@ -108,6 +109,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     RubberInboundEmailService,
     RubberEmailMonitorService,
     RubberQualityTrackingService,
+    RubberOrderImportService,
     AuRubberAccessGuard,
   ],
   exports: [

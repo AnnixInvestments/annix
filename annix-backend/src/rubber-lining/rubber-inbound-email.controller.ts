@@ -13,7 +13,11 @@ import { FilesInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
 import { simpleParser } from "mailparser";
-import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
+import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
+import type {
+  AnalyzeOrderFilesResult,
+  CreateOrderFromAnalysisDto,
+} from "./dto/rubber-order-import.dto";
 import { DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
@@ -24,6 +28,7 @@ import {
   ProcessedEmailResult,
   RubberInboundEmailService,
 } from "./rubber-inbound-email.service";
+import { RubberOrderImportService } from "./rubber-order-import.service";
 
 @ApiTags("Rubber Lining - Inbound Email")
 @Controller("rubber-lining")
@@ -33,6 +38,7 @@ export class RubberInboundEmailController {
   constructor(
     private readonly inboundEmailService: RubberInboundEmailService,
     private readonly emailMonitorService: RubberEmailMonitorService,
+    private readonly orderImportService: RubberOrderImportService,
   ) {}
 
   @Post("portal/email-monitor/test")
@@ -156,7 +162,7 @@ export class RubberInboundEmailController {
   async uploadSupplierCocs(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: Record<string, string>,
-    @Req() req: Request,
+    @Req() req: AdminRequest,
   ): Promise<{ cocIds: number[] }> {
     if (!files || files.length === 0) {
       throw new BadRequestException("No files uploaded");
@@ -167,7 +173,7 @@ export class RubberInboundEmailController {
       : undefined;
 
     const cocType = (body.cocType as SupplierCocType) || SupplierCocType.COMPOUNDER;
-    const user = (req as any).user;
+    const user = req.user;
     const createdBy = user?.email || "upload";
 
     this.logger.log(
@@ -255,13 +261,13 @@ export class RubberInboundEmailController {
   async createFromAnalysis(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: { analysis: string },
-    @Req() req: Request,
+    @Req() req: AdminRequest,
   ): Promise<{ cocIds: number[] }> {
     if (!files || files.length === 0) {
       throw new BadRequestException("No files uploaded");
     }
 
-    const user = (req as any).user;
+    const user = req.user;
     const createdBy = user?.email || "upload";
 
     const analysis: AnalyzeFilesResult = JSON.parse(body.analysis);
@@ -295,7 +301,7 @@ export class RubberInboundEmailController {
   async uploadDeliveryNotes(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() body: Record<string, string>,
-    @Req() req: Request,
+    @Req() req: AdminRequest,
   ): Promise<{ deliveryNoteIds: number[] }> {
     if (!files || files.length === 0) {
       throw new BadRequestException("No files uploaded");
@@ -308,7 +314,7 @@ export class RubberInboundEmailController {
 
     const deliveryNoteType =
       (body.deliveryNoteType as DeliveryNoteType) || DeliveryNoteType.COMPOUND;
-    const user = (req as any).user;
+    const user = req.user;
     const createdBy = user?.email || "upload";
 
     this.logger.log(
@@ -328,6 +334,93 @@ export class RubberInboundEmailController {
     );
 
     return { deliveryNoteIds: result.deliveryNoteIds || [] };
+  }
+
+  @Post("portal/orders/analyze")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FilesInterceptor("files", 20))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Analyze order files (PDF, Excel, Email) for import" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        files: {
+          type: "array",
+          items: { type: "string", format: "binary" },
+        },
+      },
+    },
+  })
+  async analyzeOrderFiles(
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<AnalyzeOrderFilesResult> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException("No files uploaded");
+    }
+
+    this.logger.log(`Analyzing ${files.length} files for order import...`);
+    return this.orderImportService.analyzeFiles(files);
+  }
+
+  @Post("portal/orders/from-analysis")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Create order from analyzed file data" })
+  async createOrderFromAnalysis(
+    @Body() dto: CreateOrderFromAnalysisDto,
+    @Req() req: AdminRequest,
+  ): Promise<{ orderId: number; orderNumber: string }> {
+    const user = req.user;
+    this.logger.log(`Creating order from analysis by ${user?.email || "unknown"}`);
+
+    const result = await this.orderImportService.createOrderFromAnalysis(dto);
+    return {
+      orderId: result.orderId,
+      orderNumber: `ORD-${String(result.orderId).padStart(5, "0")}`,
+    };
+  }
+
+  @Post("webhook/inbound-email/order")
+  @ApiOperation({
+    summary: "Receive inbound order email webhook",
+    description: "Receives order emails and extracts order data from PDF attachments",
+  })
+  @UseInterceptors(FilesInterceptor("attachments", 20))
+  @ApiConsumes("multipart/form-data")
+  async receiveInboundOrderEmail(
+    @Req() req: Request,
+    @Body() body: Record<string, string>,
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<AnalyzeOrderFilesResult> {
+    this.logger.log("Received inbound order email webhook");
+
+    const emailData = await this.parseEmailWebhook(body, files);
+
+    const multerFiles: Express.Multer.File[] = emailData.attachments
+      .filter(
+        (att) =>
+          att.contentType === "application/pdf" || att.filename?.toLowerCase().endsWith(".pdf"),
+      )
+      .map((att) => ({
+        fieldname: "files",
+        originalname: att.filename,
+        encoding: "7bit",
+        mimetype: att.contentType,
+        size: att.size,
+        buffer: att.content,
+        stream: null as never,
+        destination: "",
+        filename: "",
+        path: "",
+      }));
+
+    if (multerFiles.length === 0) {
+      return { files: [], totalLines: 0 };
+    }
+
+    return this.orderImportService.analyzeFiles(multerFiles);
   }
 
   private async parseEmailWebhook(

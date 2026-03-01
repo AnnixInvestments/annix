@@ -22,8 +22,8 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { Request, Response } from "express";
-import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
+import { Response } from "express";
+import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
@@ -1355,10 +1355,10 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiParam({ name: "id", description: "Supplier CoC ID" })
   async approveSupplierCoc(
     @Param("id") id: string,
-    @Req() req: Request,
+    @Req() req: AdminRequest,
   ): Promise<RubberSupplierCocDto> {
-    const user = (req as any).user;
-    const approvedBy = user?.email || null;
+    const user = req.user;
+    const approvedBy = user?.email ?? undefined;
     const coc = await this.rubberCocService.approveCoc(Number(id), approvedBy);
     if (!coc) throw new NotFoundException("Supplier CoC not found");
     return coc;
@@ -2052,9 +2052,9 @@ Formula: totalPrice = totalKg × salePricePerKg
   async updateQualityConfig(
     @Param("compoundCode") compoundCode: string,
     @Body() dto: UpdateQualityConfigDto,
-    @Req() req: Request,
+    @Req() req: AdminRequest,
   ): Promise<QualityConfigDto> {
-    const user = (req as any).user;
+    const user = req.user;
     const updatedBy = user?.email || "unknown";
     return this.rubberQualityTrackingService.updateConfig(compoundCode, dto, updatedBy);
   }
