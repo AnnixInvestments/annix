@@ -1685,7 +1685,7 @@ class AuRubberApiClient {
 
   async createAuCoc(data: {
     customerCompanyId: number;
-    rollStockIds: number[];
+    rollIds: number[];
     poNumber?: string;
     deliveryNoteRef?: string;
   }): Promise<RubberAuCocDto> {

@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -370,28 +372,37 @@ export class RubberAuCocService {
   }
 
   private drawHeader(doc: PDFKit.PDFDocument): void {
-    doc
-      .fontSize(14)
-      .font("Helvetica-Bold")
-      .fillColor("#D4A537")
-      .text("AU", 270, 40, { continued: true })
-      .fillColor("black");
+    const headerPath = path.join(__dirname, "..", "..", "assets", "au-header.jpg");
+    this.logger.debug(`Header image path: ${headerPath}`);
+    this.logger.debug(`Header file exists: ${fs.existsSync(headerPath)}`);
 
-    doc.fontSize(8).font("Helvetica").text("INDUSTRIES", 270, 55, { align: "center" });
+    if (fs.existsSync(headerPath)) {
+      doc.image(headerPath, 40, 30, { width: 515 });
+    } else {
+      this.logger.warn(`Header image not found at: ${headerPath}`);
+      doc
+        .fontSize(14)
+        .font("Helvetica-Bold")
+        .fillColor("#D4A537")
+        .text("AU", 270, 40)
+        .fillColor("black");
+      doc.fontSize(8).font("Helvetica").text("INDUSTRIES", 270, 55, { align: "center" });
+    }
 
     doc
       .fontSize(16)
       .font("Helvetica-Bold")
-      .text("CERTIFICATE OF CONFORMANCE", 40, 85, { align: "center", width: 515 });
+      .fillColor("black")
+      .text("CERTIFICATE OF CONFORMANCE", 40, 140, { align: "center", width: 515 });
 
-    doc.moveTo(40, 110).lineTo(555, 110).lineWidth(0.5).stroke();
+    doc.moveTo(40, 165).lineTo(555, 165).lineWidth(0.5).stroke();
   }
 
   private drawDetailsSection(doc: PDFKit.PDFDocument, data: CocPdfData): void {
     const leftCol = 40;
-    const rightCol = 220;
-    let y = 125;
-    const lineHeight = 18;
+    const rightCol = 250;
+    let y = 180;
+    const lineHeight = 16;
 
     doc.fontSize(9).font("Helvetica");
 
@@ -412,13 +423,10 @@ export class RubberAuCocService {
 
     y += 5;
     doc.font("Helvetica-Bold").text("LABORATORY ANALYSIS DATA", leftCol, y);
-    y += 15;
-
-    doc.moveTo(40, y).lineTo(555, y).lineWidth(0.5).stroke();
   }
 
   private drawLabDataTable(doc: PDFKit.PDFDocument, data: CocPdfData): void {
-    const tableTop = 245;
+    const tableTop = 295;
     const colWidths = [85, 55, 55, 55, 55, 65, 65, 65];
     const colStarts = [40];
     colWidths.forEach((w, i) => {
@@ -574,55 +582,64 @@ export class RubberAuCocService {
   }
 
   private drawFooter(doc: PDFKit.PDFDocument, data: CocPdfData): void {
-    const y = 730;
+    const y = 720;
 
-    doc.fontSize(8).font("Helvetica").fillColor("black");
+    doc.fontSize(9).font("Helvetica").fillColor("black");
 
     doc.text("Approved By:", 40, y);
-    doc.font("Helvetica-Bold").text(data.coc.approvedByName || "________________", 100, y);
+    doc.font("Helvetica-Bold").text(data.coc.approvedByName || "Ron Govender", 115, y);
 
-    doc.font("Helvetica").text("Signed", 250, y);
+    doc.font("Helvetica").text("Signed", 300, y);
     doc
-      .moveTo(290, y + 10)
-      .lineTo(380, y + 10)
+      .moveTo(340, y + 10)
+      .lineTo(430, y + 10)
       .lineWidth(0.5)
       .stroke();
 
-    doc.text("Date:", 420, y);
+    doc.text("Date:", 470, y);
     doc
       .font("Helvetica-Bold")
       .text(
         data.coc.approvedAt ? formatDateZA(data.coc.approvedAt) : formatDateZA(now().toJSDate()),
-        450,
+        500,
         y,
       );
 
-    doc
-      .moveTo(40, y + 25)
-      .lineTo(555, y + 25)
-      .lineWidth(0.5)
-      .stroke();
+    const footerPath = path.join(__dirname, "..", "..", "assets", "au-footer.jpg");
+    this.logger.debug(`Footer image path: ${footerPath}`);
+    this.logger.debug(`Footer file exists: ${fs.existsSync(footerPath)}`);
 
-    doc
-      .fontSize(7)
-      .font("Helvetica")
-      .fillColor("gray")
-      .text(
-        "AU Industries (Pty)Ltd Registration No. 2020/803314/07 - VAT number : 4650300389",
+    if (fs.existsSync(footerPath)) {
+      doc.image(footerPath, 40, y + 25, { width: 515 });
+    } else {
+      this.logger.warn(`Footer image not found at: ${footerPath}`);
+      doc
+        .moveTo(40, y + 25)
+        .lineTo(555, y + 25)
+        .lineWidth(0.5)
+        .stroke();
+
+      doc
+        .fontSize(7)
+        .font("Helvetica")
+        .fillColor("#B8860B")
+        .text(
+          "AU Industries (Pty)Ltd Registration No. 2020/803314/07 - VAT number : 4650300389",
+          40,
+          y + 32,
+          { align: "center", width: 515 },
+        );
+      doc.text(
+        "50 Paul Smit Street, Dunswart, Boksburg, 1458  Tel: 072 039 8429  www.auind.co.za",
         40,
-        y + 32,
+        y + 42,
         { align: "center", width: 515 },
       );
-    doc.text(
-      "50 Paul Smit Street, Dunswart, Boksburg, 1458  Tel: 072 039 8429  www.auind.co.za",
-      40,
-      y + 42,
-      { align: "center", width: 515 },
-    );
-    doc.text("Directors: A. Barrett and S.Govender", 40, y + 52, {
-      align: "center",
-      width: 515,
-    });
+      doc.text("Directors: A. Barrett and S.Govender", 40, y + 52, {
+        align: "center",
+        width: 515,
+      });
+    }
   }
 
   private mapAuCocToDto(coc: RubberAuCoc): RubberAuCocDto {

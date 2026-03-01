@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient, type RubberRollStockDto } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
 
 export default function NewAuCocPage() {
   const router = useRouter();
@@ -82,7 +82,7 @@ export default function NewAuCocPage() {
       setIsCreating(true);
       const result = await auRubberApiClient.createAuCoc({
         customerCompanyId: customerId,
-        rollStockIds: Array.from(selectedRollIds),
+        rollIds: Array.from(selectedRollIds),
         poNumber: poNumber || undefined,
         deliveryNoteRef: deliveryNoteRef || undefined,
       });
