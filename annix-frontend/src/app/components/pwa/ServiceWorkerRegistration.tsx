@@ -21,6 +21,8 @@ export default function ServiceWorkerRegistration() {
       return;
     }
 
+    let updateInterval: ReturnType<typeof setInterval> | null = null;
+
     const registerServiceWorker = async () => {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js", {
@@ -50,7 +52,7 @@ export default function ServiceWorkerRegistration() {
           setShowUpdatePrompt(true);
         }
 
-        setInterval(
+        updateInterval = setInterval(
           () => {
             registration.update();
           },
@@ -64,12 +66,20 @@ export default function ServiceWorkerRegistration() {
     registerServiceWorker();
 
     let refreshing = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
+    const handleControllerChange = () => {
       if (!refreshing) {
         refreshing = true;
         window.location.reload();
       }
-    });
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+
+    return () => {
+      if (updateInterval) {
+        clearInterval(updateInterval);
+      }
+      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+    };
   }, []);
 
   const handleUpdate = () => {

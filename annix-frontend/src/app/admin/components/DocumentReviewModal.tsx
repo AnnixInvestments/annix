@@ -200,10 +200,11 @@ function MatchIndicator({ matches, similarity }: { matches: boolean; similarity:
     );
   }
 
-  const color = similarity >= 70 ? "yellow" : "red";
+  const colorClasses =
+    similarity >= 70 ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-${color}-100 text-${color}-800`}
+      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colorClasses}`}
     >
       <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
         <path
@@ -428,11 +429,11 @@ export function DocumentReviewModal({
 
   if (!isOpen) return null;
 
-  const confidenceColor = (confidence: number | null) => {
-    if (confidence === null) return "gray";
-    if (confidence >= 0.8) return "green";
-    if (confidence >= 0.6) return "yellow";
-    return "red";
+  const confidenceColorClasses = (confidence: number | null) => {
+    if (confidence === null) return "bg-gray-100 text-gray-800";
+    if (confidence >= 0.8) return "bg-green-100 text-green-800";
+    if (confidence >= 0.6) return "bg-yellow-100 text-yellow-800";
+    return "bg-red-100 text-red-800";
   };
 
   const isLikelyXfaPdf =
@@ -618,7 +619,7 @@ export function DocumentReviewModal({
                       </h3>
                       {data.verificationConfidence !== null && !isLikelyXfaPdf && (
                         <span
-                          className={`px-3 py-1 rounded-full text-sm font-medium bg-${confidenceColor(data.verificationConfidence)}-100 text-${confidenceColor(data.verificationConfidence)}-800`}
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${confidenceColorClasses(data.verificationConfidence)}`}
                         >
                           {Math.round(data.verificationConfidence * 100)}% confidence
                         </span>

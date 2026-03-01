@@ -161,6 +161,7 @@ async function fetchDrawingComments(id: number): Promise<DrawingComment[]> {
   });
 
   if (!response.ok) {
+    console.warn(`Failed to fetch drawing comments for drawing ${id}: ${response.status}`);
     return [];
   }
 
