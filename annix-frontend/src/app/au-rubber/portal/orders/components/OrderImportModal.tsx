@@ -1,7 +1,7 @@
 "use client";
 
-import { Loader2, Upload, X } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Sparkles, Upload, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   type AnalyzedOrderData,
   type AnalyzeOrderFilesResult,
@@ -10,8 +10,9 @@ import {
 import type { RubberCompanyDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { FileDropZone } from "../../../components/FileDropZone";
 import { OrderAnalysisReview } from "./OrderAnalysisReview";
+import { PoTrainingModal } from "./PoTrainingModal";
 
-type ImportStep = "upload" | "review";
+type ImportStep = "upload" | "review" | "train";
 
 interface OrderImportModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ interface OrderImportModalProps {
   onOrderCreated: (orderId: number, orderNumber: string) => void;
   companies: RubberCompanyDto[];
   products: RubberProductDto[];
+  initialAnalysis?: AnalyzeOrderFilesResult | null;
 }
 
 export function OrderImportModal({
@@ -27,6 +29,7 @@ export function OrderImportModal({
   onOrderCreated,
   companies,
   products,
+  initialAnalysis,
 }: OrderImportModalProps) {
   const [step, setStep] = useState<ImportStep>("upload");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -36,6 +39,17 @@ export function OrderImportModal({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [trainingFile, setTrainingFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (isOpen && initialAnalysis) {
+      setStep("review");
+      setAnalysisResult(initialAnalysis);
+      setEditedAnalyses(initialAnalysis.files);
+      setSelectedFileIndex(0);
+    }
+  }, [isOpen, initialAnalysis]);
 
   const handleFilesSelected = (files: File[]) => {
     setSelectedFiles(files);
@@ -116,6 +130,8 @@ export function OrderImportModal({
     setEditedAnalyses([]);
     setSelectedFileIndex(0);
     setError(null);
+    setShowTrainingModal(false);
+    setTrainingFile(null);
     onClose();
   };
 
@@ -124,6 +140,42 @@ export function OrderImportModal({
     setAnalysisResult(null);
     setEditedAnalyses([]);
     setSelectedFileIndex(0);
+  };
+
+  const handleTrainNix = () => {
+    const file = selectedFiles[selectedFileIndex];
+    if (file) {
+      setTrainingFile(file);
+      setShowTrainingModal(true);
+    }
+  };
+
+  const handleTrainingComplete = async (templateId: number) => {
+    setShowTrainingModal(false);
+    setTrainingFile(null);
+
+    if (selectedFiles.length > 0) {
+      setIsAnalyzing(true);
+      try {
+        const result = await auRubberApiClient.analyzeOrderFiles(selectedFiles);
+        setAnalysisResult(result);
+        setEditedAnalyses(result.files);
+        setSelectedFileIndex(0);
+        setStep("review");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to re-analyze files");
+      } finally {
+        setIsAnalyzing(false);
+      }
+    }
+  };
+
+  const shouldShowTrainButton = (analysis: AnalyzedOrderData): boolean => {
+    if (analysis.fileType !== "pdf") return false;
+    if (analysis.isNewCustomer) return true;
+    if (analysis.isNewFormat) return true;
+    if (analysis.extractionMethod === "ai" && analysis.confidence < 0.8) return true;
+    return false;
   };
 
   if (!isOpen) {
@@ -225,6 +277,39 @@ export function OrderImportModal({
                   </div>
                 )}
 
+                {shouldShowTrainButton(currentAnalysis) && (
+                  <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-amber-100 rounded-lg">
+                        <Sparkles className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-amber-900">Train Nix for Better Extraction</h4>
+                        <p className="text-sm text-amber-700 mt-1">
+                          {currentAnalysis.isNewCustomer
+                            ? "This appears to be from a new customer. Train Nix to recognize their PO format."
+                            : currentAnalysis.isNewFormat
+                              ? "This is a new document format from this customer. Train Nix on this layout."
+                              : "Extraction confidence is low. Training Nix can improve future results."}
+                        </p>
+                        <button
+                          onClick={handleTrainNix}
+                          disabled={!currentAnalysis.companyId}
+                          className="mt-3 inline-flex items-center px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 border border-amber-300 rounded-md hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Sparkles className="w-4 h-4 mr-1.5" />
+                          Train Nix
+                        </button>
+                        {!currentAnalysis.companyId && (
+                          <p className="text-xs text-amber-600 mt-2">
+                            Select a company above before training
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <OrderAnalysisReview
                   analysis={currentAnalysis}
                   companies={companies}
@@ -289,6 +374,20 @@ export function OrderImportModal({
           </div>
         </div>
       </div>
+
+      {showTrainingModal && trainingFile && currentAnalysis?.companyId && currentAnalysis?.formatHash && (
+        <PoTrainingModal
+          isOpen={showTrainingModal}
+          file={trainingFile}
+          companyId={currentAnalysis.companyId}
+          formatHash={currentAnalysis.formatHash}
+          onClose={() => {
+            setShowTrainingModal(false);
+            setTrainingFile(null);
+          }}
+          onTrainingComplete={handleTrainingComplete}
+        />
+      )}
     </div>
   );
 }

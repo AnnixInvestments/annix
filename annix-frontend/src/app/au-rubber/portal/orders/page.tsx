@@ -4,13 +4,19 @@ import { ORDER_STATUS_OPTIONS, statusColor } from "@annix/product-data/rubber/or
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Loader2, Upload, X } from "lucide-react";
 import { useToast } from "@/app/components/Toast";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import {
+  type AnalyzedOrderData,
+  type AnalyzeOrderFilesResult,
+  auRubberApiClient,
+} from "@/app/lib/api/auRubberApi";
 import type {
   RubberCompanyDto,
   RubberOrderDto,
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
+import { FileDropZone } from "../../components/FileDropZone";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
@@ -86,6 +92,9 @@ export default function AuRubberOrdersPage() {
   const [error, setError] = useState<Error | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [importFiles, setImportFiles] = useState<File[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeOrderFilesResult | null>(null);
 
   const fetchOrders = async (status?: number) => {
     try {
@@ -130,6 +139,37 @@ export default function AuRubberOrdersPage() {
   const handleOrderImported = (orderId: number, orderNumber: string) => {
     showToast(`Order ${orderNumber} imported successfully`, "success");
     router.push(`/au-rubber/portal/orders/${orderId}`);
+  };
+
+  const handleFilesDropped = (files: File[]) => {
+    setImportFiles(files);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setImportFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAnalyzeFiles = async () => {
+    if (importFiles.length === 0) {
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      const result = await auRubberApiClient.analyzeOrderFiles(importFiles);
+      setAnalysisResult(result);
+      setShowImportModal(true);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to analyze files", "error");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleImportModalClose = () => {
+    setShowImportModal(false);
+    setImportFiles([]);
+    setAnalysisResult(null);
   };
 
   const sortOrders = (ordersToSort: RubberOrderDto[]): RubberOrderDto[] => {
@@ -292,20 +332,6 @@ export default function AuRubberOrdersPage() {
               Export CSV
             </button>
             <button
-              onClick={() => setShowImportModal(true)}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                />
-              </svg>
-              Import Order
-            </button>
-            <button
               onClick={() => setShowNewOrderModal(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
             >
@@ -319,6 +345,69 @@ export default function AuRubberOrdersPage() {
               </svg>
               New Order
             </button>
+          </div>
+        </div>
+
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="p-4">
+            <div className="flex items-start gap-4">
+              <FileDropZone
+                onFilesSelected={handleFilesDropped}
+                accept=".pdf,application/pdf,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.eml,message/rfc822"
+                multiple={true}
+                disabled={isAnalyzing}
+                className="flex-1 border-2 border-dashed rounded-lg"
+              >
+                <div className="flex items-center justify-center py-6 px-4">
+                  <Upload className="w-8 h-8 mr-3 text-gray-400" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      Drop order files here to import
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      PDF, Excel, or Email files
+                    </p>
+                  </div>
+                </div>
+              </FileDropZone>
+
+              {importFiles.length > 0 && (
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      {importFiles.length} file{importFiles.length > 1 ? "s" : ""} selected
+                    </span>
+                    <button
+                      onClick={handleAnalyzeFiles}
+                      disabled={isAnalyzing}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        "Analyze Files"
+                      )}
+                    </button>
+                  </div>
+                  <ul className="divide-y divide-gray-200 border rounded-md max-h-24 overflow-y-auto">
+                    {importFiles.map((file, index) => (
+                      <li key={index} className="flex items-center justify-between px-3 py-1.5">
+                        <span className="text-sm text-gray-900 truncate">{file.name}</span>
+                        <button
+                          onClick={() => handleRemoveFile(index)}
+                          className="text-gray-400 hover:text-red-500 ml-2"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -612,10 +701,11 @@ export default function AuRubberOrdersPage() {
 
         <OrderImportModal
           isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
+          onClose={handleImportModalClose}
           onOrderCreated={handleOrderImported}
           companies={companies}
           products={products}
+          initialAnalysis={analysisResult}
         />
         <ConfirmModal
           isOpen={deleteOrderId !== null}

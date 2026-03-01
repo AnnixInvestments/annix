@@ -171,6 +171,8 @@ export interface AnalyzedOrderLine {
   rawText: string | null;
 }
 
+export type ExtractionMethod = "ai" | "template";
+
 export interface AnalyzedOrderData {
   filename: string;
   fileType: "pdf" | "excel" | "email";
@@ -184,6 +186,54 @@ export interface AnalyzedOrderData {
   errors: string[];
   emailSubject?: string | null;
   emailFrom?: string | null;
+  extractionMethod: ExtractionMethod;
+  templateId: number | null;
+  templateName: string | null;
+  formatHash: string | null;
+  isNewFormat: boolean;
+  isNewCustomer: boolean;
+}
+
+export interface RegionCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  pageNumber: number;
+}
+
+export interface PdfPageImage {
+  pageNumber: number;
+  imageData: string;
+  width: number;
+  height: number;
+}
+
+export interface TemplateRegionDto {
+  fieldName: string;
+  regionCoordinates: RegionCoordinates;
+  labelCoordinates?: RegionCoordinates | null;
+  labelText?: string | null;
+  sampleValue?: string | null;
+  confidenceThreshold?: number;
+}
+
+export interface CreateTemplateDto {
+  companyId: number;
+  formatHash: string;
+  templateName?: string;
+  regions: TemplateRegionDto[];
+}
+
+export interface PoTemplateDto {
+  id: number;
+  formatHash: string;
+  templateName: string | null;
+  useCount: number;
+  successCount: number;
+  successRate: number;
+  regionCount: number;
+  createdAt: string;
 }
 
 export interface AnalyzeOrderFilesResult {
@@ -2003,6 +2053,66 @@ class AuRubberApiClient {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  async orderDocumentPages(file: File): Promise<{ pages: PdfPageImage[] }> {
+    return this.requestWithFiles("/rubber-lining/portal/orders/document-pages", [file], {}, "file");
+  }
+
+  async extractOrderRegion(
+    file: File,
+    coordinates: RegionCoordinates,
+    fieldName: string,
+  ): Promise<{ text: string; confidence: number }> {
+    const url = `${this.baseURL}/rubber-lining/portal/orders/extract-region`;
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("coordinates", JSON.stringify(coordinates));
+    formData.append("fieldName", fieldName);
+
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error (${response.status}): ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async savePoTemplate(dto: CreateTemplateDto): Promise<{ templateId: number }> {
+    return this.request("/rubber-lining/portal/orders/templates", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async companyPoTemplates(companyId: number): Promise<{ templates: PoTemplateDto[] }> {
+    return this.request(`/rubber-lining/portal/orders/templates/${companyId}`);
+  }
+
+  async deletePoTemplate(templateId: number): Promise<{ success: boolean }> {
+    return this.request(`/rubber-lining/portal/orders/templates/${templateId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async computeOrderFormatHash(file: File): Promise<{ formatHash: string }> {
+    return this.requestWithFiles(
+      "/rubber-lining/portal/orders/compute-format-hash",
+      [file],
+      {},
+      "file",
+    );
   }
 }
 
