@@ -80,7 +80,7 @@ describe("RecordingController (e2e)", () => {
     get: jest.fn().mockImplementation((key: string) => {
       const config: Record<string, string> = {
         UPLOAD_DIR: "./test-uploads",
-        API_BASE_URL: "http://localhost:4001",
+        API_BASE_URL: "http://localhost:4001/api",
       };
       return config[key];
     }),

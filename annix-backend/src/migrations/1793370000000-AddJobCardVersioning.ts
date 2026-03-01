@@ -1,26 +1,26 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddJobCardVersioning1779000000000 implements MigrationInterface {
-  name = "AddJobCardVersioning1779000000000";
+export class AddJobCardVersioning1793370000000 implements MigrationInterface {
+  name = "AddJobCardVersioning1793370000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE "job_cards"
-      ADD COLUMN "version_number" integer DEFAULT 1
+      ADD COLUMN IF NOT EXISTS "version_number" integer DEFAULT 1
     `);
 
     await queryRunner.query(`
       ALTER TABLE "job_cards"
-      ADD COLUMN "source_file_path" character varying(500)
+      ADD COLUMN IF NOT EXISTS "source_file_path" character varying(500)
     `);
 
     await queryRunner.query(`
       ALTER TABLE "job_cards"
-      ADD COLUMN "source_file_name" character varying(255)
+      ADD COLUMN IF NOT EXISTS "source_file_name" character varying(255)
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "job_card_versions" (
+      CREATE TABLE IF NOT EXISTS "job_card_versions" (
         "id" SERIAL NOT NULL,
         "job_card_id" integer NOT NULL,
         "company_id" integer NOT NULL,
@@ -39,21 +39,27 @@ export class AddJobCardVersioning1779000000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "job_card_versions"
-      ADD CONSTRAINT "FK_job_card_versions_job_card"
-      FOREIGN KEY ("job_card_id") REFERENCES "job_cards"("id")
-      ON DELETE CASCADE ON UPDATE NO ACTION
+      DO $$ BEGIN
+        ALTER TABLE "job_card_versions"
+        ADD CONSTRAINT "FK_job_card_versions_job_card"
+        FOREIGN KEY ("job_card_id") REFERENCES "job_cards"("id")
+        ON DELETE CASCADE ON UPDATE NO ACTION;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "job_card_versions"
-      ADD CONSTRAINT "FK_job_card_versions_company"
-      FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id")
-      ON DELETE CASCADE ON UPDATE NO ACTION
+      DO $$ BEGIN
+        ALTER TABLE "job_card_versions"
+        ADD CONSTRAINT "FK_job_card_versions_company"
+        FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id")
+        ON DELETE CASCADE ON UPDATE NO ACTION;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_job_card_versions_job_card" ON "job_card_versions" ("job_card_id")
+      CREATE INDEX IF NOT EXISTS "IDX_job_card_versions_job_card" ON "job_card_versions" ("job_card_id")
     `);
   }
 

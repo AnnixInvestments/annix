@@ -1,11 +1,4 @@
-import { annixRepAuthHeaders } from "@/lib/api-config";
-
-const getApiUrl = () => {
-  if (typeof window !== "undefined") {
-    return "http://localhost:4001";
-  }
-  return "http://localhost:4001";
-};
+import { annixRepAuthHeaders, browserBaseUrl } from "@/lib/api-config";
 
 export interface TargetCustomerProfile {
   businessTypes?: string[];
@@ -1176,13 +1169,13 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export const annixRepApi = {
   dashboard: async (): Promise<AnnixRepDashboard> => {
     const [prospectsRes, meetingsRes, followUpsRes] = await Promise.all([
-      fetch(`${getApiUrl()}/annix-rep/prospects`, {
+      fetch(`${browserBaseUrl()}/annix-rep/prospects`, {
         headers: annixRepAuthHeaders(),
       }),
-      fetch(`${getApiUrl()}/annix-rep/meetings/today`, {
+      fetch(`${browserBaseUrl()}/annix-rep/meetings/today`, {
         headers: annixRepAuthHeaders(),
       }),
-      fetch(`${getApiUrl()}/annix-rep/prospects/follow-ups`, {
+      fetch(`${browserBaseUrl()}/annix-rep/prospects/follow-ups`, {
         headers: annixRepAuthHeaders(),
       }),
     ]);
@@ -1216,28 +1209,28 @@ export const annixRepApi = {
 
   prospects: {
     list: async (): Promise<Prospect[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
 
     listByStatus: async (status: ProspectStatus): Promise<Prospect[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/status/${status}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/status/${status}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
 
     detail: async (id: number): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/${id}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect>(response);
     },
 
     create: async (dto: CreateProspectDto): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1249,7 +1242,7 @@ export const annixRepApi = {
     },
 
     update: async (id: number, dto: Partial<CreateProspectDto>): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/${id}`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1261,15 +1254,18 @@ export const annixRepApi = {
     },
 
     updateStatus: async (id: number, status: ProspectStatus): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/status/${status}`, {
-        method: "PATCH",
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/prospects/${id}/status/${status}`,
+        {
+          method: "PATCH",
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<Prospect>(response);
     },
 
     markContacted: async (id: number): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/contacted`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/${id}/contacted`, {
         method: "POST",
         headers: annixRepAuthHeaders(),
       });
@@ -1277,27 +1273,33 @@ export const annixRepApi = {
     },
 
     completeFollowUp: async (id: number): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/complete-followup`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/prospects/${id}/complete-followup`,
+        {
+          method: "POST",
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<Prospect>(response);
     },
 
     snoozeFollowUp: async (id: number, days: number): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/snooze-followup`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/prospects/${id}/snooze-followup`,
+        {
+          method: "POST",
+          headers: {
+            ...annixRepAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ days }),
         },
-        body: JSON.stringify({ days }),
-      });
+      );
       return handleResponse<Prospect>(response);
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -1320,21 +1322,21 @@ export const annixRepApi = {
       if (radiusKm) params.set("radiusKm", radiusKm.toString());
       if (limit) params.set("limit", limit.toString());
 
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/nearby?${params}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/nearby?${params}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
 
     stats: async (): Promise<Record<ProspectStatus, number>> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/stats`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/stats`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Record<ProspectStatus, number>>(response);
     },
 
     followUpsDue: async (): Promise<Prospect[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/follow-ups`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/follow-ups`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
@@ -1344,7 +1346,7 @@ export const annixRepApi = {
       ids: number[],
       status: ProspectStatus,
     ): Promise<BulkUpdateStatusResponse> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/bulk/status`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/bulk/status`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1356,7 +1358,7 @@ export const annixRepApi = {
     },
 
     bulkDelete: async (ids: number[]): Promise<BulkDeleteResponse> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/bulk`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/bulk`, {
         method: "DELETE",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1368,7 +1370,7 @@ export const annixRepApi = {
     },
 
     exportCsv: async (): Promise<Blob> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/export/csv`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/export/csv`, {
         headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
@@ -1379,7 +1381,7 @@ export const annixRepApi = {
     },
 
     duplicates: async (): Promise<DuplicateProspects[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/duplicates`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/duplicates`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<DuplicateProspects[]>(response);
@@ -1389,7 +1391,7 @@ export const annixRepApi = {
       rows: ImportProspectRow[],
       skipInvalid = true,
     ): Promise<ImportProspectsResult> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/import`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/import`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1401,7 +1403,7 @@ export const annixRepApi = {
     },
 
     merge: async (dto: MergeProspectsDto): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/merge`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/merge`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1413,7 +1415,7 @@ export const annixRepApi = {
     },
 
     bulkTagOperation: async (dto: BulkTagOperationDto): Promise<BulkTagOperationResponse> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/bulk/tags`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/bulk/tags`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1428,7 +1430,7 @@ export const annixRepApi = {
       ids: number[],
       assignedToId: number | null,
     ): Promise<{ updated: number; updatedIds: number[] }> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/bulk/assign`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/bulk/assign`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1440,7 +1442,7 @@ export const annixRepApi = {
     },
 
     recalculateScores: async (): Promise<{ updated: number }> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/recalculate-scores`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/recalculate-scores`, {
         method: "POST",
         headers: annixRepAuthHeaders(),
       });
@@ -1449,9 +1451,12 @@ export const annixRepApi = {
 
     activities: async (id: number, limit?: number): Promise<ProspectActivity[]> => {
       const params = limit ? `?limit=${limit}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/activities${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/prospects/${id}/activities${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<ProspectActivity[]>(response);
     },
   },
@@ -1459,21 +1464,21 @@ export const annixRepApi = {
   customFields: {
     list: async (includeInactive = false): Promise<CustomFieldDefinition[]> => {
       const params = includeInactive ? "?includeInactive=true" : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields${params}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields${params}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<CustomFieldDefinition[]>(response);
     },
 
     detail: async (id: number): Promise<CustomFieldDefinition> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields/${id}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<CustomFieldDefinition>(response);
     },
 
     create: async (dto: CreateCustomFieldDto): Promise<CustomFieldDefinition> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1485,7 +1490,7 @@ export const annixRepApi = {
     },
 
     update: async (id: number, dto: UpdateCustomFieldDto): Promise<CustomFieldDefinition> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields/${id}`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1497,7 +1502,7 @@ export const annixRepApi = {
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -1508,7 +1513,7 @@ export const annixRepApi = {
     },
 
     reorder: async (orderedIds: number[]): Promise<CustomFieldDefinition[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields/reorder`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/custom-fields/reorder`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1522,14 +1527,14 @@ export const annixRepApi = {
 
   meetings: {
     list: async (): Promise<Meeting[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Meeting[]>(response);
     },
 
     today: async (): Promise<Meeting[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/today`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/today`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Meeting[]>(response);
@@ -1537,21 +1542,21 @@ export const annixRepApi = {
 
     upcoming: async (days?: number): Promise<Meeting[]> => {
       const params = days ? `?days=${days}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/upcoming${params}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/upcoming${params}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Meeting[]>(response);
     },
 
     detail: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Meeting>(response);
     },
 
     create: async (dto: CreateMeetingDto): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1563,7 +1568,7 @@ export const annixRepApi = {
     },
 
     update: async (id: number, dto: Partial<CreateMeetingDto>): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1575,7 +1580,7 @@ export const annixRepApi = {
     },
 
     start: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}/start`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}/start`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1587,7 +1592,7 @@ export const annixRepApi = {
     },
 
     end: async (id: number, notes?: string, outcomes?: string): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}/end`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}/end`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1599,7 +1604,7 @@ export const annixRepApi = {
     },
 
     cancel: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}/cancel`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}/cancel`, {
         method: "POST",
         headers: annixRepAuthHeaders(),
       });
@@ -1607,7 +1612,7 @@ export const annixRepApi = {
     },
 
     reschedule: async (id: number, dto: RescheduleMeetingDto): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}/reschedule`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}/reschedule`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1619,7 +1624,7 @@ export const annixRepApi = {
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -1630,7 +1635,7 @@ export const annixRepApi = {
     },
 
     createRecurring: async (dto: CreateRecurringMeetingDto): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/recurring`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/recurring`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1644,7 +1649,7 @@ export const annixRepApi = {
     expandedRecurring: async (startDate: string, endDate: string): Promise<Meeting[]> => {
       const params = new URLSearchParams({ startDate, endDate });
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/meetings/recurring/expanded?${params}`,
+        `${browserBaseUrl()}/annix-rep/meetings/recurring/expanded?${params}`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -1654,7 +1659,7 @@ export const annixRepApi = {
 
     seriesInstances: async (parentId: number): Promise<Meeting[]> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/meetings/recurring/${parentId}/instances`,
+        `${browserBaseUrl()}/annix-rep/meetings/recurring/${parentId}/instances`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -1663,7 +1668,7 @@ export const annixRepApi = {
     },
 
     updateRecurring: async (id: number, dto: UpdateRecurringMeetingDto): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/recurring/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/recurring/${id}`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1675,7 +1680,7 @@ export const annixRepApi = {
     },
 
     deleteRecurring: async (id: number, dto: DeleteRecurringMeetingDto): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/recurring/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meetings/recurring/${id}`, {
         method: "DELETE",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1692,28 +1697,28 @@ export const annixRepApi = {
 
   visits: {
     list: async (): Promise<Visit[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/visits`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Visit[]>(response);
     },
 
     today: async (): Promise<Visit[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/visits/today`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits/today`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Visit[]>(response);
     },
 
     byProspect: async (prospectId: number): Promise<Visit[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/visits/prospect/${prospectId}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits/prospect/${prospectId}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Visit[]>(response);
     },
 
     create: async (dto: CreateVisitDto): Promise<Visit> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/visits`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1725,7 +1730,7 @@ export const annixRepApi = {
     },
 
     checkIn: async (id: number, latitude: number, longitude: number): Promise<Visit> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/visits/${id}/check-in`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits/${id}/check-in`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1743,7 +1748,7 @@ export const annixRepApi = {
       outcome?: VisitOutcome,
       notes?: string,
     ): Promise<Visit> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/visits/${id}/check-out`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/visits/${id}/check-out`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1759,14 +1764,14 @@ export const annixRepApi = {
     oauthUrl: async (provider: CalendarProvider, redirectUri: string): Promise<{ url: string }> => {
       const params = new URLSearchParams({ redirectUri });
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/calendars/oauth-url/${provider}?${params}`,
+        `${browserBaseUrl()}/annix-rep/calendars/oauth-url/${provider}?${params}`,
         { headers: annixRepAuthHeaders() },
       );
       return handleResponse<{ url: string }>(response);
     },
 
     connect: async (dto: ConnectCalendarDto): Promise<CalendarConnection> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/connect`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/connect`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1778,21 +1783,21 @@ export const annixRepApi = {
     },
 
     connections: async (): Promise<CalendarConnection[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/connections`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/connections`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<CalendarConnection[]>(response);
     },
 
     connection: async (id: number): Promise<CalendarConnection> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/connections/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/connections/${id}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<CalendarConnection>(response);
     },
 
     update: async (id: number, dto: UpdateCalendarConnectionDto): Promise<CalendarConnection> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/connections/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/connections/${id}`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1804,7 +1809,7 @@ export const annixRepApi = {
     },
 
     disconnect: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/connections/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/connections/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -1816,7 +1821,7 @@ export const annixRepApi = {
 
     availableCalendars: async (connectionId: number): Promise<CalendarListItem[]> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/calendars/connections/${connectionId}/calendars`,
+        `${browserBaseUrl()}/annix-rep/calendars/connections/${connectionId}/calendars`,
         { headers: annixRepAuthHeaders() },
       );
       return handleResponse<CalendarListItem[]>(response);
@@ -1824,7 +1829,7 @@ export const annixRepApi = {
 
     sync: async (connectionId: number, fullSync?: boolean): Promise<SyncResult> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/calendars/connections/${connectionId}/sync`,
+        `${browserBaseUrl()}/annix-rep/calendars/connections/${connectionId}/sync`,
         {
           method: "POST",
           headers: {
@@ -1839,14 +1844,14 @@ export const annixRepApi = {
 
     events: async (startDate: string, endDate: string): Promise<CalendarEvent[]> => {
       const params = new URLSearchParams({ startDate, endDate });
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/events?${params}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/events?${params}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<CalendarEvent[]>(response);
     },
 
     colors: async (): Promise<CalendarColorScheme> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/colors`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/colors`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<CalendarColorScheme>(response);
@@ -1855,7 +1860,7 @@ export const annixRepApi = {
     setColors: async (
       colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }>,
     ): Promise<{ success: boolean }> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/colors`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/colors`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1872,7 +1877,7 @@ export const annixRepApi = {
       colorValue: string,
     ): Promise<void> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/calendars/colors/${colorType}/${colorKey}`,
+        `${browserBaseUrl()}/annix-rep/calendars/colors/${colorType}/${colorKey}`,
         {
           method: "PATCH",
           headers: {
@@ -1890,29 +1895,32 @@ export const annixRepApi = {
 
     resetColors: async (colorType?: CalendarColorType): Promise<{ success: boolean }> => {
       const params = colorType ? `?colorType=${colorType}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/colors/reset${params}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/calendars/colors/reset${params}`,
+        {
+          method: "DELETE",
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<{ success: boolean }>(response);
     },
 
     conflicts: async (): Promise<SyncConflict[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/conflicts`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/conflicts`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<SyncConflict[]>(response);
     },
 
     conflictCount: async (): Promise<{ count: number }> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/conflicts/count`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/conflicts/count`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<{ count: number }>(response);
     },
 
     conflict: async (id: number): Promise<SyncConflict> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/conflicts/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/conflicts/${id}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<SyncConflict>(response);
@@ -1922,19 +1930,22 @@ export const annixRepApi = {
       id: number,
       resolution: "keep_local" | "keep_remote" | "dismissed",
     ): Promise<SyncConflict> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/conflicts/${id}/resolve`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/calendars/conflicts/${id}/resolve`,
+        {
+          method: "POST",
+          headers: {
+            ...annixRepAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ resolution }),
         },
-        body: JSON.stringify({ resolution }),
-      });
+      );
       return handleResponse<SyncConflict>(response);
     },
 
     detectConflicts: async (): Promise<{ detected: number }> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/conflicts/detect`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/calendars/conflicts/detect`, {
         method: "POST",
         headers: annixRepAuthHeaders(),
       });
@@ -1944,7 +1955,7 @@ export const annixRepApi = {
 
   recordings: {
     initiate: async (dto: InitiateUploadDto): Promise<InitiateUploadResponse> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/recordings/initiate`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/recordings/initiate`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -1961,7 +1972,7 @@ export const annixRepApi = {
       data: Blob,
     ): Promise<{ chunkIndex: number; bytesReceived: number }> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/recordings/${recordingId}/chunk?index=${chunkIndex}`,
+        `${browserBaseUrl()}/annix-rep/recordings/${recordingId}/chunk?index=${chunkIndex}`,
         {
           method: "POST",
           headers: {
@@ -1975,28 +1986,34 @@ export const annixRepApi = {
     },
 
     complete: async (recordingId: number, dto: CompleteUploadDto): Promise<Recording> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/recordings/${recordingId}/complete`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/recordings/${recordingId}/complete`,
+        {
+          method: "POST",
+          headers: {
+            ...annixRepAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(dto),
         },
-        body: JSON.stringify(dto),
-      });
+      );
       return handleResponse<Recording>(response);
     },
 
     detail: async (recordingId: number): Promise<Recording> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/recordings/${recordingId}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/recordings/${recordingId}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Recording>(response);
     },
 
     byMeeting: async (meetingId: number): Promise<Recording | null> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/recordings/meeting/${meetingId}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/recordings/meeting/${meetingId}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       if (response.status === 404) return null;
       return handleResponse<Recording>(response);
     },
@@ -2006,7 +2023,7 @@ export const annixRepApi = {
       speakerLabels: Record<string, string>,
     ): Promise<Recording> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/recordings/${recordingId}/speaker-labels`,
+        `${browserBaseUrl()}/annix-rep/recordings/${recordingId}/speaker-labels`,
         {
           method: "PATCH",
           headers: {
@@ -2020,7 +2037,7 @@ export const annixRepApi = {
     },
 
     delete: async (recordingId: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/recordings/${recordingId}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/recordings/${recordingId}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -2034,14 +2051,14 @@ export const annixRepApi = {
       if (typeof window === "undefined") return null;
       const token = localStorage.getItem("annixRepAccessToken");
       if (!token) return null;
-      return `${getApiUrl()}/annix-rep/recordings/${recordingId}/stream?token=${encodeURIComponent(token)}`;
+      return `${browserBaseUrl()}/annix-rep/recordings/${recordingId}/stream?token=${encodeURIComponent(token)}`;
     },
   },
 
   transcripts: {
     byRecording: async (recordingId: number): Promise<Transcript | null> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/transcripts/recording/${recordingId}`,
+        `${browserBaseUrl()}/annix-rep/transcripts/recording/${recordingId}`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -2051,16 +2068,19 @@ export const annixRepApi = {
     },
 
     byMeeting: async (meetingId: number): Promise<Transcript | null> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/transcripts/meeting/${meetingId}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/transcripts/meeting/${meetingId}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       if (response.status === 404) return null;
       return handleResponse<Transcript>(response);
     },
 
     transcribe: async (recordingId: number): Promise<Transcript> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/transcripts/recording/${recordingId}/transcribe`,
+        `${browserBaseUrl()}/annix-rep/transcripts/recording/${recordingId}/transcribe`,
         {
           method: "POST",
           headers: annixRepAuthHeaders(),
@@ -2071,7 +2091,7 @@ export const annixRepApi = {
 
     retranscribe: async (recordingId: number): Promise<Transcript> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/transcripts/recording/${recordingId}/retranscribe`,
+        `${browserBaseUrl()}/annix-rep/transcripts/recording/${recordingId}/retranscribe`,
         {
           method: "POST",
           headers: annixRepAuthHeaders(),
@@ -2081,7 +2101,7 @@ export const annixRepApi = {
     },
 
     update: async (transcriptId: number, dto: UpdateTranscriptDto): Promise<Transcript> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/transcripts/${transcriptId}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/transcripts/${transcriptId}`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2094,7 +2114,7 @@ export const annixRepApi = {
 
     delete: async (recordingId: number): Promise<void> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/transcripts/recording/${recordingId}`,
+        `${browserBaseUrl()}/annix-rep/transcripts/recording/${recordingId}`,
         {
           method: "DELETE",
           headers: annixRepAuthHeaders(),
@@ -2110,7 +2130,7 @@ export const annixRepApi = {
   summaries: {
     preview: async (meetingId: number): Promise<SummaryPreview> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/summaries/meeting/${meetingId}/preview`,
+        `${browserBaseUrl()}/annix-rep/summaries/meeting/${meetingId}/preview`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -2119,42 +2139,45 @@ export const annixRepApi = {
     },
 
     generate: async (meetingId: number): Promise<MeetingSummary> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/summaries/meeting/${meetingId}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/summaries/meeting/${meetingId}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<MeetingSummary>(response);
     },
 
     send: async (meetingId: number, dto: SendSummaryDto): Promise<SendSummaryResult> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/summaries/meeting/${meetingId}/send`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/summaries/meeting/${meetingId}/send`,
+        {
+          method: "POST",
+          headers: {
+            ...annixRepAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(dto),
         },
-        body: JSON.stringify(dto),
-      });
+      );
       return handleResponse<SendSummaryResult>(response);
     },
   },
 
   crm: {
     configs: async (): Promise<CrmConfig[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<CrmConfig[]>(response);
     },
 
     config: async (id: number): Promise<CrmConfig> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs/${id}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<CrmConfig>(response);
     },
 
     create: async (dto: CreateCrmConfigDto): Promise<CrmConfig> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2166,7 +2189,7 @@ export const annixRepApi = {
     },
 
     update: async (id: number, dto: UpdateCrmConfigDto): Promise<CrmConfig> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs/${id}`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2178,7 +2201,7 @@ export const annixRepApi = {
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -2189,7 +2212,7 @@ export const annixRepApi = {
     },
 
     testConnection: async (id: number): Promise<{ success: boolean; message: string }> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${id}/test`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs/${id}/test`, {
         method: "POST",
         headers: annixRepAuthHeaders(),
       });
@@ -2198,7 +2221,7 @@ export const annixRepApi = {
 
     syncProspect: async (configId: number, prospectId: number): Promise<CrmSyncResult> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/crm/configs/${configId}/sync/prospect/${prospectId}`,
+        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/sync/prospect/${prospectId}`,
         {
           method: "POST",
           headers: annixRepAuthHeaders(),
@@ -2209,7 +2232,7 @@ export const annixRepApi = {
 
     syncMeeting: async (configId: number, meetingId: number): Promise<CrmSyncResult> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/crm/configs/${configId}/sync/meeting/${meetingId}`,
+        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/sync/meeting/${meetingId}`,
         {
           method: "POST",
           headers: annixRepAuthHeaders(),
@@ -2220,7 +2243,7 @@ export const annixRepApi = {
 
     syncAllProspects: async (configId: number): Promise<{ synced: number; failed: number }> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/crm/configs/${configId}/sync/all-prospects`,
+        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/sync/all-prospects`,
         {
           method: "POST",
           headers: annixRepAuthHeaders(),
@@ -2230,7 +2253,7 @@ export const annixRepApi = {
     },
 
     syncStatus: async (configId: number): Promise<CrmSyncStatus> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${configId}/status`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/configs/${configId}/status`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<CrmSyncStatus>(response);
@@ -2238,7 +2261,7 @@ export const annixRepApi = {
 
     exportProspectsCsv: async (configId?: number): Promise<Blob> => {
       const params = configId ? `?configId=${configId}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/export/prospects${params}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/export/prospects${params}`, {
         headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
@@ -2250,7 +2273,7 @@ export const annixRepApi = {
 
     exportMeetingsCsv: async (configId?: number): Promise<Blob> => {
       const params = configId ? `?configId=${configId}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/export/meetings${params}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/export/meetings${params}`, {
         headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
@@ -2262,9 +2285,12 @@ export const annixRepApi = {
 
     oauthUrl: async (provider: CrmProvider, redirectUri: string): Promise<{ url: string }> => {
       const params = new URLSearchParams({ redirectUri });
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/oauth/${provider}/url?${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/crm/oauth/${provider}/url?${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<{ url: string }>(response);
     },
 
@@ -2275,7 +2301,7 @@ export const annixRepApi = {
     ): Promise<CrmConfig> => {
       const params = new URLSearchParams({ code, redirectUri });
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/crm/oauth/${provider}/callback?${params}`,
+        `${browserBaseUrl()}/annix-rep/crm/oauth/${provider}/callback?${params}`,
         {
           method: "POST",
           headers: annixRepAuthHeaders(),
@@ -2285,26 +2311,35 @@ export const annixRepApi = {
     },
 
     disconnect: async (configId: number): Promise<{ success: boolean }> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${configId}/disconnect`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/disconnect`,
+        {
+          method: "POST",
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<{ success: boolean }>(response);
     },
 
     syncNow: async (configId: number): Promise<CrmSyncLog> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${configId}/sync-now`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/sync-now`,
+        {
+          method: "POST",
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<CrmSyncLog>(response);
     },
 
     pullAll: async (configId: number): Promise<CrmSyncLog> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${configId}/pull-all`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/pull-all`,
+        {
+          method: "POST",
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<CrmSyncLog>(response);
     },
 
@@ -2318,7 +2353,7 @@ export const annixRepApi = {
       if (offset) params.set("offset", offset.toString());
       const query = params.toString() ? `?${params}` : "";
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/crm/configs/${configId}/sync-logs${query}`,
+        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/sync-logs${query}`,
         { headers: annixRepAuthHeaders() },
       );
       return handleResponse<{ logs: CrmSyncLog[]; total: number }>(response);
@@ -2326,7 +2361,7 @@ export const annixRepApi = {
 
     refreshToken: async (configId: number): Promise<{ success: boolean }> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/crm/configs/${configId}/refresh-token`,
+        `${browserBaseUrl()}/annix-rep/crm/configs/${configId}/refresh-token`,
         {
           method: "POST",
           headers: annixRepAuthHeaders(),
@@ -2340,7 +2375,7 @@ export const annixRepApi = {
     scheduleGaps: async (date: string, minGapMinutes?: number): Promise<ScheduleGap[]> => {
       const params = new URLSearchParams({ date });
       if (minGapMinutes) params.set("minGapMinutes", minGapMinutes.toString());
-      const response = await fetch(`${getApiUrl()}/annix-rep/routes/gaps?${params}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/routes/gaps?${params}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<ScheduleGap[]>(response);
@@ -2357,7 +2392,7 @@ export const annixRepApi = {
       if (currentLng !== undefined) params.set("currentLng", currentLng.toString());
       if (maxSuggestions) params.set("maxSuggestions", maxSuggestions.toString());
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/routes/cold-call-suggestions?${params}`,
+        `${browserBaseUrl()}/annix-rep/routes/cold-call-suggestions?${params}`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -2371,7 +2406,7 @@ export const annixRepApi = {
       stops: Array<{ id: number; type: "prospect" | "meeting" }>,
       returnToStart?: boolean,
     ): Promise<OptimizedRoute> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/routes/optimize`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/routes/optimize`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2393,7 +2428,7 @@ export const annixRepApi = {
         params.set("includeColdCalls", includeColdCalls.toString());
       if (currentLat !== undefined) params.set("currentLat", currentLat.toString());
       if (currentLng !== undefined) params.set("currentLng", currentLng.toString());
-      const response = await fetch(`${getApiUrl()}/annix-rep/routes/plan-day?${params}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/routes/plan-day?${params}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<OptimizedRoute>(response);
@@ -2402,14 +2437,14 @@ export const annixRepApi = {
 
   repProfile: {
     status: async (): Promise<RepProfileStatus> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile/status`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile/status`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<RepProfileStatus>(response);
     },
 
     profile: async (): Promise<RepProfile | null> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile`, {
         headers: annixRepAuthHeaders(),
       });
       if (response.status === 404) return null;
@@ -2417,7 +2452,7 @@ export const annixRepApi = {
     },
 
     create: async (dto: CreateRepProfileDto): Promise<RepProfile> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2429,7 +2464,7 @@ export const annixRepApi = {
     },
 
     update: async (dto: UpdateRepProfileDto): Promise<RepProfile> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2441,7 +2476,7 @@ export const annixRepApi = {
     },
 
     completeSetup: async (): Promise<RepProfile> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile/complete-setup`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile/complete-setup`, {
         method: "POST",
         headers: annixRepAuthHeaders(),
       });
@@ -2449,7 +2484,7 @@ export const annixRepApi = {
     },
 
     searchTerms: async (): Promise<string[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile/search-terms`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/rep-profile/search-terms`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<string[]>(response);
@@ -2458,7 +2493,7 @@ export const annixRepApi = {
 
   analytics: {
     summary: async (): Promise<AnalyticsSummary> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/summary`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/analytics/summary`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<AnalyticsSummary>(response);
@@ -2473,7 +2508,7 @@ export const annixRepApi = {
       if (count) params.set("count", count.toString());
       const query = params.toString() ? `?${params}` : "";
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/analytics/meetings-over-time${query}`,
+        `${browserBaseUrl()}/annix-rep/analytics/meetings-over-time${query}`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -2482,7 +2517,7 @@ export const annixRepApi = {
     },
 
     prospectFunnel: async (): Promise<ProspectFunnel[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/prospect-funnel`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/analytics/prospect-funnel`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<ProspectFunnel[]>(response);
@@ -2490,21 +2525,24 @@ export const annixRepApi = {
 
     winLossRateTrends: async (months?: number): Promise<WinLossRateTrend[]> => {
       const params = months ? `?months=${months}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/win-loss-trends${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/analytics/win-loss-trends${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<WinLossRateTrend[]>(response);
     },
 
     activityHeatmap: async (): Promise<ActivityHeatmapCell[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/activity-heatmap`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/analytics/activity-heatmap`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<ActivityHeatmapCell[]>(response);
     },
 
     revenuePipeline: async (): Promise<RevenuePipeline[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/revenue-pipeline`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/analytics/revenue-pipeline`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<RevenuePipeline[]>(response);
@@ -2512,30 +2550,33 @@ export const annixRepApi = {
 
     topProspects: async (limit?: number): Promise<TopProspect[]> => {
       const params = limit ? `?limit=${limit}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/top-prospects${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/analytics/top-prospects${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<TopProspect[]>(response);
     },
   },
 
   bookingLinks: {
     list: async (): Promise<BookingLink[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/booking-links`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/booking-links`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<BookingLink[]>(response);
     },
 
     detail: async (id: number): Promise<BookingLink> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/booking-links/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/booking-links/${id}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<BookingLink>(response);
     },
 
     create: async (dto: CreateBookingLinkDto): Promise<BookingLink> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/booking-links`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/booking-links`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2547,7 +2588,7 @@ export const annixRepApi = {
     },
 
     update: async (id: number, dto: UpdateBookingLinkDto): Promise<BookingLink> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/booking-links/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/booking-links/${id}`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2559,7 +2600,7 @@ export const annixRepApi = {
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/booking-links/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/booking-links/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -2572,21 +2613,21 @@ export const annixRepApi = {
 
   goals: {
     list: async (): Promise<SalesGoal[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/goals`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<SalesGoal[]>(response);
     },
 
     byPeriod: async (period: GoalPeriod): Promise<SalesGoal> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/goals/${period}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals/${period}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<SalesGoal>(response);
     },
 
     createOrUpdate: async (dto: CreateGoalDto): Promise<SalesGoal> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/goals`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2598,7 +2639,7 @@ export const annixRepApi = {
     },
 
     update: async (period: GoalPeriod, dto: UpdateGoalDto): Promise<SalesGoal> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/goals/${period}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals/${period}`, {
         method: "PUT",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2610,7 +2651,7 @@ export const annixRepApi = {
     },
 
     delete: async (period: GoalPeriod): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/goals/${period}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals/${period}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -2621,7 +2662,7 @@ export const annixRepApi = {
     },
 
     progress: async (period: GoalPeriod): Promise<GoalProgress> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/goals/${period}/progress`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/goals/${period}/progress`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<GoalProgress>(response);
@@ -2631,16 +2672,19 @@ export const annixRepApi = {
   reports: {
     weeklyActivity: async (startDate: string, endDate: string): Promise<WeeklyActivityReport> => {
       const params = new URLSearchParams({ startDate, endDate });
-      const response = await fetch(`${getApiUrl()}/annix-rep/reports/weekly-activity?${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/reports/weekly-activity?${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<WeeklyActivityReport>(response);
     },
 
     weeklyActivityPdf: async (startDate: string, endDate: string): Promise<Blob> => {
       const params = new URLSearchParams({ startDate, endDate });
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/reports/weekly-activity/pdf?${params}`,
+        `${browserBaseUrl()}/annix-rep/reports/weekly-activity/pdf?${params}`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -2654,17 +2698,23 @@ export const annixRepApi = {
 
     monthlySales: async (month: string): Promise<MonthlySalesReport> => {
       const params = new URLSearchParams({ month });
-      const response = await fetch(`${getApiUrl()}/annix-rep/reports/monthly-sales?${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/reports/monthly-sales?${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<MonthlySalesReport>(response);
     },
 
     monthlySalesPdf: async (month: string): Promise<Blob> => {
       const params = new URLSearchParams({ month });
-      const response = await fetch(`${getApiUrl()}/annix-rep/reports/monthly-sales/pdf?${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/reports/monthly-sales/pdf?${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "PDF generation failed" }));
         throw new Error(error.message);
@@ -2678,7 +2728,7 @@ export const annixRepApi = {
     ): Promise<TerritoryCoverageReport> => {
       const params = new URLSearchParams({ startDate, endDate });
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/reports/territory-coverage?${params}`,
+        `${browserBaseUrl()}/annix-rep/reports/territory-coverage?${params}`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -2689,7 +2739,7 @@ export const annixRepApi = {
     territoryCoveragePdf: async (startDate: string, endDate: string): Promise<Blob> => {
       const params = new URLSearchParams({ startDate, endDate });
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/reports/territory-coverage/pdf?${params}`,
+        `${browserBaseUrl()}/annix-rep/reports/territory-coverage/pdf?${params}`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -2703,16 +2753,19 @@ export const annixRepApi = {
 
     meetingOutcomes: async (startDate: string, endDate: string): Promise<MeetingOutcomesReport> => {
       const params = new URLSearchParams({ startDate, endDate });
-      const response = await fetch(`${getApiUrl()}/annix-rep/reports/meeting-outcomes?${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/reports/meeting-outcomes?${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<MeetingOutcomesReport>(response);
     },
 
     meetingOutcomesPdf: async (startDate: string, endDate: string): Promise<Blob> => {
       const params = new URLSearchParams({ startDate, endDate });
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/reports/meeting-outcomes/pdf?${params}`,
+        `${browserBaseUrl()}/annix-rep/reports/meeting-outcomes/pdf?${params}`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -2727,7 +2780,7 @@ export const annixRepApi = {
 
   discovery: {
     search: async (dto: DiscoverProspectsDto): Promise<DiscoverySearchResult> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/discovery/search`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/discovery/search`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2739,7 +2792,7 @@ export const annixRepApi = {
     },
 
     import: async (businesses: DiscoveredBusiness[]): Promise<DiscoveryImportResult> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/discovery/import`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/discovery/import`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2751,7 +2804,7 @@ export const annixRepApi = {
     },
 
     quota: async (): Promise<DiscoveryQuota> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/discovery/quota`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/discovery/quota`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<DiscoveryQuota>(response);
@@ -2760,16 +2813,19 @@ export const annixRepApi = {
 
   meetingPlatforms: {
     connections: async (): Promise<MeetingPlatformConnection[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meeting-platforms/connections`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meeting-platforms/connections`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<MeetingPlatformConnection[]>(response);
     },
 
     connection: async (id: number): Promise<MeetingPlatformConnection> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meeting-platforms/connections/${id}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/meeting-platforms/connections/${id}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<MeetingPlatformConnection>(response);
     },
 
@@ -2779,7 +2835,7 @@ export const annixRepApi = {
     ): Promise<{ url: string; state: string }> => {
       const params = new URLSearchParams({ redirectUri });
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/meeting-platforms/oauth/${platform}/url?${params}`,
+        `${browserBaseUrl()}/annix-rep/meeting-platforms/oauth/${platform}/url?${params}`,
         { headers: annixRepAuthHeaders() },
       );
       return handleResponse<{ url: string; state: string }>(response);
@@ -2791,7 +2847,7 @@ export const annixRepApi = {
       redirectUri: string,
     ): Promise<MeetingPlatformConnection> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/meeting-platforms/oauth/${platform}/callback`,
+        `${browserBaseUrl()}/annix-rep/meeting-platforms/oauth/${platform}/callback`,
         {
           method: "POST",
           headers: {
@@ -2808,22 +2864,28 @@ export const annixRepApi = {
       id: number,
       dto: UpdateMeetingPlatformConnectionDto,
     ): Promise<MeetingPlatformConnection> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meeting-platforms/connections/${id}`, {
-        method: "PATCH",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/meeting-platforms/connections/${id}`,
+        {
+          method: "PATCH",
+          headers: {
+            ...annixRepAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(dto),
         },
-        body: JSON.stringify(dto),
-      });
+      );
       return handleResponse<MeetingPlatformConnection>(response);
     },
 
     disconnect: async (id: number): Promise<{ success: boolean }> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meeting-platforms/connections/${id}`, {
-        method: "DELETE",
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/meeting-platforms/connections/${id}`,
+        {
+          method: "DELETE",
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<{ success: boolean }>(response);
     },
 
@@ -2833,7 +2895,7 @@ export const annixRepApi = {
     ): Promise<{ synced: number; recordings: number }> => {
       const params = daysBack ? `?daysBack=${daysBack}` : "";
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/meeting-platforms/connections/${id}/sync${params}`,
+        `${browserBaseUrl()}/annix-rep/meeting-platforms/connections/${id}/sync${params}`,
         {
           method: "POST",
           headers: annixRepAuthHeaders(),
@@ -2845,7 +2907,7 @@ export const annixRepApi = {
     recordings: async (connectionId: number, limit?: number): Promise<PlatformMeetingRecord[]> => {
       const params = limit ? `?limit=${limit}` : "";
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/meeting-platforms/connections/${connectionId}/recordings${params}`,
+        `${browserBaseUrl()}/annix-rep/meeting-platforms/connections/${connectionId}/recordings${params}`,
         { headers: annixRepAuthHeaders() },
       );
       return handleResponse<PlatformMeetingRecord[]>(response);
@@ -2853,7 +2915,7 @@ export const annixRepApi = {
 
     recording: async (recordId: number): Promise<PlatformMeetingRecord> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/meeting-platforms/recordings/${recordId}`,
+        `${browserBaseUrl()}/annix-rep/meeting-platforms/recordings/${recordId}`,
         { headers: annixRepAuthHeaders() },
       );
       return handleResponse<PlatformMeetingRecord>(response);
@@ -2862,7 +2924,7 @@ export const annixRepApi = {
     availablePlatforms: async (): Promise<{
       platforms: Array<{ id: MeetingPlatform; name: string; description: string }>;
     }> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/meeting-platforms/available`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/meeting-platforms/available`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<{
@@ -2873,7 +2935,7 @@ export const annixRepApi = {
 
   teamsBot: {
     join: async (dto: JoinTeamsMeetingDto): Promise<TeamsBotSession> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/teams-bot/join`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/teams-bot/join`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2885,7 +2947,7 @@ export const annixRepApi = {
     },
 
     leave: async (sessionId: string): Promise<TeamsBotSession> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/teams-bot/leave`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/teams-bot/leave`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -2897,14 +2959,17 @@ export const annixRepApi = {
     },
 
     session: async (sessionId: string): Promise<TeamsBotSession> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/teams-bot/sessions/${sessionId}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/teams-bot/sessions/${sessionId}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<TeamsBotSession>(response);
     },
 
     activeSessions: async (): Promise<TeamsBotSession[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/teams-bot/sessions/active`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/teams-bot/sessions/active`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<TeamsBotSession[]>(response);
@@ -2912,15 +2977,18 @@ export const annixRepApi = {
 
     sessionHistory: async (limit?: number): Promise<TeamsBotSession[]> => {
       const params = limit ? `?limit=${limit}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/teams-bot/sessions/history${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/teams-bot/sessions/history${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<TeamsBotSession[]>(response);
     },
 
     transcript: async (sessionId: string): Promise<TeamsBotTranscript> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/teams-bot/sessions/${sessionId}/transcript`,
+        `${browserBaseUrl()}/annix-rep/teams-bot/sessions/${sessionId}/transcript`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -2929,7 +2997,7 @@ export const annixRepApi = {
     },
 
     eventsUrl: (sessionId: string): string => {
-      return `${getApiUrl()}/annix-rep/teams-bot/events/${sessionId}`;
+      return `${browserBaseUrl()}/annix-rep/teams-bot/events/${sessionId}`;
     },
   },
 };
@@ -3201,7 +3269,7 @@ export interface TeamHierarchyNode {
 export const teamApi = {
   organization: {
     current: async (): Promise<Organization | null> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/organization`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/organization`, {
         headers: annixRepAuthHeaders(),
       });
       if (response.status === 404) return null;
@@ -3209,7 +3277,7 @@ export const teamApi = {
     },
 
     create: async (dto: CreateOrganizationDto): Promise<Organization> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/organization`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/organization`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -3221,7 +3289,7 @@ export const teamApi = {
     },
 
     update: async (id: number, dto: UpdateOrganizationDto): Promise<Organization> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/organization/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/organization/${id}`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -3233,7 +3301,7 @@ export const teamApi = {
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/organization/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/organization/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -3244,7 +3312,7 @@ export const teamApi = {
     },
 
     stats: async (id: number): Promise<OrganizationStats> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/organization/${id}/stats`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/organization/${id}/stats`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<OrganizationStats>(response);
@@ -3253,21 +3321,21 @@ export const teamApi = {
 
   members: {
     list: async (): Promise<TeamMember[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/members`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/members`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<TeamMember[]>(response);
     },
 
     detail: async (id: number): Promise<TeamMember> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/members/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/members/${id}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<TeamMember>(response);
     },
 
     updateRole: async (id: number, role: TeamRole): Promise<TeamMember> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/members/${id}/role`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/members/${id}/role`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -3279,7 +3347,7 @@ export const teamApi = {
     },
 
     remove: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/members/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/members/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -3290,7 +3358,7 @@ export const teamApi = {
     },
 
     setReportsTo: async (id: number, reportsToId: number | null): Promise<TeamMember> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/members/${id}/reports-to`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/members/${id}/reports-to`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -3302,14 +3370,14 @@ export const teamApi = {
     },
 
     hierarchy: async (): Promise<TeamHierarchyNode[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/hierarchy`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/hierarchy`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<TeamHierarchyNode[]>(response);
     },
 
     myTeam: async (): Promise<TeamMember[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/my-team`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/my-team`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<TeamMember[]>(response);
@@ -3318,14 +3386,14 @@ export const teamApi = {
 
   invitations: {
     list: async (): Promise<TeamInvitation[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/invitations`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<TeamInvitation[]>(response);
     },
 
     create: async (dto: CreateInvitationDto): Promise<TeamInvitation> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/invitations`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -3337,22 +3405,30 @@ export const teamApi = {
     },
 
     validate: async (token: string): Promise<ValidateInvitationResult> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations/validate/${token}`);
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/team/invitations/validate/${token}`,
+      );
       return handleResponse<ValidateInvitationResult>(response);
     },
 
     accept: async (token: string): Promise<TeamMember> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations/${token}/accept`, {
-        method: "POST",
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/team/invitations/${token}/accept`,
+        {
+          method: "POST",
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<TeamMember>(response);
     },
 
     decline: async (token: string): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations/${token}/decline`, {
-        method: "POST",
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/team/invitations/${token}/decline`,
+        {
+          method: "POST",
+        },
+      );
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Decline failed" }));
         throw new Error(error.message);
@@ -3360,7 +3436,7 @@ export const teamApi = {
     },
 
     cancel: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/invitations/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -3371,7 +3447,7 @@ export const teamApi = {
     },
 
     resend: async (id: number): Promise<TeamInvitation> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations/${id}/resend`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/invitations/${id}/resend`, {
         method: "POST",
         headers: annixRepAuthHeaders(),
       });
@@ -3381,28 +3457,28 @@ export const teamApi = {
 
   territories: {
     list: async (): Promise<Territory[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/territories`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Territory[]>(response);
     },
 
     my: async (): Promise<Territory[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/territories/my`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/my`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Territory[]>(response);
     },
 
     detail: async (id: number): Promise<Territory> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/territories/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/${id}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Territory>(response);
     },
 
     create: async (dto: CreateTerritoryDto): Promise<Territory> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/territories`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -3414,7 +3490,7 @@ export const teamApi = {
     },
 
     update: async (id: number, dto: UpdateTerritoryDto): Promise<Territory> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/territories/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/${id}`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -3426,7 +3502,7 @@ export const teamApi = {
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/territories/${id}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
@@ -3437,7 +3513,7 @@ export const teamApi = {
     },
 
     assign: async (id: number, userId: number | null): Promise<Territory> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/territories/${id}/assign`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/${id}/assign`, {
         method: "PATCH",
         headers: {
           ...annixRepAuthHeaders(),
@@ -3449,7 +3525,7 @@ export const teamApi = {
     },
 
     prospects: async (id: number): Promise<Prospect[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/territories/${id}/prospects`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/territories/${id}/prospects`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
@@ -3458,14 +3534,17 @@ export const teamApi = {
 
   handoff: {
     handoff: async (prospectId: number, toUserId: number, reason?: string): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/handoff/${prospectId}`, {
-        method: "POST",
-        headers: {
-          ...annixRepAuthHeaders(),
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/prospects/handoff/${prospectId}`,
+        {
+          method: "POST",
+          headers: {
+            ...annixRepAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ toUserId, reason }),
         },
-        body: JSON.stringify({ toUserId, reason }),
-      });
+      );
       return handleResponse<Prospect>(response);
     },
 
@@ -3474,7 +3553,7 @@ export const teamApi = {
       toUserId: number,
       reason?: string,
     ): Promise<Prospect[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/handoff/bulk`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/handoff/bulk`, {
         method: "POST",
         headers: {
           ...annixRepAuthHeaders(),
@@ -3487,7 +3566,7 @@ export const teamApi = {
 
     history: async (prospectId: number): Promise<HandoffHistory[]> => {
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/prospects/handoff/${prospectId}/history`,
+        `${browserBaseUrl()}/annix-rep/prospects/handoff/${prospectId}/history`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -3499,7 +3578,7 @@ export const teamApi = {
   activity: {
     feed: async (limit?: number): Promise<TeamActivity[]> => {
       const params = limit ? `?limit=${limit}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/activity/feed${params}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/team/activity/feed${params}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<TeamActivity[]>(response);
@@ -3507,16 +3586,19 @@ export const teamApi = {
 
     myTeamFeed: async (limit?: number): Promise<TeamActivity[]> => {
       const params = limit ? `?limit=${limit}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/team/activity/feed/my-team${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/team/activity/feed/my-team${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<TeamActivity[]>(response);
     },
 
     userActivity: async (userId: number, limit?: number): Promise<TeamActivity[]> => {
       const params = limit ? `?limit=${limit}` : "";
       const response = await fetch(
-        `${getApiUrl()}/annix-rep/team/activity/user/${userId}${params}`,
+        `${browserBaseUrl()}/annix-rep/team/activity/user/${userId}${params}`,
         {
           headers: annixRepAuthHeaders(),
         },
@@ -3527,7 +3609,7 @@ export const teamApi = {
 
   manager: {
     dashboard: async (): Promise<ManagerDashboard> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/manager/dashboard`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/manager/dashboard`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<ManagerDashboard>(response);
@@ -3538,14 +3620,17 @@ export const teamApi = {
       if (startDate) params.set("startDate", startDate);
       if (endDate) params.set("endDate", endDate);
       const query = params.toString() ? `?${params}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/manager/team-performance${query}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/manager/team-performance${query}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<MemberPerformance[]>(response);
     },
 
     territoryPerformance: async (): Promise<TerritoryPerformance[]> => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/manager/territory-performance`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/manager/territory-performance`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<TerritoryPerformance[]>(response);
@@ -3554,7 +3639,7 @@ export const teamApi = {
     pipelineByRep: async (): Promise<
       Array<{ userId: number; userName: string; pipeline: number }>
     > => {
-      const response = await fetch(`${getApiUrl()}/annix-rep/manager/pipeline-by-rep`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/manager/pipeline-by-rep`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<Array<{ userId: number; userName: string; pipeline: number }>>(
@@ -3566,7 +3651,7 @@ export const teamApi = {
       metric?: "deals_won" | "pipeline_value" | "meetings_completed" | "prospects_created",
     ): Promise<LeaderboardEntry[]> => {
       const params = metric ? `?metric=${metric}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/manager/leaderboard${params}`, {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/manager/leaderboard${params}`, {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<LeaderboardEntry[]>(response);
@@ -3574,9 +3659,12 @@ export const teamApi = {
 
     overdueFollowUps: async (limit?: number): Promise<TeamOverdueFollowUp[]> => {
       const params = limit ? `?limit=${limit}` : "";
-      const response = await fetch(`${getApiUrl()}/annix-rep/manager/overdue-followups${params}`, {
-        headers: annixRepAuthHeaders(),
-      });
+      const response = await fetch(
+        `${browserBaseUrl()}/annix-rep/manager/overdue-followups${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
       return handleResponse<TeamOverdueFollowUp[]>(response);
     },
   },
@@ -3584,18 +3672,20 @@ export const teamApi = {
 
 export const publicBookingApi = {
   linkDetails: async (slug: string): Promise<PublicBookingLink> => {
-    const response = await fetch(`${getApiUrl()}/public/booking/${slug}`);
+    const response = await fetch(`${browserBaseUrl()}/public/booking/${slug}`);
     return handleResponse<PublicBookingLink>(response);
   },
 
   availability: async (slug: string, date: string): Promise<AvailableSlot[]> => {
     const params = new URLSearchParams({ date });
-    const response = await fetch(`${getApiUrl()}/public/booking/${slug}/availability?${params}`);
+    const response = await fetch(
+      `${browserBaseUrl()}/public/booking/${slug}/availability?${params}`,
+    );
     return handleResponse<AvailableSlot[]>(response);
   },
 
   bookSlot: async (slug: string, dto: BookSlotDto): Promise<BookingConfirmation> => {
-    const response = await fetch(`${getApiUrl()}/public/booking/${slug}/book`, {
+    const response = await fetch(`${browserBaseUrl()}/public/booking/${slug}/book`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

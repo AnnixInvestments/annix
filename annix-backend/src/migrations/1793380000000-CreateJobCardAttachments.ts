@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateJobCardAttachments1779100000000 implements MigrationInterface {
-  name = "CreateJobCardAttachments1779100000000";
+export class CreateJobCardAttachments1793380000000 implements MigrationInterface {
+  name = "CreateJobCardAttachments1793380000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE "job_card_attachments" (
+      CREATE TABLE IF NOT EXISTS "job_card_attachments" (
         "id" SERIAL NOT NULL,
         "job_card_id" integer NOT NULL,
         "company_id" integer NOT NULL,
@@ -27,25 +27,31 @@ export class CreateJobCardAttachments1779100000000 implements MigrationInterface
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "job_card_attachments"
-      ADD CONSTRAINT "FK_job_card_attachments_job_card"
-      FOREIGN KEY ("job_card_id") REFERENCES "job_cards"("id")
-      ON DELETE CASCADE ON UPDATE NO ACTION
+      DO $$ BEGIN
+        ALTER TABLE "job_card_attachments"
+        ADD CONSTRAINT "FK_job_card_attachments_job_card"
+        FOREIGN KEY ("job_card_id") REFERENCES "job_cards"("id")
+        ON DELETE CASCADE ON UPDATE NO ACTION;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "job_card_attachments"
-      ADD CONSTRAINT "FK_job_card_attachments_company"
-      FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id")
-      ON DELETE CASCADE ON UPDATE NO ACTION
+      DO $$ BEGIN
+        ALTER TABLE "job_card_attachments"
+        ADD CONSTRAINT "FK_job_card_attachments_company"
+        FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id")
+        ON DELETE CASCADE ON UPDATE NO ACTION;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_job_card_attachments_job_card" ON "job_card_attachments" ("job_card_id")
+      CREATE INDEX IF NOT EXISTS "IDX_job_card_attachments_job_card" ON "job_card_attachments" ("job_card_id")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_job_card_attachments_status" ON "job_card_attachments" ("extraction_status")
+      CREATE INDEX IF NOT EXISTS "IDX_job_card_attachments_status" ON "job_card_attachments" ("extraction_status")
     `);
   }
 

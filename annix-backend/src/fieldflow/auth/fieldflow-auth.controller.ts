@@ -136,7 +136,7 @@ export class AnnixRepAuthController {
     }
 
     try {
-      const callbackUrl = `${process.env.API_URL || "http://localhost:4001"}/annix-rep/auth/oauth/callback`;
+      const callbackUrl = `${process.env.API_URL || "http://localhost:4001/api"}/annix-rep/auth/oauth/callback`;
       const authResponse = await this.authService.oauthLogin(
         oauthProvider as OAuthProvider,
         code,
@@ -186,7 +186,7 @@ export class AnnixRepAuthController {
     }
 
     const state = `${provider}:${Buffer.from(redirect || "/voice-filter").toString("base64")}:${Date.now()}`;
-    const callbackUrl = `${process.env.API_URL || "http://localhost:4001"}/annix-rep/auth/oauth/callback`;
+    const callbackUrl = `${process.env.API_URL || "http://localhost:4001/api"}/annix-rep/auth/oauth/callback`;
     const authUrl = this.authService.oauthAuthorizationUrl(
       oauthProvider as OAuthProvider,
       callbackUrl,

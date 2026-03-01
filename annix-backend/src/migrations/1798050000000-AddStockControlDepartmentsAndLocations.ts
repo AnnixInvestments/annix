@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddStockControlDepartmentsAndLocations1772000000000 implements MigrationInterface {
-  name = "AddStockControlDepartmentsAndLocations1772000000000";
+export class AddStockControlDepartmentsAndLocations1798050000000 implements MigrationInterface {
+  name = "AddStockControlDepartmentsAndLocations1798050000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE "stock_control_departments" (
+      CREATE TABLE IF NOT EXISTS "stock_control_departments" (
         "id" SERIAL NOT NULL,
         "name" character varying(100) NOT NULL,
         "display_order" integer,
@@ -18,14 +18,17 @@ export class AddStockControlDepartmentsAndLocations1772000000000 implements Migr
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "stock_control_departments"
-      ADD CONSTRAINT "FK_stock_control_departments_company"
-      FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id")
-      ON DELETE CASCADE ON UPDATE NO ACTION
+      DO $$ BEGIN
+        ALTER TABLE "stock_control_departments"
+        ADD CONSTRAINT "FK_stock_control_departments_company"
+        FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id")
+        ON DELETE CASCADE ON UPDATE NO ACTION;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "stock_control_locations" (
+      CREATE TABLE IF NOT EXISTS "stock_control_locations" (
         "id" SERIAL NOT NULL,
         "name" character varying(100) NOT NULL,
         "description" character varying(255),
@@ -39,34 +42,43 @@ export class AddStockControlDepartmentsAndLocations1772000000000 implements Migr
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "stock_control_locations"
-      ADD CONSTRAINT "FK_stock_control_locations_company"
-      FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id")
-      ON DELETE CASCADE ON UPDATE NO ACTION
+      DO $$ BEGIN
+        ALTER TABLE "stock_control_locations"
+        ADD CONSTRAINT "FK_stock_control_locations_company"
+        FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id")
+        ON DELETE CASCADE ON UPDATE NO ACTION;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
       ALTER TABLE "stock_control_staff_members"
-      ADD COLUMN "department_id" integer
+      ADD COLUMN IF NOT EXISTS "department_id" integer
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "stock_control_staff_members"
-      ADD CONSTRAINT "FK_staff_members_department"
-      FOREIGN KEY ("department_id") REFERENCES "stock_control_departments"("id")
-      ON DELETE SET NULL ON UPDATE NO ACTION
+      DO $$ BEGIN
+        ALTER TABLE "stock_control_staff_members"
+        ADD CONSTRAINT "FK_staff_members_department"
+        FOREIGN KEY ("department_id") REFERENCES "stock_control_departments"("id")
+        ON DELETE SET NULL ON UPDATE NO ACTION;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
       ALTER TABLE "stock_items"
-      ADD COLUMN "location_id" integer
+      ADD COLUMN IF NOT EXISTS "location_id" integer
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "stock_items"
-      ADD CONSTRAINT "FK_stock_items_location"
-      FOREIGN KEY ("location_id") REFERENCES "stock_control_locations"("id")
-      ON DELETE SET NULL ON UPDATE NO ACTION
+      DO $$ BEGIN
+        ALTER TABLE "stock_items"
+        ADD CONSTRAINT "FK_stock_items_location"
+        FOREIGN KEY ("location_id") REFERENCES "stock_control_locations"("id")
+        ON DELETE SET NULL ON UPDATE NO ACTION;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
   }
 

@@ -4,16 +4,16 @@
     {
       "name": "backend",
       "start": "pnpm dev:backend",
-      "stop": "powershell -Command \"Get-NetTCPConnection -LocalPort 4001 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\"",
-      "kill": "powershell -Command \"Get-NetTCPConnection -LocalPort 4001 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\"",
+      "stop": "npx ts-node scripts/kill-port.ts 4001",
+      "kill": "npx ts-node scripts/kill-port.ts 4001",
       "readyPattern": "Nest application successfully started",
       "port": 4001
     },
     {
       "name": "frontend",
       "start": "pnpm dev:frontend",
-      "stop": "powershell -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\"",
-      "kill": "powershell -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\"",
+      "stop": "npx ts-node scripts/kill-port.ts 3000",
+      "kill": "npx ts-node scripts/kill-port.ts 3000",
       "readyPattern": "Ready in",
       "port": 3000
     }

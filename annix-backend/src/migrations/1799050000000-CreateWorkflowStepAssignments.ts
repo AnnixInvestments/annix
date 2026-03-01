@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateWorkflowStepAssignments1771000000000 implements MigrationInterface {
-  name = "CreateWorkflowStepAssignments1771000000000";
+export class CreateWorkflowStepAssignments1799050000000 implements MigrationInterface {
+  name = "CreateWorkflowStepAssignments1799050000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE workflow_step_assignments (
+      CREATE TABLE IF NOT EXISTS workflow_step_assignments (
         id SERIAL PRIMARY KEY,
         company_id INT NOT NULL REFERENCES stock_control_companies(id) ON DELETE CASCADE,
         workflow_step VARCHAR(50) NOT NULL,
@@ -18,14 +18,14 @@ export class CreateWorkflowStepAssignments1771000000000 implements MigrationInte
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_workflow_step_assignments_company_step
+      CREATE INDEX IF NOT EXISTS idx_workflow_step_assignments_company_step
       ON workflow_step_assignments(company_id, workflow_step)
     `);
 
     await queryRunner.query(`
       ALTER TABLE workflow_notifications
-        ADD COLUMN sender_id INT REFERENCES stock_control_users(id) ON DELETE SET NULL,
-        ADD COLUMN sender_name VARCHAR(255)
+        ADD COLUMN IF NOT EXISTS sender_id INT REFERENCES stock_control_users(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS sender_name VARCHAR(255)
     `);
   }
 

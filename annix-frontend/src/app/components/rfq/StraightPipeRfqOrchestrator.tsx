@@ -59,6 +59,7 @@ import {
   validatePage2Specifications,
   validatePage3Items,
 } from "@/app/lib/utils/validation";
+import { browserBaseUrl } from "@/lib/api-config";
 import BOQStep from "./steps/BOQStep";
 import ItemUploadStep from "./steps/ItemUploadStep";
 import ProjectDetailsStep from "./steps/ProjectDetailsStep";
@@ -1287,7 +1288,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         if (temperatureCelsius !== undefined) {
           try {
             const ptMaterialGroup = materialGroup || "Carbon Steel A105 (Group 1.1)";
-            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001"}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`;
+            const apiUrl = `${browserBaseUrl()}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`;
             log.debug(`P/T API call for ${standardCode}:`, apiUrl);
             const response = await fetch(apiUrl);
             if (response.ok) {
