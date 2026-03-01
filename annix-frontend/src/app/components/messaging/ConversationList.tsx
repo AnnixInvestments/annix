@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ConversationSummary,
   ConversationType,
@@ -39,7 +39,10 @@ export function ConversationList({
 }: ConversationListProps) {
   const [showArchived, setShowArchived] = useState(false);
 
-  const filteredConversations = conversations.filter((c) => showArchived || !c.isArchived);
+  const filteredConversations = useMemo(
+    () => conversations.filter((c) => showArchived || !c.isArchived),
+    [conversations, showArchived],
+  );
 
   if (isLoading) {
     return (

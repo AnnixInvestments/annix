@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -29,6 +30,7 @@ export class RubberRollStock {
   @Column({ name: "roll_number", type: "varchar", length: 100, unique: true })
   rollNumber: string;
 
+  @Index()
   @Column({ name: "compound_coding_id", type: "int", nullable: true })
   compoundCodingId: number | null;
 
@@ -71,6 +73,7 @@ export class RubberRollStock {
   })
   lengthM: number | null;
 
+  @Index()
   @Column({
     name: "status",
     type: "enum",

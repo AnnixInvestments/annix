@@ -28,21 +28,24 @@ function DownloadButton({ presignedUrl, fileName }: { presignedUrl: string; file
 
   const handleDownload = async () => {
     setDownloading(true);
+    let blobUrl: string | null = null;
     try {
       const response = await fetch(presignedUrl);
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = url;
+      link.href = blobUrl;
       link.download = fileName || "document.pdf";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
     } catch (error) {
       log.error("Download failed:", error);
       window.open(presignedUrl, "_blank");
     } finally {
+      if (blobUrl) {
+        window.URL.revokeObjectURL(blobUrl);
+      }
       setDownloading(false);
     }
   };
@@ -94,21 +97,24 @@ function XfaWarningBanner({ presignedUrl, fileName }: { presignedUrl: string; fi
 
   const handleDownload = async () => {
     setDownloading(true);
+    let blobUrl: string | null = null;
     try {
       const response = await fetch(presignedUrl);
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = url;
+      link.href = blobUrl;
       link.download = fileName || "document.pdf";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
     } catch (error) {
       log.error("Download failed:", error);
       window.open(presignedUrl, "_blank");
     } finally {
+      if (blobUrl) {
+        window.URL.revokeObjectURL(blobUrl);
+      }
       setDownloading(false);
     }
   };
