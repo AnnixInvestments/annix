@@ -1,14 +1,46 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { generateUniqueId } from "../lib/datetime";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE, StorageResult } from "../storage/storage.interface";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
+import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
+
+export interface ParsedCompoundCode {
+  brand: string;
+  grade: string;
+  shoreHardness: number;
+  color: string;
+  colorName: string;
+  curingMethod: string;
+  curingMethodName: string;
+  supplierCode: string;
+  rubberType: string;
+}
+
+const COLOR_MAP: Record<string, string> = {
+  R: "Red",
+  B: "Black",
+  G: "Grey",
+  W: "White",
+  N: "Natural",
+  Y: "Yellow",
+  O: "Orange",
+  GR: "Green",
+};
+
+const CURING_MAP: Record<string, string> = {
+  SC: "Steam Cured",
+  AC: "Autoclave Cured",
+  PC: "Press Cured",
+  RC: "Rotocure",
+};
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParseModule = require("pdf-parse");
@@ -68,6 +100,8 @@ export class RubberInboundEmailService {
   constructor(
     @InjectRepository(RubberCompany)
     private companyRepository: Repository<RubberCompany>,
+    @InjectRepository(RubberProductCoding)
+    private productCodingRepository: Repository<RubberProductCoding>,
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
     private cocService: RubberCocService,
@@ -455,6 +489,8 @@ export class RubberInboundEmailService {
       } else {
         dataPdfs.push(i);
 
+        const filenameInfo = this.parseFilenameForCocInfo(file.originalname);
+
         const supplierInfo = await this.identifySupplierWithAi(pdfText, file.originalname);
         const cocType = supplierInfo?.cocType || SupplierCocType.COMPOUNDER;
         const companyId = supplierInfo?.companyId || null;
@@ -469,7 +505,15 @@ export class RubberInboundEmailService {
           this.logger.error(`Failed to extract data from ${file.originalname}: ${error.message}`);
         }
 
-        const batchNumbers = (extractedData?.batchNumbers as string[]) || [];
+        const batchNumbersFromExtraction = (extractedData?.batchNumbers as string[]) || [];
+        const batchNumbers = filenameInfo.batchNumbers.length > 0
+          ? filenameInfo.batchNumbers
+          : batchNumbersFromExtraction;
+
+        const compoundCodeFromFilename = filenameInfo.compoundCode;
+        if (compoundCodeFromFilename && extractedData) {
+          extractedData.compoundCode = compoundCodeFromFilename;
+        }
 
         analyzedFiles.push({
           filename: file.originalname,
@@ -525,6 +569,20 @@ export class RubberInboundEmailService {
       const analyzed = analysis.files[dataIdx];
       const file = files[dataIdx];
 
+      const filenameInfo = this.parseFilenameForCocInfo(file.originalname);
+      const compoundInfo = await this.processCompoundCodeFromFilename(file.originalname);
+
+      const batchNumbers = filenameInfo.batchNumbers.length > 0
+        ? filenameInfo.batchNumbers
+        : analyzed.batchNumbers;
+      const cocNumber = batchNumbers.length > 0
+        ? this.formatBatchRange(batchNumbers)
+        : undefined;
+
+      const compoundCode = compoundInfo.compoundCode ||
+        (analyzed.extractedData?.compoundCode as string) ||
+        undefined;
+
       const subPath = analyzed.companyId
         ? `rubber-lining/cocs/${analyzed.companyId}`
         : `rubber-lining/cocs/${(analyzed.cocType || "compounder").toLowerCase()}`;
@@ -536,18 +594,25 @@ export class RubberInboundEmailService {
           cocType: analyzed.cocType || SupplierCocType.COMPOUNDER,
           supplierCompanyId: analyzed.companyId || undefined,
           documentPath: storageResult.path,
-          compoundCode: (analyzed.extractedData?.compoundCode as string) || undefined,
+          cocNumber,
+          compoundCode,
         },
         createdBy,
       );
 
       if (analyzed.extractedData) {
-        await this.cocService.setExtractedData(coc.id, analyzed.extractedData);
+        const enrichedData = {
+          ...analyzed.extractedData,
+          compoundCode,
+          compoundCodingId: compoundInfo.compoundCodingId,
+          parsedCompoundInfo: compoundInfo.parsedInfo,
+        };
+        await this.cocService.setExtractedData(coc.id, enrichedData);
       }
 
       cocIds.push(coc.id);
       createdCocsByIndex.set(dataIdx, coc.id);
-      this.logger.log(`Created CoC ${coc.id} from ${analyzed.filename}`);
+      this.logger.log(`Created CoC ${coc.id} (${cocNumber || "no batch"}) compound=${compoundCode} from ${analyzed.filename}`);
     }
 
     for (const graphIdx of analysis.graphPdfs) {
@@ -597,7 +662,7 @@ export class RubberInboundEmailService {
   private async identifySupplierWithAi(
     pdfText: string,
     filename: string,
-  ): Promise<{ cocType: SupplierCocType; companyId?: number } | null> {
+  ): Promise<{ cocType: SupplierCocType; companyId?: number; documentType?: string } | null> {
     const companies = await this.companyRepository.find();
     const filenameLower = filename.toLowerCase();
     const pdfTextLower = pdfText.toLowerCase();
@@ -643,23 +708,31 @@ export class RubberInboundEmailService {
 
     const truncatedText = pdfText.length > 5000 ? pdfText.substring(0, 5000) : pdfText;
 
-    const systemPrompt = `You are analyzing rubber industry Certificate of Conformance (CoC) documents to identify the supplier type.
+    const systemPrompt = `You are NIX, an AI assistant analyzing documents for AU Industries' rubber lining operations. Your task is to classify incoming documents and identify the supplier.
 
-There are two types of suppliers:
-1. COMPOUNDER - Companies that compound rubber (mix raw materials). Usually S&N Rubber or similar. Their documents typically mention:
-   - Batch numbers, compound codes, mixing dates
-   - Physical properties like Shore A hardness, specific gravity, tensile strength
-   - Rheometer data (S-min, S-max, Ts2, Tc90)
-   - Terms like "compound", "batch", "mixing"
+DOCUMENT TYPES:
+1. SUPPLIER_COC - Certificate of Conformance from suppliers
+   - COMPOUNDER CoC: From rubber compounding companies (e.g., S&N Rubber). Contains batch numbers, compound codes, mixing dates, Shore A hardness, specific gravity, tensile strength, rheometer data (S-min, S-max, Ts2, Tc90)
+   - CALENDARER CoC: From rubber calendering companies (e.g., Impilo Industries). Contains roll numbers, sheet specs, order/ticket numbers, calendering operations
 
-2. CALENDARER - Companies that calender rubber into sheets/rolls. Usually Impilo or similar. Their documents typically mention:
-   - Roll numbers, sheet specifications, order numbers, ticket numbers
-   - Calendering operations, rubber sheets
-   - Terms like "calendering", "roll", "sheet", "lining"
-   - IMPILO INDUSTRIES header
+2. DELIVERY_NOTE - Goods received documentation
+   - Contains delivery date, quantities, item descriptions, supplier details
 
-Respond ONLY with a JSON object in this exact format:
-{"supplierType": "COMPOUNDER" or "CALENDARER", "confidence": 0.0-1.0, "reason": "brief explanation"}`;
+3. PURCHASE_ORDER - Orders placed by AU Industries
+   - Contains PO number, line items, quantities, pricing
+
+4. INVOICE - Supplier invoices for payment
+   - Contains invoice number, line items, amounts, payment terms
+
+5. QUOTE - Supplier quotations
+   - Contains quoted prices, quantities, validity period
+
+6. UNKNOWN - Cannot confidently classify the document
+
+For SUPPLIER_COC documents, also identify the supplier type (COMPOUNDER or CALENDARER).
+
+Respond ONLY with a JSON object:
+{"documentType": "SUPPLIER_COC"|"DELIVERY_NOTE"|"PURCHASE_ORDER"|"INVOICE"|"QUOTE"|"UNKNOWN", "supplierType": "COMPOUNDER"|"CALENDARER"|null, "confidence": 0.0-1.0, "reason": "brief explanation"}`;
 
     const userMessage = `Analyze this PDF document and identify the supplier type.
 
@@ -674,47 +747,124 @@ ${truncatedText}`;
         systemPrompt,
       );
 
-      this.logger.log(`AI response for supplier identification: ${response.content}`);
+      this.logger.log(`NIX response for document classification: ${response.content}`);
 
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        if (
-          parsed.supplierType &&
-          (parsed.supplierType === "COMPOUNDER" || parsed.supplierType === "CALENDARER")
-        ) {
-          const cocType =
-            parsed.supplierType === "CALENDARER"
-              ? SupplierCocType.CALENDARER
-              : SupplierCocType.COMPOUNDER;
+        const validDocTypes = ["SUPPLIER_COC", "DELIVERY_NOTE", "PURCHASE_ORDER", "INVOICE", "QUOTE", "UNKNOWN"];
 
-          let companyId: number | undefined;
-          if (cocType === SupplierCocType.CALENDARER) {
-            const calendarerCompany = companies.find(
-              (c) =>
-                c.name.toLowerCase().includes("impilo") ||
-                c.name.toLowerCase().includes("calendarer"),
-            );
-            companyId = calendarerCompany?.id;
-          } else {
-            const compounderCompany = companies.find(
-              (c) =>
-                c.name.toLowerCase().includes("s&n") ||
-                c.name.toLowerCase().includes("compounder"),
-            );
-            companyId = compounderCompany?.id;
+        if (parsed.documentType && validDocTypes.includes(parsed.documentType)) {
+          this.logger.log(
+            `NIX classified as ${parsed.documentType}, supplier: ${parsed.supplierType}, confidence: ${parsed.confidence}`,
+          );
+
+          if (parsed.documentType === "SUPPLIER_COC" && parsed.supplierType) {
+            const cocType =
+              parsed.supplierType === "CALENDARER"
+                ? SupplierCocType.CALENDARER
+                : SupplierCocType.COMPOUNDER;
+
+            let companyId: number | undefined;
+            if (cocType === SupplierCocType.CALENDARER) {
+              const calendarerCompany = companies.find(
+                (c) =>
+                  c.name.toLowerCase().includes("impilo") ||
+                  c.name.toLowerCase().includes("calendarer"),
+              );
+              companyId = calendarerCompany?.id;
+            } else {
+              const compounderCompany = companies.find(
+                (c) =>
+                  c.name.toLowerCase().includes("s&n") ||
+                  c.name.toLowerCase().includes("compounder"),
+              );
+              companyId = compounderCompany?.id;
+            }
+
+            return { cocType, companyId, documentType: parsed.documentType };
           }
 
-          return { cocType, companyId };
+          if (parsed.documentType !== "UNKNOWN") {
+            this.logger.log(`Document is ${parsed.documentType} - not a supplier CoC, requires manual filing`);
+          }
         }
       }
 
-      this.logger.warn("AI response did not contain valid supplier type JSON");
+      this.logger.warn("NIX could not classify document");
       return null;
     } catch (error) {
       this.logger.error(`AI supplier identification failed: ${error.message}`);
       return null;
     }
+  }
+
+  private parseFilenameForCocInfo(filename: string): {
+    batchNumbers: string[];
+    compoundCode: string | null;
+  } {
+    const nameWithoutExt = filename.replace(/\.pdf$/i, "");
+    const batchNumbers: string[] = [];
+    let compoundCode: string | null = null;
+
+    const batchPattern = /\bB(\d{3,4})\b/gi;
+    let match;
+    while ((match = batchPattern.exec(nameWithoutExt)) !== null) {
+      batchNumbers.push(`B${match[1]}`);
+    }
+
+    const compoundPatterns = [
+      /\b([A-Z]{2,4}\d{2,3}[A-Z]{2,6}\d{2,3})\b/i,
+      /\b(AU[A-Z]?\d+[A-Z]+\d+)\b/i,
+      /[_-]([A-Z]{3,}\d{2,}[A-Z]*\d*)[_-]/i,
+    ];
+
+    for (const pattern of compoundPatterns) {
+      const compoundMatch = nameWithoutExt.match(pattern);
+      if (compoundMatch) {
+        compoundCode = compoundMatch[1].toUpperCase();
+        if (!compoundCode.endsWith("-MDR") && !compoundCode.includes("GRAPH")) {
+          break;
+        }
+        compoundCode = null;
+      }
+    }
+
+    this.logger.log(`Parsed filename "${filename}": batches=[${batchNumbers.join(", ")}], compoundCode=${compoundCode}`);
+    return { batchNumbers, compoundCode };
+  }
+
+  formatBatchRange(batchNumbers: string[]): string {
+    if (batchNumbers.length === 0) return "";
+    if (batchNumbers.length === 1) return batchNumbers[0];
+
+    const numbers = batchNumbers
+      .map((b) => {
+        const match = b.match(/(\d+)/);
+        return match ? parseInt(match[1], 10) : null;
+      })
+      .filter((n): n is number => n !== null)
+      .sort((a, b) => a - b);
+
+    if (numbers.length === 0) return batchNumbers.join(", ");
+
+    const ranges: string[] = [];
+    let rangeStart = numbers[0];
+    let rangeEnd = numbers[0];
+
+    for (let i = 1; i < numbers.length; i++) {
+      if (numbers[i] === rangeEnd + 1) {
+        rangeEnd = numbers[i];
+      } else {
+        ranges.push(rangeStart === rangeEnd ? `B${rangeStart}` : `B${rangeStart}-${rangeEnd}`);
+        rangeStart = numbers[i];
+        rangeEnd = numbers[i];
+      }
+    }
+
+    ranges.push(rangeStart === rangeEnd ? `B${rangeStart}` : `B${rangeStart}-${rangeEnd}`);
+
+    return ranges.join(", ");
   }
 
   private detectIfGraph(pdfText: string, filename: string): { isGraph: boolean; batchNumbers: string[] } {
@@ -812,5 +962,91 @@ ${truncatedText}`;
       .catch((error) => {
         this.logger.error(`Auto-extraction failed for CoC ${cocId}: ${error.message}`);
       });
+  }
+
+  parseSnCompoundCode(code: string): ParsedCompoundCode | null {
+    const codeUpper = code.toUpperCase().trim();
+
+    const pattern = /^(AU)([A-Z])(\d{2})([A-Z]{1,2})([A-Z]{2})([A-Z0-9]{2,3})$/;
+    const match = codeUpper.match(pattern);
+
+    if (!match) {
+      this.logger.warn(`Could not parse S&N compound code: ${code}`);
+      return null;
+    }
+
+    const [, brand, grade, shore, color, curingMethod, supplierCode] = match;
+
+    const colorName = COLOR_MAP[color] || color;
+    const curingMethodName = CURING_MAP[curingMethod] || curingMethod;
+
+    const parsed: ParsedCompoundCode = {
+      brand,
+      grade,
+      shoreHardness: parseInt(shore, 10),
+      color,
+      colorName,
+      curingMethod,
+      curingMethodName,
+      supplierCode,
+      rubberType: "SNR",
+    };
+
+    this.logger.log(`Parsed S&N compound code "${code}": grade=${grade}, shore=${shore}, color=${colorName}, curing=${curingMethodName}`);
+    return parsed;
+  }
+
+  async findOrCreateCompoundCoding(parsedCode: ParsedCompoundCode): Promise<RubberProductCoding> {
+    const fullCode = `${parsedCode.brand}${parsedCode.grade}${parsedCode.shoreHardness}${parsedCode.color}${parsedCode.curingMethod}`;
+    const fullName = `${parsedCode.rubberType} ${parsedCode.grade}-Grade ${parsedCode.shoreHardness} Shore ${parsedCode.colorName} ${parsedCode.curingMethodName}`;
+
+    let coding = await this.productCodingRepository.findOne({
+      where: {
+        codingType: ProductCodingType.COMPOUND,
+        code: fullCode,
+      },
+    });
+
+    if (!coding) {
+      this.logger.log(`Creating new compound coding: ${fullCode} - ${fullName}`);
+      coding = this.productCodingRepository.create({
+        firebaseUid: `pg_${generateUniqueId()}`,
+        codingType: ProductCodingType.COMPOUND,
+        code: fullCode,
+        name: fullName,
+      });
+      await this.productCodingRepository.save(coding);
+    } else {
+      this.logger.log(`Found existing compound coding: ${coding.code} - ${coding.name}`);
+    }
+
+    return coding;
+  }
+
+  async processCompoundCodeFromFilename(filename: string): Promise<{
+    compoundCode: string | null;
+    compoundCodingId: number | null;
+    parsedInfo: ParsedCompoundCode | null;
+  }> {
+    const filenameInfo = this.parseFilenameForCocInfo(filename);
+
+    if (!filenameInfo.compoundCode) {
+      return { compoundCode: null, compoundCodingId: null, parsedInfo: null };
+    }
+
+    const parsed = this.parseSnCompoundCode(filenameInfo.compoundCode);
+    if (!parsed) {
+      return { compoundCode: filenameInfo.compoundCode, compoundCodingId: null, parsedInfo: null };
+    }
+
+    const coding = await this.findOrCreateCompoundCoding(parsed);
+
+    const auCode = `${parsed.brand}${parsed.grade}${parsed.shoreHardness}${parsed.color}${parsed.curingMethod}`;
+
+    return {
+      compoundCode: auCode,
+      compoundCodingId: coding.id,
+      parsedInfo: parsed,
+    };
   }
 }

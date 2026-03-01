@@ -41,19 +41,19 @@ export class RubberEmailMonitorService implements OnModuleInit {
   }
 
   onModuleInit() {
-    const imapHost = this.configService.get<string>("RUBBER_IMAP_HOST");
-    const imapUser = this.configService.get<string>("RUBBER_IMAP_USER");
-    const imapPassword = this.configService.get<string>("RUBBER_IMAP_PASSWORD");
+    const imapHost = this.configService.get<string>("AU_RUBBER_EMAIL_HOST");
+    const imapUser = this.configService.get<string>("AU_RUBBER_EMAIL_USER");
+    const imapPassword = this.configService.get<string>("AU_RUBBER_EMAIL_PASSWORD");
 
     this.isMonitoringEnabled = !!(imapHost && imapUser && imapPassword);
 
     if (this.isMonitoringEnabled) {
       this.logger.log(
-        `Rubber email monitoring enabled for ${imapUser} on ${imapHost}`,
+        `AU Rubber email monitoring enabled for ${imapUser} on ${imapHost}`,
       );
     } else {
       this.logger.log(
-        "Rubber email monitoring disabled - RUBBER_IMAP_* environment variables not configured",
+        "AU Rubber email monitoring disabled - AU_RUBBER_EMAIL_* environment variables not configured",
       );
     }
 
@@ -76,10 +76,10 @@ export class RubberEmailMonitorService implements OnModuleInit {
   }
 
   private async processEmails(): Promise<void> {
-    const imapHost = this.configService.get<string>("RUBBER_IMAP_HOST")!;
-    const imapPort = this.configService.get<number>("RUBBER_IMAP_PORT") || 993;
-    const imapUser = this.configService.get<string>("RUBBER_IMAP_USER")!;
-    const imapPassword = this.configService.get<string>("RUBBER_IMAP_PASSWORD")!;
+    const imapHost = this.configService.get<string>("AU_RUBBER_EMAIL_HOST")!;
+    const imapPort = this.configService.get<number>("AU_RUBBER_EMAIL_PORT") || 993;
+    const imapUser = this.configService.get<string>("AU_RUBBER_EMAIL_USER")!;
+    const imapPassword = this.configService.get<string>("AU_RUBBER_EMAIL_PASSWORD")!;
 
     const imapConfig: Imap.ImapSimpleOptions = {
       imap: {
@@ -239,6 +239,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
     company: RubberCompany;
     cocType: SupplierCocType;
     deliveryNoteType: DeliveryNoteType;
+    documentType?: string;
   } | null> {
     const companies = await this.companyRepo.find();
 
@@ -270,7 +271,9 @@ export class RubberEmailMonitorService implements OnModuleInit {
     const aiResult = await this.identifySupplierWithAi(pdfText, filename, fromEmail, subject);
 
     if (aiResult) {
-      this.logger.log(`AI identified supplier type: ${aiResult.supplierType}`);
+      this.logger.log(
+        `NIX classified document as ${aiResult.documentType}, supplier type: ${aiResult.supplierType}, confidence: ${aiResult.confidence}`,
+      );
 
       if (aiResult.supplierType === "CALENDARER") {
         const calendarerCompany = companies.find(
@@ -284,6 +287,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
             company: calendarerCompany,
             cocType: SupplierCocType.CALENDARER,
             deliveryNoteType: DeliveryNoteType.ROLL,
+            documentType: aiResult.documentType,
           };
         }
       }
@@ -300,12 +304,18 @@ export class RubberEmailMonitorService implements OnModuleInit {
             company: compounderCompany,
             cocType: SupplierCocType.COMPOUNDER,
             deliveryNoteType: DeliveryNoteType.COMPOUND,
+            documentType: aiResult.documentType,
           };
         }
       }
+
+      if (aiResult.documentType !== "SUPPLIER_COC" && aiResult.documentType !== "UNKNOWN") {
+        this.logger.log(`Document classified as ${aiResult.documentType} - requires manual filing`);
+        return null;
+      }
     }
 
-    this.logger.warn("AI could not identify supplier, falling back to rule-based matching");
+    this.logger.warn("NIX could not classify document, falling back to rule-based matching");
     return this.identifySupplierFallback(pdfText, filename, fromEmail, subject, companies);
   }
 
@@ -314,7 +324,11 @@ export class RubberEmailMonitorService implements OnModuleInit {
     filename: string,
     fromEmail: string,
     subject: string,
-  ): Promise<{ supplierType: "COMPOUNDER" | "CALENDARER"; confidence: number } | null> {
+  ): Promise<{
+    documentType: "SUPPLIER_COC" | "DELIVERY_NOTE" | "PURCHASE_ORDER" | "INVOICE" | "QUOTE" | "UNKNOWN";
+    supplierType: "COMPOUNDER" | "CALENDARER" | null;
+    confidence: number;
+  } | null> {
     const isAvailable = await this.aiChatService.isAvailable();
     if (!isAvailable) {
       this.logger.warn("AI chat service not available for supplier identification");
@@ -323,22 +337,31 @@ export class RubberEmailMonitorService implements OnModuleInit {
 
     const truncatedText = pdfText.length > 5000 ? pdfText.substring(0, 5000) : pdfText;
 
-    const systemPrompt = `You are analyzing rubber industry Certificate of Conformance (CoC) documents to identify the supplier type.
+    const systemPrompt = `You are NIX, an AI assistant analyzing documents for AU Industries' rubber lining operations. Your task is to classify incoming documents and identify the supplier.
 
-There are two types of suppliers:
-1. COMPOUNDER - Companies that compound rubber (mix raw materials). Usually S&N Rubber or similar. Their documents typically mention:
-   - Batch numbers, compound codes, mixing dates
-   - Physical properties like Shore A hardness, specific gravity, tensile strength
-   - Rheometer data (S-min, S-max, Ts2, Tc90)
-   - Terms like "compound", "batch", "mixing"
+DOCUMENT TYPES:
+1. SUPPLIER_COC - Certificate of Conformance from suppliers
+   - COMPOUNDER CoC: From rubber compounding companies (e.g., S&N Rubber). Contains batch numbers, compound codes, mixing dates, Shore A hardness, specific gravity, tensile strength, rheometer data (S-min, S-max, Ts2, Tc90)
+   - CALENDARER CoC: From rubber calendering companies (e.g., Impilo Industries). Contains roll numbers, sheet specs, order/ticket numbers, calendering operations
 
-2. CALENDARER - Companies that calender rubber into sheets/rolls. Usually Impilo or similar. Their documents typically mention:
-   - Roll numbers, sheet specifications
-   - Calendering operations, rubber sheets
-   - Terms like "calendering", "roll", "sheet", "lining"
+2. DELIVERY_NOTE - Goods received documentation
+   - Contains delivery date, quantities, item descriptions, supplier details
 
-Respond ONLY with a JSON object in this exact format:
-{"supplierType": "COMPOUNDER" or "CALENDARER", "confidence": 0.0-1.0, "reason": "brief explanation"}`;
+3. PURCHASE_ORDER - Orders placed by AU Industries
+   - Contains PO number, line items, quantities, pricing
+
+4. INVOICE - Supplier invoices for payment
+   - Contains invoice number, line items, amounts, payment terms
+
+5. QUOTE - Supplier quotations
+   - Contains quoted prices, quantities, validity period
+
+6. UNKNOWN - Cannot confidently classify the document
+
+For SUPPLIER_COC documents, also identify the supplier type (COMPOUNDER or CALENDARER).
+
+Respond ONLY with a JSON object:
+{"documentType": "SUPPLIER_COC"|"DELIVERY_NOTE"|"PURCHASE_ORDER"|"INVOICE"|"QUOTE"|"UNKNOWN", "supplierType": "COMPOUNDER"|"CALENDARER"|null, "confidence": 0.0-1.0, "reason": "brief explanation"}`;
 
     const userMessage = `Analyze this PDF document and identify the supplier type.
 
@@ -360,18 +383,17 @@ ${truncatedText}`;
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        if (
-          parsed.supplierType &&
-          (parsed.supplierType === "COMPOUNDER" || parsed.supplierType === "CALENDARER")
-        ) {
+        const validDocTypes = ["SUPPLIER_COC", "DELIVERY_NOTE", "PURCHASE_ORDER", "INVOICE", "QUOTE", "UNKNOWN"];
+        if (parsed.documentType && validDocTypes.includes(parsed.documentType)) {
           return {
-            supplierType: parsed.supplierType,
+            documentType: parsed.documentType,
+            supplierType: parsed.supplierType || null,
             confidence: parsed.confidence || 0.8,
           };
         }
       }
 
-      this.logger.warn("AI response did not contain valid supplier type JSON");
+      this.logger.warn("AI response did not contain valid document classification JSON");
       return null;
     } catch (error) {
       this.logger.error(`AI supplier identification failed: ${error.message}`);
@@ -389,6 +411,7 @@ ${truncatedText}`;
     company: RubberCompany;
     cocType: SupplierCocType;
     deliveryNoteType: DeliveryNoteType;
+    documentType?: string;
   } | null {
     const pdfTextLower = pdfText.toLowerCase();
     const filenameLower = filename.toLowerCase();
@@ -548,15 +571,15 @@ ${truncatedText}`;
   }
 
   async testConnection(): Promise<{ success: boolean; error?: string }> {
-    const imapHost = this.configService.get<string>("RUBBER_IMAP_HOST");
-    const imapPort = this.configService.get<number>("RUBBER_IMAP_PORT") || 993;
-    const imapUser = this.configService.get<string>("RUBBER_IMAP_USER");
-    const imapPassword = this.configService.get<string>("RUBBER_IMAP_PASSWORD");
+    const imapHost = this.configService.get<string>("AU_RUBBER_EMAIL_HOST");
+    const imapPort = this.configService.get<number>("AU_RUBBER_EMAIL_PORT") || 993;
+    const imapUser = this.configService.get<string>("AU_RUBBER_EMAIL_USER");
+    const imapPassword = this.configService.get<string>("AU_RUBBER_EMAIL_PASSWORD");
 
     if (!imapHost || !imapUser || !imapPassword) {
       return {
         success: false,
-        error: "IMAP configuration not set. Please configure RUBBER_IMAP_HOST, RUBBER_IMAP_USER, and RUBBER_IMAP_PASSWORD environment variables.",
+        error: "IMAP configuration not set. Please configure AU_RUBBER_EMAIL_HOST, AU_RUBBER_EMAIL_USER, and AU_RUBBER_EMAIL_PASSWORD environment variables.",
       };
     }
 
