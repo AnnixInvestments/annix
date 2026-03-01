@@ -166,6 +166,7 @@ export interface RubberCompoundBatchDto {
   id: number;
   firebaseUid: string;
   supplierCocId: number;
+  supplierCocNumber: string | null;
   batchNumber: string;
   compoundStockId: number | null;
   shoreAHardness: number | null;

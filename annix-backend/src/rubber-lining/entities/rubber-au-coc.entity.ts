@@ -62,6 +62,12 @@ export class RubberAuCoc {
   @Column({ name: "notes", type: "text", nullable: true })
   notes: string | null;
 
+  @Column({ name: "approved_by_name", type: "varchar", length: 100, nullable: true })
+  approvedByName: string | null;
+
+  @Column({ name: "approved_at", type: "timestamp", nullable: true })
+  approvedAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

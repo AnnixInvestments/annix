@@ -117,6 +117,9 @@ export class RubberRollStock {
   @Column({ name: "notes", type: "text", nullable: true })
   notes: string | null;
 
+  @Column({ name: "production_date", type: "date", nullable: true })
+  productionDate: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -348,6 +348,8 @@ export class RubberRollStockService {
           sentAt: auCocRecord.sentAt?.toISOString() ?? null,
           createdBy: auCocRecord.createdBy,
           notes: auCocRecord.notes,
+          approvedByName: auCocRecord.approvedByName,
+          approvedAt: auCocRecord.approvedAt?.toISOString() ?? null,
           createdAt: auCocRecord.createdAt.toISOString(),
           updatedAt: auCocRecord.updatedAt.toISOString(),
         };
@@ -410,6 +412,7 @@ export class RubberRollStockService {
       soldAt: roll.soldAt?.toISOString() ?? null,
       location: roll.location,
       notes: roll.notes,
+      productionDate: roll.productionDate?.toISOString() ?? null,
       createdAt: roll.createdAt.toISOString(),
       updatedAt: roll.updatedAt.toISOString(),
     };
@@ -420,6 +423,7 @@ export class RubberRollStockService {
       id: batch.id,
       firebaseUid: batch.firebaseUid,
       supplierCocId: batch.supplierCocId,
+      supplierCocNumber: batch.supplierCoc?.cocNumber ?? null,
       batchNumber: batch.batchNumber,
       compoundStockId: batch.compoundStockId,
       compoundStockName: batch.compoundStock?.compoundCoding?.name ?? null,

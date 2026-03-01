@@ -55,6 +55,10 @@ export class RubberCocService {
     private qualityTrackingService: RubberQualityTrackingService,
   ) {}
 
+  private normalizeCocNumber(cocNumber: string): string {
+    return cocNumber.trim().replace(/\s+/g, "").replace(/[–—]/g, "-");
+  }
+
   async allSupplierCocs(filters?: {
     cocType?: SupplierCocType;
     processingStatus?: CocProcessingStatus;
@@ -256,12 +260,21 @@ export class RubberCocService {
     extractedData: ExtractedCocData,
     createdBy?: string,
   ): Promise<{ coc: RubberSupplierCocDto; wasUpdated: boolean }> {
-    const existingCoc = await this.supplierCocRepository.findOne({
-      where: { cocNumber, cocType },
-      relations: ["supplierCompany"],
-    });
+    const normalizedCocNumber = this.normalizeCocNumber(cocNumber);
+
+    const existingCoc = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .leftJoinAndSelect("coc.supplierCompany", "supplierCompany")
+      .where("LOWER(TRIM(coc.cocNumber)) = LOWER(:cocNumber)", {
+        cocNumber: normalizedCocNumber,
+      })
+      .andWhere("coc.cocType = :cocType", { cocType })
+      .getOne();
 
     if (existingCoc) {
+      this.logger.log(
+        `Duplicate CoC detected: ${normalizedCocNumber} (${cocType}) - updating existing CoC ${existingCoc.id}`,
+      );
       existingCoc.documentPath = documentPath;
       existingCoc.extractedData = extractedData;
       existingCoc.processingStatus = CocProcessingStatus.EXTRACTED;
@@ -295,7 +308,7 @@ export class RubberCocService {
       cocType,
       supplierCompanyId,
       documentPath,
-      cocNumber,
+      cocNumber: normalizedCocNumber,
       extractedData,
       processingStatus: CocProcessingStatus.EXTRACTED,
       productionDate: extractedData.productionDate ? new Date(extractedData.productionDate) : null,
@@ -334,9 +347,35 @@ export class RubberCocService {
   }
 
   async batchesByCocId(supplierCocId: number): Promise<RubberCompoundBatchDto[]> {
+    const coc = await this.supplierCocRepository.findOne({
+      where: { id: supplierCocId },
+    });
+
+    if (!coc) {
+      return [];
+    }
+
+    if (coc.cocType === SupplierCocType.CALENDARER) {
+      const batchNumbers = coc.extractedData?.batchNumbers || [];
+      if (batchNumbers.length === 0) {
+        return [];
+      }
+
+      const batches = await this.compoundBatchRepository
+        .createQueryBuilder("batch")
+        .leftJoinAndSelect("batch.supplierCoc", "supplierCoc")
+        .leftJoinAndSelect("batch.compoundStock", "compoundStock")
+        .leftJoinAndSelect("compoundStock.compoundCoding", "compoundCoding")
+        .where("batch.batchNumber IN (:...batchNumbers)", { batchNumbers })
+        .orderBy("batch.batchNumber", "ASC")
+        .getMany();
+
+      return batches.map((batch) => this.mapCompoundBatchToDto(batch));
+    }
+
     const batches = await this.compoundBatchRepository.find({
       where: { supplierCocId },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
+      relations: ["supplierCoc", "compoundStock", "compoundStock.compoundCoding"],
       order: { batchNumber: "ASC" },
     });
     return batches.map((batch) => this.mapCompoundBatchToDto(batch));
@@ -603,6 +642,7 @@ export class RubberCocService {
       id: batch.id,
       firebaseUid: batch.firebaseUid,
       supplierCocId: batch.supplierCocId,
+      supplierCocNumber: batch.supplierCoc?.cocNumber ?? null,
       batchNumber: batch.batchNumber,
       compoundStockId: batch.compoundStockId,
       compoundStockName: batch.compoundStock?.compoundCoding?.name ?? null,

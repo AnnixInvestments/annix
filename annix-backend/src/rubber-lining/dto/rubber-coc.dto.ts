@@ -1,6 +1,5 @@
 import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
 import { AuCocStatus } from "../entities/rubber-au-coc.entity";
-import { TestDataSummary } from "../entities/rubber-au-coc-item.entity";
 import { BatchPassFailStatus } from "../entities/rubber-compound-batch.entity";
 import {
   DeliveryNoteStatus,
@@ -119,6 +118,7 @@ export class RubberCompoundBatchDto {
   id: number;
   firebaseUid: string;
   supplierCocId: number;
+  supplierCocNumber: string | null;
   batchNumber: string;
   compoundStockId: number | null;
   compoundStockName: string | null;
@@ -328,6 +328,7 @@ export class RubberRollStockDto {
   soldAt: string | null;
   location: string | null;
   notes: string | null;
+  productionDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -439,6 +440,8 @@ export class RubberAuCocDto {
   sentAt: string | null;
   createdBy: string | null;
   notes: string | null;
+  approvedByName: string | null;
+  approvedAt: string | null;
   createdAt: string;
   updatedAt: string;
   items?: RubberAuCocItemDto[];
@@ -450,7 +453,6 @@ export class RubberAuCocItemDto {
   auCocId: number;
   rollStockId: number;
   rollNumber: string | null;
-  testDataSummary: TestDataSummary | null;
   createdAt: string;
 }
 
@@ -473,6 +475,10 @@ export class CreateAuCocDto {
   @IsOptional()
   @IsString()
   notes?: string | null;
+
+  @IsOptional()
+  @IsString()
+  approvedByName?: string | null;
 }
 
 export class SendAuCocDto {

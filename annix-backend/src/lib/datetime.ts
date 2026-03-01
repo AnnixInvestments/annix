@@ -55,6 +55,14 @@ export const formatDateLongZA = (iso: string | Date | null | undefined): string 
   return DateTime.fromISO(iso).toFormat("EEEE, d MMMM yyyy");
 };
 
+export const formatDateZA = (iso: string | Date | null | undefined): string => {
+  if (!iso) return "";
+  if (iso instanceof Date) {
+    return DateTime.fromJSDate(iso).toFormat("dd-MM-yyyy");
+  }
+  return DateTime.fromISO(iso).toFormat("dd-MM-yyyy");
+};
+
 export const now = (): DateTime => DateTime.now();
 
 export const nowISO = (): string => DateTime.now().toISO() ?? "";

@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 import { In, Repository } from "typeorm";
-import { formatDateLongZA, generateUniqueId, now } from "../lib/datetime";
+import { formatDateZA, generateUniqueId, now } from "../lib/datetime";
 import {
   CreateAuCocDto,
   RubberAuCocDto,
@@ -11,9 +11,10 @@ import {
   SendAuCocDto,
 } from "./dto/rubber-coc.dto";
 import { AuCocStatus, RubberAuCoc } from "./entities/rubber-au-coc.entity";
-import { RubberAuCocItem, TestDataSummary } from "./entities/rubber-au-coc-item.entity";
+import { RubberAuCocItem } from "./entities/rubber-au-coc-item.entity";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
+import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
 
 const AU_COC_STATUS_LABELS: Record<AuCocStatus, string> = {
@@ -21,6 +22,27 @@ const AU_COC_STATUS_LABELS: Record<AuCocStatus, string> = {
   [AuCocStatus.GENERATED]: "Generated",
   [AuCocStatus.SENT]: "Sent",
 };
+
+interface BatchTestData {
+  batchNumber: string;
+  shoreA: number | null;
+  density: number | null;
+  rebound: number | null;
+  tearStrength: number | null;
+  tensile: number | null;
+  elongation: number | null;
+}
+
+interface CocPdfData {
+  coc: RubberAuCoc;
+  compoundCode: string;
+  compoundDescription: string;
+  productionDate: string;
+  rollSizesQty: string;
+  batches: BatchTestData[];
+  rollNumber: string;
+  qualityConfig: RubberCompoundQualityConfig | null;
+}
 
 @Injectable()
 export class RubberAuCocService {
@@ -37,6 +59,8 @@ export class RubberAuCocService {
     private compoundBatchRepository: Repository<RubberCompoundBatch>,
     @InjectRepository(RubberCompany)
     private companyRepository: Repository<RubberCompany>,
+    @InjectRepository(RubberCompoundQualityConfig)
+    private qualityConfigRepository: Repository<RubberCompoundQualityConfig>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -116,19 +140,16 @@ export class RubberAuCocService {
       status: AuCocStatus.DRAFT,
       notes: dto.notes ?? null,
       createdBy: createdBy ?? null,
+      approvedByName: dto.approvedByName ?? null,
     });
 
     const savedCoc = await this.auCocRepository.save(auCoc);
 
-    const items = await Promise.all(
-      rolls.map(async (roll) => {
-        const testDataSummary = await this.aggregateTestData(roll.linkedBatchIds);
-        return this.auCocItemRepository.create({
-          firebaseUid: `pg_${generateUniqueId()}`,
-          auCocId: savedCoc.id,
-          rollStockId: roll.id,
-          testDataSummary,
-        });
+    const items = rolls.map((roll) =>
+      this.auCocItemRepository.create({
+        firebaseUid: `pg_${generateUniqueId()}`,
+        auCocId: savedCoc.id,
+        rollStockId: roll.id,
       }),
     );
 
@@ -165,7 +186,12 @@ export class RubberAuCocService {
       relations: ["rollStock", "rollStock.compoundCoding"],
     });
 
-    const buffer = await this.createPdf(coc, items);
+    if (items.length === 0) {
+      throw new BadRequestException("No rolls found for this CoC");
+    }
+
+    const pdfData = await this.preparePdfData(coc, items);
+    const buffer = await this.createPdf(pdfData);
     const filename = `${coc.cocNumber}.pdf`;
 
     coc.status = AuCocStatus.GENERATED;
@@ -216,290 +242,343 @@ export class RubberAuCocService {
       `SELECT nextval('rubber_au_coc_number_seq') as seq`,
     );
     const seq = result[0]?.seq || 1;
-    return `AU-COC-${String(seq).padStart(5, "0")}`;
+    return `COC-${String(seq).padStart(5, "0")}`;
   }
 
-  private async aggregateTestData(batchIds: number[]): Promise<TestDataSummary | null> {
-    if (!batchIds || batchIds.length === 0) {
-      return null;
+  private async preparePdfData(coc: RubberAuCoc, items: RubberAuCocItem[]): Promise<CocPdfData> {
+    const firstRoll = items[0]?.rollStock;
+    const compoundCoding = firstRoll?.compoundCoding;
+
+    const allBatchIds = items.flatMap((item) => item.rollStock?.linkedBatchIds || []);
+    const uniqueBatchIds = [...new Set(allBatchIds)];
+
+    const batches =
+      uniqueBatchIds.length > 0
+        ? await this.compoundBatchRepository.find({
+            where: { id: In(uniqueBatchIds) },
+            relations: ["supplierCoc"],
+            order: { batchNumber: "ASC" },
+          })
+        : [];
+
+    const compoundCode = batches[0]?.supplierCoc?.compoundCode || compoundCoding?.code || "Unknown";
+
+    let qualityConfig: RubberCompoundQualityConfig | null = null;
+    if (compoundCode) {
+      qualityConfig = await this.qualityConfigRepository.findOne({
+        where: { compoundCode },
+      });
     }
 
-    const batches = await this.compoundBatchRepository.find({
-      where: { id: In(batchIds) },
-    });
+    const rollDimensions = firstRoll
+      ? `${Number(firstRoll.thicknessMm)}mm x ${Number(firstRoll.widthMm)}mm x ${Number(firstRoll.lengthM)}m`
+      : "-";
+    const rollSizesQty = `${rollDimensions} ${items.length} roll${items.length !== 1 ? "s" : ""}`;
 
-    if (batches.length === 0) {
-      return null;
-    }
+    const rollNumber = firstRoll?.rollNumber || "-";
 
-    const aggregate = (field: keyof RubberCompoundBatch) => {
-      const values = batches
-        .map((b) => b[field])
-        .filter((v): v is number => v !== null && v !== undefined)
-        .map((v) => Number(v));
-      if (values.length === 0) return undefined;
-      return {
-        min: Math.min(...values),
-        max: Math.max(...values),
-        avg: values.reduce((a, b) => a + b, 0) / values.length,
-      };
-    };
+    const batchTestData: BatchTestData[] = batches.map((batch) => ({
+      batchNumber: batch.batchNumber,
+      shoreA: batch.shoreAHardness ? Number(batch.shoreAHardness) : null,
+      density: batch.specificGravity ? Number(batch.specificGravity) : null,
+      rebound: batch.reboundPercent ? Number(batch.reboundPercent) : null,
+      tearStrength: batch.tearStrengthKnM ? Number(batch.tearStrengthKnM) : null,
+      tensile: batch.tensileStrengthMpa ? Number(batch.tensileStrengthMpa) : null,
+      elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
+    }));
 
-    const allPassed = batches.every(
-      (b) => b.passFailStatus === "PASS" || b.passFailStatus === null,
-    );
+    const compoundDescription =
+      qualityConfig?.compoundDescription || compoundCoding?.name || "Rubber Compound";
+
+    const productionDate = firstRoll?.productionDate
+      ? formatDateZA(firstRoll.productionDate)
+      : formatDateZA(now().toJSDate());
 
     return {
-      batchNumbers: batches.map((b) => b.batchNumber),
-      shoreAHardness: aggregate("shoreAHardness"),
-      specificGravity: aggregate("specificGravity"),
-      reboundPercent: aggregate("reboundPercent"),
-      tearStrengthKnM: aggregate("tearStrengthKnM"),
-      tensileStrengthMpa: aggregate("tensileStrengthMpa"),
-      elongationPercent: aggregate("elongationPercent"),
-      rheometerSMin: aggregate("rheometerSMin"),
-      rheometerSMax: aggregate("rheometerSMax"),
-      rheometerTs2: aggregate("rheometerTs2"),
-      rheometerTc90: aggregate("rheometerTc90"),
-      allBatchesPassed: allPassed,
+      coc,
+      compoundCode,
+      compoundDescription,
+      productionDate,
+      rollSizesQty,
+      batches: batchTestData,
+      rollNumber,
+      qualityConfig,
     };
   }
 
-  private async createPdf(coc: RubberAuCoc, items: RubberAuCocItem[]): Promise<Buffer> {
+  private async createPdf(data: CocPdfData): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A4", margin: 50 });
+      const doc = new PDFDocument({ size: "A4", margin: 40 });
       const chunks: Buffer[] = [];
 
       doc.on("data", (chunk) => chunks.push(chunk));
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
-      this.drawCocHeader(doc, coc);
-      this.drawCustomerDetails(doc, coc);
-      let currentY = this.drawRollsTable(doc, items, 200);
-      currentY = this.drawTestDataTable(doc, items, currentY + 20);
-      this.drawCocFooter(doc, coc);
+      this.drawHeader(doc);
+      this.drawDetailsSection(doc, data);
+      this.drawLabDataTable(doc, data);
+      this.drawComments(doc);
+      this.drawFooter(doc, data);
 
       doc.end();
     });
   }
 
-  private drawCocHeader(doc: typeof PDFDocument, coc: RubberAuCoc): void {
+  private drawHeader(doc: PDFKit.PDFDocument): void {
     doc
-      .fontSize(20)
+      .fontSize(14)
       .font("Helvetica-Bold")
-      .text("AU INDUSTRIES", 50, 50, { align: "left" })
-      .fontSize(12)
-      .font("Helvetica")
-      .text("CERTIFICATE OF CONFORMANCE", 50, 75, { align: "left" });
+      .fillColor("#D4A537")
+      .text("AU", 270, 40, { continued: true })
+      .fillColor("black");
+
+    doc.fontSize(8).font("Helvetica").text("INDUSTRIES", 270, 55, { align: "center" });
 
     doc
       .fontSize(16)
       .font("Helvetica-Bold")
-      .text(coc.cocNumber, 400, 50, { align: "right" })
-      .fontSize(10)
-      .font("Helvetica")
-      .text(`Date: ${formatDateLongZA(now().toJSDate())}`, 400, 70, { align: "right" });
+      .text("CERTIFICATE OF CONFORMANCE", 40, 85, { align: "center", width: 515 });
 
-    doc.moveTo(50, 95).lineTo(545, 95).stroke();
+    doc.moveTo(40, 110).lineTo(555, 110).lineWidth(0.5).stroke();
   }
 
-  private drawCustomerDetails(doc: typeof PDFDocument, coc: RubberAuCoc): void {
-    let y = 110;
+  private drawDetailsSection(doc: PDFKit.PDFDocument, data: CocPdfData): void {
+    const leftCol = 40;
+    const rightCol = 220;
+    let y = 125;
+    const lineHeight = 18;
 
-    doc.fontSize(10).font("Helvetica-Bold");
-    doc.text("Customer:", 50, y);
-    doc.font("Helvetica").text(coc.customerCompany?.name || "-", 120, y);
+    doc.fontSize(9).font("Helvetica");
 
-    y += 15;
-    if (coc.poNumber) {
-      doc.font("Helvetica-Bold").text("PO Number:", 50, y);
-      doc.font("Helvetica").text(coc.poNumber, 120, y);
-      y += 15;
-    }
-
-    if (coc.deliveryNoteRef) {
-      doc.font("Helvetica-Bold").text("Delivery Note:", 50, y);
-      doc.font("Helvetica").text(coc.deliveryNoteRef, 120, y);
-    }
-
-    doc.moveTo(50, 180).lineTo(545, 180).stroke();
-  }
-
-  private drawRollsTable(
-    doc: typeof PDFDocument,
-    items: RubberAuCocItem[],
-    startY: number,
-  ): number {
-    doc.fontSize(12).font("Helvetica-Bold").text("Roll Details", 50, startY);
-
-    let y = startY + 20;
-    const headers = ["Roll Number", "Compound", "Weight (kg)", "Dimensions"];
-    const colWidths = [120, 150, 80, 145];
-    let x = 50;
-
-    doc.fontSize(9).font("Helvetica-Bold");
-    headers.forEach((header, i) => {
-      doc.text(header, x, y, { width: colWidths[i], align: "left" });
-      x += colWidths[i];
-    });
-
-    y += 15;
-    doc.moveTo(50, y).lineTo(545, y).stroke();
-    y += 5;
-
-    doc.font("Helvetica").fontSize(9);
-    items.forEach((item) => {
-      x = 50;
-      const roll = item.rollStock;
-      const dimensions = roll
-        ? [
-            roll.widthMm ? `${Number(roll.widthMm)}mm W` : null,
-            roll.thicknessMm ? `${Number(roll.thicknessMm)}mm T` : null,
-            roll.lengthM ? `${Number(roll.lengthM)}m L` : null,
-          ]
-            .filter(Boolean)
-            .join(" x ")
-        : "-";
-
-      doc.text(roll?.rollNumber || "-", x, y, { width: colWidths[0] });
-      x += colWidths[0];
-      doc.text(roll?.compoundCoding?.name || "-", x, y, { width: colWidths[1] });
-      x += colWidths[1];
-      doc.text(roll ? String(Number(roll.weightKg).toFixed(1)) : "-", x, y, {
-        width: colWidths[2],
-      });
-      x += colWidths[2];
-      doc.text(dimensions, x, y, { width: colWidths[3] });
-      y += 15;
-    });
-
-    return y;
-  }
-
-  private drawTestDataTable(
-    doc: typeof PDFDocument,
-    items: RubberAuCocItem[],
-    startY: number,
-  ): number {
-    const allTestData = items
-      .map((item) => item.testDataSummary)
-      .filter((data): data is TestDataSummary => data !== null);
-
-    if (allTestData.length === 0) {
-      return startY;
-    }
-
-    if (startY > 650) {
-      doc.addPage();
-      startY = 50;
-    }
-
-    doc.fontSize(12).font("Helvetica-Bold").text("Test Data Summary", 50, startY);
-
-    let y = startY + 20;
-    const testProperties = [
-      { key: "shoreAHardness", label: "Shore A Hardness", unit: "" },
-      { key: "specificGravity", label: "Specific Gravity", unit: "" },
-      { key: "tensileStrengthMpa", label: "Tensile Strength", unit: "MPa" },
-      { key: "elongationPercent", label: "Elongation", unit: "%" },
-      { key: "tearStrengthKnM", label: "Tear Strength", unit: "kN/m" },
-      { key: "reboundPercent", label: "Rebound", unit: "%" },
+    const details = [
+      { label: "COMPOUND CODE", value: data.compoundCode },
+      { label: "CALENDER ROLL DESCRIPTION", value: data.compoundDescription },
+      { label: "PRODUCTION DATE OF CALENDER ROLLS", value: data.productionDate },
+      { label: "PURCHASE ORDER NUMBER", value: data.coc.poNumber || "-" },
+      { label: "DELIVERY NOTE", value: data.coc.deliveryNoteRef || "-" },
+      { label: "ROLL SIZES & QTY", value: data.rollSizesQty },
     ];
 
-    doc.fontSize(9).font("Helvetica-Bold");
-    doc.text("Property", 50, y, { width: 120 });
-    doc.text("Min", 170, y, { width: 60, align: "right" });
-    doc.text("Max", 240, y, { width: 60, align: "right" });
-    doc.text("Avg", 310, y, { width: 60, align: "right" });
-    doc.text("Unit", 380, y, { width: 50 });
+    details.forEach((detail) => {
+      doc.font("Helvetica").text(detail.label, leftCol, y);
+      doc.font("Helvetica-Bold").text(detail.value, rightCol, y);
+      y += lineHeight;
+    });
+
+    y += 5;
+    doc.font("Helvetica-Bold").text("LABORATORY ANALYSIS DATA", leftCol, y);
+    y += 15;
+
+    doc.moveTo(40, y).lineTo(555, y).lineWidth(0.5).stroke();
+  }
+
+  private drawLabDataTable(doc: PDFKit.PDFDocument, data: CocPdfData): void {
+    const tableTop = 245;
+    const colWidths = [85, 55, 55, 55, 55, 65, 65, 65];
+    const colStarts = [40];
+    colWidths.forEach((w, i) => {
+      if (i > 0) colStarts.push(colStarts[i - 1] + colWidths[i - 1]);
+    });
+
+    const headers = [
+      "Compound\nDetails",
+      "Batches\nUsed",
+      "Shore A\nlast\ntestpoint",
+      "Density",
+      "Rebound",
+      "Tear\nStrength",
+      "Tensile\nstrength",
+      "Elongation\nbreak",
+    ];
+
+    let y = tableTop;
+
+    doc.rect(40, y, 515, 35).fillAndStroke("#f5f5f5", "#cccccc");
+
+    doc.fillColor("black").fontSize(7).font("Helvetica-Bold");
+    headers.forEach((header, i) => {
+      doc.text(header, colStarts[i] + 2, y + 3, {
+        width: colWidths[i] - 4,
+        align: "center",
+      });
+    });
+
+    y += 35;
+
+    const units = ["Unit", "", "[Shore A]", "[g/cm³]", "[%]", "[N/mm]", "[Mpa]", "[%]"];
+    doc.rect(40, y, 515, 15).fillAndStroke("#ffffff", "#cccccc");
+    doc.fillColor("black").fontSize(7).font("Helvetica");
+    units.forEach((unit, i) => {
+      doc.text(unit, colStarts[i] + 2, y + 4, {
+        width: colWidths[i] - 4,
+        align: "center",
+      });
+    });
 
     y += 15;
-    doc.moveTo(50, y).lineTo(430, y).stroke();
-    y += 5;
 
-    doc.font("Helvetica");
-    testProperties.forEach((prop) => {
-      const values = allTestData
-        .map((data) => data[prop.key as keyof TestDataSummary])
-        .filter(
-          (v): v is { min: number; max: number; avg: number } =>
-            v !== undefined && typeof v === "object",
-        );
+    const config = data.qualityConfig;
+    const nominals = [
+      "Nominal",
+      "",
+      config?.shoreANominal ? String(Number(config.shoreANominal)) : "-",
+      config?.densityNominal ? Number(config.densityNominal).toFixed(3) : "-",
+      config?.reboundNominal ? Number(config.reboundNominal).toFixed(2) : "-",
+      config?.tearStrengthNominal ? Number(config.tearStrengthNominal).toFixed(1) : "-",
+      config?.tensileNominal ? String(Number(config.tensileNominal)) : "-",
+      config?.elongationNominal ? String(Number(config.elongationNominal)) : "-",
+    ];
 
-      if (values.length > 0) {
-        const mins = values.map((v) => v.min);
-        const maxs = values.map((v) => v.max);
-        const avgs = values.map((v) => v.avg);
+    doc.rect(40, y, 515, 15).fillAndStroke("#ffffff", "#cccccc");
+    doc.fillColor("black").fontSize(7).font("Helvetica-Bold");
+    nominals.forEach((val, i) => {
+      doc.text(val, colStarts[i] + 2, y + 4, {
+        width: colWidths[i] - 4,
+        align: "center",
+      });
+    });
 
-        doc.text(prop.label, 50, y, { width: 120 });
-        doc.text(Math.min(...mins).toFixed(1), 170, y, { width: 60, align: "right" });
-        doc.text(Math.max(...maxs).toFixed(1), 240, y, { width: 60, align: "right" });
-        doc.text((avgs.reduce((a, b) => a + b, 0) / avgs.length).toFixed(1), 310, y, {
-          width: 60,
-          align: "right",
+    y += 15;
+
+    const formatRange = (min: number | null | undefined, max: number | null | undefined) => {
+      if (min === null || min === undefined || max === null || max === undefined) return "-";
+      return `${Number(min)}-${Number(max)}`;
+    };
+
+    const ranges = [
+      "Ranges",
+      "",
+      formatRange(config?.shoreAMin, config?.shoreAMax),
+      formatRange(config?.densityMin, config?.densityMax),
+      formatRange(config?.reboundMin, config?.reboundMax),
+      formatRange(config?.tearStrengthMin, config?.tearStrengthMax),
+      formatRange(config?.tensileMin, config?.tensileMax),
+      formatRange(config?.elongationMin, config?.elongationMax),
+    ];
+
+    doc.rect(40, y, 515, 15).fillAndStroke("#FFF9E6", "#cccccc");
+    doc.fillColor("#B8860B").fontSize(7).font("Helvetica-Bold");
+    ranges.forEach((val, i) => {
+      doc.text(val, colStarts[i] + 2, y + 4, {
+        width: colWidths[i] - 4,
+        align: "center",
+      });
+    });
+
+    y += 15;
+
+    doc.fillColor("black").font("Helvetica").fontSize(7);
+
+    const formatVal = (val: number | null, decimals = 1): string => {
+      if (val === null || val === undefined) return "";
+      return val.toFixed(decimals);
+    };
+
+    data.batches.forEach((batch, index) => {
+      const isEven = index % 2 === 0;
+      doc.rect(40, y, 515, 13).fillAndStroke(isEven ? "#ffffff" : "#f9f9f9", "#cccccc");
+      doc.fillColor("black");
+
+      const rowData = [
+        index === 0 ? `Roll No. ${data.rollNumber}` : "",
+        batch.batchNumber,
+        batch.shoreA !== null ? String(Math.round(batch.shoreA)) : "",
+        formatVal(batch.density, 3),
+        formatVal(batch.rebound, 2),
+        formatVal(batch.tearStrength, 2),
+        formatVal(batch.tensile, 1),
+        batch.elongation !== null ? String(Math.round(batch.elongation)) : "",
+      ];
+
+      rowData.forEach((val, i) => {
+        doc.text(val, colStarts[i] + 2, y + 3, {
+          width: colWidths[i] - 4,
+          align: i === 0 ? "left" : "center",
         });
-        doc.text(prop.unit, 380, y, { width: 50 });
-        y += 15;
+      });
+
+      y += 13;
+
+      if (y > 700) {
+        doc.addPage();
+        y = 50;
       }
     });
 
-    const allBatchNumbers = allTestData.flatMap((data) => data.batchNumbers);
-    const uniqueBatchNumbers = [...new Set(allBatchNumbers)];
-
-    if (uniqueBatchNumbers.length > 0) {
-      y += 10;
-      doc.font("Helvetica-Bold").text("Batch Numbers:", 50, y);
-      doc.font("Helvetica").text(uniqueBatchNumbers.join(", "), 140, y, { width: 400 });
-      y += 15;
-    }
-
-    const allPassed = allTestData.every((data) => data.allBatchesPassed);
-    y += 10;
-    doc.font("Helvetica-Bold").text("Test Result:", 50, y);
-    doc
-      .font("Helvetica")
-      .fillColor(allPassed ? "green" : "red")
-      .text(allPassed ? "ALL TESTS PASSED" : "SOME TESTS FAILED", 140, y)
-      .fillColor("black");
-
-    return y + 20;
+    doc.rect(40, y, 515, 0).stroke("#cccccc");
   }
 
-  private drawCocFooter(doc: typeof PDFDocument, coc: RubberAuCoc): void {
-    const pageHeight = doc.page.height;
-    const footerY = pageHeight - 120;
+  private drawComments(doc: PDFKit.PDFDocument): void {
+    const y = 680;
 
-    doc.moveTo(50, footerY).lineTo(545, footerY).stroke();
-
-    doc.fontSize(10).font("Helvetica");
-    doc.text(
-      "This Certificate of Conformance certifies that the above materials comply with the specified requirements.",
-      50,
-      footerY + 10,
-      { width: 495, align: "center" },
-    );
-
-    doc.text("Authorized Signature:", 50, footerY + 50);
-    doc
-      .moveTo(160, footerY + 60)
-      .lineTo(300, footerY + 60)
-      .stroke();
-
-    doc.text("Date:", 350, footerY + 50);
-    doc
-      .moveTo(380, footerY + 60)
-      .lineTo(480, footerY + 60)
-      .stroke();
+    doc.fontSize(8).font("Helvetica-Bold").fillColor("black").text("Comments:", 40, y);
 
     doc
+      .font("Helvetica-Oblique")
       .fontSize(8)
+      .text(
+        "This is to confirm that the compound listed above has been mixed using the specified materials, and used for calender production rolls.",
+        40,
+        y + 12,
+        { width: 515, align: "center" },
+      );
+    doc.text("The rheology (cure rate) data meets the compound requirements.", 40, y + 24, {
+      width: 515,
+      align: "center",
+    });
+  }
+
+  private drawFooter(doc: PDFKit.PDFDocument, data: CocPdfData): void {
+    const y = 730;
+
+    doc.fontSize(8).font("Helvetica").fillColor("black");
+
+    doc.text("Approved By:", 40, y);
+    doc.font("Helvetica-Bold").text(data.coc.approvedByName || "________________", 100, y);
+
+    doc.font("Helvetica").text("Signed", 250, y);
+    doc
+      .moveTo(290, y + 10)
+      .lineTo(380, y + 10)
+      .lineWidth(0.5)
+      .stroke();
+
+    doc.text("Date:", 420, y);
+    doc
+      .font("Helvetica-Bold")
+      .text(
+        data.coc.approvedAt ? formatDateZA(data.coc.approvedAt) : formatDateZA(now().toJSDate()),
+        450,
+        y,
+      );
+
+    doc
+      .moveTo(40, y + 25)
+      .lineTo(555, y + 25)
+      .lineWidth(0.5)
+      .stroke();
+
+    doc
+      .fontSize(7)
+      .font("Helvetica")
       .fillColor("gray")
-      .text("AU Industries - Certificate of Conformance", 50, pageHeight - 40, {
-        align: "center",
-        width: 495,
-      })
-      .fillColor("black");
+      .text(
+        "AU Industries (Pty)Ltd Registration No. 2020/803314/07 - VAT number : 4650300389",
+        40,
+        y + 32,
+        { align: "center", width: 515 },
+      );
+    doc.text(
+      "50 Paul Smit Street, Dunswart, Boksburg, 1458  Tel: 072 039 8429  www.auind.co.za",
+      40,
+      y + 42,
+      { align: "center", width: 515 },
+    );
+    doc.text("Directors: A. Barrett and S.Govender", 40, y + 52, {
+      align: "center",
+      width: 515,
+    });
   }
 
   private mapAuCocToDto(coc: RubberAuCoc): RubberAuCocDto {
@@ -518,6 +597,8 @@ export class RubberAuCocService {
       sentAt: coc.sentAt?.toISOString() ?? null,
       createdBy: coc.createdBy,
       notes: coc.notes,
+      approvedByName: coc.approvedByName,
+      approvedAt: coc.approvedAt?.toISOString() ?? null,
       createdAt: coc.createdAt.toISOString(),
       updatedAt: coc.updatedAt.toISOString(),
     };
@@ -530,7 +611,6 @@ export class RubberAuCocService {
       auCocId: item.auCocId,
       rollStockId: item.rollStockId,
       rollNumber: item.rollStock?.rollNumber ?? null,
-      testDataSummary: item.testDataSummary,
       createdAt: item.createdAt.toISOString(),
     };
   }

@@ -75,10 +75,9 @@ export default function SupplierCocDetailPage() {
       setIsApproving(true);
       await auRubberApiClient.approveSupplierCoc(cocId);
       showToast("CoC approved", "success");
-      fetchData();
+      router.push("/au-rubber/portal/supplier-cocs");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to approve CoC", "error");
-    } finally {
       setIsApproving(false);
     }
   };
@@ -345,6 +344,14 @@ export default function SupplierCocDetailPage() {
                 >
                   Status
                 </th>
+                {coc.cocType === "CALENDARER" && (
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    S&N CoC
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -381,6 +388,20 @@ export default function SupplierCocDetailPage() {
                       {batch.passFailStatusLabel}
                     </span>
                   </td>
+                  {coc.cocType === "CALENDARER" && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {batch.supplierCocId && batch.supplierCocId !== cocId ? (
+                        <Link
+                          href={`/au-rubber/portal/supplier-cocs/${batch.supplierCocId}`}
+                          className="text-yellow-600 hover:text-yellow-800 font-medium"
+                        >
+                          {batch.supplierCocNumber || `CoC-${batch.supplierCocId}`}
+                        </Link>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

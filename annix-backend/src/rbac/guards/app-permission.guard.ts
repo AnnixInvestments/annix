@@ -27,11 +27,13 @@ export class AppPermissionGuard implements CanActivate {
       throw new ForbiddenException("User not authenticated");
     }
 
-    const hasPermission = await this.rbacService.userHasPermission(
-      userId,
-      permissionMeta.appCode,
-      permissionMeta.permission,
-    );
+    const accessDetails = await this.rbacService.userAccessDetails(userId, permissionMeta.appCode);
+
+    if (accessDetails.isAdmin) {
+      return true;
+    }
+
+    const hasPermission = accessDetails.permissions.includes(permissionMeta.permission);
 
     if (!hasPermission) {
       throw new ForbiddenException(
