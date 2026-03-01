@@ -24,6 +24,7 @@ import {
 } from "@nestjs/swagger";
 import { Request, Response } from "express";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
+import { Public } from "../auth/public.decorator";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
@@ -146,6 +147,7 @@ export class RubberLiningController {
   ) {}
 
   @Get("types")
+  @Public()
   @ApiOperation({
     summary: "List all rubber types",
     description:
@@ -161,6 +163,7 @@ export class RubberLiningController {
   }
 
   @Get("types/:id")
+  @Public()
   @ApiOperation({
     summary: "Get rubber type by ID",
     description: "Returns a single rubber type by database ID",
@@ -181,6 +184,7 @@ export class RubberLiningController {
   }
 
   @Get("types/number/:typeNumber")
+  @Public()
   @ApiOperation({
     summary: "Get rubber type by type number",
     description: "Returns a rubber type by its standard type number (1-8)",
@@ -201,6 +205,7 @@ export class RubberLiningController {
   }
 
   @Get("specifications")
+  @Public()
   @ApiOperation({
     summary: "List all rubber specifications",
     description:
@@ -216,6 +221,7 @@ export class RubberLiningController {
   }
 
   @Get("specifications/type/:typeNumber")
+  @Public()
   @ApiOperation({
     summary: "Get specifications by rubber type",
     description: "Returns all specifications for a given rubber type number",
@@ -237,6 +243,7 @@ export class RubberLiningController {
   }
 
   @Get("specifications/callout/:typeNumber/:grade/:hardnessClass")
+  @Public()
   @ApiOperation({
     summary: "Get specification by line callout",
     description:
@@ -276,6 +283,7 @@ export class RubberLiningController {
   }
 
   @Get("application-ratings")
+  @Public()
   @ApiOperation({
     summary: "Get chemical application ratings",
     description:
@@ -309,6 +317,7 @@ export class RubberLiningController {
   }
 
   @Get("thickness-recommendations")
+  @Public()
   @ApiOperation({
     summary: "Get thickness recommendations",
     description: "Returns recommended rubber lining thicknesses based on application conditions",
@@ -323,6 +332,7 @@ export class RubberLiningController {
   }
 
   @Get("adhesion-requirements")
+  @Public()
   @ApiOperation({
     summary: "Get adhesion requirements",
     description: "Returns adhesion test requirements per ISO standards for rubber types",
@@ -347,6 +357,7 @@ export class RubberLiningController {
   }
 
   @Post("recommend")
+  @Public()
   @ApiOperation({
     summary: "Get rubber lining recommendation",
     description:
@@ -364,6 +375,7 @@ export class RubberLiningController {
   }
 
   @Get("line-callout")
+  @Public()
   @ApiOperation({
     summary: "Generate line callout string",
     description:
@@ -414,6 +426,7 @@ export class RubberLiningController {
   }
 
   @Get("chemical-categories")
+  @Public()
   @ApiOperation({
     summary: "List chemical categories",
     description: "Returns all chemical categories for application rating lookups",
@@ -440,6 +453,7 @@ export class RubberLiningController {
   }
 
   @Get("hardness-classes")
+  @Public()
   @ApiOperation({
     summary: "List hardness classes",
     description: "Returns IRHD hardness classes with descriptions (40=Soft to 70=Hard)",
@@ -461,6 +475,7 @@ export class RubberLiningController {
   }
 
   @Get("grades")
+  @Public()
   @ApiOperation({
     summary: "List rubber grades",
     description:
@@ -488,6 +503,7 @@ export class RubberLiningController {
   }
 
   @Get("special-properties")
+  @Public()
   @ApiOperation({
     summary: "List special properties",
     description: "Returns special property codes (I-VII) for rubber lining specifications",
@@ -509,6 +525,7 @@ export class RubberLiningController {
   }
 
   @Get("vulcanization-methods")
+  @Public()
   @ApiOperation({
     summary: "List vulcanization methods",
     description:
@@ -543,6 +560,7 @@ export class RubberLiningController {
   }
 
   @Get("application-environments")
+  @Public()
   @ApiOperation({
     summary: "List application environments",
     description: "Returns common industrial application environments for rubber lining selection",

@@ -3065,7 +3065,9 @@ export default function SpecificationsStep({
                                               ),
                                             );
                                           }
-                                        } catch (e) {}
+                                        } catch {
+                                          console.warn("Failed to load custom topcoat colours");
+                                        }
                                         return null;
                                       })()}
                                       <optgroup label="Mining">
@@ -3135,7 +3137,11 @@ export default function SpecificationsStep({
                                                     JSON.stringify(existing),
                                                   );
                                                 }
-                                              } catch (e) {}
+                                              } catch {
+                                                console.warn(
+                                                  "Failed to save custom topcoat colour",
+                                                );
+                                              }
                                               onUpdateGlobalSpecs({
                                                 ...globalSpecs,
                                                 recExternalTopcoatColour: newColour,
@@ -3209,7 +3215,9 @@ export default function SpecificationsStep({
                                               ),
                                             );
                                           }
-                                        } catch (e) {}
+                                        } catch {
+                                          console.warn("Failed to load custom band colours");
+                                        }
                                         return null;
                                       })()}
                                       <option value="White (RAL 9003)">White</option>
@@ -3251,7 +3259,9 @@ export default function SpecificationsStep({
                                                     JSON.stringify(existing),
                                                   );
                                                 }
-                                              } catch (e) {}
+                                              } catch {
+                                                console.warn("Failed to save custom band colour");
+                                              }
                                               onUpdateGlobalSpecs({
                                                 ...globalSpecs,
                                                 recExternalBand1Colour: newColour,
@@ -3323,7 +3333,9 @@ export default function SpecificationsStep({
                                                 ),
                                               );
                                             }
-                                          } catch (e) {}
+                                          } catch {
+                                            console.warn("Failed to load custom band colours");
+                                          }
                                           return null;
                                         })()}
                                         <option value="White (RAL 9003)">White</option>
@@ -3366,7 +3378,9 @@ export default function SpecificationsStep({
                                                       JSON.stringify(existing),
                                                     );
                                                   }
-                                                } catch (e) {}
+                                                } catch {
+                                                  console.warn("Failed to save custom band colour");
+                                                }
                                                 onUpdateGlobalSpecs({
                                                   ...globalSpecs,
                                                   recExternalBand2Colour: newColour,
@@ -4630,7 +4644,9 @@ export default function SpecificationsStep({
                                       </optgroup>
                                     );
                                   }
-                                } catch (e) {}
+                                } catch {
+                                  console.warn("Failed to load custom band colours");
+                                }
                                 return null;
                               })()}
                               <optgroup label="Common Band Colours">
@@ -4692,7 +4708,9 @@ export default function SpecificationsStep({
                                             JSON.stringify(existing),
                                           );
                                         }
-                                      } catch (e) {}
+                                      } catch {
+                                        console.warn("Failed to save custom band colour");
+                                      }
                                       onUpdateGlobalSpecs({
                                         ...globalSpecs,
                                         externalBand1Colour: newColour,
@@ -4769,7 +4787,9 @@ export default function SpecificationsStep({
                                       </optgroup>
                                     );
                                   }
-                                } catch (e) {}
+                                } catch {
+                                  console.warn("Failed to load custom band colours");
+                                }
                                 return null;
                               })()}
                               <optgroup label="Common Band Colours">
@@ -4831,7 +4851,9 @@ export default function SpecificationsStep({
                                             JSON.stringify(existing),
                                           );
                                         }
-                                      } catch (e) {}
+                                      } catch {
+                                        console.warn("Failed to save custom band colour");
+                                      }
                                       onUpdateGlobalSpecs({
                                         ...globalSpecs,
                                         externalBand2Colour: newColour,

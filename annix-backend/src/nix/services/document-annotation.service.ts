@@ -216,7 +216,9 @@ export class DocumentAnnotationService {
       if (worker) {
         try {
           await worker.terminate();
-        } catch {}
+        } catch {
+          this.logger.warn("Failed to terminate Tesseract worker");
+        }
       }
       this.logger.error(`[extractFromRegion] FAILED for ${fieldName}: ${error.message}`);
       this.logger.error(`[extractFromRegion] Error stack: ${error.stack}`);
