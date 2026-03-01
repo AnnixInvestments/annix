@@ -2,6 +2,7 @@
 
 import { ORDER_STATUS_OPTIONS, statusColor } from "@annix/product-data/rubber/orderStatus";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
@@ -60,6 +61,7 @@ const exportOrdersToCSV = (orders: RubberOrderDto[]) => {
 };
 
 export default function AuRubberOrdersPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
@@ -226,7 +228,7 @@ export default function AuRubberOrdersPage() {
       setShowNewOrderModal(false);
       setNewOrderCompanyId(undefined);
       setNewOrderCompanyOrderNumber("");
-      fetchOrders(statusFilter);
+      router.push(`/au-rubber/portal/orders/${order.id}`);
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : "Failed to create order", "error");
     } finally {
