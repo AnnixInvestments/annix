@@ -28,8 +28,8 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
-import { Request, Response } from "express";
-import { CustomerAuthGuard } from "../customer/guards/customer-auth.guard";
+import { Response } from "express";
+import { CustomerAuthGuard, CustomerRequest } from "../customer/guards/customer-auth.guard";
 import { BendCalculationResultDto } from "./dto/bend-calculation-result.dto";
 import { CreateBendRfqDto } from "./dto/create-bend-rfq.dto";
 import { CreateBendRfqWithItemDto } from "./dto/create-bend-rfq-with-item.dto";
@@ -261,9 +261,9 @@ export class RfqController {
   @ApiBearerAuth()
   async createStraightPipeRfq(
     @Body() dto: CreateStraightPipeRfqWithItemDto,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<{ rfq: Rfq; calculation: StraightPipeCalculationResultDto }> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     return this.rfqService.createStraightPipeRfq(dto, userId);
   }
 
@@ -296,9 +296,9 @@ export class RfqController {
   @ApiBearerAuth()
   async createUnifiedRfq(
     @Body() dto: CreateUnifiedRfqDto,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<{ rfq: Rfq; itemsCreated: number }> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     return this.rfqService.createUnifiedRfq(dto, userId);
   }
 
@@ -336,9 +336,9 @@ export class RfqController {
   async updateUnifiedRfq(
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: CreateUnifiedRfqDto,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<{ rfq: Rfq; itemsUpdated: number }> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     return this.rfqService.updateUnifiedRfq(id, dto, userId);
   }
 
@@ -438,9 +438,9 @@ export class RfqController {
   @ApiBearerAuth()
   async createBendRfq(
     @Body() dto: CreateBendRfqWithItemDto,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<{ rfq: Rfq; calculation: BendCalculationResultDto }> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     return this.rfqService.createBendRfq(dto, userId);
   }
 
@@ -568,9 +568,9 @@ export class RfqController {
   @ApiBearerAuth()
   async createPumpRfq(
     @Body() dto: CreatePumpRfqWithItemDto,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<{ rfq: Rfq; calculation: PumpCalculationResultDto }> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     return this.rfqService.createPumpRfq(dto, userId);
   }
 
@@ -607,9 +607,9 @@ export class RfqController {
   @ApiBearerAuth()
   async listRfqs(
     @Query() query: RfqPaginationQueryDto,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<PaginatedRfqResponseDto> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     return this.rfqService.findAllRfqsPaginated(query, userId);
   }
 
@@ -627,8 +627,8 @@ export class RfqController {
   })
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
-  async getAllRfqs(@Req() req: Request): Promise<RfqResponseDto[]> {
-    const userId = (req as any).customer?.userId;
+  async getAllRfqs(@Req() req: CustomerRequest): Promise<RfqResponseDto[]> {
+    const userId = req.customer.userId;
     return this.rfqService.findAllRfqs(userId);
   }
 
@@ -682,8 +682,11 @@ export class RfqController {
   })
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
-  async saveDraft(@Body() dto: SaveRfqDraftDto, @Req() req: Request): Promise<RfqDraftResponseDto> {
-    const userId = (req as any).customer?.userId;
+  async saveDraft(
+    @Body() dto: SaveRfqDraftDto,
+    @Req() req: CustomerRequest,
+  ): Promise<RfqDraftResponseDto> {
+    const userId = req.customer.userId;
     return this.rfqService.saveDraft(dto, userId);
   }
 
@@ -699,8 +702,8 @@ export class RfqController {
     description: "Drafts retrieved successfully",
     type: [RfqDraftResponseDto],
   })
-  async getDrafts(@Req() req: Request): Promise<RfqDraftResponseDto[]> {
-    const userId = (req as any).customer?.userId;
+  async getDrafts(@Req() req: CustomerRequest): Promise<RfqDraftResponseDto[]> {
+    const userId = req.customer.userId;
     return this.rfqService.getDrafts(userId);
   }
 
@@ -727,9 +730,9 @@ export class RfqController {
   })
   async getDraftByNumber(
     @Param("draftNumber") draftNumber: string,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<RfqDraftFullResponseDto> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     return this.rfqService.getDraftByNumber(draftNumber, userId);
   }
 
@@ -752,9 +755,9 @@ export class RfqController {
   })
   async getDraftById(
     @Param("id", ParseIntPipe) id: number,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<RfqDraftFullResponseDto> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     return this.rfqService.getDraftById(id, userId);
   }
 
@@ -780,9 +783,9 @@ export class RfqController {
   })
   async deleteDraft(
     @Param("id", ParseIntPipe) id: number,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<{ message: string }> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     await this.rfqService.deleteDraft(id, userId);
     return { message: "Draft deleted successfully" };
   }
@@ -815,9 +818,9 @@ export class RfqController {
   async convertDraft(
     @Param("id", ParseIntPipe) id: number,
     @Body("rfqId") rfqId: number,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<{ message: string }> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     await this.rfqService.markDraftAsConverted(id, rfqId, userId);
     return { message: "Draft marked as converted successfully" };
   }
@@ -844,8 +847,8 @@ export class RfqController {
     status: HttpStatus.FORBIDDEN,
     description: "User does not have access to this RFQ",
   })
-  async getRfqById(@Param("id") id: number, @Req() req: Request): Promise<Rfq> {
-    const userId = (req as any).customer?.userId;
+  async getRfqById(@Param("id") id: number, @Req() req: CustomerRequest): Promise<Rfq> {
+    const userId = req.customer.userId;
     const rfq = await this.rfqService.findRfqById(id);
     if (rfq.createdBy?.id !== userId) {
       throw new ForbiddenException("You do not have access to this RFQ");
@@ -905,9 +908,9 @@ export class RfqController {
   async uploadDocument(
     @Param("id", ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<RfqDocumentResponseDto> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     await this.rfqService.verifyRfqOwnership(id, userId);
     return this.rfqService.uploadDocument(id, file);
   }
@@ -935,9 +938,9 @@ export class RfqController {
   })
   async getDocuments(
     @Param("id", ParseIntPipe) id: number,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<RfqDocumentResponseDto[]> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     await this.rfqService.verifyRfqOwnership(id, userId);
     return this.rfqService.getDocuments(id);
   }
@@ -972,10 +975,10 @@ export class RfqController {
   })
   async downloadDocument(
     @Param("documentId", ParseIntPipe) documentId: number,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
     @Res() res: Response,
   ): Promise<void> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     await this.rfqService.verifyDocumentOwnership(documentId, userId);
     const { buffer, document } = await this.rfqService.downloadDocument(documentId);
 
@@ -1010,9 +1013,9 @@ export class RfqController {
   })
   async deleteDocument(
     @Param("documentId", ParseIntPipe) documentId: number,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ): Promise<{ message: string }> {
-    const userId = (req as any).customer?.userId;
+    const userId = req.customer.userId;
     await this.rfqService.verifyDocumentOwnership(documentId, userId);
     await this.rfqService.deleteDocument(documentId);
     return { message: "Document deleted successfully" };

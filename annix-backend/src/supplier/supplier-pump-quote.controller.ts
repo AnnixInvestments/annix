@@ -19,7 +19,7 @@ import { now } from "../lib/datetime";
 import { PumpRfq } from "../rfq/entities/pump-rfq.entity";
 import { Rfq } from "../rfq/entities/rfq.entity";
 import { RfqItem } from "../rfq/entities/rfq-item.entity";
-import { SupplierAuthGuard } from "./guards/supplier-auth.guard";
+import { SupplierAuthGuard, SupplierRequest } from "./guards/supplier-auth.guard";
 
 export type SupplierPumpQuoteStatus = "pending" | "viewed" | "quoted" | "declined" | "expired";
 
@@ -87,7 +87,7 @@ export class SupplierPumpQuoteController {
     description: "List of pump quote requests assigned to supplier",
   })
   async getMyPumpQuotes(
-    @Request() req: any,
+    @Request() req: SupplierRequest,
     @Query("status") status?: SupplierPumpQuoteStatus,
   ): Promise<PumpQuoteRequest[]> {
     const supplierProfileId = req.supplier.supplierId;
@@ -136,7 +136,10 @@ export class SupplierPumpQuoteController {
     status: 200,
     description: "Pump quote request details",
   })
-  async getPumpQuoteDetails(@Request() req: any, @Param("id", ParseIntPipe) rfqId: number) {
+  async getPumpQuoteDetails(
+    @Request() req: SupplierRequest,
+    @Param("id", ParseIntPipe) rfqId: number,
+  ) {
     const supplierProfileId = req.supplier.supplierId;
 
     const rfq = await this.rfqRepository.findOne({
@@ -223,7 +226,7 @@ export class SupplierPumpQuoteController {
     status: 200,
     description: "Quote request marked as viewed",
   })
-  async markAsViewed(@Request() req: any, @Param("id", ParseIntPipe) rfqId: number) {
+  async markAsViewed(@Request() req: SupplierRequest, @Param("id", ParseIntPipe) rfqId: number) {
     const supplierProfileId = req.supplier.supplierId;
 
     const rfq = await this.rfqRepository.findOne({
@@ -260,7 +263,7 @@ export class SupplierPumpQuoteController {
     description: "Quote request declined",
   })
   async declineQuote(
-    @Request() req: any,
+    @Request() req: SupplierRequest,
     @Param("id", ParseIntPipe) rfqId: number,
     @Body() body: DeclinePumpQuoteDto,
   ) {
@@ -301,7 +304,7 @@ export class SupplierPumpQuoteController {
     description: "Quote submitted successfully",
   })
   async submitQuote(
-    @Request() req: any,
+    @Request() req: SupplierRequest,
     @Param("id", ParseIntPipe) rfqId: number,
     @Body() body: SubmitPumpQuoteDto,
   ) {
@@ -347,7 +350,7 @@ export class SupplierPumpQuoteController {
     status: 200,
     description: "List of pump products from catalog",
   })
-  async getPumpCatalog(@Request() req: any) {
+  async getPumpCatalog(@Request() req: SupplierRequest) {
     return [];
   }
 }

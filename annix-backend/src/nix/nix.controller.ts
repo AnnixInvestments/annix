@@ -26,9 +26,8 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Request } from "express";
 import { Repository } from "typeorm";
-import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
+import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { AnyUserAuthGuard, AuthenticatedUser } from "../auth/guards/any-user-auth.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
@@ -566,9 +565,9 @@ export class NixController {
   @ApiResponse({ status: 201, description: "Region saved successfully" })
   async saveExtractionRegion(
     @Body() dto: SaveExtractionRegionDto,
-    @Req() req: Request,
+    @Req() req: AdminRequest,
   ): Promise<{ success: boolean; id: number }> {
-    const adminUser = (req as any).user;
+    const adminUser = req.user;
     const region = await this.documentAnnotationService.saveExtractionRegion(dto, adminUser?.id);
     return { success: true, id: region.id };
   }

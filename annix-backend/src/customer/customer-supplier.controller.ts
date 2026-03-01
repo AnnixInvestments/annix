@@ -23,7 +23,7 @@ import { Request } from "express";
 
 import { CustomerSupplierService } from "./customer-supplier.service";
 import { BlockSupplierDto, DirectoryQueryDto } from "./dto/supplier-directory.dto";
-import { CustomerAuthGuard } from "./guards/customer-auth.guard";
+import { CustomerAuthGuard, CustomerRequest } from "./guards/customer-auth.guard";
 
 @ApiTags("Customer Supplier Management")
 @Controller("customer/suppliers")
@@ -37,8 +37,8 @@ export class CustomerSupplierController {
   @Get()
   @ApiOperation({ summary: "Get preferred supplier list" })
   @ApiResponse({ status: 200, description: "Preferred suppliers retrieved" })
-  async getPreferredSuppliers(@Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async getPreferredSuppliers(@Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     return this.supplierService.getPreferredSuppliers(customerId);
   }
 
@@ -80,9 +80,9 @@ export class CustomerSupplierController {
       priority?: number;
       notes?: string;
     },
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ) {
-    const customerId = (req as any).customer.customerId;
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.addPreferredSupplier(customerId, data, clientIp);
   }
@@ -94,9 +94,9 @@ export class CustomerSupplierController {
   async updatePreferredSupplier(
     @Param("id", ParseIntPipe) id: number,
     @Body() data: { priority?: number; notes?: string },
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ) {
-    const customerId = (req as any).customer.customerId;
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.updatePreferredSupplier(customerId, id, data, clientIp);
   }
@@ -105,8 +105,11 @@ export class CustomerSupplierController {
   @ApiOperation({ summary: "Remove a preferred supplier" })
   @ApiResponse({ status: 200, description: "Supplier removed" })
   @ApiResponse({ status: 404, description: "Supplier not found" })
-  async removePreferredSupplier(@Param("id", ParseIntPipe) id: number, @Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async removePreferredSupplier(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: CustomerRequest,
+  ) {
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.removePreferredSupplier(customerId, id, clientIp);
   }
@@ -132,8 +135,8 @@ export class CustomerSupplierController {
     description: "Filter by product categories",
   })
   @ApiResponse({ status: 200, description: "Directory suppliers retrieved" })
-  async supplierDirectory(@Query() filters: DirectoryQueryDto, @Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async supplierDirectory(@Query() filters: DirectoryQueryDto, @Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     return this.supplierService.supplierDirectory(customerId, filters);
   }
 
@@ -145,9 +148,9 @@ export class CustomerSupplierController {
   async blockSupplier(
     @Param("supplierId", ParseIntPipe) supplierId: number,
     @Body() data: BlockSupplierDto,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ) {
-    const customerId = (req as any).customer.customerId;
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.blockSupplier(
       customerId,
@@ -163,9 +166,9 @@ export class CustomerSupplierController {
   @ApiResponse({ status: 404, description: "Blocked supplier not found" })
   async unblockSupplier(
     @Param("supplierId", ParseIntPipe) supplierId: number,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ) {
-    const customerId = (req as any).customer.customerId;
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.unblockSupplier(customerId, supplierId, clientIp);
   }
@@ -175,8 +178,8 @@ export class CustomerSupplierController {
   @Get("invitations")
   @ApiOperation({ summary: "Get all supplier invitations" })
   @ApiResponse({ status: 200, description: "Invitations retrieved" })
-  async getInvitations(@Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async getInvitations(@Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     return this.supplierService.getInvitations(customerId);
   }
 
@@ -199,9 +202,9 @@ export class CustomerSupplierController {
   async createInvitation(
     @Body()
     data: { email: string; supplierCompanyName?: string; message?: string },
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ) {
-    const customerId = (req as any).customer.customerId;
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.createInvitation(customerId, data, clientIp);
   }
@@ -213,8 +216,8 @@ export class CustomerSupplierController {
     status: 400,
     description: "Cannot cancel non-pending invitation",
   })
-  async cancelInvitation(@Param("id", ParseIntPipe) id: number, @Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async cancelInvitation(@Param("id", ParseIntPipe) id: number, @Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.cancelInvitation(customerId, id, clientIp);
   }
@@ -222,8 +225,8 @@ export class CustomerSupplierController {
   @Post("invitations/:id/resend")
   @ApiOperation({ summary: "Resend an invitation" })
   @ApiResponse({ status: 200, description: "Invitation resent" })
-  async resendInvitation(@Param("id", ParseIntPipe) id: number, @Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async resendInvitation(@Param("id", ParseIntPipe) id: number, @Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.resendInvitation(customerId, id, clientIp);
   }

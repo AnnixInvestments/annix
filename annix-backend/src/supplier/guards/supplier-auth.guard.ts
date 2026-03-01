@@ -13,6 +13,17 @@ export interface SupplierJwtPayload {
   sessionToken: string;
 }
 
+export interface SupplierRequestContext {
+  userId: number;
+  supplierId: number;
+  email: string;
+  sessionToken: string;
+}
+
+export interface SupplierRequest extends Request {
+  supplier: SupplierRequestContext;
+}
+
 @Injectable()
 export class SupplierAuthGuard implements CanActivate {
   constructor(
