@@ -361,7 +361,7 @@ start_services() {
   info "Starting frontend with Turbopack (logs: $FRONTEND_LOG)..."
   (
     cd "$FRONTEND_DIR"
-    NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:4001}" pnpm dev --turbo
+    NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:4001/api}" pnpm dev --turbo
   ) | tee -a "$FRONTEND_LOG" &
   FRONTEND_PID=$!
 }

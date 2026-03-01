@@ -1,6 +1,6 @@
-import { annixRepAuthHeaders } from "@/lib/api-config";
+import { annixRepAuthHeaders, browserBaseUrl } from "@/lib/api-config";
 
-const API_URL = "http://localhost:4001";
+const apiUrl = () => browserBaseUrl();
 
 export interface AnnixRepAuthUser {
   userId: number;
@@ -73,7 +73,7 @@ function clearAnnixRepTokens() {
 
 export const annixRepAuthApi = {
   register: async (dto: AnnixRepRegisterDto): Promise<AnnixRepAuthResponse> => {
-    const response = await fetch(`${API_URL}/annix-rep/auth/register`, {
+    const response = await fetch(`${apiUrl()}/annix-rep/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -88,7 +88,7 @@ export const annixRepAuthApi = {
   },
 
   login: async (dto: AnnixRepLoginDto): Promise<AnnixRepAuthResponse> => {
-    const response = await fetch(`${API_URL}/annix-rep/auth/login`, {
+    const response = await fetch(`${apiUrl()}/annix-rep/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -105,7 +105,7 @@ export const annixRepAuthApi = {
   logout: async (): Promise<void> => {
     const token = readAnnixRepToken("annixRepAccessToken");
     if (token) {
-      await fetch(`${API_URL}/annix-rep/auth/logout`, {
+      await fetch(`${apiUrl()}/annix-rep/auth/logout`, {
         method: "POST",
         headers: annixRepAuthHeaders(),
       }).catch(() => {});
@@ -120,7 +120,7 @@ export const annixRepAuthApi = {
     }
 
     try {
-      const response = await fetch(`${API_URL}/annix-rep/auth/refresh`, {
+      const response = await fetch(`${apiUrl()}/annix-rep/auth/refresh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -149,7 +149,7 @@ export const annixRepAuthApi = {
   },
 
   profile: async (): Promise<AnnixRepProfileResponse> => {
-    const response = await fetch(`${API_URL}/annix-rep/auth/profile`, {
+    const response = await fetch(`${apiUrl()}/annix-rep/auth/profile`, {
       headers: annixRepAuthHeaders(),
     });
     return handleResponse<AnnixRepProfileResponse>(response);
@@ -157,7 +157,7 @@ export const annixRepAuthApi = {
 
   checkEmailAvailable: async (email: string): Promise<boolean> => {
     const response = await fetch(
-      `${API_URL}/annix-rep/auth/check-email?email=${encodeURIComponent(email)}`,
+      `${apiUrl()}/annix-rep/auth/check-email?email=${encodeURIComponent(email)}`,
     );
     const data = await handleResponse<{ available: boolean }>(response);
     return data.available;

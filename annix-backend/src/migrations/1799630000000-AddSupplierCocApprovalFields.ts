@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddSupplierCocApprovalFields1772350143599 implements MigrationInterface {
-  name = "AddSupplierCocApprovalFields1772350143599";
+export class AddSupplierCocApprovalFields1799630000000 implements MigrationInterface {
+  name = "AddSupplierCocApprovalFields1799630000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

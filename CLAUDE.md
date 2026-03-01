@@ -102,6 +102,13 @@
 - **No AI attribution**: Do not include AI attribution in commit messages
 - **Pre-push hook**: `.githooks/pre-push` automatically builds both apps and runs migrations before push
 
+### Database Schema Changes
+- **Never use `synchronize: true`**: All schema changes must go through TypeORM migrations
+- **Never modify the database directly**: No manual DDL (CREATE TABLE, ALTER TABLE, etc.) outside of migration files
+- **Migration timestamps must respect dependencies**: If migration B references a table created in migration A, then B's timestamp must be higher than A's. Verify this before creating a migration.
+- **All DDL must be idempotent**: Use `IF NOT EXISTS` / `IF EXISTS` / `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$` so migrations can safely re-run
+- **Test migrations on a fresh database**: Migrations must work when run in strict timestamp order from scratch, not just against an existing schema
+
 ## Communication
 - Be concise and direct
 - Do not use emojis unless requested

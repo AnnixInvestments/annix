@@ -1,14 +1,16 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddReorderQtyAndReqNumberToRequisitionItems1772109400000
+export class AddReorderQtyAndReqNumberToRequisitionItems1794150000000
   implements MigrationInterface
 {
-  name = "AddReorderQtyAndReqNumberToRequisitionItems1772109400000";
+  name = "AddReorderQtyAndReqNumberToRequisitionItems1794150000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "requisition_items" ADD "reorder_qty" integer`);
     await queryRunner.query(
-      `ALTER TABLE "requisition_items" ADD "req_number" character varying(100)`,
+      `ALTER TABLE "requisition_items" ADD COLUMN IF NOT EXISTS "reorder_qty" integer`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "requisition_items" ADD COLUMN IF NOT EXISTS "req_number" character varying(100)`,
     );
   }
 

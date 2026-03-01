@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddAuCocSpecificationFields1770500000000 implements MigrationInterface {
-  name = "AddAuCocSpecificationFields1770500000000";
+export class AddAuCocSpecificationFields1799610000000 implements MigrationInterface {
+  name = "AddAuCocSpecificationFields1799610000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

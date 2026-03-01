@@ -4,7 +4,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AppController } from "./app.controller";
-import { AppService } from "./app.service";
+
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
 import { BendDimensionController } from "./bend-dimension/bend-dimension.controller";
@@ -99,6 +99,6 @@ import { WorkflowModule } from "./workflow/workflow.module";
     HeavyFeaturesModule,
   ],
   controllers: [AppController, BendDimensionController],
-  providers: [AppService, BendDimensionService],
+  providers: [BendDimensionService],
 })
 export class AppModule {}

@@ -12,7 +12,7 @@ export class LocalStorageService implements IStorageService {
 
   constructor(private configService: ConfigService) {
     this.uploadDir = this.configService.get<string>("UPLOAD_DIR") || "./uploads";
-    this.baseUrl = this.configService.get<string>("API_BASE_URL") || "http://localhost:4001";
+    this.baseUrl = this.configService.get<string>("API_BASE_URL") || "http://localhost:4001/api";
 
     // Ensure upload directory exists
     if (!fs.existsSync(this.uploadDir)) {

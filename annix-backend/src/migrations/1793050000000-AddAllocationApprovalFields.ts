@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddAllocationApprovalFields1772178882591 implements MigrationInterface {
+export class AddAllocationApprovalFields1793050000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE stock_allocations

@@ -31,7 +31,7 @@ export class CreateJobCardWorkflowTables1799000000000 implements MigrationInterf
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_job_card_documents_job_card_id
+      CREATE INDEX IF NOT EXISTS idx_job_card_documents_job_card_id
         ON job_card_documents(job_card_id)
     `);
 
@@ -54,12 +54,12 @@ export class CreateJobCardWorkflowTables1799000000000 implements MigrationInterf
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_job_card_approvals_job_card_id
+      CREATE INDEX IF NOT EXISTS idx_job_card_approvals_job_card_id
         ON job_card_approvals(job_card_id)
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_job_card_approvals_step_status
+      CREATE INDEX IF NOT EXISTS idx_job_card_approvals_step_status
         ON job_card_approvals(step, status)
     `);
 
@@ -79,12 +79,12 @@ export class CreateJobCardWorkflowTables1799000000000 implements MigrationInterf
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_workflow_notifications_user_id
+      CREATE INDEX IF NOT EXISTS idx_workflow_notifications_user_id
         ON workflow_notifications(user_id)
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_workflow_notifications_user_unread
+      CREATE INDEX IF NOT EXISTS idx_workflow_notifications_user_unread
         ON workflow_notifications(user_id, read_at)
         WHERE read_at IS NULL
     `);
@@ -105,12 +105,12 @@ export class CreateJobCardWorkflowTables1799000000000 implements MigrationInterf
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_dispatch_scans_job_card_id
+      CREATE INDEX IF NOT EXISTS idx_dispatch_scans_job_card_id
         ON dispatch_scans(job_card_id)
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_dispatch_scans_stock_item_id
+      CREATE INDEX IF NOT EXISTS idx_dispatch_scans_stock_item_id
         ON dispatch_scans(stock_item_id)
     `);
 

@@ -1,4 +1,4 @@
-const FALLBACK_BASE_URL = "http://localhost:4001";
+const FALLBACK_BASE_URL = "http://localhost:4001/api";
 
 const normalizeOrigin = (origin?: string | null) => {
   if (!origin) {
@@ -40,10 +40,10 @@ export function browserBaseUrl(): string {
   return resolveBaseUrl();
 }
 
-export const API_BASE_URL = resolveBaseUrl();
+export const API_BASE_URL = browserBaseUrl();
 
 export const apiConfig = {
-  basePath: API_BASE_URL,
+  basePath: browserBaseUrl(),
 };
 
 export const getAuthHeaders = (): Record<string, string> => {

@@ -1,6 +1,6 @@
 "use client";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
+import { browserBaseUrl } from "@/lib/api-config";
 
 export enum ConversationType {
   DIRECT = "DIRECT",
@@ -229,7 +229,7 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const url = `${API_BASE_URL}/${portalType}/messaging${endpoint}`;
+  const url = `${browserBaseUrl()}/${portalType}/messaging${endpoint}`;
   const response = await fetch(url, {
     ...options,
     headers: {

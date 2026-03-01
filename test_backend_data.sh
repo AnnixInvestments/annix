@@ -6,7 +6,7 @@
 echo "🔍 Checking Annix Backend Data..."
 echo ""
 
-BASE_URL="http://localhost:4001"
+BASE_URL="http://localhost:4001/api"
 
 echo "1️⃣ Testing Steel Specifications..."
 curl -s "$BASE_URL/steel-specification" | jq -r '.[] | "\(.id): \(.steel_spec_name // .steelSpecName)"' 2>/dev/null || echo "   ❌ Failed or no data"
