@@ -1,0 +1,71 @@
+FROM node:24-slim AS builder
+
+WORKDIR /usr/src/app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/product-data/package.json ./packages/product-data/
+COPY annix-backend/package.json ./annix-backend/
+RUN corepack enable pnpm && pnpm install --filter annix-backend --frozen-lockfile
+
+COPY packages/product-data/ ./packages/product-data/
+COPY annix-backend/ ./annix-backend/
+
+WORKDIR /usr/src/app/annix-backend
+RUN pnpm run build
+
+FROM node:24-slim AS docs-collector
+
+WORKDIR /usr/src/repo
+
+COPY . .
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /usr/src/docs && \
+  cd /usr/src/repo && \
+  git ls-files "*.md" -z | xargs -0 -I{} sh -c 'mkdir -p "/usr/src/docs/$(dirname "$1")"; cp "$1" "/usr/src/docs/$1"' _ {}
+
+FROM node:24-slim AS runner
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  ca-certificates \
+  fonts-liberation \
+  libappindicator3-1 \
+  libasound2 \
+  libatk-bridge2.0-0 \
+  libatk1.0-0 \
+  libcups2 \
+  libdbus-1-3 \
+  libdrm2 \
+  libgbm1 \
+  libglib2.0-0 \
+  libgtk-3-0 \
+  libnspr4 \
+  libnss3 \
+  libx11-xcb1 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxfixes3 \
+  libxrandr2 \
+  libxshmfence1 \
+  wget \
+  xdg-utils \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/product-data/package.json ./packages/product-data/
+COPY annix-backend/package.json ./annix-backend/
+RUN corepack enable pnpm && pnpm install --filter annix-backend --frozen-lockfile
+
+WORKDIR /usr/src/app/annix-backend
+
+COPY --from=builder /usr/src/app/annix-backend/dist ./dist
+COPY --from=builder /usr/src/app/annix-backend/src/config/data-source.ts ./src/config/data-source.ts
+COPY --from=builder /usr/src/app/annix-backend/src/migrations ./src/migrations
+COPY --from=builder /usr/src/app/annix-backend/tsconfig.json ./tsconfig.json
+
+COPY --from=docs-collector /usr/src/docs ./project-docs
+
+EXPOSE 4000
+
+CMD ["sh", "-c", "node dist/src/main"]

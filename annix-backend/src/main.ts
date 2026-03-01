@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { RequestMethod, ValidationPipe } from "@nestjs/common";
+import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
@@ -8,18 +8,14 @@ import { AppModule } from "./app.module";
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  const isProduction = process.env.NODE_ENV === "production";
-
-  app.setGlobalPrefix("api", {
-    exclude: [{ path: "health", method: RequestMethod.GET }],
-  });
-
   const uploadDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
   app.useStaticAssets(uploadDir, { prefix: "/api/files/" });
 
+  const isProduction = process.env.NODE_ENV === "production";
   const corsOrigins = [
     ...(isProduction ? [] : ["http://localhost:3000", "http://localhost:3001"]),
     ...(process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()) ?? []),
+    process.env.FRONTEND_URL,
   ].filter((o): o is string => typeof o === "string" && o.startsWith("http"));
 
   app.enableCors({
@@ -30,42 +26,34 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Add security headers
   app.use((req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
     res.setHeader("X-XSS-Protection", "1; mode=block");
-    res.removeHeader("X-Powered-By");
+    res.removeHeader("X-Powered-By"); // Hide Express/NestJS signature
     next();
   });
 
+  // Enable global validation (checks DTOs automatically)
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
+      whitelist: true, // remove unknown properties
+      forbidNonWhitelisted: true, // throw error if extra fields
+      transform: true, // auto-transform payloads to DTO instances
     }),
   );
 
-  const swaggerConfig = new DocumentBuilder()
+  // swagger configuration
+  const config = new DocumentBuilder()
     .setTitle("Annix API")
     .setDescription("API documentation")
     .setVersion("1.0")
-    .addBearerAuth()
+    .addBearerAuth() // optional, if using JWT
     .build();
 
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("swagger", app, document);
-
-  if (isProduction) {
-    const next = require("next");
-    const frontendDir = path.resolve(__dirname, "..", "..", "..", "annix-frontend");
-    const nextApp = next({ dev: false, dir: frontendDir });
-    await nextApp.prepare();
-    const nextHandler = nextApp.getRequestHandler();
-
-    const expressApp = app.getHttpAdapter().getInstance();
-    expressApp.all("/{*path}", (req, res) => nextHandler(req, res));
-  }
 
   await app.listen(process.env.PORT ?? 4001);
 }
