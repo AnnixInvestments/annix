@@ -522,6 +522,14 @@ export class CreateOpeningStockDto {
   priceZar?: number | null;
 
   @IsOptional()
+  @IsNumber()
+  locationId?: number | null;
+
+  @IsOptional()
+  @IsDateString()
+  productionDate?: string | null;
+
+  @IsOptional()
   @IsString()
   notes?: string | null;
 }
@@ -543,6 +551,14 @@ export class ImportOpeningStockRowDto {
   @IsOptional()
   @IsNumber()
   priceZar?: number | null;
+
+  @IsOptional()
+  @IsString()
+  location?: string | null;
+
+  @IsOptional()
+  @IsDateString()
+  productionDate?: string | null;
 }
 
 export class ImportOpeningStockResultDto {

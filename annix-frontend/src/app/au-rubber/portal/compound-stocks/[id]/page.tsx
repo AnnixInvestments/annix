@@ -279,7 +279,9 @@ export default function CompoundStockDetailPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {movement.movementType === "OUT" ? "-" : "+"}
+                    {movement.movementType === "OUT" || movement.movementType === "ADJUSTMENT"
+                      ? "-"
+                      : "+"}
                     {movement.quantityKg.toFixed(2)} kg
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -298,10 +300,10 @@ export default function CompoundStockDetailPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 z-10"
               onClick={() => setShowReceiveModal(false)}
             />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="relative z-20 bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Receive Compound</h3>
               <div className="space-y-4">
                 <div>
@@ -357,10 +359,10 @@ export default function CompoundStockDetailPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 z-10"
               onClick={() => setShowAdjustModal(false)}
             />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="relative z-20 bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Adjust Stock</h3>
               <p className="text-sm text-gray-600 mb-4">
                 Current stock: {stock.quantityKg.toFixed(2)} kg. Enter the new total quantity.
@@ -413,10 +415,10 @@ export default function CompoundStockDetailPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 z-10"
               onClick={() => setShowEditModal(false)}
             />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="relative z-20 bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Stock Settings</h3>
               <div className="space-y-4">
                 <div>

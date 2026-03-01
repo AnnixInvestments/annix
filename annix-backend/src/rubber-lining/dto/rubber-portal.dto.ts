@@ -18,6 +18,7 @@ import {
 import { RubberCompoundOrderStatus } from "../entities/rubber-compound-order.entity";
 import { RubberOrderStatus, StatusHistoryEvent } from "../entities/rubber-order.entity";
 import { CallOff } from "../entities/rubber-order-item.entity";
+import { OtherStockUnitOfMeasure } from "../entities/rubber-other-stock.entity";
 import { ProductCodingType } from "../entities/rubber-product-coding.entity";
 import { RubberProductionStatus } from "../entities/rubber-production.entity";
 
@@ -632,6 +633,84 @@ export class UpdateRubberCompoundStockDto {
   batchNumber?: string;
 }
 
+export class CreateCompoundOpeningStockDto {
+  @IsNumber()
+  compoundCodingId: number;
+
+  @IsNumber()
+  quantityKg: number;
+
+  @IsOptional()
+  @IsNumber()
+  costPerKg?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  minStockLevelKg?: number;
+
+  @IsOptional()
+  @IsNumber()
+  reorderPointKg?: number;
+
+  @IsOptional()
+  @IsNumber()
+  locationId?: number | null;
+
+  @IsOptional()
+  @IsString()
+  batchNumber?: string | null;
+
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
+}
+
+export class ImportCompoundOpeningStockRowDto {
+  @IsString()
+  compoundCode: string;
+
+  @IsNumber()
+  quantityKg: number;
+
+  @IsOptional()
+  @IsNumber()
+  costPerKg?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  minStockLevelKg?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  reorderPointKg?: number | null;
+
+  @IsOptional()
+  @IsString()
+  location?: string | null;
+
+  @IsOptional()
+  @IsString()
+  batchNumber?: string | null;
+}
+
+export class ImportCompoundOpeningStockDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ImportCompoundOpeningStockRowDto)
+  rows: ImportCompoundOpeningStockRowDto[];
+}
+
+export class ImportCompoundOpeningStockResultDto {
+  totalRows: number;
+  created: number;
+  updated: number;
+  errors: Array<{
+    row: number;
+    compoundCode: string;
+    error: string;
+  }>;
+}
+
 export class RubberCompoundMovementDto {
   id: number;
   compoundStockId: number;
@@ -804,4 +883,218 @@ export class ReceiveCompoundOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+}
+
+export class RubberOtherStockDto {
+  id: number;
+  firebaseUid: string;
+  itemCode: string;
+  itemName: string;
+  description: string | null;
+  category: string | null;
+  unitOfMeasure: OtherStockUnitOfMeasure;
+  unitOfMeasureLabel: string;
+  quantity: number;
+  minStockLevel: number;
+  reorderPoint: number;
+  costPerUnit: number | null;
+  pricePerUnit: number | null;
+  location: string | null;
+  locationId: number | null;
+  supplier: string | null;
+  notes: string | null;
+  isActive: boolean;
+  isLowStock: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export class CreateOtherStockDto {
+  @IsString()
+  itemCode: string;
+
+  @IsString()
+  itemName: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @IsOptional()
+  @IsString()
+  category?: string | null;
+
+  @IsEnum(OtherStockUnitOfMeasure)
+  unitOfMeasure: OtherStockUnitOfMeasure;
+
+  @IsNumber()
+  quantity: number;
+
+  @IsOptional()
+  @IsNumber()
+  minStockLevel?: number;
+
+  @IsOptional()
+  @IsNumber()
+  reorderPoint?: number;
+
+  @IsOptional()
+  @IsNumber()
+  costPerUnit?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  pricePerUnit?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  locationId?: number | null;
+
+  @IsOptional()
+  @IsString()
+  supplier?: string | null;
+
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
+}
+
+export class UpdateOtherStockDto {
+  @IsOptional()
+  @IsString()
+  itemName?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @IsOptional()
+  @IsString()
+  category?: string | null;
+
+  @IsOptional()
+  @IsEnum(OtherStockUnitOfMeasure)
+  unitOfMeasure?: OtherStockUnitOfMeasure;
+
+  @IsOptional()
+  @IsNumber()
+  quantity?: number;
+
+  @IsOptional()
+  @IsNumber()
+  minStockLevel?: number;
+
+  @IsOptional()
+  @IsNumber()
+  reorderPoint?: number;
+
+  @IsOptional()
+  @IsNumber()
+  costPerUnit?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  pricePerUnit?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  locationId?: number | null;
+
+  @IsOptional()
+  @IsString()
+  supplier?: string | null;
+
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class ImportOtherStockRowDto {
+  @IsString()
+  itemCode: string;
+
+  @IsString()
+  itemName: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @IsOptional()
+  @IsString()
+  category?: string | null;
+
+  @IsOptional()
+  @IsString()
+  unitOfMeasure?: string | null;
+
+  @IsNumber()
+  quantity: number;
+
+  @IsOptional()
+  @IsNumber()
+  minStockLevel?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  reorderPoint?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  costPerUnit?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  pricePerUnit?: number | null;
+
+  @IsOptional()
+  @IsString()
+  location?: string | null;
+
+  @IsOptional()
+  @IsString()
+  supplier?: string | null;
+
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
+}
+
+export class ImportOtherStockResultDto {
+  totalRows: number;
+  created: number;
+  updated: number;
+  errors: Array<{
+    row: number;
+    itemCode: string;
+    error: string;
+  }>;
+}
+
+export class ReceiveOtherStockDto {
+  @IsNumber()
+  otherStockId: number;
+
+  @IsNumber()
+  quantity: number;
+
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
+}
+
+export class AdjustOtherStockDto {
+  @IsNumber()
+  otherStockId: number;
+
+  @IsNumber()
+  newQuantity: number;
+
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
 }

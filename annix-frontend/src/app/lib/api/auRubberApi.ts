@@ -400,6 +400,8 @@ export interface CreateOpeningStockDto {
   weightKg: number;
   costZar?: number | null;
   priceZar?: number | null;
+  locationId?: number | null;
+  productionDate?: string | null;
   notes?: string | null;
 }
 
@@ -409,12 +411,144 @@ export interface ImportOpeningStockRowDto {
   weightKg: number;
   costZar?: number | null;
   priceZar?: number | null;
+  location?: string | null;
+  productionDate?: string | null;
 }
 
 export interface ImportOpeningStockResultDto {
   totalRows: number;
   created: number;
   errors: { row: number; rollNumber: string; error: string }[];
+}
+
+export interface CreateCompoundOpeningStockDto {
+  compoundCodingId: number;
+  quantityKg: number;
+  costPerKg?: number | null;
+  minStockLevelKg?: number;
+  reorderPointKg?: number;
+  locationId?: number | null;
+  batchNumber?: string | null;
+  notes?: string | null;
+}
+
+export interface ImportCompoundOpeningStockRowDto {
+  compoundCode: string;
+  quantityKg: number;
+  costPerKg?: number | null;
+  minStockLevelKg?: number | null;
+  reorderPointKg?: number | null;
+  location?: string | null;
+  batchNumber?: string | null;
+}
+
+export interface ImportCompoundOpeningStockResultDto {
+  totalRows: number;
+  created: number;
+  updated: number;
+  errors: { row: number; compoundCode: string; error: string }[];
+}
+
+export type OtherStockUnitOfMeasure =
+  | "EACH"
+  | "BOX"
+  | "PACK"
+  | "KG"
+  | "LITERS"
+  | "METERS"
+  | "ROLLS"
+  | "SHEETS"
+  | "PAIRS"
+  | "SETS";
+
+export interface RubberOtherStockDto {
+  id: number;
+  firebaseUid: string;
+  itemCode: string;
+  itemName: string;
+  description: string | null;
+  category: string | null;
+  unitOfMeasure: OtherStockUnitOfMeasure;
+  unitOfMeasureLabel: string;
+  quantity: number;
+  minStockLevel: number;
+  reorderPoint: number;
+  costPerUnit: number | null;
+  pricePerUnit: number | null;
+  location: string | null;
+  locationId: number | null;
+  supplier: string | null;
+  notes: string | null;
+  isActive: boolean;
+  isLowStock: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateOtherStockDto {
+  itemCode: string;
+  itemName: string;
+  description?: string | null;
+  category?: string | null;
+  unitOfMeasure: OtherStockUnitOfMeasure;
+  quantity: number;
+  minStockLevel?: number;
+  reorderPoint?: number;
+  costPerUnit?: number | null;
+  pricePerUnit?: number | null;
+  locationId?: number | null;
+  supplier?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateOtherStockDto {
+  itemName?: string;
+  description?: string | null;
+  category?: string | null;
+  unitOfMeasure?: OtherStockUnitOfMeasure;
+  quantity?: number;
+  minStockLevel?: number;
+  reorderPoint?: number;
+  costPerUnit?: number | null;
+  pricePerUnit?: number | null;
+  locationId?: number | null;
+  supplier?: string | null;
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+export interface ReceiveOtherStockDto {
+  otherStockId: number;
+  quantity: number;
+}
+
+export interface AdjustOtherStockDto {
+  otherStockId: number;
+  newQuantity: number;
+  reason?: string;
+}
+
+export interface ImportOtherStockRowDto {
+  itemCode: string;
+  itemName: string;
+  description?: string | null;
+  category?: string | null;
+  unitOfMeasure?: string | null;
+  quantity: number;
+  minStockLevel?: number | null;
+  reorderPoint?: number | null;
+  costPerUnit?: number | null;
+  pricePerUnit?: number | null;
+  location?: string | null;
+  supplier?: string | null;
+  notes?: string | null;
+}
+
+export interface ImportOtherStockResultDto {
+  totalRows: number;
+  created: number;
+  updated: number;
+  errors: { row: number; itemCode: string; error: string }[];
 }
 
 export interface RubberAuCocDto {
@@ -1208,6 +1342,24 @@ class AuRubberApiClient {
     return this.request("/rubber-lining/portal/compound-stocks", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  async createCompoundOpeningStock(
+    data: CreateCompoundOpeningStockDto,
+  ): Promise<RubberCompoundStockDto> {
+    return this.request("/rubber-lining/portal/compound-stocks/opening", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async importCompoundOpeningStock(
+    rows: ImportCompoundOpeningStockRowDto[],
+  ): Promise<ImportCompoundOpeningStockResultDto> {
+    return this.request("/rubber-lining/portal/compound-stocks/import-opening", {
+      method: "POST",
+      body: JSON.stringify(rows),
     });
   }
 
@@ -2145,6 +2297,60 @@ class AuRubberApiClient {
       {},
       "file",
     );
+  }
+
+  async otherStocks(includeInactive = false): Promise<RubberOtherStockDto[]> {
+    const params = includeInactive ? "?includeInactive=true" : "";
+    return this.request(`/rubber-lining/portal/other-stocks${params}`);
+  }
+
+  async lowStockItems(): Promise<RubberOtherStockDto[]> {
+    return this.request("/rubber-lining/portal/other-stocks/low");
+  }
+
+  async otherStockById(id: number): Promise<RubberOtherStockDto> {
+    return this.request(`/rubber-lining/portal/other-stocks/${id}`);
+  }
+
+  async createOtherStock(data: CreateOtherStockDto): Promise<RubberOtherStockDto> {
+    return this.request("/rubber-lining/portal/other-stocks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateOtherStock(id: number, data: UpdateOtherStockDto): Promise<RubberOtherStockDto> {
+    return this.request(`/rubber-lining/portal/other-stocks/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteOtherStock(id: number): Promise<void> {
+    return this.request(`/rubber-lining/portal/other-stocks/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async receiveOtherStock(data: ReceiveOtherStockDto): Promise<RubberOtherStockDto> {
+    return this.request("/rubber-lining/portal/other-stocks/receive", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async adjustOtherStock(data: AdjustOtherStockDto): Promise<RubberOtherStockDto> {
+    return this.request("/rubber-lining/portal/other-stocks/adjust", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async importOtherStock(rows: ImportOtherStockRowDto[]): Promise<ImportOtherStockResultDto> {
+    return this.request("/rubber-lining/portal/other-stocks/import", {
+      method: "POST",
+      body: JSON.stringify(rows),
+    });
   }
 }
 

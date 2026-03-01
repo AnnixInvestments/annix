@@ -14,6 +14,7 @@ export const PAGE_PERMISSIONS: Record<string, string> = {
   "/au-rubber/portal/stock-movements": "stock-movements:view",
   "/au-rubber/portal/stock-locations": "stock-locations:view",
   "/au-rubber/portal/purchase-requisitions": "purchase-requisitions:view",
+  "/au-rubber/portal/other-items": "other-items:view",
   "/au-rubber/portal/pricing-tiers": "pricing-tiers:view",
   "/au-rubber/portal/companies": "companies:view",
   "/au-rubber/portal/settings": "settings:manage",

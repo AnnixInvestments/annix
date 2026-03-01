@@ -10,6 +10,7 @@ import {
   type ImportOpeningStockRowDto,
   type RollStockStatus,
   type RubberRollStockDto,
+  type StockLocationDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
@@ -45,6 +46,7 @@ export default function RollStockPage() {
   const [scrapReason, setScrapReason] = useState("");
   const [isScrapping, setIsScrapping] = useState(false);
   const [compoundCodings, setCompoundCodings] = useState<RubberProductCodingDto[]>([]);
+  const [locations, setLocations] = useState<StockLocationDto[]>([]);
   const [showOpeningStockModal, setShowOpeningStockModal] = useState(false);
   const [openingStockTab, setOpeningStockTab] = useState<"single" | "bulk">("single");
   const [openingStockForm, setOpeningStockForm] = useState<CreateOpeningStockDto>({
@@ -53,6 +55,8 @@ export default function RollStockPage() {
     weightKg: 0,
     costZar: null,
     priceZar: null,
+    locationId: null,
+    productionDate: null,
     notes: null,
   });
   const [isSubmittingOpeningStock, setIsSubmittingOpeningStock] = useState(false);
@@ -64,12 +68,13 @@ export default function RollStockPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [rollsData, companiesData, codingsData] = await Promise.all([
+      const [rollsData, companiesData, codingsData, locationsData] = await Promise.all([
         auRubberApiClient.rollStock({
           status: filterStatus || undefined,
         }),
         auRubberApiClient.companies(),
         auRubberApiClient.productCodings(),
+        auRubberApiClient.stockLocations(),
       ]);
       setRolls(Array.isArray(rollsData) ? rollsData : []);
       setCompanies(Array.isArray(companiesData) ? companiesData : []);
@@ -77,6 +82,7 @@ export default function RollStockPage() {
         (c) => c.codingType === "COMPOUND",
       );
       setCompoundCodings(compounds);
+      setLocations(Array.isArray(locationsData) ? locationsData : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));
@@ -194,6 +200,8 @@ export default function RollStockPage() {
       weightKg: 0,
       costZar: null,
       priceZar: null,
+      locationId: null,
+      productionDate: null,
       notes: null,
     });
     setCsvData([]);
@@ -248,6 +256,8 @@ export default function RollStockPage() {
           priceZar: values[headers.indexOf("price_zar")]
             ? Number(values[headers.indexOf("price_zar")])
             : null,
+          location: values[headers.indexOf("location")] || null,
+          productionDate: values[headers.indexOf("production_date")] || null,
         };
         return rowData;
       });
@@ -783,6 +793,44 @@ export default function RollStockPage() {
                       />
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Location</label>
+                      <select
+                        value={openingStockForm.locationId ?? ""}
+                        onChange={(e) =>
+                          setOpeningStockForm({
+                            ...openingStockForm,
+                            locationId: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      >
+                        <option value="">Select location</option>
+                        {locations.map((loc) => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Production Date
+                      </label>
+                      <input
+                        type="date"
+                        value={openingStockForm.productionDate ?? ""}
+                        onChange={(e) =>
+                          setOpeningStockForm({
+                            ...openingStockForm,
+                            productionDate: e.target.value || null,
+                          })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Notes</label>
                     <textarea
@@ -845,7 +893,8 @@ export default function RollStockPage() {
                         {csvFileName || "Click to upload CSV file"}
                       </p>
                       <p className="mt-1 text-xs text-gray-500">
-                        Columns: roll_number, compound_code, weight_kg, cost_zar, price_zar
+                        Columns: roll_number, compound_code, weight_kg, cost_zar, price_zar,
+                        location, production_date
                       </p>
                     </label>
                   </div>

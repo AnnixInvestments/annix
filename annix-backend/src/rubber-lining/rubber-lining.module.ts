@@ -23,6 +23,7 @@ import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
 import { RubberOrder } from "./entities/rubber-order.entity";
 import { RubberOrderItem } from "./entities/rubber-order-item.entity";
+import { RubberOtherStock } from "./entities/rubber-other-stock.entity";
 import { RubberPoExtractionRegion } from "./entities/rubber-po-extraction-region.entity";
 import { RubberPoExtractionTemplate } from "./entities/rubber-po-extraction-template.entity";
 import { RubberPricingTier } from "./entities/rubber-pricing-tier.entity";
@@ -52,6 +53,7 @@ import { RubberInboundEmailService } from "./rubber-inbound-email.service";
 import { RubberLiningController } from "./rubber-lining.controller";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberOrderImportService } from "./rubber-order-import.service";
+import { RubberOtherStockService } from "./rubber-other-stock.service";
 import { RubberPoTemplateService } from "./rubber-po-template.service";
 import { RubberProductImportService } from "./rubber-product-import.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
@@ -98,6 +100,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
       RubberQualityAlert,
       RubberPoExtractionTemplate,
       RubberPoExtractionRegion,
+      RubberOtherStock,
     ]),
   ],
   controllers: [RubberLiningController, RubberAdminController, RubberInboundEmailController],
@@ -118,6 +121,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     RubberOrderImportService,
     RubberPoTemplateService,
     RubberProductImportService,
+    RubberOtherStockService,
     AuRubberAccessGuard,
   ],
   exports: [
@@ -131,6 +135,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     RubberRequisitionService,
     RubberStockLocationService,
     RubberQualityTrackingService,
+    RubberOtherStockService,
   ],
 })
 export class RubberLiningModule {}

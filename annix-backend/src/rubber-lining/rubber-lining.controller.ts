@@ -59,8 +59,11 @@ import {
 } from "./dto/rubber-lining.dto";
 import {
   AdjustCompoundDto,
+  AdjustOtherStockDto,
   CalculateCompoundDto,
   CompoundCalculationResultDto,
+  CreateCompoundOpeningStockDto,
+  CreateOtherStockDto,
   CreateRubberCompanyDto,
   CreateRubberCompoundOrderDto,
   CreateRubberCompoundStockDto,
@@ -69,21 +72,28 @@ import {
   CreateRubberProductCodingDto,
   CreateRubberProductDto,
   CreateRubberProductionDto,
+  ImportCompoundOpeningStockResultDto,
+  ImportCompoundOpeningStockRowDto,
+  ImportOtherStockResultDto,
+  ImportOtherStockRowDto,
   ImportProductsRequestDto,
   ImportProductsResultDto,
   ReceiveCompoundDto,
   ReceiveCompoundOrderDto,
+  ReceiveOtherStockDto,
   RubberCompanyDto,
   RubberCompoundMovementDto,
   RubberCompoundOrderDto,
   RubberCompoundStockDto,
   RubberOrderDto,
+  RubberOtherStockDto,
   RubberPriceCalculationDto,
   RubberPriceCalculationRequestDto,
   RubberPricingTierDto,
   RubberProductCodingDto,
   RubberProductDto,
   RubberProductionDto,
+  UpdateOtherStockDto,
   UpdateRubberCompanyDto,
   UpdateRubberCompoundOrderStatusDto,
   UpdateRubberCompoundStockDto,
@@ -123,6 +133,7 @@ import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-brand
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberLiningService } from "./rubber-lining.service";
+import { RubberOtherStockService } from "./rubber-other-stock.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
@@ -143,6 +154,7 @@ export class RubberLiningController {
     private readonly rubberRequisitionService: RubberRequisitionService,
     private readonly rubberStockLocationService: RubberStockLocationService,
     private readonly rubberQualityTrackingService: RubberQualityTrackingService,
+    private readonly rubberOtherStockService: RubberOtherStockService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -1024,6 +1036,26 @@ Formula: totalPrice = totalKg × salePricePerKg
     @Body() dto: CreateRubberCompoundStockDto,
   ): Promise<RubberCompoundStockDto> {
     return this.rubberStockService.createCompoundStock(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/compound-stocks/opening")
+  @ApiOperation({ summary: "Create compound opening stock entry" })
+  async createCompoundOpeningStock(
+    @Body() dto: CreateCompoundOpeningStockDto,
+  ): Promise<RubberCompoundStockDto> {
+    return this.rubberStockService.createCompoundOpeningStock(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/compound-stocks/import-opening")
+  @ApiOperation({ summary: "Bulk import compound opening stock" })
+  async importCompoundOpeningStock(
+    @Body() rows: ImportCompoundOpeningStockRowDto[],
+  ): Promise<ImportCompoundOpeningStockResultDto> {
+    return this.rubberStockService.importCompoundOpeningStock(rows);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
@@ -2057,5 +2089,93 @@ Formula: totalPrice = totalKg × salePricePerKg
     const user = req.user;
     const updatedBy = user?.email || "unknown";
     return this.rubberQualityTrackingService.updateConfig(compoundCode, dto, updatedBy);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/other-stocks")
+  @ApiOperation({ summary: "List other stock items" })
+  @ApiQuery({ name: "includeInactive", required: false, type: Boolean })
+  async otherStocks(
+    @Query("includeInactive") includeInactive?: string,
+  ): Promise<RubberOtherStockDto[]> {
+    return this.rubberOtherStockService.allOtherStocks(includeInactive === "true");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/other-stocks/low")
+  @ApiOperation({ summary: "List low stock items" })
+  async lowStockItems(): Promise<RubberOtherStockDto[]> {
+    return this.rubberOtherStockService.lowStockItems();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/other-stocks/:id")
+  @ApiOperation({ summary: "Get other stock item by ID" })
+  @ApiParam({ name: "id", description: "Other stock ID" })
+  async otherStockById(@Param("id") id: string): Promise<RubberOtherStockDto> {
+    const stock = await this.rubberOtherStockService.otherStockById(Number(id));
+    if (!stock) throw new NotFoundException("Other stock item not found");
+    return stock;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/other-stocks")
+  @ApiOperation({ summary: "Create other stock item" })
+  async createOtherStock(@Body() dto: CreateOtherStockDto): Promise<RubberOtherStockDto> {
+    return this.rubberOtherStockService.createOtherStock(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/other-stocks/:id")
+  @ApiOperation({ summary: "Update other stock item" })
+  @ApiParam({ name: "id", description: "Other stock ID" })
+  async updateOtherStock(
+    @Param("id") id: string,
+    @Body() dto: UpdateOtherStockDto,
+  ): Promise<RubberOtherStockDto> {
+    const stock = await this.rubberOtherStockService.updateOtherStock(Number(id), dto);
+    if (!stock) throw new NotFoundException("Other stock item not found");
+    return stock;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/other-stocks/:id")
+  @ApiOperation({ summary: "Delete other stock item" })
+  @ApiParam({ name: "id", description: "Other stock ID" })
+  async deleteOtherStock(@Param("id") id: string): Promise<void> {
+    const deleted = await this.rubberOtherStockService.deleteOtherStock(Number(id));
+    if (!deleted) throw new NotFoundException("Other stock item not found");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/other-stocks/receive")
+  @ApiOperation({ summary: "Receive stock for an item" })
+  async receiveOtherStock(@Body() dto: ReceiveOtherStockDto): Promise<RubberOtherStockDto> {
+    return this.rubberOtherStockService.receiveOtherStock(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/other-stocks/adjust")
+  @ApiOperation({ summary: "Adjust stock quantity for an item" })
+  async adjustOtherStock(@Body() dto: AdjustOtherStockDto): Promise<RubberOtherStockDto> {
+    return this.rubberOtherStockService.adjustOtherStock(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/other-stocks/import")
+  @ApiOperation({ summary: "Bulk import other stock items" })
+  async importOtherStock(
+    @Body() rows: ImportOtherStockRowDto[],
+  ): Promise<ImportOtherStockResultDto> {
+    return this.rubberOtherStockService.importOtherStock(rows);
   }
 }

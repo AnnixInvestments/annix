@@ -152,6 +152,11 @@ const navSections: NavSection[] = [
         label: "Purchase Requisitions",
         permission: PAGE_PERMISSIONS["/au-rubber/portal/purchase-requisitions"],
       },
+      {
+        href: "/au-rubber/portal/other-items",
+        label: "Other Items",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/other-items"],
+      },
     ],
   },
   {

@@ -21,6 +21,7 @@ import { RubberCompany } from "./entities/rubber-company.entity";
 import { BatchPassFailStatus, RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
+import { RubberStockLocation } from "./entities/rubber-stock-location.entity";
 import {
   CocProcessingStatus,
   RubberSupplierCoc,
@@ -66,6 +67,8 @@ export class RubberRollStockService {
     private companyRepository: Repository<RubberCompany>,
     @InjectRepository(RubberProductCoding)
     private productCodingRepository: Repository<RubberProductCoding>,
+    @InjectRepository(RubberStockLocation)
+    private stockLocationRepository: Repository<RubberStockLocation>,
   ) {}
 
   async allRollStock(filters?: {
@@ -426,6 +429,16 @@ export class RubberRollStockService {
       throw new BadRequestException("Selected coding must be of type COMPOUND");
     }
 
+    let locationName: string | null = null;
+    if (dto.locationId) {
+      const location = await this.stockLocationRepository.findOne({
+        where: { id: dto.locationId },
+      });
+      if (location) {
+        locationName = location.name;
+      }
+    }
+
     const roll = this.rollStockRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       rollNumber: dto.rollNumber,
@@ -436,6 +449,9 @@ export class RubberRollStockService {
       costZar: dto.costZar ?? null,
       priceZar: dto.priceZar ?? null,
       notes: dto.notes ?? null,
+      locationId: dto.locationId ?? null,
+      location: locationName,
+      productionDate: dto.productionDate ? new Date(dto.productionDate) : null,
     });
 
     const saved = await this.rollStockRepository.save(roll);
@@ -496,6 +512,8 @@ export class RubberRollStockService {
           linkedBatchIds: [],
           costZar: row.costZar ?? null,
           priceZar: row.priceZar ?? null,
+          location: row.location ?? null,
+          productionDate: row.productionDate ? new Date(row.productionDate) : null,
         });
         await this.rollStockRepository.save(roll);
         result.created++;
