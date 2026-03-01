@@ -103,6 +103,18 @@ export class RubberSupplierCoc {
   @Column({ name: "extracted_data", type: "jsonb", nullable: true })
   extractedData: ExtractedCocData | null;
 
+  @Column({ name: "review_notes", type: "text", nullable: true })
+  reviewNotes: string | null;
+
+  @Column({ name: "approved_by", type: "varchar", length: 100, nullable: true })
+  approvedBy: string | null;
+
+  @Column({ name: "approved_at", type: "timestamp", nullable: true })
+  approvedAt: Date | null;
+
+  @Column({ name: "linked_delivery_note_id", type: "int", nullable: true })
+  linkedDeliveryNoteId: number | null;
+
   @Column({ name: "created_by", type: "varchar", length: 100, nullable: true })
   createdBy: string | null;
 

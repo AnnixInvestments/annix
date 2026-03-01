@@ -77,9 +77,7 @@ export class RubberInboundEmailController {
     summary: "Receive raw email content (for Cloudflare Email Workers)",
     description: "Receives raw email content and parses it to create records",
   })
-  async receiveRawEmail(
-    @Body() body: { rawEmail: string },
-  ): Promise<ProcessedEmailResult> {
+  async receiveRawEmail(@Body() body: { rawEmail: string }): Promise<ProcessedEmailResult> {
     this.logger.log("Received raw email webhook");
 
     try {
@@ -88,8 +86,7 @@ export class RubberInboundEmailController {
       const attachments = (parsed.attachments || [])
         .filter(
           (att) =>
-            att.contentType === "application/pdf" ||
-            att.filename?.toLowerCase().endsWith(".pdf"),
+            att.contentType === "application/pdf" || att.filename?.toLowerCase().endsWith(".pdf"),
         )
         .map((att) => ({
           filename: att.filename || "attachment.pdf",
@@ -99,9 +96,7 @@ export class RubberInboundEmailController {
         }));
 
       const fromValue = parsed.from?.value;
-      const fromAddress = Array.isArray(fromValue)
-        ? fromValue[0]?.address || ""
-        : "";
+      const fromAddress = Array.isArray(fromValue) ? fromValue[0]?.address || "" : "";
 
       const toValue = parsed.to;
       let toAddress = "";
@@ -211,9 +206,7 @@ export class RubberInboundEmailController {
       },
     },
   })
-  async analyzeSupplierCocs(
-    @UploadedFiles() files: Express.Multer.File[],
-  ): Promise<{
+  async analyzeSupplierCocs(@UploadedFiles() files: Express.Multer.File[]): Promise<{
     files: Array<{
       filename: string;
       isGraph: boolean;
@@ -309,7 +302,7 @@ export class RubberInboundEmailController {
     }
 
     const supplierCompanyId = parseInt(body.supplierCompanyId, 10);
-    if (isNaN(supplierCompanyId)) {
+    if (Number.isNaN(supplierCompanyId)) {
       throw new BadRequestException("Invalid supplierCompanyId");
     }
 

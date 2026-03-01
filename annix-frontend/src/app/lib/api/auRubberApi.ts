@@ -64,6 +64,7 @@ export interface RubberSupplierCocDto {
   approvedBy: string | null;
   approvedAt: string | null;
   linkedDeliveryNoteId: number | null;
+  createdBy: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1262,9 +1263,7 @@ class AuRubberApiClient {
     });
   }
 
-  async analyzeSupplierCocs(
-    files: File[],
-  ): Promise<{
+  async analyzeSupplierCocs(files: File[]): Promise<{
     files: Array<{
       filename: string;
       isGraph: boolean;

@@ -454,9 +454,9 @@ export class RubberRollStockService {
       graphPdfPath: coc.graphPdfPath,
       cocNumber: coc.cocNumber,
       productionDate: coc.productionDate
-        ? (coc.productionDate instanceof Date
-            ? coc.productionDate.toISOString().split("T")[0]
-            : String(coc.productionDate).split("T")[0])
+        ? coc.productionDate instanceof Date
+          ? coc.productionDate.toISOString().split("T")[0]
+          : String(coc.productionDate).split("T")[0]
         : null,
       compoundCode: coc.compoundCode,
       orderNumber: coc.orderNumber,
@@ -464,6 +464,10 @@ export class RubberRollStockService {
       processingStatus: coc.processingStatus,
       processingStatusLabel: PROCESSING_STATUS_LABELS[coc.processingStatus],
       extractedData: coc.extractedData,
+      reviewNotes: coc.reviewNotes,
+      approvedBy: coc.approvedBy,
+      approvedAt: coc.approvedAt ? coc.approvedAt.toISOString() : null,
+      linkedDeliveryNoteId: coc.linkedDeliveryNoteId,
       createdBy: coc.createdBy,
       createdAt: coc.createdAt.toISOString(),
       updatedAt: coc.updatedAt.toISOString(),

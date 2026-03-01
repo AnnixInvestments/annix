@@ -12,6 +12,8 @@ import {
   type CandidateImage,
 } from "@/app/lib/api/auRubberApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
+import { RequirePermission } from "../../components/RequirePermission";
+import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 
 const SOURCE_LABELS: Record<string, string> = {
   "logo-attr": "Logo element",
@@ -1063,44 +1065,46 @@ export default function SettingsPage() {
   const canManageAccess = !authLoading && hasPermission("settings:manage");
 
   return (
-    <div className="space-y-6">
-      <Breadcrumb items={[{ label: "Settings" }]} />
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Configure AU Rubber app branding and preferences
-        </p>
-      </div>
+    <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/settings"]}>
+      <div className="space-y-6">
+        <Breadcrumb items={[{ label: "Settings" }]} />
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Configure AU Rubber app branding and preferences
+          </p>
+        </div>
 
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab("branding")}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "branding"
-                ? "border-yellow-500 text-yellow-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            Branding
-          </button>
-          {canManageAccess && (
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
             <button
-              onClick={() => setActiveTab("access")}
+              onClick={() => setActiveTab("branding")}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "access"
+                activeTab === "branding"
                   ? "border-yellow-500 text-yellow-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              Access Control
+              Branding
             </button>
-          )}
-        </nav>
-      </div>
+            {canManageAccess && (
+              <button
+                onClick={() => setActiveTab("access")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "access"
+                    ? "border-yellow-500 text-yellow-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Access Control
+              </button>
+            )}
+          </nav>
+        </div>
 
-      {activeTab === "branding" && <BrandingTab />}
-      {activeTab === "access" && canManageAccess && <AccessControlTab />}
-    </div>
+        {activeTab === "branding" && <BrandingTab />}
+        {activeTab === "access" && canManageAccess && <AccessControlTab />}
+      </div>
+    </RequirePermission>
   );
 }

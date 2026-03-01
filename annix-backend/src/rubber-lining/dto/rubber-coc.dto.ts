@@ -31,6 +31,10 @@ export class RubberSupplierCocDto {
   processingStatus: CocProcessingStatus;
   processingStatusLabel: string;
   extractedData: ExtractedCocData | null;
+  reviewNotes: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  linkedDeliveryNoteId: number | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;

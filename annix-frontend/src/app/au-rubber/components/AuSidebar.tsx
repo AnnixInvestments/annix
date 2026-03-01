@@ -2,17 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
+import { PAGE_PERMISSIONS } from "../config/pagePermissions";
+
+interface NavItem {
+  href: string;
+  label: string;
+  permission?: string;
+}
 
 interface NavSection {
   label: string;
   icon: React.ReactNode;
-  items: {
-    href: string;
-    label: string;
-  }[];
+  items: NavItem[];
+}
+
+interface SingleNavItem extends NavItem {
+  icon: React.ReactNode;
 }
 
 const navSections: NavSection[] = [
@@ -29,8 +37,16 @@ const navSections: NavSection[] = [
       </svg>
     ),
     items: [
-      { href: "/au-rubber/portal/products", label: "All Products" },
-      { href: "/au-rubber/portal/codings", label: "Product Codings" },
+      {
+        href: "/au-rubber/portal/products",
+        label: "All Products",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/products"],
+      },
+      {
+        href: "/au-rubber/portal/codings",
+        label: "Product Codings",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/codings"],
+      },
     ],
   },
   {
@@ -46,10 +62,26 @@ const navSections: NavSection[] = [
       </svg>
     ),
     items: [
-      { href: "/au-rubber/portal/supplier-cocs", label: "Supplier CoCs" },
-      { href: "/au-rubber/portal/delivery-notes", label: "Delivery Notes" },
-      { href: "/au-rubber/portal/roll-stock", label: "Roll Stock" },
-      { href: "/au-rubber/portal/au-cocs", label: "AU Certificates" },
+      {
+        href: "/au-rubber/portal/supplier-cocs",
+        label: "Supplier CoCs",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/supplier-cocs"],
+      },
+      {
+        href: "/au-rubber/portal/delivery-notes",
+        label: "Delivery Notes",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/delivery-notes"],
+      },
+      {
+        href: "/au-rubber/portal/roll-stock",
+        label: "Roll Stock",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/roll-stock"],
+      },
+      {
+        href: "/au-rubber/portal/au-cocs",
+        label: "AU Certificates",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/au-cocs"],
+      },
     ],
   },
   {
@@ -65,12 +97,36 @@ const navSections: NavSection[] = [
       </svg>
     ),
     items: [
-      { href: "/au-rubber/portal/compound-stocks", label: "Compound Inventory" },
-      { href: "/au-rubber/portal/compound-orders", label: "Compound Orders" },
-      { href: "/au-rubber/portal/productions", label: "Production" },
-      { href: "/au-rubber/portal/stock-movements", label: "Movement History" },
-      { href: "/au-rubber/portal/stock-locations", label: "Stock Locations" },
-      { href: "/au-rubber/portal/purchase-requisitions", label: "Purchase Requisitions" },
+      {
+        href: "/au-rubber/portal/compound-stocks",
+        label: "Compound Inventory",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/compound-stocks"],
+      },
+      {
+        href: "/au-rubber/portal/compound-orders",
+        label: "Compound Orders",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/compound-orders"],
+      },
+      {
+        href: "/au-rubber/portal/productions",
+        label: "Production",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/productions"],
+      },
+      {
+        href: "/au-rubber/portal/stock-movements",
+        label: "Movement History",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/stock-movements"],
+      },
+      {
+        href: "/au-rubber/portal/stock-locations",
+        label: "Stock Locations",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/stock-locations"],
+      },
+      {
+        href: "/au-rubber/portal/purchase-requisitions",
+        label: "Purchase Requisitions",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/purchase-requisitions"],
+      },
     ],
   },
   {
@@ -86,16 +142,25 @@ const navSections: NavSection[] = [
       </svg>
     ),
     items: [
-      { href: "/au-rubber/portal/pricing-tiers", label: "Pricing Tiers" },
-      { href: "/au-rubber/portal/companies", label: "Companies" },
+      {
+        href: "/au-rubber/portal/pricing-tiers",
+        label: "Pricing Tiers",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/pricing-tiers"],
+      },
+      {
+        href: "/au-rubber/portal/companies",
+        label: "Companies",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/companies"],
+      },
     ],
   },
 ];
 
-const singleNavItems = [
+const singleNavItems: SingleNavItem[] = [
   {
     href: "/au-rubber/portal/dashboard",
     label: "Dashboard",
+    permission: PAGE_PERMISSIONS["/au-rubber/portal/dashboard"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -110,6 +175,7 @@ const singleNavItems = [
   {
     href: "/au-rubber/portal/orders",
     label: "Orders",
+    permission: PAGE_PERMISSIONS["/au-rubber/portal/orders"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -125,10 +191,36 @@ const singleNavItems = [
 
 export function AuSidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuRubberAuth();
+  const { user, logout, hasPermission, isAdmin } = useAuRubberAuth();
   const { colors } = useAuRubberBranding();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["Products"]));
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+
+  const canAccessItem = (permission: string | undefined): boolean => {
+    if (isAdmin) {
+      return true;
+    }
+    if (!permission) {
+      return true;
+    }
+    return hasPermission(permission);
+  };
+
+  const filteredSingleNavItems = useMemo(
+    () => singleNavItems.filter((item) => canAccessItem(item.permission)),
+    [isAdmin, hasPermission],
+  );
+
+  const filteredNavSections = useMemo(
+    () =>
+      navSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => canAccessItem(item.permission)),
+        }))
+        .filter((section) => section.items.length > 0),
+    [isAdmin, hasPermission],
+  );
 
   const toggleSection = (label: string) => {
     const newExpanded = new Set(expandedSections);
@@ -236,7 +328,7 @@ export function AuSidebar() {
 
       <nav className="flex-1 overflow-y-auto p-3">
         <div className="space-y-1">
-          {singleNavItems.map((item) => (
+          {filteredSingleNavItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -253,7 +345,7 @@ export function AuSidebar() {
         </div>
 
         <div className="mt-4 space-y-1">
-          {navSections.map((section) => (
+          {filteredNavSections.map((section) => (
             <div key={section.label}>
               <button
                 onClick={() => toggleSection(section.label)}

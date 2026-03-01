@@ -39,6 +39,65 @@ export class RubberCocExtractionService {
     return !!this.apiKey;
   }
 
+  private formatRollRange(rollNumbers: string[]): string {
+    if (rollNumbers.length === 0) return "";
+    if (rollNumbers.length === 1) return rollNumbers[0];
+
+    const numbers = rollNumbers
+      .map((r) => {
+        const match = r.match(/(\d+)/);
+        return match ? parseInt(match[1], 10) : null;
+      })
+      .filter((n): n is number => n !== null)
+      .sort((a, b) => a - b);
+
+    if (numbers.length === 0) return rollNumbers.join(", ");
+
+    const ranges: string[] = [];
+    let rangeStart = numbers[0];
+    let rangeEnd = numbers[0];
+
+    for (let i = 1; i < numbers.length; i++) {
+      if (numbers[i] === rangeEnd + 1) {
+        rangeEnd = numbers[i];
+      } else {
+        ranges.push(rangeStart === rangeEnd ? `${rangeStart}` : `${rangeStart}-${rangeEnd}`);
+        rangeStart = numbers[i];
+        rangeEnd = numbers[i];
+      }
+    }
+
+    ranges.push(rangeStart === rangeEnd ? `${rangeStart}` : `${rangeStart}-${rangeEnd}`);
+    return ranges.join(", ");
+  }
+
+  private generateCalendererCocNumber(
+    orderNumber: string | null,
+    ticketNumber: string | null,
+    rollNumbers: string[] | null,
+  ): string | null {
+    if (!orderNumber) return null;
+
+    const allRolls: string[] = [];
+
+    if (ticketNumber) {
+      allRolls.push(ticketNumber);
+    }
+
+    if (rollNumbers && rollNumbers.length > 0) {
+      rollNumbers.forEach((r) => {
+        if (!allRolls.includes(r)) {
+          allRolls.push(r);
+        }
+      });
+    }
+
+    if (allRolls.length === 0) return orderNumber;
+
+    const rollRange = this.formatRollRange(allRolls);
+    return `${orderNumber}-${rollRange}`;
+  }
+
   async extractCompounderCoc(pdfText: string): Promise<{
     data: ExtractedCocData;
     tokensUsed?: number;
@@ -86,8 +145,21 @@ export class RubberCocExtractionService {
     const processingTimeMs = Date.now() - startTime;
     this.logger.log(`Calenderer CoC extracted in ${processingTimeMs}ms`);
 
+    const extractedData = response.data as ExtractedCocData;
+
+    const cocNumber = this.generateCalendererCocNumber(
+      extractedData.orderNumber ?? null,
+      extractedData.ticketNumber ?? null,
+      extractedData.rollNumbers ?? null,
+    );
+
+    if (cocNumber) {
+      extractedData.cocNumber = cocNumber;
+      this.logger.log(`Generated Calenderer CoC number: ${cocNumber}`);
+    }
+
     return {
-      data: response.data as ExtractedCocData,
+      data: extractedData,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };

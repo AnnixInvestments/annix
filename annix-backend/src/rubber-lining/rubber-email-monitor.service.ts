@@ -48,9 +48,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
     this.isMonitoringEnabled = !!(imapHost && imapUser && imapPassword);
 
     if (this.isMonitoringEnabled) {
-      this.logger.log(
-        `AU Rubber email monitoring enabled for ${imapUser} on ${imapHost}`,
-      );
+      this.logger.log(`AU Rubber email monitoring enabled for ${imapUser} on ${imapHost}`);
     } else {
       this.logger.log(
         "AU Rubber email monitoring disabled - AU_RUBBER_EMAIL_* environment variables not configured",
@@ -126,16 +124,13 @@ export class RubberEmailMonitorService implements OnModuleInit {
       const parsed = await simpleParser(all.body);
       const subject = parsed.subject || "";
       const fromValue = parsed.from?.value;
-      const fromEmail = Array.isArray(fromValue)
-        ? fromValue[0]?.address || ""
-        : "";
+      const fromEmail = Array.isArray(fromValue) ? fromValue[0]?.address || "" : "";
 
       this.logger.log(`Processing email from: ${fromEmail}, subject: ${subject}`);
 
       const pdfAttachments = (parsed.attachments || []).filter(
         (att) =>
-          att.contentType === "application/pdf" ||
-          att.filename?.toLowerCase().endsWith(".pdf"),
+          att.contentType === "application/pdf" || att.filename?.toLowerCase().endsWith(".pdf"),
       );
 
       if (pdfAttachments.length === 0) {
@@ -159,9 +154,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
         );
 
         if (!supplierInfo) {
-          this.logger.warn(
-            `Could not identify supplier for attachment: ${filename}`,
-          );
+          this.logger.warn(`Could not identify supplier for attachment: ${filename}`);
           continue;
         }
 
@@ -194,9 +187,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
             },
             `imap:${messageId}`,
           );
-          this.logger.log(
-            `Created Supplier CoC ${coc.id} from email attachment: ${filename}`,
-          );
+          this.logger.log(`Created Supplier CoC ${coc.id} from email attachment: ${filename}`);
 
           await this.extractAndLinkCoc(coc.id, supplierInfo.cocType, pdfText);
         } else {
@@ -210,9 +201,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
             },
             `imap:${messageId}`,
           );
-          this.logger.log(
-            `Created Delivery Note ${dn.id} from email attachment: ${filename}`,
-          );
+          this.logger.log(`Created Delivery Note ${dn.id} from email attachment: ${filename}`);
         }
       }
     } catch (error) {
@@ -255,11 +244,11 @@ export class RubberEmailMonitorService implements OnModuleInit {
       pdfTextLower.includes("impilo industries") ||
       pdfTextLower.includes("impilo rubber")
     ) {
-      const impiloCompany = companies.find(
-        (c) => c.name.toLowerCase().includes("impilo"),
-      );
+      const impiloCompany = companies.find((c) => c.name.toLowerCase().includes("impilo"));
       if (impiloCompany) {
-        this.logger.log(`Identified as Impilo from filename/content pattern: ${impiloCompany.name}`);
+        this.logger.log(
+          `Identified as Impilo from filename/content pattern: ${impiloCompany.name}`,
+        );
         return {
           company: impiloCompany,
           cocType: SupplierCocType.CALENDARER,
@@ -278,8 +267,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
       if (aiResult.supplierType === "CALENDARER") {
         const calendarerCompany = companies.find(
           (c) =>
-            c.name.toLowerCase().includes("impilo") ||
-            c.name.toLowerCase().includes("calendarer"),
+            c.name.toLowerCase().includes("impilo") || c.name.toLowerCase().includes("calendarer"),
         );
         if (calendarerCompany) {
           this.logger.log(`Matched to company: ${calendarerCompany.name}`);
@@ -295,8 +283,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
       if (aiResult.supplierType === "COMPOUNDER") {
         const compounderCompany = companies.find(
           (c) =>
-            c.name.toLowerCase().includes("s&n") ||
-            c.name.toLowerCase().includes("compounder"),
+            c.name.toLowerCase().includes("s&n") || c.name.toLowerCase().includes("compounder"),
         );
         if (compounderCompany) {
           this.logger.log(`Matched to company: ${compounderCompany.name}`);
@@ -325,7 +312,13 @@ export class RubberEmailMonitorService implements OnModuleInit {
     fromEmail: string,
     subject: string,
   ): Promise<{
-    documentType: "SUPPLIER_COC" | "DELIVERY_NOTE" | "PURCHASE_ORDER" | "INVOICE" | "QUOTE" | "UNKNOWN";
+    documentType:
+      | "SUPPLIER_COC"
+      | "DELIVERY_NOTE"
+      | "PURCHASE_ORDER"
+      | "INVOICE"
+      | "QUOTE"
+      | "UNKNOWN";
     supplierType: "COMPOUNDER" | "CALENDARER" | null;
     confidence: number;
   } | null> {
@@ -383,7 +376,14 @@ ${truncatedText}`;
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        const validDocTypes = ["SUPPLIER_COC", "DELIVERY_NOTE", "PURCHASE_ORDER", "INVOICE", "QUOTE", "UNKNOWN"];
+        const validDocTypes = [
+          "SUPPLIER_COC",
+          "DELIVERY_NOTE",
+          "PURCHASE_ORDER",
+          "INVOICE",
+          "QUOTE",
+          "UNKNOWN",
+        ];
         if (parsed.documentType && validDocTypes.includes(parsed.documentType)) {
           return {
             documentType: parsed.documentType,
@@ -432,8 +432,7 @@ ${truncatedText}`;
     if (hasImpiloInDocument && !hasSnInDocument) {
       const calendarerCompany = companies.find(
         (c) =>
-          c.name.toLowerCase().includes("impilo") ||
-          c.name.toLowerCase().includes("calendarer"),
+          c.name.toLowerCase().includes("impilo") || c.name.toLowerCase().includes("calendarer"),
       );
       if (calendarerCompany) {
         return {
@@ -446,9 +445,7 @@ ${truncatedText}`;
 
     if (hasSnInDocument && !hasImpiloInDocument) {
       const compounderCompany = companies.find(
-        (c) =>
-          c.name.toLowerCase().includes("s&n") ||
-          c.name.toLowerCase().includes("compounder"),
+        (c) => c.name.toLowerCase().includes("s&n") || c.name.toLowerCase().includes("compounder"),
       );
       if (compounderCompany) {
         return {
@@ -462,8 +459,7 @@ ${truncatedText}`;
     if (filenameLower.includes("imp-") || filenameLower.includes("impilo")) {
       const calendarerCompany = companies.find(
         (c) =>
-          c.name.toLowerCase().includes("impilo") ||
-          c.name.toLowerCase().includes("calendarer"),
+          c.name.toLowerCase().includes("impilo") || c.name.toLowerCase().includes("calendarer"),
       );
       if (calendarerCompany) {
         return {
@@ -477,10 +473,7 @@ ${truncatedText}`;
     for (const company of companies) {
       const companyNameLower = company.name.toLowerCase();
 
-      if (
-        companyNameLower.includes("impilo") ||
-        companyNameLower.includes("calendarer")
-      ) {
+      if (companyNameLower.includes("impilo") || companyNameLower.includes("calendarer")) {
         if (
           fromEmailLower.includes("impilo") ||
           subjectLower.includes("impilo") ||
@@ -494,10 +487,7 @@ ${truncatedText}`;
         }
       }
 
-      if (
-        companyNameLower.includes("s&n") ||
-        companyNameLower.includes("compounder")
-      ) {
+      if (companyNameLower.includes("s&n") || companyNameLower.includes("compounder")) {
         if (
           fromEmailLower.includes("sandrubber") ||
           fromEmailLower.includes("snrubber") ||
@@ -544,9 +534,7 @@ ${truncatedText}`;
               `Linked CoC ${cocId} to compounder CoCs: ${linkResult.linkedCocIds.join(", ")} via batches: ${linkResult.linkedBatches.join(", ")}`,
             );
           } else {
-            this.logger.log(
-              `No matching compounder CoCs found for calendarer CoC ${cocId}`,
-            );
+            this.logger.log(`No matching compounder CoCs found for calendarer CoC ${cocId}`);
           }
         }
       }
@@ -579,7 +567,8 @@ ${truncatedText}`;
     if (!imapHost || !imapUser || !imapPassword) {
       return {
         success: false,
-        error: "IMAP configuration not set. Please configure AU_RUBBER_EMAIL_HOST, AU_RUBBER_EMAIL_USER, and AU_RUBBER_EMAIL_PASSWORD environment variables.",
+        error:
+          "IMAP configuration not set. Please configure AU_RUBBER_EMAIL_HOST, AU_RUBBER_EMAIL_USER, and AU_RUBBER_EMAIL_PASSWORD environment variables.",
       };
     }
 

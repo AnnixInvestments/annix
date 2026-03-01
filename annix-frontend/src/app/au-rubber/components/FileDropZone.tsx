@@ -1,7 +1,7 @@
 "use client";
 
 import { Upload } from "lucide-react";
-import { useCallback, useState, type DragEvent, type ReactNode } from "react";
+import { type DragEvent, type ReactNode, useCallback, useState } from "react";
 
 interface FileDropZoneProps {
   onFilesSelected: (files: File[]) => void;

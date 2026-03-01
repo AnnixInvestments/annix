@@ -1,11 +1,10 @@
 "use client";
 
 import { CheckCircle, FileText, LineChart, X } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import AmixLogo from "@/app/components/AmixLogo";
 import { useToast } from "@/app/components/Toast";
+import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import {
   auRubberApiClient,
   type CocProcessingStatus,
@@ -51,6 +50,8 @@ type SortColumn =
 
 export default function SupplierCocsPage() {
   const { showToast } = useToast();
+  const { colors, branding } = useAuRubberBranding();
+  const [logoObjectUrl, setLogoObjectUrl] = useState<string | null>(null);
   const [cocs, setCocs] = useState<RubberSupplierCocDto[]>([]);
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,6 +75,30 @@ export default function SupplierCocsPage() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [analysisDots, setAnalysisDots] = useState("");
+
+  useEffect(() => {
+    let revoked = false;
+    if (branding.logoUrl) {
+      const proxyUrl = auRubberApiClient.proxyImageUrl(branding.logoUrl);
+      const headers = auRubberApiClient.authHeaders();
+      fetch(proxyUrl, { headers })
+        .then((res) => (res.ok ? res.blob() : null))
+        .then((blob) => {
+          if (!revoked && blob) {
+            setLogoObjectUrl(URL.createObjectURL(blob));
+          }
+        })
+        .catch(() => {
+          if (!revoked) setLogoObjectUrl(null);
+        });
+    } else {
+      setLogoObjectUrl(null);
+    }
+    return () => {
+      revoked = true;
+      if (logoObjectUrl) URL.revokeObjectURL(logoObjectUrl);
+    };
+  }, [branding.logoUrl]);
 
   const supplierForType = (type: SupplierCocType): number | null => {
     const supplierNames: Record<SupplierCocType, string[]> = {
@@ -340,16 +365,31 @@ export default function SupplierCocsPage() {
             Manage and track supplier CoC documents from compounder and calendarer
           </p>
         </div>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add CoC
-        </button>
       </div>
+
+      <FileDropZone
+        onFilesSelected={handleFilesSelected}
+        className="bg-yellow-50 border-2 border-dashed border-yellow-300 rounded-lg hover:bg-yellow-100 hover:border-yellow-400 transition-colors"
+      >
+        <div className="flex items-center justify-center py-6 px-4">
+          <svg
+            className="w-8 h-8 text-yellow-500 mr-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            />
+          </svg>
+          <span className="text-yellow-700 font-medium">
+            Drag and drop CoC files here, or click to browse
+          </span>
+        </div>
+      </FileDropZone>
 
       <div className="bg-white shadow rounded-lg p-4">
         <div className="flex flex-wrap items-center gap-4">
@@ -392,10 +432,7 @@ export default function SupplierCocsPage() {
         </div>
       </div>
 
-      <FileDropZone
-        onFilesSelected={handleFilesSelected}
-        className="bg-white shadow rounded-lg overflow-hidden border-2 border-dashed"
-      >
+      <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
           <TableLoadingState message="Loading supplier CoCs..." />
         ) : filteredCocs.length === 0 ? (
@@ -403,32 +440,11 @@ export default function SupplierCocsPage() {
             <div className="flex flex-col items-center justify-center py-12">
               <TableIcons.document className="w-12 h-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-1">No supplier CoCs found</h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-gray-500">
                 {searchQuery || filterType || filterStatus
                   ? "Try adjusting your filters"
-                  : "Drag & drop PDF files here or click to upload"}
+                  : "Upload CoC documents using the drop zone above"}
               </p>
-              {!searchQuery && !filterType && !filterStatus && (
-                <button
-                  onClick={() => setShowUploadModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
-                >
-                  <svg
-                    className="w-4 h-4 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  Add CoC
-                </button>
-              )}
             </div>
           </div>
         ) : (
@@ -545,7 +561,7 @@ export default function SupplierCocsPage() {
           itemName="CoCs"
           onPageChange={setCurrentPage}
         />
-      </FileDropZone>
+      </div>
 
       {showUploadModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -662,30 +678,52 @@ export default function SupplierCocsPage() {
           <div className="relative bg-white rounded-xl shadow-2xl max-w-xl w-full overflow-hidden animate-in fade-in zoom-in duration-300">
             <div
               className="px-4 py-3 flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: "#323288" }}
+              style={{ backgroundColor: colors.background }}
             >
-              <AmixLogo size="md" showText useSignatureFont />
+              {logoObjectUrl ? (
+                <img src={logoObjectUrl} alt="Logo" className="h-10 max-w-[180px] object-contain" />
+              ) : (
+                <div className="flex items-center">
+                  <span className="text-2xl font-bold" style={{ color: colors.accent }}>
+                    AU
+                  </span>
+                  <span className="ml-2 text-white text-lg font-medium">Rubber</span>
+                </div>
+              )}
             </div>
 
             <div className="px-6 py-6">
               {isAnalyzing ? (
                 <>
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 flex-shrink-0 rounded-full overflow-hidden shadow-lg border-3 border-orange-400 relative">
-                      <Image
-                        src="/nix-avatar.png"
-                        alt="Nix AI Assistant"
-                        width={64}
-                        height={64}
-                        className="object-cover object-top scale-125"
-                        priority
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-orange-400/20 to-transparent animate-pulse" />
+                    <div
+                      className="w-16 h-16 flex-shrink-0 rounded-full flex items-center justify-center shadow-lg relative"
+                      style={{ backgroundColor: colors.background }}
+                    >
+                      <svg
+                        className="w-8 h-8 text-white animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
                     </div>
 
                     <div className="flex-1 text-left">
                       <h2 className="text-lg font-bold text-gray-900">
-                        Nix is Analyzing Your Documents{analysisDots}
+                        Analyzing Your Documents{analysisDots}
                       </h2>
                       <p className="text-sm text-gray-600 mt-1">{analysisStatus}</p>
                     </div>
@@ -697,7 +735,7 @@ export default function SupplierCocsPage() {
                         className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out"
                         style={{
                           width: `${analysisProgress}%`,
-                          background: "linear-gradient(90deg, #FFA500 0%, #FF8C00 50%, #FFA500 100%)",
+                          background: `linear-gradient(90deg, ${colors.accent} 0%, ${colors.background} 50%, ${colors.accent} 100%)`,
                           backgroundSize: "200% 100%",
                           animation: "shimmer 2s infinite linear",
                         }}
@@ -734,15 +772,11 @@ export default function SupplierCocsPage() {
               ) : analysisResult ? (
                 <>
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 flex-shrink-0 rounded-full overflow-hidden shadow-lg border-3 border-green-400 relative">
-                      <Image
-                        src="/nix-avatar.png"
-                        alt="Nix AI Assistant"
-                        width={64}
-                        height={64}
-                        className="object-cover object-top scale-125"
-                        priority
-                      />
+                    <div
+                      className="w-16 h-16 flex-shrink-0 rounded-full flex items-center justify-center shadow-lg"
+                      style={{ backgroundColor: "#22c55e" }}
+                    >
+                      <CheckCircle className="w-10 h-10 text-white" />
                     </div>
 
                     <div className="flex-1 text-left">
@@ -792,7 +826,9 @@ export default function SupplierCocsPage() {
                         </div>
                         <div className="mt-2 text-xs text-gray-600">
                           {file.cocType && <span className="mr-3">Type: {file.cocType}</span>}
-                          {file.companyName && <span className="mr-3">Supplier: {file.companyName}</span>}
+                          {file.companyName && (
+                            <span className="mr-3">Supplier: {file.companyName}</span>
+                          )}
                           {file.compoundCode && <span>Compound: {file.compoundCode}</span>}
                           {file.isGraph && file.linkedToIndex !== null && (
                             <span className="text-blue-600">
@@ -802,7 +838,8 @@ export default function SupplierCocsPage() {
                           {file.batchNumbers.length > 0 && (
                             <div className="mt-1">
                               Batches: {file.batchNumbers.slice(0, 5).join(", ")}
-                              {file.batchNumbers.length > 5 && ` +${file.batchNumbers.length - 5} more`}
+                              {file.batchNumbers.length > 5 &&
+                                ` +${file.batchNumbers.length - 5} more`}
                             </div>
                           )}
                         </div>
@@ -835,7 +872,7 @@ export default function SupplierCocsPage() {
               ) : null}
             </div>
 
-            <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FFA500" }} />
+            <div className="h-1 flex-shrink-0" style={{ backgroundColor: colors.accent }} />
           </div>
 
           <style jsx>{`

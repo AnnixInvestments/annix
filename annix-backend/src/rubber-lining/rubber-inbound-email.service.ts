@@ -8,8 +8,8 @@ import { RubberCompany } from "./entities/rubber-company.entity";
 import { DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
-import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberCocService } from "./rubber-coc.service";
+import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 
 export interface ParsedCompoundCode {
@@ -124,8 +124,7 @@ export class RubberInboundEmailService {
 
     const pdfAttachments = emailData.attachments.filter(
       (att) =>
-        att.contentType === "application/pdf" ||
-        att.filename?.toLowerCase().endsWith(".pdf"),
+        att.contentType === "application/pdf" || att.filename?.toLowerCase().endsWith(".pdf"),
     );
 
     if (pdfAttachments.length === 0) {
@@ -196,8 +195,7 @@ export class RubberInboundEmailService {
       }
     }
 
-    result.success =
-      result.cocIds.length > 0 || result.deliveryNoteIds.length > 0;
+    result.success = result.cocIds.length > 0 || result.deliveryNoteIds.length > 0;
     return result;
   }
 
@@ -244,8 +242,7 @@ export class RubberInboundEmailService {
     if (hasImpiloInDocument && !hasSnInDocument) {
       const calendarerCompany = companies.find(
         (c) =>
-          c.name.toLowerCase().includes("impilo") ||
-          c.name.toLowerCase().includes("calendarer"),
+          c.name.toLowerCase().includes("impilo") || c.name.toLowerCase().includes("calendarer"),
       );
       if (calendarerCompany) {
         this.logger.log(`Identified supplier from document content: ${calendarerCompany.name}`);
@@ -259,9 +256,7 @@ export class RubberInboundEmailService {
 
     if (hasSnInDocument && !hasImpiloInDocument) {
       const compounderCompany = companies.find(
-        (c) =>
-          c.name.toLowerCase().includes("s&n") ||
-          c.name.toLowerCase().includes("compounder"),
+        (c) => c.name.toLowerCase().includes("s&n") || c.name.toLowerCase().includes("compounder"),
       );
       if (compounderCompany) {
         this.logger.log(`Identified supplier from document content: ${compounderCompany.name}`);
@@ -276,8 +271,7 @@ export class RubberInboundEmailService {
     if (filenameLower.includes("imp-") || filenameLower.includes("impilo")) {
       const calendarerCompany = companies.find(
         (c) =>
-          c.name.toLowerCase().includes("impilo") ||
-          c.name.toLowerCase().includes("calendarer"),
+          c.name.toLowerCase().includes("impilo") || c.name.toLowerCase().includes("calendarer"),
       );
       if (calendarerCompany) {
         this.logger.log(`Identified supplier from filename: ${calendarerCompany.name}`);
@@ -292,10 +286,7 @@ export class RubberInboundEmailService {
     for (const company of companies) {
       const companyNameLower = company.name.toLowerCase();
 
-      if (
-        companyNameLower.includes("impilo") ||
-        companyNameLower.includes("calendarer")
-      ) {
+      if (companyNameLower.includes("impilo") || companyNameLower.includes("calendarer")) {
         if (
           fromEmailLower.includes("impilo") ||
           subjectLower.includes("impilo") ||
@@ -309,10 +300,7 @@ export class RubberInboundEmailService {
         }
       }
 
-      if (
-        companyNameLower.includes("s&n") ||
-        companyNameLower.includes("compounder")
-      ) {
+      if (companyNameLower.includes("s&n") || companyNameLower.includes("compounder")) {
         if (
           fromEmailLower.includes("sandrubber") ||
           fromEmailLower.includes("snrubber") ||
@@ -391,7 +379,11 @@ export class RubberInboundEmailService {
 
         const graphInfo = this.detectIfGraph(pdfText, file.originalname);
         if (graphInfo.isGraph) {
-          const linkedCocId = await this.linkGraphToExistingCoc(file, pdfText, graphInfo.batchNumbers);
+          const linkedCocId = await this.linkGraphToExistingCoc(
+            file,
+            pdfText,
+            graphInfo.batchNumbers,
+          );
           if (linkedCocId) {
             this.logger.log(`Linked graph PDF to existing CoC ${linkedCocId}`);
             result.cocIds.push(linkedCocId);
@@ -400,12 +392,10 @@ export class RubberInboundEmailService {
           this.logger.warn("Could not find matching COC for graph, creating new COC");
         }
 
-        const supplierInfo = await this.identifySupplierWithAi(
-          pdfText,
-          file.originalname,
-        );
+        const supplierInfo = await this.identifySupplierWithAi(pdfText, file.originalname);
 
-        const detectedCocType = supplierInfo?.cocType || metadata.cocType || SupplierCocType.COMPOUNDER;
+        const detectedCocType =
+          supplierInfo?.cocType || metadata.cocType || SupplierCocType.COMPOUNDER;
         const detectedSupplierId = supplierInfo?.companyId || metadata.supplierCompanyId;
 
         const subPath = detectedSupplierId
@@ -471,7 +461,9 @@ export class RubberInboundEmailService {
       this.logger.log(`Extracted ${pdfText.length} characters from ${file.originalname}`);
 
       const graphInfo = this.detectIfGraph(pdfText, file.originalname);
-      this.logger.log(`Graph detection for ${file.originalname}: isGraph=${graphInfo.isGraph}, batchNumbers=${graphInfo.batchNumbers.join(",")}`);
+      this.logger.log(
+        `Graph detection for ${file.originalname}: isGraph=${graphInfo.isGraph}, batchNumbers=${graphInfo.batchNumbers.join(",")}`,
+      );
 
       if (graphInfo.isGraph) {
         graphPdfs.push(i);
@@ -500,15 +492,18 @@ export class RubberInboundEmailService {
         try {
           const extraction = await this.cocExtractionService.extractByType(cocType, pdfText);
           extractedData = extraction.data as Record<string, unknown>;
-          this.logger.log(`Extracted data for ${file.originalname}: ${JSON.stringify(extractedData).substring(0, 200)}`);
+          this.logger.log(
+            `Extracted data for ${file.originalname}: ${JSON.stringify(extractedData).substring(0, 200)}`,
+          );
         } catch (error) {
           this.logger.error(`Failed to extract data from ${file.originalname}: ${error.message}`);
         }
 
         const batchNumbersFromExtraction = (extractedData?.batchNumbers as string[]) || [];
-        const batchNumbers = filenameInfo.batchNumbers.length > 0
-          ? filenameInfo.batchNumbers
-          : batchNumbersFromExtraction;
+        const batchNumbers =
+          filenameInfo.batchNumbers.length > 0
+            ? filenameInfo.batchNumbers
+            : batchNumbersFromExtraction;
 
         const compoundCodeFromFilename = filenameInfo.compoundCode;
         if (compoundCodeFromFilename && extractedData) {
@@ -572,16 +567,12 @@ export class RubberInboundEmailService {
       const filenameInfo = this.parseFilenameForCocInfo(file.originalname);
       const compoundInfo = await this.processCompoundCodeFromFilename(file.originalname);
 
-      const batchNumbers = filenameInfo.batchNumbers.length > 0
-        ? filenameInfo.batchNumbers
-        : analyzed.batchNumbers;
-      const cocNumber = batchNumbers.length > 0
-        ? this.formatBatchRange(batchNumbers)
-        : undefined;
+      const batchNumbers =
+        filenameInfo.batchNumbers.length > 0 ? filenameInfo.batchNumbers : analyzed.batchNumbers;
+      const cocNumber = batchNumbers.length > 0 ? this.formatBatchRange(batchNumbers) : undefined;
 
-      const compoundCode = compoundInfo.compoundCode ||
-        (analyzed.extractedData?.compoundCode as string) ||
-        undefined;
+      const compoundCode =
+        compoundInfo.compoundCode || (analyzed.extractedData?.compoundCode as string) || undefined;
 
       const subPath = analyzed.companyId
         ? `rubber-lining/cocs/${analyzed.companyId}`
@@ -612,7 +603,9 @@ export class RubberInboundEmailService {
 
       cocIds.push(coc.id);
       createdCocsByIndex.set(dataIdx, coc.id);
-      this.logger.log(`Created CoC ${coc.id} (${cocNumber || "no batch"}) compound=${compoundCode} from ${analyzed.filename}`);
+      this.logger.log(
+        `Created CoC ${coc.id} (${cocNumber || "no batch"}) compound=${compoundCode} from ${analyzed.filename}`,
+      );
     }
 
     for (const graphIdx of analysis.graphPdfs) {
@@ -673,10 +666,8 @@ export class RubberInboundEmailService {
       pdfTextLower.includes("impilo industries") ||
       pdfTextLower.includes("impilo rubber")
     ) {
-      const impiloCompany = companies.find(
-        (c) => c.name.toLowerCase().includes("impilo"),
-      );
-      this.logger.log(`Identified as Impilo from filename/content pattern`);
+      const impiloCompany = companies.find((c) => c.name.toLowerCase().includes("impilo"));
+      this.logger.log("Identified as Impilo from filename/content pattern");
       return {
         cocType: SupplierCocType.CALENDARER,
         companyId: impiloCompany?.id,
@@ -689,11 +680,9 @@ export class RubberInboundEmailService {
       pdfTextLower.includes("sandrubber")
     ) {
       const snCompany = companies.find(
-        (c) =>
-          c.name.toLowerCase().includes("s&n") ||
-          c.name.toLowerCase().includes("compounder"),
+        (c) => c.name.toLowerCase().includes("s&n") || c.name.toLowerCase().includes("compounder"),
       );
-      this.logger.log(`Identified as S&N Rubber from content pattern`);
+      this.logger.log("Identified as S&N Rubber from content pattern");
       return {
         cocType: SupplierCocType.COMPOUNDER,
         companyId: snCompany?.id,
@@ -752,7 +741,14 @@ ${truncatedText}`;
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        const validDocTypes = ["SUPPLIER_COC", "DELIVERY_NOTE", "PURCHASE_ORDER", "INVOICE", "QUOTE", "UNKNOWN"];
+        const validDocTypes = [
+          "SUPPLIER_COC",
+          "DELIVERY_NOTE",
+          "PURCHASE_ORDER",
+          "INVOICE",
+          "QUOTE",
+          "UNKNOWN",
+        ];
 
         if (parsed.documentType && validDocTypes.includes(parsed.documentType)) {
           this.logger.log(
@@ -786,7 +782,9 @@ ${truncatedText}`;
           }
 
           if (parsed.documentType !== "UNKNOWN") {
-            this.logger.log(`Document is ${parsed.documentType} - not a supplier CoC, requires manual filing`);
+            this.logger.log(
+              `Document is ${parsed.documentType} - not a supplier CoC, requires manual filing`,
+            );
           }
         }
       }
@@ -830,7 +828,9 @@ ${truncatedText}`;
       }
     }
 
-    this.logger.log(`Parsed filename "${filename}": batches=[${batchNumbers.join(", ")}], compoundCode=${compoundCode}`);
+    this.logger.log(
+      `Parsed filename "${filename}": batches=[${batchNumbers.join(", ")}], compoundCode=${compoundCode}`,
+    );
     return { batchNumbers, compoundCode };
   }
 
@@ -867,7 +867,10 @@ ${truncatedText}`;
     return ranges.join(", ");
   }
 
-  private detectIfGraph(pdfText: string, filename: string): { isGraph: boolean; batchNumbers: string[] } {
+  private detectIfGraph(
+    pdfText: string,
+    filename: string,
+  ): { isGraph: boolean; batchNumbers: string[] } {
     const textLower = pdfText.toLowerCase();
     const filenameLower = filename.toLowerCase();
 
@@ -954,7 +957,7 @@ ${truncatedText}`;
     this.cocExtractionService
       .extractByType(cocType, pdfText)
       .then(async (result) => {
-        if (result && result.data) {
+        if (result?.data) {
           await this.cocService.setExtractedData(cocId, result.data);
           this.logger.log(`Auto-extracted data for CoC ${cocId} in ${result.processingTimeMs}ms`);
         }
@@ -992,7 +995,9 @@ ${truncatedText}`;
       rubberType: "SNR",
     };
 
-    this.logger.log(`Parsed S&N compound code "${code}": grade=${grade}, shore=${shore}, color=${colorName}, curing=${curingMethodName}`);
+    this.logger.log(
+      `Parsed S&N compound code "${code}": grade=${grade}, shore=${shore}, color=${colorName}, curing=${curingMethodName}`,
+    );
     return parsed;
   }
 

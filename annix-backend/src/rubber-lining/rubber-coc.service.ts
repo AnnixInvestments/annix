@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { generateUniqueId } from "../lib/datetime";
+import { generateUniqueId, now } from "../lib/datetime";
 import {
   CreateCompoundBatchDto,
   CreateSupplierCocDto,
@@ -200,7 +200,7 @@ export class RubberCocService {
     return this.mapSupplierCocToDto(coc);
   }
 
-  async approveCoc(id: number): Promise<RubberSupplierCocDto | null> {
+  async approveCoc(id: number, approvedBy?: string): Promise<RubberSupplierCocDto | null> {
     const coc = await this.supplierCocRepository.findOne({
       where: { id },
       relations: ["supplierCompany"],
@@ -208,6 +208,8 @@ export class RubberCocService {
     if (!coc) return null;
 
     coc.processingStatus = CocProcessingStatus.APPROVED;
+    coc.approvedAt = now().toJSDate();
+    coc.approvedBy = approvedBy ?? null;
     await this.supplierCocRepository.save(coc);
 
     if (coc.extractedData?.batches) {
@@ -229,10 +231,7 @@ export class RubberCocService {
       .where("supplier_coc_id IS NOT NULL")
       .execute();
 
-    const cocResult = await this.supplierCocRepository
-      .createQueryBuilder()
-      .delete()
-      .execute();
+    const cocResult = await this.supplierCocRepository.createQueryBuilder().delete().execute();
 
     await this.supplierCocRepository.query(
       "ALTER SEQUENCE rubber_supplier_cocs_id_seq RESTART WITH 1",
@@ -393,14 +392,11 @@ export class RubberCocService {
 
     compounderCocs.forEach((compCoc) => {
       const compBatches = compCoc.extractedData?.batchNumbers || [];
-      const compBatchesFromData =
-        compCoc.extractedData?.batches?.map((b) => b.batchNumber) || [];
+      const compBatchesFromData = compCoc.extractedData?.batches?.map((b) => b.batchNumber) || [];
       const allCompBatches = [...new Set([...compBatches, ...compBatchesFromData])];
 
       const matchingBatches = batchNumbers.filter((bn) =>
-        allCompBatches.some(
-          (cb) => cb.toLowerCase().trim() === bn.toLowerCase().trim(),
-        ),
+        allCompBatches.some((cb) => cb.toLowerCase().trim() === bn.toLowerCase().trim()),
       );
 
       if (matchingBatches.length > 0) {
@@ -424,9 +420,7 @@ export class RubberCocService {
     };
   }
 
-  async traceabilityForRoll(
-    rollNumber: string,
-  ): Promise<{
+  async traceabilityForRoll(rollNumber: string): Promise<{
     rollNumber: string;
     calendererCoc: RubberSupplierCocDto | null;
     compounderCocs: RubberSupplierCocDto[];
@@ -440,9 +434,7 @@ export class RubberCocService {
 
     const matchingCalendererCoc = calendererCocs.find((coc) => {
       const rollNumbers = coc.extractedData?.rollNumbers || [];
-      return rollNumbers.some(
-        (rn) => rn.toLowerCase().trim() === rollNumber.toLowerCase().trim(),
-      );
+      return rollNumbers.some((rn) => rn.toLowerCase().trim() === rollNumber.toLowerCase().trim());
     });
 
     if (!matchingCalendererCoc) {
@@ -496,9 +488,9 @@ export class RubberCocService {
       graphPdfPath: coc.graphPdfPath,
       cocNumber: coc.cocNumber,
       productionDate: coc.productionDate
-        ? (coc.productionDate instanceof Date
-            ? coc.productionDate.toISOString().split("T")[0]
-            : String(coc.productionDate).split("T")[0])
+        ? coc.productionDate instanceof Date
+          ? coc.productionDate.toISOString().split("T")[0]
+          : String(coc.productionDate).split("T")[0]
         : null,
       compoundCode: coc.compoundCode,
       orderNumber: coc.orderNumber,
@@ -506,6 +498,10 @@ export class RubberCocService {
       processingStatus: coc.processingStatus,
       processingStatusLabel: PROCESSING_STATUS_LABELS[coc.processingStatus],
       extractedData: coc.extractedData,
+      reviewNotes: coc.reviewNotes,
+      approvedBy: coc.approvedBy,
+      approvedAt: coc.approvedAt ? coc.approvedAt.toISOString() : null,
+      linkedDeliveryNoteId: coc.linkedDeliveryNoteId,
       createdBy: coc.createdBy,
       createdAt: coc.createdAt.toISOString(),
       updatedAt: coc.updatedAt.toISOString(),

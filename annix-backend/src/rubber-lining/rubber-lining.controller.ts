@@ -10,6 +10,7 @@ import {
   Post,
   Put,
   Query,
+  Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
@@ -21,8 +22,9 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
   CreateDeliveryNoteDto,
@@ -113,7 +115,6 @@ import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.s
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService, StockLocationDto } from "./rubber-stock-location.service";
-import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 
 @ApiTags("Rubber Lining")
 @Controller("rubber-lining")
@@ -1321,8 +1322,13 @@ Formula: totalPrice = totalKg × salePricePerKg
   @Put("portal/supplier-cocs/:id/approve")
   @ApiOperation({ summary: "Approve supplier CoC (creates batches from extracted data)" })
   @ApiParam({ name: "id", description: "Supplier CoC ID" })
-  async approveSupplierCoc(@Param("id") id: string): Promise<RubberSupplierCocDto> {
-    const coc = await this.rubberCocService.approveCoc(Number(id));
+  async approveSupplierCoc(
+    @Param("id") id: string,
+    @Req() req: Request,
+  ): Promise<RubberSupplierCocDto> {
+    const user = (req as any).user;
+    const approvedBy = user?.email || null;
+    const coc = await this.rubberCocService.approveCoc(Number(id), approvedBy);
     if (!coc) throw new NotFoundException("Supplier CoC not found");
     return coc;
   }

@@ -18,7 +18,6 @@ import {
   Pagination,
   SortDirection,
   SortIcon,
-  TableEmptyState,
   TableIcons,
   TableLoadingState,
 } from "../../components/TableComponents";
