@@ -17,6 +17,8 @@ import {
   RubberDeliveryNote,
 } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
+import { RubberProduct } from "./entities/rubber-product.entity";
+import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
 
 const DELIVERY_NOTE_TYPE_LABELS: Record<DeliveryNoteType, string> = {
@@ -41,6 +43,10 @@ export class RubberDeliveryNoteService {
     private companyRepository: Repository<RubberCompany>,
     @InjectRepository(RubberSupplierCoc)
     private supplierCocRepository: Repository<RubberSupplierCoc>,
+    @InjectRepository(RubberProduct)
+    private productRepository: Repository<RubberProduct>,
+    @InjectRepository(RubberProductCoding)
+    private productCodingRepository: Repository<RubberProductCoding>,
   ) {}
 
   async allDeliveryNotes(filters?: {
@@ -174,11 +180,49 @@ export class RubberDeliveryNoteService {
     note.status = DeliveryNoteStatus.LINKED;
     await this.deliveryNoteRepository.save(note);
 
+    await this.updateSupplierAvailableProducts(note.supplierCompanyId, coc.compoundCode);
+
     const result = await this.deliveryNoteRepository.findOne({
       where: { id: deliveryNoteId },
       relations: ["supplierCompany", "linkedCoc"],
     });
     return this.mapDeliveryNoteToDto(result!);
+  }
+
+  private async updateSupplierAvailableProducts(
+    supplierCompanyId: number,
+    compoundCode: string | null,
+  ): Promise<void> {
+    if (!compoundCode) return;
+
+    const supplier = await this.companyRepository.findOne({
+      where: { id: supplierCompanyId },
+    });
+    if (!supplier) return;
+
+    const compoundCoding = await this.productCodingRepository.findOne({
+      where: {
+        codingType: ProductCodingType.COMPOUND,
+        code: compoundCode,
+      },
+    });
+    if (!compoundCoding) return;
+
+    const matchingProducts = await this.productRepository.find({
+      where: { compoundFirebaseUid: compoundCoding.firebaseUid },
+    });
+
+    if (matchingProducts.length === 0) return;
+
+    const existingProducts = new Set(supplier.availableProducts);
+    const newProductUids = matchingProducts
+      .map((p) => p.firebaseUid)
+      .filter((uid) => !existingProducts.has(uid));
+
+    if (newProductUids.length > 0) {
+      supplier.availableProducts = [...supplier.availableProducts, ...newProductUids];
+      await this.companyRepository.save(supplier);
+    }
   }
 
   async finalizeDeliveryNote(id: number): Promise<RubberDeliveryNoteDto | null> {

@@ -9,6 +9,11 @@ import {
 } from "typeorm";
 import { RubberPricingTier } from "./rubber-pricing-tier.entity";
 
+export enum CompanyType {
+  CUSTOMER = "CUSTOMER",
+  SUPPLIER = "SUPPLIER",
+}
+
 @Entity("rubber_company")
 export class RubberCompany {
   @PrimaryGeneratedColumn()
@@ -19,6 +24,14 @@ export class RubberCompany {
 
   @Column({ name: "name", type: "varchar", length: 200 })
   name: string;
+
+  @Column({
+    name: "company_type",
+    type: "varchar",
+    length: 20,
+    default: CompanyType.CUSTOMER,
+  })
+  companyType: CompanyType;
 
   @Column({ name: "code", type: "varchar", length: 20, nullable: true })
   code: string | null;

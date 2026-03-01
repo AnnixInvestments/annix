@@ -83,12 +83,17 @@ export interface BatchMetricData {
   tearStrength: number | null;
   tensile: number | null;
   elongation: number | null;
+  sMin: number | null;
+  sMax: number | null;
+  ts2: number | null;
   tc90: number | null;
+  passFailStatus: string | null;
 }
 
 export interface QualityConfigDto {
   id: number | null;
   compoundCode: string;
+  compoundDescription: string | null;
   windowSize: number;
   shoreADriftThreshold: number;
   specificGravityDriftThreshold: number;
@@ -97,6 +102,24 @@ export interface QualityConfigDto {
   tensileStrengthDropPercent: number;
   elongationDropPercent: number;
   tc90CvThreshold: number;
+  shoreANominal: number | null;
+  shoreAMin: number | null;
+  shoreAMax: number | null;
+  densityNominal: number | null;
+  densityMin: number | null;
+  densityMax: number | null;
+  reboundNominal: number | null;
+  reboundMin: number | null;
+  reboundMax: number | null;
+  tearStrengthNominal: number | null;
+  tearStrengthMin: number | null;
+  tearStrengthMax: number | null;
+  tensileNominal: number | null;
+  tensileMin: number | null;
+  tensileMax: number | null;
+  elongationNominal: number | null;
+  elongationMin: number | null;
+  elongationMax: number | null;
 }
 
 export interface QualityAlertDto {
@@ -458,6 +481,8 @@ export interface AuRubberAccessInfo {
   isAdmin: boolean;
 }
 
+export type RoleTargetType = "CUSTOMER" | "SUPPLIER";
+
 export interface AuRubberRoleDto {
   id: number;
   appId: number;
@@ -466,6 +491,7 @@ export interface AuRubberRoleDto {
   description: string | null;
   isDefault: boolean;
   displayOrder: number;
+  targetType: RoleTargetType | null;
   permissions: string[];
   userCount: number;
   createdAt: string;
@@ -1234,6 +1260,7 @@ class AuRubberApiClient {
     name: string;
     description?: string;
     isDefault?: boolean;
+    targetType?: RoleTargetType | null;
   }): Promise<AuRubberRoleDto> {
     return this.request("/rubber-lining/admin/access/roles", {
       method: "POST",

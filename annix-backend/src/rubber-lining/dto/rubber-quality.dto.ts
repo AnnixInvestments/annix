@@ -41,7 +41,11 @@ export interface BatchMetricData {
   tearStrength: number | null;
   tensile: number | null;
   elongation: number | null;
+  sMin: number | null;
+  sMax: number | null;
+  ts2: number | null;
   tc90: number | null;
+  passFailStatus: string | null;
 }
 
 export class CompoundQualityDetailDto {
@@ -84,6 +88,7 @@ export class QualityAlertDto {
 export class QualityConfigDto {
   id: number | null;
   compoundCode: string;
+  compoundDescription: string | null;
   windowSize: number;
   shoreADriftThreshold: number;
   specificGravityDriftThreshold: number;
@@ -92,6 +97,24 @@ export class QualityConfigDto {
   tensileStrengthDropPercent: number;
   elongationDropPercent: number;
   tc90CvThreshold: number;
+  shoreANominal: number | null;
+  shoreAMin: number | null;
+  shoreAMax: number | null;
+  densityNominal: number | null;
+  densityMin: number | null;
+  densityMax: number | null;
+  reboundNominal: number | null;
+  reboundMin: number | null;
+  reboundMax: number | null;
+  tearStrengthNominal: number | null;
+  tearStrengthMin: number | null;
+  tearStrengthMax: number | null;
+  tensileNominal: number | null;
+  tensileMin: number | null;
+  tensileMax: number | null;
+  elongationNominal: number | null;
+  elongationMin: number | null;
+  elongationMax: number | null;
 }
 
 export class UpdateQualityConfigDto {
@@ -126,6 +149,82 @@ export class UpdateQualityConfigDto {
   @IsOptional()
   @IsNumber()
   tc90CvThreshold?: number | null;
+
+  @IsOptional()
+  @IsString()
+  compoundDescription?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  shoreANominal?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  shoreAMin?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  shoreAMax?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  densityNominal?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  densityMin?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  densityMax?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  reboundNominal?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  reboundMin?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  reboundMax?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  tearStrengthNominal?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  tearStrengthMin?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  tearStrengthMax?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  tensileNominal?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  tensileMin?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  tensileMax?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  elongationNominal?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  elongationMin?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  elongationMax?: number | null;
 }
 
 export class AcknowledgeAlertDto {

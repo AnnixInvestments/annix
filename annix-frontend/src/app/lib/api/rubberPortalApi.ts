@@ -16,10 +16,13 @@ export interface RubberPricingTierDto {
   pricingFactor: number;
 }
 
+export type CompanyType = "CUSTOMER" | "SUPPLIER";
+
 export interface RubberCompanyDto {
   id: number;
   firebaseUid: string;
   name: string;
+  companyType: CompanyType;
   code: string | null;
   pricingTierId: number | null;
   pricingTierName: string | null;
@@ -274,6 +277,7 @@ export const rubberPortalApi = {
 
   createCompany: async (data: {
     name: string;
+    companyType?: CompanyType;
     code?: string;
     pricingTierId?: number;
     availableProducts?: string[];
@@ -293,6 +297,7 @@ export const rubberPortalApi = {
     id: number,
     data: Partial<{
       name: string;
+      companyType?: CompanyType;
       code?: string;
       pricingTierId?: number;
       availableProducts?: string[];

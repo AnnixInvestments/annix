@@ -141,7 +141,11 @@ export class RubberQualityTrackingService {
       tearStrength: batch.tearStrengthKnM ? Number(batch.tearStrengthKnM) : null,
       tensile: batch.tensileStrengthMpa ? Number(batch.tensileStrengthMpa) : null,
       elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
+      sMin: batch.rheometerSMin ? Number(batch.rheometerSMin) : null,
+      sMax: batch.rheometerSMax ? Number(batch.rheometerSMax) : null,
+      ts2: batch.rheometerTs2 ? Number(batch.rheometerTs2) : null,
       tc90: batch.rheometerTc90 ? Number(batch.rheometerTc90) : null,
+      passFailStatus: batch.passFailStatus ?? null,
     }));
 
     return {
@@ -309,6 +313,7 @@ export class RubberQualityTrackingService {
       return {
         id: config.id,
         compoundCode: config.compoundCode,
+        compoundDescription: config.compoundDescription ?? null,
         windowSize: config.windowSize,
         shoreADriftThreshold:
           config.shoreADriftThreshold !== null
@@ -338,14 +343,53 @@ export class RubberQualityTrackingService {
           config.tc90CvThreshold !== null
             ? Number(config.tc90CvThreshold)
             : DEFAULT_THRESHOLDS.tc90CvThreshold,
+        shoreANominal: config.shoreANominal !== null ? Number(config.shoreANominal) : null,
+        shoreAMin: config.shoreAMin !== null ? Number(config.shoreAMin) : null,
+        shoreAMax: config.shoreAMax !== null ? Number(config.shoreAMax) : null,
+        densityNominal: config.densityNominal !== null ? Number(config.densityNominal) : null,
+        densityMin: config.densityMin !== null ? Number(config.densityMin) : null,
+        densityMax: config.densityMax !== null ? Number(config.densityMax) : null,
+        reboundNominal: config.reboundNominal !== null ? Number(config.reboundNominal) : null,
+        reboundMin: config.reboundMin !== null ? Number(config.reboundMin) : null,
+        reboundMax: config.reboundMax !== null ? Number(config.reboundMax) : null,
+        tearStrengthNominal:
+          config.tearStrengthNominal !== null ? Number(config.tearStrengthNominal) : null,
+        tearStrengthMin: config.tearStrengthMin !== null ? Number(config.tearStrengthMin) : null,
+        tearStrengthMax: config.tearStrengthMax !== null ? Number(config.tearStrengthMax) : null,
+        tensileNominal: config.tensileNominal !== null ? Number(config.tensileNominal) : null,
+        tensileMin: config.tensileMin !== null ? Number(config.tensileMin) : null,
+        tensileMax: config.tensileMax !== null ? Number(config.tensileMax) : null,
+        elongationNominal:
+          config.elongationNominal !== null ? Number(config.elongationNominal) : null,
+        elongationMin: config.elongationMin !== null ? Number(config.elongationMin) : null,
+        elongationMax: config.elongationMax !== null ? Number(config.elongationMax) : null,
       };
     }
 
     return {
       id: null,
       compoundCode,
+      compoundDescription: null,
       windowSize: DEFAULT_WINDOW_SIZE,
       ...DEFAULT_THRESHOLDS,
+      shoreANominal: null,
+      shoreAMin: null,
+      shoreAMax: null,
+      densityNominal: null,
+      densityMin: null,
+      densityMax: null,
+      reboundNominal: null,
+      reboundMin: null,
+      reboundMax: null,
+      tearStrengthNominal: null,
+      tearStrengthMin: null,
+      tearStrengthMax: null,
+      tensileNominal: null,
+      tensileMin: null,
+      tensileMax: null,
+      elongationNominal: null,
+      elongationMin: null,
+      elongationMax: null,
     };
   }
 
@@ -372,6 +416,25 @@ export class RubberQualityTrackingService {
         tensileStrengthDropPercent: dto.tensileStrengthDropPercent ?? null,
         elongationDropPercent: dto.elongationDropPercent ?? null,
         tc90CvThreshold: dto.tc90CvThreshold ?? null,
+        compoundDescription: dto.compoundDescription ?? null,
+        shoreANominal: dto.shoreANominal ?? null,
+        shoreAMin: dto.shoreAMin ?? null,
+        shoreAMax: dto.shoreAMax ?? null,
+        densityNominal: dto.densityNominal ?? null,
+        densityMin: dto.densityMin ?? null,
+        densityMax: dto.densityMax ?? null,
+        reboundNominal: dto.reboundNominal ?? null,
+        reboundMin: dto.reboundMin ?? null,
+        reboundMax: dto.reboundMax ?? null,
+        tearStrengthNominal: dto.tearStrengthNominal ?? null,
+        tearStrengthMin: dto.tearStrengthMin ?? null,
+        tearStrengthMax: dto.tearStrengthMax ?? null,
+        tensileNominal: dto.tensileNominal ?? null,
+        tensileMin: dto.tensileMin ?? null,
+        tensileMax: dto.tensileMax ?? null,
+        elongationNominal: dto.elongationNominal ?? null,
+        elongationMin: dto.elongationMin ?? null,
+        elongationMax: dto.elongationMax ?? null,
         updatedBy,
       });
     } else {
@@ -397,6 +460,27 @@ export class RubberQualityTrackingService {
       if (dto.tc90CvThreshold !== undefined) {
         config.tc90CvThreshold = dto.tc90CvThreshold;
       }
+      if (dto.compoundDescription !== undefined) {
+        config.compoundDescription = dto.compoundDescription;
+      }
+      if (dto.shoreANominal !== undefined) config.shoreANominal = dto.shoreANominal;
+      if (dto.shoreAMin !== undefined) config.shoreAMin = dto.shoreAMin;
+      if (dto.shoreAMax !== undefined) config.shoreAMax = dto.shoreAMax;
+      if (dto.densityNominal !== undefined) config.densityNominal = dto.densityNominal;
+      if (dto.densityMin !== undefined) config.densityMin = dto.densityMin;
+      if (dto.densityMax !== undefined) config.densityMax = dto.densityMax;
+      if (dto.reboundNominal !== undefined) config.reboundNominal = dto.reboundNominal;
+      if (dto.reboundMin !== undefined) config.reboundMin = dto.reboundMin;
+      if (dto.reboundMax !== undefined) config.reboundMax = dto.reboundMax;
+      if (dto.tearStrengthNominal !== undefined) config.tearStrengthNominal = dto.tearStrengthNominal;
+      if (dto.tearStrengthMin !== undefined) config.tearStrengthMin = dto.tearStrengthMin;
+      if (dto.tearStrengthMax !== undefined) config.tearStrengthMax = dto.tearStrengthMax;
+      if (dto.tensileNominal !== undefined) config.tensileNominal = dto.tensileNominal;
+      if (dto.tensileMin !== undefined) config.tensileMin = dto.tensileMin;
+      if (dto.tensileMax !== undefined) config.tensileMax = dto.tensileMax;
+      if (dto.elongationNominal !== undefined) config.elongationNominal = dto.elongationNominal;
+      if (dto.elongationMin !== undefined) config.elongationMin = dto.elongationMin;
+      if (dto.elongationMax !== undefined) config.elongationMax = dto.elongationMax;
       config.updatedBy = updatedBy;
     }
 

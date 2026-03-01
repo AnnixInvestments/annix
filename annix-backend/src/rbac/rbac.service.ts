@@ -673,6 +673,7 @@ export class RbacService {
       description: role.description,
       isDefault: role.isDefault,
       displayOrder: role.displayOrder,
+      targetType: role.targetType,
       createdAt: role.createdAt,
       updatedAt: role.updatedAt,
       permissions: role.rolePermissions.map((rp) => rp.permission.code),
@@ -710,6 +711,7 @@ export class RbacService {
       description: role.description,
       isDefault: role.isDefault,
       displayOrder: role.displayOrder,
+      targetType: role.targetType,
       createdAt: role.createdAt,
       updatedAt: role.updatedAt,
       permissions: role.rolePermissions.map((rp) => rp.permission.code),
@@ -834,6 +836,7 @@ export class RbacService {
       description: dto.description ?? null,
       isDefault: dto.isDefault ?? false,
       displayOrder,
+      targetType: dto.targetType ?? null,
     });
 
     const savedRole = await this.roleRepo.save(role);
@@ -860,6 +863,9 @@ export class RbacService {
         await this.roleRepo.update({ appId: role.appId, isDefault: true }, { isDefault: false });
       }
       role.isDefault = dto.isDefault;
+    }
+    if (dto.targetType !== undefined) {
+      role.targetType = dto.targetType;
     }
 
     const updatedRole = await this.roleRepo.save(role);
@@ -956,6 +962,7 @@ export class RbacService {
       description: role.description,
       isDefault: role.isDefault,
       displayOrder: role.displayOrder,
+      targetType: role.targetType,
       createdAt: role.createdAt,
       updatedAt: role.updatedAt,
     };

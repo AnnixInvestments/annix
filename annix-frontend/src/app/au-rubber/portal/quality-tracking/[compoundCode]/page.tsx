@@ -30,14 +30,37 @@ interface MetricCardProps {
   stats: MetricStats | null;
   unit?: string;
   decimals?: number;
+  specMin?: number | null;
+  specMax?: number | null;
+  specNominal?: number | null;
 }
 
-function MetricCard({ label, stats, unit = "", decimals = 2 }: MetricCardProps) {
+function MetricCard({
+  label,
+  stats,
+  unit = "",
+  decimals = 2,
+  specMin,
+  specMax,
+  specNominal,
+}: MetricCardProps) {
+  const hasSpec = specMin !== null || specMax !== null || specNominal !== null;
+
   if (!stats) {
     return (
       <div className="bg-gray-50 rounded-lg p-4">
         <h4 className="text-sm font-medium text-gray-500 mb-2">{label}</h4>
         <p className="text-2xl font-bold text-gray-400">-</p>
+        {hasSpec && (
+          <div className="mt-2 text-xs text-blue-600 border-t border-gray-200 pt-2">
+            <span className="font-medium">Spec:</span>{" "}
+            {specMin !== null && specMax !== null
+              ? `${specMin}-${specMax}`
+              : specNominal !== null
+                ? `${specNominal}${unit}`
+                : "-"}
+          </div>
+        )}
       </div>
     );
   }
@@ -48,17 +71,31 @@ function MetricCard({ label, stats, unit = "", decimals = 2 }: MetricCardProps) 
     return <ArrowRight className="w-4 h-4 text-gray-400" />;
   };
 
+  const isOutOfSpec =
+    (specMin !== null && stats.latestValue < specMin) ||
+    (specMax !== null && stats.latestValue > specMax);
+
   return (
-    <div className="bg-gray-50 rounded-lg p-4">
+    <div className={`rounded-lg p-4 ${isOutOfSpec ? "bg-red-50" : "bg-gray-50"}`}>
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-medium text-gray-500">{label}</h4>
         {trendIcon(stats.trend)}
       </div>
-      <p className="text-2xl font-bold text-gray-900">
+      <p className={`text-2xl font-bold ${isOutOfSpec ? "text-red-600" : "text-gray-900"}`}>
         {stats.latestValue.toFixed(decimals)}
         <span className="text-sm font-normal text-gray-500 ml-1">{unit}</span>
       </p>
-      <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-500">
+      {hasSpec && (
+        <div className="mt-1 text-xs text-blue-600">
+          <span className="font-medium">Spec:</span>{" "}
+          {specMin !== null && specMax !== null
+            ? `${specMin}-${specMax}`
+            : specNominal !== null
+              ? `${specNominal}${unit}`
+              : "-"}
+        </div>
+      )}
+      <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-500 border-t border-gray-200 pt-2">
         <div>
           <span className="font-medium">Mean:</span> {stats.mean.toFixed(decimals)}
         </div>
@@ -250,17 +287,58 @@ export default function QualityTrackingDetailPage() {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-        <MetricCard label="Shore A" stats={detail.stats.shoreA} decimals={1} />
-        <MetricCard label="Specific Gravity" stats={detail.stats.specificGravity} decimals={3} />
-        <MetricCard label="Rebound" stats={detail.stats.rebound} unit="%" decimals={1} />
+        <MetricCard
+          label="Shore A"
+          stats={detail.stats.shoreA}
+          decimals={1}
+          specMin={detail.config.shoreAMin}
+          specMax={detail.config.shoreAMax}
+          specNominal={detail.config.shoreANominal}
+        />
+        <MetricCard
+          label="Specific Gravity"
+          stats={detail.stats.specificGravity}
+          decimals={3}
+          specMin={detail.config.densityMin}
+          specMax={detail.config.densityMax}
+          specNominal={detail.config.densityNominal}
+        />
+        <MetricCard
+          label="Rebound"
+          stats={detail.stats.rebound}
+          unit="%"
+          decimals={1}
+          specMin={detail.config.reboundMin}
+          specMax={detail.config.reboundMax}
+          specNominal={detail.config.reboundNominal}
+        />
         <MetricCard
           label="Tear Strength"
           stats={detail.stats.tearStrength}
           unit="kN/m"
           decimals={1}
+          specMin={detail.config.tearStrengthMin}
+          specMax={detail.config.tearStrengthMax}
+          specNominal={detail.config.tearStrengthNominal}
         />
-        <MetricCard label="Tensile" stats={detail.stats.tensile} unit="MPa" decimals={1} />
-        <MetricCard label="Elongation" stats={detail.stats.elongation} unit="%" decimals={0} />
+        <MetricCard
+          label="Tensile"
+          stats={detail.stats.tensile}
+          unit="MPa"
+          decimals={1}
+          specMin={detail.config.tensileMin}
+          specMax={detail.config.tensileMax}
+          specNominal={detail.config.tensileNominal}
+        />
+        <MetricCard
+          label="Elongation"
+          stats={detail.stats.elongation}
+          unit="%"
+          decimals={0}
+          specMin={detail.config.elongationMin}
+          specMax={detail.config.elongationMax}
+          specNominal={detail.config.elongationNominal}
+        />
         <MetricCard label="TC90" stats={detail.stats.tc90} unit="min" decimals={2} />
       </div>
 
@@ -286,72 +364,110 @@ export default function QualityTrackingDetailPage() {
         </div>
 
         {viewMode === "table" ? (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Batch
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Shore A
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  SG
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rebound
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tear
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tensile
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Elong
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  TC90
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {detail.batches.map((batch) => (
-                <tr key={batch.batchId} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {batch.batchNumber}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(batch.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {batch.shoreA?.toFixed(1) ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {batch.specificGravity?.toFixed(3) ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {batch.rebound?.toFixed(1) ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {batch.tearStrength?.toFixed(1) ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {batch.tensile?.toFixed(1) ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {batch.elongation?.toFixed(0) ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {batch.tc90?.toFixed(2) ?? "-"}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Batch
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Shore A
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    SG
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Rebound
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tear
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tensile
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Elong
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">
+                    S&apos;min
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">
+                    S&apos;max
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">
+                    TS2
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">
+                    TC90
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {detail.batches.map((batch) => (
+                  <tr key={batch.batchId} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {batch.batchNumber}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(batch.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                      {batch.shoreA?.toFixed(1) ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                      {batch.specificGravity?.toFixed(3) ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                      {batch.rebound?.toFixed(1) ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                      {batch.tearStrength?.toFixed(1) ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                      {batch.tensile?.toFixed(1) ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                      {batch.elongation?.toFixed(0) ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 bg-blue-50">
+                      {batch.sMin?.toFixed(2) ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 bg-blue-50">
+                      {batch.sMax?.toFixed(2) ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 bg-blue-50">
+                      {batch.ts2?.toFixed(2) ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 bg-blue-50">
+                      {batch.tc90?.toFixed(2) ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm">
+                      {batch.passFailStatus ? (
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            batch.passFailStatus === "PASS"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {batch.passFailStatus}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <div className="p-6">
             <div className="text-center text-gray-500 py-12">

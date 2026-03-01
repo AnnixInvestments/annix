@@ -2,12 +2,14 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsArray,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from "class-validator";
+import { RoleTargetType } from "../entities/app-role.entity";
 
 export class CreateRoleDto {
   @ApiProperty({
@@ -47,6 +49,15 @@ export class CreateRoleDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  @ApiPropertyOptional({
+    description: "Target type for the role (CUSTOMER or SUPPLIER). Null/omitted means applicable to both.",
+    example: "CUSTOMER",
+    enum: RoleTargetType,
+  })
+  @IsOptional()
+  @IsEnum(RoleTargetType)
+  targetType?: RoleTargetType | null;
 }
 
 export class UpdateRoleDto {
@@ -85,6 +96,15 @@ export class UpdateRoleDto {
   @IsOptional()
   @IsInt()
   displayOrder?: number;
+
+  @ApiPropertyOptional({
+    description: "Target type for the role (CUSTOMER or SUPPLIER). Null means applicable to both.",
+    example: "CUSTOMER",
+    enum: RoleTargetType,
+  })
+  @IsOptional()
+  @IsEnum(RoleTargetType)
+  targetType?: RoleTargetType | null;
 }
 
 export class SetRoleProductsDto {
@@ -119,6 +139,12 @@ export class RoleResponseDto {
 
   @ApiProperty({ description: "Display order", example: 5 })
   displayOrder: number;
+
+  @ApiPropertyOptional({
+    description: "Target type (CUSTOMER or SUPPLIER). Null means applicable to both.",
+    enum: RoleTargetType,
+  })
+  targetType: RoleTargetType | null;
 
   @ApiProperty({ description: "Creation timestamp" })
   createdAt: Date;

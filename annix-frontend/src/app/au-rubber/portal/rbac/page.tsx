@@ -8,6 +8,7 @@ import {
   type AuRubberPermissionDto,
   type AuRubberRoleDto,
   type AuRubberUserAccessDto,
+  type RoleTargetType,
   auRubberApiClient,
 } from "@/app/lib/api/auRubberApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
@@ -35,6 +36,7 @@ export default function RbacPage() {
   const [newRoleCode, setNewRoleCode] = useState("");
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleDescription, setNewRoleDescription] = useState("");
+  const [newRoleTargetType, setNewRoleTargetType] = useState<RoleTargetType | "">("");
 
   const [editingUserAccess, setEditingUserAccess] = useState<AuRubberUserAccessDto | null>(null);
   const [editUserRole, setEditUserRole] = useState("");
@@ -122,12 +124,14 @@ export default function RbacPage() {
         code: newRoleCode.toLowerCase().replace(/\s+/g, "-"),
         name: newRoleName,
         description: newRoleDescription || undefined,
+        targetType: newRoleTargetType || null,
       });
       showToast("Role created", "success");
       setShowNewRoleModal(false);
       setNewRoleCode("");
       setNewRoleName("");
       setNewRoleDescription("");
+      setNewRoleTargetType("");
       loadData();
     } catch {
       showToast("Failed to create role", "error");
@@ -300,6 +304,9 @@ export default function RbacPage() {
                   Role
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Target
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Permissions
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -317,6 +324,21 @@ export default function RbacPage() {
                     <div className="text-sm font-medium text-gray-900">{role.name}</div>
                     {role.description && (
                       <div className="text-xs text-gray-500">{role.description}</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {role.targetType ? (
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          role.targetType === "CUSTOMER"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-purple-100 text-purple-800"
+                        }`}
+                      >
+                        {role.targetType}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">Both</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">{role.permissions.length}</td>
@@ -549,6 +571,21 @@ export default function RbacPage() {
                   placeholder="Optional description"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Target Type</label>
+                <select
+                  value={newRoleTargetType}
+                  onChange={(e) => setNewRoleTargetType(e.target.value as RoleTargetType | "")}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500"
+                >
+                  <option value="">Both (Customer & Supplier)</option>
+                  <option value="CUSTOMER">Customer Only</option>
+                  <option value="SUPPLIER">Supplier Only</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Determines which type of users can be assigned this role
+                </p>
               </div>
             </div>
             <div className="px-6 py-4 border-t flex justify-end gap-3">

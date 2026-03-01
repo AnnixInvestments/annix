@@ -201,6 +201,31 @@ export class RubberAuCocService {
     return { buffer, filename };
   }
 
+  async pdfBuffer(id: number): Promise<{ buffer: Buffer; filename: string }> {
+    const coc = await this.auCocRepository.findOne({
+      where: { id },
+      relations: ["customerCompany"],
+    });
+    if (!coc) {
+      throw new BadRequestException("AU CoC not found");
+    }
+
+    const items = await this.auCocItemRepository.find({
+      where: { auCocId: id },
+      relations: ["rollStock", "rollStock.compoundCoding"],
+    });
+
+    if (items.length === 0) {
+      throw new BadRequestException("No rolls found for this CoC");
+    }
+
+    const pdfData = await this.preparePdfData(coc, items);
+    const buffer = await this.createPdf(pdfData);
+    const filename = `${coc.cocNumber}.pdf`;
+
+    return { buffer, filename };
+  }
+
   async sendToCustomer(id: number, dto: SendAuCocDto): Promise<RubberAuCocDto> {
     const coc = await this.auCocRepository.findOne({
       where: { id },

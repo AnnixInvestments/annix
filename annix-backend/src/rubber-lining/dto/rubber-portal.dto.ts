@@ -10,6 +10,7 @@ import {
   IsString,
   ValidateNested,
 } from "class-validator";
+import { CompanyType } from "../entities/rubber-company.entity";
 import {
   CompoundMovementReferenceType,
   CompoundMovementType,
@@ -83,6 +84,7 @@ export class RubberCompanyDto {
   id: number;
   firebaseUid: string;
   name: string;
+  companyType: CompanyType;
   code: string | null;
   pricingTierId: number | null;
   pricingTierName: string | null;
@@ -98,6 +100,10 @@ export class RubberCompanyDto {
 export class CreateRubberCompanyDto {
   @IsString()
   name: string;
+
+  @IsOptional()
+  @IsEnum(CompanyType)
+  companyType?: CompanyType;
 
   @IsOptional()
   @IsString()
@@ -137,6 +143,10 @@ export class UpdateRubberCompanyDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsEnum(CompanyType)
+  companyType?: CompanyType;
 
   @IsOptional()
   @IsString()

@@ -40,7 +40,7 @@ import {
   RubberApplicationRating,
   RubberThicknessRecommendation,
 } from "./entities/rubber-application.entity";
-import { RubberCompany } from "./entities/rubber-company.entity";
+import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
 import { RubberOrder, RubberOrderStatus, StatusHistoryEvent } from "./entities/rubber-order.entity";
 import { RubberOrderItem } from "./entities/rubber-order-item.entity";
 import { RubberPricingTier } from "./entities/rubber-pricing-tier.entity";
@@ -528,6 +528,7 @@ export class RubberLiningService {
     const company = new RubberCompany();
     company.firebaseUid = `pg_${generateUniqueId()}`;
     company.name = dto.name;
+    company.companyType = dto.companyType || CompanyType.CUSTOMER;
     company.code = dto.code || null;
     company.pricingTierId = dto.pricingTierId || null;
     company.availableProducts = dto.availableProducts || [];
@@ -550,6 +551,7 @@ export class RubberLiningService {
     if (!company) return null;
 
     if (dto.name !== undefined) company.name = dto.name;
+    if (dto.companyType !== undefined) company.companyType = dto.companyType;
     if (dto.code !== undefined) company.code = dto.code || null;
     if (dto.pricingTierId !== undefined) company.pricingTierId = dto.pricingTierId || null;
     if (dto.availableProducts !== undefined) company.availableProducts = dto.availableProducts;
@@ -1079,6 +1081,7 @@ export class RubberLiningService {
       id: company.id,
       firebaseUid: company.firebaseUid,
       name: company.name,
+      companyType: company.companyType,
       code: company.code,
       pricingTierId: company.pricingTierId,
       pricingTierName: company.pricingTier?.name || null,

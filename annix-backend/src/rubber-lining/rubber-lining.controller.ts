@@ -1647,6 +1647,21 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Get("portal/au-cocs/:id/pdf")
+  @ApiOperation({ summary: "Preview/download AU CoC PDF" })
+  @ApiParam({ name: "id", description: "AU CoC ID" })
+  async auCocPdf(@Param("id") id: string, @Res() res: Response): Promise<void> {
+    const { buffer, filename } = await this.rubberAuCocService.pdfBuffer(Number(id));
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="${filename}"`,
+      "Content-Length": buffer.length.toString(),
+    });
+    res.send(buffer);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/au-cocs/:id/send")
   @ApiOperation({ summary: "Mark AU CoC as sent to customer" })
   @ApiParam({ name: "id", description: "AU CoC ID" })

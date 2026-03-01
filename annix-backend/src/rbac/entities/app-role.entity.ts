@@ -1,4 +1,4 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   Column,
   CreateDateColumn,
@@ -14,6 +14,11 @@ import { App } from "./app.entity";
 import { AppRolePermission } from "./app-role-permission.entity";
 import { AppRoleProduct } from "./app-role-product.entity";
 import { UserAppAccess } from "./user-app-access.entity";
+
+export enum RoleTargetType {
+  CUSTOMER = "CUSTOMER",
+  SUPPLIER = "SUPPLIER",
+}
 
 @Entity("app_roles")
 @Index(["appId", "code"], { unique: true })
@@ -69,6 +74,14 @@ export class AppRole {
     example: 1,
   })
   displayOrder: number;
+
+  @Column({ name: "target_type", type: "varchar", length: 20, nullable: true })
+  @ApiPropertyOptional({
+    description: "Target type for the role (CUSTOMER or SUPPLIER). Null means applicable to both.",
+    example: "CUSTOMER",
+    enum: RoleTargetType,
+  })
+  targetType: RoleTargetType | null;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   @ApiProperty({ description: "Creation timestamp" })

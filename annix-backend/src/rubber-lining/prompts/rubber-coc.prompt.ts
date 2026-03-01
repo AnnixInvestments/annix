@@ -8,9 +8,30 @@ Return a JSON object with this structure:
   "productionDate": string or null (ISO date format YYYY-MM-DD),
   "customerName": string or null,
   "compoundCode": string or null (e.g., "AU-NR-60", "AU-NBR-70"),
+  "compoundDescription": string or null (e.g., "Natural Rubber 40 Shore A"),
   "batchNumbers": string[] (array of batch numbers mentioned),
   "approverNames": string[] (names of people who approved/signed),
   "hasGraph": boolean (true if rheometer/cure graph data is referenced),
+  "specifications": {
+    "shoreAMin": number or null,
+    "shoreAMax": number or null,
+    "shoreANominal": number or null,
+    "specificGravityMin": number or null,
+    "specificGravityMax": number or null,
+    "specificGravityNominal": number or null,
+    "reboundMin": number or null,
+    "reboundMax": number or null,
+    "reboundNominal": number or null,
+    "tearStrengthMin": number or null,
+    "tearStrengthMax": number or null,
+    "tearStrengthNominal": number or null,
+    "tensileMin": number or null,
+    "tensileMax": number or null,
+    "tensileNominal": number or null,
+    "elongationMin": number or null,
+    "elongationMax": number or null,
+    "elongationNominal": number or null
+  },
   "batches": [
     {
       "batchNumber": string,
@@ -20,8 +41,8 @@ Return a JSON object with this structure:
       "tearStrengthKnM": number or null (kN/m),
       "tensileStrengthMpa": number or null (MPa),
       "elongationPercent": number or null (%),
-      "rheometerSMin": number or null (minimum torque),
-      "rheometerSMax": number or null (maximum torque),
+      "rheometerSMin": number or null (minimum torque in dNm),
+      "rheometerSMax": number or null (maximum torque in dNm),
       "rheometerTs2": number or null (scorch time in minutes),
       "rheometerTc90": number or null (cure time in minutes),
       "passFailStatus": "PASS" or "FAIL" or null
@@ -37,6 +58,9 @@ Guidelines:
 - Elongation is typically 200-700%
 - Rheometer values: S'min and S'max are torque values, Ts2 and Tc90 are times
 - PASS/FAIL status may be explicitly stated or inferred from values vs limits
+- Look for specification limits in header rows or separate columns labeled "Min", "Max", "Limit", or "Spec"
+- S&N CoCs typically have two lines of data: physical properties (Shore A, SG, Rebound, Tear, Tensile, Elongation) and rheometer data (S'min, S'max, TS2, TC90)
+- Extract ALL data from both lines for each batch
 - Return ONLY the JSON object, no additional text`;
 
 export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from Impilo Industries rubber Batch Certificates.
@@ -51,9 +75,30 @@ Return a JSON object with this structure:
   "orderNumber": string or null (e.g., "154"),
   "ticketNumber": string or null (e.g., "41210"),
   "compoundCode": string or null (e.g., "RSCA40", "AU-NR-60"),
+  "compoundDescription": string or null,
   "batchNumbers": string[] (individual batch numbers like ["209", "210", "211"] or parse range "209-227" into individual numbers),
   "rollNumbers": string[] (roll numbers if present),
   "hasGraph": boolean (true if rheometer/cure graph page exists),
+  "specifications": {
+    "shoreAMin": number or null,
+    "shoreAMax": number or null,
+    "shoreANominal": number or null,
+    "specificGravityMin": number or null,
+    "specificGravityMax": number or null,
+    "specificGravityNominal": number or null,
+    "reboundMin": number or null,
+    "reboundMax": number or null,
+    "reboundNominal": number or null,
+    "tearStrengthMin": number or null,
+    "tearStrengthMax": number or null,
+    "tearStrengthNominal": number or null,
+    "tensileMin": number or null,
+    "tensileMax": number or null,
+    "tensileNominal": number or null,
+    "elongationMin": number or null,
+    "elongationMax": number or null,
+    "elongationNominal": number or null
+  },
   "batches": [
     {
       "batchNumber": string,
@@ -79,6 +124,7 @@ Guidelines:
 - Page 2 has batch test results table with individual batch data
 - Page 3 has rheometer graph (set hasGraph: true if graph page exists)
 - Extract all batch rows from the results table
+- Look for specification limits in header rows or separate columns labeled "Min", "Max", "Limit", or "Spec"
 - Return ONLY the JSON object, no additional text`;
 
 export const DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes for rubber compound or rubber rolls.
