@@ -776,6 +776,8 @@ export class SpDocumentGenerationService {
     }
 
     let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
+    let page: Awaited<ReturnType<Awaited<ReturnType<typeof puppeteer.launch>>["newPage"]>> | null =
+      null;
     try {
       browser = await puppeteer.launch({
         headless: true,
@@ -787,7 +789,7 @@ export class SpDocumentGenerationService {
         ],
       });
 
-      const page = await browser.newPage();
+      page = await browser.newPage();
       await page.setContent(html, {
         waitUntil: "networkidle0",
       });
@@ -808,8 +810,19 @@ export class SpDocumentGenerationService {
       this.logger.error("Failed to generate PDF", error);
       throw new Error("Failed to generate PDF");
     } finally {
+      if (page) {
+        try {
+          await page.close();
+        } catch {
+          this.logger.warn("Page close failed");
+        }
+      }
       if (browser) {
-        await browser.close();
+        try {
+          await browser.close();
+        } catch {
+          this.logger.warn("Browser close failed");
+        }
       }
     }
   }

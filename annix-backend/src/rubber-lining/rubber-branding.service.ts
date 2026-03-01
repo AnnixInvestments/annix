@@ -269,6 +269,7 @@ export class RubberBrandingService {
     websiteUrl: string,
   ): Promise<ScrapedBrandingCandidates> {
     let browser: puppeteer.Browser | null = null;
+    let page: puppeteer.Page | null = null;
 
     try {
       browser = await puppeteer.launch({
@@ -276,7 +277,7 @@ export class RubberBrandingService {
         args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
       });
 
-      const page = await browser.newPage();
+      page = await browser.newPage();
       await page.setUserAgent(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       );
@@ -499,6 +500,8 @@ export class RubberBrandingService {
         `Found ${extracted.logoCandidates.length} logo candidates, ${extracted.heroCandidates.length} hero candidates`,
       );
 
+      await page.close();
+      page = null;
       await browser.close();
       browser = null;
 
@@ -508,6 +511,13 @@ export class RubberBrandingService {
         primaryColor: extracted.primaryColor,
       };
     } finally {
+      if (page) {
+        try {
+          await page.close();
+        } catch {
+          this.logger.warn("Page close failed");
+        }
+      }
       if (browser) {
         try {
           await browser.close();
