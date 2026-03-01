@@ -179,17 +179,51 @@ export class RubberEmailMonitorService implements OnModuleInit {
         const storageResult = await this.storageService.upload(multerFile, subPath);
 
         if (documentType === "coc") {
-          const coc = await this.cocService.createSupplierCoc(
-            {
-              cocType: supplierInfo.cocType,
-              supplierCompanyId: supplierInfo.company.id,
-              documentPath: storageResult.path,
-            },
-            `imap:${messageId}`,
-          );
-          this.logger.log(`Created Supplier CoC ${coc.id} from email attachment: ${filename}`);
+          const extractionResult = await this.extractCocDataFirst(supplierInfo.cocType, pdfText);
 
-          await this.extractAndLinkCoc(coc.id, supplierInfo.cocType, pdfText);
+          if (extractionResult?.data?.cocNumber) {
+            const { coc, wasUpdated } = await this.cocService.upsertByCocNumber(
+              extractionResult.data.cocNumber,
+              supplierInfo.cocType,
+              supplierInfo.company.id,
+              storageResult.path,
+              extractionResult.data,
+              `imap:${messageId}`,
+            );
+
+            if (wasUpdated) {
+              this.logger.log(
+                `Updated existing CoC ${coc.id} (${coc.cocNumber}) from email attachment: ${filename}`,
+              );
+            } else {
+              this.logger.log(
+                `Created new CoC ${coc.id} (${coc.cocNumber}) from email attachment: ${filename}`,
+              );
+            }
+
+            if (supplierInfo.cocType === SupplierCocType.CALENDARER) {
+              const linkResult = await this.cocService.linkCalendererToCompounderCocs(coc.id);
+              if (linkResult.linkedCocIds.length > 0) {
+                this.logger.log(
+                  `Linked CoC ${coc.id} to compounder CoCs: ${linkResult.linkedCocIds.join(", ")}`,
+                );
+              }
+            }
+          } else {
+            const coc = await this.cocService.createSupplierCoc(
+              {
+                cocType: supplierInfo.cocType,
+                supplierCompanyId: supplierInfo.company.id,
+                documentPath: storageResult.path,
+              },
+              `imap:${messageId}`,
+            );
+            this.logger.log(
+              `Created Supplier CoC ${coc.id} (no cocNumber extracted) from email: ${filename}`,
+            );
+
+            await this.extractAndLinkCoc(coc.id, supplierInfo.cocType, pdfText);
+          }
         } else {
           const dnNumber = `DN-EMAIL-${Date.now()}`;
           const dn = await this.deliveryNoteService.createDeliveryNote(
@@ -503,6 +537,32 @@ ${truncatedText}`;
     }
 
     return null;
+  }
+
+  private async extractCocDataFirst(
+    cocType: SupplierCocType,
+    pdfText: string,
+  ): Promise<{
+    data: import("./entities/rubber-supplier-coc.entity").ExtractedCocData;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  } | null> {
+    try {
+      const isAvailable = await this.cocExtractionService.isAvailable();
+      if (!isAvailable) {
+        this.logger.warn("CoC extraction service not available");
+        return null;
+      }
+
+      const result = await this.cocExtractionService.extractByType(cocType, pdfText);
+      this.logger.log(
+        `Pre-extracted ${cocType} CoC data: cocNumber=${result.data.cocNumber || "none"}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to pre-extract CoC data: ${error.message}`);
+      return null;
+    }
   }
 
   private async extractAndLinkCoc(

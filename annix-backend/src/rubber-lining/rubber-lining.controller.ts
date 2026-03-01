@@ -88,6 +88,14 @@ import {
   UpdateRubberProductCodingDto,
   UpdateRubberProductDto,
 } from "./dto/rubber-portal.dto";
+import {
+  AcknowledgeAlertDto,
+  CompoundQualityDetailDto,
+  CompoundQualitySummaryDto,
+  QualityAlertDto,
+  QualityConfigDto,
+  UpdateQualityConfigDto,
+} from "./dto/rubber-quality.dto";
 import { AuCocStatus } from "./entities/rubber-au-coc.entity";
 import {
   CompoundMovementReferenceType,
@@ -111,6 +119,7 @@ import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-brand
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberLiningService } from "./rubber-lining.service";
+import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
@@ -129,6 +138,7 @@ export class RubberLiningController {
     private readonly rubberAuCocService: RubberAuCocService,
     private readonly rubberRequisitionService: RubberRequisitionService,
     private readonly rubberStockLocationService: RubberStockLocationService,
+    private readonly rubberQualityTrackingService: RubberQualityTrackingService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -1920,5 +1930,74 @@ Formula: totalPrice = totalKg × salePricePerKg
       { value: "MANUAL", label: "Manual Request" },
       { value: "EXTERNAL_PO", label: "External PO" },
     ];
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/quality-tracking")
+  @ApiOperation({ summary: "Get quality summary for all compounds" })
+  async qualityTrackingSummary(): Promise<CompoundQualitySummaryDto[]> {
+    return this.rubberQualityTrackingService.qualitySummaryByCompound();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/quality-tracking/:compoundCode")
+  @ApiOperation({ summary: "Get detailed quality metrics for a compound" })
+  @ApiParam({ name: "compoundCode", description: "Compound code" })
+  async qualityTrackingDetail(
+    @Param("compoundCode") compoundCode: string,
+  ): Promise<CompoundQualityDetailDto> {
+    const detail = await this.rubberQualityTrackingService.qualityDetailForCompound(compoundCode);
+    if (!detail) throw new NotFoundException("Compound not found or no batch data");
+    return detail;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/quality-alerts")
+  @ApiOperation({ summary: "Get all active quality alerts" })
+  async qualityAlerts(): Promise<QualityAlertDto[]> {
+    return this.rubberQualityTrackingService.activeAlerts();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/quality-alerts/:id/acknowledge")
+  @ApiOperation({ summary: "Acknowledge a quality alert" })
+  @ApiParam({ name: "id", description: "Alert ID" })
+  async acknowledgeQualityAlert(
+    @Param("id") id: string,
+    @Body() dto: AcknowledgeAlertDto,
+  ): Promise<QualityAlertDto> {
+    const alert = await this.rubberQualityTrackingService.acknowledgeAlert(
+      Number(id),
+      dto.acknowledgedBy,
+    );
+    if (!alert) throw new NotFoundException("Alert not found");
+    return alert;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/quality-configs")
+  @ApiOperation({ summary: "Get quality threshold configurations for all compounds" })
+  async qualityConfigs(): Promise<QualityConfigDto[]> {
+    return this.rubberQualityTrackingService.allConfigs();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/quality-configs/:compoundCode")
+  @ApiOperation({ summary: "Update quality threshold configuration for a compound" })
+  @ApiParam({ name: "compoundCode", description: "Compound code" })
+  async updateQualityConfig(
+    @Param("compoundCode") compoundCode: string,
+    @Body() dto: UpdateQualityConfigDto,
+    @Req() req: Request,
+  ): Promise<QualityConfigDto> {
+    const user = (req as any).user;
+    const updatedBy = user?.email || "unknown";
+    return this.rubberQualityTrackingService.updateConfig(compoundCode, dto, updatedBy);
   }
 }

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { generateUniqueId, now } from "../lib/datetime";
@@ -19,6 +19,7 @@ import {
   RubberSupplierCoc,
   SupplierCocType,
 } from "./entities/rubber-supplier-coc.entity";
+import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 
 const COC_TYPE_LABELS: Record<SupplierCocType, string> = {
   [SupplierCocType.COMPOUNDER]: "Compounder",
@@ -39,6 +40,8 @@ const BATCH_PASS_FAIL_LABELS: Record<BatchPassFailStatus, string> = {
 
 @Injectable()
 export class RubberCocService {
+  private readonly logger = new Logger(RubberCocService.name);
+
   constructor(
     @InjectRepository(RubberSupplierCoc)
     private supplierCocRepository: Repository<RubberSupplierCoc>,
@@ -48,6 +51,8 @@ export class RubberCocService {
     private companyRepository: Repository<RubberCompany>,
     @InjectRepository(RubberCompoundStock)
     private compoundStockRepository: Repository<RubberCompoundStock>,
+    @Inject(forwardRef(() => RubberQualityTrackingService))
+    private qualityTrackingService: RubberQualityTrackingService,
   ) {}
 
   async allSupplierCocs(filters?: {
@@ -216,12 +221,97 @@ export class RubberCocService {
       await this.createBatchesFromExtractedData(coc);
     }
 
+    if (coc.cocType === SupplierCocType.COMPOUNDER && coc.compoundCode) {
+      this.triggerQualityCheck(coc.compoundCode);
+    }
+
     return this.mapSupplierCocToDto(coc);
+  }
+
+  private triggerQualityCheck(compoundCode: string): void {
+    this.qualityTrackingService
+      .checkCompoundQuality(compoundCode)
+      .then((result) => {
+        if (result.alertsCreated > 0) {
+          this.logger.log(
+            `Quality check for ${compoundCode}: ${result.alertsCreated} alert(s) created`,
+          );
+        }
+      })
+      .catch((error) => {
+        this.logger.error(`Quality check failed for ${compoundCode}:`, error);
+      });
   }
 
   async deleteSupplierCoc(id: number): Promise<boolean> {
     const result = await this.supplierCocRepository.delete(id);
     return (result.affected || 0) > 0;
+  }
+
+  async upsertByCocNumber(
+    cocNumber: string,
+    cocType: SupplierCocType,
+    supplierCompanyId: number,
+    documentPath: string,
+    extractedData: ExtractedCocData,
+    createdBy?: string,
+  ): Promise<{ coc: RubberSupplierCocDto; wasUpdated: boolean }> {
+    const existingCoc = await this.supplierCocRepository.findOne({
+      where: { cocNumber, cocType },
+      relations: ["supplierCompany"],
+    });
+
+    if (existingCoc) {
+      existingCoc.documentPath = documentPath;
+      existingCoc.extractedData = extractedData;
+      existingCoc.processingStatus = CocProcessingStatus.EXTRACTED;
+      existingCoc.supplierCompanyId = supplierCompanyId;
+
+      if (extractedData.productionDate) {
+        existingCoc.productionDate = new Date(extractedData.productionDate);
+      }
+      if (extractedData.compoundCode) {
+        existingCoc.compoundCode = extractedData.compoundCode;
+      }
+      if (extractedData.orderNumber) {
+        existingCoc.orderNumber = extractedData.orderNumber;
+      }
+      if (extractedData.ticketNumber) {
+        existingCoc.ticketNumber = extractedData.ticketNumber;
+      }
+
+      await this.supplierCocRepository.save(existingCoc);
+
+      const refreshed = await this.supplierCocRepository.findOne({
+        where: { id: existingCoc.id },
+        relations: ["supplierCompany"],
+      });
+
+      return { coc: this.mapSupplierCocToDto(refreshed!), wasUpdated: true };
+    }
+
+    const newCoc = this.supplierCocRepository.create({
+      firebaseUid: `pg_${generateUniqueId()}`,
+      cocType,
+      supplierCompanyId,
+      documentPath,
+      cocNumber,
+      extractedData,
+      processingStatus: CocProcessingStatus.EXTRACTED,
+      productionDate: extractedData.productionDate ? new Date(extractedData.productionDate) : null,
+      compoundCode: extractedData.compoundCode ?? null,
+      orderNumber: extractedData.orderNumber ?? null,
+      ticketNumber: extractedData.ticketNumber ?? null,
+      createdBy: createdBy ?? null,
+    });
+
+    const saved = await this.supplierCocRepository.save(newCoc);
+    const result = await this.supplierCocRepository.findOne({
+      where: { id: saved.id },
+      relations: ["supplierCompany"],
+    });
+
+    return { coc: this.mapSupplierCocToDto(result!), wasUpdated: false };
   }
 
   async clearAllSupplierCocs(): Promise<{ deletedBatches: number; deletedCocs: number }> {

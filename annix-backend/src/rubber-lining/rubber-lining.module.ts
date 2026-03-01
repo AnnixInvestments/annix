@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
+import { EmailModule } from "../email/email.module";
 import { NixModule } from "../nix/nix.module";
 import { App } from "../rbac/entities/app.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
@@ -16,6 +17,7 @@ import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundMovement } from "./entities/rubber-compound-movement.entity";
 import { RubberCompoundOrder } from "./entities/rubber-compound-order.entity";
+import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
 import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
@@ -29,6 +31,7 @@ import {
   RubberPurchaseRequisition,
   RubberPurchaseRequisitionItem,
 } from "./entities/rubber-purchase-requisition.entity";
+import { RubberQualityAlert } from "./entities/rubber-quality-alert.entity";
 import { RubberRollStock } from "./entities/rubber-roll-stock.entity";
 import { RubberSpecification } from "./entities/rubber-specification.entity";
 import { RubberStockLocation } from "./entities/rubber-stock-location.entity";
@@ -46,6 +49,7 @@ import { RubberInboundEmailController } from "./rubber-inbound-email.controller"
 import { RubberInboundEmailService } from "./rubber-inbound-email.service";
 import { RubberLiningController } from "./rubber-lining.controller";
 import { RubberLiningService } from "./rubber-lining.service";
+import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
@@ -54,6 +58,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
 @Module({
   imports: [
     AdminModule,
+    EmailModule,
     NixModule,
     RbacModule,
     TypeOrmModule.forFeature([
@@ -84,6 +89,8 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
       RubberPurchaseRequisition,
       RubberPurchaseRequisitionItem,
       RubberStockLocation,
+      RubberCompoundQualityConfig,
+      RubberQualityAlert,
     ]),
   ],
   controllers: [RubberLiningController, RubberAdminController, RubberInboundEmailController],
@@ -100,6 +107,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     RubberStockLocationService,
     RubberInboundEmailService,
     RubberEmailMonitorService,
+    RubberQualityTrackingService,
     AuRubberAccessGuard,
   ],
   exports: [
@@ -112,6 +120,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     RubberAuCocService,
     RubberRequisitionService,
     RubberStockLocationService,
+    RubberQualityTrackingService,
   ],
 })
 export class RubberLiningModule {}

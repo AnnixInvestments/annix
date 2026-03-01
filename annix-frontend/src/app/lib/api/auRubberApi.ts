@@ -42,6 +42,99 @@ export type RequisitionStatus =
   | "CANCELLED";
 export type RequisitionSourceType = "LOW_STOCK" | "MANUAL" | "EXTERNAL_PO";
 export type RequisitionItemType = "COMPOUND" | "ROLL";
+export type QualityAlertType = "DRIFT" | "DROP" | "CV_HIGH";
+export type QualityAlertSeverity = "WARNING" | "CRITICAL";
+export type TrendDirection = "up" | "down" | "stable";
+export type QualityStatus = "normal" | "warning" | "critical";
+
+export interface MetricStats {
+  mean: number;
+  stdDev: number;
+  min: number;
+  max: number;
+  cv: number;
+  trend: TrendDirection;
+  latestValue: number;
+  sampleCount: number;
+}
+
+export interface CompoundQualitySummaryDto {
+  compoundCode: string;
+  batchCount: number;
+  lastBatchDate: string | null;
+  shoreA: MetricStats | null;
+  tc90: MetricStats | null;
+  tensile: MetricStats | null;
+  elongation: MetricStats | null;
+  tearStrength: MetricStats | null;
+  specificGravity: MetricStats | null;
+  rebound: MetricStats | null;
+  status: QualityStatus;
+  activeAlertCount: number;
+}
+
+export interface BatchMetricData {
+  batchId: number;
+  batchNumber: string;
+  createdAt: string;
+  shoreA: number | null;
+  specificGravity: number | null;
+  rebound: number | null;
+  tearStrength: number | null;
+  tensile: number | null;
+  elongation: number | null;
+  tc90: number | null;
+}
+
+export interface QualityConfigDto {
+  id: number | null;
+  compoundCode: string;
+  windowSize: number;
+  shoreADriftThreshold: number;
+  specificGravityDriftThreshold: number;
+  reboundDriftThreshold: number;
+  tearStrengthDropPercent: number;
+  tensileStrengthDropPercent: number;
+  elongationDropPercent: number;
+  tc90CvThreshold: number;
+}
+
+export interface QualityAlertDto {
+  id: number;
+  compoundCode: string;
+  alertType: QualityAlertType;
+  alertTypeLabel: string;
+  severity: QualityAlertSeverity;
+  severityLabel: string;
+  metricName: string;
+  title: string;
+  message: string;
+  metricValue: number;
+  thresholdValue: number;
+  meanValue: number;
+  batchNumber: string;
+  batchId: number;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  createdAt: string;
+}
+
+export interface CompoundQualityDetailDto {
+  compoundCode: string;
+  batchCount: number;
+  stats: {
+    shoreA: MetricStats | null;
+    specificGravity: MetricStats | null;
+    rebound: MetricStats | null;
+    tearStrength: MetricStats | null;
+    tensile: MetricStats | null;
+    elongation: MetricStats | null;
+    tc90: MetricStats | null;
+  };
+  batches: BatchMetricData[];
+  config: QualityConfigDto;
+  alerts: QualityAlertDto[];
+}
 
 export interface RubberSupplierCocDto {
   id: number;
@@ -1724,6 +1817,44 @@ class AuRubberApiClient {
 
   requisitionSourceTypes(): Promise<{ value: string; label: string }[]> {
     return this.request("/rubber-lining/portal/requisition-source-types");
+  }
+
+  async qualityTrackingSummary(): Promise<CompoundQualitySummaryDto[]> {
+    return this.request("/rubber-lining/portal/quality-tracking");
+  }
+
+  async qualityTrackingDetail(compoundCode: string): Promise<CompoundQualityDetailDto> {
+    return this.request(
+      `/rubber-lining/portal/quality-tracking/${encodeURIComponent(compoundCode)}`,
+    );
+  }
+
+  async qualityAlerts(): Promise<QualityAlertDto[]> {
+    return this.request("/rubber-lining/portal/quality-alerts");
+  }
+
+  async acknowledgeQualityAlert(id: number, acknowledgedBy: string): Promise<QualityAlertDto> {
+    return this.request(`/rubber-lining/portal/quality-alerts/${id}/acknowledge`, {
+      method: "PUT",
+      body: JSON.stringify({ acknowledgedBy }),
+    });
+  }
+
+  async qualityConfigs(): Promise<QualityConfigDto[]> {
+    return this.request("/rubber-lining/portal/quality-configs");
+  }
+
+  async updateQualityConfig(
+    compoundCode: string,
+    data: Partial<QualityConfigDto>,
+  ): Promise<QualityConfigDto> {
+    return this.request(
+      `/rubber-lining/portal/quality-configs/${encodeURIComponent(compoundCode)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      },
+    );
   }
 }
 

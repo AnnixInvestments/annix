@@ -68,6 +68,11 @@ const navSections: NavSection[] = [
         permission: PAGE_PERMISSIONS["/au-rubber/portal/supplier-cocs"],
       },
       {
+        href: "/au-rubber/portal/quality-tracking",
+        label: "Quality Tracking",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/quality-tracking"],
+      },
+      {
         href: "/au-rubber/portal/delivery-notes",
         label: "Delivery Notes",
         permission: PAGE_PERMISSIONS["/au-rubber/portal/delivery-notes"],

@@ -7,6 +7,7 @@ export const PAGE_PERMISSIONS: Record<string, string> = {
   "/au-rubber/portal/delivery-notes": "delivery-notes:view",
   "/au-rubber/portal/roll-stock": "roll-stock:view",
   "/au-rubber/portal/au-cocs": "au-cocs:view",
+  "/au-rubber/portal/quality-tracking": "quality-tracking:view",
   "/au-rubber/portal/compound-stocks": "compound-stocks:view",
   "/au-rubber/portal/compound-orders": "compound-orders:view",
   "/au-rubber/portal/productions": "productions:view",
