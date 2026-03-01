@@ -328,6 +328,8 @@ export class RubberRollStockDto {
   soldAt: string | null;
   location: string | null;
   notes: string | null;
+  costZar: number | null;
+  priceZar: number | null;
   productionDate: string | null;
   createdAt: string;
   updatedAt: string;
@@ -371,6 +373,14 @@ export class CreateRollStockDto {
   @IsOptional()
   @IsString()
   notes?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  costZar?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  priceZar?: number | null;
 }
 
 export class UpdateRollStockDto {
@@ -491,4 +501,52 @@ export class RollTraceabilityDto {
   batches: RubberCompoundBatchDto[];
   supplierCocs: RubberSupplierCocDto[];
   auCoc: RubberAuCocDto | null;
+}
+
+export class CreateOpeningStockDto {
+  @IsString()
+  rollNumber: string;
+
+  @IsNumber()
+  compoundCodingId: number;
+
+  @IsNumber()
+  weightKg: number;
+
+  @IsOptional()
+  @IsNumber()
+  costZar?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  priceZar?: number | null;
+
+  @IsOptional()
+  @IsString()
+  notes?: string | null;
+}
+
+export class ImportOpeningStockRowDto {
+  @IsString()
+  rollNumber: string;
+
+  @IsString()
+  compoundCode: string;
+
+  @IsNumber()
+  weightKg: number;
+
+  @IsOptional()
+  @IsNumber()
+  costZar?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  priceZar?: number | null;
+}
+
+export class ImportOpeningStockResultDto {
+  totalRows: number;
+  created: number;
+  errors: { row: number; rollNumber: string; error: string }[];
 }

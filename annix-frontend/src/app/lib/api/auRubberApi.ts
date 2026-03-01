@@ -259,9 +259,37 @@ export interface RubberRollStockDto {
   soldToCompanyId: number | null;
   soldToCompanyName: string | null;
   auCocId: number | null;
+  soldAt: string | null;
+  location: string | null;
   notes: string | null;
+  costZar: number | null;
+  priceZar: number | null;
+  productionDate: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreateOpeningStockDto {
+  rollNumber: string;
+  compoundCodingId: number;
+  weightKg: number;
+  costZar?: number | null;
+  priceZar?: number | null;
+  notes?: string | null;
+}
+
+export interface ImportOpeningStockRowDto {
+  rollNumber: string;
+  compoundCode: string;
+  weightKg: number;
+  costZar?: number | null;
+  priceZar?: number | null;
+}
+
+export interface ImportOpeningStockResultDto {
+  totalRows: number;
+  created: number;
+  errors: { row: number; rollNumber: string; error: string }[];
 }
 
 export interface RubberAuCocDto {
@@ -1626,6 +1654,20 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/roll-stock/${id}/scrap`, {
       method: "PUT",
       body: JSON.stringify({ reason }),
+    });
+  }
+
+  async createOpeningStock(data: CreateOpeningStockDto): Promise<RubberRollStockDto> {
+    return this.request("/rubber-lining/portal/roll-stock/opening-stock", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async importOpeningStock(rows: ImportOpeningStockRowDto[]): Promise<ImportOpeningStockResultDto> {
+    return this.request("/rubber-lining/portal/roll-stock/import-opening", {
+      method: "POST",
+      body: JSON.stringify({ rows }),
     });
   }
 

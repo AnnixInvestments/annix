@@ -51,7 +51,8 @@ export class CreateRoleDto {
   isDefault?: boolean;
 
   @ApiPropertyOptional({
-    description: "Target type for the role (CUSTOMER or SUPPLIER). Null/omitted means applicable to both.",
+    description:
+      "Target type for the role (CUSTOMER or SUPPLIER). Null/omitted means applicable to both.",
     example: "CUSTOMER",
     enum: RoleTargetType,
   })

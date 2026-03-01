@@ -28,8 +28,11 @@ import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
   CreateDeliveryNoteDto,
+  CreateOpeningStockDto,
   CreateRollStockDto,
   CreateSupplierCocDto,
+  ImportOpeningStockResultDto,
+  ImportOpeningStockRowDto,
   ReserveRollDto,
   ReviewExtractionDto,
   RollTraceabilityDto,
@@ -1533,6 +1536,31 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiOperation({ summary: "Create roll stock" })
   async createRollStock(@Body() dto: CreateRollStockDto): Promise<RubberRollStockDto> {
     return this.rubberRollStockService.createRollStock(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/roll-stock/opening-stock")
+  @ApiOperation({
+    summary: "Create opening stock",
+    description: "Create a single roll stock entry for opening stock with cost and selling price",
+  })
+  async createOpeningStock(@Body() dto: CreateOpeningStockDto): Promise<RubberRollStockDto> {
+    return this.rubberRollStockService.createOpeningStock(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/roll-stock/import-opening")
+  @ApiOperation({
+    summary: "Import opening stock from CSV data",
+    description:
+      "Bulk import opening stock entries. Expects compound codes (not IDs) which are resolved to IDs.",
+  })
+  async importOpeningStock(
+    @Body() body: { rows: ImportOpeningStockRowDto[] },
+  ): Promise<ImportOpeningStockResultDto> {
+    return this.rubberRollStockService.importOpeningStock(body.rows);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

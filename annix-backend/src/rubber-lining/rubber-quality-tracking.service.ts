@@ -472,7 +472,8 @@ export class RubberQualityTrackingService {
       if (dto.reboundNominal !== undefined) config.reboundNominal = dto.reboundNominal;
       if (dto.reboundMin !== undefined) config.reboundMin = dto.reboundMin;
       if (dto.reboundMax !== undefined) config.reboundMax = dto.reboundMax;
-      if (dto.tearStrengthNominal !== undefined) config.tearStrengthNominal = dto.tearStrengthNominal;
+      if (dto.tearStrengthNominal !== undefined)
+        config.tearStrengthNominal = dto.tearStrengthNominal;
       if (dto.tearStrengthMin !== undefined) config.tearStrengthMin = dto.tearStrengthMin;
       if (dto.tearStrengthMax !== undefined) config.tearStrengthMax = dto.tearStrengthMax;
       if (dto.tensileNominal !== undefined) config.tensileNominal = dto.tensileNominal;

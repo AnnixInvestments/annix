@@ -21,17 +21,40 @@ export enum CocProcessingStatus {
   APPROVED = "APPROVED",
 }
 
+export interface ExtractedCocSpecifications {
+  shoreAMin?: number | null;
+  shoreAMax?: number | null;
+  shoreANominal?: number | null;
+  specificGravityMin?: number | null;
+  specificGravityMax?: number | null;
+  specificGravityNominal?: number | null;
+  reboundMin?: number | null;
+  reboundMax?: number | null;
+  reboundNominal?: number | null;
+  tearStrengthMin?: number | null;
+  tearStrengthMax?: number | null;
+  tearStrengthNominal?: number | null;
+  tensileMin?: number | null;
+  tensileMax?: number | null;
+  tensileNominal?: number | null;
+  elongationMin?: number | null;
+  elongationMax?: number | null;
+  elongationNominal?: number | null;
+}
+
 export interface ExtractedCocData {
   cocNumber?: string;
   productionDate?: string;
   customerName?: string;
   compoundCode?: string;
+  compoundDescription?: string;
   batchNumbers?: string[];
   rollNumbers?: string[];
   orderNumber?: string;
   ticketNumber?: string;
   hasGraph?: boolean;
   approverNames?: string[];
+  specifications?: ExtractedCocSpecifications;
   batches?: Array<{
     batchNumber: string;
     shoreA?: number;

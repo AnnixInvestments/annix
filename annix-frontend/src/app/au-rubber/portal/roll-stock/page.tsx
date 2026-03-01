@@ -5,10 +5,13 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
+  type CreateOpeningStockDto,
+  type ImportOpeningStockResultDto,
+  type ImportOpeningStockRowDto,
   type RollStockStatus,
   type RubberRollStockDto,
 } from "@/app/lib/api/auRubberApi";
-import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
+import type { RubberCompanyDto, RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import {
   ITEMS_PER_PAGE,
@@ -41,18 +44,39 @@ export default function RollStockPage() {
   const [scrapRollId, setScrapRollId] = useState<number | null>(null);
   const [scrapReason, setScrapReason] = useState("");
   const [isScrapping, setIsScrapping] = useState(false);
+  const [compoundCodings, setCompoundCodings] = useState<RubberProductCodingDto[]>([]);
+  const [showOpeningStockModal, setShowOpeningStockModal] = useState(false);
+  const [openingStockTab, setOpeningStockTab] = useState<"single" | "bulk">("single");
+  const [openingStockForm, setOpeningStockForm] = useState<CreateOpeningStockDto>({
+    rollNumber: "",
+    compoundCodingId: 0,
+    weightKg: 0,
+    costZar: null,
+    priceZar: null,
+    notes: null,
+  });
+  const [isSubmittingOpeningStock, setIsSubmittingOpeningStock] = useState(false);
+  const [csvData, setCsvData] = useState<ImportOpeningStockRowDto[]>([]);
+  const [csvFileName, setCsvFileName] = useState("");
+  const [importResult, setImportResult] = useState<ImportOpeningStockResultDto | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [rollsData, companiesData] = await Promise.all([
+      const [rollsData, companiesData, codingsData] = await Promise.all([
         auRubberApiClient.rollStock({
           status: filterStatus || undefined,
         }),
         auRubberApiClient.companies(),
+        auRubberApiClient.productCodings(),
       ]);
       setRolls(Array.isArray(rollsData) ? rollsData : []);
       setCompanies(Array.isArray(companiesData) ? companiesData : []);
+      const compounds = (Array.isArray(codingsData) ? codingsData : []).filter(
+        (c) => c.codingType === "COMPOUND",
+      );
+      setCompoundCodings(compounds);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));
@@ -160,6 +184,100 @@ export default function RollStockPage() {
       showToast(err instanceof Error ? err.message : "Failed to scrap roll", "error");
     } finally {
       setIsScrapping(false);
+    }
+  };
+
+  const resetOpeningStockForm = () => {
+    setOpeningStockForm({
+      rollNumber: "",
+      compoundCodingId: 0,
+      weightKg: 0,
+      costZar: null,
+      priceZar: null,
+      notes: null,
+    });
+    setCsvData([]);
+    setCsvFileName("");
+    setImportResult(null);
+    setOpeningStockTab("single");
+  };
+
+  const handleCreateOpeningStock = async () => {
+    if (
+      !openingStockForm.rollNumber ||
+      !openingStockForm.compoundCodingId ||
+      !openingStockForm.weightKg
+    ) {
+      showToast("Please fill in all required fields", "error");
+      return;
+    }
+    try {
+      setIsSubmittingOpeningStock(true);
+      await auRubberApiClient.createOpeningStock(openingStockForm);
+      showToast("Opening stock created successfully", "success");
+      setShowOpeningStockModal(false);
+      resetOpeningStockForm();
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to create opening stock", "error");
+    } finally {
+      setIsSubmittingOpeningStock(false);
+    }
+  };
+
+  const handleCsvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCsvFileName(file.name);
+    setImportResult(null);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split("\n").filter((line) => line.trim());
+      const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+      const rows: ImportOpeningStockRowDto[] = lines.slice(1).map((line) => {
+        const values = line.split(",").map((v) => v.trim());
+        const rowData: ImportOpeningStockRowDto = {
+          rollNumber: values[headers.indexOf("roll_number")] || "",
+          compoundCode: values[headers.indexOf("compound_code")] || "",
+          weightKg: Number(values[headers.indexOf("weight_kg")]) || 0,
+          costZar: values[headers.indexOf("cost_zar")]
+            ? Number(values[headers.indexOf("cost_zar")])
+            : null,
+          priceZar: values[headers.indexOf("price_zar")]
+            ? Number(values[headers.indexOf("price_zar")])
+            : null,
+        };
+        return rowData;
+      });
+      setCsvData(rows.filter((r) => r.rollNumber && r.compoundCode));
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportOpeningStock = async () => {
+    if (csvData.length === 0) {
+      showToast("No valid data to import", "error");
+      return;
+    }
+    try {
+      setIsImporting(true);
+      const result = await auRubberApiClient.importOpeningStock(csvData);
+      setImportResult(result);
+      if (result.errors.length === 0) {
+        showToast(`Successfully imported ${result.created} rolls`, "success");
+        setShowOpeningStockModal(false);
+        resetOpeningStockForm();
+        fetchData();
+      } else {
+        showToast(`Imported ${result.created} of ${result.totalRows} rolls with errors`, "warning");
+        fetchData();
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to import opening stock", "error");
+    } finally {
+      setIsImporting(false);
     }
   };
 

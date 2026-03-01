@@ -3,7 +3,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { generateUniqueId, now } from "../lib/datetime";
 import {
+  CreateOpeningStockDto,
   CreateRollStockDto,
+  ImportOpeningStockResultDto,
+  ImportOpeningStockRowDto,
   ReserveRollDto,
   RollTraceabilityDto,
   RubberAuCocDto,
@@ -16,7 +19,7 @@ import {
 import { RubberAuCoc } from "./entities/rubber-au-coc.entity";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { BatchPassFailStatus, RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
-import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
+import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
 import {
   CocProcessingStatus,
@@ -140,6 +143,8 @@ export class RubberRollStockService {
       deliveryNoteItemId: dto.deliveryNoteItemId ?? null,
       location: dto.location ?? null,
       notes: dto.notes ?? null,
+      costZar: dto.costZar ?? null,
+      priceZar: dto.priceZar ?? null,
     });
 
     const saved = await this.rollStockRepository.save(roll);
@@ -388,6 +393,106 @@ export class RubberRollStockService {
     return this.mapRollStockToDto(roll);
   }
 
+  async createOpeningStock(dto: CreateOpeningStockDto): Promise<RubberRollStockDto> {
+    const existingRoll = await this.rollStockRepository.findOne({
+      where: { rollNumber: dto.rollNumber },
+    });
+    if (existingRoll) {
+      throw new BadRequestException(`Roll number ${dto.rollNumber} already exists`);
+    }
+
+    const coding = await this.productCodingRepository.findOne({
+      where: { id: dto.compoundCodingId },
+    });
+    if (!coding) {
+      throw new BadRequestException("Compound not found");
+    }
+    if (coding.codingType !== ProductCodingType.COMPOUND) {
+      throw new BadRequestException("Selected coding must be of type COMPOUND");
+    }
+
+    const roll = this.rollStockRepository.create({
+      firebaseUid: `pg_${generateUniqueId()}`,
+      rollNumber: dto.rollNumber,
+      compoundCodingId: dto.compoundCodingId,
+      weightKg: dto.weightKg,
+      status: RollStockStatus.IN_STOCK,
+      linkedBatchIds: [],
+      costZar: dto.costZar ?? null,
+      priceZar: dto.priceZar ?? null,
+      notes: dto.notes ?? null,
+    });
+
+    const saved = await this.rollStockRepository.save(roll);
+    const result = await this.rollStockRepository.findOne({
+      where: { id: saved.id },
+      relations: ["compoundCoding", "soldToCompany"],
+    });
+    return this.mapRollStockToDto(result!);
+  }
+
+  async importOpeningStock(rows: ImportOpeningStockRowDto[]): Promise<ImportOpeningStockResultDto> {
+    const result: ImportOpeningStockResultDto = {
+      totalRows: rows.length,
+      created: 0,
+      errors: [],
+    };
+
+    const compoundCodings = await this.productCodingRepository.find({
+      where: { codingType: ProductCodingType.COMPOUND },
+    });
+    const codingByCode = new Map(compoundCodings.map((c) => [c.code.toUpperCase(), c]));
+
+    for (const [index, row] of rows.entries()) {
+      const rowNumber = index + 1;
+
+      const existingRoll = await this.rollStockRepository.findOne({
+        where: { rollNumber: row.rollNumber },
+      });
+      if (existingRoll) {
+        result.errors.push({
+          row: rowNumber,
+          rollNumber: row.rollNumber,
+          error: `Roll number ${row.rollNumber} already exists`,
+        });
+        continue;
+      }
+
+      const coding = codingByCode.get(row.compoundCode.toUpperCase());
+      if (!coding) {
+        result.errors.push({
+          row: rowNumber,
+          rollNumber: row.rollNumber,
+          error: `Compound code ${row.compoundCode} not found`,
+        });
+        continue;
+      }
+
+      try {
+        const roll = this.rollStockRepository.create({
+          firebaseUid: `pg_${generateUniqueId()}`,
+          rollNumber: row.rollNumber,
+          compoundCodingId: coding.id,
+          weightKg: row.weightKg,
+          status: RollStockStatus.IN_STOCK,
+          linkedBatchIds: [],
+          costZar: row.costZar ?? null,
+          priceZar: row.priceZar ?? null,
+        });
+        await this.rollStockRepository.save(roll);
+        result.created++;
+      } catch (err) {
+        result.errors.push({
+          row: rowNumber,
+          rollNumber: row.rollNumber,
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+
+    return result;
+  }
+
   private mapRollStockToDto(roll: RubberRollStock): RubberRollStockDto {
     return {
       id: roll.id,
@@ -412,6 +517,8 @@ export class RubberRollStockService {
       soldAt: roll.soldAt?.toISOString() ?? null,
       location: roll.location,
       notes: roll.notes,
+      costZar: roll.costZar ? Number(roll.costZar) : null,
+      priceZar: roll.priceZar ? Number(roll.priceZar) : null,
       productionDate: roll.productionDate?.toISOString() ?? null,
       createdAt: roll.createdAt.toISOString(),
       updatedAt: roll.updatedAt.toISOString(),

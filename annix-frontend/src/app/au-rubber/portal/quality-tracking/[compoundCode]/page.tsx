@@ -72,8 +72,8 @@ function MetricCard({
   };
 
   const isOutOfSpec =
-    (specMin !== null && stats.latestValue < specMin) ||
-    (specMax !== null && stats.latestValue > specMax);
+    (specMin != null && stats.latestValue < specMin) ||
+    (specMax != null && stats.latestValue > specMax);
 
   return (
     <div className={`rounded-lg p-4 ${isOutOfSpec ? "bg-red-50" : "bg-gray-50"}`}>

@@ -226,10 +226,52 @@ export class RubberCocService {
     }
 
     if (coc.cocType === SupplierCocType.COMPOUNDER && coc.compoundCode) {
+      await this.saveSpecificationsFromExtractedData(coc);
       this.triggerQualityCheck(coc.compoundCode);
     }
 
     return this.mapSupplierCocToDto(coc);
+  }
+
+  private async saveSpecificationsFromExtractedData(coc: RubberSupplierCoc): Promise<void> {
+    const specs = coc.extractedData?.specifications;
+    if (!specs || !coc.compoundCode) return;
+
+    const hasAnySpec = Object.values(specs).some((v) => v !== null && v !== undefined);
+    if (!hasAnySpec) return;
+
+    try {
+      await this.qualityTrackingService.updateConfig(
+        coc.compoundCode,
+        {
+          compoundDescription: coc.extractedData?.compoundDescription ?? undefined,
+          shoreANominal: specs.shoreANominal ?? undefined,
+          shoreAMin: specs.shoreAMin ?? undefined,
+          shoreAMax: specs.shoreAMax ?? undefined,
+          densityNominal: specs.specificGravityNominal ?? undefined,
+          densityMin: specs.specificGravityMin ?? undefined,
+          densityMax: specs.specificGravityMax ?? undefined,
+          reboundNominal: specs.reboundNominal ?? undefined,
+          reboundMin: specs.reboundMin ?? undefined,
+          reboundMax: specs.reboundMax ?? undefined,
+          tearStrengthNominal: specs.tearStrengthNominal ?? undefined,
+          tearStrengthMin: specs.tearStrengthMin ?? undefined,
+          tearStrengthMax: specs.tearStrengthMax ?? undefined,
+          tensileNominal: specs.tensileNominal ?? undefined,
+          tensileMin: specs.tensileMin ?? undefined,
+          tensileMax: specs.tensileMax ?? undefined,
+          elongationNominal: specs.elongationNominal ?? undefined,
+          elongationMin: specs.elongationMin ?? undefined,
+          elongationMax: specs.elongationMax ?? undefined,
+        },
+        "NIX",
+      );
+      this.logger.log(`Saved specifications for compound ${coc.compoundCode} from CoC #${coc.id}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to save specifications for compound ${coc.compoundCode}: ${error.message}`,
+      );
+    }
   }
 
   private triggerQualityCheck(compoundCode: string): void {

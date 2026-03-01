@@ -117,6 +117,24 @@ export class RubberRollStock {
   @Column({ name: "notes", type: "text", nullable: true })
   notes: string | null;
 
+  @Column({
+    name: "cost_zar",
+    type: "decimal",
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
+  costZar: number | null;
+
+  @Column({
+    name: "price_zar",
+    type: "decimal",
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
+  priceZar: number | null;
+
   @Column({ name: "production_date", type: "date", nullable: true })
   productionDate: Date | null;
 
