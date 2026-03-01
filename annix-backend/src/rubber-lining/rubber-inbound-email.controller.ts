@@ -2,14 +2,19 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
+  Get,
   Logger,
+  Param,
+  ParseIntPipe,
   Post,
   Req,
+  UploadedFile,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
-import { FilesInterceptor } from "@nestjs/platform-express";
+import { FileInterceptor, FilesInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
 import { simpleParser } from "mailparser";
@@ -18,7 +23,9 @@ import type {
   AnalyzeOrderFilesResult,
   CreateOrderFromAnalysisDto,
 } from "./dto/rubber-order-import.dto";
+import type { AnalyzeProductFilesResult } from "./dto/rubber-product-import.dto";
 import { DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
+import { RegionCoordinates } from "./entities/rubber-po-extraction-region.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberEmailMonitorService } from "./rubber-email-monitor.service";
@@ -29,6 +36,12 @@ import {
   RubberInboundEmailService,
 } from "./rubber-inbound-email.service";
 import { RubberOrderImportService } from "./rubber-order-import.service";
+import {
+  CreateTemplateDto,
+  PdfPageImage,
+  RubberPoTemplateService,
+} from "./rubber-po-template.service";
+import { RubberProductImportService } from "./rubber-product-import.service";
 
 @ApiTags("Rubber Lining - Inbound Email")
 @Controller("rubber-lining")
@@ -39,6 +52,8 @@ export class RubberInboundEmailController {
     private readonly inboundEmailService: RubberInboundEmailService,
     private readonly emailMonitorService: RubberEmailMonitorService,
     private readonly orderImportService: RubberOrderImportService,
+    private readonly templateService: RubberPoTemplateService,
+    private readonly productImportService: RubberProductImportService,
   ) {}
 
   @Post("portal/email-monitor/test")
@@ -423,6 +438,139 @@ export class RubberInboundEmailController {
     return this.orderImportService.analyzeFiles(multerFiles);
   }
 
+  @Post("portal/orders/document-pages")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Convert PDF document to page images for training" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: { type: "string", format: "binary" },
+      },
+    },
+  })
+  async documentPagesForTraining(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<{ pages: PdfPageImage[] }> {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+
+    this.logger.log(`Converting PDF to pages for training: ${file.originalname}`);
+    const pages = await this.templateService.convertDocumentToPages(file.buffer);
+    return { pages };
+  }
+
+  @Post("portal/orders/extract-region")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Extract text from a drawn region using OCR" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: { type: "string", format: "binary" },
+        coordinates: { type: "string" },
+        fieldName: { type: "string" },
+      },
+    },
+  })
+  async extractOrderRegion(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { coordinates: string; fieldName: string },
+  ): Promise<{ text: string; confidence: number }> {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+
+    const coordinates: RegionCoordinates = JSON.parse(body.coordinates);
+    this.logger.log(
+      `Extracting region for field ${body.fieldName}: ${JSON.stringify(coordinates)}`,
+    );
+
+    return this.templateService.extractFromRegion(file.buffer, coordinates, body.fieldName);
+  }
+
+  @Post("portal/orders/templates")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Save a new PO extraction template" })
+  async savePoTemplate(
+    @Body() dto: CreateTemplateDto,
+    @Req() req: AdminRequest,
+  ): Promise<{ templateId: number }> {
+    const user = req.user;
+    this.logger.log(
+      `Creating PO template for company ${dto.companyId} by ${user?.email || "unknown"}`,
+    );
+
+    const template = await this.templateService.createTemplate(dto, user?.id);
+    return { templateId: template.id };
+  }
+
+  @Get("portal/orders/templates/:companyId")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "List PO extraction templates for a company" })
+  async companyPoTemplates(@Param("companyId", ParseIntPipe) companyId: number): Promise<{
+    templates: Array<{
+      id: number;
+      formatHash: string;
+      templateName: string | null;
+      useCount: number;
+      successCount: number;
+      successRate: number;
+      regionCount: number;
+      createdAt: string;
+    }>;
+  }> {
+    const templates = await this.templateService.templatesForCompany(companyId);
+    return {
+      templates: templates.map((t) => ({
+        id: t.id,
+        formatHash: t.formatHash,
+        templateName: t.templateName,
+        useCount: t.useCount,
+        successCount: t.successCount,
+        successRate: t.useCount > 0 ? Math.round((t.successCount / t.useCount) * 100) : 0,
+        regionCount: t.regions?.length || 0,
+        createdAt: t.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  @Delete("portal/orders/templates/:id")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Deactivate a PO extraction template" })
+  async deletePoTemplate(@Param("id", ParseIntPipe) id: number): Promise<{ success: boolean }> {
+    this.logger.log(`Deactivating PO template ${id}`);
+    await this.templateService.deactivateTemplate(id);
+    return { success: true };
+  }
+
+  @Post("portal/orders/compute-format-hash")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Compute format hash for a document" })
+  async computeFormatHash(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<{ formatHash: string }> {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+
+    const formatHash = await this.templateService.computeFormatHash(file.buffer);
+    return { formatHash };
+  }
+
   private async parseEmailWebhook(
     body: Record<string, string>,
     files: Express.Multer.File[],
@@ -442,5 +590,31 @@ export class RubberInboundEmailController {
       html: body.html || body.body_html || "",
       attachments,
     };
+  }
+
+  @Post("portal/products/analyze")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FilesInterceptor("files", 20))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Analyze product files (PDF, Excel, Word) for import" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        files: {
+          type: "array",
+          items: { type: "string", format: "binary" },
+        },
+      },
+    },
+  })
+  async analyzeProductFiles(
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<AnalyzeProductFilesResult> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException("No files provided");
+    }
+    return this.productImportService.analyzeFiles(files);
   }
 }

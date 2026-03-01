@@ -7,10 +7,12 @@ import type {
   AnalyzedOrderLine,
   AnalyzeOrderFilesResult,
   CreateOrderFromAnalysisDto,
+  ExtractionMethod,
 } from "./dto/rubber-order-import.dto";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { RubberLiningService } from "./rubber-lining.service";
+import { RubberPoTemplateService } from "./rubber-po-template.service";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParseModule = require("pdf-parse");
@@ -30,6 +32,7 @@ export class RubberOrderImportService {
     private productRepository: Repository<RubberProduct>,
     private aiChatService: AiChatService,
     private rubberLiningService: RubberLiningService,
+    private templateService: RubberPoTemplateService,
   ) {}
 
   async analyzeFiles(files: Express.Multer.File[]): Promise<AnalyzeOrderFilesResult> {
@@ -77,6 +80,12 @@ export class RubberOrderImportService {
       lines: [],
       confidence: 0,
       errors: [`Unsupported file type: ${file.mimetype}`],
+      extractionMethod: "ai",
+      templateId: null,
+      templateName: null,
+      formatHash: null,
+      isNewFormat: false,
+      isNewCustomer: false,
     };
   }
 
@@ -92,6 +101,12 @@ export class RubberOrderImportService {
       lines: [],
       confidence: 0,
       errors: [],
+      extractionMethod: "ai",
+      templateId: null,
+      templateName: null,
+      formatHash: null,
+      isNewFormat: false,
+      isNewCustomer: false,
     };
 
     try {
@@ -99,8 +114,83 @@ export class RubberOrderImportService {
       const text = pdfData.text || "";
       this.logger.log(`Extracted ${text.length} characters from PDF ${file.originalname}`);
 
+      const formatHash = await this.templateService.computeFormatHash(file.buffer);
+      result.formatHash = formatHash;
+
+      const quickCompanyId = await this.detectCompanyFromText(text);
+
+      if (quickCompanyId) {
+        result.companyId = quickCompanyId;
+        const company = await this.companyRepository.findOneBy({ id: quickCompanyId });
+        result.companyName = company?.name || null;
+
+        const template = await this.templateService.findTemplateForDocument(
+          quickCompanyId,
+          file.buffer,
+        );
+
+        if (template) {
+          this.logger.log(`Found template ${template.id} for company ${quickCompanyId}`);
+          const templateResult = await this.templateService.extractUsingTemplate(
+            template,
+            file.buffer,
+          );
+
+          if (templateResult.overallConfidence >= 0.8) {
+            result.extractionMethod = "template";
+            result.templateId = template.id;
+            result.templateName = template.templateName;
+
+            if (templateResult.fields["poNumber"]) {
+              result.poNumber = templateResult.fields["poNumber"].value;
+            }
+            if (templateResult.fields["orderDate"]) {
+              result.orderDate = templateResult.fields["orderDate"].value;
+            }
+            if (templateResult.fields["deliveryDate"]) {
+              result.deliveryDate = templateResult.fields["deliveryDate"].value;
+            }
+
+            if (templateResult.fields["lineItemsTable"]) {
+              const tableText = templateResult.fields["lineItemsTable"].value;
+              const linesExtraction = await this.parseLineItemsWithAi(tableText, file.originalname);
+              result.lines = linesExtraction.lines || [];
+            }
+
+            result.confidence = templateResult.overallConfidence;
+            await this.templateService.recordExtractionResult(template.id, true);
+            await this.matchCompanyAndProducts(result);
+
+            this.logger.log(
+              `Template extraction successful: confidence=${Math.round(result.confidence * 100)}%`,
+            );
+            return result;
+          }
+
+          this.logger.log(
+            `Template extraction confidence too low (${Math.round(templateResult.overallConfidence * 100)}%), falling back to AI`,
+          );
+          await this.templateService.recordExtractionResult(template.id, false);
+        } else {
+          const hasOtherTemplates = await this.templateService.companyHasTemplates(quickCompanyId);
+          if (hasOtherTemplates) {
+            result.isNewFormat = true;
+            this.logger.log(`Company ${quickCompanyId} has templates but none match this format`);
+          }
+        }
+      } else {
+        result.isNewCustomer = true;
+        this.logger.log("Could not detect company from document text");
+      }
+
       const extraction = await this.extractOrderDataWithAi(text, file.originalname);
-      Object.assign(result, extraction);
+      Object.assign(result, {
+        ...extraction,
+        extractionMethod: "ai" as ExtractionMethod,
+        formatHash,
+        isNewFormat: result.isNewFormat,
+        isNewCustomer: result.isNewCustomer,
+      });
 
       await this.matchCompanyAndProducts(result);
     } catch (error) {
@@ -109,6 +199,66 @@ export class RubberOrderImportService {
     }
 
     return result;
+  }
+
+  private async detectCompanyFromText(text: string): Promise<number | null> {
+    const companies = await this.companyRepository.find();
+    const textLower = text.toLowerCase();
+
+    for (const company of companies) {
+      const companyNameLower = company.name.toLowerCase();
+      if (textLower.includes(companyNameLower)) {
+        this.logger.log(`Detected company "${company.name}" from document text`);
+        return company.id;
+      }
+    }
+
+    return null;
+  }
+
+  private async parseLineItemsWithAi(
+    tableText: string,
+    filename: string,
+  ): Promise<{ lines: AnalyzedOrderLine[] }> {
+    const isAvailable = await this.aiChatService.isAvailable();
+    if (!isAvailable) {
+      return { lines: [] };
+    }
+
+    const systemPrompt = `You are NIX. Parse the following table text into structured line items.
+Extract each row as an order line with: lineNumber, productName, thickness (mm), width (mm), length (m), quantity.
+Respond ONLY with JSON: { "lines": [...] }`;
+
+    const userMessage = `Parse this order table:\n\n${tableText}`;
+
+    try {
+      const response = await this.aiChatService.chat(
+        [{ role: "user", content: userMessage }],
+        systemPrompt,
+      );
+
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          lines: (parsed.lines || []).map((line: Partial<AnalyzedOrderLine>, idx: number) => ({
+            lineNumber: line.lineNumber || idx + 1,
+            productName: line.productName || null,
+            productId: null,
+            thickness: this.parseNumber(line.thickness),
+            width: this.parseNumber(line.width),
+            length: this.parseNumber(line.length),
+            quantity: this.parseNumber(line.quantity),
+            confidence: 0.7,
+            rawText: null,
+          })),
+        };
+      }
+    } catch (error) {
+      this.logger.error(`Failed to parse line items: ${error.message}`);
+    }
+
+    return { lines: [] };
   }
 
   private async analyzeExcel(file: Express.Multer.File): Promise<AnalyzedOrderData> {
@@ -123,6 +273,12 @@ export class RubberOrderImportService {
       lines: [],
       confidence: 0,
       errors: [],
+      extractionMethod: "ai",
+      templateId: null,
+      templateName: null,
+      formatHash: null,
+      isNewFormat: false,
+      isNewCustomer: false,
     };
 
     try {
@@ -160,6 +316,12 @@ export class RubberOrderImportService {
       errors: [],
       emailSubject: null,
       emailFrom: null,
+      extractionMethod: "ai",
+      templateId: null,
+      templateName: null,
+      formatHash: null,
+      isNewFormat: false,
+      isNewCustomer: false,
     };
 
     try {

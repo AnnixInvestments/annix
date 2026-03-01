@@ -21,6 +21,7 @@ interface OrderImportModalProps {
   companies: RubberCompanyDto[];
   products: RubberProductDto[];
   initialAnalysis?: AnalyzeOrderFilesResult | null;
+  initialFiles?: File[];
 }
 
 export function OrderImportModal({
@@ -30,6 +31,7 @@ export function OrderImportModal({
   companies,
   products,
   initialAnalysis,
+  initialFiles,
 }: OrderImportModalProps) {
   const [step, setStep] = useState<ImportStep>("upload");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -48,8 +50,11 @@ export function OrderImportModal({
       setAnalysisResult(initialAnalysis);
       setEditedAnalyses(initialAnalysis.files);
       setSelectedFileIndex(0);
+      if (initialFiles && initialFiles.length > 0) {
+        setSelectedFiles(initialFiles);
+      }
     }
-  }, [isOpen, initialAnalysis]);
+  }, [isOpen, initialAnalysis, initialFiles]);
 
   const handleFilesSelected = (files: File[]) => {
     setSelectedFiles(files);
@@ -284,7 +289,9 @@ export function OrderImportModal({
                         <Sparkles className="w-5 h-5 text-amber-600" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-medium text-amber-900">Train Nix for Better Extraction</h4>
+                        <h4 className="font-medium text-amber-900">
+                          Train Nix for Better Extraction
+                        </h4>
                         <p className="text-sm text-amber-700 mt-1">
                           {currentAnalysis.isNewCustomer
                             ? "This appears to be from a new customer. Train Nix to recognize their PO format."
@@ -375,19 +382,22 @@ export function OrderImportModal({
         </div>
       </div>
 
-      {showTrainingModal && trainingFile && currentAnalysis?.companyId && currentAnalysis?.formatHash && (
-        <PoTrainingModal
-          isOpen={showTrainingModal}
-          file={trainingFile}
-          companyId={currentAnalysis.companyId}
-          formatHash={currentAnalysis.formatHash}
-          onClose={() => {
-            setShowTrainingModal(false);
-            setTrainingFile(null);
-          }}
-          onTrainingComplete={handleTrainingComplete}
-        />
-      )}
+      {showTrainingModal &&
+        trainingFile &&
+        currentAnalysis?.companyId &&
+        currentAnalysis?.formatHash && (
+          <PoTrainingModal
+            isOpen={showTrainingModal}
+            file={trainingFile}
+            companyId={currentAnalysis.companyId}
+            formatHash={currentAnalysis.formatHash}
+            onClose={() => {
+              setShowTrainingModal(false);
+              setTrainingFile(null);
+            }}
+            onTrainingComplete={handleTrainingComplete}
+          />
+        )}
     </div>
   );
 }

@@ -786,7 +786,9 @@ export function PoTrainingModal({
                   {drawingPhase === "label" && !labelRegion && (
                     <div className="space-y-3">
                       <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                        <p className="text-sm text-purple-800 font-medium">Step 1: Draw LABEL box</p>
+                        <p className="text-sm text-purple-800 font-medium">
+                          Step 1: Draw LABEL box
+                        </p>
                         <p className="text-xs text-purple-600 mt-1">
                           Draw a box around the field label (e.g., &quot;PO Number:&quot;)
                         </p>

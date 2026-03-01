@@ -10,6 +10,8 @@ export interface AnalyzedOrderLine {
   rawText: string | null;
 }
 
+export type ExtractionMethod = "ai" | "template";
+
 export interface AnalyzedOrderData {
   filename: string;
   fileType: "pdf" | "excel" | "email";
@@ -23,6 +25,12 @@ export interface AnalyzedOrderData {
   errors: string[];
   emailSubject?: string | null;
   emailFrom?: string | null;
+  extractionMethod: ExtractionMethod;
+  templateId: number | null;
+  templateName: string | null;
+  formatHash: string | null;
+  isNewFormat: boolean;
+  isNewCustomer: boolean;
 }
 
 export interface AnalyzeOrderFilesResult {

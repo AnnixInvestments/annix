@@ -101,12 +101,7 @@ export function OrderAnalysisReview({
           </span>
           {analysis.extractionMethod === "template" ? (
             <span className="text-xs text-purple-700 bg-purple-100 px-2 py-1 rounded inline-flex items-center">
-              <svg
-                className="w-3 h-3 mr-1"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -118,12 +113,7 @@ export function OrderAnalysisReview({
             </span>
           ) : (
             <span className="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded inline-flex items-center">
-              <svg
-                className="w-3 h-3 mr-1"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

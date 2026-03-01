@@ -1,205 +1,302 @@
 "use client";
 
+import { Loader2, Upload, X } from "lucide-react";
 import { useCallback, useState } from "react";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type { ImportProductRowDto, ImportProductsResultDto } from "@/app/lib/api/rubberPortalApi";
+import * as XLSX from "xlsx";
+import {
+  type AnalyzedProductData,
+  type AnalyzedProductLine,
+  type AnalyzeProductFilesResult,
+  auRubberApiClient,
+} from "@/app/lib/api/auRubberApi";
+import type {
+  ImportProductsResultDto,
+  RubberProductCodingDto,
+} from "@/app/lib/api/rubberPortalApi";
+import { FileDropZone } from "./FileDropZone";
+import { type CostSettings, ProductCostBuilder } from "./ProductCostBuilder";
+import {
+  type EditableProductLine,
+  ProductPreviewTable,
+  recalculatePrices,
+} from "./ProductPreviewTable";
+
+type ImportStep = "upload" | "cost-builder" | "review";
 
 interface ProductImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImportComplete: () => void;
+  codings: RubberProductCodingDto[];
 }
 
-interface ParsedRow extends ImportProductRowDto {
-  _rowIndex: number;
-  _parseErrors: string[];
-}
+const ACCEPTED_FILE_TYPES =
+  ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-const CSV_COLUMNS = [
-  "title",
-  "description",
-  "type",
-  "compound",
-  "colour",
-  "hardness",
-  "grade",
-  "curingMethod",
-  "compoundOwner",
-  "specificGravity",
-  "costPerKg",
-  "markup",
-  "firebaseUid",
-] as const;
+function parseExcelClientSide(file: File): Promise<AnalyzedProductLine[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: "array" });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(worksheet);
 
-function parseNumericField(
-  val: string | undefined,
-  fieldName: string,
-): { value?: number; error?: string } {
-  if (!val?.trim()) return {};
-  const num = parseFloat(val.trim());
-  if (Number.isNaN(num)) {
-    return { error: `Invalid ${fieldName}: "${val}"` };
-  }
-  return { value: num };
-}
+        const headerMapping = detectHeaders(rows[0] || {});
+        const lines = rows
+          .map((row, index) => {
+            const title = extractString(row, headerMapping.title);
+            const type = extractString(row, headerMapping.type);
+            const compound = extractString(row, headerMapping.compound);
+            const colour = extractString(row, headerMapping.colour);
+            const hardness = extractString(row, headerMapping.hardness);
+            const grade = extractString(row, headerMapping.grade);
+            const curingMethod = extractString(row, headerMapping.curingMethod);
+            const specificGravity = extractNumber(row, headerMapping.specificGravity);
+            const baseCostPerKg = extractNumber(row, headerMapping.baseCostPerKg);
 
-function parseCSVLine(line: string): string[] {
-  const result = line.split("").reduce(
-    (acc, char, index) => {
-      if (char === '"') {
-        if (acc.inQuotes && line[index + 1] === '"') {
-          return { ...acc, current: `${acc.current}"`, skipNext: true };
-        }
-        if (acc.skipNext) {
-          return { ...acc, skipNext: false };
-        }
-        return { ...acc, inQuotes: !acc.inQuotes };
+            const hasTitle = !!title;
+            const hasCost = baseCostPerKg !== null;
+
+            return {
+              lineNumber: index + 1,
+              title,
+              type,
+              compound,
+              colour,
+              hardness,
+              grade,
+              curingMethod,
+              specificGravity,
+              baseCostPerKg,
+              confidence: hasTitle && hasCost ? 0.95 : hasTitle ? 0.7 : 0.3,
+              rawText: JSON.stringify(row),
+            };
+          })
+          .filter((line) => line.title || line.compound || line.baseCostPerKg !== null);
+
+        resolve(lines);
+      } catch (err) {
+        reject(err);
       }
-      if (acc.skipNext) {
-        return { ...acc, skipNext: false };
-      }
-      if (char === "," && !acc.inQuotes) {
-        return { ...acc, values: [...acc.values, acc.current], current: "" };
-      }
-      return { ...acc, current: acc.current + char };
-    },
-    { values: [] as string[], current: "", inQuotes: false, skipNext: false },
-  );
-  return [...result.values, result.current];
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsArrayBuffer(file);
+  });
 }
 
-function parseCSV(text: string): ParsedRow[] {
-  const lines = text.split(/\r?\n/).filter((line) => line.trim());
-  if (lines.length < 2) return [];
-
-  const headerLine = lines[0];
-  const headers = headerLine.split(",").map((h) => h.trim().toLowerCase());
-
-  const columnMap = headers.reduce(
-    (map, header, index) => {
-      const normalizedHeader = header.replace(/[_\s]/g, "").toLowerCase();
-      const matchedColumn = CSV_COLUMNS.find(
-        (col) =>
-          col.toLowerCase() === normalizedHeader ||
-          col.toLowerCase().replace(/[_\s]/g, "") === normalizedHeader,
+function detectHeaders(firstRow: Record<string, unknown>): Record<string, string[]> {
+  const keys = Object.keys(firstRow);
+  const findKeys = (patterns: string[]) =>
+    keys.filter((key) => {
+      const normalizedKey = key
+        .toLowerCase()
+        .replace(/[_\-\s]+/g, " ")
+        .trim();
+      return patterns.some(
+        (p) => normalizedKey === p || normalizedKey.includes(p) || p.includes(normalizedKey),
       );
-      if (matchedColumn) {
-        return { ...map, [matchedColumn]: index };
-      }
-      return map;
-    },
-    {} as Record<string, number>,
-  );
-
-  return lines
-    .slice(1)
-    .filter((line) => line.trim())
-    .map((line, index) => {
-      const values = parseCSVLine(line);
-      const parseErrors: string[] = [];
-
-      const specificGravityResult = parseNumericField(
-        values[columnMap.specificGravity],
-        "specificGravity",
-      );
-      const costPerKgResult = parseNumericField(values[columnMap.costPerKg], "costPerKg");
-      const markupResult = parseNumericField(values[columnMap.markup], "markup");
-
-      if (specificGravityResult.error) parseErrors.push(specificGravityResult.error);
-      if (costPerKgResult.error) parseErrors.push(costPerKgResult.error);
-      if (markupResult.error) parseErrors.push(markupResult.error);
-
-      return {
-        _rowIndex: index + 1,
-        _parseErrors: parseErrors,
-        title:
-          columnMap.title !== undefined ? values[columnMap.title]?.trim() || undefined : undefined,
-        description:
-          columnMap.description !== undefined
-            ? values[columnMap.description]?.trim() || undefined
-            : undefined,
-        type:
-          columnMap.type !== undefined ? values[columnMap.type]?.trim() || undefined : undefined,
-        compound:
-          columnMap.compound !== undefined
-            ? values[columnMap.compound]?.trim() || undefined
-            : undefined,
-        colour:
-          columnMap.colour !== undefined
-            ? values[columnMap.colour]?.trim() || undefined
-            : undefined,
-        hardness:
-          columnMap.hardness !== undefined
-            ? values[columnMap.hardness]?.trim() || undefined
-            : undefined,
-        grade:
-          columnMap.grade !== undefined ? values[columnMap.grade]?.trim() || undefined : undefined,
-        curingMethod:
-          columnMap.curingMethod !== undefined
-            ? values[columnMap.curingMethod]?.trim() || undefined
-            : undefined,
-        compoundOwner:
-          columnMap.compoundOwner !== undefined
-            ? values[columnMap.compoundOwner]?.trim() || undefined
-            : undefined,
-        firebaseUid:
-          columnMap.firebaseUid !== undefined
-            ? values[columnMap.firebaseUid]?.trim() || undefined
-            : undefined,
-        specificGravity: specificGravityResult.value,
-        costPerKg: costPerKgResult.value,
-        markup: markupResult.value,
-      };
     });
+
+  return {
+    title: findKeys(["title", "name", "product", "product name", "description", "item"]),
+    type: findKeys(["type", "product type", "category"]),
+    compound: findKeys(["compound", "rubber compound", "material", "rubber type", "rubber"]),
+    colour: findKeys(["colour", "color", "col"]),
+    hardness: findKeys(["hardness", "shore", "shore a", "durometer"]),
+    grade: findKeys(["grade", "quality"]),
+    curingMethod: findKeys(["curing", "curing method", "cure", "vulcanization"]),
+    specificGravity: findKeys(["specific gravity", "sg", "density", "spec grav"]),
+    baseCostPerKg: findKeys([
+      "cost",
+      "price",
+      "cost per kg",
+      "price per kg",
+      "cost/kg",
+      "price/kg",
+      "unit price",
+      "rate",
+      "zar",
+      "r/kg",
+    ]),
+  };
 }
 
-export function ProductImportModal({ isOpen, onClose, onImportComplete }: ProductImportModalProps) {
-  const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
-  const [updateExisting, setUpdateExisting] = useState(false);
+function extractString(row: Record<string, unknown>, possibleKeys: string[]): string | null {
+  for (const key of possibleKeys) {
+    const value = row[key];
+    if (value !== null && value !== undefined && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+  return null;
+}
+
+function extractNumber(row: Record<string, unknown>, possibleKeys: string[]): number | null {
+  for (const key of possibleKeys) {
+    const value = row[key];
+    if (value !== null && value !== undefined) {
+      const strValue = String(value)
+        .replace(/[R$,\s]/g, "")
+        .trim();
+      const num = parseFloat(strValue);
+      if (!Number.isNaN(num)) return num;
+    }
+  }
+  return null;
+}
+
+export function ProductImportModal({
+  isOpen,
+  onClose,
+  onImportComplete,
+  codings,
+}: ProductImportModalProps) {
+  const [step, setStep] = useState<ImportStep>("upload");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeProductFilesResult | null>(null);
+  const [editableProducts, setEditableProducts] = useState<EditableProductLine[]>([]);
+  const [costSettings, setCostSettings] = useState<CostSettings | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportProductsResultDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [updateExisting, setUpdateExisting] = useState(false);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleFilesSelected = useCallback((files: File[]) => {
+    setSelectedFiles(files);
     setError(null);
-    setImportResult(null);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      try {
-        const rows = parseCSV(text);
-        if (rows.length === 0) {
-          setError(
-            "No valid rows found in CSV file. Make sure the file has a header row and at least one data row.",
-          );
-          return;
-        }
-        setParsedRows(rows);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to parse CSV file");
-      }
-    };
-    reader.onerror = () => {
-      setError("Failed to read file");
-    };
-    reader.readAsText(file);
   }, []);
 
+  const handleRemoveFile = useCallback((index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleAnalyze = async () => {
+    if (selectedFiles.length === 0) return;
+
+    setIsAnalyzing(true);
+    setError(null);
+
+    try {
+      const allLines: AnalyzedProductLine[] = [];
+      const analyzedFiles: AnalyzedProductData[] = [];
+
+      for (const file of selectedFiles) {
+        const isExcel =
+          file.name.toLowerCase().endsWith(".xlsx") || file.name.toLowerCase().endsWith(".xls");
+
+        if (isExcel) {
+          const lines = await parseExcelClientSide(file);
+          allLines.push(...lines);
+          analyzedFiles.push({
+            filename: file.name,
+            fileType: "excel",
+            lines,
+            confidence: lines.length > 0 ? 0.9 : 0,
+            errors: [],
+          });
+        } else {
+          const result = await auRubberApiClient.analyzeProductFiles([file]);
+          result.files.forEach((f) => {
+            allLines.push(...f.lines);
+            analyzedFiles.push(f);
+          });
+        }
+      }
+
+      const result: AnalyzeProductFilesResult = {
+        files: analyzedFiles,
+        totalLines: allLines.length,
+      };
+
+      setAnalysisResult(result);
+
+      const detectedCompounds = [
+        ...new Set(allLines.map((l) => l.compound).filter((c): c is string => !!c)),
+      ];
+
+      setEditableProducts(
+        allLines.map((line) => ({
+          ...line,
+          calculatedPrice: null,
+          selected: true,
+        })),
+      );
+
+      setCostSettings({
+        baseMaterialPercent: 100,
+        processingFeePerKg: 0,
+        overheadPercent: 0,
+        defaultMarginPercent: 30,
+        categoryMarkups: detectedCompounds.map((compound) => ({
+          compoundType: compound,
+          markupPercent: 30,
+        })),
+      });
+
+      setStep("cost-builder");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to analyze files");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleApplyCostSettings = (settings: CostSettings) => {
+    setCostSettings(settings);
+    setEditableProducts((prev) => recalculatePrices(prev, settings));
+    setStep("review");
+  };
+
+  const handleUpdateProduct = (index: number, updates: Partial<EditableProductLine>) => {
+    setEditableProducts((prev) => {
+      const newProducts = [...prev];
+      newProducts[index] = { ...newProducts[index], ...updates };
+      return newProducts;
+    });
+  };
+
+  const handleDeleteProduct = (index: number) => {
+    setEditableProducts((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleToggleSelect = (index: number) => {
+    setEditableProducts((prev) =>
+      prev.map((p, i) => (i === index ? { ...p, selected: !p.selected } : p)),
+    );
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    setEditableProducts((prev) => prev.map((p) => ({ ...p, selected })));
+  };
+
   const handleImport = async () => {
-    if (parsedRows.length === 0) return;
+    const productsToImport = editableProducts.filter((p) => p.selected);
+    if (productsToImport.length === 0) return;
 
     setIsImporting(true);
     setError(null);
 
     try {
-      const rows: ImportProductRowDto[] = parsedRows.map((row) => {
-        const { _rowIndex, _parseErrors, ...rest } = row;
-        return rest;
-      });
+      const rows = productsToImport.map((p) => ({
+        title: p.title || undefined,
+        type: p.type || undefined,
+        compound: p.compound || undefined,
+        colour: p.colour || undefined,
+        hardness: p.hardness || undefined,
+        grade: p.grade || undefined,
+        curingMethod: p.curingMethod || undefined,
+        specificGravity: p.specificGravity ?? undefined,
+        costPerKg: p.baseCostPerKg ?? undefined,
+        markup: costSettings
+          ? (costSettings.categoryMarkups.find(
+              (m) => m.compoundType.toLowerCase() === p.compound?.toLowerCase(),
+            )?.markupPercent ?? costSettings.defaultMarginPercent)
+          : undefined,
+      }));
 
       const result = await auRubberApiClient.importProducts({ rows, updateExisting });
       setImportResult(result);
@@ -215,143 +312,172 @@ export function ProductImportModal({ isOpen, onClose, onImportComplete }: Produc
   };
 
   const handleClose = () => {
-    setParsedRows([]);
+    setStep("upload");
+    setSelectedFiles([]);
+    setAnalysisResult(null);
+    setEditableProducts([]);
+    setCostSettings(null);
     setImportResult(null);
     setError(null);
     setUpdateExisting(false);
     onClose();
   };
 
-  const rowsWithParseErrors = parsedRows.filter((r) => r._parseErrors.length > 0);
+  const handleBack = () => {
+    if (step === "cost-builder") {
+      setStep("upload");
+    } else if (step === "review") {
+      setStep("cost-builder");
+    }
+  };
+
+  const detectedCompounds =
+    analysisResult?.files.flatMap((f) => f.lines.map((l) => l.compound).filter(Boolean)) || [];
+  const uniqueCompounds = [...new Set(detectedCompounds)] as string[];
 
   if (!isOpen) return null;
+
+  const stepNumber = step === "upload" ? 1 : step === "cost-builder" ? 2 : 3;
+  const stepTitles = {
+    upload: "Upload Files",
+    "cost-builder": "Configure Pricing",
+    review: "Review & Import",
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleClose} />
 
-        <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden">
+        <div className="relative bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Import Products from CSV</h2>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Import Products</h2>
+              <div className="flex items-center gap-2 mt-1">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="flex items-center">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                        n === stepNumber
+                          ? "bg-yellow-600 text-white"
+                          : n < stepNumber
+                            ? "bg-green-500 text-white"
+                            : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      {n}
+                    </div>
+                    {n < 3 && (
+                      <div
+                        className={`w-8 h-0.5 ${n < stepNumber ? "bg-green-500" : "bg-gray-200"}`}
+                      />
+                    )}
+                  </div>
+                ))}
+                <span className="ml-2 text-sm text-gray-600">{stepTitles[step]}</span>
+              </div>
+            </div>
             <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-            {!importResult && (
-              <>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Upload CSV File
-                  </label>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileChange}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100"
-                  />
-                  <p className="mt-2 text-xs text-gray-500">
-                    Expected columns: title, description, type, compound, colour, hardness, grade,
-                    curingMethod, compoundOwner, specificGravity, costPerKg, markup, firebaseUid
-                  </p>
-                </div>
+          <div className="flex-1 overflow-y-auto p-6">
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+                {error}
+              </div>
+            )}
 
-                {error && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
-                    {error}
+            {step === "upload" && !importResult && (
+              <div className="space-y-6">
+                <FileDropZone
+                  onFilesSelected={handleFilesSelected}
+                  accept={ACCEPTED_FILE_TYPES}
+                  multiple={true}
+                  disabled={isAnalyzing}
+                  className="border-2 border-dashed rounded-lg min-h-[200px]"
+                >
+                  <div className="flex flex-col items-center justify-center py-12 px-4">
+                    <Upload className="w-16 h-16 mb-4 text-gray-400" />
+                    <p className="text-lg font-medium text-gray-700">
+                      Drag & drop price list files here
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">or click to browse</p>
+                    <p className="text-xs text-gray-400 mt-3">
+                      Excel (.xlsx, .xls), PDF, or Word (.docx) files
+                    </p>
+                  </div>
+                </FileDropZone>
+
+                {selectedFiles.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Selected Files ({selectedFiles.length})
+                    </h4>
+                    <ul className="divide-y divide-gray-200 border rounded-md">
+                      {selectedFiles.map((file, index) => (
+                        <li key={index} className="flex items-center justify-between px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-500">
+                              {file.name.split(".").pop()?.toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {(file.size / 1024).toFixed(1)} KB
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleRemoveFile(index)}
+                            className="text-gray-400 hover:text-red-500"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
+              </div>
+            )}
 
-                {parsedRows.length > 0 && (
-                  <>
-                    <div className="mb-4 flex items-center justify-between">
-                      <div className="text-sm text-gray-600">
-                        {parsedRows.length} row{parsedRows.length !== 1 ? "s" : ""} found
-                        {rowsWithParseErrors.length > 0 && (
-                          <span className="text-amber-600 ml-2">
-                            ({rowsWithParseErrors.length} with parse errors)
-                          </span>
-                        )}
-                      </div>
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={updateExisting}
-                          onChange={(e) => setUpdateExisting(e.target.checked)}
-                          className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">Update existing products</span>
-                      </label>
-                    </div>
+            {step === "cost-builder" && costSettings && (
+              <ProductCostBuilder
+                detectedCompounds={uniqueCompounds}
+                onApply={handleApplyCostSettings}
+              />
+            )}
 
-                    <div className="border rounded-lg overflow-hidden mb-4">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-3 py-2 text-left font-medium text-gray-500">#</th>
-                              <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                Title
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                Type
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                Compound
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                Colour
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                Cost/kg
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                Markup
-                              </th>
-                              <th className="px-3 py-2 text-left font-medium text-gray-500">
-                                Errors
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {parsedRows.slice(0, 100).map((row) => (
-                              <tr
-                                key={row._rowIndex}
-                                className={row._parseErrors.length > 0 ? "bg-amber-50" : ""}
-                              >
-                                <td className="px-3 py-2 text-gray-500">{row._rowIndex}</td>
-                                <td className="px-3 py-2">{row.title || "-"}</td>
-                                <td className="px-3 py-2">{row.type || "-"}</td>
-                                <td className="px-3 py-2">{row.compound || "-"}</td>
-                                <td className="px-3 py-2">{row.colour || "-"}</td>
-                                <td className="px-3 py-2">{row.costPerKg ?? "-"}</td>
-                                <td className="px-3 py-2">{row.markup ? `${row.markup}%` : "-"}</td>
-                                <td className="px-3 py-2 text-red-600">
-                                  {row._parseErrors.length > 0 ? row._parseErrors.join("; ") : "-"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      {parsedRows.length > 100 && (
-                        <div className="px-3 py-2 bg-gray-50 text-sm text-gray-500">
-                          Showing first 100 of {parsedRows.length} rows
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </>
+            {step === "review" && !importResult && costSettings && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    {editableProducts.length} product{editableProducts.length !== 1 ? "s" : ""}{" "}
+                    ready to import
+                  </p>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={updateExisting}
+                      onChange={(e) => setUpdateExisting(e.target.checked)}
+                      className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Update existing products</span>
+                  </label>
+                </div>
+
+                <ProductPreviewTable
+                  products={editableProducts}
+                  costSettings={costSettings}
+                  codings={codings}
+                  onUpdate={handleUpdateProduct}
+                  onDelete={handleDeleteProduct}
+                  onToggleSelect={handleToggleSelect}
+                  onSelectAll={handleSelectAll}
+                />
+              </div>
             )}
 
             {importResult && (
@@ -416,24 +542,59 @@ export function ProductImportModal({ isOpen, onClose, onImportComplete }: Produc
             )}
           </div>
 
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-            <button
-              onClick={handleClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              {importResult ? "Close" : "Cancel"}
-            </button>
-            {!importResult && parsedRows.length > 0 && (
+          <div className="px-6 py-4 border-t border-gray-200 flex justify-between bg-gray-50">
+            <div>
+              {step !== "upload" && !importResult && (
+                <button
+                  onClick={handleBack}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Back
+                </button>
+              )}
+            </div>
+            <div className="flex gap-3">
               <button
-                onClick={handleImport}
-                disabled={isImporting || rowsWithParseErrors.length === parsedRows.length}
-                className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
-                {isImporting
-                  ? "Importing..."
-                  : `Import ${parsedRows.length - rowsWithParseErrors.length} Products`}
+                {importResult ? "Close" : "Cancel"}
               </button>
-            )}
+
+              {step === "upload" && !importResult && (
+                <button
+                  onClick={handleAnalyze}
+                  disabled={selectedFiles.length === 0 || isAnalyzing}
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    "Analyze Files"
+                  )}
+                </button>
+              )}
+
+              {step === "review" && !importResult && (
+                <button
+                  onClick={handleImport}
+                  disabled={isImporting || editableProducts.filter((p) => p.selected).length === 0}
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isImporting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    `Import ${editableProducts.filter((p) => p.selected).length} Products`
+                  )}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

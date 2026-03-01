@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
+import type { RubberProductCodingDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { now } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
@@ -74,6 +74,7 @@ export default function AuRubberProductsPage() {
   const { showToast } = useToast();
 
   const [products, setProducts] = useState<RubberProductDto[]>([]);
+  const [codings, setCodings] = useState<RubberProductCodingDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -92,8 +93,12 @@ export default function AuRubberProductsPage() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const data = await auRubberApiClient.products();
-      setProducts(data);
+      const [productsData, codingsData] = await Promise.all([
+        auRubberApiClient.products(),
+        auRubberApiClient.productCodings(),
+      ]);
+      setProducts(productsData);
+      setCodings(codingsData);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load products"));
@@ -629,6 +634,7 @@ export default function AuRubberProductsPage() {
           onImportComplete={() => {
             fetchProducts();
           }}
+          codings={codings}
         />
       </div>
     </RequirePermission>

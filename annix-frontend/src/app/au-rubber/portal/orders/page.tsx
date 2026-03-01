@@ -1,25 +1,21 @@
 "use client";
 
 import { ORDER_STATUS_OPTIONS, statusColor } from "@annix/product-data/rubber/orderStatus";
+import { Loader2, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Loader2, Upload, X } from "lucide-react";
 import { useToast } from "@/app/components/Toast";
-import {
-  type AnalyzedOrderData,
-  type AnalyzeOrderFilesResult,
-  auRubberApiClient,
-} from "@/app/lib/api/auRubberApi";
+import { type AnalyzeOrderFilesResult, auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type {
   RubberCompanyDto,
   RubberOrderDto,
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
-import { FileDropZone } from "../../components/FileDropZone";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
+import { FileDropZone } from "../../components/FileDropZone";
 import { RequirePermission } from "../../components/RequirePermission";
 import {
   ITEMS_PER_PAGE,
@@ -364,9 +360,7 @@ export default function AuRubberOrdersPage() {
                     <p className="text-sm font-medium text-gray-700">
                       Drop order files here to import
                     </p>
-                    <p className="text-xs text-gray-400">
-                      PDF, Excel, or Email files
-                    </p>
+                    <p className="text-xs text-gray-400">PDF, Excel, or Email files</p>
                   </div>
                 </div>
               </FileDropZone>
@@ -706,6 +700,7 @@ export default function AuRubberOrdersPage() {
           companies={companies}
           products={products}
           initialAnalysis={analysisResult}
+          initialFiles={importFiles}
         />
         <ConfirmModal
           isOpen={deleteOrderId !== null}

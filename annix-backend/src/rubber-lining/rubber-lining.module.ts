@@ -23,6 +23,8 @@ import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
 import { RubberOrder } from "./entities/rubber-order.entity";
 import { RubberOrderItem } from "./entities/rubber-order-item.entity";
+import { RubberPoExtractionRegion } from "./entities/rubber-po-extraction-region.entity";
+import { RubberPoExtractionTemplate } from "./entities/rubber-po-extraction-template.entity";
 import { RubberPricingTier } from "./entities/rubber-pricing-tier.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
@@ -50,6 +52,8 @@ import { RubberInboundEmailService } from "./rubber-inbound-email.service";
 import { RubberLiningController } from "./rubber-lining.controller";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberOrderImportService } from "./rubber-order-import.service";
+import { RubberPoTemplateService } from "./rubber-po-template.service";
+import { RubberProductImportService } from "./rubber-product-import.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
@@ -92,6 +96,8 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
       RubberStockLocation,
       RubberCompoundQualityConfig,
       RubberQualityAlert,
+      RubberPoExtractionTemplate,
+      RubberPoExtractionRegion,
     ]),
   ],
   controllers: [RubberLiningController, RubberAdminController, RubberInboundEmailController],
@@ -110,6 +116,8 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     RubberEmailMonitorService,
     RubberQualityTrackingService,
     RubberOrderImportService,
+    RubberPoTemplateService,
+    RubberProductImportService,
     AuRubberAccessGuard,
   ],
   exports: [
