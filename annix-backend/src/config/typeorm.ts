@@ -20,10 +20,11 @@ const config: DataSourceOptions = {
       ? { rejectUnauthorized: process.env.NODE_ENV === "production" }
       : false,
   extra: {
-    max: 10,
-    min: 2,
+    max: 25,
+    min: 5,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000,
+    acquireTimeoutMillis: 30000,
   },
 };
 

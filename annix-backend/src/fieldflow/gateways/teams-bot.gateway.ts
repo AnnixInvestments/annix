@@ -1,4 +1,13 @@
-import { Controller, Logger, Param, Req, Res, Sse, UseGuards } from "@nestjs/common";
+import {
+  Controller,
+  Logger,
+  OnModuleDestroy,
+  Param,
+  Req,
+  Res,
+  Sse,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import { Request, Response } from "express";
 import { filter, map, Observable, Subject } from "rxjs";
@@ -46,10 +55,16 @@ type TeamsBotEvent =
 
 @ApiTags("Annix Rep - Teams Bot (SSE)")
 @Controller("annix-rep/teams-bot/events")
-export class TeamsBotGateway {
+export class TeamsBotGateway implements OnModuleDestroy {
   private readonly logger = new Logger(TeamsBotGateway.name);
   private readonly eventSubject = new Subject<TeamsBotEvent>();
   private readonly sessionSubscribers = new Map<string, Set<number>>();
+
+  onModuleDestroy(): void {
+    this.logger.log("Completing event subject on module destroy");
+    this.eventSubject.complete();
+    this.sessionSubscribers.clear();
+  }
 
   emitStatusUpdate(event: TeamsBotStatusEvent): void {
     this.eventSubject.next({ type: "status", data: event });
