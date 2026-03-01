@@ -129,7 +129,7 @@ export default function AuRubberOrdersPage() {
 
   const handleOrderImported = (orderId: number, orderNumber: string) => {
     showToast(`Order ${orderNumber} imported successfully`, "success");
-    fetchOrders(statusFilter);
+    router.push(`/au-rubber/portal/orders/${orderId}`);
   };
 
   const sortOrders = (ordersToSort: RubberOrderDto[]): RubberOrderDto[] => {
