@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import {
   type AuCocStatus,
   auRubberApiClient,
   type RubberAuCocDto,
 } from "@/app/lib/api/auRubberApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
 
 export default function AuCocDetailPage() {
   const params = useParams();

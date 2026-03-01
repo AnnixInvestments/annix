@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -21,7 +22,6 @@ import {
   type QualityConfigDto,
   type TrendDirection,
 } from "@/app/lib/api/auRubberApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
 
 type ViewMode = "table" | "chart";
 

@@ -4,6 +4,7 @@ import { Download, FileText } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -12,7 +13,6 @@ import {
   type RubberSupplierCocDto,
   type SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
 
 export default function SupplierCocDetailPage() {
   const params = useParams();

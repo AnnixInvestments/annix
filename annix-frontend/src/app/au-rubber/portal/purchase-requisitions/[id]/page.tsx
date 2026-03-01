@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import {
@@ -9,7 +10,6 @@ import {
   type RequisitionDto,
   type RequisitionStatus,
 } from "@/app/lib/api/auRubberApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
 
 const statusColors: Record<RequisitionStatus, string> = {
   PENDING: "bg-yellow-100 text-yellow-800",

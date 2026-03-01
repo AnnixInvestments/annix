@@ -2,6 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { TableLoadingState } from "@/app/au-rubber/components/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -9,8 +11,6 @@ import {
   type RubberCompoundStockDto,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
-import { Breadcrumb } from "../../../components/Breadcrumb";
-import { TableLoadingState } from "../../../components/TableComponents";
 
 export default function CompoundStockDetailPage() {
   const params = useParams();

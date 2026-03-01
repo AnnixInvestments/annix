@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -9,7 +10,6 @@ import {
   type RubberCompoundStockDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
 
 export default function NewProductionPage() {
   const router = useRouter();

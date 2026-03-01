@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useToast } from "@/app/components/Toast";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type { CreateRubberProductDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
-import { Breadcrumb } from "../../../../components/Breadcrumb";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import {
   formDataFromProduct,
   INITIAL_FORM_DATA,
   ProductForm,
-} from "../../../../components/ProductForm";
+} from "@/app/au-rubber/components/ProductForm";
+import { useToast } from "@/app/components/Toast";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import type { CreateRubberProductDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 
 export default function AuRubberProductEditPage() {
   const params = useParams();

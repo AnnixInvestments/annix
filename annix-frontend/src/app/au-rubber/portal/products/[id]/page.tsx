@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
 
 function formatCurrency(value: number | null): string {
   if (value === null) return "-";

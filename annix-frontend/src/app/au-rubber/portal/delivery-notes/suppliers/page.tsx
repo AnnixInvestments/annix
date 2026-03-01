@@ -3,6 +3,16 @@
 import { FileText, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
+import {
+  ITEMS_PER_PAGE,
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/au-rubber/components/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -11,16 +21,6 @@ import {
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
-import { FileDropZone } from "../../../components/FileDropZone";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableIcons,
-  TableLoadingState,
-} from "../../../components/TableComponents";
 
 type SortColumn =
   | "deliveryNoteNumber"

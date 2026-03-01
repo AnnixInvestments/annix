@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -12,7 +13,6 @@ import {
   type RubberDeliveryNoteItemDto,
   type RubberSupplierCocDto,
 } from "@/app/lib/api/auRubberApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
 
 export default function DeliveryNoteDetailPage() {
   const params = useParams();
