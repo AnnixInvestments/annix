@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { type StockItem, stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { ItemIdentifier } from "../../../components/ItemIdentifier";
-import { StockItemModal } from "../../../components/StockItemModal";
+import { ItemIdentifier } from "@/app/stock-control/components/ItemIdentifier";
+import { StockItemModal } from "@/app/stock-control/components/StockItemModal";
 
 interface IdentifiedItem {
   name: string;

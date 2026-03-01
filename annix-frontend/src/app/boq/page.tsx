@@ -390,9 +390,9 @@ export default function BoqListPage() {
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
                   <p className="font-semibold text-gray-700 mb-2">Import Summary:</p>
                   <ul className="text-sm text-gray-600 space-y-1">
-                    {uploadMutation.data.warnings.map((warning, index) => (
+                    {uploadMutation.data.warnings.map((warning) => (
                       <li
-                        key={index}
+                        key={warning}
                         className={warning.startsWith("Error:") ? "text-orange-600" : ""}
                       >
                         {warning.startsWith("Error:") ? "! " : "- "}

@@ -13,6 +13,17 @@ export interface CustomerJwtPayload {
   sessionToken: string;
 }
 
+export interface CustomerRequestContext {
+  userId: number;
+  customerId: number;
+  email: string;
+  sessionToken: string;
+}
+
+export interface CustomerRequest extends Request {
+  customer: CustomerRequestContext;
+}
+
 @Injectable()
 export class CustomerAuthGuard implements CanActivate {
   constructor(

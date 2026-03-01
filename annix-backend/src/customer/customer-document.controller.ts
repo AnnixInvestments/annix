@@ -22,12 +22,12 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { Request, Response } from "express";
+import { Response } from "express";
 import { fromISO } from "../lib/datetime";
 
 import { CustomerDocumentService } from "./customer-document.service";
 import { CustomerDocumentType } from "./entities";
-import { CustomerAuthGuard } from "./guards";
+import { CustomerAuthGuard, CustomerRequest } from "./guards";
 
 @ApiTags("Customer Documents")
 @Controller("customer/documents")
@@ -41,8 +41,8 @@ export class CustomerDocumentController {
   @Get()
   @ApiOperation({ summary: "Get all customer documents" })
   @ApiResponse({ status: 200, description: "Documents retrieved" })
-  async getDocuments(@Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async getDocuments(@Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     return this.documentService.getDocuments(customerId);
   }
 
@@ -77,9 +77,9 @@ export class CustomerDocumentController {
       expiryDate?: string;
       verificationResult?: string;
     },
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
   ) {
-    const customerId = (req as any).customer.customerId;
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     const expiryDate = body.expiryDate ? fromISO(body.expiryDate).toJSDate() : null;
 
@@ -106,8 +106,8 @@ export class CustomerDocumentController {
   @ApiOperation({ summary: "Delete a document" })
   @ApiResponse({ status: 200, description: "Document deleted" })
   @ApiResponse({ status: 404, description: "Document not found" })
-  async deleteDocument(@Param("id", ParseIntPipe) id: number, @Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async deleteDocument(@Param("id", ParseIntPipe) id: number, @Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.documentService.deleteDocument(customerId, id, clientIp);
   }
@@ -118,10 +118,10 @@ export class CustomerDocumentController {
   @ApiResponse({ status: 404, description: "Document not found" })
   async downloadDocument(
     @Param("id", ParseIntPipe) id: number,
-    @Req() req: Request,
+    @Req() req: CustomerRequest,
     @Res() res: Response,
   ) {
-    const customerId = (req as any).customer.customerId;
+    const customerId = req.customer.customerId;
     const { buffer, fileName, mimeType } = await this.documentService.getDocumentFile(
       customerId,
       id,
@@ -132,7 +132,7 @@ export class CustomerDocumentController {
     res.send(buffer);
   }
 
-  private getClientIp(req: Request): string {
+  private getClientIp(req: CustomerRequest): string {
     const forwarded = req.headers["x-forwarded-for"];
     if (forwarded) {
       const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];

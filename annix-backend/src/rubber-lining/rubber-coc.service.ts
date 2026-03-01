@@ -19,6 +19,7 @@ import {
   RubberSupplierCoc,
   SupplierCocType,
 } from "./entities/rubber-supplier-coc.entity";
+import { DEFAULT_SUPPLIER_NAMES } from "./rubber-lining.constants";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 
 const COC_TYPE_LABELS: Record<SupplierCocType, string> = {
@@ -496,12 +497,7 @@ export class RubberCocService {
   }
 
   private async resolveOrCreateSupplierForType(cocType: SupplierCocType): Promise<RubberCompany> {
-    const supplierNames: Record<SupplierCocType, string> = {
-      [SupplierCocType.COMPOUNDER]: "S&N Rubber",
-      [SupplierCocType.CALENDARER]: "Impilo",
-    };
-
-    const supplierName = supplierNames[cocType];
+    const supplierName = DEFAULT_SUPPLIER_NAMES[cocType];
 
     let company = await this.companyRepository
       .createQueryBuilder("company")

@@ -26,7 +26,6 @@ export default function WorkflowPage() {
 
   const fetchWorkflows = async () => {
     try {
-      // TODO: Replace with actual API call
       const mockWorkflows: Workflow[] = [
         {
           id: 1,

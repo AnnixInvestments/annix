@@ -1,9 +1,8 @@
 import { Body, Controller, Get, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { Request } from "express";
 
 import { CustomerOnboardingService } from "./customer-onboarding.service";
-import { CustomerAuthGuard } from "./guards/customer-auth.guard";
+import { CustomerAuthGuard, CustomerRequest } from "./guards/customer-auth.guard";
 
 @ApiTags("Customer Onboarding")
 @Controller("customer/onboarding")
@@ -15,8 +14,8 @@ export class CustomerOnboardingController {
   @Get("status")
   @ApiOperation({ summary: "Get onboarding status and checklist" })
   @ApiResponse({ status: 200, description: "Onboarding status retrieved" })
-  async getStatus(@Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async getStatus(@Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     return this.onboardingService.getOnboardingStatus(customerId);
   }
 
@@ -24,8 +23,8 @@ export class CustomerOnboardingController {
   @ApiOperation({ summary: "Update company details during onboarding" })
   @ApiResponse({ status: 200, description: "Company details updated" })
   @ApiResponse({ status: 403, description: "Cannot update at this stage" })
-  async updateCompanyDetails(@Body() data: Record<string, any>, @Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async updateCompanyDetails(@Body() data: Record<string, any>, @Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.onboardingService.updateCompanyDetails(customerId, data, clientIp);
   }
@@ -33,8 +32,8 @@ export class CustomerOnboardingController {
   @Post("save-draft")
   @ApiOperation({ summary: "Save onboarding progress as draft" })
   @ApiResponse({ status: 200, description: "Draft saved" })
-  async saveDraft(@Body() data: Record<string, any>, @Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async saveDraft(@Body() data: Record<string, any>, @Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.onboardingService.saveDraft(customerId, data, clientIp);
   }
@@ -43,13 +42,13 @@ export class CustomerOnboardingController {
   @ApiOperation({ summary: "Submit onboarding for review" })
   @ApiResponse({ status: 200, description: "Onboarding submitted" })
   @ApiResponse({ status: 400, description: "Incomplete details or documents" })
-  async submit(@Req() req: Request) {
-    const customerId = (req as any).customer.customerId;
+  async submit(@Req() req: CustomerRequest) {
+    const customerId = req.customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.onboardingService.submitOnboarding(customerId, clientIp);
   }
 
-  private getClientIp(req: Request): string {
+  private getClientIp(req: CustomerRequest): string {
     const forwarded = req.headers["x-forwarded-for"];
     if (forwarded) {
       const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];

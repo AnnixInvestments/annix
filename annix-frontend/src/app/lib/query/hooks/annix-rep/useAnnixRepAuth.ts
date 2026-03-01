@@ -3,7 +3,7 @@ import {
   AnnixRepLoginDto,
   AnnixRepRegisterDto,
   annixRepAuthApi,
-} from "../../../api/annixRepAuthApi";
+} from "@/app/lib/api/annixRepAuthApi";
 import { annixRepKeys } from "../../keys/annixRepKeys";
 
 export function useAnnixRepRegister() {
