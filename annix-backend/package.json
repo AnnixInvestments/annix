@@ -31,7 +31,9 @@
     "migrate:fieldflow-recordings": "ts-node -r tsconfig-paths/register scripts/migrate-fieldflow-recordings.ts",
     "migrate:fieldflow-recordings:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-fieldflow-recordings.ts --dry-run",
     "migrate:cv-assistant-docs": "ts-node -r tsconfig-paths/register scripts/migrate-cv-assistant-docs.ts",
-    "migrate:cv-assistant-docs:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-cv-assistant-docs.ts --dry-run"
+    "migrate:cv-assistant-docs:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-cv-assistant-docs.ts --dry-run",
+    "migrate:annix-app-paths": "ts-node -r tsconfig-paths/register scripts/migrate-annix-app-paths.ts",
+    "migrate:annix-app-paths:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-annix-app-paths.ts --dry-run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",

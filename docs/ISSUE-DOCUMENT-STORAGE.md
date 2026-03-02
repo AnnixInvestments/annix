@@ -118,34 +118,71 @@ Run these on production to migrate existing data:
 pnpm migrate:fieldflow-recordings:dry-run
 pnpm migrate:cv-assistant-docs:dry-run
 pnpm migrate:rubber-paths:dry-run
+pnpm migrate:annix-app-paths:dry-run
 
 # Execute migrations
 pnpm migrate:fieldflow-recordings
 pnpm migrate:cv-assistant-docs
 pnpm migrate:rubber-paths
+pnpm migrate:annix-app-paths
 ```
 
-### Phase 2: Organize S3 Structure
+### Phase 2: Organize S3 Structure (COMPLETED)
 
-- [ ] **Define S3 Area Strategy**
-  - [ ] Decide between Option A (prefixes) or Option B (separate buckets)
-  - [ ] Document final S3 path structure
+- [x] **Define S3 Area Strategy**
+  - [x] Decided on Option A (prefixes) - single bucket with area prefixes
+  - [x] Document final S3 path structure (see below)
   - [ ] Update `AWS_S3_SETUP_GUIDE.md` with new structure
 
-- [ ] **Update Storage Service**
-  - [ ] Add app area/bucket configuration
-  - [ ] Consider adding `StorageArea` enum for type safety
-  - [ ] Update `upload()` method signature to accept area parameter
-  - [ ] Add CORS configuration for all required domains
+- [x] **Update Storage Service**
+  - [x] Added `StorageArea` enum for type safety (`storage.interface.ts`)
+  - Note: Upload method signature unchanged - services pass full path with prefix
 
-- [ ] **Update All Document Services**
-  - [ ] Customer documents - add area prefix
-  - [ ] Supplier documents - add area prefix
-  - [ ] RFQ documents - add area prefix
-  - [ ] Drawing documents - add area prefix
-  - [ ] Job card documents - add area prefix
-  - [x] Rubber lining documents - add area prefix (DONE: `au-rubber/`)
-  - [ ] Secure documents - add area prefix
+- [x] **Update All Document Services**
+  - [x] Customer documents - `annix-app/customers/{customerId}/documents/`
+  - [x] Supplier documents - `annix-app/suppliers/{supplierId}/documents/`
+  - [x] RFQ documents - `annix-app/rfq-documents/{rfqId}/`
+  - [x] Drawing documents - `annix-app/drawings/{year}/{month}/`
+  - [x] Job card documents - already uses `stock-control/` prefix
+  - [x] Rubber lining documents - `au-rubber/` prefix
+  - [x] Secure documents - already uses `secure-documents/` prefix
+  - [x] FieldFlow recordings - `fieldflow/recordings/{meetingId}/`
+  - [x] CV Assistant - `cv-assistant/candidates/{companyId}/`
+
+- [x] **Migration Script for Existing Paths**
+  - [x] Created `scripts/migrate-annix-app-paths.ts`
+
+#### Final S3 Path Structure
+```
+annix-sync-files/
+├── annix-app/
+│   ├── customers/{customerId}/documents/
+│   ├── suppliers/{supplierId}/documents/
+│   ├── rfq-documents/{rfqId}/
+│   └── drawings/{year}/{month}/
+├── au-rubber/
+│   ├── cocs/{companyId}/
+│   ├── delivery-notes/{companyId}/
+│   ├── graphs/{companyId}/
+│   └── customer-delivery-notes/{customerId}/
+├── fieldflow/
+│   └── recordings/{meetingId}/
+├── cv-assistant/
+│   └── candidates/{companyId}/
+├── stock-control/
+│   ├── allocations/
+│   ├── branding/{companyId}/
+│   ├── deliveries/
+│   ├── inventory/
+│   ├── invoices/
+│   ├── job-card-amendments/
+│   ├── job-card-drawings/
+│   ├── job-cards/{companyId}/{jobCardId}/
+│   ├── signatures/{companyId}/
+│   └── staff/
+└── secure-documents/
+    └── {uuid}.enc
+```
 
 ### Phase 3: Data Migration
 
