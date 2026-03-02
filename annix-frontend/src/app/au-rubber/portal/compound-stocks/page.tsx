@@ -58,6 +58,7 @@ export default function CompoundStocksPage() {
     batchNumber: null,
     notes: null,
   });
+  const [compoundInput, setCompoundInput] = useState("");
   const [isSubmittingOpeningStock, setIsSubmittingOpeningStock] = useState(false);
   const [csvData, setCsvData] = useState<ImportCompoundOpeningStockRowDto[]>([]);
   const [csvFileName, setCsvFileName] = useState("");
@@ -190,6 +191,7 @@ export default function CompoundStocksPage() {
       batchNumber: null,
       notes: null,
     });
+    setCompoundInput("");
     setCsvData([]);
     setCsvFileName("");
     setImportResult(null);
@@ -197,13 +199,38 @@ export default function CompoundStocksPage() {
   };
 
   const handleCreateOpeningStock = async () => {
-    if (!openingStockForm.compoundCodingId || !openingStockForm.quantityKg) {
+    if (!compoundInput.trim() || !openingStockForm.quantityKg) {
       showToast("Please fill in compound and quantity", "error");
       return;
     }
+
     try {
       setIsSubmittingOpeningStock(true);
-      await auRubberApiClient.createCompoundOpeningStock(openingStockForm);
+
+      let codingId = openingStockForm.compoundCodingId;
+
+      if (!codingId) {
+        const existingCoding = compounds.find(
+          (c) => c.code.toLowerCase() === compoundInput.trim().toLowerCase(),
+        );
+
+        if (existingCoding) {
+          codingId = existingCoding.id;
+        } else {
+          const newCoding = await auRubberApiClient.createProductCoding({
+            codingType: "COMPOUND",
+            code: compoundInput.trim().toUpperCase(),
+            name: compoundInput.trim(),
+          });
+          codingId = newCoding.id;
+          setCompounds([...compounds, newCoding]);
+        }
+      }
+
+      await auRubberApiClient.createCompoundOpeningStock({
+        ...openingStockForm,
+        compoundCodingId: codingId,
+      });
       showToast("Opening stock created successfully", "success");
       setShowOpeningStockModal(false);
       resetOpeningStockForm();
@@ -521,23 +548,36 @@ export default function CompoundStocksPage() {
                       <label className="block text-sm font-medium text-gray-700">
                         Compound <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        value={openingStockForm.compoundCodingId}
-                        onChange={(e) =>
+                      <input
+                        type="text"
+                        list="compound-options"
+                        value={compoundInput}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setCompoundInput(value);
+                          const match = compounds.find(
+                            (c) =>
+                              c.code.toLowerCase() === value.toLowerCase() ||
+                              `${c.code} - ${c.name}`.toLowerCase() === value.toLowerCase(),
+                          );
                           setOpeningStockForm({
                             ...openingStockForm,
-                            compoundCodingId: Number(e.target.value),
-                          })
-                        }
+                            compoundCodingId: match?.id ?? 0,
+                          });
+                        }}
+                        placeholder="Type or select compound code"
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                      >
-                        <option value={0}>Select compound</option>
-                        {availableCompounds.map((c) => (
-                          <option key={c.id} value={c.id}>
+                      />
+                      <datalist id="compound-options">
+                        {compounds.map((c) => (
+                          <option key={c.id} value={c.code}>
                             {c.code} - {c.name}
                           </option>
                         ))}
-                      </select>
+                      </datalist>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Select existing or type a new compound code
+                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
