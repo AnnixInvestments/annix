@@ -157,7 +157,7 @@ export class CustomerDocumentService {
     });
 
     // Upload file to storage (S3 or local based on STORAGE_TYPE env var)
-    const subPath = `customers/${customerId}/documents`;
+    const subPath = `annix-app/customers/${customerId}/documents`;
     const storageResult = await this.storageService.upload(file, subPath);
 
     if (existingDoc) {

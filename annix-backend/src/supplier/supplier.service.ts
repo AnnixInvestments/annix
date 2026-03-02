@@ -315,7 +315,7 @@ export class SupplierService {
     }
 
     // Upload new file
-    const storagePath = `suppliers/${supplierId}/documents`;
+    const storagePath = `annix-app/suppliers/${supplierId}/documents`;
     const storageResult = await this.storageService.upload(file, storagePath);
 
     // Determine validation status and prepare document data

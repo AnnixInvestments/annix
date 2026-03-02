@@ -112,7 +112,7 @@ export class DrawingsService {
     const currentDate = now();
     const year = currentDate.year;
     const month = String(currentDate.month).padStart(2, "0");
-    const subPath = `drawings/${year}/${month}`;
+    const subPath = `annix-app/drawings/${year}/${month}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
     // Create drawing entity
@@ -179,7 +179,7 @@ export class DrawingsService {
     const currentDate = now();
     const year = currentDate.year;
     const month = String(currentDate.month).padStart(2, "0");
-    const subPath = `drawings/${year}/${month}`;
+    const subPath = `annix-app/drawings/${year}/${month}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
     const newVersionNumber = drawing.currentVersion + 1;

@@ -1757,7 +1757,7 @@ export class RfqService {
     }
 
     // Upload file to storage
-    const subPath = `rfq-documents/${rfqId}`;
+    const subPath = `annix-app/rfq-documents/${rfqId}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
     // Create document record

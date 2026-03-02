@@ -393,6 +393,7 @@ async function main() {
     username: process.env.DATABASE_USERNAME || "postgres",
     password: process.env.DATABASE_PASSWORD || "postgres",
     database: process.env.DATABASE_NAME || "annix_db",
+    ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : false,
     entities: [RubberProductCoding, RubberProduct],
     synchronize: false,
   });

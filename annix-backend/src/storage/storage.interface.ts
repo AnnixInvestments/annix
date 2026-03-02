@@ -1,3 +1,12 @@
+export enum StorageArea {
+  ANNIX_APP = "annix-app",
+  AU_RUBBER = "au-rubber",
+  FIELDFLOW = "fieldflow",
+  CV_ASSISTANT = "cv-assistant",
+  SECURE_DOCUMENTS = "secure-documents",
+  STOCK_CONTROL = "stock-control",
+}
+
 export interface StorageResult {
   path: string;
   url: string;
