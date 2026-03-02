@@ -18,6 +18,7 @@ import { IssuanceController } from "./controllers/issuance.controller";
 import { JobCardImportController } from "./controllers/job-card-import.controller";
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
+import { PublicBrandingController } from "./controllers/public-branding.controller";
 import { QrCodeController } from "./controllers/qr-code.controller";
 import { ReportsController } from "./controllers/reports.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
@@ -141,6 +142,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
   ],
   controllers: [
     StockControlAuthController,
+    PublicBrandingController,
     InventoryController,
     JobCardsController,
     DeliveriesController,
