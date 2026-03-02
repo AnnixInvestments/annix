@@ -35,9 +35,14 @@ export class AddFilePathIndexes1799920000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_meeting_recordings_storage_path"
-      ON "meeting_recordings" ("storage_path")
-      WHERE "storage_path" IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'meeting_recordings') THEN
+          CREATE INDEX IF NOT EXISTS "IDX_meeting_recordings_storage_path"
+          ON "meeting_recordings" ("storage_path")
+          WHERE "storage_path" IS NOT NULL;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
