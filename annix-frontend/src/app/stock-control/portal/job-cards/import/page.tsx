@@ -944,7 +944,7 @@ export default function JobCardImportPage() {
       )}
 
       {step === "mapping" && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-white flex flex-col">
           <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-teal-600 to-teal-700">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg">
@@ -986,7 +986,7 @@ export default function JobCardImportPage() {
             </div>
           </div>
 
-          <div className="flex" style={{ height: "calc(100vh - 320px)", minHeight: "400px" }}>
+          <div className="flex flex-1 overflow-hidden">
             <div className="flex-1 border-r flex flex-col overflow-hidden">
               <div className="px-4 py-3 bg-gray-800 text-white flex items-center justify-between">
                 <div className="flex items-center gap-2">

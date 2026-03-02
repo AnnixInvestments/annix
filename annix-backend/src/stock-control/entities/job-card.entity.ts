@@ -41,10 +41,10 @@ export class JobCard {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: "job_number", type: "varchar", length: 100 })
+  @Column({ name: "job_number", type: "varchar", length: 500 })
   jobNumber: string;
 
-  @Column({ name: "jc_number", type: "varchar", length: 100, nullable: true })
+  @Column({ name: "jc_number", type: "varchar", length: 500, nullable: true })
   jcNumber: string | null;
 
   @Column({ name: "page_number", type: "varchar", length: 50, nullable: true })
@@ -59,7 +59,7 @@ export class JobCard {
   @Column({ type: "text", nullable: true })
   description: string | null;
 
-  @Column({ name: "po_number", type: "varchar", length: 100, nullable: true })
+  @Column({ name: "po_number", type: "varchar", length: 500, nullable: true })
   poNumber: string | null;
 
   @Column({ name: "site_location", type: "varchar", length: 255, nullable: true })
@@ -68,7 +68,7 @@ export class JobCard {
   @Column({ name: "contact_person", type: "varchar", length: 255, nullable: true })
   contactPerson: string | null;
 
-  @Column({ name: "due_date", type: "varchar", length: 100, nullable: true })
+  @Column({ name: "due_date", type: "varchar", length: 500, nullable: true })
   dueDate: string | null;
 
   @Column({ type: "text", nullable: true })
