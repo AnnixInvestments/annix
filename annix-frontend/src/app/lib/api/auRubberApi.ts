@@ -333,6 +333,23 @@ export interface RubberCompoundBatchDto {
   updatedAt: string;
 }
 
+export interface ExtractedDeliveryNoteRoll {
+  rollNumber: string;
+  weightKg?: number;
+  widthMm?: number;
+  thicknessMm?: number;
+  lengthM?: number;
+}
+
+export interface ExtractedDeliveryNoteData {
+  deliveryNoteNumber?: string;
+  deliveryDate?: string;
+  supplierName?: string;
+  batchRange?: string;
+  totalWeightKg?: number;
+  rolls?: ExtractedDeliveryNoteRoll[];
+}
+
 export interface RubberDeliveryNoteDto {
   id: number;
   firebaseUid: string;
@@ -346,7 +363,7 @@ export interface RubberDeliveryNoteDto {
   documentPath: string | null;
   status: DeliveryNoteStatus;
   statusLabel: string;
-  extractedData: Record<string, unknown> | null;
+  extractedData: ExtractedDeliveryNoteData | null;
   linkedCocId: number | null;
   createdAt: string;
   updatedAt: string;

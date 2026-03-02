@@ -262,9 +262,93 @@ export default function DeliveryNoteDetailPage() {
         {note.extractedData && Object.keys(note.extractedData).length > 0 && (
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Extracted Data</h2>
-            <pre className="text-xs bg-gray-50 p-4 rounded-md overflow-auto max-h-64">
-              {JSON.stringify(note.extractedData, null, 2)}
-            </pre>
+            <dl className="grid grid-cols-2 gap-4 mb-4">
+              {note.extractedData.deliveryNoteNumber && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">DN Number</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {note.extractedData.deliveryNoteNumber}
+                  </dd>
+                </div>
+              )}
+              {note.extractedData.deliveryDate && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Delivery Date</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{note.extractedData.deliveryDate}</dd>
+                </div>
+              )}
+              {note.extractedData.supplierName && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Supplier</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{note.extractedData.supplierName}</dd>
+                </div>
+              )}
+              {note.extractedData.batchRange && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Batch Range</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{note.extractedData.batchRange}</dd>
+                </div>
+              )}
+              {note.extractedData.totalWeightKg && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Total Weight</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {note.extractedData.totalWeightKg.toFixed(2)} kg
+                  </dd>
+                </div>
+              )}
+            </dl>
+            {note.extractedData.rolls && note.extractedData.rolls.length > 0 && (
+              <div className="mt-4 border-t pt-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  Extracted Rolls ({note.extractedData.rolls.length})
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                          Roll #
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                          Width (mm)
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                          Thickness (mm)
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                          Length (m)
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                          Weight (kg)
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {note.extractedData.rolls.map((roll, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">
+                            {roll.rollNumber || "-"}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                            {roll.widthMm ?? "-"}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                            {roll.thicknessMm ?? "-"}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                            {roll.lengthM ?? "-"}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-600">
+                            {roll.weightKg?.toFixed(2) ?? "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
