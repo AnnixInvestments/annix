@@ -299,8 +299,29 @@ export default function CustomerDeliveryNotesPage() {
 
       <FileDropZone
         onFilesSelected={handleFilesSelected}
-        className="bg-white shadow rounded-lg overflow-hidden border-2 border-dashed"
+        className="bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg hover:bg-blue-100 hover:border-blue-400 transition-colors"
       >
+        <div className="flex items-center justify-center py-6 px-4">
+          <svg
+            className="w-8 h-8 text-blue-500 mr-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            />
+          </svg>
+          <span className="text-blue-700 font-medium">
+            Drag and drop delivery note files here, or click to browse
+          </span>
+        </div>
+      </FileDropZone>
+
+      <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
           <TableLoadingState message="Loading customer delivery notes..." />
         ) : filteredNotes.length === 0 ? (
@@ -313,7 +334,7 @@ export default function CustomerDeliveryNotesPage() {
               <p className="text-sm text-gray-500 mb-4">
                 {searchQuery || filterType || filterStatus
                   ? "Try adjusting your filters"
-                  : "Drag & drop PDF files here or click to upload"}
+                  : "Drag & drop PDF files above or click to upload"}
               </p>
               {!searchQuery && !filterType && !filterStatus && (
                 <button
@@ -452,7 +473,7 @@ export default function CustomerDeliveryNotesPage() {
           itemName="notes"
           onPageChange={setCurrentPage}
         />
-      </FileDropZone>
+      </div>
 
       {showUploadModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
