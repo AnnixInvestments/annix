@@ -2,8 +2,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { JobCard, JobCardStatus } from "../entities/job-card.entity";
 import {
+  FieldMapping,
   ImportMappingConfig,
   JobCardImportMapping,
 } from "../entities/job-card-import-mapping.entity";

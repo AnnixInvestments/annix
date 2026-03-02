@@ -563,8 +563,67 @@ export default function JobCardImportPage() {
   const [isCalculatingM2, setIsCalculatingM2] = useState(false);
   const [manualM2, setManualM2] = useState<Record<string, number>>({});
   const [documentNumber, setDocumentNumber] = useState<string | null>(null);
+  const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasCheckedPending = useRef(false);
+
+  const handleAutoDetect = async () => {
+    if (grid.length === 0) return;
+    setIsAutoDetecting(true);
+    try {
+      const detectedMapping = await stockControlApiClient.autoDetectJobCardMapping(grid);
+      const newRegions: Record<string, CellRegion | null> = {};
+
+      const fieldKeys = [
+        "jobNumber",
+        "jcNumber",
+        "pageNumber",
+        "jobName",
+        "customerName",
+        "description",
+        "poNumber",
+        "siteLocation",
+        "contactPerson",
+        "dueDate",
+        "notes",
+        "reference",
+      ] as const;
+
+      fieldKeys.forEach((key) => {
+        const mapping = detectedMapping[key];
+        if (mapping) {
+          newRegions[key] = {
+            col: mapping.column,
+            startRow: mapping.startRow,
+            endRow: mapping.endRow,
+          };
+        } else {
+          newRegions[key] = null;
+        }
+      });
+
+      const lineItemKeys = ["itemCode", "itemDescription", "itemNo", "quantity", "jtNo"] as const;
+
+      lineItemKeys.forEach((key) => {
+        const mapping = detectedMapping.lineItems?.[key];
+        if (mapping) {
+          newRegions[key] = {
+            col: mapping.column,
+            startRow: mapping.startRow,
+            endRow: mapping.endRow,
+          };
+        } else {
+          newRegions[key] = null;
+        }
+      });
+
+      setRegions(newRegions);
+    } catch (err) {
+      console.error("Auto-detect failed:", err);
+    } finally {
+      setIsAutoDetecting(false);
+    }
+  };
 
   const handleFileSelect = async (selectedFile: File) => {
     setFile(selectedFile);
