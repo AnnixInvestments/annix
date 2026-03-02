@@ -1169,6 +1169,12 @@ class StockControlApiClient {
     });
   }
 
+  async sendAppLink(userId: number): Promise<{ message: string }> {
+    return this.request(`/stock-control/auth/team/${userId}/send-app-link`, {
+      method: "POST",
+    });
+  }
+
   async departments(): Promise<StockControlDepartment[]> {
     return this.request("/stock-control/auth/departments");
   }

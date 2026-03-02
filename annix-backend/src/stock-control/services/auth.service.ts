@@ -429,6 +429,24 @@ export class StockControlAuthService {
     return { message: "Role updated successfully." };
   }
 
+  async sendAppLink(companyId: number, userId: number) {
+    const user = await this.userRepo.findOne({
+      where: { id: userId, companyId },
+      relations: ["company"],
+    });
+    if (!user) {
+      throw new NotFoundException("Team member not found");
+    }
+
+    await this.emailService.sendStockControlAppLinkEmail(
+      user.email,
+      user.name,
+      user.company?.name ?? "Your company",
+    );
+
+    return { message: "App link sent successfully." };
+  }
+
   private generateTokens(user: StockControlUser) {
     const accessToken = this.jwtService.sign(
       {

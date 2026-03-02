@@ -426,6 +426,67 @@ export class EmailService {
     });
   }
 
+  async sendStockControlAppLinkEmail(
+    email: string,
+    userName: string,
+    companyName: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const appLink = `${frontendUrl}/stock-control/login`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Your App Link - ASCA Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #0d9488;">ASCA Stock Control</h1>
+          <p>Hi ${userName},</p>
+          <p>Here's your link to access the <strong>${companyName}</strong> Stock Control app.</p>
+          <p style="margin: 30px 0;">
+            <a href="${appLink}"
+               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Open App
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${appLink}</p>
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+            <strong>Tip:</strong> You can install the app on your phone by opening the link in your browser and tapping "Add to Home Screen".
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This email was sent by ASCA Stock Control on behalf of ${companyName}.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      ASCA Stock Control
+
+      Hi ${userName},
+
+      Here's your link to access the ${companyName} Stock Control app:
+      ${appLink}
+
+      Tip: You can install the app on your phone by opening the link in your browser and tapping "Add to Home Screen".
+
+      This email was sent by ASCA Stock Control on behalf of ${companyName}.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Your App Link - ${companyName} Stock Control`,
+      html,
+      text,
+    });
+  }
+
   async sendCustomerVerificationEmail(email: string, verificationToken: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verificationLink = `${frontendUrl}/customer/verify-email?token=${verificationToken}`;

@@ -189,6 +189,14 @@ export class StockControlAuthController {
     return this.authService.updateMemberRole(req.user.companyId, id, body.role as any);
   }
 
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Post("team/:id/send-app-link")
+  @ApiOperation({ summary: "Send app link email to team member" })
+  async sendAppLink(@Req() req: any, @Param("id") id: number) {
+    return this.authService.sendAppLink(req.user.companyId, id);
+  }
+
   @UseGuards(StockControlAuthGuard)
   @Post("logout")
   @ApiOperation({ summary: "Logout" })

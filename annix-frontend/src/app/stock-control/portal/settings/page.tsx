@@ -165,6 +165,7 @@ export default function StockControlSettingsPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
+  const [sendingAppLinkId, setSendingAppLinkId] = useState<number | null>(null);
 
   const [departments, setDepartments] = useState<StockControlDepartment[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(true);
@@ -471,6 +472,19 @@ export default function StockControlSettingsPage() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to update role";
       alert(msg);
+    }
+  };
+
+  const handleSendAppLink = async (memberId: number) => {
+    setSendingAppLinkId(memberId);
+    try {
+      await stockControlApiClient.sendAppLink(memberId);
+      alert("App link sent successfully");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to send app link";
+      alert(msg);
+    } finally {
+      setSendingAppLinkId(null);
     }
   };
 
@@ -1162,6 +1176,9 @@ export default function StockControlSettingsPage() {
                     <th className="hidden py-3 px-2 text-left text-xs font-medium uppercase text-gray-500 md:table-cell">
                       Joined
                     </th>
+                    <th className="py-3 px-2 text-right text-xs font-medium uppercase text-gray-500">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1185,6 +1202,16 @@ export default function StockControlSettingsPage() {
                       </td>
                       <td className="hidden py-3 px-2 text-sm text-gray-500 md:table-cell">
                         {new Date(member.createdAt).toLocaleDateString("en-ZA")}
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleSendAppLink(member.id)}
+                          disabled={sendingAppLinkId === member.id}
+                          className="text-xs font-medium text-teal-600 hover:text-teal-800 disabled:opacity-50"
+                        >
+                          {sendingAppLinkId === member.id ? "Sending..." : "Send Link"}
+                        </button>
                       </td>
                     </tr>
                   ))}
