@@ -5,33 +5,58 @@ export class AddFilePathIndexes1799920000000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_customer_documents_file_path"
-      ON "customer_documents" ("file_path")
-      WHERE "file_path" IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'customer_documents') THEN
+          CREATE INDEX IF NOT EXISTS "IDX_customer_documents_file_path"
+          ON "customer_documents" ("file_path")
+          WHERE "file_path" IS NOT NULL;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_supplier_documents_file_path"
-      ON "supplier_documents" ("file_path")
-      WHERE "file_path" IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'supplier_documents') THEN
+          CREATE INDEX IF NOT EXISTS "IDX_supplier_documents_file_path"
+          ON "supplier_documents" ("file_path")
+          WHERE "file_path" IS NOT NULL;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_rfq_documents_file_path"
-      ON "rfq_documents" ("file_path")
-      WHERE "file_path" IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'rfq_documents') THEN
+          CREATE INDEX IF NOT EXISTS "IDX_rfq_documents_file_path"
+          ON "rfq_documents" ("file_path")
+          WHERE "file_path" IS NOT NULL;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_drawings_file_path"
-      ON "drawings" ("file_path")
-      WHERE "file_path" IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'drawings') THEN
+          CREATE INDEX IF NOT EXISTS "IDX_drawings_file_path"
+          ON "drawings" ("file_path")
+          WHERE "file_path" IS NOT NULL;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_drawing_versions_file_path"
-      ON "drawing_versions" ("file_path")
-      WHERE "file_path" IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'drawing_versions') THEN
+          CREATE INDEX IF NOT EXISTS "IDX_drawing_versions_file_path"
+          ON "drawing_versions" ("file_path")
+          WHERE "file_path" IS NOT NULL;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
@@ -46,27 +71,47 @@ export class AddFilePathIndexes1799920000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_candidates_cv_file_path"
-      ON "candidates" ("cv_file_path")
-      WHERE "cv_file_path" IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'candidates') THEN
+          CREATE INDEX IF NOT EXISTS "IDX_candidates_cv_file_path"
+          ON "candidates" ("cv_file_path")
+          WHERE "cv_file_path" IS NOT NULL;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_rubber_supplier_cocs_document_path"
-      ON "rubber_supplier_cocs" ("document_path")
-      WHERE "document_path" IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'rubber_supplier_cocs') THEN
+          CREATE INDEX IF NOT EXISTS "IDX_rubber_supplier_cocs_document_path"
+          ON "rubber_supplier_cocs" ("document_path")
+          WHERE "document_path" IS NOT NULL;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_rubber_delivery_notes_document_path"
-      ON "rubber_delivery_notes" ("document_path")
-      WHERE "document_path" IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'rubber_delivery_notes') THEN
+          CREATE INDEX IF NOT EXISTS "IDX_rubber_delivery_notes_document_path"
+          ON "rubber_delivery_notes" ("document_path")
+          WHERE "document_path" IS NOT NULL;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS "IDX_secure_documents_file_path"
-      ON "secure_documents" ("file_path")
-      WHERE "file_path" IS NOT NULL
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'secure_documents') THEN
+          CREATE INDEX IF NOT EXISTS "IDX_secure_documents_file_path"
+          ON "secure_documents" ("file_path")
+          WHERE "file_path" IS NOT NULL;
+        END IF;
+      END $$
     `);
 
     await queryRunner.query(`
