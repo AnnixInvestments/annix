@@ -73,6 +73,46 @@
 - **Use environment-based secrets**: GitHub Actions secrets or Fly.io secrets only
 - **Client-side API keys** (e.g. Google Maps): Still use Fly.io build secrets, not source control
 
+### File Storage Architecture
+- **Default storage**: S3 (AWS) - files persist across deployments
+- **Local storage**: Deprecated, only for development - files lost on redeploy
+- **Storage abstraction**: `IStorageService` interface in `annix-backend/src/storage/`
+- **Configuration**: `STORAGE_TYPE=s3` (default) or `STORAGE_TYPE=local`
+
+#### S3 Bucket Structure
+All files are stored in a single bucket with area-based prefixes:
+```
+annix-sync-files/
+├── annix-app/           # Core app documents (customers, suppliers, RFQ, drawings)
+├── au-rubber/           # AU Rubber documents (CoCs, delivery notes, graphs)
+├── fieldflow/           # FieldFlow recordings
+├── cv-assistant/        # CV Assistant candidate documents
+├── stock-control/       # Stock Control documents (job cards, invoices, signatures)
+└── secure-documents/    # Encrypted secure documents
+```
+
+#### Storage Service Usage
+```typescript
+// Inject storage service
+constructor(@Inject(STORAGE_SERVICE) private storageService: IStorageService) {}
+
+// Upload with area prefix
+const result = await this.storageService.upload(file, `${StorageArea.ANNIX_APP}/customers/${customerId}/documents`);
+
+// Download
+const buffer = await this.storageService.download(filePath);
+
+// Generate presigned URL (1 hour default)
+const url = await this.storageService.getPresignedUrl(filePath, 3600);
+```
+
+#### Key Files
+- `annix-backend/src/storage/storage.interface.ts` - IStorageService interface, StorageArea enum
+- `annix-backend/src/storage/s3-storage.service.ts` - S3 implementation
+- `annix-backend/src/storage/local-storage.service.ts` - Local filesystem (deprecated)
+- `annix-backend/docs/AWS_S3_SETUP_GUIDE.md` - AWS setup instructions
+- `annix-backend/scripts/deploy-s3-storage.sh` - Deployment automation
+
 ## Git Commits
 
 ### Autonomous Operation Mode

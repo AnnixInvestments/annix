@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
@@ -11,11 +12,17 @@ jest.mock("@aws-sdk/client-s3", () => ({
     send: mockS3Send,
   })),
   HeadBucketCommand: jest.fn().mockImplementation((params) => ({ ...params, _type: "HeadBucket" })),
-  CreateBucketCommand: jest.fn().mockImplementation((params) => ({ ...params, _type: "CreateBucket" })),
-  PutBucketCorsCommand: jest.fn().mockImplementation((params) => ({ ...params, _type: "PutBucketCors" })),
+  CreateBucketCommand: jest
+    .fn()
+    .mockImplementation((params) => ({ ...params, _type: "CreateBucket" })),
+  PutBucketCorsCommand: jest
+    .fn()
+    .mockImplementation((params) => ({ ...params, _type: "PutBucketCors" })),
   PutObjectCommand: jest.fn().mockImplementation((params) => ({ ...params, _type: "PutObject" })),
   GetObjectCommand: jest.fn().mockImplementation((params) => ({ ...params, _type: "GetObject" })),
-  DeleteObjectCommand: jest.fn().mockImplementation((params) => ({ ...params, _type: "DeleteObject" })),
+  DeleteObjectCommand: jest
+    .fn()
+    .mockImplementation((params) => ({ ...params, _type: "DeleteObject" })),
   HeadObjectCommand: jest.fn().mockImplementation((params) => ({ ...params, _type: "HeadObject" })),
   BucketLocationConstraint: {},
 }));
@@ -73,7 +80,7 @@ describe("S3StorageService", () => {
         destination: "",
         filename: "",
         path: "",
-        stream: null as unknown as NodeJS.ReadableStream,
+        stream: null as unknown as Readable,
       };
 
       mockS3Send.mockResolvedValueOnce({});
@@ -109,7 +116,7 @@ describe("S3StorageService", () => {
         destination: "",
         filename: "",
         path: "",
-        stream: null as unknown as NodeJS.ReadableStream,
+        stream: null as unknown as Readable,
       };
 
       mockS3Send.mockResolvedValueOnce({});
@@ -132,7 +139,7 @@ describe("S3StorageService", () => {
         destination: "",
         filename: "",
         path: "",
-        stream: null as unknown as NodeJS.ReadableStream,
+        stream: null as unknown as Readable,
       };
 
       mockS3Send.mockRejectedValueOnce(new Error("S3 upload failed"));
@@ -284,11 +291,9 @@ describe("S3StorageService", () => {
 
       await service.getPresignedUrl("test/file.pdf", 7200);
 
-      expect(mockGetSignedUrl).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
-        { expiresIn: 7200 },
-      );
+      expect(mockGetSignedUrl).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+        expiresIn: 7200,
+      });
     });
 
     it("should throw error on presigned URL generation failure", async () => {
@@ -302,7 +307,9 @@ describe("S3StorageService", () => {
     it("should return S3 public URL format", () => {
       const result = service.getPublicUrl("annix-app/test/file.pdf");
 
-      expect(result).toBe("https://test-bucket.s3.af-south-1.amazonaws.com/annix-app/test/file.pdf");
+      expect(result).toBe(
+        "https://test-bucket.s3.af-south-1.amazonaws.com/annix-app/test/file.pdf",
+      );
     });
 
     it("should normalize path separators", () => {

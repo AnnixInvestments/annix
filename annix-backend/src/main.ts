@@ -14,8 +14,11 @@ async function bootstrap() {
     exclude: [{ path: "health", method: RequestMethod.GET }],
   });
 
-  const uploadDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
-  app.useStaticAssets(uploadDir, { prefix: "/api/files/" });
+  const storageType = process.env.STORAGE_TYPE || "s3";
+  if (storageType.toLowerCase() === "local") {
+    const uploadDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
+    app.useStaticAssets(uploadDir, { prefix: "/api/files/" });
+  }
 
   const corsOrigins = [
     ...(isProduction ? [] : ["http://localhost:3000", "http://localhost:3001"]),

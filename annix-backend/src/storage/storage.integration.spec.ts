@@ -1,8 +1,9 @@
+import { Readable } from "node:stream";
 import { NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { IStorageService, StorageArea, STORAGE_SERVICE } from "./storage.interface";
 import { LocalStorageService } from "./local-storage.service";
+import { IStorageService, STORAGE_SERVICE, StorageArea } from "./storage.interface";
 
 jest.mock("node:fs", () => ({
   existsSync: jest.fn().mockReturnValue(true),
@@ -70,7 +71,7 @@ describe("Storage Integration Tests", () => {
       destination: "",
       filename: "",
       path: "",
-      stream: null as unknown as NodeJS.ReadableStream,
+      stream: null as unknown as Readable,
     });
 
     describe("Customer Documents", () => {
@@ -81,7 +82,9 @@ describe("Storage Integration Tests", () => {
 
         const result = await storageService.upload(file, subPath);
 
-        expect(result.path).toMatch(new RegExp(`^${StorageArea.ANNIX_APP}/customers/123/documents/`));
+        expect(result.path).toMatch(
+          new RegExp(`^${StorageArea.ANNIX_APP}/customers/123/documents/`),
+        );
         expect(result.originalFilename).toBe("invoice.pdf");
         expect(result.mimeType).toBe("application/pdf");
       });
@@ -95,7 +98,9 @@ describe("Storage Integration Tests", () => {
 
         const result = await storageService.upload(file, subPath);
 
-        expect(result.path).toMatch(new RegExp(`^${StorageArea.ANNIX_APP}/suppliers/456/documents/`));
+        expect(result.path).toMatch(
+          new RegExp(`^${StorageArea.ANNIX_APP}/suppliers/456/documents/`),
+        );
       });
     });
 
@@ -306,7 +311,7 @@ describe("Storage Integration Tests", () => {
       destination: "",
       filename: "",
       path: "",
-      stream: null as unknown as NodeJS.ReadableStream,
+      stream: null as unknown as Readable,
     });
 
     it("should preserve PDF mime type", async () => {
@@ -332,8 +337,14 @@ describe("Storage Integration Tests", () => {
       const webmFile = createMockFile("recording.webm", "audio/webm");
       const mp3File = createMockFile("recording.mp3", "audio/mpeg");
 
-      const webmResult = await storageService.upload(webmFile, `${StorageArea.FIELDFLOW}/recordings/1`);
-      const mp3Result = await storageService.upload(mp3File, `${StorageArea.FIELDFLOW}/recordings/1`);
+      const webmResult = await storageService.upload(
+        webmFile,
+        `${StorageArea.FIELDFLOW}/recordings/1`,
+      );
+      const mp3Result = await storageService.upload(
+        mp3File,
+        `${StorageArea.FIELDFLOW}/recordings/1`,
+      );
 
       expect(webmResult.mimeType).toBe("audio/webm");
       expect(mp3Result.mimeType).toBe("audio/mpeg");
@@ -353,13 +364,10 @@ describe("Storage Integration Tests", () => {
         destination: "",
         filename: "",
         path: "",
-        stream: null as unknown as NodeJS.ReadableStream,
+        stream: null as unknown as Readable,
       };
 
-      const result = await storageService.upload(
-        file,
-        `${StorageArea.FIELDFLOW}/recordings/1`,
-      );
+      const result = await storageService.upload(file, `${StorageArea.FIELDFLOW}/recordings/1`);
 
       expect(result.size).toBe(10 * 1024 * 1024);
     });

@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { Readable } from "node:stream";
 import { NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
@@ -84,7 +85,7 @@ describe("LocalStorageService", () => {
         destination: "",
         filename: "",
         path: "",
-        stream: null as unknown as NodeJS.ReadableStream,
+        stream: null as unknown as Readable,
       };
 
       (mockFs.existsSync as jest.Mock).mockReturnValue(true);
@@ -113,7 +114,7 @@ describe("LocalStorageService", () => {
         destination: "",
         filename: "",
         path: "",
-        stream: null as unknown as NodeJS.ReadableStream,
+        stream: null as unknown as Readable,
       };
 
       (mockFs.existsSync as jest.Mock).mockImplementation((p: string) => {
@@ -138,7 +139,7 @@ describe("LocalStorageService", () => {
         destination: "",
         filename: "",
         path: "",
-        stream: null as unknown as NodeJS.ReadableStream,
+        stream: null as unknown as Readable,
       };
 
       (mockFsPromises.writeFile as jest.Mock).mockResolvedValue(undefined);
