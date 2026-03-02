@@ -7,6 +7,12 @@ primary_region = 'jnb'
   release_command = 'sh -c "cd annix-backend && npx ts-node --project tsconfig.json --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run"'
   release_command_timeout = '40m'
 
+[deploy.release_command_machine]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  kill_timeout = '300s'
+
 [env]
   NODE_ENV = 'production'
   PORT = '4000'
@@ -36,3 +42,4 @@ primary_region = 'jnb'
   memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
+  kill_timeout = '120s'
