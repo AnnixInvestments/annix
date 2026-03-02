@@ -587,6 +587,20 @@ ${truncatedText}`;
           `Extracted data for CoC ${cocId}: ${JSON.stringify(extractionResult.data).substring(0, 200)}...`,
         );
 
+        if (extractionResult.data.cocNumber) {
+          const mergeResult = await this.cocService.mergeIfDuplicateCocNumber(
+            cocId,
+            extractionResult.data.cocNumber,
+            cocType,
+          );
+          if (mergeResult.merged) {
+            this.logger.log(
+              `Merged duplicate CoC ${cocId} into existing CoC ${mergeResult.keptCocId}`,
+            );
+            return;
+          }
+        }
+
         if (cocType === SupplierCocType.CALENDARER) {
           const linkResult = await this.cocService.linkCalendererToCompounderCocs(cocId);
           if (linkResult.linkedCocIds.length > 0) {

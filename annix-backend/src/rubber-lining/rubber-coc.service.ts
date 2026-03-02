@@ -545,6 +545,51 @@ export class RubberCocService {
     await this.compoundBatchRepository.save(batchesToCreate);
   }
 
+  async mergeIfDuplicateCocNumber(
+    cocId: number,
+    cocNumber: string,
+    cocType: SupplierCocType,
+  ): Promise<{ merged: boolean; keptCocId: number; deletedCocId: number | null }> {
+    const normalizedCocNumber = this.normalizeCocNumber(cocNumber);
+
+    const existingCoc = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("LOWER(TRIM(coc.cocNumber)) = LOWER(:cocNumber)", {
+        cocNumber: normalizedCocNumber,
+      })
+      .andWhere("coc.cocType = :cocType", { cocType })
+      .andWhere("coc.id != :cocId", { cocId })
+      .getOne();
+
+    if (!existingCoc) {
+      return { merged: false, keptCocId: cocId, deletedCocId: null };
+    }
+
+    this.logger.log(
+      `Duplicate detected during post-extraction: CoC ${cocId} has same cocNumber ${normalizedCocNumber} as CoC ${existingCoc.id} - merging`,
+    );
+
+    const newCoc = await this.supplierCocRepository.findOne({ where: { id: cocId } });
+    if (newCoc) {
+      if (newCoc.documentPath && !existingCoc.documentPath) {
+        existingCoc.documentPath = newCoc.documentPath;
+      }
+      if (newCoc.extractedData) {
+        existingCoc.extractedData = {
+          ...existingCoc.extractedData,
+          ...newCoc.extractedData,
+        };
+      }
+      existingCoc.processingStatus = CocProcessingStatus.EXTRACTED;
+      await this.supplierCocRepository.save(existingCoc);
+    }
+
+    await this.supplierCocRepository.delete(cocId);
+    this.logger.log(`Deleted duplicate CoC ${cocId}, kept CoC ${existingCoc.id}`);
+
+    return { merged: true, keptCocId: existingCoc.id, deletedCocId: cocId };
+  }
+
   async linkCalendererToCompounderCocs(
     calendererCocId: number,
   ): Promise<{ linkedCocIds: number[]; linkedBatches: string[] }> {
