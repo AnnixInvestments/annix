@@ -803,7 +803,7 @@ ${truncatedText}`;
     batchNumbers: string[];
     compoundCode: string | null;
   } {
-    const nameWithoutExt = filename.replace(/\.pdf$/i, "");
+    const nameWithoutExt = filename.replace(/\.pdf$/i, "").replace(/-GRAPH$/i, "");
     const batchNumbers: string[] = [];
     let compoundCode: string | null = null;
 
@@ -811,6 +811,18 @@ ${truncatedText}`;
     let match;
     while ((match = batchPattern.exec(nameWithoutExt)) !== null) {
       batchNumbers.push(`B${match[1]}`);
+    }
+
+    if (batchNumbers.length === 0) {
+      const batchRangeMatch = nameWithoutExt.match(/[\s_](\d{1,4})-(\d{1,4})$/);
+      if (batchRangeMatch) {
+        batchNumbers.push(`${batchRangeMatch[1]}-${batchRangeMatch[2]}`);
+      } else {
+        const singleBatchMatch = nameWithoutExt.match(/[\s_](\d{1,4})$/);
+        if (singleBatchMatch) {
+          batchNumbers.push(singleBatchMatch[1]);
+        }
+      }
     }
 
     const compoundPatterns = [
@@ -916,6 +928,14 @@ ${truncatedText}`;
         (b) => parseInt(b, 10) >= 100 && parseInt(b, 10) <= 999,
       );
       batchNumbers.push(...uniqueBatches);
+    }
+
+    if (batchNumbers.length === 0) {
+      const filenameInfo = this.parseFilenameForCocInfo(filename);
+      batchNumbers.push(...filenameInfo.batchNumbers);
+      this.logger.log(
+        `No batch numbers from PDF content, using filename batches: ${filenameInfo.batchNumbers.join(", ")}`,
+      );
     }
 
     this.logger.log(`Detected graph PDF: ${filename}, batch numbers: ${batchNumbers.join(", ")}`);
