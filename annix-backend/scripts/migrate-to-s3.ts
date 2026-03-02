@@ -491,10 +491,10 @@ async function migrateAdditionalColumn(
     );
 
     if (newS3Path !== currentPath) {
-      await dataSource.query(
-        `UPDATE ${docType.tableName} SET ${columnName} = $1 WHERE id = $2`,
-        [newS3Path, recordId],
-      );
+      await dataSource.query(`UPDATE ${docType.tableName} SET ${columnName} = $1 WHERE id = $2`, [
+        newS3Path,
+        recordId,
+      ]);
     }
 
     logger.log(`  [OK] (${columnName}) ${currentPath} -> ${s3Key}`);
@@ -520,9 +520,7 @@ async function rollbackFile(
 
   if (!isDryRun) {
     try {
-      const response = await s3Client.send(
-        new GetObjectCommand({ Bucket: bucket, Key: s3Key }),
-      );
+      const response = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: s3Key }));
 
       const chunks: Uint8Array[] = [];
       const stream = response.Body as NodeJS.ReadableStream;
@@ -554,11 +552,7 @@ async function rollbackFile(
   }
 }
 
-function printSummary(
-  results: MigrationResult[],
-  isDryRun: boolean,
-  isRollback: boolean,
-): void {
+function printSummary(results: MigrationResult[], isDryRun: boolean, isRollback: boolean): void {
   logger.log(`\n${"=".repeat(60)}`);
   logger.log(isRollback ? "ROLLBACK SUMMARY" : "MIGRATION SUMMARY");
   logger.log("=".repeat(60));

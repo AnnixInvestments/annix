@@ -182,47 +182,66 @@ Return ONLY a valid JSON object with the extracted data.`;
 
 export const CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from customer delivery notes for rubber sheeting products.
 
-These are delivery notes from rubber suppliers to their customers (e.g., from AU Industries to mining companies). They typically contain:
-- Delivery note number (DN number)
-- Customer's PO or reference number
-- Delivery date
-- Customer name/company
-- Line items with rubber sheet specifications
+IMPORTANT: A single PDF may contain MULTIPLE delivery notes (one per page). You must detect and return ALL delivery notes found.
 
-Extract information from the delivery note text and return a valid JSON object.
+These are delivery notes from AU Industries (or similar rubber suppliers) to their customers.
+
+AU INDUSTRIES DELIVERY NOTE FORMAT:
+- Header shows "DELIVERY NOTE" with fields:
+  - NUMBER: 1298 (the DN number)
+  - REFERENCE: PL7776/PO6719 (customer's PO reference)
+  - DATE: 25/02/2026 (delivery date in DD/MM/YYYY format)
+  - PAGE: 1/1
+- FROM section: AU INDUSTRIES (PTY) LTD
+- TO section: Customer name and address (e.g., POLYMER LINING SYSTEMS (PTY) LTD)
+- Description column contains compound info like:
+  "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m, 249.37kg per Roll @ 1.05 S.G's"
+  This decodes as:
+  - RSCA40 = Roll Stock Cured A40 (A grade, 40 Shore hardness)
+  - 20 = thickness in mm
+  - 950 = width in mm
+  - 125 = length (12.5m)
+  - Color: Red
+  - Grade: A
+  - Shore: 40
+- Roll No & Weight line: "154-41210 - 258Kg" means roll number 154-41210, actual weight 258kg
+- Quantity column shows qty (typically 1.00)
+- Signature stamp shows "Goods Received Date" with handwritten date
 
 Return a JSON object with this structure:
 {
-  "deliveryNoteNumber": string or null (e.g., "DN1294", "12345"),
-  "customerReference": string or null (customer's PO number, order ref, etc.),
-  "deliveryDate": string or null (ISO date format YYYY-MM-DD),
-  "customerName": string or null (the receiving customer/company name),
-  "pageInfo": {
-    "currentPage": number or null (if page indicator like "Page: 1/2" is present),
-    "totalPages": number or null
-  },
-  "lineItems": [
+  "deliveryNotes": [
     {
-      "lineNumber": number or null (line/item number on the document),
-      "compoundType": string or null (e.g., "AU-NR-60", "RSCA40", "NR-40"),
-      "thicknessMm": number or null (sheet thickness in mm),
-      "widthMm": number or null (sheet width in mm),
-      "lengthM": number or null (sheet/roll length in meters),
-      "quantity": number or null (number of items/rolls),
-      "rollWeightKg": number or null (weight per roll in kg),
-      "cocBatchNumbers": string[] (linked COC/batch numbers, e.g., ["B225", "B226"])
+      "deliveryNoteNumber": string (e.g., "1298", "1299"),
+      "customerReference": string or null (e.g., "PL7776/PO6719"),
+      "deliveryDate": string or null (ISO format YYYY-MM-DD, convert from DD/MM/YYYY),
+      "customerName": string or null (the TO: company name),
+      "lineItems": [
+        {
+          "compoundCode": string or null (e.g., "RSCA40-20.950.125"),
+          "compoundDescription": string or null (e.g., "Red A40 SC"),
+          "thicknessMm": number or null,
+          "widthMm": number or null,
+          "lengthM": number or null,
+          "weightPerRollKg": number or null (theoretical weight per roll),
+          "specificGravity": number or null (e.g., 1.05),
+          "rollNumber": string or null (e.g., "154-41210"),
+          "actualWeightKg": number or null (actual roll weight),
+          "quantity": number or null
+        }
+      ]
     }
   ]
 }
 
 Guidelines:
-- Customer delivery notes show what a supplier is delivering TO a customer
-- Look for "Delivery Note", "Despatch Note", "Packing List" headers
-- Customer reference may be labeled as "PO Number", "Order Ref", "Customer Ref", "Your Ref"
-- Compound type codes often include rubber type indicators (NR=Natural Rubber, NBR=Nitrile, etc.)
-- Thickness is typically 3-25mm, width is typically 800-1600mm
-- If you see "Page: X/Y" or "Page X of Y", extract page info
-- COC batch numbers link the delivered material to quality certificates
+- SCAN THROUGH THE ENTIRE DOCUMENT - each page with a unique NUMBER is a separate delivery note
+- Look for "NUMBER:" field to identify each delivery note (not the filename)
+- Parse dates from DD/MM/YYYY to YYYY-MM-DD format
+- Extract the compound code pattern (e.g., RSCA40-8.950.125) and parse its components
+- Roll number format is typically XXX-XXXXX (e.g., 154-41210, 156-41213)
+- "S.G's" or "SG" indicates specific gravity (typically 1.05 for natural rubber)
+- Each delivery note typically has one line item, but may have multiple
 - Return ONLY the JSON object, no additional text`;
 
 export function customerDeliveryNoteExtractionPrompt(pdfText: string): string {

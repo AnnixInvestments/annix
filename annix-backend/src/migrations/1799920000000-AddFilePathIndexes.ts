@@ -132,40 +132,20 @@ export class AddFilePathIndexes1799920000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_customer_documents_file_path"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_supplier_documents_file_path"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_customer_documents_file_path"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_supplier_documents_file_path"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rfq_documents_file_path"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_drawings_file_path"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_drawing_versions_file_path"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_meeting_recordings_storage_path"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_drawing_versions_file_path"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_meeting_recordings_storage_path"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_candidates_cv_file_path"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_rubber_supplier_cocs_document_path"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_rubber_delivery_notes_document_path"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_secure_documents_file_path"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_sc_job_card_documents_file_path"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_supplier_cocs_document_path"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_delivery_notes_document_path"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_secure_documents_file_path"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sc_job_card_documents_file_path"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sc_invoices_file_path"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_sc_delivery_documents_file_path"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_sc_inventory_items_image_path"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sc_delivery_documents_file_path"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sc_inventory_items_image_path"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sc_signatures_file_path"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_sc_staff_photo_path"`);
   }

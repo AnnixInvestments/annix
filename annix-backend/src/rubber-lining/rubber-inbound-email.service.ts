@@ -103,6 +103,8 @@ export interface AnalyzedCustomerDnFile {
     lengthM: number | null;
     quantity: number | null;
     rollWeightKg: number | null;
+    rollNumber: string | null;
+    specificGravity: number | null;
     cocBatchNumbers: string[] | null;
   }>;
   pdfText: string;
@@ -1143,7 +1145,7 @@ ${truncatedText}`;
         );
       }
 
-      let extractedData: Record<string, unknown> = {};
+      let deliveryNotesFromFile: Array<Record<string, unknown>> = [];
       try {
         const isAvailable = await this.cocExtractionService.isAvailable();
         if (!isAvailable) {
@@ -1151,9 +1153,9 @@ ${truncatedText}`;
         }
 
         const extraction = await this.cocExtractionService.extractCustomerDeliveryNote(pdfText);
-        extractedData = extraction.data as Record<string, unknown>;
+        deliveryNotesFromFile = extraction.deliveryNotes as Array<Record<string, unknown>>;
         this.logger.log(
-          `Extracted customer DN data: ${JSON.stringify(extractedData).substring(0, 500)}`,
+          `Extracted ${deliveryNotesFromFile.length} customer DN(s) from ${file.originalname}`,
         );
       } catch (error) {
         const errorMsg = `Failed to extract from ${file.originalname}: ${error.message}`;
@@ -1161,55 +1163,77 @@ ${truncatedText}`;
         extractionErrors.push(errorMsg);
       }
 
-      const customerName = (extractedData.customerName as string) || null;
-      let customerId: number | null = null;
-
-      if (customerName) {
-        const matchedCompany = this.matchCustomerByName(customerName, customerCompanies);
-        if (matchedCompany) {
-          customerId = matchedCompany.id;
-          this.logger.log(
-            `Matched customer "${customerName}" to company ${matchedCompany.name} (ID: ${matchedCompany.id})`,
-          );
-        } else {
-          if (!unmatchedCustomerNames.includes(customerName)) {
-            unmatchedCustomerNames.push(customerName);
-          }
-          this.logger.warn(`Could not match customer "${customerName}" to any existing company`);
-        }
+      if (deliveryNotesFromFile.length === 0) {
+        deliveryNotesFromFile = [{}];
       }
 
-      const lineItems = ((extractedData.lineItems as Array<Record<string, unknown>>) || []).map(
-        (item) => ({
-          lineNumber: (item.lineNumber as number) || null,
-          compoundType: (item.compoundType as string) || null,
-          thicknessMm: (item.thicknessMm as number) || null,
-          widthMm: (item.widthMm as number) || null,
-          lengthM: (item.lengthM as number) || null,
-          quantity: (item.quantity as number) || null,
-          rollWeightKg: (item.rollWeightKg as number) || null,
-          cocBatchNumbers: (item.cocBatchNumbers as string[]) || null,
-        }),
-      );
+      for (let dnIndex = 0; dnIndex < deliveryNotesFromFile.length; dnIndex++) {
+        const extractedData = deliveryNotesFromFile[dnIndex];
+        const customerName = (extractedData.customerName as string) || null;
+        let customerId: number | null = null;
 
-      const pageInfo = extractedData.pageInfo as {
-        currentPage?: number;
-        totalPages?: number;
-      } | null;
+        if (customerName) {
+          const matchedCompany = this.matchCustomerByName(customerName, customerCompanies);
+          if (matchedCompany) {
+            customerId = matchedCompany.id;
+            this.logger.log(
+              `Matched customer "${customerName}" to company ${matchedCompany.name} (ID: ${matchedCompany.id})`,
+            );
+          } else {
+            if (!unmatchedCustomerNames.includes(customerName)) {
+              unmatchedCustomerNames.push(customerName);
+            }
+            this.logger.warn(`Could not match customer "${customerName}" to any existing company`);
+          }
+        }
 
-      analyzedFiles.push({
-        filename: file.originalname,
-        deliveryNoteNumber: (extractedData.deliveryNoteNumber as string) || null,
-        customerReference: (extractedData.customerReference as string) || null,
-        deliveryDate: (extractedData.deliveryDate as string) || null,
-        customerName,
-        customerId,
-        pageInfo: pageInfo
-          ? { currentPage: pageInfo.currentPage || null, totalPages: pageInfo.totalPages || null }
-          : null,
-        lineItems,
-        pdfText,
-      });
+        const lineItems = ((extractedData.lineItems as Array<Record<string, unknown>>) || []).map(
+          (item) => ({
+            lineNumber: (item.lineNumber as number) || null,
+            compoundType:
+              (item.compoundCode as string) ||
+              (item.compoundType as string) ||
+              (item.compoundDescription as string) ||
+              null,
+            thicknessMm: (item.thicknessMm as number) || null,
+            widthMm: (item.widthMm as number) || null,
+            lengthM: (item.lengthM as number) || null,
+            quantity: (item.quantity as number) || null,
+            rollWeightKg:
+              (item.actualWeightKg as number) ||
+              (item.rollWeightKg as number) ||
+              (item.weightPerRollKg as number) ||
+              null,
+            cocBatchNumbers: (item.cocBatchNumbers as string[]) || null,
+            rollNumber: (item.rollNumber as string) || null,
+            specificGravity: (item.specificGravity as number) || null,
+          }),
+        );
+
+        const pageInfo = extractedData.pageInfo as {
+          currentPage?: number;
+          totalPages?: number;
+        } | null;
+
+        const filenameWithIndex =
+          deliveryNotesFromFile.length > 1
+            ? `${file.originalname} (DN ${dnIndex + 1}/${deliveryNotesFromFile.length})`
+            : file.originalname;
+
+        analyzedFiles.push({
+          filename: filenameWithIndex,
+          deliveryNoteNumber: (extractedData.deliveryNoteNumber as string) || null,
+          customerReference: (extractedData.customerReference as string) || null,
+          deliveryDate: (extractedData.deliveryDate as string) || null,
+          customerName,
+          customerId,
+          pageInfo: pageInfo
+            ? { currentPage: pageInfo.currentPage || null, totalPages: pageInfo.totalPages || null }
+            : null,
+          lineItems,
+          pdfText,
+        });
+      }
     }
 
     const groups = this.groupCustomerDnsByNumber(analyzedFiles);

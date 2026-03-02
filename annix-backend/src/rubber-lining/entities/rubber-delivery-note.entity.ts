@@ -36,22 +36,34 @@ export interface ExtractedDeliveryNoteData {
   }>;
 }
 
+export interface ExtractedCustomerDeliveryNoteLineItem {
+  lineNumber?: number;
+  compoundCode?: string;
+  compoundType?: string;
+  compoundDescription?: string;
+  thicknessMm?: number;
+  widthMm?: number;
+  lengthM?: number;
+  quantity?: number;
+  rollWeightKg?: number;
+  weightPerRollKg?: number;
+  specificGravity?: number;
+  rollNumber?: string;
+  actualWeightKg?: number;
+  cocBatchNumbers?: string[];
+}
+
 export interface ExtractedCustomerDeliveryNoteData {
   deliveryNoteNumber?: string;
   customerReference?: string;
   deliveryDate?: string;
   customerName?: string;
   pageInfo?: { currentPage?: number; totalPages?: number };
-  lineItems?: Array<{
-    lineNumber?: number;
-    compoundType?: string;
-    thicknessMm?: number;
-    widthMm?: number;
-    lengthM?: number;
-    quantity?: number;
-    rollWeightKg?: number;
-    cocBatchNumbers?: string[];
-  }>;
+  lineItems?: ExtractedCustomerDeliveryNoteLineItem[];
+}
+
+export interface ExtractedCustomerDeliveryNotesResult {
+  deliveryNotes: ExtractedCustomerDeliveryNoteData[];
 }
 
 @Entity("rubber_delivery_notes")

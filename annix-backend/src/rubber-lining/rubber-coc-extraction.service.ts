@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import {
   ExtractedCustomerDeliveryNoteData,
+  ExtractedCustomerDeliveryNotesResult,
   ExtractedDeliveryNoteData,
 } from "./entities/rubber-delivery-note.entity";
 import { ExtractedCocData, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
@@ -199,6 +200,7 @@ export class RubberCocExtractionService {
 
   async extractCustomerDeliveryNote(pdfText: string): Promise<{
     data: ExtractedCustomerDeliveryNoteData;
+    deliveryNotes: ExtractedCustomerDeliveryNoteData[];
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
@@ -217,8 +219,16 @@ export class RubberCocExtractionService {
     const processingTimeMs = Date.now() - startTime;
     this.logger.log(`Customer delivery note extracted in ${processingTimeMs}ms`);
 
+    const rawData = response.data as unknown as ExtractedCustomerDeliveryNotesResult;
+    const deliveryNotes = rawData?.deliveryNotes || [];
+
+    this.logger.log(`Found ${deliveryNotes.length} delivery notes in document`);
+
+    const firstNote = deliveryNotes[0] || {};
+
     return {
-      data: response.data as ExtractedCustomerDeliveryNoteData,
+      data: firstNote as ExtractedCustomerDeliveryNoteData,
+      deliveryNotes,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };
