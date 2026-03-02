@@ -1,12 +1,11 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Inject, Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as Imap from "imap-simple";
 import { simpleParser } from "mailparser";
 import { Repository } from "typeorm";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { Candidate } from "../entities/candidate.entity";
 import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
@@ -16,7 +15,6 @@ import { WorkflowAutomationService } from "./workflow-automation.service";
 @Injectable()
 export class EmailMonitorService implements OnModuleInit {
   private readonly logger = new Logger(EmailMonitorService.name);
-  private readonly uploadDir: string;
 
   constructor(
     @InjectRepository(CvAssistantCompany)
@@ -25,18 +23,14 @@ export class EmailMonitorService implements OnModuleInit {
     private readonly jobPostingRepo: Repository<JobPosting>,
     @InjectRepository(Candidate)
     private readonly candidateRepo: Repository<Candidate>,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
     private readonly candidateService: CandidateService,
     private readonly workflowAutomationService: WorkflowAutomationService,
     private readonly configService: ConfigService,
-  ) {
-    this.uploadDir = path.join(process.cwd(), "uploads", "cv-assistant");
-  }
+  ) {}
 
-  onModuleInit() {
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
-    }
-  }
+  onModuleInit() {}
 
   @Cron(CronExpression.EVERY_MINUTE)
   async pollEmails(): Promise<void> {
@@ -147,14 +141,26 @@ export class EmailMonitorService implements OnModuleInit {
         }
 
         const filename = `${Date.now()}-${attachment.filename || "cv.pdf"}`;
-        const filePath = path.join(this.uploadDir, `${company.id}`, filename);
 
-        fs.mkdirSync(path.dirname(filePath), { recursive: true });
-        fs.writeFileSync(filePath, attachment.content);
+        const multerFile: Express.Multer.File = {
+          fieldname: "cv",
+          originalname: attachment.filename || "cv.pdf",
+          encoding: "7bit",
+          mimetype: "application/pdf",
+          size: attachment.size,
+          buffer: attachment.content,
+          stream: null as never,
+          destination: "",
+          filename: "",
+          path: "",
+        };
+
+        const subPath = `cv-assistant/candidates/${company.id}`;
+        const storageResult = await this.storageService.upload(multerFile, subPath);
 
         const candidate = await this.candidateService.create(matchingJob.id, {
           email: fromEmail,
-          cvFilePath: filePath,
+          cvFilePath: storageResult.path,
           sourceEmailId: messageId,
         });
 

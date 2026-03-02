@@ -33,8 +33,8 @@ The codebase has a pluggable storage abstraction (`IStorageService`) with two ba
 #### Using Local Storage Only (CRITICAL - Will Be Lost)
 | Area | Current Path | Service Location | Risk |
 |------|--------------|------------------|------|
-| Meeting Recordings | `uploads/recordings/{meetingId}/` | fieldflow/services/recording.service.ts | **HIGH** - User recordings lost |
-| CV Assistant CVs | `uploads/cv-assistant/` | cv-assistant/services/email-monitor.service.ts | **HIGH** - Candidate CVs lost |
+| ~~Meeting Recordings~~ | ~~`uploads/recordings/{meetingId}/`~~ | fieldflow/services/recording.service.ts | **DONE** - Now uses `fieldflow/recordings/{meetingId}/` via IStorageService |
+| ~~CV Assistant CVs~~ | ~~`uploads/cv-assistant/`~~ | cv-assistant/services/email-monitor.service.ts | **DONE** - Now uses `cv-assistant/candidates/{companyId}/` via IStorageService |
 | ~~Rubber Email Processing~~ | ~~`uploads/rubber-lining/`~~ | rubber-email-monitor.service.ts | **DONE** - Already used IStorageService, removed dead code |
 
 #### Special Cases
@@ -88,25 +88,42 @@ annix-sync-files/
 
 ### Phase 1: Critical - Fix Local-Only Storage (Data Loss Risk)
 
-- [ ] **FieldFlow Meeting Recordings**
-  - [ ] Refactor `recording.service.ts` to use `IStorageService` instead of direct `fs` operations
-  - [ ] Update chunked upload logic to work with S3 (consider multipart upload)
-  - [ ] Add migration script for existing local recordings to S3
-  - [ ] Update `audioStream()` method to use presigned URLs for playback
-  - [ ] Test recording upload/playback flow end-to-end
+- [x] **FieldFlow Meeting Recordings** (COMPLETED)
+  - [x] Refactor `recording.service.ts` to use `IStorageService` instead of direct `fs` operations
+  - [x] Update chunked upload logic to work with S3 (assembles chunks locally then uploads to S3)
+  - [x] Add migration script for existing local recordings to S3 (`scripts/migrate-fieldflow-recordings.ts`)
+  - [x] Update `audioStream()` method to use presigned URLs for playback (redirects to S3)
+  - [x] Unit tests added (`recording.service.spec.ts`)
 
-- [ ] **CV Assistant Documents**
-  - [ ] Refactor `email-monitor.service.ts` to use `IStorageService`
-  - [ ] Refactor `candidate.controller.ts` manual upload to use `IStorageService`
-  - [ ] Update candidate entity to store S3 paths instead of local paths
-  - [ ] Add migration script for existing CVs to S3
-  - [ ] Test email processing and manual upload flows
+- [x] **CV Assistant Documents** (COMPLETED)
+  - [x] Refactor `email-monitor.service.ts` to use `IStorageService`
+  - [x] Refactor `candidate.controller.ts` manual upload to use `IStorageService`
+  - [x] Refactor `cv-extraction.service.ts` to download from S3 for PDF parsing
+  - [x] Update candidate entity to store S3 paths instead of local paths (uses `cv-assistant/candidates/{companyId}/` prefix)
+  - [x] Add migration script for existing CVs to S3 (`scripts/migrate-cv-assistant-docs.ts`)
+  - [x] Unit tests added (`cv-extraction.service.spec.ts`)
 
 - [x] **Rubber Email Processing** (COMPLETED)
   - [x] Review `rubber-email-monitor.service.ts` for permanent storage needs - Already used IStorageService
   - [x] Removed dead `uploadDir` code that created unused local directory
   - [x] Updated all S3 paths from `rubber-lining/` to `au-rubber/` prefix
   - [x] Created `scripts/migrate-rubber-paths.ts` for existing document migration
+
+### Migration Commands
+
+Run these on production to migrate existing data:
+
+```bash
+# Preview changes (dry run)
+pnpm migrate:fieldflow-recordings:dry-run
+pnpm migrate:cv-assistant-docs:dry-run
+pnpm migrate:rubber-paths:dry-run
+
+# Execute migrations
+pnpm migrate:fieldflow-recordings
+pnpm migrate:cv-assistant-docs
+pnpm migrate:rubber-paths
+```
 
 ### Phase 2: Organize S3 Structure
 

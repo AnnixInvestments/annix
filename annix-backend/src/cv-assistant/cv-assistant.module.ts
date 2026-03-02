@@ -5,6 +5,7 @@ import { MulterModule } from "@nestjs/platform-express";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { EmailModule } from "../email/email.module";
 import { NixModule } from "../nix/nix.module";
+import { StorageModule } from "../storage/storage.module";
 import { CvAssistantAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
@@ -53,6 +54,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     }),
     NixModule,
     EmailModule,
+    StorageModule,
   ],
   controllers: [
     CvAssistantAuthController,

@@ -1,8 +1,8 @@
-import * as path from "node:path";
 import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   ParseIntPipe,
   Patch,
@@ -14,7 +14,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { diskStorage } from "multer";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { UpdateCandidateStatusDto } from "../dto/candidate.dto";
 import { CandidateStatus } from "../entities/candidate.entity";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
@@ -26,6 +26,8 @@ import { WorkflowAutomationService } from "../services/workflow-automation.servi
 @UseGuards(CvAssistantAuthGuard)
 export class CandidateController {
   constructor(
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
     private readonly candidateService: CandidateService,
     private readonly referenceService: ReferenceService,
     private readonly workflowService: WorkflowAutomationService,
@@ -129,13 +131,6 @@ export class CandidateController {
   @Post("upload")
   @UseInterceptors(
     FileInterceptor("file", {
-      storage: diskStorage({
-        destination: "./uploads/cv-assistant/manual",
-        filename: (req, file, cb) => {
-          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          cb(null, `${uniqueSuffix}${path.extname(file.originalname)}`);
-        },
-      }),
       fileFilter: (req, file, cb) => {
         if (file.mimetype === "application/pdf") {
           cb(null, true);
@@ -143,6 +138,7 @@ export class CandidateController {
           cb(new Error("Only PDF files are allowed"), false);
         }
       },
+      limits: { fileSize: 10 * 1024 * 1024 },
     }),
   )
   async uploadCv(
@@ -152,10 +148,13 @@ export class CandidateController {
     @Body("email") email?: string,
     @Body("name") name?: string,
   ) {
+    const subPath = `cv-assistant/candidates/${req.user.companyId}`;
+    const storageResult = await this.storageService.upload(file, subPath);
+
     const candidate = await this.candidateService.create(parseInt(jobPostingId, 10), {
       email: email || null,
       name: name || null,
-      cvFilePath: file.path,
+      cvFilePath: storageResult.path,
     });
 
     await this.workflowService.processCandidateCv(candidate.id);

@@ -1,8 +1,7 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import pdfParse from "pdf-parse";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { ExtractedCvData } from "../entities/candidate.entity";
 import { CV_EXTRACTION_SYSTEM_PROMPT, cvExtractionPrompt } from "../prompts/cv-analysis.prompt";
 
@@ -10,12 +9,15 @@ import { CV_EXTRACTION_SYSTEM_PROMPT, cvExtractionPrompt } from "../prompts/cv-a
 export class CvExtractionService {
   private readonly logger = new Logger(CvExtractionService.name);
 
-  constructor(private readonly aiChatService: AiChatService) {}
+  constructor(
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
+    private readonly aiChatService: AiChatService,
+  ) {}
 
-  async extractTextFromPdf(filePath: string): Promise<string> {
+  async extractTextFromPdf(storagePath: string): Promise<string> {
     try {
-      const absolutePath = path.resolve(filePath);
-      const dataBuffer = fs.readFileSync(absolutePath);
+      const dataBuffer = await this.storageService.download(storagePath);
       const pdfData = await pdfParse(dataBuffer);
       return pdfData.text;
     } catch (error) {
