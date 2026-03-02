@@ -308,6 +308,7 @@ export class StockControlAuthService {
       companyEmail: user.company?.email ?? null,
       websiteUrl: user.company?.websiteUrl ?? null,
       createdAt: user.createdAt,
+      companyUpdatedAt: user.company?.updatedAt ?? null,
     };
   }
 

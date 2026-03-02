@@ -40,6 +40,7 @@ export interface StockControlUserProfile {
   companyEmail: string | null;
   websiteUrl: string | null;
   createdAt: string;
+  companyUpdatedAt: string | null;
 }
 
 export interface CompanyDetailsUpdate {

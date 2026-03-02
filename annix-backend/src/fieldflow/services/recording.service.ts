@@ -222,7 +222,7 @@ export class RecordingService {
 
     const multerFile: Express.Multer.File = {
       fieldname: "file",
-      originalname: recording.originalFilename,
+      originalname: recording.originalFilename ?? `recording-${recording.id}`,
       encoding: "7bit",
       mimetype: recording.mimeType,
       size: stats.size,

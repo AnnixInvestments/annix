@@ -22,9 +22,14 @@ export function StockControlDynamicBranding() {
     return null;
   }
 
-  const manifestUrl = `/api/stock-control/${profile.companyId}/manifest.json`;
+  const cacheBuster = profile.companyUpdatedAt
+    ? `?v=${new Date(profile.companyUpdatedAt).getTime()}`
+    : "";
+  const manifestUrl = `/api/stock-control/${profile.companyId}/manifest.json${cacheBuster}`;
   const hasCustomLogo = profile.brandingType === "custom" && !!profile.logoUrl;
-  const iconUrl = hasCustomLogo ? `/api/stock-control/${profile.companyId}/icon/192` : null;
+  const iconUrl = hasCustomLogo
+    ? `/api/stock-control/${profile.companyId}/icon/192${cacheBuster}`
+    : null;
 
   return (
     <>
