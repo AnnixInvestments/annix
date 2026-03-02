@@ -184,20 +184,21 @@ annix-sync-files/
     └── {uuid}.enc
 ```
 
-### Phase 3: Data Migration
+### Phase 3: Data Migration (COMPLETED)
 
-- [ ] **Extend Migration Script**
-  - [ ] Update `scripts/migrate-to-s3.ts` to handle all document types
-  - [ ] Add support for new area-based paths
-  - [ ] Add FieldFlow recordings migration
-  - [ ] Add CV Assistant documents migration
-  - [ ] Add dry-run support for all new document types
-  - [ ] Add rollback capability
+- [x] **Extend Migration Script**
+  - [x] Update `scripts/migrate-to-s3.ts` to handle all document types (16 document types across all areas)
+  - [x] Add support for new area-based paths (annix-app/, fieldflow/, cv-assistant/, au-rubber/, stock-control/, secure-documents/)
+  - [x] Add FieldFlow recordings migration (`scripts/migrate-fieldflow-recordings.ts`)
+  - [x] Add CV Assistant documents migration (`scripts/migrate-cv-assistant-docs.ts`)
+  - [x] Add dry-run support for all new document types (`--dry-run` flag)
+  - [x] Add rollback capability (`--rollback` flag to download from S3 to local)
+  - [x] Add type filtering (`--type=X` flag to process specific document types)
 
-- [ ] **Database Updates**
-  - [ ] Create migration to update existing `file_path` columns with new S3 paths
-  - [ ] Ensure backward compatibility during transition
-  - [ ] Add indexes if needed for path queries
+- [x] **Database Updates**
+  - [x] Migration scripts update `file_path` columns with new S3 paths during migration
+  - [x] Backward compatibility ensured (migration skips already-migrated paths)
+  - [x] Added indexes for path queries (`migrations/1799920000000-AddFilePathIndexes.ts`)
 
 ### Phase 4: Testing and Deployment
 

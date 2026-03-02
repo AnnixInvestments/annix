@@ -2,33 +2,43 @@
  * Migration Script: Local Storage to AWS S3
  *
  * This script migrates all files from local filesystem storage to AWS S3.
- * It processes the following document types:
- * - Drawings (from drawing_versions table)
- * - RFQ Documents (from rfq_documents table)
- * - Customer Documents (from customer_documents table)
- * - Supplier Documents (from supplier_documents table)
+ * It processes all document types across the application with proper area prefixes.
+ *
+ * Document Types:
+ * - annix-app/: customers, suppliers, rfq-documents, drawings
+ * - fieldflow/: meeting recordings
+ * - cv-assistant/: candidate CVs
+ * - stock-control/: job cards, invoices, deliveries, inventory, signatures, etc.
+ * - secure-documents/: encrypted secure documents
+ * - au-rubber/: rubber lining documents (CoCs, delivery notes, graphs)
  *
  * Usage:
- *   pnpm migrate:s3 [--dry-run]
+ *   pnpm migrate:s3 [options]
  *
  * Options:
- *   --dry-run    Preview changes without actually uploading to S3
+ *   --dry-run     Preview changes without uploading to S3
+ *   --rollback    Download files from S3 back to local storage
+ *   --type=X      Only migrate specific type (e.g., --type=fieldflow)
  *
  * Prerequisites:
  * - AWS credentials must be configured in environment variables
- * - STORAGE_TYPE should still be 'local' before running this script
  * - Ensure a database backup has been taken before running
  */
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
+import { lookup } from "mime-types";
 import { DataSource } from "typeorm";
 
-// Import the app module - adjust path as needed
 import { AppModule } from "../src/app.module";
 
 interface MigrationResult {
@@ -40,27 +50,161 @@ interface MigrationResult {
   errors: string[];
 }
 
-interface FileRecord {
-  id: number;
-  filePath: string;
+interface DocumentTypeConfig {
+  name: string;
   tableName: string;
+  pathColumn: string;
+  areaPrefix: string;
+  idColumn?: string;
+  additionalColumns?: string[];
 }
 
 const logger = new Logger("S3Migration");
 
-async function migrateToS3() {
+const DOCUMENT_TYPES: DocumentTypeConfig[] = [
+  {
+    name: "Customer Documents",
+    tableName: "customer_documents",
+    pathColumn: "file_path",
+    areaPrefix: "annix-app/",
+  },
+  {
+    name: "Supplier Documents",
+    tableName: "supplier_documents",
+    pathColumn: "file_path",
+    areaPrefix: "annix-app/",
+  },
+  {
+    name: "RFQ Documents",
+    tableName: "rfq_documents",
+    pathColumn: "file_path",
+    areaPrefix: "annix-app/",
+  },
+  {
+    name: "Drawings",
+    tableName: "drawings",
+    pathColumn: "file_path",
+    areaPrefix: "annix-app/",
+  },
+  {
+    name: "Drawing Versions",
+    tableName: "drawing_versions",
+    pathColumn: "file_path",
+    areaPrefix: "annix-app/",
+  },
+  {
+    name: "FieldFlow Recordings",
+    tableName: "meeting_recordings",
+    pathColumn: "storage_path",
+    areaPrefix: "fieldflow/",
+    additionalColumns: ["storage_bucket"],
+  },
+  {
+    name: "CV Assistant Candidates",
+    tableName: "candidates",
+    pathColumn: "cv_file_path",
+    areaPrefix: "cv-assistant/",
+  },
+  {
+    name: "Rubber CoCs",
+    tableName: "rubber_supplier_cocs",
+    pathColumn: "document_path",
+    areaPrefix: "au-rubber/",
+    additionalColumns: ["graph_pdf_path"],
+  },
+  {
+    name: "Rubber Delivery Notes",
+    tableName: "rubber_delivery_notes",
+    pathColumn: "document_path",
+    areaPrefix: "au-rubber/",
+  },
+  {
+    name: "Stock Control Job Cards",
+    tableName: "sc_job_card_documents",
+    pathColumn: "file_path",
+    areaPrefix: "stock-control/",
+  },
+  {
+    name: "Stock Control Invoices",
+    tableName: "sc_invoices",
+    pathColumn: "file_path",
+    areaPrefix: "stock-control/",
+  },
+  {
+    name: "Stock Control Deliveries",
+    tableName: "sc_delivery_documents",
+    pathColumn: "file_path",
+    areaPrefix: "stock-control/",
+  },
+  {
+    name: "Stock Control Inventory",
+    tableName: "sc_inventory_items",
+    pathColumn: "image_path",
+    areaPrefix: "stock-control/",
+  },
+  {
+    name: "Stock Control Signatures",
+    tableName: "sc_signatures",
+    pathColumn: "file_path",
+    areaPrefix: "stock-control/",
+  },
+  {
+    name: "Stock Control Staff Photos",
+    tableName: "sc_staff",
+    pathColumn: "photo_path",
+    areaPrefix: "stock-control/",
+  },
+  {
+    name: "Secure Documents",
+    tableName: "secure_documents",
+    pathColumn: "file_path",
+    areaPrefix: "secure-documents/",
+  },
+];
+
+function parseArgs(): { isDryRun: boolean; isRollback: boolean; typeFilter: string | null } {
   const isDryRun = process.argv.includes("--dry-run");
+  const isRollback = process.argv.includes("--rollback");
+  const typeArg = process.argv.find((arg) => arg.startsWith("--type="));
+  const typeFilter = typeArg ? typeArg.split("=")[1] : null;
+  return { isDryRun, isRollback, typeFilter };
+}
 
-  if (isDryRun) {
-    logger.log("=".repeat(60));
-    logger.log("DRY RUN MODE - No actual changes will be made");
-    logger.log("=".repeat(60));
+function shouldAddPrefix(currentPath: string, areaPrefix: string): boolean {
+  if (!currentPath) return false;
+  if (currentPath.startsWith(areaPrefix)) return false;
+  if (currentPath.startsWith("http")) return false;
+  return true;
+}
+
+function addAreaPrefix(currentPath: string, areaPrefix: string): string {
+  if (!shouldAddPrefix(currentPath, areaPrefix)) {
+    return currentPath;
   }
+  return areaPrefix + currentPath.replace(/^\//, "");
+}
 
-  logger.log("Starting S3 Migration...");
+function getMimeType(filePath: string): string {
+  return lookup(filePath) || "application/octet-stream";
+}
+
+async function migrateToS3() {
+  const { isDryRun, isRollback, typeFilter } = parseArgs();
+
+  logger.log("=".repeat(60));
+  if (isDryRun) {
+    logger.log("DRY RUN MODE - No actual changes will be made");
+  }
+  if (isRollback) {
+    logger.log("ROLLBACK MODE - Downloading files from S3 to local");
+  }
+  if (typeFilter) {
+    logger.log(`TYPE FILTER: Only processing '${typeFilter}'`);
+  }
   logger.log("=".repeat(60));
 
-  // Create NestJS application context
+  logger.log("Starting S3 Migration...");
+
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ["error", "warn", "log"],
   });
@@ -68,7 +212,6 @@ async function migrateToS3() {
   const configService = app.get(ConfigService);
   const dataSource = app.get(DataSource);
 
-  // Validate configuration
   const uploadDir = configService.get<string>("UPLOAD_DIR") || "./uploads";
   const awsRegion = configService.get<string>("AWS_REGION");
   const awsBucket = configService.get<string>("AWS_S3_BUCKET");
@@ -76,31 +219,18 @@ async function migrateToS3() {
   const awsSecretAccessKey = configService.get<string>("AWS_SECRET_ACCESS_KEY");
 
   if (!awsRegion || !awsBucket || !awsAccessKeyId || !awsSecretAccessKey) {
-    logger.error(
-      "Missing AWS configuration. Please ensure the following environment variables are set:",
-    );
-    logger.error("  - AWS_REGION");
-    logger.error("  - AWS_S3_BUCKET");
-    logger.error("  - AWS_ACCESS_KEY_ID");
-    logger.error("  - AWS_SECRET_ACCESS_KEY");
+    logger.error("Missing AWS configuration. Required environment variables:");
+    logger.error("  - AWS_REGION, AWS_S3_BUCKET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY");
     await app.close();
     process.exit(1);
   }
 
-  // Verify upload directory exists
   const absoluteUploadDir = path.resolve(uploadDir);
-  if (!fs.existsSync(absoluteUploadDir)) {
-    logger.error(`Upload directory not found: ${absoluteUploadDir}`);
-    await app.close();
-    process.exit(1);
-  }
-
-  logger.log(`Source directory: ${absoluteUploadDir}`);
-  logger.log(`Target S3 bucket: ${awsBucket}`);
+  logger.log(`Local directory: ${absoluteUploadDir}`);
+  logger.log(`S3 bucket: ${awsBucket}`);
   logger.log(`AWS Region: ${awsRegion}`);
   logger.log("");
 
-  // Initialize S3 client
   const s3Client = new S3Client({
     region: awsRegion,
     credentials: {
@@ -109,35 +239,19 @@ async function migrateToS3() {
     },
   });
 
-  // Define document types to migrate
-  const documentTypes = [
-    {
-      name: "Drawing Versions",
-      tableName: "drawing_versions",
-      pathColumn: "file_path",
-    },
-    {
-      name: "RFQ Documents",
-      tableName: "rfq_documents",
-      pathColumn: "file_path",
-    },
-    {
-      name: "Customer Documents",
-      tableName: "customer_documents",
-      pathColumn: "file_path",
-    },
-    {
-      name: "Supplier Documents",
-      tableName: "supplier_documents",
-      pathColumn: "file_path",
-    },
-  ];
+  const filteredTypes = typeFilter
+    ? DOCUMENT_TYPES.filter(
+        (dt) =>
+          dt.name.toLowerCase().includes(typeFilter.toLowerCase()) ||
+          dt.areaPrefix.includes(typeFilter.toLowerCase()),
+      )
+    : DOCUMENT_TYPES;
 
   const results: MigrationResult[] = [];
 
-  for (const docType of documentTypes) {
+  for (const docType of filteredTypes) {
     logger.log(`\nProcessing ${docType.name}...`);
-    logger.log("-".repeat(40));
+    logger.log("-".repeat(50));
 
     const result: MigrationResult = {
       type: docType.name,
@@ -149,7 +263,6 @@ async function migrateToS3() {
     };
 
     try {
-      // Check if table exists
       const tableExists = await dataSource.query(`
         SELECT EXISTS (
           SELECT FROM information_schema.tables
@@ -163,162 +276,341 @@ async function migrateToS3() {
         continue;
       }
 
-      // Get all file records
-      const records: FileRecord[] = await dataSource.query(`
-        SELECT id, ${docType.pathColumn} as "filePath"
+      const additionalCols = docType.additionalColumns
+        ? `, ${docType.additionalColumns.join(", ")}`
+        : "";
+
+      const records = await dataSource.query(`
+        SELECT id, ${docType.pathColumn} as file_path ${additionalCols}
         FROM ${docType.tableName}
         WHERE ${docType.pathColumn} IS NOT NULL
         ORDER BY id
       `);
 
       result.total = records.length;
-      logger.log(`  Found ${records.length} records to migrate`);
+      logger.log(`  Found ${records.length} records`);
 
       for (const record of records) {
         try {
-          const localPath = path.join(absoluteUploadDir, record.filePath);
-
-          // Check if local file exists
-          if (!fs.existsSync(localPath)) {
-            logger.warn(`  [SKIP] File not found: ${record.filePath}`);
+          const currentPath = record.file_path;
+          if (!currentPath) {
             result.skipped++;
             continue;
           }
 
-          // Normalize S3 key (remove leading slashes, use forward slashes)
-          const s3Key = record.filePath.replace(/\\/g, "/").replace(/^\//, "");
-
-          if (!isDryRun) {
-            // Check if already exists in S3
-            try {
-              await s3Client.send(
-                new HeadObjectCommand({
-                  Bucket: awsBucket,
-                  Key: s3Key,
-                }),
-              );
-              logger.log(`  [SKIP] Already in S3: ${s3Key}`);
-              result.skipped++;
-              continue;
-            } catch (error: any) {
-              // File doesn't exist in S3, proceed with upload
-              if (error.name !== "NotFound" && error.$metadata?.httpStatusCode !== 404) {
-                throw error;
-              }
-            }
-
-            // Read file and upload to S3
-            const fileBuffer = fs.readFileSync(localPath);
-            const mimeType = getMimeType(localPath);
-
-            await s3Client.send(
-              new PutObjectCommand({
-                Bucket: awsBucket,
-                Key: s3Key,
-                Body: fileBuffer,
-                ContentType: mimeType,
-                Metadata: {
-                  originalPath: record.filePath,
-                  migratedAt: new Date().toISOString(),
-                },
-              }),
+          if (isRollback) {
+            await rollbackFile(
+              s3Client,
+              awsBucket,
+              currentPath,
+              absoluteUploadDir,
+              isDryRun,
+              result,
             );
-
-            logger.log(`  [OK] Migrated: ${s3Key}`);
           } else {
-            logger.log(
-              `  [DRY-RUN] Would migrate: ${record.filePath} -> s3://${awsBucket}/${s3Key}`,
+            await migrateFile(
+              s3Client,
+              awsBucket,
+              currentPath,
+              absoluteUploadDir,
+              docType,
+              record.id,
+              dataSource,
+              isDryRun,
+              result,
             );
           }
 
-          result.migrated++;
-        } catch (error: any) {
-          const errorMsg = `Failed to migrate record ${record.id}: ${error.message}`;
+          if (docType.additionalColumns) {
+            for (const col of docType.additionalColumns) {
+              if (col === "storage_bucket") continue;
+              const additionalPath = record[col];
+              if (additionalPath) {
+                if (isRollback) {
+                  await rollbackFile(
+                    s3Client,
+                    awsBucket,
+                    additionalPath,
+                    absoluteUploadDir,
+                    isDryRun,
+                    result,
+                  );
+                } else {
+                  await migrateAdditionalColumn(
+                    s3Client,
+                    awsBucket,
+                    additionalPath,
+                    absoluteUploadDir,
+                    docType,
+                    record.id,
+                    col,
+                    dataSource,
+                    isDryRun,
+                    result,
+                  );
+                }
+              }
+            }
+          }
+        } catch (error: unknown) {
+          const err = error as { message?: string };
+          const errorMsg = `Record ${record.id}: ${err.message || "Unknown error"}`;
           logger.error(`  [ERROR] ${errorMsg}`);
           result.errors.push(errorMsg);
           result.failed++;
         }
       }
-    } catch (error: any) {
-      logger.error(`  Error processing ${docType.name}: ${error.message}`);
-      result.errors.push(error.message);
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      logger.error(`  Error processing ${docType.name}: ${err.message || "Unknown error"}`);
+      result.errors.push(err.message || "Unknown error");
     }
 
     results.push(result);
   }
 
-  // Print summary
+  printSummary(results, isDryRun, isRollback);
+
+  await app.close();
+  const totalFailed = results.reduce((sum, r) => sum + r.failed, 0);
+  process.exit(totalFailed > 0 ? 1 : 0);
+}
+
+async function migrateFile(
+  s3Client: S3Client,
+  bucket: string,
+  currentPath: string,
+  uploadDir: string,
+  docType: DocumentTypeConfig,
+  recordId: number,
+  dataSource: DataSource,
+  isDryRun: boolean,
+  result: MigrationResult,
+): Promise<void> {
+  const localPath = path.join(uploadDir, currentPath);
+  const newS3Path = addAreaPrefix(currentPath, docType.areaPrefix);
+  const s3Key = newS3Path.replace(/\\/g, "/").replace(/^\//, "");
+
+  if (!shouldAddPrefix(currentPath, docType.areaPrefix) && !fs.existsSync(localPath)) {
+    logger.log(`  [SKIP] Already in S3 format: ${currentPath}`);
+    result.skipped++;
+    return;
+  }
+
+  if (!fs.existsSync(localPath)) {
+    logger.log(`  [SKIP] Local file not found: ${currentPath}`);
+    result.skipped++;
+    return;
+  }
+
+  if (!isDryRun) {
+    try {
+      await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: s3Key }));
+      logger.log(`  [SKIP] Already in S3: ${s3Key}`);
+      result.skipped++;
+      return;
+    } catch (error: unknown) {
+      const err = error as { name?: string; $metadata?: { httpStatusCode?: number } };
+      if (err.name !== "NotFound" && err.$metadata?.httpStatusCode !== 404) {
+        throw error;
+      }
+    }
+
+    const fileBuffer = fs.readFileSync(localPath);
+    const mimeType = getMimeType(localPath);
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: s3Key,
+        Body: fileBuffer,
+        ContentType: mimeType,
+        Metadata: {
+          originalPath: currentPath,
+          migratedAt: new Date().toISOString(),
+        },
+      }),
+    );
+
+    if (newS3Path !== currentPath) {
+      await dataSource.query(
+        `UPDATE ${docType.tableName} SET ${docType.pathColumn} = $1 WHERE id = $2`,
+        [newS3Path, recordId],
+      );
+    }
+
+    logger.log(`  [OK] ${currentPath} -> ${s3Key}`);
+  } else {
+    logger.log(`  [DRY-RUN] Would migrate: ${currentPath} -> s3://${bucket}/${s3Key}`);
+  }
+
+  result.migrated++;
+}
+
+async function migrateAdditionalColumn(
+  s3Client: S3Client,
+  bucket: string,
+  currentPath: string,
+  uploadDir: string,
+  docType: DocumentTypeConfig,
+  recordId: number,
+  columnName: string,
+  dataSource: DataSource,
+  isDryRun: boolean,
+  result: MigrationResult,
+): Promise<void> {
+  const localPath = path.join(uploadDir, currentPath);
+  const newS3Path = addAreaPrefix(currentPath, docType.areaPrefix);
+  const s3Key = newS3Path.replace(/\\/g, "/").replace(/^\//, "");
+
+  if (!fs.existsSync(localPath)) {
+    return;
+  }
+
+  if (!isDryRun) {
+    try {
+      await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: s3Key }));
+      return;
+    } catch (error: unknown) {
+      const err = error as { name?: string; $metadata?: { httpStatusCode?: number } };
+      if (err.name !== "NotFound" && err.$metadata?.httpStatusCode !== 404) {
+        throw error;
+      }
+    }
+
+    const fileBuffer = fs.readFileSync(localPath);
+    const mimeType = getMimeType(localPath);
+
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: s3Key,
+        Body: fileBuffer,
+        ContentType: mimeType,
+      }),
+    );
+
+    if (newS3Path !== currentPath) {
+      await dataSource.query(
+        `UPDATE ${docType.tableName} SET ${columnName} = $1 WHERE id = $2`,
+        [newS3Path, recordId],
+      );
+    }
+
+    logger.log(`  [OK] (${columnName}) ${currentPath} -> ${s3Key}`);
+  }
+}
+
+async function rollbackFile(
+  s3Client: S3Client,
+  bucket: string,
+  s3Path: string,
+  uploadDir: string,
+  isDryRun: boolean,
+  result: MigrationResult,
+): Promise<void> {
+  const s3Key = s3Path.replace(/\\/g, "/").replace(/^\//, "");
+  const localPath = path.join(uploadDir, s3Path);
+
+  if (fs.existsSync(localPath)) {
+    logger.log(`  [SKIP] Local file already exists: ${localPath}`);
+    result.skipped++;
+    return;
+  }
+
+  if (!isDryRun) {
+    try {
+      const response = await s3Client.send(
+        new GetObjectCommand({ Bucket: bucket, Key: s3Key }),
+      );
+
+      const chunks: Uint8Array[] = [];
+      const stream = response.Body as NodeJS.ReadableStream;
+      for await (const chunk of stream) {
+        chunks.push(chunk as Uint8Array);
+      }
+      const fileBuffer = Buffer.concat(chunks);
+
+      const localDir = path.dirname(localPath);
+      if (!fs.existsSync(localDir)) {
+        fs.mkdirSync(localDir, { recursive: true });
+      }
+
+      fs.writeFileSync(localPath, fileBuffer);
+      logger.log(`  [OK] Downloaded: ${s3Key} -> ${localPath}`);
+      result.migrated++;
+    } catch (error: unknown) {
+      const err = error as { name?: string; $metadata?: { httpStatusCode?: number } };
+      if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404) {
+        logger.log(`  [SKIP] Not in S3: ${s3Key}`);
+        result.skipped++;
+      } else {
+        throw error;
+      }
+    }
+  } else {
+    logger.log(`  [DRY-RUN] Would download: s3://${bucket}/${s3Key} -> ${localPath}`);
+    result.migrated++;
+  }
+}
+
+function printSummary(
+  results: MigrationResult[],
+  isDryRun: boolean,
+  isRollback: boolean,
+): void {
   logger.log(`\n${"=".repeat(60)}`);
-  logger.log("MIGRATION SUMMARY");
+  logger.log(isRollback ? "ROLLBACK SUMMARY" : "MIGRATION SUMMARY");
   logger.log("=".repeat(60));
 
+  let totalRecords = 0;
   let totalMigrated = 0;
   let totalSkipped = 0;
   let totalFailed = 0;
 
   for (const result of results) {
     logger.log(`\n${result.type}:`);
-    logger.log(`  Total: ${result.total}`);
-    logger.log(`  Migrated: ${result.migrated}`);
-    logger.log(`  Skipped: ${result.skipped}`);
-    logger.log(`  Failed: ${result.failed}`);
-
-    totalMigrated += result.migrated;
-    totalSkipped += result.skipped;
-    totalFailed += result.failed;
+    logger.log(`  Total:    ${result.total}`);
+    logger.log(`  ${isRollback ? "Downloaded" : "Migrated"}: ${result.migrated}`);
+    logger.log(`  Skipped:  ${result.skipped}`);
+    logger.log(`  Failed:   ${result.failed}`);
 
     if (result.errors.length > 0) {
       logger.log("  Errors:");
-      result.errors.forEach((err) => logger.log(`    - ${err}`));
+      result.errors.slice(0, 5).forEach((e) => logger.log(`    - ${e}`));
+      if (result.errors.length > 5) {
+        logger.log(`    ... and ${result.errors.length - 5} more`);
+      }
     }
+
+    totalRecords += result.total;
+    totalMigrated += result.migrated;
+    totalSkipped += result.skipped;
+    totalFailed += result.failed;
   }
 
-  logger.log(`\n${"-".repeat(40)}`);
-  logger.log(`Total migrated: ${totalMigrated}`);
-  logger.log(`Total skipped: ${totalSkipped}`);
-  logger.log(`Total failed: ${totalFailed}`);
+  logger.log(`\n${"-".repeat(60)}`);
+  logger.log("TOTALS:");
+  logger.log(`  Total Records:  ${totalRecords}`);
+  logger.log(`  ${isRollback ? "Downloaded" : "Migrated"}:       ${totalMigrated}`);
+  logger.log(`  Skipped:        ${totalSkipped}`);
+  logger.log(`  Failed:         ${totalFailed}`);
   logger.log("=".repeat(60));
 
   if (isDryRun) {
-    logger.log("\nDRY RUN COMPLETE - No changes were made");
-    logger.log("Run without --dry-run to perform actual migration");
-  } else if (totalMigrated > 0) {
-    logger.log("\nMigration complete!");
-    logger.log("\nNext steps:");
+    logger.log("\nThis was a DRY RUN. No changes were made.");
+    logger.log("Run without --dry-run to apply changes.");
+  } else if (!isRollback && totalMigrated > 0) {
+    logger.log("\nMigration complete! Next steps:");
     logger.log("  1. Verify files are accessible in S3");
-    logger.log("  2. Update STORAGE_TYPE=s3 in your .env file");
+    logger.log("  2. Update STORAGE_TYPE=s3 in .env");
     logger.log("  3. Restart your application");
-    logger.log("  4. Test file upload/download functionality");
-    logger.log("  5. Once verified, you can safely remove local files");
+    logger.log("  4. Test upload/download functionality");
+    logger.log("  5. Once verified, remove local files");
   }
-
-  await app.close();
 }
 
-function getMimeType(filePath: string): string {
-  const ext = path.extname(filePath).toLowerCase();
-  const mimeTypes: Record<string, string> = {
-    ".pdf": "application/pdf",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".gif": "image/gif",
-    ".dwg": "application/acad",
-    ".dxf": "application/dxf",
-    ".doc": "application/msword",
-    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ".xls": "application/vnd.ms-excel",
-    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  };
-  return mimeTypes[ext] || "application/octet-stream";
-}
-
-// Run the migration
-migrateToS3()
-  .then(() => {
-    process.exit(0);
-  })
-  .catch((error) => {
-    logger.error("Migration failed with error:", error);
-    process.exit(1);
-  });
+migrateToS3().catch((error) => {
+  logger.error(`Migration failed: ${error.message}`);
+  process.exit(1);
+});
