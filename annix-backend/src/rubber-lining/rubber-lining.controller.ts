@@ -131,6 +131,7 @@ import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberAuCocService } from "./rubber-au-coc.service";
 import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
+import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberOtherStockService } from "./rubber-other-stock.service";
@@ -139,6 +140,10 @@ import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.s
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService, StockLocationDto } from "./rubber-stock-location.service";
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParseModule = require("pdf-parse");
+const pdfParse = pdfParseModule.default ?? pdfParseModule;
 
 @ApiTags("Rubber Lining")
 @Controller("rubber-lining")
@@ -155,6 +160,7 @@ export class RubberLiningController {
     private readonly rubberStockLocationService: RubberStockLocationService,
     private readonly rubberQualityTrackingService: RubberQualityTrackingService,
     private readonly rubberOtherStockService: RubberOtherStockService,
+    private readonly rubberCocExtractionService: RubberCocExtractionService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -1518,6 +1524,50 @@ Formula: totalPrice = totalKg × salePricePerKg
     const note = await this.rubberDeliveryNoteService.finalizeDeliveryNote(Number(id));
     if (!note) throw new NotFoundException("Delivery note not found");
     return note;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/delivery-notes/:id/extract")
+  @ApiOperation({ summary: "Extract data from delivery note PDF using AI" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async extractDeliveryNoteData(@Param("id") id: string): Promise<RubberDeliveryNoteDto> {
+    const note = await this.rubberDeliveryNoteService.deliveryNoteById(Number(id));
+    if (!note) throw new NotFoundException("Delivery note not found");
+
+    if (!note.documentPath) {
+      throw new NotFoundException("Delivery note has no document attached");
+    }
+
+    const isAvailable = await this.rubberCocExtractionService.isAvailable();
+    if (!isAvailable) {
+      throw new NotFoundException(
+        "AI extraction service not available - GEMINI_API_KEY not configured",
+      );
+    }
+
+    const pdfBuffer = await this.storageService.download(note.documentPath);
+    let pdfText = "";
+    try {
+      const pdfData = await pdfParse(pdfBuffer);
+      pdfText = pdfData.text || "";
+    } catch (error) {
+      throw new NotFoundException(`Failed to extract text from PDF: ${error.message}`);
+    }
+
+    if (pdfText.length < 50) {
+      throw new NotFoundException("PDF text too short - may be image-based PDF that requires OCR");
+    }
+
+    const extractionResult = await this.rubberCocExtractionService.extractDeliveryNote(pdfText);
+
+    const updatedNote = await this.rubberDeliveryNoteService.setExtractedData(
+      Number(id),
+      extractionResult.data,
+    );
+    if (!updatedNote) throw new NotFoundException("Failed to update delivery note");
+
+    return updatedNote;
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
