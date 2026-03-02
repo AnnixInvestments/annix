@@ -30,6 +30,7 @@ import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberEmailMonitorService } from "./rubber-email-monitor.service";
 import {
+  AnalyzeCustomerDnsResult,
   AnalyzeFilesResult,
   InboundEmailData,
   ProcessedEmailResult,
@@ -349,6 +350,65 @@ export class RubberInboundEmailController {
     );
 
     return { deliveryNoteIds: result.deliveryNoteIds || [] };
+  }
+
+  @Post("portal/customer-delivery-notes/analyze")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FilesInterceptor("files", 20))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Analyze customer delivery note PDF files for AI extraction" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        files: {
+          type: "array",
+          items: { type: "string", format: "binary" },
+        },
+      },
+    },
+  })
+  async analyzeCustomerDeliveryNotes(
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<AnalyzeCustomerDnsResult> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException("No files uploaded");
+    }
+
+    this.logger.log(`Analyzing ${files.length} customer delivery note files...`);
+    return this.inboundEmailService.analyzeCustomerDeliveryNotes(files);
+  }
+
+  @Post("portal/customer-delivery-notes/create-from-analysis")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FilesInterceptor("files", 20))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Create customer delivery notes from analyzed files" })
+  async createCustomerDnsFromAnalysis(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: { analysis: string; overrides: string },
+    @Req() req: AdminRequest,
+  ): Promise<{ deliveryNoteIds: number[] }> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException("No files uploaded");
+    }
+
+    const user = req.user;
+    const createdBy = user?.email || "upload";
+
+    const analysis: AnalyzeCustomerDnsResult = JSON.parse(body.analysis);
+    const overrides = body.overrides ? JSON.parse(body.overrides) : [];
+
+    this.logger.log(`Creating ${analysis.groups.length} customer DNs from analyzed files...`);
+
+    return this.inboundEmailService.createCustomerDnsFromAnalysis(
+      files,
+      analysis,
+      overrides,
+      createdBy,
+    );
   }
 
   @Post("portal/orders/analyze")

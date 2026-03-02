@@ -81,6 +81,15 @@ export class RubberDeliveryNoteItem {
   @Column({ name: "linked_batch_ids", type: "jsonb", default: "[]" })
   linkedBatchIds: number[];
 
+  @Column({ name: "compound_type", type: "varchar", length: 100, nullable: true })
+  compoundType: string | null;
+
+  @Column({ name: "quantity", type: "int", nullable: true })
+  quantity: number | null;
+
+  @Column({ name: "coc_batch_numbers", type: "jsonb", nullable: true })
+  cocBatchNumbers: string[] | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

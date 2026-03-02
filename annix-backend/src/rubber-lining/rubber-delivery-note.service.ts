@@ -100,6 +100,7 @@ export class RubberDeliveryNoteService {
       deliveryNoteType: dto.deliveryNoteType,
       deliveryNoteNumber: dto.deliveryNoteNumber,
       deliveryDate: dto.deliveryDate ? new Date(dto.deliveryDate) : null,
+      customerReference: dto.customerReference ?? null,
       supplierCompanyId: dto.supplierCompanyId,
       documentPath: dto.documentPath ?? null,
       status: DeliveryNoteStatus.PENDING,
@@ -270,6 +271,9 @@ export class RubberDeliveryNoteService {
       thicknessMm: dto.thicknessMm ?? null,
       lengthM: dto.lengthM ?? null,
       linkedBatchIds: [],
+      compoundType: dto.compoundType ?? null,
+      quantity: dto.quantity ?? null,
+      cocBatchNumbers: dto.cocBatchNumbers ?? null,
     });
 
     const saved = await this.deliveryNoteItemRepository.save(item);
@@ -351,6 +355,7 @@ export class RubberDeliveryNoteService {
       deliveryNoteTypeLabel: DELIVERY_NOTE_TYPE_LABELS[note.deliveryNoteType],
       deliveryNoteNumber: note.deliveryNoteNumber,
       deliveryDate: note.deliveryDate?.toISOString().split("T")[0] ?? null,
+      customerReference: note.customerReference,
       supplierCompanyId: note.supplierCompanyId,
       supplierCompanyName: note.supplierCompany?.name ?? null,
       documentPath: note.documentPath,
@@ -379,6 +384,9 @@ export class RubberDeliveryNoteService {
       thicknessMm: item.thicknessMm ? Number(item.thicknessMm) : null,
       lengthM: item.lengthM ? Number(item.lengthM) : null,
       linkedBatchIds: item.linkedBatchIds,
+      compoundType: item.compoundType,
+      quantity: item.quantity,
+      cocBatchNumbers: item.cocBatchNumbers,
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
     };

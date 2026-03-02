@@ -201,6 +201,7 @@ export class RubberDeliveryNoteDto {
   deliveryNoteTypeLabel: string;
   deliveryNoteNumber: string;
   deliveryDate: string | null;
+  customerReference: string | null;
   supplierCompanyId: number;
   supplierCompanyName: string | null;
   documentPath: string | null;
@@ -224,6 +225,10 @@ export class CreateDeliveryNoteDto {
   @IsOptional()
   @IsDateString()
   deliveryDate?: string | null;
+
+  @IsOptional()
+  @IsString()
+  customerReference?: string | null;
 
   @IsNumber()
   supplierCompanyId: number;
@@ -264,6 +269,9 @@ export class DeliveryNoteItemDto {
   thicknessMm: number | null;
   lengthM: number | null;
   linkedBatchIds: number[];
+  compoundType: string | null;
+  quantity: number | null;
+  cocBatchNumbers: string[] | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -303,6 +311,19 @@ export class CreateDeliveryNoteItemDto {
   @IsOptional()
   @IsNumber()
   lengthM?: number | null;
+
+  @IsOptional()
+  @IsString()
+  compoundType?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  quantity?: number | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  cocBatchNumbers?: string[] | null;
 }
 
 export class RubberRollStockDto {

@@ -1,11 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ExtractedDeliveryNoteData } from "./entities/rubber-delivery-note.entity";
+import {
+  ExtractedCustomerDeliveryNoteData,
+  ExtractedDeliveryNoteData,
+} from "./entities/rubber-delivery-note.entity";
 import { ExtractedCocData, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import {
   CALENDARER_COC_SYSTEM_PROMPT,
   COMPOUNDER_COC_SYSTEM_PROMPT,
+  CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
   calendererCocExtractionPrompt,
   compounderCocExtractionPrompt,
+  customerDeliveryNoteExtractionPrompt,
   DELIVERY_NOTE_SYSTEM_PROMPT,
   deliveryNoteExtractionPrompt,
 } from "./prompts/rubber-coc.prompt";
@@ -187,6 +192,33 @@ export class RubberCocExtractionService {
 
     return {
       data: response.data as ExtractedDeliveryNoteData,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
+  async extractCustomerDeliveryNote(pdfText: string): Promise<{
+    data: ExtractedCustomerDeliveryNoteData;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = Date.now();
+    this.logger.log("Extracting customer delivery note data...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const response = await this.callGemini(
+      CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
+      customerDeliveryNoteExtractionPrompt(pdfText),
+    );
+
+    const processingTimeMs = Date.now() - startTime;
+    this.logger.log(`Customer delivery note extracted in ${processingTimeMs}ms`);
+
+    return {
+      data: response.data as ExtractedCustomerDeliveryNoteData,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };

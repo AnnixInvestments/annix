@@ -179,3 +179,56 @@ ${pdfText}
 
 Return ONLY a valid JSON object with the extracted data.`;
 }
+
+export const CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from customer delivery notes for rubber sheeting products.
+
+These are delivery notes from rubber suppliers to their customers (e.g., from AU Industries to mining companies). They typically contain:
+- Delivery note number (DN number)
+- Customer's PO or reference number
+- Delivery date
+- Customer name/company
+- Line items with rubber sheet specifications
+
+Extract information from the delivery note text and return a valid JSON object.
+
+Return a JSON object with this structure:
+{
+  "deliveryNoteNumber": string or null (e.g., "DN1294", "12345"),
+  "customerReference": string or null (customer's PO number, order ref, etc.),
+  "deliveryDate": string or null (ISO date format YYYY-MM-DD),
+  "customerName": string or null (the receiving customer/company name),
+  "pageInfo": {
+    "currentPage": number or null (if page indicator like "Page: 1/2" is present),
+    "totalPages": number or null
+  },
+  "lineItems": [
+    {
+      "lineNumber": number or null (line/item number on the document),
+      "compoundType": string or null (e.g., "AU-NR-60", "RSCA40", "NR-40"),
+      "thicknessMm": number or null (sheet thickness in mm),
+      "widthMm": number or null (sheet width in mm),
+      "lengthM": number or null (sheet/roll length in meters),
+      "quantity": number or null (number of items/rolls),
+      "rollWeightKg": number or null (weight per roll in kg),
+      "cocBatchNumbers": string[] (linked COC/batch numbers, e.g., ["B225", "B226"])
+    }
+  ]
+}
+
+Guidelines:
+- Customer delivery notes show what a supplier is delivering TO a customer
+- Look for "Delivery Note", "Despatch Note", "Packing List" headers
+- Customer reference may be labeled as "PO Number", "Order Ref", "Customer Ref", "Your Ref"
+- Compound type codes often include rubber type indicators (NR=Natural Rubber, NBR=Nitrile, etc.)
+- Thickness is typically 3-25mm, width is typically 800-1600mm
+- If you see "Page: X/Y" or "Page X of Y", extract page info
+- COC batch numbers link the delivered material to quality certificates
+- Return ONLY the JSON object, no additional text`;
+
+export function customerDeliveryNoteExtractionPrompt(pdfText: string): string {
+  return `Please extract structured data from this customer delivery note:
+
+${pdfText}
+
+Return ONLY a valid JSON object with the extracted data.`;
+}

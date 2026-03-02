@@ -36,6 +36,24 @@ export interface ExtractedDeliveryNoteData {
   }>;
 }
 
+export interface ExtractedCustomerDeliveryNoteData {
+  deliveryNoteNumber?: string;
+  customerReference?: string;
+  deliveryDate?: string;
+  customerName?: string;
+  pageInfo?: { currentPage?: number; totalPages?: number };
+  lineItems?: Array<{
+    lineNumber?: number;
+    compoundType?: string;
+    thicknessMm?: number;
+    widthMm?: number;
+    lengthM?: number;
+    quantity?: number;
+    rollWeightKg?: number;
+    cocBatchNumbers?: string[];
+  }>;
+}
+
 @Entity("rubber_delivery_notes")
 export class RubberDeliveryNote {
   @PrimaryGeneratedColumn()
@@ -56,6 +74,9 @@ export class RubberDeliveryNote {
 
   @Column({ name: "delivery_date", type: "date", nullable: true })
   deliveryDate: Date | null;
+
+  @Column({ name: "customer_reference", type: "varchar", length: 200, nullable: true })
+  customerReference: string | null;
 
   @Column({ name: "supplier_company_id", type: "int" })
   supplierCompanyId: number;

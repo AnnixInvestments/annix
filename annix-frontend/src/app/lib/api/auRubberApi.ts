@@ -339,6 +339,7 @@ export interface RubberDeliveryNoteDto {
   deliveryNoteType: DeliveryNoteType;
   deliveryNoteTypeLabel: string;
   deliveryNoteNumber: string | null;
+  customerReference: string | null;
   supplierCompanyId: number;
   supplierCompanyName: string | null;
   deliveryDate: string | null;
@@ -363,7 +364,58 @@ export interface RubberDeliveryNoteItemDto {
   thicknessMm: number | null;
   lengthM: number | null;
   linkedBatchIds: number[] | null;
+  compoundType: string | null;
+  quantity: number | null;
+  cocBatchNumbers: string[] | null;
   createdAt: string;
+}
+
+export interface AnalyzedCustomerDnFile {
+  filename: string;
+  deliveryNoteNumber: string | null;
+  customerReference: string | null;
+  deliveryDate: string | null;
+  customerName: string | null;
+  customerId: number | null;
+  pageInfo: { currentPage: number | null; totalPages: number | null } | null;
+  lineItems: Array<{
+    lineNumber: number | null;
+    compoundType: string | null;
+    thicknessMm: number | null;
+    widthMm: number | null;
+    lengthM: number | null;
+    quantity: number | null;
+    rollWeightKg: number | null;
+    cocBatchNumbers: string[] | null;
+  }>;
+  pdfText: string;
+}
+
+export interface CustomerDnGroup {
+  deliveryNoteNumber: string;
+  customerReference: string | null;
+  deliveryDate: string | null;
+  customerId: number | null;
+  customerName: string | null;
+  files: Array<{
+    fileIndex: number;
+    filename: string;
+    pageNumber: number | null;
+  }>;
+  allLineItems: AnalyzedCustomerDnFile["lineItems"];
+}
+
+export interface AnalyzeCustomerDnsResult {
+  files: AnalyzedCustomerDnFile[];
+  groups: CustomerDnGroup[];
+  unmatchedCustomerNames: string[];
+}
+
+export interface CustomerDnOverride {
+  deliveryNoteNumber?: string;
+  customerId?: number;
+  customerReference?: string;
+  deliveryDate?: string;
 }
 
 export interface RubberRollStockDto {
@@ -1885,6 +1937,44 @@ class AuRubberApiClient {
 
   async deliveryNoteItems(deliveryNoteId: number): Promise<RubberDeliveryNoteItemDto[]> {
     return this.request(`/rubber-lining/portal/delivery-notes/${deliveryNoteId}/items`);
+  }
+
+  async analyzeCustomerDeliveryNotes(files: File[]): Promise<AnalyzeCustomerDnsResult> {
+    return this.requestWithFiles("/rubber-lining/portal/customer-delivery-notes/analyze", files);
+  }
+
+  async createCustomerDnsFromAnalysis(
+    files: File[],
+    analysis: AnalyzeCustomerDnsResult,
+    overrides: CustomerDnOverride[],
+  ): Promise<{ deliveryNoteIds: number[] }> {
+    const url = `${this.baseURL}/rubber-lining/portal/customer-delivery-notes/create-from-analysis`;
+    const formData = new FormData();
+
+    files.forEach((file) => {
+      formData.append("files", file);
+    });
+
+    formData.append("analysis", JSON.stringify(analysis));
+    formData.append("overrides", JSON.stringify(overrides));
+
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error (${response.status}): ${errorText}`);
+    }
+
+    return response.json();
   }
 
   async rollStock(filters?: {

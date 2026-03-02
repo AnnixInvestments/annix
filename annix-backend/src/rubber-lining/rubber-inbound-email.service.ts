@@ -87,6 +87,47 @@ export interface AnalyzeFilesResult {
   graphPdfs: number[];
 }
 
+export interface AnalyzedCustomerDnFile {
+  filename: string;
+  deliveryNoteNumber: string | null;
+  customerReference: string | null;
+  deliveryDate: string | null;
+  customerName: string | null;
+  customerId: number | null;
+  pageInfo: { currentPage: number | null; totalPages: number | null } | null;
+  lineItems: Array<{
+    lineNumber: number | null;
+    compoundType: string | null;
+    thicknessMm: number | null;
+    widthMm: number | null;
+    lengthM: number | null;
+    quantity: number | null;
+    rollWeightKg: number | null;
+    cocBatchNumbers: string[] | null;
+  }>;
+  pdfText: string;
+}
+
+export interface CustomerDnGroup {
+  deliveryNoteNumber: string;
+  customerReference: string | null;
+  deliveryDate: string | null;
+  customerId: number | null;
+  customerName: string | null;
+  files: Array<{
+    fileIndex: number;
+    filename: string;
+    pageNumber: number | null;
+  }>;
+  allLineItems: AnalyzedCustomerDnFile["lineItems"];
+}
+
+export interface AnalyzeCustomerDnsResult {
+  files: AnalyzedCustomerDnFile[];
+  groups: CustomerDnGroup[];
+  unmatchedCustomerNames: string[];
+}
+
 interface SupplierMapping {
   company: RubberCompany;
   cocType: SupplierCocType;
@@ -1075,5 +1116,236 @@ ${truncatedText}`;
       compoundCodingId: coding.id,
       parsedInfo: parsed,
     };
+  }
+
+  async analyzeCustomerDeliveryNotes(
+    files: Express.Multer.File[],
+  ): Promise<AnalyzeCustomerDnsResult> {
+    this.logger.log(`Analyzing ${files.length} customer delivery note files...`);
+    const companies = await this.companyRepository.find();
+    const customerCompanies = companies.filter((c) => c.companyType === "CUSTOMER");
+
+    const analyzedFiles: AnalyzedCustomerDnFile[] = [];
+    const unmatchedCustomerNames: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      this.logger.log(`Analyzing customer DN file ${i + 1}/${files.length}: ${file.originalname}`);
+
+      const pdfText = await this.extractTextFromPdf(file.buffer);
+
+      let extractedData: Record<string, unknown> = {};
+      try {
+        const extraction = await this.cocExtractionService.extractCustomerDeliveryNote(pdfText);
+        extractedData = extraction.data as Record<string, unknown>;
+        this.logger.log(
+          `Extracted customer DN data: ${JSON.stringify(extractedData).substring(0, 300)}`,
+        );
+      } catch (error) {
+        this.logger.error(`Failed to extract customer DN from ${file.originalname}: ${error.message}`);
+      }
+
+      const customerName = (extractedData.customerName as string) || null;
+      let customerId: number | null = null;
+
+      if (customerName) {
+        const matchedCompany = this.matchCustomerByName(customerName, customerCompanies);
+        if (matchedCompany) {
+          customerId = matchedCompany.id;
+          this.logger.log(`Matched customer "${customerName}" to company ${matchedCompany.name} (ID: ${matchedCompany.id})`);
+        } else {
+          if (!unmatchedCustomerNames.includes(customerName)) {
+            unmatchedCustomerNames.push(customerName);
+          }
+          this.logger.warn(`Could not match customer "${customerName}" to any existing company`);
+        }
+      }
+
+      const lineItems = (
+        (extractedData.lineItems as Array<Record<string, unknown>>) || []
+      ).map((item) => ({
+        lineNumber: (item.lineNumber as number) || null,
+        compoundType: (item.compoundType as string) || null,
+        thicknessMm: (item.thicknessMm as number) || null,
+        widthMm: (item.widthMm as number) || null,
+        lengthM: (item.lengthM as number) || null,
+        quantity: (item.quantity as number) || null,
+        rollWeightKg: (item.rollWeightKg as number) || null,
+        cocBatchNumbers: (item.cocBatchNumbers as string[]) || null,
+      }));
+
+      const pageInfo = extractedData.pageInfo as { currentPage?: number; totalPages?: number } | null;
+
+      analyzedFiles.push({
+        filename: file.originalname,
+        deliveryNoteNumber: (extractedData.deliveryNoteNumber as string) || null,
+        customerReference: (extractedData.customerReference as string) || null,
+        deliveryDate: (extractedData.deliveryDate as string) || null,
+        customerName,
+        customerId,
+        pageInfo: pageInfo
+          ? { currentPage: pageInfo.currentPage || null, totalPages: pageInfo.totalPages || null }
+          : null,
+        lineItems,
+        pdfText,
+      });
+    }
+
+    const groups = this.groupCustomerDnsByNumber(analyzedFiles);
+
+    return {
+      files: analyzedFiles,
+      groups,
+      unmatchedCustomerNames,
+    };
+  }
+
+  private matchCustomerByName(
+    customerName: string,
+    customerCompanies: RubberCompany[],
+  ): RubberCompany | null {
+    const nameLower = customerName.toLowerCase().trim();
+
+    const exactMatch = customerCompanies.find(
+      (c) => c.name.toLowerCase() === nameLower,
+    );
+    if (exactMatch) return exactMatch;
+
+    const containsMatch = customerCompanies.find(
+      (c) =>
+        c.name.toLowerCase().includes(nameLower) ||
+        nameLower.includes(c.name.toLowerCase()),
+    );
+    if (containsMatch) return containsMatch;
+
+    const words = nameLower.split(/\s+/).filter((w) => w.length > 2);
+    const partialMatch = customerCompanies.find((c) => {
+      const companyWords = c.name.toLowerCase().split(/\s+/);
+      return words.some((w) => companyWords.some((cw) => cw.includes(w) || w.includes(cw)));
+    });
+
+    return partialMatch || null;
+  }
+
+  private groupCustomerDnsByNumber(files: AnalyzedCustomerDnFile[]): CustomerDnGroup[] {
+    const groupMap = new Map<string, CustomerDnGroup>();
+
+    files.forEach((file, index) => {
+      const dnNumber = file.deliveryNoteNumber || `unknown-${index}`;
+
+      if (!groupMap.has(dnNumber)) {
+        groupMap.set(dnNumber, {
+          deliveryNoteNumber: dnNumber,
+          customerReference: file.customerReference,
+          deliveryDate: file.deliveryDate,
+          customerId: file.customerId,
+          customerName: file.customerName,
+          files: [],
+          allLineItems: [],
+        });
+      }
+
+      const group = groupMap.get(dnNumber)!;
+
+      group.files.push({
+        fileIndex: index,
+        filename: file.filename,
+        pageNumber: file.pageInfo?.currentPage || null,
+      });
+
+      group.allLineItems = [...group.allLineItems, ...file.lineItems];
+
+      if (!group.customerReference && file.customerReference) {
+        group.customerReference = file.customerReference;
+      }
+      if (!group.deliveryDate && file.deliveryDate) {
+        group.deliveryDate = file.deliveryDate;
+      }
+      if (!group.customerId && file.customerId) {
+        group.customerId = file.customerId;
+        group.customerName = file.customerName;
+      }
+    });
+
+    const groups = Array.from(groupMap.values());
+
+    groups.forEach((group) => {
+      group.files.sort((a, b) => {
+        if (a.pageNumber !== null && b.pageNumber !== null) {
+          return a.pageNumber - b.pageNumber;
+        }
+        return a.fileIndex - b.fileIndex;
+      });
+    });
+
+    return groups;
+  }
+
+  async createCustomerDnsFromAnalysis(
+    files: Express.Multer.File[],
+    analysis: AnalyzeCustomerDnsResult,
+    overrides: Array<{
+      deliveryNoteNumber?: string;
+      customerId?: number;
+      customerReference?: string;
+      deliveryDate?: string;
+    }>,
+    createdBy?: string,
+  ): Promise<{ deliveryNoteIds: number[] }> {
+    const deliveryNoteIds: number[] = [];
+
+    for (let groupIdx = 0; groupIdx < analysis.groups.length; groupIdx++) {
+      const group = analysis.groups[groupIdx];
+      const override = overrides[groupIdx] || {};
+
+      const customerId = override.customerId || group.customerId;
+      if (!customerId) {
+        this.logger.warn(`Skipping group ${group.deliveryNoteNumber}: no customer ID`);
+        continue;
+      }
+
+      const deliveryNoteNumber = override.deliveryNoteNumber || group.deliveryNoteNumber;
+      const customerReference = override.customerReference || group.customerReference;
+      const deliveryDate = override.deliveryDate || group.deliveryDate;
+
+      const groupFiles = group.files.map((f) => files[f.fileIndex]);
+      const firstFile = groupFiles[0];
+      if (!firstFile) continue;
+
+      const subPath = `rubber-lining/customer-delivery-notes/${customerId}`;
+      const storageResult = await this.storageService.upload(firstFile, subPath);
+
+      const dn = await this.deliveryNoteService.createDeliveryNote(
+        {
+          deliveryNoteType: DeliveryNoteType.ROLL,
+          supplierCompanyId: customerId,
+          documentPath: storageResult.path,
+          deliveryNoteNumber,
+          deliveryDate: deliveryDate || undefined,
+          customerReference: customerReference || undefined,
+        },
+        createdBy,
+      );
+
+      for (const lineItem of group.allLineItems) {
+        await this.deliveryNoteService.createDeliveryNoteItem({
+          deliveryNoteId: dn.id,
+          compoundType: lineItem.compoundType,
+          thicknessMm: lineItem.thicknessMm,
+          widthMm: lineItem.widthMm,
+          lengthM: lineItem.lengthM,
+          quantity: lineItem.quantity,
+          rollWeightKg: lineItem.rollWeightKg,
+          cocBatchNumbers: lineItem.cocBatchNumbers,
+        });
+      }
+
+      deliveryNoteIds.push(dn.id);
+      this.logger.log(
+        `Created customer DN ${dn.id} (${deliveryNoteNumber}) with ${group.allLineItems.length} line items`,
+      );
+    }
+
+    return { deliveryNoteIds };
   }
 }

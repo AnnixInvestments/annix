@@ -1,9 +1,10 @@
 "use client";
 
-import { FileText, X } from "lucide-react";
+import { FileText, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { CustomerDnAnalysisModal } from "@/app/au-rubber/components/CustomerDnAnalysisModal";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
   ITEMS_PER_PAGE,
@@ -16,6 +17,8 @@ import {
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
+  type AnalyzeCustomerDnsResult,
+  type CustomerDnOverride,
   type DeliveryNoteStatus,
   type DeliveryNoteType,
   type RubberDeliveryNoteDto,
@@ -48,6 +51,9 @@ export default function CustomerDeliveryNotesPage() {
   const [uploadDeliveryDate, setUploadDeliveryDate] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalyzeCustomerDnsResult | null>(null);
+  const [analysisFiles, setAnalysisFiles] = useState<File[]>([]);
 
   const fetchData = async () => {
     try {
@@ -133,7 +139,54 @@ export default function CustomerDeliveryNotesPage() {
     setCurrentPage(0);
   }, [searchQuery, filterType, filterStatus]);
 
-  const handleFilesSelected = (files: File[]) => {
+  const handleFilesSelected = async (files: File[]) => {
+    if (files.length === 0) return;
+
+    setIsAnalyzing(true);
+    setAnalysisFiles(files);
+
+    try {
+      showToast("Analyzing files with AI...", "info");
+      const result = await auRubberApiClient.analyzeCustomerDeliveryNotes(files);
+      setAnalysisResult(result);
+      showToast(`Found ${result.groups.length} delivery note(s)`, "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to analyze files", "error");
+      setAnalysisResult(null);
+      setAnalysisFiles([]);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleAnalysisConfirm = async (overrides: CustomerDnOverride[]) => {
+    if (!analysisResult || analysisFiles.length === 0) return;
+
+    setIsUploading(true);
+
+    try {
+      const result = await auRubberApiClient.createCustomerDnsFromAnalysis(
+        analysisFiles,
+        analysisResult,
+        overrides,
+      );
+      showToast(`Created ${result.deliveryNoteIds.length} delivery note(s)`, "success");
+      setAnalysisResult(null);
+      setAnalysisFiles([]);
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to create delivery notes", "error");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleAnalysisClose = () => {
+    setAnalysisResult(null);
+    setAnalysisFiles([]);
+  };
+
+  const handleManualFilesSelected = (files: File[]) => {
     setUploadFiles((prev) => [...prev, ...files]);
     if (!showUploadModal) {
       setShowUploadModal(true);
@@ -490,7 +543,7 @@ export default function CustomerDeliveryNotesPage() {
                     PDF Documents
                   </label>
                   <FileDropZone
-                    onFilesSelected={(files) => setUploadFiles((prev) => [...prev, ...files])}
+                    onFilesSelected={handleManualFilesSelected}
                     className="border-2 border-dashed rounded-lg"
                     disabled={isUploading}
                   />
@@ -594,6 +647,30 @@ export default function CustomerDeliveryNotesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {isAnalyzing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-75">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+            <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
+            <p className="text-lg font-medium text-gray-900">Analyzing delivery notes...</p>
+            <p className="text-sm text-gray-500 mt-1">
+              AI is extracting data from {analysisFiles.length} file
+              {analysisFiles.length > 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {analysisResult && (
+        <CustomerDnAnalysisModal
+          analysis={analysisResult}
+          files={analysisFiles}
+          customers={customers}
+          onClose={handleAnalysisClose}
+          onConfirm={handleAnalysisConfirm}
+          isCreating={isUploading}
+        />
       )}
     </div>
   );
