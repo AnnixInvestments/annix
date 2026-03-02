@@ -1760,6 +1760,13 @@ class StockControlApiClient {
     });
 
     if (!response.ok) {
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("application/json")) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message ?? `Failed to download staff ID card PDF: ${response.status}`,
+        );
+      }
       throw new Error(`Failed to download staff ID card PDF: ${response.status}`);
     }
 
@@ -1786,6 +1793,13 @@ class StockControlApiClient {
     });
 
     if (!response.ok) {
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("application/json")) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message ?? `Failed to download batch ID cards: ${response.status}`,
+        );
+      }
       throw new Error(`Failed to download batch ID cards: ${response.status}`);
     }
 
