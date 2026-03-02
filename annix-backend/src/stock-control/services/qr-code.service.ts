@@ -492,9 +492,10 @@ export class QrCodeService {
     try {
       this.logger.log("Launching puppeteer browser...");
       const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+      this.logger.log(`Using executable path: ${executablePath ?? "bundled"}`);
       browser = await puppeteer.launch({
-        headless: true,
-        timeout: 30000,
+        headless: "shell",
+        timeout: 60000,
         executablePath: executablePath ?? undefined,
         args: [
           "--no-sandbox",
@@ -503,6 +504,9 @@ export class QrCodeService {
           "--disable-gpu",
           "--disable-extensions",
           "--disable-software-rasterizer",
+          "--single-process",
+          "--no-zygote",
+          "--disable-features=VizDisplayCompositor",
         ],
       });
       this.logger.log("Browser launched successfully");
