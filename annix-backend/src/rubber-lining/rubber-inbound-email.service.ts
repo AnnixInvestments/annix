@@ -1124,27 +1124,41 @@ ${truncatedText}`;
     this.logger.log(`Analyzing ${files.length} customer delivery note files...`);
     const companies = await this.companyRepository.find();
     const customerCompanies = companies.filter((c) => c.companyType === "CUSTOMER");
+    this.logger.log(`Found ${customerCompanies.length} customer companies for matching`);
 
     const analyzedFiles: AnalyzedCustomerDnFile[] = [];
     const unmatchedCustomerNames: string[] = [];
+    const extractionErrors: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       this.logger.log(`Analyzing customer DN file ${i + 1}/${files.length}: ${file.originalname}`);
 
       const pdfText = await this.extractTextFromPdf(file.buffer);
+      this.logger.log(`Extracted ${pdfText.length} characters of text from ${file.originalname}`);
+
+      if (pdfText.length < 50) {
+        this.logger.warn(
+          `PDF text too short (${pdfText.length} chars) for ${file.originalname} - may be image-based PDF`,
+        );
+      }
 
       let extractedData: Record<string, unknown> = {};
       try {
+        const isAvailable = await this.cocExtractionService.isAvailable();
+        if (!isAvailable) {
+          throw new Error("GEMINI_API_KEY not configured - AI extraction unavailable");
+        }
+
         const extraction = await this.cocExtractionService.extractCustomerDeliveryNote(pdfText);
         extractedData = extraction.data as Record<string, unknown>;
         this.logger.log(
-          `Extracted customer DN data: ${JSON.stringify(extractedData).substring(0, 300)}`,
+          `Extracted customer DN data: ${JSON.stringify(extractedData).substring(0, 500)}`,
         );
       } catch (error) {
-        this.logger.error(
-          `Failed to extract customer DN from ${file.originalname}: ${error.message}`,
-        );
+        const errorMsg = `Failed to extract from ${file.originalname}: ${error.message}`;
+        this.logger.error(errorMsg);
+        extractionErrors.push(errorMsg);
       }
 
       const customerName = (extractedData.customerName as string) || null;
@@ -1200,6 +1214,14 @@ ${truncatedText}`;
 
     const groups = this.groupCustomerDnsByNumber(analyzedFiles);
 
+    this.logger.log(
+      `Analysis complete: ${analyzedFiles.length} files, ${groups.length} groups, ${extractionErrors.length} errors`,
+    );
+
+    if (extractionErrors.length > 0) {
+      this.logger.warn(`Extraction errors: ${extractionErrors.join("; ")}`);
+    }
+
     return {
       files: analyzedFiles,
       groups,
@@ -1234,7 +1256,17 @@ ${truncatedText}`;
     const groupMap = new Map<string, CustomerDnGroup>();
 
     files.forEach((file, index) => {
-      const dnNumber = file.deliveryNoteNumber || `unknown-${index}`;
+      let dnNumber = file.deliveryNoteNumber;
+
+      if (!dnNumber) {
+        const filenameMatch = file.filename.match(/DN[-_]?(\d+)/i);
+        if (filenameMatch) {
+          dnNumber = `DN${filenameMatch[1]}`;
+          this.logger.log(`Extracted DN number from filename: ${dnNumber}`);
+        } else {
+          dnNumber = file.filename.replace(/\.[^/.]+$/, "");
+        }
+      }
 
       if (!groupMap.has(dnNumber)) {
         groupMap.set(dnNumber, {

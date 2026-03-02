@@ -140,6 +140,7 @@ export default function CustomerDeliveryNotesPage() {
   }, [searchQuery, filterType, filterStatus]);
 
   const handleFilesSelected = async (files: File[]) => {
+    console.log("[CustomerDN] handleFilesSelected called with", files.length, "files");
     if (files.length === 0) return;
 
     setIsAnalyzing(true);
@@ -147,10 +148,13 @@ export default function CustomerDeliveryNotesPage() {
 
     try {
       showToast("Analyzing files with AI...", "info");
+      console.log("[CustomerDN] Calling analyzeCustomerDeliveryNotes API...");
       const result = await auRubberApiClient.analyzeCustomerDeliveryNotes(files);
+      console.log("[CustomerDN] Analysis result:", result);
       setAnalysisResult(result);
       showToast(`Found ${result.groups.length} delivery note(s)`, "success");
     } catch (err) {
+      console.error("[CustomerDN] Analysis failed:", err);
       showToast(err instanceof Error ? err.message : "Failed to analyze files", "error");
       setAnalysisResult(null);
       setAnalysisFiles([]);
