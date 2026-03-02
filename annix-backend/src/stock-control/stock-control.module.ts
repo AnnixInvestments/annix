@@ -80,6 +80,7 @@ import { LookupService } from "./services/lookup.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
 import { PriceHistoryService } from "./services/price-history.service";
+import { PublicBrandingService } from "./services/public-branding.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
@@ -164,6 +165,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     StockControlAuthGuard,
     StockControlRoleGuard,
     StockControlAuthService,
+    PublicBrandingService,
     BrandingScraperService,
     StockControlInvitationService,
     InventoryService,
