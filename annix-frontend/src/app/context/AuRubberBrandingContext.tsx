@@ -18,6 +18,7 @@ export interface AuRubberBranding {
   accentColor: string;
   logoUrl: string | null;
   heroUrl: string | null;
+  updatedAt: number | null;
 }
 
 interface AuRubberBrandingContextType {
@@ -42,6 +43,7 @@ const defaultBranding: AuRubberBranding = {
   accentColor: corpId.colors.portal.auRubber.accent,
   logoUrl: null,
   heroUrl: null,
+  updatedAt: null,
 };
 
 function lightenColor(hex: string, amount: number = 0.2): string {
@@ -96,7 +98,7 @@ export function AuRubberBrandingProvider({ children }: { children: ReactNode }) 
   }, [branding, isLoaded]);
 
   const setBranding = useCallback((updates: Partial<AuRubberBranding>) => {
-    setBrandingState((prev) => ({ ...prev, ...updates }));
+    setBrandingState((prev) => ({ ...prev, ...updates, updatedAt: Date.now() }));
   }, []);
 
   const resetBranding = useCallback(() => {

@@ -7,6 +7,9 @@ import { DynamicFavicon, DynamicManifest, ManifestConfig } from "@/app/lib/brand
 export function AuRubberDynamicBranding() {
   const { branding, colors } = useAuRubberBranding();
 
+  const cacheBuster = branding.updatedAt ? `?v=${branding.updatedAt}` : "";
+  const logoUrlWithCache = branding.logoUrl ? `${branding.logoUrl}${cacheBuster}` : null;
+
   const manifestConfig: ManifestConfig = useMemo(
     () => ({
       name: "AU Rubber Portal",
@@ -16,17 +19,17 @@ export function AuRubberDynamicBranding() {
       themeColor: colors.background,
       backgroundColor: "#f9fafb",
       iconUrls: {
-        size192: branding.logoUrl || "/images/annix-icon.png",
-        size512: branding.logoUrl || "/images/annix-icon.png",
+        size192: logoUrlWithCache || "/images/annix-icon.png",
+        size512: logoUrlWithCache || "/images/annix-icon.png",
       },
     }),
-    [branding.logoUrl, colors.background],
+    [logoUrlWithCache, colors.background],
   );
 
   return (
     <>
       <DynamicManifest manifestConfig={manifestConfig} />
-      <DynamicFavicon iconUrl={branding.logoUrl} fallbackIconUrl="/images/annix-icon.png" />
+      <DynamicFavicon iconUrl={logoUrlWithCache} fallbackIconUrl="/images/annix-icon.png" />
     </>
   );
 }
