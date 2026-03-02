@@ -132,16 +132,57 @@ AWS_S3_BUCKET=annix-sync-files-production
 AWS_S3_URL_EXPIRATION=3600
 ```
 
-### Step 2: Migrate Existing Files (if applicable)
+### Step 2: S3 Bucket Structure
 
-If you have existing files in local storage:
+The application organizes files into area-specific prefixes within a single bucket:
+
+```
+annix-sync-files-production/
+├── annix-app/                    # Core Annix application documents
+│   ├── customers/{customerId}/documents/
+│   ├── suppliers/{supplierId}/documents/
+│   ├── rfq-documents/{rfqId}/
+│   └── drawings/{year}/{month}/
+├── au-rubber/                    # AU Rubber application
+│   ├── cocs/{companyId}/
+│   ├── delivery-notes/{companyId}/
+│   ├── graphs/{companyId}/
+│   └── customer-delivery-notes/{customerId}/
+├── fieldflow/                    # FieldFlow sales rep app
+│   └── recordings/{meetingId}/
+├── cv-assistant/                 # CV Assistant application
+│   └── candidates/{companyId}/
+├── stock-control/                # Stock Control application
+│   ├── allocations/
+│   ├── branding/{companyId}/
+│   ├── deliveries/
+│   ├── inventory/
+│   ├── invoices/
+│   ├── job-card-amendments/
+│   ├── job-card-drawings/
+│   ├── job-cards/{companyId}/{jobCardId}/
+│   ├── signatures/{companyId}/
+│   └── staff/
+└── secure-documents/             # Encrypted secure documents
+    └── {uuid}.enc
+```
+
+### Step 3: Migrate Existing Files (if applicable)
+
+If you have existing files in local storage, run the appropriate migration scripts:
 
 ```bash
-# Preview migration (no changes made)
-pnpm migrate:s3:dry-run
+# Preview migrations (no changes made)
+pnpm migrate:fieldflow-recordings:dry-run
+pnpm migrate:cv-assistant-docs:dry-run
+pnpm migrate:rubber-paths:dry-run
+pnpm migrate:annix-app-paths:dry-run
 
-# Perform actual migration
-pnpm migrate:s3
+# Perform actual migrations
+pnpm migrate:fieldflow-recordings
+pnpm migrate:cv-assistant-docs
+pnpm migrate:rubber-paths
+pnpm migrate:annix-app-paths
 ```
 
 ### Step 3: Verify Configuration

@@ -132,7 +132,7 @@ pnpm migrate:annix-app-paths
 - [x] **Define S3 Area Strategy**
   - [x] Decided on Option A (prefixes) - single bucket with area prefixes
   - [x] Document final S3 path structure (see below)
-  - [ ] Update `AWS_S3_SETUP_GUIDE.md` with new structure
+  - [x] Update `AWS_S3_SETUP_GUIDE.md` with new structure
 
 - [x] **Update Storage Service**
   - [x] Added `StorageArea` enum for type safety (`storage.interface.ts`)
