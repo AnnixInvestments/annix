@@ -7,6 +7,7 @@ import { EmailModule } from "../email/email.module";
 import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
+import { StorageModule } from "../storage/storage.module";
 import { StockControlAuthController } from "./controllers/auth.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
@@ -140,6 +141,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     NixModule,
     NbOdLookupModule,
     PipeScheduleModule,
+    StorageModule,
   ],
   controllers: [
     StockControlAuthController,
