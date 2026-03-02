@@ -1,10 +1,12 @@
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
-import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import {
   CompleteUploadDto,
   InitiateUploadDto,
@@ -31,7 +33,7 @@ interface ChunkUploadSession {
 @Injectable()
 export class RecordingService {
   private readonly logger = new Logger(RecordingService.name);
-  private readonly uploadDir: string;
+  private readonly tempDir: string;
   private readonly uploadSessions: Map<number, ChunkUploadSession> = new Map();
 
   constructor(
@@ -39,16 +41,17 @@ export class RecordingService {
     private readonly recordingRepo: Repository<MeetingRecording>,
     @InjectRepository(Meeting)
     private readonly meetingRepo: Repository<Meeting>,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
     private readonly configService: ConfigService,
   ) {
-    this.uploadDir = this.configService.get<string>("UPLOAD_DIR") ?? "./uploads";
-    this.ensureUploadDir();
+    this.tempDir = path.join(os.tmpdir(), "fieldflow-recordings");
+    this.ensureTempDir();
   }
 
-  private ensureUploadDir(): void {
-    const recordingsDir = path.join(this.uploadDir, "recordings");
-    if (!fs.existsSync(recordingsDir)) {
-      fs.mkdirSync(recordingsDir, { recursive: true });
+  private ensureTempDir(): void {
+    if (!fs.existsSync(this.tempDir)) {
+      fs.mkdirSync(this.tempDir, { recursive: true });
     }
   }
 
@@ -71,12 +74,12 @@ export class RecordingService {
 
     const timestamp = now().toFormat("yyyyMMdd-HHmmss");
     const sanitizedFilename = dto.filename.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const storagePath = `recordings/${meeting.id}/${timestamp}-${sanitizedFilename}`;
+    const storagePath = `fieldflow/recordings/${meeting.id}/${timestamp}-${sanitizedFilename}`;
 
     const recording = this.recordingRepo.create({
       meetingId: dto.meetingId,
       storagePath,
-      storageBucket: "local",
+      storageBucket: "s3",
       originalFilename: dto.filename,
       mimeType: dto.mimeType,
       fileSizeBytes: 0,
@@ -87,15 +90,14 @@ export class RecordingService {
 
     const saved = await this.recordingRepo.save(recording);
 
-    const fullPath = path.join(this.uploadDir, storagePath);
-    const dir = path.dirname(fullPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    const tempPath = path.join(this.tempDir, `recording-${saved.id}`);
+    if (!fs.existsSync(tempPath)) {
+      fs.mkdirSync(tempPath, { recursive: true });
     }
 
     this.uploadSessions.set(saved.id, {
       recordingId: saved.id,
-      storagePath: fullPath,
+      storagePath: tempPath,
       chunks: [],
       startedAt: now().toJSDate(),
       lastChunkAt: now().toJSDate(),
@@ -141,10 +143,13 @@ export class RecordingService {
 
     let session = this.uploadSessions.get(recordingId);
     if (!session) {
-      const fullPath = path.join(this.uploadDir, recording.storagePath);
+      const tempPath = path.join(this.tempDir, `recording-${recordingId}`);
+      if (!fs.existsSync(tempPath)) {
+        fs.mkdirSync(tempPath, { recursive: true });
+      }
       session = {
         recordingId,
-        storagePath: fullPath,
+        storagePath: tempPath,
         chunks: [],
         startedAt: now().toJSDate(),
         lastChunkAt: now().toJSDate(),
@@ -152,7 +157,7 @@ export class RecordingService {
       this.uploadSessions.set(recordingId, session);
     }
 
-    const chunkPath = `${session.storagePath}.chunk${chunkIndex}`;
+    const chunkPath = path.join(session.storagePath, `chunk-${chunkIndex}`);
     fs.writeFileSync(chunkPath, data);
 
     session.chunks.push(chunkIndex);
@@ -192,12 +197,12 @@ export class RecordingService {
     }
 
     const sortedChunks = [...session.chunks].sort((a, b) => a - b);
-    const fullPath = session.storagePath;
+    const assembledPath = path.join(session.storagePath, "assembled");
 
-    const writeStream = fs.createWriteStream(fullPath);
+    const writeStream = fs.createWriteStream(assembledPath);
 
     for (const chunkIndex of sortedChunks) {
-      const chunkPath = `${session.storagePath}.chunk${chunkIndex}`;
+      const chunkPath = path.join(session.storagePath, `chunk-${chunkIndex}`);
       if (fs.existsSync(chunkPath)) {
         const chunkData = fs.readFileSync(chunkPath);
         writeStream.write(chunkData);
@@ -212,8 +217,29 @@ export class RecordingService {
       writeStream.on("error", reject);
     });
 
-    const stats = fs.statSync(fullPath);
+    const stats = fs.statSync(assembledPath);
+    const fileBuffer = fs.readFileSync(assembledPath);
 
+    const multerFile: Express.Multer.File = {
+      fieldname: "file",
+      originalname: recording.originalFilename,
+      encoding: "7bit",
+      mimetype: recording.mimeType,
+      size: stats.size,
+      buffer: fileBuffer,
+      stream: null as never,
+      destination: "",
+      filename: "",
+      path: "",
+    };
+
+    const subPath = `fieldflow/recordings/${recording.meetingId}`;
+    const storageResult = await this.storageService.upload(multerFile, subPath);
+
+    fs.unlinkSync(assembledPath);
+    fs.rmdirSync(session.storagePath, { recursive: true });
+
+    recording.storagePath = storageResult.path;
     recording.fileSizeBytes = stats.size;
     recording.durationSeconds = dto.durationSeconds ?? null;
     recording.processingStatus = RecordingProcessingStatus.PROCESSING;
@@ -222,7 +248,9 @@ export class RecordingService {
 
     this.uploadSessions.delete(recordingId);
 
-    this.logger.log(`Recording upload completed: ${recordingId}, size: ${stats.size} bytes`);
+    this.logger.log(
+      `Recording upload completed: ${recordingId}, size: ${stats.size} bytes, path: ${storageResult.path}`,
+    );
 
     return this.toRecordingResponse(saved);
   }
@@ -305,9 +333,10 @@ export class RecordingService {
       throw new NotFoundException("Recording not found");
     }
 
-    const fullPath = path.join(this.uploadDir, recording.storagePath);
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
+    try {
+      await this.storageService.delete(recording.storagePath);
+    } catch (error) {
+      this.logger.warn(`Failed to delete storage file for recording ${recordingId}: ${error}`);
     }
 
     await this.recordingRepo.remove(recording);
@@ -357,11 +386,8 @@ export class RecordingService {
 
     for (const [recordingId, session] of this.uploadSessions.entries()) {
       if (session.lastChunkAt < staleThreshold) {
-        for (const chunkIndex of session.chunks) {
-          const chunkPath = `${session.storagePath}.chunk${chunkIndex}`;
-          if (fs.existsSync(chunkPath)) {
-            fs.unlinkSync(chunkPath);
-          }
+        if (fs.existsSync(session.storagePath)) {
+          fs.rmSync(session.storagePath, { recursive: true, force: true });
         }
 
         this.uploadSessions.delete(recordingId);
@@ -409,7 +435,7 @@ export class RecordingService {
   async audioStream(
     userId: number,
     recordingId: number,
-  ): Promise<{ filePath: string; mimeType: string; fileSize: number } | null> {
+  ): Promise<{ presignedUrl: string; mimeType: string; fileSize: number } | null> {
     const recording = await this.recordingRepo.findOne({
       where: { id: recordingId },
       relations: ["meeting"],
@@ -423,17 +449,17 @@ export class RecordingService {
       return null;
     }
 
-    const fullPath = path.join(this.uploadDir, recording.storagePath);
-    if (!fs.existsSync(fullPath)) {
+    const exists = await this.storageService.exists(recording.storagePath);
+    if (!exists) {
       return null;
     }
 
-    const stats = fs.statSync(fullPath);
+    const presignedUrl = await this.storageService.getPresignedUrl(recording.storagePath, 3600);
 
     return {
-      filePath: fullPath,
+      presignedUrl,
       mimeType: recording.mimeType,
-      fileSize: stats.size,
+      fileSize: Number(recording.fileSizeBytes),
     };
   }
 }

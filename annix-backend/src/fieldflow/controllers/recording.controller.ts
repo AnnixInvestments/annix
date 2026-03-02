@@ -1,10 +1,8 @@
-import * as fs from "node:fs";
 import {
   Body,
   Controller,
   Delete,
   Get,
-  Headers,
   NotFoundException,
   Param,
   ParseIntPipe,
@@ -139,16 +137,14 @@ export class RecordingController {
   }
 
   @Get(":id/stream")
-  @ApiOperation({ summary: "Stream audio file with Range support for seeking" })
+  @ApiOperation({ summary: "Get presigned URL for audio streaming (S3 supports range requests)" })
   @ApiParam({ name: "id", type: Number })
-  @ApiResponse({ status: 200, description: "Audio stream" })
-  @ApiResponse({ status: 206, description: "Partial content (range request)" })
+  @ApiResponse({ status: 302, description: "Redirect to S3 presigned URL" })
   @ApiResponse({ status: 404, description: "Recording not found" })
   async streamAudio(
     @Req() req: AnnixRepRequest,
     @Res() res: Response,
     @Param("id", ParseIntPipe) id: number,
-    @Headers("range") range?: string,
   ) {
     const streamInfo = await this.recordingService.audioStream(req.annixRepUser.userId, id);
 
@@ -156,34 +152,6 @@ export class RecordingController {
       throw new NotFoundException("Recording not found");
     }
 
-    const { filePath, mimeType, fileSize } = streamInfo;
-
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-
-      if (start >= fileSize) {
-        res.status(416).header("Content-Range", `bytes */${fileSize}`).send();
-        return;
-      }
-
-      const chunkSize = end - start + 1;
-      const stream = fs.createReadStream(filePath, { start, end });
-
-      res.status(206);
-      res.header("Content-Range", `bytes ${start}-${end}/${fileSize}`);
-      res.header("Accept-Ranges", "bytes");
-      res.header("Content-Length", chunkSize.toString());
-      res.header("Content-Type", mimeType);
-
-      stream.pipe(res);
-    } else {
-      res.header("Content-Length", fileSize.toString());
-      res.header("Content-Type", mimeType);
-      res.header("Accept-Ranges", "bytes");
-
-      fs.createReadStream(filePath).pipe(res);
-    }
+    res.redirect(streamInfo.presignedUrl);
   }
 }

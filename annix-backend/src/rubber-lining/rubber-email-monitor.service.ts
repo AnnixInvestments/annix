@@ -1,5 +1,3 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { Inject, Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
@@ -23,7 +21,6 @@ const pdfParse = pdfParseModule.default ?? pdfParseModule;
 @Injectable()
 export class RubberEmailMonitorService implements OnModuleInit {
   private readonly logger = new Logger(RubberEmailMonitorService.name);
-  private readonly uploadDir: string;
   private isMonitoringEnabled = false;
 
   constructor(
@@ -36,9 +33,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
     private readonly deliveryNoteService: RubberDeliveryNoteService,
     private readonly configService: ConfigService,
     private readonly aiChatService: AiChatService,
-  ) {
-    this.uploadDir = path.join(process.cwd(), "uploads", "rubber-lining");
-  }
+  ) {}
 
   onModuleInit() {
     const imapHost = this.configService.get<string>("AU_RUBBER_EMAIL_HOST");
@@ -53,10 +48,6 @@ export class RubberEmailMonitorService implements OnModuleInit {
       this.logger.log(
         "AU Rubber email monitoring disabled - AU_RUBBER_EMAIL_* environment variables not configured",
       );
-    }
-
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
     }
   }
 
@@ -175,7 +166,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
           path: "",
         };
 
-        const subPath = `rubber-lining/${documentType}s/${supplierInfo.company.id}`;
+        const subPath = `au-rubber/${documentType}s/${supplierInfo.company.id}`;
         const storageResult = await this.storageService.upload(multerFile, subPath);
 
         if (documentType === "coc") {

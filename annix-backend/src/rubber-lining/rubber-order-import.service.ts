@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
+import { DocumentAnnotationService } from "../nix/services/document-annotation.service";
 import type {
   AnalyzedOrderData,
   AnalyzedOrderLine,
@@ -33,6 +34,7 @@ export class RubberOrderImportService {
     private aiChatService: AiChatService,
     private rubberLiningService: RubberLiningService,
     private templateService: RubberPoTemplateService,
+    private documentAnnotationService: DocumentAnnotationService,
   ) {}
 
   async analyzeFiles(files: Express.Multer.File[]): Promise<AnalyzeOrderFilesResult> {
@@ -136,13 +138,20 @@ export class RubberOrderImportService {
             file.buffer,
           );
 
-          if (templateResult.overallConfidence >= 0.8) {
+          if (templateResult.overallConfidence >= 0.5) {
             result.extractionMethod = "template";
             result.templateId = template.id;
             result.templateName = template.templateName;
 
             if (templateResult.fields["poNumber"]) {
               result.poNumber = templateResult.fields["poNumber"].value;
+            }
+            const filenamePo = this.extractPoFromFilename(file.originalname);
+            if (filenamePo && this.shouldPreferFilenamePo(result.poNumber, filenamePo)) {
+              this.logger.log(
+                `Preferring filename PO "${filenamePo}" over OCR PO "${result.poNumber}"`,
+              );
+              result.poNumber = filenamePo;
             }
             if (templateResult.fields["orderDate"]) {
               result.orderDate = templateResult.fields["orderDate"].value;
@@ -157,12 +166,26 @@ export class RubberOrderImportService {
               result.lines = linesExtraction.lines || [];
             }
 
+            if (result.lines.length === 0) {
+              this.logger.log(
+                "Template extracted header fields but no lines - trying vision extraction",
+              );
+              const visionResult = await this.extractLinesWithVision(
+                file.buffer,
+                file.originalname,
+              );
+              result.lines = visionResult.lines;
+              if (visionResult.poNumber && !result.poNumber) {
+                result.poNumber = visionResult.poNumber;
+              }
+            }
+
             result.confidence = templateResult.overallConfidence;
             await this.templateService.recordExtractionResult(template.id, true);
             await this.matchCompanyAndProducts(result);
 
             this.logger.log(
-              `Template extraction successful: confidence=${Math.round(result.confidence * 100)}%`,
+              `Template extraction successful: confidence=${Math.round(result.confidence * 100)}%, lines=${result.lines.length}`,
             );
             return result;
           }
@@ -571,5 +594,159 @@ ${truncatedText}`;
 
     this.logger.log(`Created order ${order.id} (${order.orderNumber}) from analysis`);
     return { orderId: order.id };
+  }
+
+  private async extractLinesWithVision(
+    buffer: Buffer,
+    filename: string,
+  ): Promise<{ lines: AnalyzedOrderLine[]; poNumber?: string }> {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      this.logger.warn("Gemini API key not available for vision extraction");
+      return { lines: [] };
+    }
+
+    try {
+      this.logger.log(`Starting vision-based extraction for ${filename}`);
+
+      const pagesResult = await this.documentAnnotationService.convertPdfToImages(buffer, 2.0);
+      if (pagesResult.pages.length === 0) {
+        this.logger.warn("No pages extracted from PDF for vision analysis");
+        return { lines: [] };
+      }
+
+      const firstPage = pagesResult.pages[0];
+      this.logger.log(
+        `Sending page 1 image (${firstPage.width}x${firstPage.height}) to Gemini Vision`,
+      );
+
+      const systemPrompt = `You are NIX, an AI assistant for AU Industries' rubber lining operations.
+Analyze this purchase order image and extract the order line items.
+
+Look for:
+- Product descriptions (rubber type, compound name)
+- Thickness in mm
+- Width in mm
+- Length in meters
+- Quantity (rolls/pieces)
+
+Also extract the PO Number if visible.
+
+Respond ONLY with JSON:
+{
+  "poNumber": "string or null",
+  "lines": [
+    {
+      "lineNumber": 1,
+      "productName": "product description",
+      "thickness": number in mm or null,
+      "width": number in mm or null,
+      "length": number in meters or null,
+      "quantity": number or null,
+      "confidence": 0.0-1.0
+    }
+  ]
+}`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: systemPrompt },
+                  {
+                    inlineData: {
+                      mimeType: "image/png",
+                      data: firstPage.imageData,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 2048,
+            },
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(`Gemini Vision API error: ${response.status} - ${errorText}`);
+        return { lines: [] };
+      }
+
+      const data = await response.json();
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      this.logger.log(`Gemini Vision response: ${content.substring(0, 500)}`);
+
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        const lines = (parsed.lines || []).map((line: Partial<AnalyzedOrderLine>, idx: number) => ({
+          lineNumber: line.lineNumber || idx + 1,
+          productName: line.productName || null,
+          productId: null,
+          thickness: this.parseNumber(line.thickness),
+          width: this.parseNumber(line.width),
+          length: this.parseNumber(line.length),
+          quantity: this.parseNumber(line.quantity),
+          confidence: line.confidence || 0.8,
+          rawText: null,
+        }));
+        this.logger.log(`Vision extracted ${lines.length} order lines`);
+        if (parsed.poNumber) {
+          this.logger.log(`Vision extracted PO Number: ${parsed.poNumber}`);
+        }
+        return { lines, poNumber: parsed.poNumber || undefined };
+      }
+    } catch (error) {
+      this.logger.error(`Vision extraction failed: ${error.message}`);
+    }
+
+    return { lines: [] };
+  }
+
+  private extractPoFromFilename(filename: string): string | null {
+    const patterns = [/PL[-_]?(\d+)/i, /PO[-_]?(\d+)/i, /[-_](\d{4,})[-_]/];
+
+    for (const pattern of patterns) {
+      const match = filename.match(pattern);
+      if (match) {
+        const poNumber = match[1] || match[0];
+        this.logger.log(`Extracted PO "${poNumber}" from filename "${filename}"`);
+        return poNumber;
+      }
+    }
+
+    return null;
+  }
+
+  private shouldPreferFilenamePo(ocrPo: string | null, filenamePo: string): boolean {
+    if (!ocrPo) {
+      return true;
+    }
+
+    const ocrDigits = ocrPo.replace(/\D/g, "");
+    const filenameDigits = filenamePo.replace(/\D/g, "");
+
+    if (ocrPo.includes("/") || ocrPo.includes("\\")) {
+      return true;
+    }
+
+    if (ocrDigits.length < filenameDigits.length) {
+      return true;
+    }
+
+    if (ocrDigits !== filenameDigits && filenameDigits.length >= 4) {
+      return true;
+    }
+
+    return false;
   }
 }

@@ -21,6 +21,7 @@ import {
   StockControlInvitationStatus,
 } from "../entities/stock-control-invitation.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
+import { PublicBrandingService } from "./public-branding.service";
 
 const VERIFICATION_EXPIRY_HOURS = 24;
 
@@ -39,6 +40,7 @@ export class StockControlAuthService {
     private readonly emailService: EmailService,
     private readonly s3StorageService: S3StorageService,
     private readonly configService: ConfigService,
+    private readonly publicBrandingService: PublicBrandingService,
   ) {
     this.storageType = this.configService.get<string>("STORAGE_TYPE") || "local";
   }
@@ -364,6 +366,8 @@ export class StockControlAuthService {
     company.logoUrl = brandingType === BrandingType.CUSTOM ? (logoUrl ?? null) : null;
     company.heroImageUrl = brandingType === BrandingType.CUSTOM ? (heroImageUrl ?? null) : null;
     await this.companyRepo.save(company);
+
+    this.publicBrandingService.clearIconCache(companyId);
 
     return { message: "Branding preference saved successfully." };
   }

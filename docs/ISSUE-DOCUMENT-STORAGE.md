@@ -25,17 +25,17 @@ The codebase has a pluggable storage abstraction (`IStorageService`) with two ba
 | RFQ Documents | `rfq-documents/{rfqId}/` | rfq.controller.ts | S3 capable |
 | Drawing Versions | `drawings/{drawingId}/{versionId}/` | drawings.controller.ts | S3 capable |
 | Job Card Documents | `job-cards/{companyId}/{jobCardId}/` | job-card.service.ts | S3 capable |
-| Rubber CoCs | `rubber-lining/cocs/{companyId}/` | rubber-inbound-email.service.ts | S3 capable |
-| Rubber Delivery Notes | `rubber-lining/delivery-notes/{companyId}/` | rubber-inbound-email.service.ts | S3 capable |
-| Rubber Graphs | `rubber-lining/graphs/{companyId}/` | rubber-inbound-email.service.ts | S3 capable |
-| Customer Delivery Notes | `rubber-lining/customer-delivery-notes/{customerId}/` | rubber-inbound-email.service.ts | S3 capable |
+| Rubber CoCs | `au-rubber/cocs/{companyId}/` | rubber-inbound-email.service.ts | **DONE** |
+| Rubber Delivery Notes | `au-rubber/delivery-notes/{companyId}/` | rubber-inbound-email.service.ts | **DONE** |
+| Rubber Graphs | `au-rubber/graphs/{companyId}/` | rubber-inbound-email.service.ts | **DONE** |
+| Customer Delivery Notes | `au-rubber/customer-delivery-notes/{customerId}/` | rubber-inbound-email.service.ts | **DONE** |
 
 #### Using Local Storage Only (CRITICAL - Will Be Lost)
 | Area | Current Path | Service Location | Risk |
 |------|--------------|------------------|------|
 | Meeting Recordings | `uploads/recordings/{meetingId}/` | fieldflow/services/recording.service.ts | **HIGH** - User recordings lost |
 | CV Assistant CVs | `uploads/cv-assistant/` | cv-assistant/services/email-monitor.service.ts | **HIGH** - Candidate CVs lost |
-| Rubber Email Processing | `uploads/rubber-lining/` | rubber-email-monitor.service.ts | Medium - Temp processing |
+| ~~Rubber Email Processing~~ | ~~`uploads/rubber-lining/`~~ | rubber-email-monitor.service.ts | **DONE** - Already used IStorageService, removed dead code |
 
 #### Special Cases
 | Area | Current Storage | Notes |
@@ -102,10 +102,11 @@ annix-sync-files/
   - [ ] Add migration script for existing CVs to S3
   - [ ] Test email processing and manual upload flows
 
-- [ ] **Rubber Email Processing**
-  - [ ] Review `rubber-email-monitor.service.ts` for permanent storage needs
-  - [ ] If files need persistence, convert to use `IStorageService`
-  - [ ] If truly temporary, ensure cleanup and document the design
+- [x] **Rubber Email Processing** (COMPLETED)
+  - [x] Review `rubber-email-monitor.service.ts` for permanent storage needs - Already used IStorageService
+  - [x] Removed dead `uploadDir` code that created unused local directory
+  - [x] Updated all S3 paths from `rubber-lining/` to `au-rubber/` prefix
+  - [x] Created `scripts/migrate-rubber-paths.ts` for existing document migration
 
 ### Phase 2: Organize S3 Structure
 
@@ -126,7 +127,7 @@ annix-sync-files/
   - [ ] RFQ documents - add area prefix
   - [ ] Drawing documents - add area prefix
   - [ ] Job card documents - add area prefix
-  - [ ] Rubber lining documents - add area prefix
+  - [x] Rubber lining documents - add area prefix (DONE: `au-rubber/`)
   - [ ] Secure documents - add area prefix
 
 ### Phase 3: Data Migration

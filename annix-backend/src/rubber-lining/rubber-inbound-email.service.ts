@@ -392,7 +392,7 @@ export class RubberInboundEmailService {
       path: "",
     };
 
-    const subPath = `rubber-lining/${documentType}s/${companyId}`;
+    const subPath = `au-rubber/${documentType}s/${companyId}`;
     return this.storageService.upload(multerFile, subPath);
   }
 
@@ -440,8 +440,8 @@ export class RubberInboundEmailService {
         const detectedSupplierId = supplierInfo?.companyId || metadata.supplierCompanyId;
 
         const subPath = detectedSupplierId
-          ? `rubber-lining/cocs/${detectedSupplierId}`
-          : `rubber-lining/cocs/${detectedCocType.toLowerCase()}`;
+          ? `au-rubber/cocs/${detectedSupplierId}`
+          : `au-rubber/cocs/${detectedCocType.toLowerCase()}`;
 
         const storageResult = await this.storageService.upload(file, subPath);
 
@@ -462,7 +462,7 @@ export class RubberInboundEmailService {
       }
     } else {
       result.deliveryNoteIds = [];
-      const subPath = `rubber-lining/delivery-notes/${metadata.supplierCompanyId || "unknown"}`;
+      const subPath = `au-rubber/delivery-notes/${metadata.supplierCompanyId || "unknown"}`;
 
       for (const file of files) {
         const storageResult = await this.storageService.upload(file, subPath);
@@ -618,8 +618,8 @@ export class RubberInboundEmailService {
         compoundInfo.compoundCode || (analyzed.extractedData?.compoundCode as string) || undefined;
 
       const subPath = analyzed.companyId
-        ? `rubber-lining/cocs/${analyzed.companyId}`
-        : `rubber-lining/cocs/${(analyzed.cocType || "compounder").toLowerCase()}`;
+        ? `au-rubber/cocs/${analyzed.companyId}`
+        : `au-rubber/cocs/${(analyzed.cocType || "compounder").toLowerCase()}`;
 
       const storageResult = await this.storageService.upload(file, subPath);
 
@@ -659,8 +659,8 @@ export class RubberInboundEmailService {
         const linkedCocId = createdCocsByIndex.get(analyzed.linkedToIndex);
         if (linkedCocId) {
           const subPath = analyzed.companyId
-            ? `rubber-lining/graphs/${analyzed.companyId}`
-            : "rubber-lining/graphs";
+            ? `au-rubber/graphs/${analyzed.companyId}`
+            : "au-rubber/graphs";
 
           const storageResult = await this.storageService.upload(file, subPath);
 
@@ -674,8 +674,8 @@ export class RubberInboundEmailService {
       }
 
       const subPath = analyzed.companyId
-        ? `rubber-lining/cocs/${analyzed.companyId}`
-        : "rubber-lining/cocs/unknown";
+        ? `au-rubber/cocs/${analyzed.companyId}`
+        : "au-rubber/cocs/unknown";
 
       const storageResult = await this.storageService.upload(file, subPath);
 
@@ -1000,8 +1000,8 @@ ${truncatedText}`;
 
       if (hasMatchingBatches && !coc.graphPdfPath) {
         const subPath = coc.supplierCompanyId
-          ? `rubber-lining/graphs/${coc.supplierCompanyId}`
-          : "rubber-lining/graphs";
+          ? `au-rubber/graphs/${coc.supplierCompanyId}`
+          : "au-rubber/graphs";
 
         const storageResult = await this.storageService.upload(file, subPath);
 
@@ -1347,7 +1347,7 @@ ${truncatedText}`;
       const firstFile = groupFiles[0];
       if (!firstFile) continue;
 
-      const subPath = `rubber-lining/customer-delivery-notes/${customerId}`;
+      const subPath = `au-rubber/customer-delivery-notes/${customerId}`;
       const storageResult = await this.storageService.upload(firstFile, subPath);
 
       const dn = await this.deliveryNoteService.createDeliveryNote(
