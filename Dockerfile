@@ -41,6 +41,7 @@ FROM node:24-slim AS runner
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates \
+  chromium \
   fonts-liberation \
   libappindicator3-1 \
   libasound2 \
@@ -63,6 +64,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   wget \
   xdg-utils \
   && rm -rf /var/lib/apt/lists/*
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 

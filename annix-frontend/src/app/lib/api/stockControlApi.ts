@@ -1772,13 +1772,7 @@ class StockControlApiClient {
 
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `staff-id-${staffId}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    window.open(url, "_blank");
   }
 
   async downloadBatchStaffIdCards(ids?: number[]): Promise<void> {
@@ -1805,13 +1799,7 @@ class StockControlApiClient {
 
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "staff-id-cards.pdf";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    window.open(url, "_blank");
   }
 
   async dashboardStats(): Promise<DashboardStats> {

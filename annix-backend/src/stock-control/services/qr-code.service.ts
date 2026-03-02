@@ -490,32 +490,46 @@ export class QrCodeService {
 
     let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
     try {
+      this.logger.log("Launching puppeteer browser...");
+      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
       browser = await puppeteer.launch({
         headless: true,
+        timeout: 30000,
+        executablePath: executablePath ?? undefined,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
           "--disable-dev-shm-usage",
           "--disable-gpu",
+          "--disable-extensions",
+          "--disable-software-rasterizer",
         ],
       });
+      this.logger.log("Browser launched successfully");
 
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: "networkidle0" });
+      page.setDefaultTimeout(30000);
+      this.logger.log("Setting page content...");
+      await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 30000 });
+      this.logger.log("Generating PDF...");
 
       const pdfBuffer = await page.pdf({
         ...(pageOptions.format ? { format: pageOptions.format as "A4" } : {}),
         ...(pageOptions.width ? { width: pageOptions.width, height: pageOptions.height } : {}),
         printBackground: true,
         margin: { top: "0", bottom: "0", left: "0", right: "0" },
+        timeout: 30000,
       });
 
+      this.logger.log(`PDF generated successfully: ${pdfBuffer.length} bytes`);
       return Buffer.from(pdfBuffer);
     } catch (error) {
-      this.logger.error("Failed to generate PDF", error);
-      throw new Error("Failed to generate PDF");
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      this.logger.error(`Failed to generate PDF: ${errorMessage}`, error);
+      throw new Error(`Failed to generate PDF: ${errorMessage}`);
     } finally {
       if (browser) {
+        this.logger.log("Closing browser...");
         await browser.close();
       }
     }

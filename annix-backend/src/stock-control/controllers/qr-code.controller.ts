@@ -58,12 +58,17 @@ export class QrCodeController {
   @Get("staff/:id/qr/pdf")
   @ApiOperation({ summary: "Printable staff ID card PDF" })
   async staffIdCardPdf(@Param("id") id: string, @Req() req: any, @Res() res: Response) {
-    const buffer = await this.qrCodeService.staffIdCardPdf(Number(id), req.user.companyId);
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="staff-id-${id}.pdf"`,
-    });
-    res.send(buffer);
+    try {
+      const buffer = await this.qrCodeService.staffIdCardPdf(Number(id), req.user.companyId);
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="staff-id-${id}.pdf"`,
+      });
+      res.send(buffer);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate PDF";
+      res.status(500).json({ message });
+    }
   }
 
   @Post("staff/id-cards/pdf")
@@ -73,12 +78,17 @@ export class QrCodeController {
     @Req() req: any,
     @Res() res: Response,
   ) {
-    const buffer = await this.qrCodeService.batchStaffIdCardsPdf(req.user.companyId, body.ids);
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="staff-id-cards.pdf"`,
-    });
-    res.send(buffer);
+    try {
+      const buffer = await this.qrCodeService.batchStaffIdCardsPdf(req.user.companyId, body.ids);
+      res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="staff-id-cards.pdf"`,
+      });
+      res.send(buffer);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate PDF";
+      res.status(500).json({ message });
+    }
   }
 
   @Post("inventory/labels/pdf")
