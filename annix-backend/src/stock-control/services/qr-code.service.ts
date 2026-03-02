@@ -96,10 +96,15 @@ export class QrCodeService {
     doc.text("Job Card", margin + mmToPt(3), y + mmToPt(5));
 
     doc.fillColor("#6b7280").fontSize(10).font("Helvetica");
+    const formatPageNumber = (pn: string | null): string | null => {
+      if (!pn) return null;
+      return pn.toLowerCase().startsWith("page") ? pn : `Page ${pn}`;
+    };
+
     const subtitle = [
       jobCard.jobNumber,
       jobCard.jcNumber ? `JC ${jobCard.jcNumber}` : null,
-      jobCard.pageNumber ? `Page ${jobCard.pageNumber}` : null,
+      formatPageNumber(jobCard.pageNumber),
     ]
       .filter(Boolean)
       .join(" | ");
@@ -153,6 +158,7 @@ export class QrCodeService {
 
       const colWidths = [25, 70, 180, 70, 50, 70];
       const headers = ["#", "Item Code", "Description", "Item No", "Qty", "JT No"];
+      const minRowHeight = mmToPt(5);
 
       doc.rect(margin, y, contentWidth, mmToPt(6)).fillColor("#f3f4f6").fill();
       doc.fillColor("#374151").fontSize(7).font("Helvetica-Bold");
@@ -166,18 +172,24 @@ export class QrCodeService {
       });
       y += mmToPt(6);
 
-      doc.fillColor("#111827").fontSize(8).font("Helvetica");
+      doc.fontSize(8).font("Helvetica");
       lineItems.forEach((li, idx) => {
         if (y > 780) {
           doc.addPage();
           y = margin;
         }
+
+        const descText = li.itemDescription ?? "-";
+        const descHeight = doc.heightOfString(descText, { width: colWidths[2] - 6 });
+        const rowHeight = Math.max(minRowHeight, descHeight + 6);
+
         xPos = margin + 3;
+        doc.fillColor("#111827");
         doc.text(String(idx + 1), xPos, y + 3, { width: colWidths[0] - 6 });
         xPos += colWidths[0];
         doc.text(li.itemCode ?? "-", xPos, y + 3, { width: colWidths[1] - 6 });
         xPos += colWidths[1];
-        doc.text(li.itemDescription ?? "-", xPos, y + 3, { width: colWidths[2] - 6 });
+        doc.text(descText, xPos, y + 3, { width: colWidths[2] - 6 });
         xPos += colWidths[2];
         doc.text(li.itemNo ?? "-", xPos, y + 3, { width: colWidths[3] - 6 });
         xPos += colWidths[3];
@@ -188,7 +200,7 @@ export class QrCodeService {
         xPos += colWidths[4];
         doc.text(li.jtNo ?? "-", xPos, y + 3, { width: colWidths[5] - 6 });
 
-        y += mmToPt(5);
+        y += rowHeight;
         doc
           .moveTo(margin, y)
           .lineTo(margin + contentWidth, y)
@@ -206,6 +218,7 @@ export class QrCodeService {
 
       const coatColWidths = [180, 80, 90, 100];
       const coatHeaders = ["Product", "DFT (μm)", "Coverage (m²/L)", "Allowed Litres"];
+      const minRowHeight = mmToPt(5);
 
       doc.rect(margin, y, contentWidth, mmToPt(6)).fillColor("#f3f4f6").fill();
       doc.fillColor("#374151").fontSize(7).font("Helvetica-Bold");
@@ -219,9 +232,13 @@ export class QrCodeService {
       });
       y += mmToPt(6);
 
-      doc.fillColor("#111827").fontSize(8).font("Helvetica");
+      doc.fontSize(8).font("Helvetica");
       coatingAnalysis.coats.forEach((coat) => {
+        const productHeight = doc.heightOfString(coat.product, { width: coatColWidths[0] - 6 });
+        const rowHeight = Math.max(minRowHeight, productHeight + 6);
+
         xPos = margin + 3;
+        doc.fillColor("#111827");
         doc.text(coat.product, xPos, y + 3, { width: coatColWidths[0] - 6 });
         xPos += coatColWidths[0];
         doc.text(`${coat.minDftUm}-${coat.maxDftUm}`, xPos, y + 3, {
@@ -239,7 +256,7 @@ export class QrCodeService {
           align: "right",
         });
 
-        y += mmToPt(5);
+        y += rowHeight;
         doc
           .moveTo(margin, y)
           .lineTo(margin + contentWidth, y)
