@@ -250,18 +250,24 @@ annix-sync-files/
    ```
 5. **Verify**: Check S3 bucket for expected prefixes and test file access
 
-### Phase 5: Cleanup
+### Phase 5: Cleanup (COMPLETED)
 
-- [ ] **Remove Local Storage Fallback** (optional, after validation)
-  - [ ] Remove local storage code paths
-  - [ ] Remove `UPLOAD_DIR` configuration
-  - [ ] Update documentation
+- [x] **Deprecate Local Storage for Production**
+  - [x] Changed default `STORAGE_TYPE` from `local` to `s3`
+  - [x] Added deprecation warning when using local storage
+  - [x] Updated `main.ts` to only serve static files when `STORAGE_TYPE=local`
+  - [x] Updated `.env.example` with S3 as default
+  - [x] LocalStorageService kept for development use only
 
-- [ ] **Documentation**
-  - [ ] Update CLAUDE.md with storage architecture
-  - [ ] Document S3 bucket structure
-  - [ ] Document backup/restore procedures
-  - [ ] Add runbook for storage troubleshooting
+- [x] **Documentation**
+  - [x] Updated `CLAUDE.md` with storage architecture section
+  - [x] S3 bucket structure documented in AWS_S3_SETUP_GUIDE.md
+  - [x] Created comprehensive `docs/STORAGE_RUNBOOK.md` with:
+    - Backup procedures (full, partial, scheduled)
+    - Restore procedures (versioning, from backup, local)
+    - Troubleshooting guide (access denied, 404, CORS, uploads)
+    - Monitoring and alerting recommendations
+    - Emergency procedures
 
 ---
 
