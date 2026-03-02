@@ -16,8 +16,8 @@ import {
 } from "@/app/au-rubber/components/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import {
-  auRubberApiClient,
   type AnalyzeCustomerDnsResult,
+  auRubberApiClient,
   type CustomerDnOverride,
   type DeliveryNoteStatus,
   type DeliveryNoteType,

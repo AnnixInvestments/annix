@@ -1142,7 +1142,9 @@ ${truncatedText}`;
           `Extracted customer DN data: ${JSON.stringify(extractedData).substring(0, 300)}`,
         );
       } catch (error) {
-        this.logger.error(`Failed to extract customer DN from ${file.originalname}: ${error.message}`);
+        this.logger.error(
+          `Failed to extract customer DN from ${file.originalname}: ${error.message}`,
+        );
       }
 
       const customerName = (extractedData.customerName as string) || null;
@@ -1152,7 +1154,9 @@ ${truncatedText}`;
         const matchedCompany = this.matchCustomerByName(customerName, customerCompanies);
         if (matchedCompany) {
           customerId = matchedCompany.id;
-          this.logger.log(`Matched customer "${customerName}" to company ${matchedCompany.name} (ID: ${matchedCompany.id})`);
+          this.logger.log(
+            `Matched customer "${customerName}" to company ${matchedCompany.name} (ID: ${matchedCompany.id})`,
+          );
         } else {
           if (!unmatchedCustomerNames.includes(customerName)) {
             unmatchedCustomerNames.push(customerName);
@@ -1161,20 +1165,23 @@ ${truncatedText}`;
         }
       }
 
-      const lineItems = (
-        (extractedData.lineItems as Array<Record<string, unknown>>) || []
-      ).map((item) => ({
-        lineNumber: (item.lineNumber as number) || null,
-        compoundType: (item.compoundType as string) || null,
-        thicknessMm: (item.thicknessMm as number) || null,
-        widthMm: (item.widthMm as number) || null,
-        lengthM: (item.lengthM as number) || null,
-        quantity: (item.quantity as number) || null,
-        rollWeightKg: (item.rollWeightKg as number) || null,
-        cocBatchNumbers: (item.cocBatchNumbers as string[]) || null,
-      }));
+      const lineItems = ((extractedData.lineItems as Array<Record<string, unknown>>) || []).map(
+        (item) => ({
+          lineNumber: (item.lineNumber as number) || null,
+          compoundType: (item.compoundType as string) || null,
+          thicknessMm: (item.thicknessMm as number) || null,
+          widthMm: (item.widthMm as number) || null,
+          lengthM: (item.lengthM as number) || null,
+          quantity: (item.quantity as number) || null,
+          rollWeightKg: (item.rollWeightKg as number) || null,
+          cocBatchNumbers: (item.cocBatchNumbers as string[]) || null,
+        }),
+      );
 
-      const pageInfo = extractedData.pageInfo as { currentPage?: number; totalPages?: number } | null;
+      const pageInfo = extractedData.pageInfo as {
+        currentPage?: number;
+        totalPages?: number;
+      } | null;
 
       analyzedFiles.push({
         filename: file.originalname,
@@ -1206,15 +1213,11 @@ ${truncatedText}`;
   ): RubberCompany | null {
     const nameLower = customerName.toLowerCase().trim();
 
-    const exactMatch = customerCompanies.find(
-      (c) => c.name.toLowerCase() === nameLower,
-    );
+    const exactMatch = customerCompanies.find((c) => c.name.toLowerCase() === nameLower);
     if (exactMatch) return exactMatch;
 
     const containsMatch = customerCompanies.find(
-      (c) =>
-        c.name.toLowerCase().includes(nameLower) ||
-        nameLower.includes(c.name.toLowerCase()),
+      (c) => c.name.toLowerCase().includes(nameLower) || nameLower.includes(c.name.toLowerCase()),
     );
     if (containsMatch) return containsMatch;
 

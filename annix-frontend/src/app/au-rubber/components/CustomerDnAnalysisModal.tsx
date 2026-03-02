@@ -48,15 +48,11 @@ export function CustomerDnAnalysisModal({
 
   const updateOverride = (index: number, field: keyof CustomerDnOverride, value: unknown) => {
     setOverrides((prev) =>
-      prev.map((o, i) =>
-        i === index ? { ...o, [field]: value === "" ? undefined : value } : o,
-      ),
+      prev.map((o, i) => (i === index ? { ...o, [field]: value === "" ? undefined : value } : o)),
     );
   };
 
-  const validGroups = analysis.groups.filter(
-    (_, index) => overrides[index]?.customerId,
-  );
+  const validGroups = analysis.groups.filter((_, index) => overrides[index]?.customerId);
 
   const handleConfirm = async () => {
     await onConfirm(overrides);
@@ -69,18 +65,13 @@ export function CustomerDnAnalysisModal({
         <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium text-gray-900">
-                Customer Delivery Note Analysis
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900">Customer Delivery Note Analysis</h3>
               <p className="mt-1 text-sm text-gray-500">
                 {analysis.groups.length} delivery note{analysis.groups.length !== 1 ? "s" : ""}{" "}
                 detected from {files.length} file{files.length !== 1 ? "s" : ""}
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-500"
-            >
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
               <X className="h-6 w-6" />
             </button>
           </div>
@@ -90,8 +81,7 @@ export function CustomerDnAnalysisModal({
               <div className="flex items-center">
                 <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
                 <span className="text-sm text-yellow-800">
-                  Could not match customers:{" "}
-                  {analysis.unmatchedCustomerNames.join(", ")}
+                  Could not match customers: {analysis.unmatchedCustomerNames.join(", ")}
                 </span>
               </div>
             </div>
@@ -108,9 +98,7 @@ export function CustomerDnAnalysisModal({
                   customers={customers}
                   isExpanded={expandedGroups.has(groupIndex)}
                   onToggle={() => toggleGroup(groupIndex)}
-                  onUpdateOverride={(field, value) =>
-                    updateOverride(groupIndex, field, value)
-                  }
+                  onUpdateOverride={(field, value) => updateOverride(groupIndex, field, value)}
                 />
               ))}
             </div>
@@ -194,7 +182,9 @@ function GroupCard({
   const isValid = !!override.customerId;
 
   return (
-    <div className={`border rounded-lg ${isValid ? "border-gray-200" : "border-yellow-300 bg-yellow-50"}`}>
+    <div
+      className={`border rounded-lg ${isValid ? "border-gray-200" : "border-yellow-300 bg-yellow-50"}`}
+    >
       <div
         className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50"
         onClick={onToggle}
@@ -208,9 +198,7 @@ function GroupCard({
           <div className="flex items-center space-x-3">
             <div className="flex items-center">
               <FileText className="h-5 w-5 text-blue-500 mr-2" />
-              <span className="font-medium text-gray-900">
-                {group.deliveryNoteNumber}
-              </span>
+              <span className="font-medium text-gray-900">{group.deliveryNoteNumber}</span>
             </div>
             {group.files.length > 1 && (
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
@@ -241,9 +229,7 @@ function GroupCard({
         <div className="px-4 pb-4 border-t border-gray-100 pt-4">
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                DN Number
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">DN Number</label>
               <input
                 type="text"
                 value={override.deliveryNoteNumber || ""}
@@ -252,9 +238,7 @@ function GroupCard({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Customer *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Customer *</label>
               <select
                 value={override.customerId || ""}
                 onChange={(e) =>
@@ -275,9 +259,7 @@ function GroupCard({
                 ))}
               </select>
               {group.customerName && !override.customerId && (
-                <p className="mt-1 text-xs text-yellow-600">
-                  Detected: "{group.customerName}"
-                </p>
+                <p className="mt-1 text-xs text-yellow-600">Detected: "{group.customerName}"</p>
               )}
             </div>
             <div>
@@ -293,9 +275,7 @@ function GroupCard({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Delivery Date
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Date</label>
               <input
                 type="date"
                 value={override.deliveryDate || ""}
@@ -344,9 +324,7 @@ function GroupCard({
                         {item.thicknessMm || "-"} x {item.widthMm || "-"}
                         {item.lengthM ? ` x ${item.lengthM}m` : ""}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {item.quantity || "-"}
-                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">{item.quantity || "-"}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         {item.rollWeightKg ? `${item.rollWeightKg} kg` : "-"}
                       </td>
