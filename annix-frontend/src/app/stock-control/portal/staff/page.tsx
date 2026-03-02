@@ -24,6 +24,7 @@ export default function StaffPage() {
   });
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showLimitWarning, setShowLimitWarning] = useState(false);
 
   const fetchStaff = useCallback(async () => {
     try {
@@ -131,6 +132,10 @@ export default function StaffPage() {
       setError("Please select at least one staff member to print ID cards");
       return;
     }
+    if (selectedIds.size > 8) {
+      setShowLimitWarning(true);
+      return;
+    }
     try {
       setIsDownloadingPdf(true);
       await stockControlApiClient.downloadBatchStaffIdCards(Array.from(selectedIds));
@@ -168,9 +173,10 @@ export default function StaffPage() {
         <h1 className="text-2xl font-bold text-gray-900">Staff Members</h1>
         <div className="flex items-center space-x-3">
           {selectedIds.size > 0 && (
-            <span className="text-sm text-gray-600">
-              {selectedIds.size} selected ({Math.ceil(selectedIds.size / 8)} page
-              {Math.ceil(selectedIds.size / 8) !== 1 ? "s" : ""})
+            <span
+              className={`text-sm ${selectedIds.size > 8 ? "text-red-600 font-medium" : "text-gray-600"}`}
+            >
+              {selectedIds.size} selected (max 8){selectedIds.size > 8 && " - too many!"}
             </span>
           )}
           <button
@@ -435,6 +441,41 @@ export default function StaffPage() {
               <p className="text-sm text-gray-500 text-center">
                 Please wait while we prepare your PDF. This may take a moment...
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLimitWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex flex-col items-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 mb-4">
+                <svg
+                  className="h-6 w-6 text-yellow-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Too Many Selected</h3>
+              <p className="text-sm text-gray-500 text-center mb-4">
+                You have selected {selectedIds.size} staff members. Please select a maximum of 8 at
+                a time (1 page).
+              </p>
+              <button
+                onClick={() => setShowLimitWarning(false)}
+                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700"
+              >
+                OK
+              </button>
             </div>
           </div>
         </div>
