@@ -1651,6 +1651,13 @@ class StockControlApiClient {
     });
   }
 
+  async autoDetectJobCardMapping(grid: string[][]): Promise<ImportMappingConfig> {
+    return this.request("/stock-control/job-card-import/auto-detect", {
+      method: "POST",
+      body: JSON.stringify({ grid }),
+    });
+  }
+
   async downloadBlob(endpoint: string, filename: string): Promise<void> {
     const url = `${this.baseURL}${endpoint}`;
     const response = await fetch(url, {
