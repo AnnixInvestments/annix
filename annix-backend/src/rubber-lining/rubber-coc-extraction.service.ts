@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { pdfToPng } from "pdf-to-png-converter";
 import {
   ExtractedCustomerDeliveryNoteData,
   ExtractedCustomerDeliveryNotesResult,
@@ -314,5 +315,105 @@ export class RubberCocExtractionService {
       this.logger.debug(`Raw content: ${content.substring(0, 500)}`);
       return {};
     }
+  }
+
+  async convertPdfToImages(pdfBuffer: Buffer): Promise<Buffer[]> {
+    this.logger.log("Converting PDF to images for OCR...");
+    const pdfInput = pdfBuffer.buffer.slice(
+      pdfBuffer.byteOffset,
+      pdfBuffer.byteOffset + pdfBuffer.byteLength,
+    );
+    const pages = await pdfToPng(pdfInput, {
+      disableFontFace: true,
+      useSystemFonts: true,
+      viewportScale: 2.0,
+    });
+    this.logger.log(`Converted PDF to ${pages.length} image(s)`);
+    return pages.filter((page) => page.content !== undefined).map((page) => page.content as Buffer);
+  }
+
+  private async callGeminiWithImages(
+    systemPrompt: string,
+    userPrompt: string,
+    images: Buffer[],
+  ): Promise<{ data: Record<string, unknown>; tokensUsed?: number }> {
+    const imageParts = images.map((img) => ({
+      inline_data: {
+        mime_type: "image/png",
+        data: img.toString("base64"),
+      },
+    }));
+
+    const response = await fetch(
+      `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: systemPrompt }, { text: userPrompt }, ...imageParts],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 8192,
+            responseMimeType: "application/json",
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`Gemini Vision API error: ${response.status} - ${errorText}`);
+      throw new Error(`Gemini Vision API error: ${response.status}`);
+    }
+
+    const data: GeminiResponse = await response.json();
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!content) {
+      this.logger.warn("No content in Gemini Vision response");
+      return { data: {}, tokensUsed: data.usageMetadata?.totalTokenCount };
+    }
+
+    const parsed = this.parseJsonResponse(content);
+    return {
+      data: parsed,
+      tokensUsed: data.usageMetadata?.totalTokenCount,
+    };
+  }
+
+  async extractDeliveryNoteFromImages(pdfBuffer: Buffer): Promise<{
+    data: ExtractedDeliveryNoteData;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = Date.now();
+    this.logger.log("Extracting delivery note from scanned PDF using OCR...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const images = await this.convertPdfToImages(pdfBuffer);
+
+    const response = await this.callGeminiWithImages(
+      DELIVERY_NOTE_SYSTEM_PROMPT,
+      "Please extract structured data from this scanned delivery note image. Return ONLY a valid JSON object with the extracted data.",
+      images,
+    );
+
+    const processingTimeMs = Date.now() - startTime;
+    this.logger.log(`Delivery note extracted via OCR in ${processingTimeMs}ms`);
+
+    return {
+      data: response.data as ExtractedDeliveryNoteData,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
   }
 }

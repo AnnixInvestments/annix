@@ -1551,15 +1551,14 @@ Formula: totalPrice = totalKg × salePricePerKg
     try {
       const pdfData = await pdfParse(pdfBuffer);
       pdfText = pdfData.text || "";
-    } catch (error) {
-      throw new NotFoundException(`Failed to extract text from PDF: ${error.message}`);
+    } catch {
+      pdfText = "";
     }
 
-    if (pdfText.length < 50) {
-      throw new NotFoundException("PDF text too short - may be image-based PDF that requires OCR");
-    }
-
-    const extractionResult = await this.rubberCocExtractionService.extractDeliveryNote(pdfText);
+    const useOcr = pdfText.length < 50;
+    const extractionResult = useOcr
+      ? await this.rubberCocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
+      : await this.rubberCocExtractionService.extractDeliveryNote(pdfText);
 
     const updatedNote = await this.rubberDeliveryNoteService.setExtractedData(
       Number(id),
