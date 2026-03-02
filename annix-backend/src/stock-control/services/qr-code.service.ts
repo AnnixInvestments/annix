@@ -71,113 +71,214 @@ export class QrCodeService {
 
   async jobCardPdf(jobId: number, companyId: number): Promise<Buffer> {
     const jobCard = await this.findJobCard(jobId, companyId);
-    const qrDataUrl = await QRCode.toDataURL(`job:${jobId}`, { width: 200, margin: 2 });
+    const qrBuffer = await QRCode.toBuffer(`job:${jobId}`, { width: 200, margin: 2 });
 
     const coatingAnalysis = await this.coatingAnalysisRepo.findOne({
       where: { jobCardId: jobId, companyId },
     });
 
-    const lineItemsHtml = (jobCard.lineItems ?? [])
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map(
-        (li, idx) => `
-        <tr>
-          <td>${idx + 1}</td>
-          <td>${escapeHtml(li.itemCode ?? "-")}</td>
-          <td>${escapeHtml(li.itemDescription ?? "-")}</td>
-          <td>${escapeHtml(li.itemNo ?? "-")}</td>
-          <td class="right">${li.quantity ?? "-"}</td>
-          <td>${escapeHtml(li.jtNo ?? "-")}</td>
-        </tr>`,
-      )
-      .join("");
+    const lineItems = (jobCard.lineItems ?? []).sort((a, b) => a.sortOrder - b.sortOrder);
 
-    const coatingSpecHtml = this.buildCoatingSpecHtml(coatingAnalysis);
+    const mmToPt = (mm: number) => mm * 2.83465;
+    const margin = mmToPt(15);
+    const pageWidth = 595.28;
+    const contentWidth = pageWidth - margin * 2;
 
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { margin: 0; padding: 10mm 10mm; font-family: Arial, sans-serif; font-size: 9pt; color: #111827; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5mm; border-bottom: 2px solid #0d9488; padding-bottom: 4mm; }
-    .header-left h1 { font-size: 16pt; margin: 0 0 1mm 0; color: #0d9488; }
-    .header-left .subtitle { font-size: 9pt; color: #6b7280; }
-    .header-right { text-align: right; }
-    .header-right img { width: 20mm; height: 20mm; }
-    .header-right .code { font-size: 7pt; font-family: monospace; color: #9ca3af; margin-top: 1mm; }
-    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm 6mm; margin-bottom: 5mm; }
-    .details .label { font-size: 7pt; font-weight: bold; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-    .details .value { font-size: 9pt; color: #111827; margin-bottom: 1mm; }
-    table { width: 100%; border-collapse: collapse; margin-top: 2mm; }
-    th { background-color: #f3f4f6; font-weight: 600; text-align: left; padding: 1.5mm 2mm; border: 1px solid #d1d5db; font-size: 7pt; text-transform: uppercase; letter-spacing: 0.5px; color: #374151; }
-    td { padding: 1.5mm 2mm; border: 1px solid #d1d5db; font-size: 8pt; }
-    td.right { text-align: right; }
-    .section-title { font-size: 10pt; font-weight: bold; color: #111827; margin-bottom: 2mm; margin-top: 4mm; }
-    .notes-area { margin-top: 5mm; border: 1px solid #d1d5db; border-radius: 2mm; padding: 3mm; min-height: 15mm; }
-    .notes-area .label { font-size: 7pt; font-weight: bold; color: #6b7280; text-transform: uppercase; margin-bottom: 1mm; }
-    .footer { margin-top: 5mm; text-align: center; font-size: 7pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 2mm; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="header-left">
-      <h1>Job Card</h1>
-      <div class="subtitle">${escapeHtml(jobCard.jobNumber)}${jobCard.jcNumber ? ` | JC ${escapeHtml(jobCard.jcNumber)}` : ""}${jobCard.pageNumber ? ` | Page ${escapeHtml(jobCard.pageNumber)}` : ""}</div>
-    </div>
-    <div class="header-right">
-      <img src="${qrDataUrl}" />
-      <div class="code">job:${jobCard.id}</div>
-    </div>
-  </div>
+    const doc = new PDFDocument({ size: "A4", margin: 0 });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
 
-  <div class="details">
-    <div><div class="label">Job Name</div><div class="value">${escapeHtml(jobCard.jobName)}</div></div>
-    <div><div class="label">Customer</div><div class="value">${escapeHtml(jobCard.customerName ?? "-")}</div></div>
-    ${jobCard.poNumber ? `<div><div class="label">PO Number</div><div class="value">${escapeHtml(jobCard.poNumber)}</div></div>` : ""}
-    ${jobCard.siteLocation ? `<div><div class="label">Site / Location</div><div class="value">${escapeHtml(jobCard.siteLocation)}</div></div>` : ""}
-    ${jobCard.contactPerson ? `<div><div class="label">Contact Person</div><div class="value">${escapeHtml(jobCard.contactPerson)}</div></div>` : ""}
-    ${jobCard.dueDate ? `<div><div class="label">Due Date</div><div class="value">${escapeHtml(jobCard.dueDate)}</div></div>` : ""}
-    ${jobCard.reference ? `<div><div class="label">Reference</div><div class="value">${escapeHtml(jobCard.reference)}</div></div>` : ""}
-    <div><div class="label">Status</div><div class="value" style="text-transform: capitalize;">${escapeHtml(jobCard.status)}</div></div>
-  </div>
+    let y = margin;
 
-  ${
-    lineItemsHtml
-      ? `
-  <div class="section-title">Line Items</div>
-  <table>
-    <thead>
-      <tr>
-        <th style="width: 6%;">#</th>
-        <th style="width: 14%;">Item Code</th>
-        <th>Description</th>
-        <th style="width: 12%;">Item No</th>
-        <th style="width: 10%; text-align: right;">Qty</th>
-        <th style="width: 10%;">JT No</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${lineItemsHtml}
-    </tbody>
-  </table>`
-      : ""
-  }
+    doc.rect(margin, y, contentWidth, mmToPt(22)).fillColor("#f0fdfa").fill();
 
-  ${coatingSpecHtml}
+    doc.fillColor("#0d9488").fontSize(18).font("Helvetica-Bold");
+    doc.text("Job Card", margin + mmToPt(3), y + mmToPt(5));
 
-  <div class="notes-area">
-    <div class="label">Notes</div>
-    ${jobCard.notes ? `<div style="font-size: 9pt; white-space: pre-wrap;">${escapeHtml(jobCard.notes)}</div>` : ""}
-  </div>
+    doc.fillColor("#6b7280").fontSize(10).font("Helvetica");
+    const subtitle = [
+      jobCard.jobNumber,
+      jobCard.jcNumber ? `JC ${jobCard.jcNumber}` : null,
+      jobCard.pageNumber ? `Page ${jobCard.pageNumber}` : null,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+    doc.text(subtitle, margin + mmToPt(3), y + mmToPt(12));
 
-  <div class="footer">
-    Generated from Stock Control System
-  </div>
-</body>
-</html>`;
+    const qrSize = mmToPt(18);
+    doc.image(qrBuffer, pageWidth - margin - qrSize - mmToPt(2), y + mmToPt(2), { width: qrSize });
+    doc.fillColor("#9ca3af").fontSize(7).font("Courier");
+    doc.text(`job:${jobId}`, pageWidth - margin - qrSize - mmToPt(2), y + mmToPt(2) + qrSize + 2, {
+      width: qrSize,
+      align: "center",
+    });
 
-    return this.htmlToPdf(html, { format: "A4" });
+    y += mmToPt(26);
+
+    const detailFields: [string, string | null][] = [
+      ["Job Name", jobCard.jobName],
+      ["Customer", jobCard.customerName],
+      ["PO Number", jobCard.poNumber],
+      ["Site / Location", jobCard.siteLocation],
+      ["Contact Person", jobCard.contactPerson],
+      ["Due Date", jobCard.dueDate],
+      ["Reference", jobCard.reference],
+      ["Status", jobCard.status],
+    ];
+
+    const colWidth = contentWidth / 2;
+    let col = 0;
+    const startY = y;
+
+    for (const [label, value] of detailFields) {
+      if (!value) continue;
+      const x = margin + col * colWidth;
+      doc.fillColor("#6b7280").fontSize(7).font("Helvetica-Bold");
+      doc.text(label.toUpperCase(), x, y);
+      doc.fillColor("#111827").fontSize(10).font("Helvetica");
+      doc.text(value, x, y + 9);
+      col++;
+      if (col >= 2) {
+        col = 0;
+        y += mmToPt(10);
+      }
+    }
+    if (col !== 0) y += mmToPt(10);
+    y += mmToPt(5);
+
+    if (lineItems.length > 0) {
+      doc.fillColor("#111827").fontSize(11).font("Helvetica-Bold");
+      doc.text("Line Items", margin, y);
+      y += mmToPt(5);
+
+      const colWidths = [25, 70, 180, 70, 50, 70];
+      const headers = ["#", "Item Code", "Description", "Item No", "Qty", "JT No"];
+
+      doc.rect(margin, y, contentWidth, mmToPt(6)).fillColor("#f3f4f6").fill();
+      doc.fillColor("#374151").fontSize(7).font("Helvetica-Bold");
+      let xPos = margin + 3;
+      headers.forEach((header, i) => {
+        doc.text(header.toUpperCase(), xPos, y + 4, {
+          width: colWidths[i] - 6,
+          align: i === 4 ? "right" : "left",
+        });
+        xPos += colWidths[i];
+      });
+      y += mmToPt(6);
+
+      doc.fillColor("#111827").fontSize(8).font("Helvetica");
+      lineItems.forEach((li, idx) => {
+        if (y > 780) {
+          doc.addPage();
+          y = margin;
+        }
+        xPos = margin + 3;
+        doc.text(String(idx + 1), xPos, y + 3, { width: colWidths[0] - 6 });
+        xPos += colWidths[0];
+        doc.text(li.itemCode ?? "-", xPos, y + 3, { width: colWidths[1] - 6 });
+        xPos += colWidths[1];
+        doc.text(li.itemDescription ?? "-", xPos, y + 3, { width: colWidths[2] - 6 });
+        xPos += colWidths[2];
+        doc.text(li.itemNo ?? "-", xPos, y + 3, { width: colWidths[3] - 6 });
+        xPos += colWidths[3];
+        doc.text(li.quantity != null ? String(li.quantity) : "-", xPos, y + 3, {
+          width: colWidths[4] - 6,
+          align: "right",
+        });
+        xPos += colWidths[4];
+        doc.text(li.jtNo ?? "-", xPos, y + 3, { width: colWidths[5] - 6 });
+
+        y += mmToPt(5);
+        doc
+          .moveTo(margin, y)
+          .lineTo(margin + contentWidth, y)
+          .strokeColor("#e5e7eb")
+          .stroke();
+        y += 2;
+      });
+      y += mmToPt(5);
+    }
+
+    if (coatingAnalysis?.coats && coatingAnalysis.coats.length > 0) {
+      doc.fillColor("#111827").fontSize(11).font("Helvetica-Bold");
+      doc.text("Coating Specification", margin, y);
+      y += mmToPt(5);
+
+      const coatColWidths = [180, 80, 90, 100];
+      const coatHeaders = ["Product", "DFT (μm)", "Coverage (m²/L)", "Allowed Litres"];
+
+      doc.rect(margin, y, contentWidth, mmToPt(6)).fillColor("#f3f4f6").fill();
+      doc.fillColor("#374151").fontSize(7).font("Helvetica-Bold");
+      let xPos = margin + 3;
+      coatHeaders.forEach((header, i) => {
+        doc.text(header.toUpperCase(), xPos, y + 4, {
+          width: coatColWidths[i] - 6,
+          align: i > 0 ? "right" : "left",
+        });
+        xPos += coatColWidths[i];
+      });
+      y += mmToPt(6);
+
+      doc.fillColor("#111827").fontSize(8).font("Helvetica");
+      coatingAnalysis.coats.forEach((coat) => {
+        xPos = margin + 3;
+        doc.text(coat.product, xPos, y + 3, { width: coatColWidths[0] - 6 });
+        xPos += coatColWidths[0];
+        doc.text(`${coat.minDftUm}-${coat.maxDftUm}`, xPos, y + 3, {
+          width: coatColWidths[1] - 6,
+          align: "right",
+        });
+        xPos += coatColWidths[1];
+        doc.text(coat.coverageM2PerLiter.toFixed(2), xPos, y + 3, {
+          width: coatColWidths[2] - 6,
+          align: "right",
+        });
+        xPos += coatColWidths[2];
+        doc.text(coat.litersRequired.toFixed(2), xPos, y + 3, {
+          width: coatColWidths[3] - 6,
+          align: "right",
+        });
+
+        y += mmToPt(5);
+        doc
+          .moveTo(margin, y)
+          .lineTo(margin + contentWidth, y)
+          .strokeColor("#e5e7eb")
+          .stroke();
+        y += 2;
+      });
+      y += mmToPt(5);
+    }
+
+    doc.fillColor("#6b7280").fontSize(7).font("Helvetica-Bold");
+    doc.text("NOTES", margin, y);
+    y += mmToPt(3);
+    doc.roundedRect(margin, y, contentWidth, mmToPt(30)).strokeColor("#d1d5db").stroke();
+
+    if (jobCard.notes) {
+      doc.fillColor("#111827").fontSize(9).font("Helvetica");
+      doc.text(jobCard.notes, margin + 5, y + 5, { width: contentWidth - 10, height: mmToPt(28) });
+    }
+
+    y += mmToPt(35);
+    doc
+      .moveTo(margin, y)
+      .lineTo(margin + contentWidth, y)
+      .strokeColor("#e5e7eb")
+      .stroke();
+    y += 5;
+    doc.fillColor("#9ca3af").fontSize(7).font("Helvetica");
+    doc.text("Generated from Stock Control System", margin, y, {
+      width: contentWidth,
+      align: "center",
+    });
+
+    doc.end();
+
+    return new Promise((resolve, reject) => {
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+    });
   }
 
   async staffIdCardPdf(staffId: number, companyId: number): Promise<Buffer> {

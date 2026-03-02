@@ -58,6 +58,12 @@ export class JobCardImportController {
     return this.jobCardImportService.saveMapping(req.user.companyId, body.mappingConfig);
   }
 
+  @Post("auto-detect")
+  @ApiOperation({ summary: "Auto-detect column mapping using AI" })
+  async autoDetect(@Body() body: { grid: string[][] }) {
+    return this.jobCardImportService.autoDetectMapping(body.grid);
+  }
+
   @Post("calculate-m2")
   @ApiOperation({ summary: "Calculate m2 surface area for line item descriptions" })
   async calculateM2(@Body() body: { descriptions: string[] }) {

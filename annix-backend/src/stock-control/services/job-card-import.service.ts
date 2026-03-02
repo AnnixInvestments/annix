@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { JobCard, JobCardStatus } from "../entities/job-card.entity";
 import {
   ImportMappingConfig,
@@ -43,6 +44,59 @@ export interface JobCardImportResult {
   createdJobCardIds: number[];
 }
 
+const JOB_CARD_MAPPING_PROMPT = `You are an expert at reading job cards and work orders. Given a grid of text extracted from a PDF or spreadsheet, identify where the job card fields are located.
+
+Job cards typically have these fields:
+- Job Number / Order Number / Sales Order - the main document identifier
+- JC Number - job card sequence number (often shown as "JC: X" or separate from Job Number)
+- Page Number - when job cards span multiple pages
+- Job Name / Description - what the job is for
+- Customer Name / Client
+- PO Number - customer purchase order reference
+- Site Location / Delivery Address
+- Contact Person
+- Due Date / Delivery Date
+- Notes - special instructions, coating specs, etc.
+- Reference - additional reference numbers
+
+Line items typically appear in a table format with columns for:
+- Item Code / Product Code
+- Description
+- Item No / Mark No
+- Quantity / Qty
+- JT No / Job Ticket
+
+Analyze the grid and return JSON with this structure:
+{
+  "jobNumber": { "column": <col_index>, "row": <row_index> } or null,
+  "jcNumber": { "column": <col_index>, "row": <row_index> } or null,
+  "pageNumber": { "column": <col_index>, "row": <row_index> } or null,
+  "jobName": { "column": <col_index>, "row": <row_index> } or null,
+  "customerName": { "column": <col_index>, "row": <row_index> } or null,
+  "poNumber": { "column": <col_index>, "row": <row_index> } or null,
+  "siteLocation": { "column": <col_index>, "row": <row_index> } or null,
+  "contactPerson": { "column": <col_index>, "row": <row_index> } or null,
+  "dueDate": { "column": <col_index>, "row": <row_index> } or null,
+  "notes": { "column": <col_index>, "row": <row_index> } or null,
+  "reference": { "column": <col_index>, "row": <row_index> } or null,
+  "lineItemsStartRow": <row_index where line items table starts>,
+  "lineItemsEndRow": <row_index where line items table ends>,
+  "lineItems": {
+    "itemCode": { "column": <col_index> } or null,
+    "itemDescription": { "column": <col_index> } or null,
+    "itemNo": { "column": <col_index> } or null,
+    "quantity": { "column": <col_index> } or null,
+    "jtNo": { "column": <col_index> } or null
+  }
+}
+
+Notes:
+- Column and row indices are 0-based
+- Look for label/value pairs - the label might be in an adjacent cell
+- Line items usually have a header row followed by data rows
+- If a field is not present, set it to null
+- Return valid JSON only`;
+
 @Injectable()
 export class JobCardImportService {
   private readonly logger = new Logger(JobCardImportService.name);
@@ -54,6 +108,7 @@ export class JobCardImportService {
     private readonly lineItemRepo: Repository<JobCardLineItem>,
     @InjectRepository(JobCardImportMapping)
     private readonly mappingRepo: Repository<JobCardImportMapping>,
+    private readonly aiChatService: AiChatService,
   ) {}
 
   async parseFile(
@@ -178,6 +233,131 @@ export class JobCardImportService {
       mappingConfig: config,
     });
     return this.mappingRepo.save(mapping);
+  }
+
+  async autoDetectMapping(grid: string[][]): Promise<ImportMappingConfig> {
+    this.logger.log(`Auto-detecting mapping for grid with ${grid.length} rows`);
+
+    const gridSample = grid.slice(0, Math.min(50, grid.length));
+    const gridText = gridSample
+      .map(
+        (row, rowIdx) =>
+          `Row ${rowIdx}: ${row.map((cell, colIdx) => `[${colIdx}]"${cell}"`).join(" ")}`,
+      )
+      .join("\n");
+
+    const messages: ChatMessage[] = [
+      {
+        role: "user",
+        content: `Analyze this job card grid and identify where each field is located:\n\n${gridText}\n\nRespond with JSON only.`,
+      },
+    ];
+
+    try {
+      const { content: response } = await this.aiChatService.chat(
+        messages,
+        JOB_CARD_MAPPING_PROMPT,
+      );
+
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        this.logger.warn("AI response did not contain valid JSON, using defaults");
+        return this.defaultMapping();
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return this.convertAiResponseToMappingConfig(parsed, grid.length);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.error(`Auto-detect mapping failed: ${message}`);
+      return this.defaultMapping();
+    }
+  }
+
+  private convertAiResponseToMappingConfig(
+    aiResult: Record<string, unknown>,
+    gridRowCount: number,
+  ): ImportMappingConfig {
+    const toFieldMapping = (
+      val: unknown,
+      defaultStartRow = 0,
+      defaultEndRow = 0,
+    ): FieldMapping | null => {
+      if (!val || typeof val !== "object") return null;
+      const obj = val as Record<string, unknown>;
+      if (typeof obj.column !== "number" || typeof obj.row !== "number") return null;
+      return {
+        column: obj.column,
+        startRow: obj.row,
+        endRow: obj.row,
+      };
+    };
+
+    const lineItemsStartRow =
+      typeof aiResult.lineItemsStartRow === "number" ? aiResult.lineItemsStartRow : 0;
+    const lineItemsEndRow =
+      typeof aiResult.lineItemsEndRow === "number" ? aiResult.lineItemsEndRow : gridRowCount - 1;
+
+    const lineItemsObj = (aiResult.lineItems || {}) as Record<string, unknown>;
+
+    const toLineItemFieldMapping = (val: unknown): FieldMapping | null => {
+      if (!val || typeof val !== "object") return null;
+      const obj = val as Record<string, unknown>;
+      if (typeof obj.column !== "number") return null;
+      return {
+        column: obj.column,
+        startRow: lineItemsStartRow,
+        endRow: lineItemsEndRow,
+      };
+    };
+
+    return {
+      jobNumber: toFieldMapping(aiResult.jobNumber),
+      jcNumber: toFieldMapping(aiResult.jcNumber),
+      pageNumber: toFieldMapping(aiResult.pageNumber),
+      jobName: toFieldMapping(aiResult.jobName),
+      customerName: toFieldMapping(aiResult.customerName),
+      description: null,
+      poNumber: toFieldMapping(aiResult.poNumber),
+      siteLocation: toFieldMapping(aiResult.siteLocation),
+      contactPerson: toFieldMapping(aiResult.contactPerson),
+      dueDate: toFieldMapping(aiResult.dueDate),
+      notes: toFieldMapping(aiResult.notes),
+      reference: toFieldMapping(aiResult.reference),
+      customFields: [],
+      lineItems: {
+        itemCode: toLineItemFieldMapping(lineItemsObj.itemCode),
+        itemDescription: toLineItemFieldMapping(lineItemsObj.itemDescription),
+        itemNo: toLineItemFieldMapping(lineItemsObj.itemNo),
+        quantity: toLineItemFieldMapping(lineItemsObj.quantity),
+        jtNo: toLineItemFieldMapping(lineItemsObj.jtNo),
+      },
+    };
+  }
+
+  private defaultMapping(): ImportMappingConfig {
+    return {
+      jobNumber: null,
+      jcNumber: null,
+      pageNumber: null,
+      jobName: null,
+      customerName: null,
+      description: null,
+      poNumber: null,
+      siteLocation: null,
+      contactPerson: null,
+      dueDate: null,
+      notes: null,
+      reference: null,
+      customFields: [],
+      lineItems: {
+        itemCode: null,
+        itemDescription: null,
+        itemNo: null,
+        quantity: null,
+        jtNo: null,
+      },
+    };
   }
 
   async importJobCards(companyId: number, rows: JobCardImportRow[]): Promise<JobCardImportResult> {
