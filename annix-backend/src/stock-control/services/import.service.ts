@@ -231,15 +231,17 @@ export class ImportService {
         const existing = await this.stockItemRepo.findOne({ where: { sku: row.sku, companyId } });
 
         if (existing) {
-          Object.assign(existing, {
-            name: row.name || existing.name,
-            description: row.description ?? existing.description,
-            category: row.category ?? existing.category,
-            unitOfMeasure: row.unitOfMeasure ?? existing.unitOfMeasure,
-            costPerUnit: row.costPerUnit ?? existing.costPerUnit,
-            minStockLevel: row.minStockLevel ?? existing.minStockLevel,
-            location: row.location ?? existing.location,
-          });
+          if (!isStockTake) {
+            Object.assign(existing, {
+              name: row.name || existing.name,
+              description: row.description ?? existing.description,
+              category: row.category ?? existing.category,
+              unitOfMeasure: row.unitOfMeasure ?? existing.unitOfMeasure,
+              costPerUnit: row.costPerUnit ?? existing.costPerUnit,
+              minStockLevel: row.minStockLevel ?? existing.minStockLevel,
+              location: row.location ?? existing.location,
+            });
+          }
 
           if (row.quantity !== undefined && row.quantity !== existing.quantity) {
             const delta = row.quantity - existing.quantity;

@@ -24,6 +24,7 @@ export default function ImportPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isStockTake, setIsStockTake] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (selectedFile: File) => {
@@ -118,7 +119,7 @@ export default function ImportPage() {
             })
           : parsedRows;
 
-      const importResult = await stockControlApiClient.confirmImport(rowsToImport);
+      const importResult = await stockControlApiClient.confirmImport(rowsToImport, isStockTake);
       setResult(importResult);
       setStep("result");
     } catch (err) {
@@ -138,6 +139,7 @@ export default function ImportPage() {
     setImportFormat(null);
     setResult(null);
     setError(null);
+    setIsStockTake(false);
   };
 
   const previewRowCount = importFormat === "excel" ? importRawRows.length : parsedRows.length;
@@ -265,18 +267,37 @@ export default function ImportPage() {
                 </button>
               </div>
             </div>
-            {importMapping && (
-              <div className="mx-4 mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-700">
-                  AI mapped columns:{" "}
-                  {Object.entries(importMapping)
-                    .filter(([, v]) => v !== null)
-                    .map(([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`)
-
-                    .join(", ") || "No columns mapped"}
-                </p>
+            <div className="mx-4 mt-4 space-y-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <label className="flex items-start cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isStockTake}
+                    onChange={(e) => setIsStockTake(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                  />
+                  <div className="ml-3">
+                    <span className="text-sm font-medium text-amber-800">Stock Take Mode</span>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Only updates stock quantities (SOH). Preserves existing minimum stock levels,
+                      costs, and other settings. New items will be added as normal.
+                    </p>
+                  </div>
+                </label>
               </div>
-            )}
+              {importMapping && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-700">
+                    AI mapped columns:{" "}
+                    {Object.entries(importMapping)
+                      .filter(([, v]) => v !== null)
+                      .map(([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`)
+
+                      .join(", ") || "No columns mapped"}
+                  </p>
+                </div>
+              )}
+            </div>
             {previewRowCount === 0 ? (
               <div className="text-center py-12">
                 <h3 className="text-sm font-medium text-gray-900">No data found</h3>
