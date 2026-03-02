@@ -23,6 +23,7 @@ export default function StaffPage() {
     departmentId: null as number | null,
   });
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const fetchStaff = useCallback(async () => {
     try {
@@ -126,12 +127,13 @@ export default function StaffPage() {
   };
 
   const handlePrintBatchIdCards = async () => {
+    if (selectedIds.size === 0) {
+      setError("Please select at least one staff member to print ID cards");
+      return;
+    }
     try {
       setIsDownloadingPdf(true);
-      const activeIds = staffMembers.filter((m) => m.active).map((m) => m.id);
-      await stockControlApiClient.downloadBatchStaffIdCards(
-        activeIds.length > 0 ? activeIds : undefined,
-      );
+      await stockControlApiClient.downloadBatchStaffIdCards(Array.from(selectedIds));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to download batch ID cards");
     } finally {
@@ -139,14 +141,41 @@ export default function StaffPage() {
     }
   };
 
+  const toggleSelectAll = () => {
+    const activeMembers = staffMembers.filter((m) => m.active);
+    if (selectedIds.size === activeMembers.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(activeMembers.map((m) => m.id)));
+    }
+  };
+
+  const toggleSelectMember = (id: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const activeStaffCount = staffMembers.filter((m) => m.active).length;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Staff Members</h1>
         <div className="flex items-center space-x-3">
+          {selectedIds.size > 0 && (
+            <span className="text-sm text-gray-600">
+              {selectedIds.size} selected ({Math.ceil(selectedIds.size / 8)} page
+              {Math.ceil(selectedIds.size / 8) !== 1 ? "s" : ""})
+            </span>
+          )}
           <button
             onClick={handlePrintBatchIdCards}
-            disabled={isDownloadingPdf}
+            disabled={isDownloadingPdf || selectedIds.size === 0}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
             {isDownloadingPdf ? (
@@ -256,6 +285,14 @@ export default function StaffPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th scope="col" className="px-3 py-3 w-10 sm:px-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === activeStaffCount && activeStaffCount > 0}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                    />
+                  </th>
                   <th
                     scope="col"
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-6"
@@ -294,6 +331,16 @@ export default function StaffPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {staffMembers.map((member) => (
                   <tr key={member.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-4">
+                      {member.active && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(member.id)}
+                          onChange={() => toggleSelectMember(member.id)}
+                          className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                        />
+                      )}
+                    </td>
                     <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0">

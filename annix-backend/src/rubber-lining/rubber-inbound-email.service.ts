@@ -532,8 +532,10 @@ export class RubberInboundEmailService {
 
       for (const dataIdx of dataPdfs) {
         const dataFile = analyzedFiles[dataIdx];
-        const hasMatchingBatch = graphFile.batchNumbers.some((gbn) =>
-          dataFile.batchNumbers.includes(gbn),
+        const normalizedGraphBatches = graphFile.batchNumbers.map((b) => b.replace(/^B/i, ""));
+        const normalizedDataBatches = dataFile.batchNumbers.map((b) => b.replace(/^B/i, ""));
+        const hasMatchingBatch = normalizedGraphBatches.some((gbn) =>
+          normalizedDataBatches.includes(gbn),
         );
 
         if (hasMatchingBatch) {

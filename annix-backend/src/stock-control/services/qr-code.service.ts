@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
 import { ILike, In, Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -204,64 +205,123 @@ export class QrCodeService {
   }
 
   private async generateStaffIdCardsPdf(staffMembers: StaffMember[]): Promise<Buffer> {
-    const cardsHtml = await Promise.all(
-      staffMembers.map(async (staff) => {
-        const qrDataUrl = await QRCode.toDataURL(`staff:${staff.qrToken}`, {
-          width: 200,
-          margin: 1,
+    const mmToPt = (mm: number) => mm * 2.83465;
+
+    const cardWidth = mmToPt(85);
+    const cardHeight = mmToPt(54);
+    const gap = mmToPt(8);
+    const margin = mmToPt(10);
+    const headerHeight = mmToPt(8);
+    const cardsPerRow = 2;
+    const cardsPerPage = 8;
+
+    const doc = new PDFDocument({ size: "A4", margin: 0 });
+    const chunks: Buffer[] = [];
+
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+
+    for (let i = 0; i < staffMembers.length; i++) {
+      const staff = staffMembers[i];
+      const pageIndex = Math.floor(i / cardsPerPage);
+      const cardIndexOnPage = i % cardsPerPage;
+
+      if (cardIndexOnPage === 0 && i > 0) {
+        doc.addPage();
+      }
+
+      const col = cardIndexOnPage % cardsPerRow;
+      const row = Math.floor(cardIndexOnPage / cardsPerRow);
+
+      const x = margin + col * (cardWidth + gap);
+      const y = margin + row * (cardHeight + gap);
+
+      doc.roundedRect(x, y, cardWidth, cardHeight, mmToPt(3)).strokeColor("#d1d5db").stroke();
+
+      doc.rect(x, y, cardWidth, headerHeight).fillColor("#0d9488").fill();
+
+      doc
+        .fillColor("#ffffff")
+        .fontSize(8)
+        .text("STAFF ID CARD", x, y + mmToPt(2), {
+          width: cardWidth,
+          align: "center",
         });
-        const departmentName = staff.departmentEntity?.name ?? staff.department ?? "";
-        const photoUrl = staff.photoUrl ? await this.resolvePhotoUrl(staff.photoUrl) : null;
-        return `
-          <div class="card">
-            <div class="card-header">STAFF ID CARD</div>
-            <div class="card-body">
-              <div class="photo-section">
-                ${photoUrl ? `<img class="photo" src="${photoUrl}" />` : '<div class="photo-placeholder"></div>'}
-              </div>
-              <div class="info-section">
-                <div class="name">${escapeHtml(staff.name)}</div>
-                ${staff.employeeNumber ? `<div class="employee-number">${escapeHtml(staff.employeeNumber)}</div>` : ""}
-                ${departmentName ? `<div class="department">${escapeHtml(departmentName)}</div>` : ""}
-              </div>
-              <div class="qr-section">
-                <img class="qr" src="${qrDataUrl}" />
-              </div>
-            </div>
-          </div>`;
-      }),
-    );
 
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    @page { size: A4; margin: 10mm; }
-    body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-    .cards-container { display: flex; flex-wrap: wrap; gap: 8mm; }
-    .card { width: 85mm; height: 54mm; border: 1px solid #d1d5db; border-radius: 3mm; overflow: hidden; page-break-inside: avoid; background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%); }
-    .card-header { background: #0d9488; color: white; font-size: 8pt; font-weight: bold; text-align: center; padding: 2mm; letter-spacing: 1px; }
-    .card-body { display: flex; padding: 3mm; height: calc(100% - 10mm); box-sizing: border-box; }
-    .photo-section { width: 22mm; flex-shrink: 0; }
-    .photo { width: 22mm; height: 28mm; object-fit: cover; border-radius: 2mm; border: 1px solid #e5e7eb; }
-    .photo-placeholder { width: 22mm; height: 28mm; background: #e5e7eb; border-radius: 2mm; display: flex; align-items: center; justify-content: center; }
-    .info-section { flex: 1; padding: 0 3mm; display: flex; flex-direction: column; justify-content: center; }
-    .name { font-size: 11pt; font-weight: bold; color: #111827; margin-bottom: 1.5mm; line-height: 1.2; }
-    .employee-number { font-size: 9pt; font-family: monospace; color: #0d9488; font-weight: bold; margin-bottom: 1mm; }
-    .department { font-size: 8pt; color: #6b7280; }
-    .qr-section { width: 22mm; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-    .qr { width: 20mm; height: 20mm; }
-  </style>
-</head>
-<body>
-  <div class="cards-container">
-    ${cardsHtml.join("")}
-  </div>
-</body>
-</html>`;
+      const bodyY = y + headerHeight + mmToPt(3);
+      const photoX = x + mmToPt(3);
+      const photoWidth = mmToPt(22);
+      const photoHeight = mmToPt(28);
 
-    return this.htmlToPdf(html, { format: "A4" });
+      doc
+        .roundedRect(photoX, bodyY, photoWidth, photoHeight, mmToPt(2))
+        .fillColor("#e5e7eb")
+        .fill();
+
+      if (staff.photoUrl) {
+        try {
+          const photoBuffer = await this.fetchPhotoBuffer(staff.photoUrl);
+          if (photoBuffer) {
+            doc.image(photoBuffer, photoX, bodyY, {
+              width: photoWidth,
+              height: photoHeight,
+              fit: [photoWidth, photoHeight],
+            });
+          }
+        } catch {
+          this.logger.warn(`Failed to load photo for staff ${staff.id}`);
+        }
+      }
+
+      const infoX = photoX + photoWidth + mmToPt(3);
+      const infoWidth = cardWidth - photoWidth - mmToPt(28);
+      let infoY = bodyY + mmToPt(8);
+
+      doc.fillColor("#111827").fontSize(11).font("Helvetica-Bold");
+      doc.text(staff.name, infoX, infoY, { width: infoWidth });
+      infoY += 14;
+
+      if (staff.employeeNumber) {
+        doc.fillColor("#0d9488").fontSize(9).font("Courier-Bold");
+        doc.text(staff.employeeNumber, infoX, infoY, { width: infoWidth });
+        infoY += 12;
+      }
+
+      const departmentName = staff.departmentEntity?.name ?? staff.department ?? "";
+      if (departmentName) {
+        doc.fillColor("#6b7280").fontSize(8).font("Helvetica");
+        doc.text(departmentName, infoX, infoY, { width: infoWidth });
+      }
+
+      const qrSize = mmToPt(20);
+      const qrX = x + cardWidth - qrSize - mmToPt(3);
+      const qrY = bodyY + mmToPt(4);
+
+      const qrBuffer = await QRCode.toBuffer(`staff:${staff.qrToken}`, {
+        width: 200,
+        margin: 1,
+      });
+      doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
+    }
+
+    doc.end();
+
+    return new Promise((resolve, reject) => {
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+    });
+  }
+
+  private async fetchPhotoBuffer(photoUrl: string): Promise<Buffer | null> {
+    try {
+      if (photoUrl.startsWith("http://") || photoUrl.startsWith("https://")) {
+        const response = await fetch(photoUrl, { signal: AbortSignal.timeout(5000) });
+        if (!response.ok) return null;
+        return Buffer.from(await response.arrayBuffer());
+      }
+      return await this.storageService.download(photoUrl);
+    } catch {
+      return null;
+    }
   }
 
   private async resolvePhotoUrl(photoUrl: string): Promise<string | null> {
