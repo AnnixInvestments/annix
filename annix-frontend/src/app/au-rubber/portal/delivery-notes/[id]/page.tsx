@@ -681,14 +681,14 @@ export default function DeliveryNoteDetailPage() {
                                   className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                 />
                               ) : (
-                                note.deliveryNoteNumber || roll.deliveryNoteNumber || "-"
+                                roll.deliveryNoteNumber || note.deliveryNoteNumber || "-"
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                               {isEditing ? (
                                 <input
                                   type="date"
-                                  value={roll.deliveryDate || ""}
+                                  value={roll.deliveryDate || note.deliveryDate || ""}
                                   onChange={(e) =>
                                     handleRollFieldChange(
                                       dnIdx,
@@ -700,7 +700,7 @@ export default function DeliveryNoteDetailPage() {
                                   className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                 />
                               ) : (
-                                note.deliveryDate || roll.deliveryDate || "-"
+                                note.deliveryDate || "-"
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
