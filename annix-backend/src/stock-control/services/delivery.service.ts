@@ -198,7 +198,11 @@ export class DeliveryService {
     const filePath = `${StorageArea.STOCK_CONTROL}/deliveries/${fileName}`;
 
     await this.storageService.upload(
-      { buffer: file.buffer, originalname: fileName, mimetype: file.mimetype } as Express.Multer.File,
+      {
+        buffer: file.buffer,
+        originalname: fileName,
+        mimetype: file.mimetype,
+      } as Express.Multer.File,
       filePath,
     );
 
