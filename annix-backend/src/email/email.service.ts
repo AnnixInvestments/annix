@@ -255,9 +255,13 @@ export class EmailService {
   async sendStockControlVerificationEmail(
     email: string,
     verificationToken: string,
+    liteMode = false,
   ): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const verificationLink = `${frontendUrl}/stock-control/verify-email?token=${verificationToken}`;
+    const verifyPath = liteMode
+      ? "/stock-control/lite/verify-email"
+      : "/stock-control/verify-email";
+    const verificationLink = `${frontendUrl}${verifyPath}?token=${verificationToken}`;
 
     const html = `
       <!DOCTYPE html>

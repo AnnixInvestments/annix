@@ -21,6 +21,7 @@ function VerifyEmailContent() {
   const [brandingAuthorized, setBrandingAuthorized] = useState(false);
   const [brandingError, setBrandingError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [liteMode, setLiteMode] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -32,6 +33,7 @@ function VerifyEmailContent() {
     stockControlApiClient
       .verifyEmail(token)
       .then((response) => {
+        setLiteMode(response.liteMode);
         if (response.needsBranding) {
           setStatus("branding");
         } else {
@@ -44,6 +46,8 @@ function VerifyEmailContent() {
         setMessage(e instanceof Error ? e.message : "Verification failed. Please try again.");
       });
   }, [token]);
+
+  const loginUrl = liteMode ? "/stock-control/lite/login" : "/stock-control/login";
 
   const isValidUrl = (url: string): boolean => {
     try {
@@ -344,7 +348,7 @@ function VerifyEmailContent() {
                 {message || "Your email has been verified. You can now sign in."}
               </p>
               <Link
-                href="/stock-control/login"
+                href={loginUrl}
                 className="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors"
               >
                 Sign in to your account
@@ -365,7 +369,7 @@ function VerifyEmailContent() {
                   Register again
                 </Link>
                 <Link
-                  href="/stock-control/login"
+                  href={loginUrl}
                   className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 transition-colors"
                 >
                   Go to sign in

@@ -1116,14 +1116,19 @@ class StockControlApiClient {
     });
   }
 
-  async verifyEmail(
-    token: string,
-  ): Promise<{ message: string; userId: number; email: string; needsBranding: boolean }> {
+  async verifyEmail(token: string): Promise<{
+    message: string;
+    userId: number;
+    email: string;
+    needsBranding: boolean;
+    liteMode: boolean;
+  }> {
     const response = await this.request<{
       message: string;
       userId: number;
       email: string;
       needsBranding: boolean;
+      liteMode: boolean;
       accessToken?: string;
       refreshToken?: string;
     }>(`/stock-control/auth/verify-email?token=${encodeURIComponent(token)}`);

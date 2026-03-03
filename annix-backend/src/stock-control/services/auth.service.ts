@@ -124,7 +124,11 @@ export class StockControlAuthService {
 
     const saved = await this.userRepo.save(user);
 
-    await this.emailService.sendStockControlVerificationEmail(normalizedEmail, verificationToken);
+    await this.emailService.sendStockControlVerificationEmail(
+      normalizedEmail,
+      verificationToken,
+      liteMode,
+    );
 
     return {
       message: "Registration successful. Please check your email to verify your account.",
@@ -164,6 +168,7 @@ export class StockControlAuthService {
       userId: user.id,
       email: user.email,
       needsBranding: !isInvitedUser,
+      liteMode: user.liteMode,
     };
 
     if (!isInvitedUser) {
@@ -193,7 +198,11 @@ export class StockControlAuthService {
     user.emailVerificationExpires = verificationExpires;
     await this.userRepo.save(user);
 
-    await this.emailService.sendStockControlVerificationEmail(email, verificationToken);
+    await this.emailService.sendStockControlVerificationEmail(
+      email,
+      verificationToken,
+      user.liteMode,
+    );
 
     return { message: "Verification email resent. Please check your inbox." };
   }
