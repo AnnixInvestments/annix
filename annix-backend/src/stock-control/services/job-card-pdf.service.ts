@@ -214,10 +214,43 @@ export class JobCardPdfService {
 
     doc.font("Helvetica").fontSize(8);
     const filteredItems = jobCard.lineItems.filter((item) => {
-      const code = (item.itemCode || "").toUpperCase().trim();
-      if (code === "PRODUCTION") return false;
-      if (code.startsWith("INT") && code.includes("BLAST")) return false;
-      if (code.startsWith("EXT") && code.includes("BLAST")) return false;
+      const code = (item.itemCode || "").trim();
+      const description = (item.itemDescription || "").trim();
+      const textToCheck = code || description;
+
+      if (!textToCheck) return false;
+
+      const invalidPatterns = [
+        /^production$/i,
+        /^foreman?\s*sign/i,
+        /^forman\s*sign/i,
+        /^material\s*spec/i,
+        /^job\s*comp\s*date/i,
+        /^completion\s*date/i,
+        /^supervisor/i,
+        /^quality\s*control/i,
+        /^qc\s*sign/i,
+        /^inspector/i,
+        /^approved\s*by/i,
+        /^checked\s*by/i,
+        /^date$/i,
+        /^signature$/i,
+        /^sign$/i,
+        /^remarks$/i,
+        /^comments$/i,
+        /^notes$/i,
+      ];
+
+      const isFormLabel = invalidPatterns.some((pattern) => pattern.test(textToCheck));
+      if (isFormLabel) return false;
+
+      const qty = item.quantity;
+      const hasNoData = !description && !item.itemNo && !item.jtNo && (qty === null || isNaN(qty));
+      if (hasNoData && code) {
+        const looksLikeLabel = /^[A-Za-z\s]+$/.test(code) && code.length < 30;
+        if (looksLikeLabel) return false;
+      }
+
       return true;
     });
     filteredItems.slice(0, 15).forEach((item) => {

@@ -45,6 +45,53 @@ const STATUS_TRANSITIONS: Record<string, { label: string; next: string; color: s
   cancelled: [{ label: "Reinstate", next: "draft", color: "bg-amber-600 hover:bg-amber-700" }],
 };
 
+const INVALID_LINE_ITEM_PATTERNS = [
+  /^production$/i,
+  /^foreman?\s*sign/i,
+  /^forman\s*sign/i,
+  /^material\s*spec/i,
+  /^job\s*comp\s*date/i,
+  /^completion\s*date/i,
+  /^supervisor/i,
+  /^quality\s*control/i,
+  /^qc\s*sign/i,
+  /^inspector/i,
+  /^approved\s*by/i,
+  /^checked\s*by/i,
+  /^date$/i,
+  /^signature$/i,
+  /^sign$/i,
+  /^remarks$/i,
+  /^comments$/i,
+  /^notes$/i,
+];
+
+function isValidLineItem(li: { itemCode: string | null; itemDescription: string | null; itemNo: string | null; quantity: number | null; jtNo: string | null }): boolean {
+  const itemCode = (li.itemCode || "").trim();
+  const description = (li.itemDescription || "").trim();
+  const textToCheck = itemCode || description;
+
+  if (!textToCheck) {
+    return false;
+  }
+
+  const isFormLabel = INVALID_LINE_ITEM_PATTERNS.some((pattern) => pattern.test(textToCheck));
+  if (isFormLabel) {
+    return false;
+  }
+
+  const qty = li.quantity;
+  const hasNoData = !li.itemDescription && !li.itemNo && !li.jtNo && (qty === null || isNaN(qty));
+  if (hasNoData && itemCode) {
+    const looksLikeLabel = /^[A-Za-z\s]+$/.test(itemCode) && itemCode.length < 30;
+    if (looksLikeLabel) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export default function JobCardDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -910,7 +957,7 @@ export default function JobCardDetailPage() {
           <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center space-x-4">
               <h3 className="text-lg leading-6 font-medium text-gray-900">Line Items</h3>
-              <span className="text-sm text-gray-500">{jobCard.lineItems.length} items</span>
+              <span className="text-sm text-gray-500">{jobCard.lineItems.filter(isValidLineItem).length} items</span>
             </div>
             {attachments.some(
               (a) =>
@@ -974,7 +1021,7 @@ export default function JobCardDetailPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {jobCard.lineItems.map((li, idx) => (
+                {jobCard.lineItems.filter(isValidLineItem).map((li, idx) => (
                   <tr key={li.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{idx + 1}</td>
                     <td className="px-3 py-2 text-sm font-mono text-gray-900 break-all">
@@ -992,14 +1039,14 @@ export default function JobCardDetailPage() {
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
                       {li.m2 ? Number(li.m2).toFixed(2) : "-"}
                     </td>
-                    <td className="px-3 py-2 text-sm text-gray-900 break-all">{li.jtNo || "-"}</td>
+                    <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">{li.jtNo || "-"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <div className="md:hidden divide-y divide-gray-200">
-            {jobCard.lineItems.map((li, idx) => (
+            {jobCard.lineItems.filter(isValidLineItem).map((li, idx) => (
               <div key={li.id} className="p-4 hover:bg-gray-50">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center space-x-2">
