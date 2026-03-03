@@ -200,7 +200,9 @@ Guidelines:
 - Correct obvious OCR errors: if a roll number starts with 5XX-XXXXX and other rolls start with 1XX-XXXXX, correct to 1XX-XXXXX
 - CRITICAL: Create one entry in the rolls array for EACH roll across ALL pages
 - For each roll, capture the DN number, PRINTED date, and customer from THAT specific page
-- Use ONLY the PRINTED delivery date from the page header, NEVER use handwritten dates
+- DATE IS FROM HEADER ONLY: Use the printed date from the document header (top left corner)
+- NEVER extract dates from stamps, signatures, or handwritten notes at the bottom of pages
+- All rolls from the same document should have the SAME delivery date (the header date)
 - WEIGHT IS REQUIRED: Every roll entry MUST have weightKg populated - never leave it null if weight text exists
 - Check each page carefully for the weight value - it's always printed near the roll number
 - Return ONLY the JSON object, no additional text`;
