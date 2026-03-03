@@ -748,8 +748,8 @@ export interface SupplierInvoice {
     | "completed"
     | "failed";
   extractedData: Record<string, unknown> | null;
-  deliveryNoteId: number;
-  deliveryNote?: DeliveryNote;
+  deliveryNoteId: number | null;
+  deliveryNote?: DeliveryNote | null;
   approvedBy: number | null;
   approvedAt: string | null;
   createdAt: string;
@@ -845,12 +845,20 @@ export interface StockPriceHistory {
 }
 
 export interface CreateInvoiceDto {
-  deliveryNoteId: number;
+  deliveryNoteId?: number | null;
   invoiceNumber: string;
   supplierName: string;
   invoiceDate?: string;
   totalAmount?: number;
   vatAmount?: number;
+}
+
+export interface SuggestedDeliveryNote {
+  id: number;
+  deliveryNumber: string;
+  supplierName: string;
+  receivedDate: string | null;
+  matchReason: string;
 }
 
 export interface SubmitClarificationDto {
@@ -2365,6 +2373,24 @@ class StockControlApiClient {
 
   async deleteSupplierInvoice(id: number): Promise<void> {
     return this.request(`/stock-control/invoices/${id}`, { method: "DELETE" });
+  }
+
+  async unlinkedInvoices(): Promise<SupplierInvoice[]> {
+    return this.request("/stock-control/invoices/unlinked");
+  }
+
+  async suggestedDeliveryNotes(invoiceId: number): Promise<SuggestedDeliveryNote[]> {
+    return this.request(`/stock-control/invoices/${invoiceId}/suggested-delivery-notes`);
+  }
+
+  async linkInvoiceToDeliveryNote(
+    invoiceId: number,
+    deliveryNoteId: number,
+  ): Promise<SupplierInvoice> {
+    return this.request(`/stock-control/invoices/${invoiceId}/link-delivery-note`, {
+      method: "POST",
+      body: JSON.stringify({ deliveryNoteId }),
+    });
   }
 
   async stockItemPriceHistory(stockItemId: number, limit?: number): Promise<StockPriceHistory[]> {

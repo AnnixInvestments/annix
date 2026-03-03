@@ -187,7 +187,13 @@ export default function InvoicesPage() {
                     {invoice.supplierName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {invoice.deliveryNote?.deliveryNumber || `DN-${invoice.deliveryNoteId}`}
+                    {invoice.deliveryNoteId ? (
+                      invoice.deliveryNote?.deliveryNumber || `DN-${invoice.deliveryNoteId}`
+                    ) : (
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                        Unlinked
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {invoice.invoiceDate ? formatDateZA(invoice.invoiceDate) : "-"}

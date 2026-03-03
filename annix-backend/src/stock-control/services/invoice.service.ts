@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { InvoiceClarification } from "../entities/invoice-clarification.entity";
@@ -9,10 +9,18 @@ import { SupplierInvoiceItem } from "../entities/supplier-invoice-item.entity";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
 export interface CreateInvoiceDto {
-  deliveryNoteId: number;
+  deliveryNoteId?: number | null;
   invoiceNumber: string;
-  supplierName?: string;
+  supplierName: string;
   invoiceDate?: string;
+}
+
+export interface SuggestedDeliveryNote {
+  id: number;
+  deliveryNumber: string;
+  supplierName: string;
+  receivedDate: string | null;
+  matchReason: string;
 }
 
 export interface PriceChangeItem {
@@ -47,19 +55,25 @@ export class InvoiceService {
   ) {}
 
   async create(companyId: number, dto: CreateInvoiceDto): Promise<SupplierInvoice> {
-    const deliveryNote = await this.deliveryNoteRepo.findOne({
-      where: { id: dto.deliveryNoteId, companyId },
-    });
+    let supplierName = dto.supplierName;
 
-    if (!deliveryNote) {
-      throw new NotFoundException(`Delivery note ${dto.deliveryNoteId} not found`);
+    if (dto.deliveryNoteId) {
+      const deliveryNote = await this.deliveryNoteRepo.findOne({
+        where: { id: dto.deliveryNoteId, companyId },
+      });
+
+      if (!deliveryNote) {
+        throw new NotFoundException(`Delivery note ${dto.deliveryNoteId} not found`);
+      }
+
+      supplierName = dto.supplierName || deliveryNote.supplierName;
     }
 
     const invoice = this.invoiceRepo.create({
       companyId,
-      deliveryNoteId: dto.deliveryNoteId,
+      deliveryNoteId: dto.deliveryNoteId || null,
       invoiceNumber: dto.invoiceNumber,
-      supplierName: dto.supplierName || deliveryNote.supplierName,
+      supplierName,
       invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : null,
       extractionStatus: InvoiceExtractionStatus.PENDING,
     });
@@ -190,5 +204,86 @@ export class InvoiceService {
   async remove(companyId: number, id: number): Promise<void> {
     const invoice = await this.findById(companyId, id);
     await this.invoiceRepo.remove(invoice);
+  }
+
+  async findUnlinked(companyId: number): Promise<SupplierInvoice[]> {
+    return this.invoiceRepo.find({
+      where: { companyId, deliveryNoteId: IsNull() },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async linkToDeliveryNote(
+    companyId: number,
+    invoiceId: number,
+    deliveryNoteId: number,
+  ): Promise<SupplierInvoice> {
+    const invoice = await this.findById(companyId, invoiceId);
+
+    const deliveryNote = await this.deliveryNoteRepo.findOne({
+      where: { id: deliveryNoteId, companyId },
+    });
+
+    if (!deliveryNote) {
+      throw new NotFoundException(`Delivery note ${deliveryNoteId} not found`);
+    }
+
+    invoice.deliveryNoteId = deliveryNoteId;
+    invoice.deliveryNote = deliveryNote;
+
+    return this.invoiceRepo.save(invoice);
+  }
+
+  async suggestDeliveryNoteMatches(
+    companyId: number,
+    invoiceId: number,
+  ): Promise<SuggestedDeliveryNote[]> {
+    const invoice = await this.findById(companyId, invoiceId);
+
+    const deliveryNotes = await this.deliveryNoteRepo.find({
+      where: { companyId },
+      order: { receivedDate: "DESC" },
+    });
+
+    const suggestions: SuggestedDeliveryNote[] = [];
+
+    const supplierMatches = deliveryNotes.filter(
+      (dn) => dn.supplierName.toLowerCase() === invoice.supplierName.toLowerCase(),
+    );
+    supplierMatches.forEach((dn) => {
+      suggestions.push({
+        id: dn.id,
+        deliveryNumber: dn.deliveryNumber,
+        supplierName: dn.supplierName,
+        receivedDate: dn.receivedDate ? dn.receivedDate.toISOString() : null,
+        matchReason: "Supplier name matches",
+      });
+    });
+
+    if (invoice.invoiceDate) {
+      const invoiceDate = new Date(invoice.invoiceDate);
+      const dateMatches = deliveryNotes.filter((dn) => {
+        if (!dn.receivedDate) return false;
+        const alreadySuggested = suggestions.some((s) => s.id === dn.id);
+        if (alreadySuggested) return false;
+
+        const daysDiff = Math.abs(
+          (invoiceDate.getTime() - dn.receivedDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        return daysDiff <= 14;
+      });
+
+      dateMatches.forEach((dn) => {
+        suggestions.push({
+          id: dn.id,
+          deliveryNumber: dn.deliveryNumber,
+          supplierName: dn.supplierName,
+          receivedDate: dn.receivedDate ? dn.receivedDate.toISOString() : null,
+          matchReason: "Received within 14 days of invoice date",
+        });
+      });
+    }
+
+    return suggestions.slice(0, 10);
   }
 }

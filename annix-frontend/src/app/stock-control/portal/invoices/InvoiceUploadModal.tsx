@@ -52,12 +52,12 @@ export default function InvoiceUploadModal({
       setError("Please select an invoice scan to upload");
       return;
     }
-    if (!form.deliveryNoteId) {
-      setError("Please select a delivery note");
-      return;
-    }
     if (!form.invoiceNumber) {
       setError("Please enter an invoice number");
+      return;
+    }
+    if (!form.deliveryNoteId && !form.supplierName) {
+      setError("Please enter a supplier name when no delivery note is selected");
       return;
     }
 
@@ -66,7 +66,7 @@ export default function InvoiceUploadModal({
       setError(null);
 
       const invoice = await stockControlApiClient.createSupplierInvoice({
-        deliveryNoteId: form.deliveryNoteId,
+        deliveryNoteId: form.deliveryNoteId || null,
         invoiceNumber: form.invoiceNumber,
         supplierName: form.supplierName,
         invoiceDate: form.invoiceDate || undefined,
@@ -122,24 +122,24 @@ export default function InvoiceUploadModal({
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Delivery Note <span className="text-red-500">*</span>
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Note</label>
               <select
                 value={form.deliveryNoteId}
                 onChange={(e) => handleDeliveryNoteChange(parseInt(e.target.value, 10) || 0)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
               >
-                <option value={0}>Select delivery note...</option>
+                <option value={0}>No delivery note (upload unlinked)</option>
                 {deliveryNotes.map((dn) => (
                   <option key={dn.id} value={dn.id}>
                     {dn.deliveryNumber} - {dn.supplierName}
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-gray-500">
-                Invoice must be linked to an existing delivery note
-              </p>
+              {!form.deliveryNoteId && (
+                <p className="mt-1 text-xs text-amber-600">
+                  Invoice will be uploaded as unlinked. You can link it to a delivery note later.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -167,13 +167,17 @@ export default function InvoiceUploadModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Supplier Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Supplier Name{!form.deliveryNoteId && <span className="text-red-500"> *</span>}
+              </label>
               <input
                 type="text"
                 value={form.supplierName}
                 onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                placeholder="Auto-filled from delivery note"
+                placeholder={
+                  form.deliveryNoteId ? "Auto-filled from delivery note" : "Enter supplier name"
+                }
               />
             </div>
 
@@ -241,7 +245,12 @@ export default function InvoiceUploadModal({
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isUploading || !selectedFile || !form.deliveryNoteId || !form.invoiceNumber}
+              disabled={
+                isUploading ||
+                !selectedFile ||
+                !form.invoiceNumber ||
+                (!form.deliveryNoteId && !form.supplierName)
+              }
               className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isUploading ? (

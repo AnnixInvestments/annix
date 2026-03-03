@@ -12,9 +12,14 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { LinkInvoiceToDeliveryNoteDto } from "../dto/create-invoice.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
-import { CreateInvoiceDto, InvoiceService } from "../services/invoice.service";
+import {
+  CreateInvoiceDto,
+  InvoiceService,
+  SuggestedDeliveryNote,
+} from "../services/invoice.service";
 
 @ApiTags("Stock Control - Invoices")
 @Controller("stock-control/invoices")
@@ -28,10 +33,35 @@ export class InvoicesController {
     return this.invoiceService.findAll(req.user.companyId);
   }
 
+  @Get("unlinked")
+  @ApiOperation({ summary: "List invoices not linked to a delivery note" })
+  async listUnlinked(@Req() req: any) {
+    return this.invoiceService.findUnlinked(req.user.companyId);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Invoice by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {
     return this.invoiceService.findById(req.user.companyId, id);
+  }
+
+  @Get(":id/suggested-delivery-notes")
+  @ApiOperation({ summary: "Suggest delivery notes to link to this invoice" })
+  async suggestedDeliveryNotes(
+    @Req() req: any,
+    @Param("id") id: number,
+  ): Promise<SuggestedDeliveryNote[]> {
+    return this.invoiceService.suggestDeliveryNoteMatches(req.user.companyId, id);
+  }
+
+  @Post(":id/link-delivery-note")
+  @ApiOperation({ summary: "Link invoice to a delivery note" })
+  async linkToDeliveryNote(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() dto: LinkInvoiceToDeliveryNoteDto,
+  ) {
+    return this.invoiceService.linkToDeliveryNote(req.user.companyId, id, dto.deliveryNoteId);
   }
 
   @Post()

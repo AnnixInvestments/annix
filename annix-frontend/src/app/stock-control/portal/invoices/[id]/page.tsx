@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type {
+  DeliveryNote,
   InvoiceClarification,
   PriceChangeSummary,
   StockItem,
+  SuggestedDeliveryNote,
   SupplierInvoice,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -49,6 +51,10 @@ export default function InvoiceDetailPage() {
   const [clarifications, setClarifications] = useState<InvoiceClarification[]>([]);
   const [priceSummary, setPriceSummary] = useState<PriceChangeSummary | null>(null);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [suggestedDeliveryNotes, setSuggestedDeliveryNotes] = useState<SuggestedDeliveryNote[]>([]);
+  const [allDeliveryNotes, setAllDeliveryNotes] = useState<DeliveryNote[]>([]);
+  const [selectedDeliveryNoteId, setSelectedDeliveryNoteId] = useState<number | null>(null);
+  const [isLinking, setIsLinking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [currentClarificationIndex, setCurrentClarificationIndex] = useState(0);
@@ -96,12 +102,53 @@ export default function InvoiceDetailPage() {
     }
   }, []);
 
+  const fetchSuggestedDeliveryNotes = useCallback(async () => {
+    try {
+      const data = await stockControlApiClient.suggestedDeliveryNotes(invoiceId);
+      setSuggestedDeliveryNotes(data);
+    } catch (err) {
+      console.error("Failed to load suggested delivery notes:", err);
+    }
+  }, [invoiceId]);
+
+  const fetchAllDeliveryNotes = useCallback(async () => {
+    try {
+      const data = await stockControlApiClient.deliveryNotes();
+      setAllDeliveryNotes(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load delivery notes:", err);
+    }
+  }, []);
+
+  const handleLinkDeliveryNote = async () => {
+    if (!selectedDeliveryNoteId) return;
+    try {
+      setIsLinking(true);
+      await stockControlApiClient.linkInvoiceToDeliveryNote(invoiceId, selectedDeliveryNoteId);
+      await fetchInvoice();
+      setSelectedDeliveryNoteId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to link delivery note"));
+    } finally {
+      setIsLinking(false);
+    }
+  };
+
   useEffect(() => {
     fetchInvoice();
     fetchClarifications();
     fetchPriceSummary();
     fetchStockItems();
-  }, [fetchInvoice, fetchClarifications, fetchPriceSummary, fetchStockItems]);
+    fetchSuggestedDeliveryNotes();
+    fetchAllDeliveryNotes();
+  }, [
+    fetchInvoice,
+    fetchClarifications,
+    fetchPriceSummary,
+    fetchStockItems,
+    fetchSuggestedDeliveryNotes,
+    fetchAllDeliveryNotes,
+  ]);
 
   const handleClarificationSubmit = async (
     clarificationId: number,
@@ -253,12 +300,18 @@ export default function InvoiceDetailPage() {
               <div>
                 <dt className="text-sm font-medium text-gray-500">Delivery Note</dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  <Link
-                    href={`/stock-control/portal/deliveries/${invoice.deliveryNoteId}`}
-                    className="text-teal-600 hover:text-teal-800"
-                  >
-                    {invoice.deliveryNote?.deliveryNumber || `DN-${invoice.deliveryNoteId}`}
-                  </Link>
+                  {invoice.deliveryNoteId ? (
+                    <Link
+                      href={`/stock-control/portal/deliveries/${invoice.deliveryNoteId}`}
+                      className="text-teal-600 hover:text-teal-800"
+                    >
+                      {invoice.deliveryNote?.deliveryNumber || `DN-${invoice.deliveryNoteId}`}
+                    </Link>
+                  ) : (
+                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                      Unlinked
+                    </span>
+                  )}
                 </dd>
               </div>
             </dl>
@@ -347,6 +400,69 @@ export default function InvoiceDetailPage() {
         </div>
 
         <div className="space-y-6">
+          {!invoice.deliveryNoteId && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-amber-800 mb-3">Link to Delivery Note</h3>
+              <p className="text-xs text-amber-600 mb-4">
+                This invoice is not linked to a delivery note. Link it to match stock deliveries.
+              </p>
+
+              {suggestedDeliveryNotes.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-medium text-gray-700 mb-2">Suggested Matches</h4>
+                  <div className="space-y-2">
+                    {suggestedDeliveryNotes.map((dn) => (
+                      <button
+                        key={dn.id}
+                        type="button"
+                        onClick={() => setSelectedDeliveryNoteId(dn.id)}
+                        className={`w-full text-left p-2 rounded border text-xs ${
+                          selectedDeliveryNoteId === dn.id
+                            ? "border-teal-500 bg-teal-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="font-medium">{dn.deliveryNumber}</div>
+                        <div className="text-gray-500">{dn.supplierName}</div>
+                        <div className="text-gray-400 text-[10px]">{dn.matchReason}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  {suggestedDeliveryNotes.length > 0
+                    ? "Or select from all delivery notes:"
+                    : "Select delivery note:"}
+                </label>
+                <select
+                  value={selectedDeliveryNoteId || ""}
+                  onChange={(e) =>
+                    setSelectedDeliveryNoteId(e.target.value ? parseInt(e.target.value, 10) : null)
+                  }
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm"
+                >
+                  <option value="">Select delivery note...</option>
+                  {allDeliveryNotes.map((dn) => (
+                    <option key={dn.id} value={dn.id}>
+                      {dn.deliveryNumber} - {dn.supplierName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={handleLinkDeliveryNote}
+                disabled={!selectedDeliveryNoteId || isLinking}
+                className="w-full px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {isLinking ? "Linking..." : "Link to Delivery Note"}
+              </button>
+            </div>
+          )}
+
           {invoice.scanUrl && (
             <div className="bg-white shadow rounded-lg p-4">
               <h3 className="text-sm font-medium text-gray-900 mb-3">Invoice Scan</h3>

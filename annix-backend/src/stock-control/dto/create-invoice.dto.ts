@@ -1,8 +1,9 @@
 import { IsDateString, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export class CreateInvoiceDto {
+  @IsOptional()
   @IsNumber()
-  deliveryNoteId: number;
+  deliveryNoteId?: number | null;
 
   @IsString()
   invoiceNumber: string;
@@ -49,4 +50,9 @@ export class SubmitClarificationDto {
 export class ManualMatchDto {
   @IsNumber()
   stockItemId: number;
+}
+
+export class LinkInvoiceToDeliveryNoteDto {
+  @IsNumber()
+  deliveryNoteId: number;
 }

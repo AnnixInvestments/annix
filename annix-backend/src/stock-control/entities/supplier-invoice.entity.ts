@@ -55,12 +55,12 @@ export class SupplierInvoice {
   @Column({ name: "company_id" })
   companyId: number;
 
-  @ManyToOne(() => DeliveryNote, { onDelete: "CASCADE" })
+  @ManyToOne(() => DeliveryNote, { onDelete: "CASCADE", nullable: true })
   @JoinColumn({ name: "delivery_note_id" })
-  deliveryNote: DeliveryNote;
+  deliveryNote: DeliveryNote | null;
 
-  @Column({ name: "delivery_note_id" })
-  deliveryNoteId: number;
+  @Column({ name: "delivery_note_id", nullable: true })
+  deliveryNoteId: number | null;
 
   @Column({ name: "invoice_number", type: "varchar", length: 100 })
   invoiceNumber: string;
