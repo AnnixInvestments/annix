@@ -1381,6 +1381,14 @@ export default function JobCardDetailPage() {
       )}
 
       {(() => {
+        const notes = (jobCard.notes || "").toLowerCase();
+        const isRubberJob =
+          notes.includes("rubber") ||
+          notes.includes("r/l") ||
+          notes.includes("lining") ||
+          notes.includes("liner");
+        if (!isRubberJob) return null;
+
         const validItems = jobCard.lineItems?.filter(isValidLineItem) ?? [];
         const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
         return hasM2Items ? <RubberAllocationSection lineItems={validItems} /> : null;
