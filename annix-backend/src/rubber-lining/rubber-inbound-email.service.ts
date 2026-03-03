@@ -1172,6 +1172,10 @@ ${truncatedText}`;
       for (let dnIndex = 0; dnIndex < deliveryNotesFromFile.length; dnIndex++) {
         const extractedData = deliveryNotesFromFile[dnIndex];
         const customerName = (extractedData.customerName as string) || null;
+        const customerReference = (extractedData.customerReference as string) || null;
+        this.logger.log(
+          `[CustomerDN] Extracted DN #${dnIndex + 1}: number=${extractedData.deliveryNoteNumber}, ref=${customerReference}, customer=${customerName}`,
+        );
         let customerId: number | null = null;
 
         if (customerName) {

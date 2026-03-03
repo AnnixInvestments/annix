@@ -125,6 +125,7 @@ interface RubberAllocationProps {
     m2: number | null;
     itemCode: string | null;
     itemDescription: string | null;
+    itemNo?: string | null;
     quantity: number | null;
   }>;
 }
@@ -137,14 +138,32 @@ function CuttingDiagram({
   colorMap: Map<string, string>;
 }) {
   const rollLengthMm = roll.rollSpec.lengthM * 1000;
-  const scale = 100 / rollLengthMm;
+  const lanes = roll.rollSpec.lanes;
+  const laneHeight = 100 / lanes;
+
+  const cutsByLane: Map<number, typeof roll.cuts> = new Map();
+  for (let i = 0; i < lanes; i++) {
+    cutsByLane.set(i, []);
+  }
+  for (const cut of roll.cuts) {
+    const laneCuts = cutsByLane.get(cut.lane) || [];
+    laneCuts.push(cut);
+    cutsByLane.set(cut.lane, laneCuts);
+  }
 
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-3 mb-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-semibold text-gray-900">
-          Roll {roll.rollIndex}: {roll.rollSpec.widthMm}mm x {roll.rollSpec.lengthM}m
-        </span>
+        <div>
+          <span className="text-sm font-semibold text-gray-900">
+            Roll {roll.rollIndex}: {roll.rollSpec.widthMm}mm x {roll.rollSpec.lengthM}m
+          </span>
+          {roll.hasLengthwiseCut && (
+            <span className="ml-2 text-xs text-amber-600 font-medium">
+              (Cut lengthwise into {lanes} strips of {roll.rollSpec.laneWidthMm}mm each)
+            </span>
+          )}
+        </div>
         <span
           className={`text-xs font-medium px-2 py-0.5 rounded-full ${
             roll.wastePercentage < 10
@@ -158,55 +177,104 @@ function CuttingDiagram({
         </span>
       </div>
 
-      <div className="relative h-12 bg-gray-100 rounded border border-gray-300 overflow-hidden">
-        {roll.cuts.map((cut, idx) => {
-          const left = (cut.positionMm / rollLengthMm) * 100;
-          const width = (cut.lengthMm / rollLengthMm) * 100;
-          const colorClass =
-            colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
+      <div
+        className="relative bg-gray-100 rounded border border-gray-300 overflow-hidden"
+        style={{ height: `${Math.max(48, lanes * 32)}px` }}
+      >
+        {roll.hasLengthwiseCut &&
+          Array.from({ length: lanes - 1 }, (_, i) => (
+            <div
+              key={`divider-${i}`}
+              className="absolute left-0 right-0 border-t-2 border-dashed border-red-400 z-10"
+              style={{ top: `${((i + 1) * 100) / lanes}%` }}
+            />
+          ))}
+
+        {Array.from(cutsByLane.entries()).map(([lane, cuts]) => {
+          const laneTop = (lane * 100) / lanes;
+          let usedLength = 0;
+          for (const c of cuts) {
+            usedLength = Math.max(usedLength, c.positionMm + c.lengthMm);
+          }
+          const wasteStart = (usedLength / rollLengthMm) * 100;
+          const wasteWidth = 100 - wasteStart;
 
           return (
-            <div
-              key={cut.itemId}
-              className={`absolute top-0 h-full ${colorClass} border-r border-white flex items-center justify-center`}
-              style={{ left: `${left}%`, width: `${width}%` }}
-              title={`${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m`}
-            >
-              <span className="text-[10px] text-white font-medium truncate px-1">
-                {(cut.lengthMm / 1000).toFixed(1)}m
-              </span>
+            <div key={lane}>
+              {cuts.map((cut, idx) => {
+                const left = (cut.positionMm / rollLengthMm) * 100;
+                const width = (cut.lengthMm / rollLengthMm) * 100;
+                const colorClass =
+                  colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
+                const displayLabel = cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
+
+                return (
+                  <div
+                    key={cut.itemId}
+                    className={`absolute ${colorClass} border-r border-b border-white flex items-center justify-center`}
+                    style={{
+                      left: `${left}%`,
+                      width: `${width}%`,
+                      top: `${laneTop}%`,
+                      height: `${laneHeight}%`,
+                    }}
+                    title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m`}
+                  >
+                    <span className="text-[10px] text-white font-bold truncate px-1">
+                      {displayLabel}
+                    </span>
+                  </div>
+                );
+              })}
+              {wasteWidth > 1 && (
+                <div
+                  className="absolute bg-gray-300 flex items-center justify-center"
+                  style={{
+                    left: `${wasteStart}%`,
+                    width: `${wasteWidth}%`,
+                    top: `${laneTop}%`,
+                    height: `${laneHeight}%`,
+                  }}
+                >
+                  <span className="text-[9px] text-gray-600 font-medium">
+                    {((rollLengthMm - usedLength) / 1000).toFixed(1)}m
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}
-        {roll.wastePercentage > 0 && (
-          <div
-            className="absolute top-0 h-full bg-gray-300 flex items-center justify-center"
-            style={{
-              left: `${(roll.usedLengthMm / rollLengthMm) * 100}%`,
-              width: `${roll.wastePercentage}%`,
-            }}
-          >
-            <span className="text-[10px] text-gray-600 font-medium">
-              {((rollLengthMm - roll.usedLengthMm) / 1000).toFixed(2)}m waste
-            </span>
-          </div>
-        )}
       </div>
 
-      <div className="mt-2 flex flex-wrap gap-1">
-        {roll.cuts.map((cut, idx) => {
-          const colorClass =
-            colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
-          return (
-            <div key={cut.itemId} className="flex items-center gap-1 text-xs">
-              <div className={`w-3 h-3 rounded ${colorClass}`} />
-              <span className="text-gray-600 truncate max-w-[150px]">
-                {cut.description.substring(0, 30)}
-                {cut.description.length > 30 ? "..." : ""} ({(cut.lengthMm / 1000).toFixed(2)}m)
-              </span>
-            </div>
-          );
-        })}
+      <div className="mt-2">
+        <div className="text-xs text-gray-500 mb-1">Cut List:</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
+          {roll.cuts.map((cut, idx) => {
+            const colorClass =
+              colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
+            return (
+              <div
+                key={cut.itemId}
+                className="flex items-center gap-1 text-xs bg-gray-50 rounded px-2 py-1"
+              >
+                <div className={`w-3 h-3 rounded flex-shrink-0 ${colorClass}`} />
+                <span className="font-mono font-semibold text-gray-800 flex-shrink-0">
+                  {cut.itemNo || "-"}
+                </span>
+                <span className="text-gray-400 flex-shrink-0">|</span>
+                <span className="text-gray-600 flex-shrink-0">
+                  {(cut.lengthMm / 1000).toFixed(2)}m
+                </span>
+                {lanes > 1 && (
+                  <>
+                    <span className="text-gray-400 flex-shrink-0">|</span>
+                    <span className="text-gray-500 flex-shrink-0">Lane {cut.lane + 1}</span>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -304,6 +304,65 @@ Guidelines:
 - Each delivery note typically has one line item, but may have multiple
 - Return ONLY the JSON object, no additional text`;
 
+export const CUSTOMER_DELIVERY_NOTE_OCR_PROMPT = `You are an expert at extracting structured data from customer delivery note IMAGES for rubber sheeting products.
+
+IMPORTANT: You are analyzing IMAGES of delivery notes, not text. Look at the visual layout carefully.
+
+DOCUMENT LAYOUT - AU INDUSTRIES DELIVERY NOTE:
+The header section (top of document) typically contains a box/table with these fields arranged horizontally:
+┌─────────────────────────────────────────────────────────────────┐
+│  DELIVERY NOTE                                                   │
+│  NUMBER: 1298    REFERENCE: PL7776/PO6719    DATE: 25/03/2026   │
+│  PAGE: 1/1                                                       │
+└─────────────────────────────────────────────────────────────────┘
+
+CRITICAL - REFERENCE/PO NUMBER EXTRACTION:
+1. Look in the HEADER BOX at the top of the document
+2. Find the field labeled "REFERENCE:" or "REF:" - it's usually between NUMBER and DATE
+3. The value looks like: "PL7776/PO6719", "PO-12345", "PLS-2026-001", etc.
+4. This is the customer's Purchase Order reference - EXTRACT IT!
+5. If you cannot find "REFERENCE:", look for: "YOUR REF:", "PO:", "ORDER REF:", "CUSTOMER REF:"
+
+FROM/TO sections show:
+- FROM: AU INDUSTRIES (PTY) LTD (the supplier)
+- TO: Customer name and address (e.g., POLYMER LINING SYSTEMS)
+
+Product description line shows compound info like:
+"RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m"
+- RSCA40 = Roll Stock Cured A40
+- 20 = thickness in mm, 950 = width in mm, 12.5 = length in m
+
+Roll number and weight appear as: "154-41210 - 258Kg"
+
+Return a JSON object with this structure:
+{
+  "deliveryNotes": [
+    {
+      "deliveryNoteNumber": string (from NUMBER: field),
+      "customerReference": string or null (from REFERENCE: field - LOOK CAREFULLY FOR THIS!),
+      "deliveryDate": string or null (ISO format YYYY-MM-DD),
+      "customerName": string or null (from TO: section),
+      "lineItems": [
+        {
+          "compoundCode": string or null,
+          "compoundDescription": string or null,
+          "thicknessMm": number or null,
+          "widthMm": number or null,
+          "lengthM": number or null,
+          "rollNumber": string or null,
+          "actualWeightKg": number or null,
+          "quantity": number or null
+        }
+      ]
+    }
+  ]
+}
+
+IMPORTANT: Each page/image is typically a SEPARATE delivery note. Extract data from ALL pages.
+The REFERENCE field is CRITICAL - search the header area thoroughly for any PO/reference number.
+
+Return ONLY the JSON object, no additional text.`;
+
 export function customerDeliveryNoteExtractionPrompt(pdfText: string): string {
   return `Please extract structured data from this customer delivery note:
 

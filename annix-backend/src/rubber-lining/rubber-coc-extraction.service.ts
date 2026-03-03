@@ -10,6 +10,7 @@ import {
   CALENDARER_COC_SYSTEM_PROMPT,
   COMPOUNDER_COC_SYSTEM_PROMPT,
   CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
+  CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
   calendererCocExtractionPrompt,
   compounderCocExtractionPrompt,
   customerDeliveryNoteExtractionPrompt,
@@ -314,8 +315,8 @@ export class RubberCocExtractionService {
     this.logger.log(`Converted PDF to ${images.length} image(s) for OCR extraction`);
 
     const response = await this.callGeminiWithImages(
-      CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
-      "Please extract structured data from these customer delivery note images. Look carefully for the REFERENCE or PO number field - this is CRITICAL to extract. Return ONLY a valid JSON object with the extracted data.",
+      CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
+      "Analyze these delivery note images. In the header box at the top, find the REFERENCE: field (between NUMBER: and DATE:) and extract the PO/reference number. This is CRITICAL. Return ONLY valid JSON.",
       images,
     );
 

@@ -180,13 +180,12 @@ const SCHEDULE_WALL_THICKNESS: Record<string, Record<number, number>> = {
 const ROLL_WIDTH_MIN_MM = 800;
 const ROLL_WIDTH_MAX_MM = 1450;
 const ROLL_WIDTH_INCREMENT_MM = 50;
-const ROLL_LENGTH_MIN_M = 8;
 const ROLL_LENGTH_MAX_M = 12.5;
-const ROLL_LENGTH_INCREMENT_M = 0.5;
 const OPEN_END_ALLOWANCE_MM = 100;
 
 export interface ParsedPipeItem {
   id: string;
+  itemNo: string | null;
   description: string;
   nbMm: number | null;
   odMm: number | null;
@@ -207,22 +206,27 @@ export interface RollSpecification {
   widthMm: number;
   lengthM: number;
   areaSqM: number;
+  lanes: number;
+  laneWidthMm: number;
 }
 
 export interface CutPiece {
   itemId: string;
+  itemNo: string | null;
   description: string;
   widthMm: number;
   lengthMm: number;
   positionMm: number;
+  lane: number;
 }
 
 export interface RollAllocation {
   rollIndex: number;
   rollSpec: RollSpecification;
   cuts: CutPiece[];
-  usedLengthMm: number;
+  usedLengthMm: number[];
   wastePercentage: number;
+  hasLengthwiseCut: boolean;
 }
 
 export interface CuttingPlan {
@@ -326,6 +330,7 @@ export function parsePipeItem(
   description: string,
   quantity: number,
   m2: number | null,
+  itemNo: string | null,
 ): ParsedPipeItem {
   const nbMm = parseNb(description);
   const lengthMm = parseLength(description);
@@ -348,13 +353,13 @@ export function parsePipeItem(
 
     const circumference = Math.PI * idMm;
     rubberWidthMm = roundUpToNearest(circumference, ROLL_WIDTH_INCREMENT_MM);
-    rubberWidthMm = Math.max(ROLL_WIDTH_MIN_MM, Math.min(ROLL_WIDTH_MAX_MM, rubberWidthMm));
 
     rubberLengthMm = lengthMm + openEnds * OPEN_END_ALLOWANCE_MM;
   }
 
   return {
     id,
+    itemNo,
     description,
     nbMm,
     odMm,
@@ -372,17 +377,91 @@ export function parsePipeItem(
   };
 }
 
-function selectRollSpec(requiredWidthMm: number): RollSpecification {
-  const widthMm = Math.max(ROLL_WIDTH_MIN_MM, Math.min(ROLL_WIDTH_MAX_MM, requiredWidthMm));
-  const lengthM = ROLL_LENGTH_MAX_M;
+function determineRollSpec(itemWidthMm: number): RollSpecification {
+  const canDouble = itemWidthMm * 2 <= ROLL_WIDTH_MAX_MM;
+  const canTriple = itemWidthMm * 3 <= ROLL_WIDTH_MAX_MM;
+
+  let lanes = 1;
+  let rollWidthMm = itemWidthMm;
+
+  if (canTriple && itemWidthMm <= 450) {
+    lanes = 3;
+    rollWidthMm = roundUpToNearest(itemWidthMm * 3, ROLL_WIDTH_INCREMENT_MM);
+  } else if (canDouble && itemWidthMm <= 700) {
+    lanes = 2;
+    rollWidthMm = roundUpToNearest(itemWidthMm * 2, ROLL_WIDTH_INCREMENT_MM);
+  }
+
+  rollWidthMm = Math.max(ROLL_WIDTH_MIN_MM, Math.min(ROLL_WIDTH_MAX_MM, rollWidthMm));
+  const laneWidthMm = Math.floor(rollWidthMm / lanes);
+
   return {
-    widthMm,
-    lengthM,
-    areaSqM: (widthMm / 1000) * lengthM,
+    widthMm: rollWidthMm,
+    lengthM: ROLL_LENGTH_MAX_M,
+    areaSqM: (rollWidthMm / 1000) * ROLL_LENGTH_MAX_M,
+    lanes,
+    laneWidthMm,
   };
 }
 
-function groupItemsByWidth(items: ParsedPipeItem[]): Map<number, ParsedPipeItem[]> {
+interface ItemWithLane extends ParsedPipeItem {
+  assignedLane: number;
+}
+
+function optimizeCuttingWithLanes(
+  items: ParsedPipeItem[],
+  rollSpec: RollSpecification,
+): RollAllocation[] {
+  const rolls: RollAllocation[] = [];
+  const rollLengthMm = rollSpec.lengthM * 1000;
+  const lanes = rollSpec.lanes;
+
+  const sortedItems = [...items].sort((a, b) => b.rubberLengthMm - a.rubberLengthMm);
+  const placed = new Set<string>();
+
+  while (placed.size < sortedItems.length) {
+    const lanePositions: number[] = Array(lanes).fill(0);
+    const cuts: CutPiece[] = [];
+
+    for (const item of sortedItems) {
+      if (placed.has(item.id)) continue;
+
+      for (let lane = 0; lane < lanes; lane++) {
+        if (lanePositions[lane] + item.rubberLengthMm <= rollLengthMm) {
+          cuts.push({
+            itemId: item.id,
+            itemNo: item.itemNo,
+            description: item.description,
+            widthMm: item.rubberWidthMm,
+            lengthMm: item.rubberLengthMm,
+            positionMm: lanePositions[lane],
+            lane,
+          });
+          lanePositions[lane] += item.rubberLengthMm;
+          placed.add(item.id);
+          break;
+        }
+      }
+    }
+
+    const totalUsed = lanePositions.reduce((sum, pos) => sum + pos, 0);
+    const totalCapacity = rollLengthMm * lanes;
+    const wastePercentage = ((totalCapacity - totalUsed) / totalCapacity) * 100;
+
+    rolls.push({
+      rollIndex: rolls.length + 1,
+      rollSpec,
+      cuts,
+      usedLengthMm: lanePositions,
+      wastePercentage,
+      hasLengthwiseCut: lanes > 1,
+    });
+  }
+
+  return rolls;
+}
+
+function groupItemsByRequiredWidth(items: ParsedPipeItem[]): Map<number, ParsedPipeItem[]> {
   const groups = new Map<number, ParsedPipeItem[]>();
 
   for (const item of items) {
@@ -392,7 +471,10 @@ function groupItemsByWidth(items: ParsedPipeItem[]): Map<number, ParsedPipeItem[
     const existing = groups.get(widthKey) || [];
 
     for (let i = 0; i < item.quantity; i++) {
-      existing.push({ ...item, id: `${item.id}-${i + 1}` });
+      existing.push({
+        ...item,
+        id: item.quantity > 1 ? `${item.id}-${i + 1}` : item.id,
+      });
     }
 
     groups.set(widthKey, existing);
@@ -401,57 +483,12 @@ function groupItemsByWidth(items: ParsedPipeItem[]): Map<number, ParsedPipeItem[
   return groups;
 }
 
-function optimizeCuttingForWidth(
-  items: ParsedPipeItem[],
-  rollSpec: RollSpecification,
-): RollAllocation[] {
-  const rolls: RollAllocation[] = [];
-  const rollLengthMm = rollSpec.lengthM * 1000;
-
-  const sortedItems = [...items].sort((a, b) => b.rubberLengthMm - a.rubberLengthMm);
-
-  const placed = new Set<string>();
-
-  while (placed.size < sortedItems.length) {
-    const cuts: CutPiece[] = [];
-    let currentPosition = 0;
-
-    for (const item of sortedItems) {
-      if (placed.has(item.id)) continue;
-
-      if (currentPosition + item.rubberLengthMm <= rollLengthMm) {
-        cuts.push({
-          itemId: item.id,
-          description: item.description,
-          widthMm: item.rubberWidthMm,
-          lengthMm: item.rubberLengthMm,
-          positionMm: currentPosition,
-        });
-        currentPosition += item.rubberLengthMm;
-        placed.add(item.id);
-      }
-    }
-
-    const usedLengthMm = cuts.reduce((sum, c) => sum + c.lengthMm, 0);
-    const wastePercentage = ((rollLengthMm - usedLengthMm) / rollLengthMm) * 100;
-
-    rolls.push({
-      rollIndex: rolls.length + 1,
-      rollSpec,
-      cuts,
-      usedLengthMm,
-      wastePercentage,
-    });
-  }
-
-  return rolls;
-}
-
 export function calculateCuttingPlan(
   lineItems: Array<{
     id?: number;
     itemCode: string | null;
     itemDescription: string | null;
+    itemNo?: string | null;
     quantity: number | null;
     m2: number | null;
   }>,
@@ -463,8 +500,9 @@ export function calculateCuttingPlan(
     const desc = item.itemDescription || item.itemCode || "";
     const qty = item.quantity || 1;
     const m2 = item.m2 ? Number(item.m2) : null;
+    const itemNo = item.itemNo || null;
 
-    const parsed = parsePipeItem(String(item.id || Math.random()), desc, qty, m2);
+    const parsed = parsePipeItem(String(item.id || Math.random()), desc, qty, m2, itemNo);
 
     if (parsed.isValidPipe) {
       parsedItems.push(parsed);
@@ -489,12 +527,12 @@ export function calculateCuttingPlan(
     };
   }
 
-  const widthGroups = groupItemsByWidth(parsedItems);
+  const widthGroups = groupItemsByRequiredWidth(parsedItems);
   const allRolls: RollAllocation[] = [];
 
   for (const [widthMm, items] of widthGroups) {
-    const rollSpec = selectRollSpec(widthMm);
-    const rolls = optimizeCuttingForWidth(items, rollSpec);
+    const rollSpec = determineRollSpec(widthMm);
+    const rolls = optimizeCuttingWithLanes(items, rollSpec);
     allRolls.push(...rolls);
   }
 
@@ -523,20 +561,4 @@ export function calculateCuttingPlan(
     genericM2Items,
     genericM2Total,
   };
-}
-
-export function availableRollWidths(): number[] {
-  const widths: number[] = [];
-  for (let w = ROLL_WIDTH_MIN_MM; w <= ROLL_WIDTH_MAX_MM; w += ROLL_WIDTH_INCREMENT_MM) {
-    widths.push(w);
-  }
-  return widths;
-}
-
-export function availableRollLengths(): number[] {
-  const lengths: number[] = [];
-  for (let l = ROLL_LENGTH_MIN_M; l <= ROLL_LENGTH_MAX_M; l += ROLL_LENGTH_INCREMENT_M) {
-    lengths.push(l);
-  }
-  return lengths;
 }

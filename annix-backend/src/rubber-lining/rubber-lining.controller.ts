@@ -1554,22 +1554,57 @@ Formula: totalPrice = totalKg × salePricePerKg
     }
 
     const pdfBuffer = await this.storageService.download(note.documentPath);
-    let pdfText = "";
-    try {
-      const pdfData = await pdfParse(pdfBuffer);
-      pdfText = pdfData.text || "";
-    } catch {
-      pdfText = "";
-    }
 
-    const useOcr = pdfText.length < 50;
-    const extractionResult = useOcr
-      ? await this.rubberCocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
-      : await this.rubberCocExtractionService.extractDeliveryNote(pdfText);
+    const isRollDeliveryNote = note.deliveryNoteType === "ROLL";
+
+    let extractedData;
+    if (isRollDeliveryNote) {
+      const customerResult =
+        await this.rubberCocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
+
+      const allRolls = customerResult.deliveryNotes.flatMap((dn, dnIdx) =>
+        (dn.lineItems || []).map((item) => ({
+          rollNumber: item.rollNumber ?? null,
+          thicknessMm: item.thicknessMm ?? null,
+          widthMm: item.widthMm ?? null,
+          lengthM: item.lengthM ?? null,
+          weightKg: item.actualWeightKg ?? null,
+          areaSqM:
+            item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
+          deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
+          deliveryDate: dn.deliveryDate ?? null,
+          customerName: dn.customerName ?? null,
+          pageNumber: dnIdx + 1,
+        })),
+      );
+
+      const firstDn = customerResult.deliveryNotes[0];
+      extractedData = {
+        deliveryNoteNumber: firstDn?.deliveryNoteNumber,
+        deliveryDate: firstDn?.deliveryDate,
+        customerName: firstDn?.customerName,
+        customerReference: firstDn?.customerReference,
+        rolls: allRolls,
+      };
+    } else {
+      let pdfText = "";
+      try {
+        const pdfData = await pdfParse(pdfBuffer);
+        pdfText = pdfData.text || "";
+      } catch {
+        pdfText = "";
+      }
+
+      const useOcr = pdfText.length < 50;
+      const extractionResult = useOcr
+        ? await this.rubberCocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
+        : await this.rubberCocExtractionService.extractDeliveryNote(pdfText);
+      extractedData = extractionResult.data;
+    }
 
     const updatedNote = await this.rubberDeliveryNoteService.setExtractedData(
       Number(id),
-      extractionResult.data,
+      extractedData,
     );
     if (!updatedNote) throw new NotFoundException("Failed to update delivery note");
 
