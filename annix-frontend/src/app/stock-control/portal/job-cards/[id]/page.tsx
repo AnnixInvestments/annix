@@ -21,6 +21,11 @@ import { formatDateZA } from "@/app/lib/datetime";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
+import {
+  type CuttingPlan,
+  calculateCuttingPlan,
+  type RollAllocation,
+} from "@/app/stock-control/lib/rubberCuttingCalculator";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -103,25 +108,257 @@ const STANDARD_ROLL_WIDTH_MM = 1200;
 const STANDARD_ROLL_LENGTH_M = 12.5;
 const STANDARD_ROLL_AREA_M2 = (STANDARD_ROLL_WIDTH_MM / 1000) * STANDARD_ROLL_LENGTH_M;
 
+const CUT_COLORS = [
+  "bg-blue-500",
+  "bg-teal-500",
+  "bg-purple-500",
+  "bg-orange-500",
+  "bg-pink-500",
+  "bg-indigo-500",
+  "bg-cyan-500",
+  "bg-emerald-500",
+];
+
 interface RubberAllocationProps {
   lineItems: Array<{
+    id?: number;
     m2: number | null;
     itemCode: string | null;
     itemDescription: string | null;
+    quantity: number | null;
   }>;
 }
 
-function RubberAllocationSection({ lineItems }: RubberAllocationProps) {
-  const totalM2Required = lineItems.reduce((sum, li) => sum + (li.m2 ? Number(li.m2) : 0), 0);
+function CuttingDiagram({
+  roll,
+  colorMap,
+}: {
+  roll: RollAllocation;
+  colorMap: Map<string, string>;
+}) {
+  const rollLengthMm = roll.rollSpec.lengthM * 1000;
+  const scale = 100 / rollLengthMm;
 
-  const rollsNeededExact = totalM2Required / STANDARD_ROLL_AREA_M2;
+  return (
+    <div className="bg-white border border-gray-300 rounded-lg p-3 mb-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-semibold text-gray-900">
+          Roll {roll.rollIndex}: {roll.rollSpec.widthMm}mm x {roll.rollSpec.lengthM}m
+        </span>
+        <span
+          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+            roll.wastePercentage < 10
+              ? "bg-green-100 text-green-800"
+              : roll.wastePercentage < 25
+                ? "bg-amber-100 text-amber-800"
+                : "bg-red-100 text-red-800"
+          }`}
+        >
+          {(100 - roll.wastePercentage).toFixed(0)}% used
+        </span>
+      </div>
+
+      <div className="relative h-12 bg-gray-100 rounded border border-gray-300 overflow-hidden">
+        {roll.cuts.map((cut, idx) => {
+          const left = (cut.positionMm / rollLengthMm) * 100;
+          const width = (cut.lengthMm / rollLengthMm) * 100;
+          const colorClass =
+            colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
+
+          return (
+            <div
+              key={cut.itemId}
+              className={`absolute top-0 h-full ${colorClass} border-r border-white flex items-center justify-center`}
+              style={{ left: `${left}%`, width: `${width}%` }}
+              title={`${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m`}
+            >
+              <span className="text-[10px] text-white font-medium truncate px-1">
+                {(cut.lengthMm / 1000).toFixed(1)}m
+              </span>
+            </div>
+          );
+        })}
+        {roll.wastePercentage > 0 && (
+          <div
+            className="absolute top-0 h-full bg-gray-300 flex items-center justify-center"
+            style={{
+              left: `${(roll.usedLengthMm / rollLengthMm) * 100}%`,
+              width: `${roll.wastePercentage}%`,
+            }}
+          >
+            <span className="text-[10px] text-gray-600 font-medium">
+              {((rollLengthMm - roll.usedLengthMm) / 1000).toFixed(2)}m waste
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-1">
+        {roll.cuts.map((cut, idx) => {
+          const colorClass =
+            colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
+          return (
+            <div key={cut.itemId} className="flex items-center gap-1 text-xs">
+              <div className={`w-3 h-3 rounded ${colorClass}`} />
+              <span className="text-gray-600 truncate max-w-[150px]">
+                {cut.description.substring(0, 30)}
+                {cut.description.length > 30 ? "..." : ""} ({(cut.lengthMm / 1000).toFixed(2)}m)
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PipeCuttingView({ plan }: { plan: CuttingPlan }) {
+  const colorMap = new Map<string, string>();
+  let colorIdx = 0;
+
+  for (const roll of plan.rolls) {
+    for (const cut of roll.cuts) {
+      const baseId = cut.itemId.split("-")[0];
+      if (!colorMap.has(baseId)) {
+        colorMap.set(baseId, CUT_COLORS[colorIdx % CUT_COLORS.length]);
+        colorIdx++;
+      }
+    }
+  }
+
+  return (
+    <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-blue-50 rounded-lg p-4">
+          <p className="text-sm font-medium text-blue-600">Total Used</p>
+          <p className="text-2xl font-bold text-blue-900">{plan.totalUsedSqM.toFixed(2)} m&#178;</p>
+        </div>
+        <div className="bg-teal-50 rounded-lg p-4">
+          <p className="text-sm font-medium text-teal-600">Rolls Required</p>
+          <p className="text-2xl font-bold text-teal-900">{plan.totalRollsNeeded}</p>
+        </div>
+        <div className="bg-amber-50 rounded-lg p-4">
+          <p className="text-sm font-medium text-amber-600">Waste</p>
+          <p className="text-2xl font-bold text-amber-900">
+            {plan.totalWasteSqM.toFixed(2)} m&#178;
+          </p>
+          <p className="text-xs text-amber-600 mt-1">({plan.wastePercentage.toFixed(1)}%)</p>
+        </div>
+        <div className="bg-green-50 rounded-lg p-4">
+          <p className="text-sm font-medium text-green-600">Efficiency</p>
+          <p className="text-2xl font-bold text-green-900">
+            {(100 - plan.wastePercentage).toFixed(0)}%
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <h4 className="text-sm font-semibold text-gray-900 mb-3">Cutting Diagram</h4>
+        <p className="text-xs text-gray-500 mb-3">
+          Each colored section represents a pipe piece. Cut marks show where to cut the roll.
+        </p>
+        {plan.rolls.map((roll) => (
+          <CuttingDiagram key={roll.rollIndex} roll={roll} colorMap={colorMap} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GenericM2View({
+  totalM2,
+  items,
+}: {
+  totalM2: number;
+  items: { description: string; m2: number }[];
+}) {
+  const rollsNeededExact = totalM2 / STANDARD_ROLL_AREA_M2;
   const fullRollsNeeded = Math.ceil(rollsNeededExact);
   const totalRollArea = fullRollsNeeded * STANDARD_ROLL_AREA_M2;
-  const leftoverM2 = totalRollArea - totalM2Required;
+  const leftoverM2 = totalRollArea - totalM2;
   const lastRollUsedM2 = STANDARD_ROLL_AREA_M2 - leftoverM2;
   const lastRollUsedPercent = (lastRollUsedM2 / STANDARD_ROLL_AREA_M2) * 100;
 
-  if (totalM2Required === 0) {
+  return (
+    <div>
+      <p className="text-sm text-gray-500 mb-4">
+        Standard tank work rolls: {STANDARD_ROLL_WIDTH_MM}mm x {STANDARD_ROLL_LENGTH_M}m ={" "}
+        {STANDARD_ROLL_AREA_M2.toFixed(2)} m&#178; per roll
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-blue-50 rounded-lg p-4">
+          <p className="text-sm font-medium text-blue-600">Total Required</p>
+          <p className="text-2xl font-bold text-blue-900">{totalM2.toFixed(2)} m&#178;</p>
+        </div>
+        <div className="bg-teal-50 rounded-lg p-4">
+          <p className="text-sm font-medium text-teal-600">Rolls Required</p>
+          <p className="text-2xl font-bold text-teal-900">{fullRollsNeeded}</p>
+          <p className="text-xs text-teal-600 mt-1">({totalRollArea.toFixed(2)} m&#178; total)</p>
+        </div>
+        <div className="bg-amber-50 rounded-lg p-4">
+          <p className="text-sm font-medium text-amber-600">Last Roll Usage</p>
+          <p className="text-2xl font-bold text-amber-900">{lastRollUsedPercent.toFixed(0)}%</p>
+          <p className="text-xs text-amber-600 mt-1">({lastRollUsedM2.toFixed(2)} m&#178; used)</p>
+        </div>
+        <div className="bg-green-50 rounded-lg p-4">
+          <p className="text-sm font-medium text-green-600">Leftover</p>
+          <p className="text-2xl font-bold text-green-900">{leftoverM2.toFixed(2)} m&#178;</p>
+          <p className="text-xs text-green-600 mt-1">from last roll</p>
+        </div>
+      </div>
+
+      <div className="mt-4 bg-gray-50 rounded-lg p-4">
+        <h4 className="text-sm font-semibold text-gray-900 mb-3">Roll Breakdown</h4>
+        <div className="space-y-2">
+          {Array.from({ length: fullRollsNeeded }, (_, i) => {
+            const rollNum = i + 1;
+            const isLastRoll = rollNum === fullRollsNeeded;
+            const usedPercent = isLastRoll ? lastRollUsedPercent : 100;
+            const usedM2 = isLastRoll ? lastRollUsedM2 : STANDARD_ROLL_AREA_M2;
+
+            return (
+              <div key={rollNum} className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-700 w-16">Roll {rollNum}</span>
+                <div className="flex-1 bg-gray-200 rounded-full h-4 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${isLastRoll ? "bg-amber-500" : "bg-teal-500"}`}
+                    style={{ width: `${usedPercent}%` }}
+                  />
+                </div>
+                <span className="text-sm text-gray-600 w-24 text-right">
+                  {usedM2.toFixed(2)} m&#178;
+                </span>
+                <span
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    isLastRoll ? "bg-amber-100 text-amber-800" : "bg-teal-100 text-teal-800"
+                  }`}
+                >
+                  {usedPercent.toFixed(0)}%
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RubberAllocationSection({ lineItems }: RubberAllocationProps) {
+  const plan = calculateCuttingPlan(
+    lineItems.map((li, idx) => ({
+      id: li.id || idx,
+      itemCode: li.itemCode,
+      itemDescription: li.itemDescription,
+      quantity: li.quantity,
+      m2: li.m2,
+    })),
+  );
+
+  const totalM2Required = lineItems.reduce((sum, li) => sum + (li.m2 ? Number(li.m2) : 0), 0);
+
+  if (totalM2Required === 0 && !plan.hasPipeItems) {
     return null;
   }
 
@@ -129,69 +366,28 @@ function RubberAllocationSection({ lineItems }: RubberAllocationProps) {
     <div className="bg-white shadow rounded-lg overflow-hidden">
       <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
         <h3 className="text-lg leading-6 font-medium text-gray-900">Rubber Allocation</h3>
-        <p className="mt-1 text-sm text-gray-500">
-          Based on standard tank work rolls: {STANDARD_ROLL_WIDTH_MM}mm x {STANDARD_ROLL_LENGTH_M}m
-          = {STANDARD_ROLL_AREA_M2.toFixed(2)} m&#178; per roll
-        </p>
+        {plan.hasPipeItems && (
+          <p className="mt-1 text-sm text-gray-500">
+            Pipe dimensions detected. Rubber width calculated from pipe ID (circumference). Roll
+            widths: 800-1450mm (50mm increments). Lengths: 8-12.5m (0.5m increments).
+          </p>
+        )}
       </div>
       <div className="px-4 py-5 sm:px-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-blue-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-blue-600">Total Required</p>
-            <p className="text-2xl font-bold text-blue-900">{totalM2Required.toFixed(2)} m&#178;</p>
-          </div>
-          <div className="bg-teal-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-teal-600">Rolls Required</p>
-            <p className="text-2xl font-bold text-teal-900">{fullRollsNeeded}</p>
-            <p className="text-xs text-teal-600 mt-1">({totalRollArea.toFixed(2)} m&#178; total)</p>
-          </div>
-          <div className="bg-amber-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-amber-600">Last Roll Usage</p>
-            <p className="text-2xl font-bold text-amber-900">{lastRollUsedPercent.toFixed(0)}%</p>
-            <p className="text-xs text-amber-600 mt-1">
-              ({lastRollUsedM2.toFixed(2)} m&#178; used)
-            </p>
-          </div>
-          <div className="bg-green-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-green-600">Leftover</p>
-            <p className="text-2xl font-bold text-green-900">{leftoverM2.toFixed(2)} m&#178;</p>
-            <p className="text-xs text-green-600 mt-1">from last roll</p>
-          </div>
-        </div>
+        {plan.hasPipeItems ? (
+          <PipeCuttingView plan={plan} />
+        ) : (
+          <GenericM2View totalM2={plan.genericM2Total} items={plan.genericM2Items} />
+        )}
 
-        <div className="mt-4 bg-gray-50 rounded-lg p-4">
-          <h4 className="text-sm font-semibold text-gray-900 mb-3">Roll Breakdown</h4>
-          <div className="space-y-2">
-            {Array.from({ length: fullRollsNeeded }, (_, i) => {
-              const rollNum = i + 1;
-              const isLastRoll = rollNum === fullRollsNeeded;
-              const usedPercent = isLastRoll ? lastRollUsedPercent : 100;
-              const usedM2 = isLastRoll ? lastRollUsedM2 : STANDARD_ROLL_AREA_M2;
-
-              return (
-                <div key={rollNum} className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-700 w-16">Roll {rollNum}</span>
-                  <div className="flex-1 bg-gray-200 rounded-full h-4 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${isLastRoll ? "bg-amber-500" : "bg-teal-500"}`}
-                      style={{ width: `${usedPercent}%` }}
-                    />
-                  </div>
-                  <span className="text-sm text-gray-600 w-24 text-right">
-                    {usedM2.toFixed(2)} m&#178;
-                  </span>
-                  <span
-                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      isLastRoll ? "bg-amber-100 text-amber-800" : "bg-teal-100 text-teal-800"
-                    }`}
-                  >
-                    {usedPercent.toFixed(0)}%
-                  </span>
-                </div>
-              );
-            })}
+        {plan.hasPipeItems && plan.genericM2Total > 0 && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">
+              Additional Items (m&#178; only)
+            </h4>
+            <GenericM2View totalM2={plan.genericM2Total} items={plan.genericM2Items} />
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
