@@ -88,11 +88,13 @@ export class DeliveryService {
   }
 
   async findAll(companyId: number): Promise<DeliveryNote[]> {
-    return this.deliveryNoteRepo.find({
+    const notes = await this.deliveryNoteRepo.find({
       where: { companyId },
       relations: ["items", "items.stockItem"],
       order: { createdAt: "DESC" },
     });
+
+    return Promise.all(notes.map((note) => this.addPresignedUrl(note)));
   }
 
   async findById(companyId: number, id: number): Promise<DeliveryNote> {
@@ -102,6 +104,17 @@ export class DeliveryService {
     });
     if (!note) {
       throw new NotFoundException("Delivery note not found");
+    }
+    return this.addPresignedUrl(note);
+  }
+
+  private async addPresignedUrl(note: DeliveryNote): Promise<DeliveryNote> {
+    if (note.photoUrl) {
+      try {
+        note.photoUrl = await this.storageService.getPresignedUrl(note.photoUrl, 3600);
+      } catch {
+        // Keep original path if presigned URL generation fails
+      }
     }
     return note;
   }

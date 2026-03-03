@@ -374,10 +374,31 @@ export class RubberCocExtractionService {
     const pages = await pdfToPng(pdfInput, {
       disableFontFace: true,
       useSystemFonts: true,
-      viewportScale: 3.0,
+      viewportScale: 2.0,
     });
     this.logger.log(`Converted PDF to ${pages.length} image(s)`);
     return pages.filter((page) => page.content !== undefined).map((page) => page.content as Buffer);
+  }
+
+  async convertSinglePdfPage(pdfBuffer: Buffer, pageNumber: number): Promise<Buffer> {
+    this.logger.log(`Converting PDF page ${pageNumber} to image...`);
+    const pdfInput = pdfBuffer.buffer.slice(
+      pdfBuffer.byteOffset,
+      pdfBuffer.byteOffset + pdfBuffer.byteLength,
+    );
+    const pages = await pdfToPng(pdfInput, {
+      disableFontFace: true,
+      useSystemFonts: true,
+      viewportScale: 2.0,
+      pagesToProcess: [pageNumber],
+    });
+
+    if (pages.length === 0 || !pages[0].content) {
+      throw new Error(`Failed to convert page ${pageNumber}`);
+    }
+
+    this.logger.log(`Page ${pageNumber} converted, size: ${pages[0].width}x${pages[0].height}`);
+    return pages[0].content;
   }
 
   private async callGeminiWithImages(

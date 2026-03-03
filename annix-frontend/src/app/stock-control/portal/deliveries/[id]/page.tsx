@@ -8,6 +8,21 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 
+interface ExtractedLineItem {
+  description?: string;
+  itemCode?: string;
+  sku?: string;
+  quantity?: number;
+  unitOfMeasure?: string;
+}
+
+function extractedLineItems(delivery: DeliveryNote): ExtractedLineItem[] {
+  const data = delivery.extractedData as {
+    lineItems?: ExtractedLineItem[];
+  } | null;
+  return data?.lineItems ?? [];
+}
+
 export default function DeliveryDetailPage() {
   const params = useParams();
   const deliveryId = Number(params.id);
@@ -163,25 +178,7 @@ export default function DeliveryDetailPage() {
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Delivered Items</h3>
         </div>
-        {!delivery.items || delivery.items.length === 0 ? (
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No items</h3>
-            <p className="mt-1 text-sm text-gray-500">This delivery note has no items.</p>
-          </div>
-        ) : (
+        {delivery.items && delivery.items.length > 0 ? (
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -230,6 +227,71 @@ export default function DeliveryDetailPage() {
               ))}
             </tbody>
           </table>
+        ) : extractedLineItems(delivery).length > 0 ? (
+          <>
+            <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-100">
+              <p className="text-xs text-yellow-700">
+                Extracted from document (not yet linked to inventory)
+              </p>
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Description
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Item Code / SKU
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Quantity
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {extractedLineItems(delivery).map((item, idx) => (
+                  <tr key={idx} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {item.description || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                      {item.itemCode || item.sku || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                      {item.quantity ?? "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        ) : (
+          <div className="text-center py-12">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+              />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No items</h3>
+            <p className="mt-1 text-sm text-gray-500">This delivery note has no items.</p>
+          </div>
         )}
       </div>
     </div>
