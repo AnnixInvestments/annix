@@ -1,11 +1,14 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
+import { pdfToPng } from "pdf-to-png-converter";
 import PDFDocument from "pdfkit";
+import sharp from "sharp";
 import { In, Repository } from "typeorm";
 import { formatDateZA, generateUniqueId, now } from "../lib/datetime";
+import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
   RubberAuCocDto,
@@ -17,7 +20,14 @@ import { RubberAuCocItem } from "./entities/rubber-au-coc-item.entity";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
+import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
+import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
+import {
+  ExtractedCocData,
+  RubberSupplierCoc,
+  SupplierCocType,
+} from "./entities/rubber-supplier-coc.entity";
 
 const AU_COC_STATUS_LABELS: Record<AuCocStatus, string> = {
   [AuCocStatus.DRAFT]: "Draft",
@@ -63,6 +73,14 @@ export class RubberAuCocService {
     private companyRepository: Repository<RubberCompany>,
     @InjectRepository(RubberCompoundQualityConfig)
     private qualityConfigRepository: Repository<RubberCompoundQualityConfig>,
+    @InjectRepository(RubberSupplierCoc)
+    private supplierCocRepository: Repository<RubberSupplierCoc>,
+    @InjectRepository(RubberDeliveryNote)
+    private deliveryNoteRepository: Repository<RubberDeliveryNote>,
+    @InjectRepository(RubberDeliveryNoteItem)
+    private deliveryNoteItemRepository: Repository<RubberDeliveryNoteItem>,
+    @Inject(STORAGE_SERVICE)
+    private storageService: IStorageService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -674,5 +692,269 @@ export class RubberAuCocService {
       rollNumber: item.rollStock?.rollNumber ?? null,
       createdAt: item.createdAt.toISOString(),
     };
+  }
+
+  async autoCreateFromCustomerDeliveryNote(
+    deliveryNoteId: number,
+    customerCompanyId: number,
+    createdBy?: string,
+  ): Promise<{
+    auCoc: RubberAuCocDto | null;
+    matchedSupplierCocs: { id: number; cocNumber: string | null; orderNumber: string | null }[];
+    message: string;
+  }> {
+    const deliveryNote = await this.deliveryNoteRepository.findOne({
+      where: { id: deliveryNoteId },
+    });
+
+    if (!deliveryNote) {
+      return { auCoc: null, matchedSupplierCocs: [], message: "Delivery note not found" };
+    }
+
+    const deliveryNoteItems = await this.deliveryNoteItemRepository.find({
+      where: { deliveryNoteId },
+    });
+
+    if (deliveryNoteItems.length === 0) {
+      return { auCoc: null, matchedSupplierCocs: [], message: "No items in delivery note" };
+    }
+
+    const rollNumbers = deliveryNoteItems
+      .map((item) => item.rollNumber)
+      .filter((rn): rn is string => rn !== null && rn !== undefined);
+
+    if (rollNumbers.length === 0) {
+      return {
+        auCoc: null,
+        matchedSupplierCocs: [],
+        message: "No roll numbers found in delivery note items",
+      };
+    }
+
+    this.logger.log(`Searching for supplier COCs matching roll numbers: ${rollNumbers.join(", ")}`);
+
+    const calendererCocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .leftJoinAndSelect("coc.supplierCompany", "company")
+      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
+      .getMany();
+
+    const matchedCocs: RubberSupplierCoc[] = [];
+
+    rollNumbers.forEach((rollNumber) => {
+      const normalizedRoll = rollNumber.trim().toUpperCase();
+
+      const matchingCoc = calendererCocs.find((coc) => {
+        const cocRollNumbers = coc.extractedData?.rollNumbers || [];
+        const orderNumber = coc.orderNumber?.trim().toUpperCase() || "";
+        const extractedOrder = coc.extractedData?.orderNumber?.trim().toUpperCase() || "";
+
+        const rollMatch = cocRollNumbers.some((rn) => {
+          const normalizedCocRoll = rn.trim().toUpperCase();
+          return (
+            normalizedCocRoll === normalizedRoll ||
+            normalizedRoll.includes(normalizedCocRoll) ||
+            normalizedCocRoll.includes(normalizedRoll)
+          );
+        });
+
+        const orderMatch =
+          (orderNumber && normalizedRoll.includes(orderNumber)) ||
+          (extractedOrder && normalizedRoll.includes(extractedOrder)) ||
+          orderNumber === normalizedRoll ||
+          extractedOrder === normalizedRoll;
+
+        return rollMatch || orderMatch;
+      });
+
+      if (matchingCoc && !matchedCocs.find((c) => c.id === matchingCoc.id)) {
+        matchedCocs.push(matchingCoc);
+      }
+    });
+
+    if (matchedCocs.length === 0) {
+      return {
+        auCoc: null,
+        matchedSupplierCocs: [],
+        message: `No matching supplier COCs found for roll numbers: ${rollNumbers.join(", ")}`,
+      };
+    }
+
+    this.logger.log(`Found ${matchedCocs.length} matching supplier COC(s)`);
+
+    const allTestData: ExtractedCocData["batches"] = [];
+    let compoundCode = "";
+    let compoundDescription = "";
+    let graphPdfPath: string | null = null;
+
+    matchedCocs.forEach((coc) => {
+      const extractedBatches = coc.extractedData?.batches || [];
+      allTestData.push(...extractedBatches);
+
+      if (!compoundCode && coc.compoundCode) {
+        compoundCode = coc.compoundCode;
+      }
+      if (!compoundDescription && coc.extractedData?.compoundDescription) {
+        compoundDescription = coc.extractedData.compoundDescription;
+      }
+      if (!graphPdfPath && coc.graphPdfPath) {
+        graphPdfPath = coc.graphPdfPath;
+      }
+    });
+
+    const customer = await this.companyRepository.findOne({
+      where: { id: customerCompanyId },
+    });
+
+    if (!customer) {
+      return {
+        auCoc: null,
+        matchedSupplierCocs: matchedCocs.map((c) => ({
+          id: c.id,
+          cocNumber: c.cocNumber,
+          orderNumber: c.orderNumber,
+        })),
+        message: "Customer company not found",
+      };
+    }
+
+    const cocNumber = await this.generateCocNumber();
+
+    const auCoc = this.auCocRepository.create({
+      firebaseUid: `pg_${generateUniqueId()}`,
+      cocNumber,
+      customerCompanyId,
+      poNumber: null,
+      deliveryNoteRef: deliveryNote.deliveryNoteNumber,
+      status: AuCocStatus.DRAFT,
+      notes: `Auto-created from customer delivery note ${deliveryNote.deliveryNoteNumber}. Matched supplier COC(s): ${matchedCocs.map((c) => c.cocNumber || c.orderNumber).join(", ")}`,
+      createdBy: createdBy ?? null,
+      approvedByName: "Ron Govender",
+    });
+
+    const savedCoc = await this.auCocRepository.save(auCoc);
+
+    const result = await this.auCocRepository.findOne({
+      where: { id: savedCoc.id },
+      relations: ["customerCompany"],
+    });
+
+    const auCocDto = this.mapAuCocToDto(result!);
+
+    return {
+      auCoc: auCocDto,
+      matchedSupplierCocs: matchedCocs.map((c) => ({
+        id: c.id,
+        cocNumber: c.cocNumber,
+        orderNumber: c.orderNumber,
+      })),
+      message: `Successfully created AU COC ${cocNumber} from ${matchedCocs.length} matched supplier COC(s)`,
+    };
+  }
+
+  async generatePdfWithGraph(
+    id: number,
+    supplierCocId?: number,
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    const { buffer: cocBuffer, filename } = await this.generatePdf(id);
+
+    if (!supplierCocId) {
+      return { buffer: cocBuffer, filename };
+    }
+
+    const supplierCoc = await this.supplierCocRepository.findOne({
+      where: { id: supplierCocId },
+    });
+
+    if (!supplierCoc?.graphPdfPath) {
+      this.logger.warn(`No graph PDF found for supplier COC ${supplierCocId}`);
+      return { buffer: cocBuffer, filename };
+    }
+
+    try {
+      const graphBuffer = await this.storageService.download(supplierCoc.graphPdfPath);
+
+      const mergedBuffer = await this.mergePdfWithGraph(cocBuffer, graphBuffer);
+
+      return { buffer: mergedBuffer, filename };
+    } catch (error) {
+      this.logger.error(`Failed to add graph from supplier COC ${supplierCocId}:`, error);
+      return { buffer: cocBuffer, filename };
+    }
+  }
+
+  private async mergePdfWithGraph(cocBuffer: Buffer, graphBuffer: Buffer): Promise<Buffer> {
+    const cleanedGraphBuffer = await this.cleanGraphPdf(graphBuffer);
+
+    const PDFMerger = (await import("pdf-merger-js")).default;
+    const merger = new PDFMerger();
+
+    await merger.add(cocBuffer);
+    await merger.add(cleanedGraphBuffer);
+
+    return Buffer.from(await merger.saveAsBuffer());
+  }
+
+  private async cleanGraphPdf(graphBuffer: Buffer): Promise<Buffer> {
+    try {
+      const pdfInput = graphBuffer.buffer.slice(
+        graphBuffer.byteOffset,
+        graphBuffer.byteOffset + graphBuffer.byteLength,
+      );
+      const pngPages = await pdfToPng(pdfInput, {
+        disableFontFace: true,
+        useSystemFonts: true,
+        viewportScale: 2.0,
+      });
+
+      if (pngPages.length === 0) {
+        this.logger.warn("No pages found in graph PDF, returning original");
+        return graphBuffer;
+      }
+
+      const graphPng = pngPages[0].content;
+
+      const metadata = await sharp(graphPng).metadata();
+      const width = metadata.width || 1190;
+      const height = metadata.height || 1684;
+
+      const headerCropHeight = Math.round(height * 0.1);
+      const footerCropHeight = Math.round(height * 0.08);
+      const sideCropWidth = Math.round(width * 0.02);
+
+      const cleanedImage = await sharp(graphPng)
+        .extract({
+          left: sideCropWidth,
+          top: headerCropHeight,
+          width: width - sideCropWidth * 2,
+          height: height - headerCropHeight - footerCropHeight,
+        })
+        .png()
+        .toBuffer();
+
+      return this.createPdfFromImage(cleanedImage);
+    } catch (error) {
+      this.logger.error("Failed to clean graph PDF, returning original:", error);
+      return graphBuffer;
+    }
+  }
+
+  private createPdfFromImage(imageBuffer: Buffer): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ size: "A4", margin: 0 });
+      const chunks: Buffer[] = [];
+
+      doc.on("data", (chunk) => chunks.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+
+      doc.image(imageBuffer, 20, 20, {
+        fit: [555, 800],
+        align: "center",
+        valign: "center",
+      });
+
+      doc.end();
+    });
   }
 }

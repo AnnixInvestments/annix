@@ -378,7 +378,10 @@ export class RubberDeliveryNoteService {
     return (result.affected || 0) > 0;
   }
 
-  async updateDocumentPath(id: number, documentPath: string): Promise<RubberDeliveryNoteDto | null> {
+  async updateDocumentPath(
+    id: number,
+    documentPath: string,
+  ): Promise<RubberDeliveryNoteDto | null> {
     const note = await this.deliveryNoteRepository.findOne({
       where: { id },
       relations: ["supplierCompany", "linkedCoc"],

@@ -213,7 +213,14 @@ export class JobCardPdfService {
     y += 5;
 
     doc.font("Helvetica").fontSize(8);
-    jobCard.lineItems.slice(0, 15).forEach((item) => {
+    const filteredItems = jobCard.lineItems.filter((item) => {
+      const code = (item.itemCode || "").toUpperCase().trim();
+      if (code === "PRODUCTION") return false;
+      if (code.startsWith("INT") && code.includes("BLAST")) return false;
+      if (code.startsWith("EXT") && code.includes("BLAST")) return false;
+      return true;
+    });
+    filteredItems.slice(0, 15).forEach((item) => {
       doc.text(item.itemCode || "-", 50, y, { width: 75 });
       doc.text(item.itemDescription || "-", 130, y, { width: 260 });
       doc.text(String(item.quantity || "-"), 400, y);
@@ -221,8 +228,8 @@ export class JobCardPdfService {
       y += 15;
     });
 
-    if (jobCard.lineItems.length > 15) {
-      doc.text(`... and ${jobCard.lineItems.length - 15} more items`, 50, y);
+    if (filteredItems.length > 15) {
+      doc.text(`... and ${filteredItems.length - 15} more items`, 50, y);
       y += 15;
     }
 

@@ -2056,6 +2056,54 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/au-cocs/auto-create-from-dn")
+  @ApiOperation({
+    summary: "Auto-create AU CoC from customer delivery note by matching to Impilo COCs",
+  })
+  async autoCreateAuCocFromDeliveryNote(
+    @Body()
+    dto: {
+      deliveryNoteId: number;
+      customerCompanyId: number;
+    },
+    @Req() req: { user?: { email?: string } },
+  ): Promise<{
+    auCoc: RubberAuCocDto | null;
+    matchedSupplierCocs: { id: number; cocNumber: string | null; orderNumber: string | null }[];
+    message: string;
+  }> {
+    return this.rubberAuCocService.autoCreateFromCustomerDeliveryNote(
+      dto.deliveryNoteId,
+      dto.customerCompanyId,
+      req.user?.email,
+    );
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/au-cocs/:id/pdf-with-graph/:supplierCocId")
+  @ApiOperation({ summary: "Get AU CoC PDF with supplier graph attached" })
+  @ApiParam({ name: "id", description: "AU CoC ID" })
+  @ApiParam({ name: "supplierCocId", description: "Supplier COC ID for graph" })
+  async auCocPdfWithGraph(
+    @Param("id") id: string,
+    @Param("supplierCocId") supplierCocId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, filename } = await this.rubberAuCocService.generatePdfWithGraph(
+      Number(id),
+      Number(supplierCocId),
+    );
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="${filename}"`,
+      "Content-Length": buffer.length.toString(),
+    });
+    res.send(buffer);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/coc-statuses")
   @ApiOperation({ summary: "List CoC processing statuses" })
   async cocStatuses(): Promise<{ value: string; label: string }[]> {

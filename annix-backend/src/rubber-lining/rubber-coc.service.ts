@@ -759,4 +759,114 @@ export class RubberCocService {
       updatedAt: batch.updatedAt.toISOString(),
     };
   }
+
+  async findMatchingSupplierCocsByOrderNumber(
+    orderNumber: string,
+  ): Promise<RubberSupplierCocDto[]> {
+    const normalizedOrder = orderNumber.trim().toUpperCase();
+
+    const cocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .leftJoinAndSelect("coc.supplierCompany", "company")
+      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
+      .getMany();
+
+    const matchingCocs = cocs.filter((coc) => {
+      const cocOrderNumber = coc.orderNumber?.trim().toUpperCase() || "";
+      const extractedOrder = coc.extractedData?.orderNumber?.trim().toUpperCase() || "";
+
+      if (cocOrderNumber === normalizedOrder || extractedOrder === normalizedOrder) {
+        return true;
+      }
+
+      const rollNumbers = coc.extractedData?.rollNumbers || [];
+      const rollMatch = rollNumbers.some((rn) => {
+        const normalizedRoll = rn.trim().toUpperCase();
+        return normalizedRoll.includes(normalizedOrder) || normalizedOrder.includes(normalizedRoll);
+      });
+
+      return rollMatch;
+    });
+
+    return matchingCocs.map((coc) => this.mapSupplierCocToDto(coc));
+  }
+
+  async findMatchingSupplierCocByRollNumber(rollNumber: string): Promise<{
+    calendererCoc: RubberSupplierCocDto | null;
+    compounderCocs: RubberSupplierCocDto[];
+    batches: RubberCompoundBatchDto[];
+    testData: ExtractedCocData["batches"];
+  }> {
+    const normalizedRoll = rollNumber.trim().toUpperCase();
+
+    const calendererCocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .leftJoinAndSelect("coc.supplierCompany", "company")
+      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
+      .getMany();
+
+    const matchingCalendererCoc = calendererCocs.find((coc) => {
+      const rollNumbers = coc.extractedData?.rollNumbers || [];
+      const orderNumber = coc.orderNumber?.trim().toUpperCase() || "";
+      const extractedOrder = coc.extractedData?.orderNumber?.trim().toUpperCase() || "";
+
+      const rollMatch = rollNumbers.some((rn) => {
+        const normalizedCocRoll = rn.trim().toUpperCase();
+        return normalizedCocRoll === normalizedRoll || normalizedRoll.includes(normalizedCocRoll);
+      });
+
+      const orderMatch =
+        orderNumber === normalizedRoll ||
+        extractedOrder === normalizedRoll ||
+        normalizedRoll.includes(orderNumber) ||
+        normalizedRoll.includes(extractedOrder);
+
+      return rollMatch || orderMatch;
+    });
+
+    if (!matchingCalendererCoc) {
+      return {
+        calendererCoc: null,
+        compounderCocs: [],
+        batches: [],
+        testData: [],
+      };
+    }
+
+    const linkedCompounderIds = matchingCalendererCoc.extractedData?.linkedCompounderCocIds || [];
+    const compounderCocs =
+      linkedCompounderIds.length > 0
+        ? await this.supplierCocRepository.find({
+            where: linkedCompounderIds.map((id) => ({ id })),
+            relations: ["supplierCompany"],
+          })
+        : [];
+
+    const batchNumbers = matchingCalendererCoc.extractedData?.batchNumbers || [];
+    const batches =
+      batchNumbers.length > 0
+        ? await this.compoundBatchRepository
+            .createQueryBuilder("batch")
+            .leftJoinAndSelect("batch.supplierCoc", "coc")
+            .leftJoinAndSelect("batch.compoundStock", "stock")
+            .leftJoinAndSelect("stock.compoundCoding", "coding")
+            .where("batch.batch_number IN (:...batchNumbers)", { batchNumbers })
+            .getMany()
+        : [];
+
+    const testData = matchingCalendererCoc.extractedData?.batches || [];
+
+    return {
+      calendererCoc: this.mapSupplierCocToDto(matchingCalendererCoc),
+      compounderCocs: compounderCocs.map((coc) => this.mapSupplierCocToDto(coc)),
+      batches: batches.map((batch) => this.mapCompoundBatchToDto(batch)),
+      testData,
+    };
+  }
+
+  extractedTestDataForCoc(cocId: number): Promise<ExtractedCocData["batches"]> {
+    return this.supplierCocRepository
+      .findOne({ where: { id: cocId } })
+      .then((coc) => coc?.extractedData?.batches || []);
+  }
 }
