@@ -1144,15 +1144,6 @@ ${truncatedText}`;
       const file = files[i];
       this.logger.log(`Analyzing customer DN file ${i + 1}/${files.length}: ${file.originalname}`);
 
-      const pdfText = await this.extractTextFromPdf(file.buffer);
-      this.logger.log(`Extracted ${pdfText.length} characters of text from ${file.originalname}`);
-
-      if (pdfText.length < 50) {
-        this.logger.warn(
-          `PDF text too short (${pdfText.length} chars) for ${file.originalname} - may be image-based PDF`,
-        );
-      }
-
       let deliveryNotesFromFile: Array<Record<string, unknown>> = [];
       try {
         const isAvailable = await this.cocExtractionService.isAvailable();
@@ -1160,10 +1151,13 @@ ${truncatedText}`;
           throw new Error("GEMINI_API_KEY not configured - AI extraction unavailable");
         }
 
-        const extraction = await this.cocExtractionService.extractCustomerDeliveryNote(pdfText);
+        this.logger.log(`Using OCR-based extraction for ${file.originalname}`);
+        const extraction = await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(
+          file.buffer,
+        );
         deliveryNotesFromFile = extraction.deliveryNotes as Array<Record<string, unknown>>;
         this.logger.log(
-          `Extracted ${deliveryNotesFromFile.length} customer DN(s) from ${file.originalname}`,
+          `Extracted ${deliveryNotesFromFile.length} customer DN(s) from ${file.originalname} via OCR`,
         );
       } catch (error) {
         const errorMsg = `Failed to extract from ${file.originalname}: ${error.message}`;
