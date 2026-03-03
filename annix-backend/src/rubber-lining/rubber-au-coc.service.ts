@@ -8,7 +8,7 @@ import PDFDocument from "pdfkit";
 import sharp from "sharp";
 import { In, Repository } from "typeorm";
 import { formatDateZA, generateUniqueId, now } from "../lib/datetime";
-import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
   RubberAuCocDto,
