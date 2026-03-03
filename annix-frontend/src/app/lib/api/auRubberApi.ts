@@ -2027,7 +2027,7 @@ class AuRubberApiClient {
 
   async acceptAnalyzedDeliveryNote(
     file: File,
-    analyzedData: AnalyzedDeliveryNoteData,
+    analyzedData: AnalyzedDeliveryNoteResult["data"],
   ): Promise<RubberDeliveryNoteDto> {
     const formData = new FormData();
     formData.append("file", file);

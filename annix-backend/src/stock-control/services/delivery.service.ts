@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
+import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
@@ -175,5 +175,46 @@ export class DeliveryService {
       status: note.extractionStatus,
       data: note.extractedData,
     };
+  }
+
+  async createFromAnalyzedData(
+    companyId: number,
+    file: Express.Multer.File,
+    analyzedData: {
+      deliveryNoteNumber?: string;
+      deliveryDate?: string;
+      fromCompany?: { name?: string };
+      toCompany?: { name?: string };
+      lineItems?: Array<{
+        description?: string;
+        itemCode?: string;
+        quantity?: number;
+        unitOfMeasure?: string;
+      }>;
+    },
+    receivedBy?: string,
+  ): Promise<DeliveryNote> {
+    const fileName = `dn_${analyzedData.deliveryNoteNumber || "unknown"}_${Date.now()}${file.originalname.substring(file.originalname.lastIndexOf("."))}`;
+    const filePath = `${StorageArea.STOCK_CONTROL}/deliveries/${fileName}`;
+
+    await this.storageService.upload(
+      { buffer: file.buffer, originalname: fileName, mimetype: file.mimetype } as Express.Multer.File,
+      filePath,
+    );
+
+    const deliveryNote = this.deliveryNoteRepo.create({
+      deliveryNumber: analyzedData.deliveryNoteNumber || `DN-${Date.now()}`,
+      supplierName: analyzedData.fromCompany?.name || "Unknown Supplier",
+      receivedDate: analyzedData.deliveryDate ? new Date(analyzedData.deliveryDate) : new Date(),
+      notes: null,
+      photoUrl: filePath,
+      receivedBy: receivedBy || null,
+      companyId,
+      extractionStatus: "completed",
+      extractedData: analyzedData,
+    });
+
+    const savedNote = await this.deliveryNoteRepo.save(deliveryNote);
+    return this.findById(companyId, savedNote.id);
   }
 }

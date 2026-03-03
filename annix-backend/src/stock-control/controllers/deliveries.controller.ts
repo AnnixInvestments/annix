@@ -109,4 +109,56 @@ export class DeliveriesController {
 
     return this.extractionService.analyzeDeliveryNotePhoto([file.buffer]);
   }
+
+  @Post("accept-analyzed")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Accept analyzed delivery note and create record" })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          format: "binary",
+          description: "Original photo (JPEG, PNG) or PDF of delivery note",
+        },
+        analyzedData: {
+          type: "string",
+          description: "JSON string of analyzed delivery note data",
+        },
+      },
+    },
+  })
+  async acceptAnalyzedDeliveryNote(
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+    @Body("analyzedData") analyzedDataJson: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException("No file provided");
+    }
+
+    const analyzedData = JSON.parse(analyzedDataJson) as {
+      deliveryNoteNumber?: string;
+      deliveryDate?: string;
+      fromCompany?: { name?: string };
+      toCompany?: { name?: string };
+      lineItems?: Array<{
+        description?: string;
+        itemCode?: string;
+        quantity?: number;
+        unitOfMeasure?: string;
+      }>;
+    };
+
+    const deliveryNote = await this.deliveryService.createFromAnalyzedData(
+      req.user.companyId,
+      file,
+      analyzedData,
+      req.user.name,
+    );
+
+    return deliveryNote;
+  }
 }
