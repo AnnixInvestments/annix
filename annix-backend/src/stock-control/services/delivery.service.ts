@@ -412,22 +412,43 @@ export class DeliveryService {
         await this.stockItemRepo.save(stockItem);
         this.logger.log(`Updated existing stock item ${sku}: +${quantity}`);
       } else {
-        stockItem = this.stockItemRepo.create({
-          sku,
-          name: item.description,
-          description: null,
-          category: item.isPaint ? "Paint" : "Uncategorized",
-          unitOfMeasure,
-          costPerUnit,
-          quantity,
-          minStockLevel: 0,
-          needsQrPrint: true,
+        const matchResult = await this.findMatchingStockItem(
           companyId,
-        });
-        await this.stockItemRepo.save(stockItem);
-        this.logger.log(
-          `Created new stock item ${sku}: ${item.description} @ R${costPerUnit.toFixed(2)}`,
+          deliveryNote.supplierName,
+          item.description,
+          sku,
         );
+
+        if (matchResult.existingItem && matchResult.sameSupplier) {
+          stockItem = matchResult.existingItem;
+          const oldSku = stockItem.sku;
+          stockItem.sku = sku;
+          stockItem.quantity = stockItem.quantity + quantity;
+          if (costPerUnit > 0) {
+            stockItem.costPerUnit = costPerUnit;
+          }
+          await this.stockItemRepo.save(stockItem);
+          this.logger.log(
+            `Merged item: updated SKU from ${oldSku} to ${sku}, added ${quantity} (same supplier: ${deliveryNote.supplierName})`,
+          );
+        } else {
+          stockItem = this.stockItemRepo.create({
+            sku,
+            name: item.description,
+            description: null,
+            category: item.isPaint ? "Paint" : "Uncategorized",
+            unitOfMeasure,
+            costPerUnit,
+            quantity,
+            minStockLevel: 0,
+            needsQrPrint: true,
+            companyId,
+          });
+          await this.stockItemRepo.save(stockItem);
+          this.logger.log(
+            `Created new stock item ${sku}: ${item.description} @ R${costPerUnit.toFixed(2)}`,
+          );
+        }
       }
 
       const noteItem = this.deliveryNoteItemRepo.create({
@@ -477,7 +498,9 @@ export class DeliveryService {
     });
 
     if (!stockItem) {
-      this.logger.log(`Returned item not found in stock, skipping: ${item.description} (SKU: ${sku})`);
+      this.logger.log(
+        `Returned item not found in stock, skipping: ${item.description} (SKU: ${sku})`,
+      );
       return;
     }
 
@@ -494,7 +517,9 @@ export class DeliveryService {
 
     stockItem.quantity = Math.max(0, stockItem.quantity - quantity);
     await this.stockItemRepo.save(stockItem);
-    this.logger.log(`Reduced stock for returned item ${sku}: -${quantity} (new qty: ${stockItem.quantity})`);
+    this.logger.log(
+      `Reduced stock for returned item ${sku}: -${quantity} (new qty: ${stockItem.quantity})`,
+    );
 
     const movement = this.movementRepo.create({
       stockItem,
@@ -507,6 +532,74 @@ export class DeliveryService {
       companyId,
     });
     await this.movementRepo.save(movement);
+  }
+
+  private async findMatchingStockItem(
+    companyId: number,
+    supplierName: string,
+    description: string,
+    newSku: string,
+  ): Promise<{ existingItem: StockItem | null; sameSupplier: boolean }> {
+    const normalizedDesc = this.normalizeForComparison(description);
+    const normalizedNewSku = newSku.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const allItems = await this.stockItemRepo.find({ where: { companyId } });
+
+    for (const item of allItems) {
+      const normalizedItemName = this.normalizeForComparison(item.name);
+      const normalizedItemSku = item.sku.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+      const nameMatch =
+        normalizedDesc === normalizedItemName ||
+        (normalizedDesc.length > 15 && normalizedItemName.includes(normalizedDesc)) ||
+        (normalizedItemName.length > 15 && normalizedDesc.includes(normalizedItemName));
+
+      const skuSimilar =
+        normalizedNewSku.length > 5 &&
+        normalizedItemSku.length > 5 &&
+        (normalizedNewSku.includes(normalizedItemSku.slice(-5)) ||
+          normalizedItemSku.includes(normalizedNewSku.slice(-5)));
+
+      if (nameMatch || skuSimilar) {
+        const supplierHistory = await this.deliveryNoteItemRepo
+          .createQueryBuilder("dni")
+          .innerJoin("dni.deliveryNote", "dn")
+          .where("dni.stockItemId = :stockItemId", { stockItemId: item.id })
+          .andWhere("dni.companyId = :companyId", { companyId })
+          .select("DISTINCT dn.supplierName", "supplierName")
+          .getRawMany();
+
+        const suppliers = supplierHistory.map((s) => s.supplierName?.toLowerCase() || "");
+        const normalizedCurrentSupplier = supplierName?.toLowerCase() || "";
+
+        const sameSupplier = suppliers.some(
+          (s) =>
+            s === normalizedCurrentSupplier ||
+            s.includes(normalizedCurrentSupplier) ||
+            normalizedCurrentSupplier.includes(s),
+        );
+
+        if (sameSupplier) {
+          this.logger.log(
+            `Found matching item: "${item.name}" (SKU: ${item.sku}) from same supplier: ${supplierName}`,
+          );
+          return { existingItem: item, sameSupplier: true };
+        }
+
+        this.logger.log(
+          `Found similar item: "${item.name}" but from different supplier(s): ${suppliers.join(", ")} vs current: ${supplierName}`,
+        );
+      }
+    }
+
+    return { existingItem: null, sameSupplier: false };
+  }
+
+  private normalizeForComparison(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .trim();
   }
 
   private generateSku(item: {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   ImportResult,
   ImportUploadResponse,
@@ -10,7 +11,6 @@ import type {
   StockItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 
 function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", {
@@ -57,7 +57,8 @@ interface CategoryGroup {
 
 export default function InventoryPage() {
   const { user } = useStockControlAuth();
-  const canEditPrices = user?.role === "admin" || user?.role === "manager" || user?.role === "accounts";
+  const canEditPrices =
+    user?.role === "admin" || user?.role === "manager" || user?.role === "accounts";
   const [items, setItems] = useState<StockItem[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);

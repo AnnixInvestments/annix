@@ -245,7 +245,8 @@ export class JobCardPdfService {
       if (isFormLabel) return false;
 
       const qty = item.quantity;
-      const hasNoData = !description && !item.itemNo && !item.jtNo && (qty === null || isNaN(qty));
+      const hasNoData =
+        !description && !item.itemNo && !item.jtNo && (qty === null || Number.isNaN(qty));
       if (hasNoData && code) {
         const looksLikeLabel = /^[A-Za-z\s]+$/.test(code) && code.length < 30;
         if (looksLikeLabel) return false;
