@@ -156,49 +156,74 @@ export class QrCodeService {
       doc.text("Line Items", margin, y);
       y += mmToPt(5);
 
-      const colWidths = [25, 70, 180, 70, 50, 70];
+      const colWidths = [22, 110, 150, 70, 40, 70];
       const headers = ["#", "Item Code", "Description", "Item No", "Qty", "JT No"];
-      const minRowHeight = mmToPt(5);
+      const minRowHeight = mmToPt(6);
+      const lineHeight = 10;
 
-      doc.rect(margin, y, contentWidth, mmToPt(6)).fillColor("#f3f4f6").fill();
-      doc.fillColor("#374151").fontSize(7).font("Helvetica-Bold");
-      let xPos = margin + 3;
-      headers.forEach((header, i) => {
-        doc.text(header.toUpperCase(), xPos, y + 4, {
-          width: colWidths[i] - 6,
-          align: i === 4 ? "right" : "left",
+      const renderLineItemsHeader = () => {
+        doc.rect(margin, y, contentWidth, mmToPt(6)).fillColor("#f3f4f6").fill();
+        doc.fillColor("#374151").fontSize(7).font("Helvetica-Bold");
+        let headerX = margin + 3;
+        headers.forEach((header, i) => {
+          doc.text(header.toUpperCase(), headerX, y + 4, {
+            width: colWidths[i] - 6,
+            align: i === 4 ? "right" : "left",
+          });
+          headerX += colWidths[i];
         });
-        xPos += colWidths[i];
-      });
-      y += mmToPt(6);
+        y += mmToPt(6);
+      };
+
+      renderLineItemsHeader();
 
       doc.fontSize(8).font("Helvetica");
       lineItems.forEach((li, idx) => {
-        if (y > 780) {
+        const itemCodeText = li.itemCode ?? "-";
+        const descText = li.itemDescription ?? "-";
+        const itemNoText = li.itemNo ?? "-";
+        const jtNoText = li.jtNo ?? "-";
+
+        const estimateLines = (text: string, colWidth: number) => {
+          const charsPerLine = Math.floor((colWidth - 6) / 4.5);
+          return Math.max(1, Math.ceil(text.length / charsPerLine));
+        };
+
+        const itemCodeLines = estimateLines(itemCodeText, colWidths[1]);
+        const descLines = estimateLines(descText, colWidths[2]);
+        const itemNoLines = estimateLines(itemNoText, colWidths[3]);
+        const jtNoLines = estimateLines(jtNoText, colWidths[5]);
+
+        const maxLines = Math.max(itemCodeLines, descLines, itemNoLines, jtNoLines);
+        const calculatedHeight = maxLines * lineHeight + 8;
+        const rowHeight = Math.max(minRowHeight, calculatedHeight);
+
+        if (y + rowHeight > 780) {
           doc.addPage();
           y = margin;
+          doc.fillColor("#111827").fontSize(11).font("Helvetica-Bold");
+          doc.text("Line Items (cont.)", margin, y);
+          y += mmToPt(5);
+          renderLineItemsHeader();
+          doc.fontSize(8).font("Helvetica");
         }
 
-        const descText = li.itemDescription ?? "-";
-        const descHeight = doc.heightOfString(descText, { width: colWidths[2] - 6 });
-        const rowHeight = Math.max(minRowHeight, descHeight + 6);
-
-        xPos = margin + 3;
+        let xPos = margin + 3;
         doc.fillColor("#111827");
-        doc.text(String(idx + 1), xPos, y + 3, { width: colWidths[0] - 6 });
+        doc.text(String(idx + 1), xPos, y + 4, { width: colWidths[0] - 6 });
         xPos += colWidths[0];
-        doc.text(li.itemCode ?? "-", xPos, y + 3, { width: colWidths[1] - 6 });
+        doc.text(itemCodeText, xPos, y + 4, { width: colWidths[1] - 6 });
         xPos += colWidths[1];
-        doc.text(descText, xPos, y + 3, { width: colWidths[2] - 6 });
+        doc.text(descText, xPos, y + 4, { width: colWidths[2] - 6 });
         xPos += colWidths[2];
-        doc.text(li.itemNo ?? "-", xPos, y + 3, { width: colWidths[3] - 6 });
+        doc.text(itemNoText, xPos, y + 4, { width: colWidths[3] - 6 });
         xPos += colWidths[3];
-        doc.text(li.quantity != null ? String(li.quantity) : "-", xPos, y + 3, {
+        doc.text(li.quantity != null ? String(li.quantity) : "-", xPos, y + 4, {
           width: colWidths[4] - 6,
           align: "right",
         });
         xPos += colWidths[4];
-        doc.text(li.jtNo ?? "-", xPos, y + 3, { width: colWidths[5] - 6 });
+        doc.text(jtNoText, xPos, y + 4, { width: colWidths[5] - 6 });
 
         y += rowHeight;
         doc
@@ -206,9 +231,9 @@ export class QrCodeService {
           .lineTo(margin + contentWidth, y)
           .strokeColor("#e5e7eb")
           .stroke();
-        y += 2;
+        y += 3;
       });
-      y += mmToPt(5);
+      y += mmToPt(8);
     }
 
     if (coatingAnalysis?.coats && coatingAnalysis.coats.length > 0) {
@@ -216,42 +241,59 @@ export class QrCodeService {
       doc.text("Coating Specification", margin, y);
       y += mmToPt(5);
 
-      const coatColWidths = [180, 80, 90, 100];
+      const coatColWidths = [260, 65, 75, 70];
       const coatHeaders = ["Product", "DFT (μm)", "Coverage (m²/L)", "Allowed Litres"];
-      const minRowHeight = mmToPt(5);
+      const coatMinRowHeight = mmToPt(6);
+      const coatLineHeight = 10;
 
-      doc.rect(margin, y, contentWidth, mmToPt(6)).fillColor("#f3f4f6").fill();
-      doc.fillColor("#374151").fontSize(7).font("Helvetica-Bold");
-      let xPos = margin + 3;
-      coatHeaders.forEach((header, i) => {
-        doc.text(header.toUpperCase(), xPos, y + 4, {
-          width: coatColWidths[i] - 6,
-          align: i > 0 ? "right" : "left",
+      const renderCoatHeader = () => {
+        doc.rect(margin, y, contentWidth, mmToPt(6)).fillColor("#f3f4f6").fill();
+        doc.fillColor("#374151").fontSize(7).font("Helvetica-Bold");
+        let headerX = margin + 3;
+        coatHeaders.forEach((header, i) => {
+          doc.text(header.toUpperCase(), headerX, y + 4, {
+            width: coatColWidths[i] - 6,
+            align: i > 0 ? "right" : "left",
+          });
+          headerX += coatColWidths[i];
         });
-        xPos += coatColWidths[i];
-      });
-      y += mmToPt(6);
+        y += mmToPt(6);
+      };
+
+      renderCoatHeader();
 
       doc.fontSize(8).font("Helvetica");
       coatingAnalysis.coats.forEach((coat) => {
-        const productHeight = doc.heightOfString(coat.product, { width: coatColWidths[0] - 6 });
-        const rowHeight = Math.max(minRowHeight, productHeight + 6);
+        const charsPerLine = Math.floor((coatColWidths[0] - 6) / 4.5);
+        const productLines = Math.max(1, Math.ceil(coat.product.length / charsPerLine));
+        const calculatedHeight = productLines * coatLineHeight + 8;
+        const rowHeight = Math.max(coatMinRowHeight, calculatedHeight);
 
-        xPos = margin + 3;
+        if (y + rowHeight > 780) {
+          doc.addPage();
+          y = margin;
+          doc.fillColor("#111827").fontSize(11).font("Helvetica-Bold");
+          doc.text("Coating Specification (cont.)", margin, y);
+          y += mmToPt(5);
+          renderCoatHeader();
+          doc.fontSize(8).font("Helvetica");
+        }
+
+        let xPos = margin + 3;
         doc.fillColor("#111827");
-        doc.text(coat.product, xPos, y + 3, { width: coatColWidths[0] - 6 });
+        doc.text(coat.product, xPos, y + 4, { width: coatColWidths[0] - 6 });
         xPos += coatColWidths[0];
-        doc.text(`${coat.minDftUm}-${coat.maxDftUm}`, xPos, y + 3, {
+        doc.text(`${coat.minDftUm}-${coat.maxDftUm}`, xPos, y + 4, {
           width: coatColWidths[1] - 6,
           align: "right",
         });
         xPos += coatColWidths[1];
-        doc.text(coat.coverageM2PerLiter.toFixed(2), xPos, y + 3, {
+        doc.text(coat.coverageM2PerLiter.toFixed(2), xPos, y + 4, {
           width: coatColWidths[2] - 6,
           align: "right",
         });
         xPos += coatColWidths[2];
-        doc.text(coat.litersRequired.toFixed(2), xPos, y + 3, {
+        doc.text(coat.litersRequired.toFixed(2), xPos, y + 4, {
           width: coatColWidths[3] - 6,
           align: "right",
         });
@@ -262,9 +304,9 @@ export class QrCodeService {
           .lineTo(margin + contentWidth, y)
           .strokeColor("#e5e7eb")
           .stroke();
-        y += 2;
+        y += 3;
       });
-      y += mmToPt(5);
+      y += mmToPt(8);
     }
 
     doc.fillColor("#6b7280").fontSize(7).font("Helvetica-Bold");

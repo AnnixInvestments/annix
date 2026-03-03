@@ -133,8 +133,9 @@ These delivery notes are typically from AU Industries or similar rubber supplier
 
 AU INDUSTRIES DELIVERY NOTE FORMAT:
 - Header shows "DELIVERY NOTE" with NUMBER field (e.g., "1298") - this is the DN number
-- DATE field in DD/MM/YYYY format - convert to YYYY-MM-DD
+- DATE field in DD/MM/YYYY format - convert to YYYY-MM-DD - THIS IS THE PRINTED DATE, use this not handwritten dates
 - FROM section shows the supplier (e.g., "AU INDUSTRIES (PTY) LTD")
+- TO section shows the CUSTOMER (e.g., "POLYMER LINING SYSTEMS (PTY) LTD") - extract this as customerName
 - Description column contains compound info like:
   "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m, 249.37kg per Roll @ 1.05 S.G's"
   This decodes as:
@@ -151,11 +152,19 @@ IMPORTANT OCR CORRECTIONS:
 - If compound code shows "125" as the last segment, this means 12.5m length
 - Standard roll lengths are typically 12.5m, 10m, or 5m - prefer these common values
 
+CRITICAL - EXTRACT ALL PAGES:
+- Multi-page PDFs contain MULTIPLE delivery notes, one per page
+- You MUST extract data from EVERY page, including the LAST page
+- Each page has its own printed DATE, NUMBER, and TO (customer) fields
+- If a page is missing roll weight, try to extract it from "XXXKg" text near the roll number
+- NEVER skip the last page - it contains a complete delivery note just like other pages
+
 Return a JSON object with this structure:
 {
-  "deliveryNoteNumber": string or null (just the number, e.g., "1298"),
-  "deliveryDate": string or null (ISO date format YYYY-MM-DD),
+  "deliveryNoteNumber": string or null (DN number from first page),
+  "deliveryDate": string or null (PRINTED date from first page in YYYY-MM-DD format - NOT handwritten),
   "supplierName": string or null (the FROM company),
+  "customerName": string or null (the TO company - the customer receiving goods),
   "batchRange": string or null (for compound deliveries),
   "totalWeightKg": number or null (for compound deliveries),
   "rolls": [
@@ -164,7 +173,11 @@ Return a JSON object with this structure:
       "thicknessMm": number or null (typically 3-20mm),
       "widthMm": number or null (typically 800-1600mm),
       "lengthM": number or null (typically 5, 10, or 12.5 meters),
-      "weightKg": number or null (actual roll weight)
+      "weightKg": number or null (actual roll weight - MUST extract this),
+      "deliveryNoteNumber": string or null (DN number from THIS roll's page),
+      "deliveryDate": string or null (PRINTED date from THIS roll's page in YYYY-MM-DD),
+      "customerName": string or null (customer name from THIS roll's page),
+      "pageNumber": number or null (1-indexed page number where this roll appears)
     }
   ]
 }
@@ -172,9 +185,11 @@ Return a JSON object with this structure:
 Guidelines:
 - Each delivery note page typically has ONE roll
 - Parse the compound code (e.g., RSCA40-20.950.125) to get thickness (20), width (950), length (12.5)
-- The roll number appears with its weight (e.g., "154-41210 - 258Kg")
+- The roll number appears with its weight (e.g., "154-41210 - 258Kg") - ALWAYS extract the weight
 - Correct obvious OCR errors: if a roll number starts with 5XX-XXXXX and other rolls start with 1XX-XXXXX, correct to 1XX-XXXXX
-- When multiple pages/DNs exist, create one entry in the rolls array for each roll
+- CRITICAL: Create one entry in the rolls array for EACH roll across ALL pages
+- For each roll, capture the DN number, PRINTED date, and customer from THAT specific page
+- Use ONLY the PRINTED delivery date from the page header, NEVER use handwritten dates
 - Return ONLY the JSON object, no additional text`;
 
 export function compounderCocExtractionPrompt(pdfText: string): string {

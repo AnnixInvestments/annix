@@ -487,7 +487,7 @@ export class RubberCocExtractionService {
     this.logger.log(`Delivery note photo analyzed in ${processingTimeMs}ms`);
 
     return {
-      data: response.data as ExtractedUniversalDeliveryNote,
+      data: response.data as unknown as ExtractedUniversalDeliveryNote,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };
@@ -517,7 +517,7 @@ export class RubberCocExtractionService {
     this.logger.log(`Delivery note PDF analyzed in ${processingTimeMs}ms`);
 
     return {
-      data: response.data as ExtractedUniversalDeliveryNote,
+      data: response.data as unknown as ExtractedUniversalDeliveryNote,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };

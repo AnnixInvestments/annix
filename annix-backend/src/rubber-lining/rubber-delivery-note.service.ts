@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { generateUniqueId } from "../lib/datetime";
+import { formatISODate, generateUniqueId } from "../lib/datetime";
 import {
   CreateDeliveryNoteDto,
   CreateDeliveryNoteItemDto,
@@ -157,6 +157,38 @@ export class RubberDeliveryNoteService {
     }
     if (extractedData.deliveryDate) {
       note.deliveryDate = new Date(extractedData.deliveryDate);
+    }
+
+    await this.deliveryNoteRepository.save(note);
+    return this.mapDeliveryNoteToDto(note);
+  }
+
+  async saveUserCorrections(
+    id: number,
+    correctedData: ExtractedDeliveryNoteData,
+  ): Promise<RubberDeliveryNoteDto | null> {
+    const note = await this.deliveryNoteRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany", "linkedCoc"],
+    });
+    if (!note) return null;
+
+    const enrichedData: ExtractedDeliveryNoteData = {
+      ...correctedData,
+      userCorrected: true,
+      rolls: correctedData.rolls?.map((roll) => ({
+        ...roll,
+        areaSqM:
+          roll.widthMm && roll.lengthM ? (roll.widthMm * roll.lengthM) / 1000 : undefined,
+      })),
+    };
+
+    note.extractedData = enrichedData;
+    if (enrichedData.deliveryNoteNumber) {
+      note.deliveryNoteNumber = enrichedData.deliveryNoteNumber;
+    }
+    if (enrichedData.deliveryDate) {
+      note.deliveryDate = new Date(enrichedData.deliveryDate);
     }
 
     await this.deliveryNoteRepository.save(note);
@@ -354,7 +386,7 @@ export class RubberDeliveryNoteService {
       deliveryNoteType: note.deliveryNoteType,
       deliveryNoteTypeLabel: DELIVERY_NOTE_TYPE_LABELS[note.deliveryNoteType],
       deliveryNoteNumber: note.deliveryNoteNumber,
-      deliveryDate: note.deliveryDate?.toISOString().split("T")[0] ?? null,
+      deliveryDate: note.deliveryDate ? formatISODate(note.deliveryDate) : null,
       customerReference: note.customerReference,
       supplierCompanyId: note.supplierCompanyId,
       supplierCompanyName: note.supplierCompany?.name ?? null,

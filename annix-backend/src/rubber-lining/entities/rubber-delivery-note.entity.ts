@@ -21,20 +21,27 @@ export enum DeliveryNoteStatus {
   STOCK_CREATED = "STOCK_CREATED",
 }
 
+export interface ExtractedDeliveryNoteRoll {
+  rollNumber: string;
+  thicknessMm?: number | null;
+  widthMm?: number | null;
+  lengthM?: number | null;
+  weightKg?: number | null;
+  areaSqM?: number | null;
+  deliveryNoteNumber?: string;
+  deliveryDate?: string;
+  customerName?: string;
+  pageNumber?: number;
+}
+
 export interface ExtractedDeliveryNoteData {
   deliveryNoteNumber?: string;
   deliveryDate?: string;
   supplierName?: string;
+  customerName?: string;
   batchRange?: string;
-  totalWeightKg?: number;
-  rolls?: Array<{
-    rollNumber: string;
-    thicknessMm?: number;
-    widthMm?: number;
-    lengthM?: number;
-    weightKg?: number;
-    areaSqM?: number;
-  }>;
+  totalWeightKg?: number | null;
+  rolls?: ExtractedDeliveryNoteRoll[];
   userCorrected?: boolean;
 }
 

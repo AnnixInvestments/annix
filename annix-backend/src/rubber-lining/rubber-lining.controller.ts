@@ -47,6 +47,7 @@ import {
   RubberDeliveryNoteDto,
   RubberRollStockDto,
   RubberSupplierCocDto,
+  SaveExtractedDataCorrectionDto,
   SellRollDto,
   SendAuCocDto,
   UpdateDeliveryNoteDto,
@@ -1573,6 +1574,71 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!updatedNote) throw new NotFoundException("Failed to update delivery note");
 
     return updatedNote;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id/extracted-data")
+  @ApiOperation({ summary: "Save user corrections to extracted delivery note data" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async saveExtractedDataCorrections(
+    @Param("id") id: string,
+    @Body() corrections: SaveExtractedDataCorrectionDto,
+  ): Promise<RubberDeliveryNoteDto> {
+    const updatedNote = await this.rubberDeliveryNoteService.saveUserCorrections(
+      Number(id),
+      corrections,
+    );
+    if (!updatedNote) throw new NotFoundException("Delivery note not found");
+
+    return updatedNote;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id/accept-extract")
+  @ApiOperation({ summary: "Accept extracted data (placeholder for SOH deduction)" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async acceptDeliveryNoteExtract(@Param("id") id: string): Promise<RubberDeliveryNoteDto> {
+    const note = await this.rubberDeliveryNoteService.deliveryNoteById(Number(id));
+    if (!note) throw new NotFoundException("Delivery note not found");
+    return note;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/delivery-notes/:id/page/:pageNumber")
+  @ApiOperation({ summary: "Get a specific page from delivery note PDF as image" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  @ApiParam({ name: "pageNumber", description: "Page number (1-indexed)" })
+  async deliveryNotePageImage(
+    @Param("id") id: string,
+    @Param("pageNumber") pageNumber: string,
+  ): Promise<{ url: string }> {
+    const note = await this.rubberDeliveryNoteService.deliveryNoteById(Number(id));
+    if (!note) throw new NotFoundException("Delivery note not found");
+
+    if (!note.documentPath) {
+      throw new NotFoundException("Delivery note has no document attached");
+    }
+
+    const pageNum = Number(pageNumber);
+    if (pageNum < 1) {
+      throw new BadRequestException("Page number must be at least 1");
+    }
+
+    const pdfBuffer = await this.storageService.download(note.documentPath);
+    const images = await this.rubberCocExtractionService.convertPdfToImages(pdfBuffer);
+
+    if (pageNum > images.length) {
+      throw new NotFoundException(`Page ${pageNum} not found. PDF has ${images.length} pages.`);
+    }
+
+    const imageBuffer = images[pageNum - 1];
+    const base64 = imageBuffer.toString("base64");
+    const url = `data:image/png;base64,${base64}`;
+
+    return { url };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

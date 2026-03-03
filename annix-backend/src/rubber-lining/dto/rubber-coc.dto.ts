@@ -1,4 +1,11 @@
-import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import {
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from "class-validator";
 import { AuCocStatus } from "../entities/rubber-au-coc.entity";
 import { BatchPassFailStatus } from "../entities/rubber-compound-batch.entity";
 import {
@@ -254,6 +261,46 @@ export class UpdateDeliveryNoteDto {
   @IsOptional()
   @IsNumber()
   linkedCocId?: number | null;
+}
+
+export class SaveExtractedDataCorrectionDto {
+  @IsOptional()
+  @IsString()
+  deliveryNoteNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  deliveryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  supplierName?: string;
+
+  @IsOptional()
+  @IsString()
+  customerName?: string;
+
+  @IsOptional()
+  @IsString()
+  batchRange?: string;
+
+  @IsOptional()
+  totalWeightKg?: number | null;
+
+  @IsOptional()
+  @IsArray()
+  rolls?: Array<{
+    rollNumber: string;
+    thicknessMm?: number | null;
+    widthMm?: number | null;
+    lengthM?: number | null;
+    weightKg?: number | null;
+    areaSqM?: number | null;
+    deliveryNoteNumber?: string;
+    deliveryDate?: string;
+    customerName?: string;
+    pageNumber?: number;
+  }>;
 }
 
 export class DeliveryNoteItemDto {

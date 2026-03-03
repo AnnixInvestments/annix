@@ -335,19 +335,26 @@ export interface RubberCompoundBatchDto {
 
 export interface ExtractedDeliveryNoteRoll {
   rollNumber: string;
-  weightKg?: number;
-  widthMm?: number;
   thicknessMm?: number;
+  widthMm?: number;
   lengthM?: number;
+  weightKg?: number;
+  areaSqM?: number;
+  deliveryNoteNumber?: string;
+  deliveryDate?: string;
+  customerName?: string;
+  pageNumber?: number;
 }
 
 export interface ExtractedDeliveryNoteData {
   deliveryNoteNumber?: string;
   deliveryDate?: string;
   supplierName?: string;
+  customerName?: string;
   batchRange?: string;
   totalWeightKg?: number;
   rolls?: ExtractedDeliveryNoteRoll[];
+  userCorrected?: boolean;
 }
 
 export interface AnalyzedDeliveryNoteCompany {
@@ -1985,15 +1992,28 @@ class AuRubberApiClient {
     });
   }
 
+  async saveExtractedDataCorrections(
+    id: number,
+    corrections: ExtractedDeliveryNoteData,
+  ): Promise<RubberDeliveryNoteDto> {
+    return this.request(`/rubber-lining/portal/delivery-notes/${id}/extracted-data`, {
+      method: "PUT",
+      body: JSON.stringify(corrections),
+    });
+  }
+
   async analyzeDeliveryNotePhoto(file: File): Promise<AnalyzedDeliveryNoteResult> {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch(`${this.baseUrl}/rubber-lining/portal/delivery-notes/analyze`, {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(`${this.baseURL}/rubber-lining/portal/delivery-notes/analyze`, {
       method: "POST",
-      headers: {
-        ...getAuthHeaders(),
-      },
+      headers,
       body: formData,
     });
 
@@ -2023,6 +2043,19 @@ class AuRubberApiClient {
 
   async deliveryNoteItems(deliveryNoteId: number): Promise<RubberDeliveryNoteItemDto[]> {
     return this.request(`/rubber-lining/portal/delivery-notes/${deliveryNoteId}/items`);
+  }
+
+  async acceptDeliveryNoteExtract(id: number): Promise<RubberDeliveryNoteDto> {
+    return this.request(`/rubber-lining/portal/delivery-notes/${id}/accept-extract`, {
+      method: "PUT",
+    });
+  }
+
+  async deliveryNotePageUrl(id: number, pageNumber: number): Promise<string> {
+    const response = await this.request<{ url: string }>(
+      `/rubber-lining/portal/delivery-notes/${id}/page/${pageNumber}`,
+    );
+    return response.url;
   }
 
   async analyzeCustomerDeliveryNotes(files: File[]): Promise<AnalyzeCustomerDnsResult> {
