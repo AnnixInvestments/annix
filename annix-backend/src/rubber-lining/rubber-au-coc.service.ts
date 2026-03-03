@@ -23,6 +23,7 @@ import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
+import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
 import {
   ExtractedCocData,
@@ -81,6 +82,8 @@ export class RubberAuCocService {
     private deliveryNoteRepository: Repository<RubberDeliveryNote>,
     @InjectRepository(RubberDeliveryNoteItem)
     private deliveryNoteItemRepository: Repository<RubberDeliveryNoteItem>,
+    @InjectRepository(RubberProductCoding)
+    private productCodingRepository: Repository<RubberProductCoding>,
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
     private readonly configService: ConfigService,
@@ -305,11 +308,12 @@ export class RubberAuCocService {
         this.logger.debug(`Merging graph PDF from: ${pdfData.graphPdfPath}`);
         try {
           const graphBuffer = await this.storageService.download(pdfData.graphPdfPath);
+          const cleanedGraphBuffer = await this.cleanGraphPdf(graphBuffer);
           const merger = new PDFMerger();
           await merger.add(buffer);
-          await merger.add(graphBuffer);
+          await merger.add(cleanedGraphBuffer);
           buffer = await merger.saveAsBuffer();
-          this.logger.debug(`Merged graph PDF, final size: ${buffer.length} bytes`);
+          this.logger.debug(`Merged cleaned graph PDF, final size: ${buffer.length} bytes`);
         } catch (graphError) {
           this.logger.warn(`Failed to merge graph PDF: ${graphError}`);
         }
@@ -358,9 +362,10 @@ export class RubberAuCocService {
     if (pdfData.graphPdfPath) {
       try {
         const graphBuffer = await this.storageService.download(pdfData.graphPdfPath);
+        const cleanedGraphBuffer = await this.cleanGraphPdf(graphBuffer);
         const merger = new PDFMerger();
         await merger.add(buffer);
-        await merger.add(graphBuffer);
+        await merger.add(cleanedGraphBuffer);
         buffer = await merger.saveAsBuffer();
       } catch (graphError) {
         this.logger.warn(`Failed to merge graph PDF: ${graphError}`);
@@ -456,8 +461,10 @@ export class RubberAuCocService {
       elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
     }));
 
-    const compoundDescription =
+    const colour = await this.colourFromCompoundCode(compoundCode);
+    const baseDescription =
       qualityConfig?.compoundDescription || compoundCoding?.name || "Rubber Compound";
+    const compoundDescription = colour ? `${colour} ${baseDescription}` : baseDescription;
 
     const productionDate = firstRoll?.productionDate
       ? formatDateZA(firstRoll.productionDate)
@@ -526,7 +533,9 @@ export class RubberAuCocService {
         qualityConfig = await this.qualityConfigRepository.findOne({
           where: { compoundCode },
         });
-        compoundDescription = qualityConfig?.compoundDescription || compoundDescription;
+        const baseDescription = qualityConfig?.compoundDescription || compoundDescription;
+        const colour = await this.colourFromCompoundCode(compoundCode);
+        compoundDescription = colour ? `${colour} ${baseDescription}` : baseDescription;
       }
 
       const compounderCocId = compounderCoc?.id || matchedCalendererCoc.id;
@@ -660,6 +669,23 @@ export class RubberAuCocService {
     });
 
     return orderOnlyMatch || null;
+  }
+
+  private async colourFromCompoundCode(compoundCode: string): Promise<string | null> {
+    if (!compoundCode || compoundCode.length === 0) {
+      return null;
+    }
+
+    const colourCode = compoundCode.charAt(0).toUpperCase();
+
+    const colourCoding = await this.productCodingRepository.findOne({
+      where: {
+        codingType: ProductCodingType.COLOUR,
+        code: colourCode,
+      },
+    });
+
+    return colourCoding?.name || null;
   }
 
   private async createPdf(data: CocPdfData): Promise<Buffer> {
@@ -1212,17 +1238,24 @@ export class RubberAuCocService {
       const width = metadata.width || 1190;
       const height = metadata.height || 1684;
 
-      const headerCropHeight = Math.round(height * 0.1);
-      const footerCropHeight = Math.round(height * 0.08);
-      const sideCropWidth = Math.round(width * 0.02);
+      const headerHeight = Math.round(height * 0.12);
+      const footerHeight = Math.round(height * 0.05);
+
+      const whiteHeaderRect = Buffer.from(
+        `<svg width="${width}" height="${height}">
+          <rect x="0" y="0" width="${width}" height="${headerHeight}" fill="white"/>
+          <rect x="0" y="${height - footerHeight}" width="${width}" height="${footerHeight}" fill="white"/>
+        </svg>`,
+      );
 
       const cleanedImage = await sharp(graphPng)
-        .extract({
-          left: sideCropWidth,
-          top: headerCropHeight,
-          width: width - sideCropWidth * 2,
-          height: height - headerCropHeight - footerCropHeight,
-        })
+        .composite([
+          {
+            input: whiteHeaderRect,
+            top: 0,
+            left: 0,
+          },
+        ])
         .png()
         .toBuffer();
 
@@ -1235,7 +1268,7 @@ export class RubberAuCocService {
 
   private createPdfFromImage(imageBuffer: Buffer): Promise<Buffer> {
     return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A4", margin: 0 });
+      const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 0 });
       const chunks: Buffer[] = [];
 
       doc.on("data", (chunk) => chunks.push(chunk));
@@ -1243,7 +1276,7 @@ export class RubberAuCocService {
       doc.on("error", reject);
 
       doc.image(imageBuffer, 20, 20, {
-        fit: [555, 800],
+        fit: [800, 555],
         align: "center",
         valign: "center",
       });

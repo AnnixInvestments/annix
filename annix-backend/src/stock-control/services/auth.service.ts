@@ -75,6 +75,7 @@ export class StockControlAuthService {
 
     let companyId: number;
     let role: StockControlRole;
+    let liteMode = false;
     let isInvitedUser = false;
 
     if (invitationToken) {
@@ -94,6 +95,7 @@ export class StockControlAuthService {
 
       companyId = invitation.companyId;
       role = invitation.role as StockControlRole;
+      liteMode = invitation.liteMode;
       isInvitedUser = true;
 
       invitation.status = StockControlInvitationStatus.ACCEPTED;
@@ -113,6 +115,7 @@ export class StockControlAuthService {
       passwordHash,
       name,
       role,
+      liteMode,
       companyId,
       emailVerified: true,
       emailVerificationToken: verificationToken,
@@ -258,6 +261,7 @@ export class StockControlAuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+        liteMode: user.liteMode,
       },
     };
   }
@@ -309,6 +313,7 @@ export class StockControlAuthService {
       websiteUrl: user.company?.websiteUrl ?? null,
       createdAt: user.createdAt,
       companyUpdatedAt: user.company?.updatedAt ?? null,
+      liteMode: user.liteMode,
     };
   }
 

@@ -7,7 +7,7 @@ import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 
 export default function StockControlLoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading: authLoading } = useStockControlAuth();
+  const { login, isAuthenticated, isLoading: authLoading, profile } = useStockControlAuth();
 
   const [email, setEmail] = useState(() => {
     if (typeof window !== "undefined") {
@@ -27,10 +27,14 @@ export default function StockControlLoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      router.push("/stock-control/portal/dashboard");
+    if (isAuthenticated && !authLoading && profile) {
+      if (profile.liteMode) {
+        router.push("/stock-control/lite");
+      } else {
+        router.push("/stock-control/portal/dashboard");
+      }
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, profile, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,8 +52,6 @@ export default function StockControlLoginPage() {
         localStorage.removeItem("stockControlRememberedEmail");
         localStorage.removeItem("stockControlRememberMe");
       }
-
-      router.push("/stock-control/portal/dashboard");
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Login failed. Please try again.";
 

@@ -49,6 +49,9 @@ export class StockControlInvitation {
   @Column({ type: "varchar", length: 50, default: StockControlInvitationStatus.PENDING })
   status: StockControlInvitationStatus;
 
+  @Column({ name: "lite_mode", type: "boolean", default: false })
+  liteMode: boolean;
+
   @Column({ name: "expires_at", type: "timestamptz" })
   expiresAt: Date;
 

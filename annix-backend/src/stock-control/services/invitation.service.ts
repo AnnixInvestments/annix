@@ -31,6 +31,7 @@ export class StockControlInvitationService {
     invitedById: number,
     email: string,
     role: string,
+    liteMode: boolean = false,
   ): Promise<StockControlInvitation> {
     const existingUser = await this.userRepo.findOne({ where: { email, companyId } });
     if (existingUser) {
@@ -53,6 +54,7 @@ export class StockControlInvitationService {
       email,
       token,
       role,
+      liteMode,
       status: StockControlInvitationStatus.PENDING,
       expiresAt,
     });
@@ -68,6 +70,7 @@ export class StockControlInvitationService {
       company?.name ?? "Your company",
       inviter?.name ?? "A team member",
       role,
+      liteMode,
     );
 
     this.logger.log(`Invitation created for ${email} to company ${companyId}`);
@@ -143,6 +146,7 @@ export class StockControlInvitationService {
       company?.name ?? "Your company",
       invitation.invitedBy?.name ?? "A team member",
       invitation.role,
+      invitation.liteMode,
     );
 
     this.logger.log(`Invitation resent: ${invitation.email}`);
