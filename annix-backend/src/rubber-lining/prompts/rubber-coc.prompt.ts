@@ -317,16 +317,17 @@ Analyze the document to determine the direction and extract all relevant informa
 
 PAINT PRODUCTS - SPECIAL HANDLING:
 For paint products (e.g., CARBOGUARD, CARBOLINE, SIGMA, JOTUN, etc.):
-- The volume (liters) is typically in the description (e.g., "FOR 5L", "20L PACK", "4L")
-- Extract the volume as "volumeLiters" for each line item
+- The volume per pack is typically in the description (e.g., "FOR 5L", "20L PACK", "4L")
+- Extract the volume per pack as "volumeLitersPerPack"
+- Extract the quantity ordered (number of packs) as "quantity" - look for QTY column
+- Calculate "totalLiters" = quantity × volumeLitersPerPack
+  Example: If QTY is 2 and description says "FOR 5L", then totalLiters = 2 × 5 = 10
+- Calculate "costPerLiter" = lineTotal / totalLiters
 - For TWO-PACK paints (Part A and Part B):
-  - Part A (5L) + Part B (5L) = 10L kit when mixed
-  - Track each part separately with its own volume
-  - Each 5L Part A matches with 5L Part B to make one kit
+  - Track each part separately with its own totalLiters
+  - Each Part A matches with Part B to make a kit when mixed
 - Set "isPaint": true for paint products
 - Set "isTwoPack": true if it's a two-pack system (has Part A/B)
-- For paints, the "quantity" should be the NUMBER OF PACKS/UNITS ordered (typically 1)
-- The "volumeLiters" is the volume per pack (e.g., 5 for a 5L pack)
 
 Return a JSON object with this structure:
 {
@@ -368,8 +369,9 @@ Return a JSON object with this structure:
       "lineTotalIncVat": number or null (total for this line INCLUDING VAT),
       "isPaint": boolean (true if this is a paint product),
       "isTwoPack": boolean (true if this is a two-pack paint system),
-      "volumeLiters": number or null (volume in liters for paint products),
-      "costPerLiter": number or null (calculated: lineTotal / volumeLiters for paints),
+      "volumeLitersPerPack": number or null (volume per pack, e.g., 5 for "5L" pack),
+      "totalLiters": number or null (calculated: quantity × volumeLitersPerPack),
+      "costPerLiter": number or null (calculated: lineTotal / totalLiters),
       "rollNumber": string or null,
       "batchNumber": string or null,
       "thicknessMm": number or null,

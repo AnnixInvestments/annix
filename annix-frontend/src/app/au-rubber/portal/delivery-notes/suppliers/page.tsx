@@ -18,6 +18,7 @@ import {
   auRubberApiClient,
   type DeliveryNoteStatus,
   type DeliveryNoteType,
+  type RubberAuCocDto,
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
@@ -48,6 +49,17 @@ export default function SupplierDeliveryNotesPage() {
   const [uploadDeliveryDate, setUploadDeliveryDate] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [showAutoCreateModal, setShowAutoCreateModal] = useState(false);
+  const [autoCreateNoteId, setAutoCreateNoteId] = useState<number | null>(null);
+  const [autoCreateNoteDnNumber, setAutoCreateNoteDnNumber] = useState<string>("");
+  const [customerCompanies, setCustomerCompanies] = useState<RubberCompanyDto[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [isAutoCreating, setIsAutoCreating] = useState(false);
+  const [autoCreateResult, setAutoCreateResult] = useState<{
+    auCoc: RubberAuCocDto | null;
+    matchedSupplierCocs: { id: number; cocNumber: string | null; orderNumber: string | null }[];
+    message: string;
+  } | null>(null);
 
   const fetchData = async () => {
     try {
@@ -60,9 +72,9 @@ export default function SupplierDeliveryNotesPage() {
         auRubberApiClient.companies(),
       ]);
 
-      const supplierCompanies = (Array.isArray(companiesData) ? companiesData : []).filter(
-        (c) => c.companyType === "SUPPLIER",
-      );
+      const allCompanies = Array.isArray(companiesData) ? companiesData : [];
+      const supplierCompanies = allCompanies.filter((c) => c.companyType === "SUPPLIER");
+      const customers = allCompanies.filter((c) => c.companyType === "CUSTOMER");
       const supplierIds = new Set(supplierCompanies.map((c) => c.id));
 
       const supplierNotes = (Array.isArray(notesData) ? notesData : []).filter((n) =>
@@ -71,6 +83,7 @@ export default function SupplierDeliveryNotesPage() {
 
       setNotes(supplierNotes);
       setSuppliers(supplierCompanies);
+      setCustomerCompanies(customers);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));
@@ -182,6 +195,51 @@ export default function SupplierDeliveryNotesPage() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const openAutoCreateModal = (note: RubberDeliveryNoteDto) => {
+    setAutoCreateNoteId(note.id);
+    setAutoCreateNoteDnNumber(note.deliveryNoteNumber || `DN-${note.id}`);
+    setShowAutoCreateModal(true);
+  };
+
+  const closeAutoCreateModal = () => {
+    setShowAutoCreateModal(false);
+    setAutoCreateNoteId(null);
+    setAutoCreateNoteDnNumber("");
+    setSelectedCustomerId(null);
+    setAutoCreateResult(null);
+  };
+
+  const handleAutoCreateCoc = async () => {
+    if (!autoCreateNoteId) return;
+    if (!selectedCustomerId) {
+      showToast("Please select a customer", "error");
+      return;
+    }
+    try {
+      setIsAutoCreating(true);
+      const result = await auRubberApiClient.autoCreateAuCocFromDeliveryNote(
+        autoCreateNoteId,
+        selectedCustomerId,
+      );
+      setAutoCreateResult(result);
+      if (result.auCoc) {
+        showToast(`AU COC ${result.auCoc.cocNumber} created successfully`, "success");
+      } else {
+        showToast(result.message, "warning");
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to auto-create COC", "error");
+    } finally {
+      setIsAutoCreating(false);
+    }
+  };
+
+  const noteHasExtractedData = (note: RubberDeliveryNoteDto): boolean => {
+    if (!note.extractedData) return false;
+    const data = Array.isArray(note.extractedData) ? note.extractedData : [note.extractedData];
+    return data.some((d) => d.rolls && d.rolls.length > 0);
   };
 
   const statusBadge = (status: DeliveryNoteStatus) => {
@@ -482,7 +540,15 @@ export default function SupplierDeliveryNotesPage() {
                       <span className="text-gray-400">Not linked</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                    {note.deliveryNoteType === "ROLL" && noteHasExtractedData(note) && (
+                      <button
+                        onClick={() => openAutoCreateModal(note)}
+                        className="text-yellow-600 hover:text-yellow-800 font-medium"
+                      >
+                        Auto COC
+                      </button>
+                    )}
                     <Link
                       href={`/au-rubber/portal/delivery-notes/${note.id}`}
                       className="text-orange-600 hover:text-orange-800"
@@ -620,6 +686,111 @@ export default function SupplierDeliveryNotesPage() {
                       : "Create"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAutoCreateModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              onClick={closeAutoCreateModal}
+            />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Auto-create AU COC from DN {autoCreateNoteDnNumber}
+              </h3>
+
+              {autoCreateResult ? (
+                <div className="space-y-4">
+                  {autoCreateResult.auCoc ? (
+                    <div className="bg-green-50 p-4 rounded-md">
+                      <p className="text-green-800 font-medium">
+                        AU COC {autoCreateResult.auCoc.cocNumber} created successfully
+                      </p>
+                      <Link
+                        href={`/au-rubber/portal/au-cocs/${autoCreateResult.auCoc.id}`}
+                        className="text-green-600 hover:text-green-800 underline mt-2 inline-block"
+                      >
+                        View AU COC
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-50 p-4 rounded-md">
+                      <p className="text-yellow-800">{autoCreateResult.message}</p>
+                    </div>
+                  )}
+
+                  {autoCreateResult.matchedSupplierCocs.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">
+                        Matched Supplier COCs:
+                      </h4>
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        {autoCreateResult.matchedSupplierCocs.map((coc) => (
+                          <li key={coc.id}>
+                            COC: {coc.cocNumber || "-"} | Order: {coc.orderNumber || "-"}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      onClick={closeAutoCreateModal}
+                      className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">
+                    This will match roll numbers from this delivery note to Impilo supplier COCs and
+                    create an AU COC with the test data from the matched COCs.
+                  </p>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Select Customer
+                    </label>
+                    <select
+                      value={selectedCustomerId ?? ""}
+                      onChange={(e) =>
+                        setSelectedCustomerId(e.target.value ? Number(e.target.value) : null)
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                    >
+                      <option value="">Select a customer</option>
+                      {customerCompanies.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mt-6 flex justify-end space-x-3">
+                    <button
+                      onClick={closeAutoCreateModal}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAutoCreateCoc}
+                      disabled={isAutoCreating || !selectedCustomerId}
+                      className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
+                    >
+                      {isAutoCreating ? "Creating..." : "Create AU COC"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -169,7 +169,8 @@ export class DeliveriesController {
           lineTotal?: number;
           isPaint?: boolean;
           isTwoPack?: boolean;
-          volumeLiters?: number;
+          volumeLitersPerPack?: number;
+          totalLiters?: number;
           costPerLiter?: number;
         }>;
       };

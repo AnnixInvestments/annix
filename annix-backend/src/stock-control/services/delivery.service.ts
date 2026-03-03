@@ -123,7 +123,31 @@ export class DeliveryService {
 
   async remove(companyId: number, id: number): Promise<void> {
     const note = await this.findById(companyId, id);
+
+    const movements = await this.movementRepo.find({
+      where: {
+        referenceType: ReferenceType.DELIVERY,
+        referenceId: id,
+        companyId,
+      },
+      relations: ["stockItem"],
+    });
+
+    for (const movement of movements) {
+      if (movement.stockItem) {
+        movement.stockItem.quantity = movement.stockItem.quantity - movement.quantity;
+        await this.stockItemRepo.save(movement.stockItem);
+        this.logger.log(`Reversed stock movement: ${movement.stockItem.sku} -${movement.quantity}`);
+      }
+      await this.movementRepo.remove(movement);
+    }
+
+    if (note.items && note.items.length > 0) {
+      await this.deliveryNoteItemRepo.remove(note.items);
+    }
+
     await this.deliveryNoteRepo.remove(note);
+    this.logger.log(`Deleted delivery note ${id} and reversed ${movements.length} stock movements`);
   }
 
   async uploadPhoto(
@@ -215,7 +239,8 @@ export class DeliveryService {
         lineTotal?: number;
         isPaint?: boolean;
         isTwoPack?: boolean;
-        volumeLiters?: number;
+        volumeLitersPerPack?: number;
+        totalLiters?: number;
         costPerLiter?: number;
       }>;
     } | null;
@@ -251,7 +276,8 @@ export class DeliveryService {
         lineTotal?: number;
         isPaint?: boolean;
         isTwoPack?: boolean;
-        volumeLiters?: number;
+        volumeLitersPerPack?: number;
+        totalLiters?: number;
         costPerLiter?: number;
       }>;
     },
@@ -328,7 +354,8 @@ export class DeliveryService {
       lineTotal?: number;
       isPaint?: boolean;
       isTwoPack?: boolean;
-      volumeLiters?: number;
+      volumeLitersPerPack?: number;
+      totalLiters?: number;
       costPerLiter?: number;
     }>,
     receivedBy?: string,
@@ -344,11 +371,15 @@ export class DeliveryService {
       let costPerUnit: number;
       let unitOfMeasure: string;
 
-      if (item.isPaint && item.volumeLiters) {
-        quantity = item.volumeLiters;
+      if (item.isPaint) {
+        const totalLiters =
+          item.totalLiters ??
+          (item.volumeLitersPerPack && item.quantity
+            ? item.volumeLitersPerPack * item.quantity
+            : (item.volumeLitersPerPack ?? 1));
+        quantity = totalLiters;
         unitOfMeasure = "L";
-        costPerUnit =
-          item.costPerLiter ?? (item.lineTotal ? item.lineTotal / item.volumeLiters : 0);
+        costPerUnit = item.costPerLiter ?? (item.lineTotal ? item.lineTotal / totalLiters : 0);
         this.logger.log(
           `Paint item: ${item.description} - ${quantity}L @ R${costPerUnit.toFixed(2)}/L`,
         );
