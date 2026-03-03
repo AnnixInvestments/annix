@@ -237,6 +237,44 @@ export class RubberCocService {
     return this.mapSupplierCocToDto(coc);
   }
 
+  async reextractAndUpdateCoc(
+    id: number,
+    extractedData: ExtractedCocData,
+  ): Promise<RubberSupplierCocDto | null> {
+    const coc = await this.supplierCocRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany"],
+    });
+    if (!coc) return null;
+
+    await this.compoundBatchRepository.delete({ supplierCocId: id });
+    this.logger.log(`Deleted existing batches for CoC ${id} before re-extraction`);
+
+    coc.extractedData = extractedData;
+    coc.processingStatus = CocProcessingStatus.EXTRACTED;
+
+    if (extractedData.cocNumber) coc.cocNumber = extractedData.cocNumber;
+    if (extractedData.productionDate) coc.productionDate = new Date(extractedData.productionDate);
+    if (extractedData.compoundCode) coc.compoundCode = extractedData.compoundCode;
+    if (extractedData.orderNumber) coc.orderNumber = extractedData.orderNumber;
+    if (extractedData.ticketNumber) coc.ticketNumber = extractedData.ticketNumber;
+
+    await this.supplierCocRepository.save(coc);
+
+    if (extractedData.batches && extractedData.batches.length > 0) {
+      await this.createBatchesFromExtractedData(coc);
+      this.logger.log(
+        `Created ${extractedData.batches.length} batches from re-extracted data for CoC ${id}`,
+      );
+    }
+
+    if (coc.cocType === SupplierCocType.COMPOUNDER && coc.compoundCode) {
+      await this.saveSpecificationsFromExtractedData(coc);
+    }
+
+    return this.mapSupplierCocToDto(coc);
+  }
+
   private async saveSpecificationsFromExtractedData(coc: RubberSupplierCoc): Promise<void> {
     const specs = coc.extractedData?.specifications;
     if (!specs || !coc.compoundCode) return;

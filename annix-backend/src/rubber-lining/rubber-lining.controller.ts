@@ -1411,6 +1411,55 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/supplier-cocs/:id/reextract")
+  @ApiOperation({ summary: "Re-extract data from supplier CoC PDF using AI" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async reextractSupplierCoc(@Param("id") id: string): Promise<RubberSupplierCocDto> {
+    const coc = await this.rubberCocService.supplierCocById(Number(id));
+    if (!coc) throw new NotFoundException("Supplier CoC not found");
+
+    if (!coc.documentPath) {
+      throw new NotFoundException("Supplier CoC has no document attached");
+    }
+
+    const isAvailable = await this.rubberCocExtractionService.isAvailable();
+    if (!isAvailable) {
+      throw new NotFoundException(
+        "AI extraction service not available - GEMINI_API_KEY not configured",
+      );
+    }
+
+    const pdfBuffer = await this.storageService.download(coc.documentPath);
+    let pdfText = "";
+    try {
+      const pdfData = await pdfParse(pdfBuffer);
+      pdfText = pdfData.text || "";
+    } catch {
+      pdfText = "";
+    }
+
+    if (pdfText.length < 50) {
+      throw new NotFoundException(
+        "PDF appears to be scanned/image-based. Re-extraction requires text-based PDFs.",
+      );
+    }
+
+    const isCompounder = coc.cocType === "COMPOUNDER";
+    const extractionResult = isCompounder
+      ? await this.rubberCocExtractionService.extractCompounderCoc(pdfText)
+      : await this.rubberCocExtractionService.extractCalendererCoc(pdfText);
+
+    const updatedCoc = await this.rubberCocService.reextractAndUpdateCoc(
+      Number(id),
+      extractionResult.data,
+    );
+    if (!updatedCoc) throw new NotFoundException("Failed to update supplier CoC");
+
+    return updatedCoc;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Delete("portal/supplier-cocs/:id")
   @ApiOperation({ summary: "Delete supplier CoC" })
   @ApiParam({ name: "id", description: "Supplier CoC ID" })

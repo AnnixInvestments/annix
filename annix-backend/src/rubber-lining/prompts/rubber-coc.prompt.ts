@@ -1,13 +1,38 @@
-export const COMPOUNDER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from rubber compound Certificates of Conformance (CoC) from compounder suppliers like S&N Rubber.
+export const COMPOUNDER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from rubber compound Certificates of Conformance (CoC) from compounder suppliers like S&N Rubber or Impilo Industries.
 
 Extract information from the CoC PDF text and return a valid JSON object.
+
+CRITICAL - BLANK/EMPTY CELLS:
+- Many batches only have SOME test values filled in - others are BLANK
+- If a cell is empty, blank, or has no value, you MUST return null for that field
+- DO NOT guess or fill in values - if it's blank in the source, it MUST be null
+- Only batches that were fully tested will have all physical property values
+- Most batches typically only have Shore A and rheometer data - physical properties are often blank
+
+IMPILO INDUSTRIES TABLE STRUCTURE (Page 2):
+The batch table has these columns in order:
+1. Batch No. - batch number (e.g., 228, 229, 230)
+2. Shore A last testpc [Shore A] - Shore A hardness
+3. Specific gravity [g/cm³] - density (ONLY some batches have this - usually the first and middle)
+4. Rebound Resilience [%] - rebound (ONLY some batches have this)
+5. Tear strength Die [N/mm] - tear strength (ONLY some batches have this)
+6. Tensile strength [MPa] - tensile (ONLY some batches have this)
+7. Elongation break [%] - elongation (ONLY some batches have this - typically 600-700 when present)
+8. S' min [dNm] - rheometer minimum torque (most batches have this)
+9. S' max [dNm] - rheometer maximum torque (most batches have this)
+10. TS 2 [min] - scorch time (most batches have this)
+11. TC 90 [min] - cure time (most batches have this)
+12. State - Pass/Fail status
+
+IMPORTANT: Columns 3-7 (Specific gravity through Elongation) are OFTEN BLANK for most batches!
+Only 1-2 batches per order typically have full physical test data.
 
 Return a JSON object with this structure:
 {
   "cocNumber": string or null,
   "productionDate": string or null (ISO date format YYYY-MM-DD),
   "customerName": string or null,
-  "compoundCode": string or null (e.g., "AU-NR-60", "AU-NBR-70"),
+  "compoundCode": string or null (e.g., "AU-NR-60", "AUA40RSCA"),
   "compoundDescription": string or null (e.g., "Natural Rubber 40 Shore A"),
   "batchNumbers": string[] (array of batch numbers mentioned),
   "approverNames": string[] (names of people who approved/signed),
@@ -35,32 +60,31 @@ Return a JSON object with this structure:
   "batches": [
     {
       "batchNumber": string,
-      "shoreA": number or null (Shore A Hardness),
-      "specificGravity": number or null,
-      "reboundPercent": number or null,
-      "tearStrengthKnM": number or null (kN/m),
-      "tensileStrengthMpa": number or null (MPa),
-      "elongationPercent": number or null (%),
-      "rheometerSMin": number or null (minimum torque in dNm),
-      "rheometerSMax": number or null (maximum torque in dNm),
-      "rheometerTs2": number or null (scorch time in minutes),
-      "rheometerTc90": number or null (cure time in minutes),
+      "shoreA": number or null (Shore A Hardness - most batches have this),
+      "specificGravity": number or null (OFTEN NULL - only some batches tested),
+      "reboundPercent": number or null (OFTEN NULL - only some batches tested),
+      "tearStrengthKnM": number or null (OFTEN NULL - only some batches tested),
+      "tensileStrengthMpa": number or null (OFTEN NULL - only some batches tested),
+      "elongationPercent": number or null (OFTEN NULL - only some batches tested, typically 600-700 when present),
+      "rheometerSMin": number or null (S' min - most batches have this),
+      "rheometerSMax": number or null (S' max - most batches have this),
+      "rheometerTs2": number or null (TS 2 scorch time - most batches have this),
+      "rheometerTc90": number or null (TC 90 cure time - most batches have this),
       "passFailStatus": "PASS" or "FAIL" or null
     }
   ]
 }
 
 Guidelines:
+- CRITICAL: If a cell is blank/empty in the table, return null - NEVER guess values
 - Look for test result tables with batch numbers and properties
-- Shore A Hardness is typically a 2-digit number (40-90 range)
-- Specific gravity is typically between 1.0 and 2.5
-- Tensile strength is typically 5-25 MPa
-- Elongation is typically 200-700%
-- Rheometer values: S'min and S'max are torque values, Ts2 and Tc90 are times
-- PASS/FAIL status may be explicitly stated or inferred from values vs limits
-- Look for specification limits in header rows or separate columns labeled "Min", "Max", "Limit", or "Spec"
-- S&N CoCs typically have two lines of data: physical properties (Shore A, SG, Rebound, Tear, Tensile, Elongation) and rheometer data (S'min, S'max, TS2, TC90)
-- Extract ALL data from both lines for each batch
+- Shore A Hardness is typically a 2-digit number (35-90 range)
+- Specific gravity is typically between 1.0 and 1.5 (when present)
+- Tensile strength is typically 20-30 MPa (when present)
+- Elongation is typically 600-700% (when present) - NOT 1%!
+- Rheometer values: S'min (1-2 dNm), S'max (6-8 dNm), Ts2 (4-6 min), Tc90 (5-7 min)
+- If elongation shows "1" or very low values, it's likely blank - use null
+- PASS/FAIL status may be in the last column labeled "State"
 - Return ONLY the JSON object, no additional text`;
 
 export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from Impilo Industries rubber Batch Certificates.

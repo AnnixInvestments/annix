@@ -23,7 +23,6 @@ import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
-import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
 import {
   ExtractedCocData,
@@ -82,8 +81,6 @@ export class RubberAuCocService {
     private deliveryNoteRepository: Repository<RubberDeliveryNote>,
     @InjectRepository(RubberDeliveryNoteItem)
     private deliveryNoteItemRepository: Repository<RubberDeliveryNoteItem>,
-    @InjectRepository(RubberProductCoding)
-    private productCodingRepository: Repository<RubberProductCoding>,
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
     private readonly configService: ConfigService,
@@ -461,7 +458,15 @@ export class RubberAuCocService {
       elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
     }));
 
-    const colour = await this.colourFromCompoundCode(compoundCode);
+    const colourMap: Record<string, string> = {
+      R: "Red",
+      W: "White",
+      B: "Black",
+      Y: "Yellow",
+      G: "Green",
+      P: "Pink",
+    };
+    const colour = compoundCode ? colourMap[compoundCode.charAt(0).toUpperCase()] : null;
     const baseDescription =
       qualityConfig?.compoundDescription || compoundCoding?.name || "Rubber Compound";
     const compoundDescription = colour ? `${colour} ${baseDescription}` : baseDescription;
@@ -499,53 +504,91 @@ export class RubberAuCocService {
     let qualityConfig: RubberCompoundQualityConfig | null = null;
     let graphPdfPath: string | null = null;
 
-    const matchedCalendererCoc = await this.findMatchingCalendererCoc(extractedRolls);
+    if (coc.sourceDeliveryNoteId || extractedRolls.length > 0) {
+      let supplierCoc: RubberSupplierCoc | null = null;
 
-    if (matchedCalendererCoc) {
-      this.logger.log(
-        `Matched calenderer CoC ${matchedCalendererCoc.id} (order: ${matchedCalendererCoc.orderNumber}) for AU CoC ${coc.cocNumber}`,
-      );
-
-      compoundCode = matchedCalendererCoc.compoundCode || compoundCode;
-
-      if (matchedCalendererCoc.productionDate) {
-        productionDate = formatDateZA(matchedCalendererCoc.productionDate);
+      if (coc.sourceDeliveryNoteId) {
+        const deliveryNote = await this.deliveryNoteRepository.findOne({
+          where: { id: coc.sourceDeliveryNoteId },
+          relations: ["linkedCoc"],
+        });
+        supplierCoc = deliveryNote?.linkedCoc || null;
       }
 
-      const linkedCompounderIds = matchedCalendererCoc.extractedData?.linkedCompounderCocIds || [];
-      let compounderCoc: RubberSupplierCoc | null = null;
+      if (!supplierCoc && extractedRolls.length > 0) {
+        const rollNumbers = extractedRolls.map((r) => r.rollNumber).filter(Boolean) as string[];
+        const orderNumbers = [
+          ...new Set(rollNumbers.map((rn) => rn.split("-")[0]?.trim()).filter(Boolean)),
+        ];
 
-      if (linkedCompounderIds.length > 0) {
-        compounderCoc = await this.supplierCocRepository.findOne({
-          where: { id: linkedCompounderIds[0] },
-        });
+        if (orderNumbers.length > 0) {
+          const calendererCocs = await this.supplierCocRepository
+            .createQueryBuilder("coc")
+            .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
+            .getMany();
 
-        if (compounderCoc) {
-          this.logger.log(
-            `Found linked compounder CoC ${compounderCoc.id} for calenderer ${matchedCalendererCoc.id}`,
-          );
+          supplierCoc =
+            calendererCocs.find((coc) => {
+              const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
+                .trim()
+                .toUpperCase();
+              return orderNumbers.some((on) => cocOrderNumber === on.toUpperCase());
+            }) || null;
+
+          if (supplierCoc) {
+            this.logger.log(
+              `Matched calenderer CoC ${supplierCoc.id} (order: ${supplierCoc.orderNumber}) for AU CoC ${coc.cocNumber}`,
+            );
+          }
         }
       }
 
-      graphPdfPath = compounderCoc?.graphPdfPath || matchedCalendererCoc.graphPdfPath || null;
+      if (supplierCoc) {
+        compoundCode = supplierCoc.compoundCode || compoundCode;
 
-      if (compoundCode && compoundCode !== "Per Supplier CoC") {
-        qualityConfig = await this.qualityConfigRepository.findOne({
-          where: { compoundCode },
+        if (supplierCoc.productionDate) {
+          productionDate = formatDateZA(supplierCoc.productionDate);
+        }
+
+        const linkedCompounderIds = supplierCoc.extractedData?.linkedCompounderCocIds || [];
+        let compounderCoc: RubberSupplierCoc | null = null;
+
+        if (linkedCompounderIds.length > 0) {
+          compounderCoc = await this.supplierCocRepository.findOne({
+            where: { id: linkedCompounderIds[0] },
+          });
+          if (compounderCoc) {
+            this.logger.log(
+              `Found linked compounder CoC ${compounderCoc.id} for calenderer ${supplierCoc.id}`,
+            );
+          }
+        }
+
+        graphPdfPath = compounderCoc?.graphPdfPath || supplierCoc.graphPdfPath || null;
+
+        if (compoundCode && compoundCode !== "Per Supplier CoC") {
+          qualityConfig = await this.qualityConfigRepository.findOne({
+            where: { compoundCode },
+          });
+          const colourMap: Record<string, string> = {
+            R: "Red",
+            W: "White",
+            B: "Black",
+            Y: "Yellow",
+            G: "Green",
+            P: "Pink",
+          };
+          const colour = colourMap[compoundCode.charAt(0).toUpperCase()];
+          const baseDescription = qualityConfig?.compoundDescription || compoundDescription;
+          compoundDescription = colour ? `${colour} ${baseDescription}` : baseDescription;
+        }
+
+        const batchSourceCocId = compounderCoc?.id || supplierCoc.id;
+        const batches = await this.compoundBatchRepository.find({
+          where: { supplierCocId: batchSourceCocId },
+          order: { batchNumber: "ASC" },
         });
-        const baseDescription = qualityConfig?.compoundDescription || compoundDescription;
-        const colour = await this.colourFromCompoundCode(compoundCode);
-        compoundDescription = colour ? `${colour} ${baseDescription}` : baseDescription;
-      }
 
-      const compounderCocId = compounderCoc?.id || matchedCalendererCoc.id;
-      const batches = await this.compoundBatchRepository.find({
-        where: { supplierCocId: compounderCocId },
-        order: { batchNumber: "ASC" },
-      });
-
-      if (batches.length > 0) {
-        this.logger.log(`Found ${batches.length} compound batches from CoC ${compounderCocId}`);
         batchTestData = batches.map((batch) => ({
           batchNumber: batch.batchNumber,
           shoreA: batch.shoreAHardness ? Number(batch.shoreAHardness) : null,
@@ -555,37 +598,7 @@ export class RubberAuCocService {
           tensile: batch.tensileStrengthMpa ? Number(batch.tensileStrengthMpa) : null,
           elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
         }));
-      } else if (
-        compounderCoc?.extractedData?.batches &&
-        compounderCoc.extractedData.batches.length > 0
-      ) {
-        this.logger.log(
-          `Using extracted batch data from compounder CoC ${compounderCoc.id} (${compounderCoc.extractedData.batches.length} batches)`,
-        );
-        batchTestData = compounderCoc.extractedData.batches.map((batch) => ({
-          batchNumber: batch.batchNumber,
-          shoreA: batch.shoreA ?? null,
-          density: batch.specificGravity ?? null,
-          rebound: batch.reboundPercent ?? null,
-          tearStrength: batch.tearStrengthKnM ?? null,
-          tensile: batch.tensileStrengthMpa ?? null,
-          elongation: batch.elongationPercent ?? null,
-        }));
-      } else if (matchedCalendererCoc.extractedData?.batches) {
-        batchTestData = matchedCalendererCoc.extractedData.batches.map((batch) => ({
-          batchNumber: batch.batchNumber,
-          shoreA: batch.shoreA ?? null,
-          density: batch.specificGravity ?? null,
-          rebound: batch.reboundPercent ?? null,
-          tearStrength: batch.tearStrengthKnM ?? null,
-          tensile: batch.tensileStrengthMpa ?? null,
-          elongation: batch.elongationPercent ?? null,
-        }));
       }
-    } else {
-      this.logger.warn(
-        `No matching supplier CoC found for AU CoC ${coc.cocNumber} with rolls: ${extractedRolls.map((r) => r.rollNumber).join(", ")}`,
-      );
     }
 
     return {
@@ -599,93 +612,6 @@ export class RubberAuCocService {
       qualityConfig,
       graphPdfPath,
     };
-  }
-
-  private async findMatchingCalendererCoc(
-    extractedRolls: Array<{ rollNumber?: string | null }>,
-  ): Promise<RubberSupplierCoc | null> {
-    const rollNumbers = extractedRolls
-      .map((r) => r.rollNumber)
-      .filter((rn): rn is string => rn !== null && rn !== undefined);
-
-    if (rollNumbers.length === 0) {
-      return null;
-    }
-
-    const parsedRolls = rollNumbers.map((rn) => {
-      const parts = rn.split("-");
-      if (parts.length >= 2) {
-        return {
-          original: rn,
-          orderNumber: parts[0].trim(),
-          rollNumber: parts.slice(1).join("-").trim(),
-        };
-      }
-      return { original: rn, orderNumber: null, rollNumber: rn.trim() };
-    });
-
-    const orderNumbers = [...new Set(parsedRolls.map((p) => p.orderNumber).filter(Boolean))];
-    const rollNumberParts = [...new Set(parsedRolls.map((p) => p.rollNumber))];
-
-    this.logger.debug(
-      `Searching for calenderer CoCs with order numbers: ${orderNumbers.join(", ")} and roll numbers: ${rollNumberParts.join(", ")}`,
-    );
-
-    const calendererCocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
-      .getMany();
-
-    const matchedCoc = calendererCocs.find((coc) => {
-      const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
-        .trim()
-        .toUpperCase();
-      const cocRollNumbers = (coc.extractedData?.rollNumbers || []).map((rn) =>
-        rn.trim().toUpperCase(),
-      );
-
-      const orderMatch = orderNumbers.some(
-        (on) => on && cocOrderNumber === on.trim().toUpperCase(),
-      );
-
-      const rollMatch = rollNumberParts.some((rn) =>
-        cocRollNumbers.some(
-          (cocRn) => cocRn === rn.toUpperCase() || cocRn.includes(rn.toUpperCase()),
-        ),
-      );
-
-      return orderMatch && rollMatch;
-    });
-
-    if (matchedCoc) {
-      return matchedCoc;
-    }
-
-    const orderOnlyMatch = calendererCocs.find((coc) => {
-      const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
-        .trim()
-        .toUpperCase();
-      return orderNumbers.some((on) => on && cocOrderNumber === on.trim().toUpperCase());
-    });
-
-    return orderOnlyMatch || null;
-  }
-
-  private async colourFromCompoundCode(compoundCode: string): Promise<string | null> {
-    if (!compoundCode || compoundCode.length === 0) {
-      return null;
-    }
-
-    const colourCode = compoundCode.charAt(0).toUpperCase();
-
-    const colourCoding = await this.productCodingRepository.findOne({
-      where: {
-        codingType: ProductCodingType.COLOUR,
-        code: colourCode,
-      },
-    });
-
-    return colourCoding?.name || null;
   }
 
   private async createPdf(data: CocPdfData): Promise<Buffer> {
@@ -1238,24 +1164,17 @@ export class RubberAuCocService {
       const width = metadata.width || 1190;
       const height = metadata.height || 1684;
 
-      const headerHeight = Math.round(height * 0.12);
-      const footerHeight = Math.round(height * 0.05);
-
-      const whiteHeaderRect = Buffer.from(
-        `<svg width="${width}" height="${height}">
-          <rect x="0" y="0" width="${width}" height="${headerHeight}" fill="white"/>
-          <rect x="0" y="${height - footerHeight}" width="${width}" height="${footerHeight}" fill="white"/>
-        </svg>`,
-      );
+      const headerCropHeight = Math.round(height * 0.14);
+      const footerCropHeight = Math.round(height * 0.06);
+      const sideCropWidth = Math.round(width * 0.02);
 
       const cleanedImage = await sharp(graphPng)
-        .composite([
-          {
-            input: whiteHeaderRect,
-            top: 0,
-            left: 0,
-          },
-        ])
+        .extract({
+          left: sideCropWidth,
+          top: headerCropHeight,
+          width: width - sideCropWidth * 2,
+          height: height - headerCropHeight - footerCropHeight,
+        })
         .png()
         .toBuffer();
 
