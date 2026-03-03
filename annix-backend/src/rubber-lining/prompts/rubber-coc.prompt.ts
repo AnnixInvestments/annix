@@ -152,12 +152,15 @@ IMPORTANT OCR CORRECTIONS:
 - If compound code shows "125" as the last segment, this means 12.5m length
 - Standard roll lengths are typically 12.5m, 10m, or 5m - prefer these common values
 
-CRITICAL - EXTRACT ALL PAGES:
+CRITICAL - EXTRACT ALL PAGES AND ALL WEIGHTS:
 - Multi-page PDFs contain MULTIPLE delivery notes, one per page
 - You MUST extract data from EVERY page, including the LAST page
 - Each page has its own printed DATE, NUMBER, and TO (customer) fields
-- If a page is missing roll weight, try to extract it from "XXXKg" text near the roll number
 - NEVER skip the last page - it contains a complete delivery note just like other pages
+- WEIGHT IS MANDATORY: Every roll MUST have a weightKg value extracted
+- The weight appears as "XXXKg" or "XXX Kg" near the roll number (e.g., "162-41212 - 95Kg")
+- If you cannot find the weight, look harder - it's always present on the delivery note
+- Common weight patterns: "258Kg", "102.00 Kg", "87Kg", "95 kg" - extract the number only
 
 Return a JSON object with this structure:
 {
@@ -190,6 +193,8 @@ Guidelines:
 - CRITICAL: Create one entry in the rolls array for EACH roll across ALL pages
 - For each roll, capture the DN number, PRINTED date, and customer from THAT specific page
 - Use ONLY the PRINTED delivery date from the page header, NEVER use handwritten dates
+- WEIGHT IS REQUIRED: Every roll entry MUST have weightKg populated - never leave it null if weight text exists
+- Check each page carefully for the weight value - it's always printed near the roll number
 - Return ONLY the JSON object, no additional text`;
 
 export function compounderCocExtractionPrompt(pdfText: string): string {

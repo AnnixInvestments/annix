@@ -118,10 +118,18 @@ export default function DeliveryNoteDetailPage() {
     const rolls = newData[dnIdx].rolls;
     if (!rolls) return;
 
-    const numValue = value === "" ? undefined : Number(value);
+    const stringFields: (keyof EditableRoll)[] = [
+      "rollNumber",
+      "deliveryNoteNumber",
+      "deliveryDate",
+      "customerName",
+    ];
+    const isStringField = stringFields.includes(field);
+    const parsedValue = isStringField ? value : value === "" ? undefined : Number(value);
+
     rolls[rollIdx] = {
       ...rolls[rollIdx],
-      [field]: field === "rollNumber" ? value : numValue,
+      [field]: parsedValue,
       isEdited: true,
     };
     newData[dnIdx].isEdited = true;
@@ -561,8 +569,6 @@ export default function DeliveryNoteDetailPage() {
                   dn.rolls && dn.rolls.length > 0
                     ? dn.rolls.map((roll, rollIdx) => {
                         const areaSqM = calculateAreaSqM(roll.widthMm, roll.lengthM);
-                        const isFirstRollOfDn = rollIdx === 0;
-                        const rowSpan = dn.rolls?.length || 1;
 
                         return (
                           <tr
@@ -671,65 +677,63 @@ export default function DeliveryNoteDetailPage() {
                                 roll.weightKg?.toFixed(2) ?? "-"
                               )}
                             </td>
-                            {isFirstRollOfDn && (
-                              <>
-                                <td
-                                  className="px-4 py-3 whitespace-nowrap text-sm text-gray-600"
-                                  rowSpan={rowSpan}
-                                >
-                                  {isEditing ? (
-                                    <input
-                                      type="text"
-                                      value={dn.deliveryNoteNumber || ""}
-                                      onChange={(e) =>
-                                        handleDnFieldChange(
-                                          dnIdx,
-                                          "deliveryNoteNumber",
-                                          e.target.value,
-                                        )
-                                      }
-                                      className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                    />
-                                  ) : (
-                                    dn.deliveryNoteNumber || "-"
-                                  )}
-                                </td>
-                                <td
-                                  className="px-4 py-3 whitespace-nowrap text-sm text-gray-600"
-                                  rowSpan={rowSpan}
-                                >
-                                  {isEditing ? (
-                                    <input
-                                      type="date"
-                                      value={dn.deliveryDate || ""}
-                                      onChange={(e) =>
-                                        handleDnFieldChange(dnIdx, "deliveryDate", e.target.value)
-                                      }
-                                      className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                    />
-                                  ) : (
-                                    dn.deliveryDate || "-"
-                                  )}
-                                </td>
-                                <td
-                                  className="px-4 py-3 whitespace-nowrap text-sm text-gray-600"
-                                  rowSpan={rowSpan}
-                                >
-                                  {isEditing ? (
-                                    <input
-                                      type="text"
-                                      value={dn.customerName || ""}
-                                      onChange={(e) =>
-                                        handleDnFieldChange(dnIdx, "customerName", e.target.value)
-                                      }
-                                      className="w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                    />
-                                  ) : (
-                                    roll.customerName || dn.customerName || "-"
-                                  )}
-                                </td>
-                              </>
-                            )}
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={roll.deliveryNoteNumber || ""}
+                                  onChange={(e) =>
+                                    handleRollFieldChange(
+                                      dnIdx,
+                                      rollIdx,
+                                      "deliveryNoteNumber",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                />
+                              ) : (
+                                roll.deliveryNoteNumber || dn.deliveryNoteNumber || "-"
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {isEditing ? (
+                                <input
+                                  type="date"
+                                  value={roll.deliveryDate || ""}
+                                  onChange={(e) =>
+                                    handleRollFieldChange(
+                                      dnIdx,
+                                      rollIdx,
+                                      "deliveryDate",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                />
+                              ) : (
+                                roll.deliveryDate || dn.deliveryDate || "-"
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={roll.customerName || ""}
+                                  onChange={(e) =>
+                                    handleRollFieldChange(
+                                      dnIdx,
+                                      rollIdx,
+                                      "customerName",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                />
+                              ) : (
+                                roll.customerName || dn.customerName || "-"
+                              )}
+                            </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm">
                               {note?.documentPath && roll.pageNumber ? (
                                 <button
@@ -741,7 +745,8 @@ export default function DeliveryNoteDetailPage() {
                                 </button>
                               ) : (
                                 <span className="text-gray-400">-</span>
-                              )}</td>
+                              )}
+                            </td>
                           </tr>
                         );
                       })
