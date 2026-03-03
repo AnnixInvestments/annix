@@ -31,7 +31,7 @@ import {
 import { Response } from "express";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
-import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
+import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
   CreateDeliveryNoteDto,
@@ -1669,9 +1669,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     },
   })
   @UseInterceptors(FileInterceptor("file"))
-  async analyzeDeliveryNote(
-    @UploadedFile() file: Express.Multer.File,
-  ) {
+  async analyzeDeliveryNote(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException("No file uploaded");
     }
@@ -1701,6 +1699,101 @@ Formula: totalPrice = totalKg × salePricePerKg
       tokensUsed: result.tokensUsed,
       processingTimeMs: result.processingTimeMs,
     };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/delivery-notes/accept-analyzed")
+  @ApiOperation({ summary: "Accept analyzed delivery note and create record" })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          format: "binary",
+          description: "Original photo (JPEG, PNG) or PDF of delivery note",
+        },
+        analyzedData: {
+          type: "string",
+          description: "JSON string of analyzed delivery note data",
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor("file"))
+  async acceptAnalyzedDeliveryNote(
+    @UploadedFile() file: Express.Multer.File,
+    @Body("analyzedData") analyzedDataJson: string,
+    @Req() req: Request,
+  ): Promise<RubberDeliveryNoteDto> {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+
+    const analyzedData = JSON.parse(analyzedDataJson) as {
+      deliveryNoteNumber?: string;
+      deliveryDate?: string;
+      fromCompany?: { name?: string };
+      toCompany?: { name?: string };
+      lineItems?: Array<{
+        rollNumber?: string;
+        thicknessMm?: number;
+        widthMm?: number;
+        lengthM?: number;
+        weightKg?: number;
+      }>;
+    };
+
+    const supplierCompany = await this.rubberCompanyService.findOrCreateByName(
+      analyzedData.fromCompany?.name || "Unknown Supplier",
+      "supplier",
+    );
+
+    const fileName = `dn_${analyzedData.deliveryNoteNumber || "unknown"}_${Date.now()}${file.originalname.substring(file.originalname.lastIndexOf("."))}`;
+    const filePath = `${StorageArea.AU_RUBBER}/delivery-notes/${fileName}`;
+    await this.storageService.upload(
+      {
+        buffer: file.buffer,
+        originalname: fileName,
+        mimetype: file.mimetype,
+      } as Express.Multer.File,
+      filePath,
+    );
+
+    const deliveryNote = await this.rubberDeliveryNoteService.createDeliveryNote(
+      {
+        deliveryNoteType: DeliveryNoteType.ROLL,
+        deliveryNoteNumber: analyzedData.deliveryNoteNumber || null,
+        deliveryDate: analyzedData.deliveryDate || null,
+        supplierCompanyId: supplierCompany.id,
+        documentPath: filePath,
+      },
+      (req as unknown as { user?: { email?: string } }).user?.email,
+    );
+
+    const extractedData = {
+      deliveryNoteNumber: analyzedData.deliveryNoteNumber,
+      deliveryDate: analyzedData.deliveryDate,
+      supplierName: analyzedData.fromCompany?.name,
+      customerName: analyzedData.toCompany?.name,
+      rolls: analyzedData.lineItems?.map((item, idx) => ({
+        rollNumber: item.rollNumber || `ROLL-${idx + 1}`,
+        thicknessMm: item.thicknessMm ?? null,
+        widthMm: item.widthMm ?? null,
+        lengthM: item.lengthM ?? null,
+        weightKg: item.weightKg ?? null,
+        pageNumber: 1,
+      })),
+    };
+
+    const updatedNote = await this.rubberDeliveryNoteService.setExtractedData(
+      deliveryNote.id,
+      extractedData,
+    );
+
+    return updatedNote!;
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

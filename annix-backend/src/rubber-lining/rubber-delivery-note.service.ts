@@ -178,8 +178,7 @@ export class RubberDeliveryNoteService {
       userCorrected: true,
       rolls: correctedData.rolls?.map((roll) => ({
         ...roll,
-        areaSqM:
-          roll.widthMm && roll.lengthM ? (roll.widthMm * roll.lengthM) / 1000 : undefined,
+        areaSqM: roll.widthMm && roll.lengthM ? (roll.widthMm * roll.lengthM) / 1000 : undefined,
       })),
     };
 

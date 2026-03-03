@@ -2400,6 +2400,31 @@ class StockControlApiClient {
 
     return response.json();
   }
+
+  async acceptAnalyzedDeliveryNote(
+    file: File,
+    analyzedData: AnalyzedDeliveryNoteData,
+  ): Promise<DeliveryNote> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("analyzedData", JSON.stringify(analyzedData));
+
+    const url = `${this.baseURL}/stock-control/deliveries/accept-analyzed`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create delivery note: ${errorText}`);
+    }
+
+    return response.json();
+  }
 }
 
 export const stockControlApiClient = new StockControlApiClient();

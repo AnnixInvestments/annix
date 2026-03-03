@@ -89,9 +89,7 @@ export default function DeliveryNoteDetailPage() {
 
   const initializeEditableData = (): EditableExtractedData[] => {
     if (!note?.extractedData) return [];
-    const items = Array.isArray(note.extractedData)
-      ? note.extractedData
-      : [note.extractedData];
+    const items = Array.isArray(note.extractedData) ? note.extractedData : [note.extractedData];
     return items.map((item) => ({
       ...item,
       rolls: item.rolls?.map((roll) => ({ ...roll })),
@@ -612,7 +610,7 @@ export default function DeliveryNoteDetailPage() {
                                   className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                 />
                               ) : (
-                                roll.thicknessMm ?? "-"
+                                (roll.thicknessMm ?? "-")
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -621,17 +619,12 @@ export default function DeliveryNoteDetailPage() {
                                   type="number"
                                   value={roll.widthMm ?? ""}
                                   onChange={(e) =>
-                                    handleRollFieldChange(
-                                      dnIdx,
-                                      rollIdx,
-                                      "widthMm",
-                                      e.target.value,
-                                    )
+                                    handleRollFieldChange(dnIdx, rollIdx, "widthMm", e.target.value)
                                   }
                                   className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                 />
                               ) : (
-                                roll.widthMm ?? "-"
+                                (roll.widthMm ?? "-")
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -641,17 +634,12 @@ export default function DeliveryNoteDetailPage() {
                                   step="0.1"
                                   value={roll.lengthM ?? ""}
                                   onChange={(e) =>
-                                    handleRollFieldChange(
-                                      dnIdx,
-                                      rollIdx,
-                                      "lengthM",
-                                      e.target.value,
-                                    )
+                                    handleRollFieldChange(dnIdx, rollIdx, "lengthM", e.target.value)
                                   }
                                   className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                 />
                               ) : (
-                                roll.lengthM ?? "-"
+                                (roll.lengthM ?? "-")
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -674,7 +662,7 @@ export default function DeliveryNoteDetailPage() {
                                   className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                 />
                               ) : (
-                                roll.weightKg?.toFixed(2) ?? "-"
+                                (roll.weightKg?.toFixed(2) ?? "-")
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -693,7 +681,7 @@ export default function DeliveryNoteDetailPage() {
                                   className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                 />
                               ) : (
-                                roll.deliveryNoteNumber || dn.deliveryNoteNumber || "-"
+                                note.deliveryNoteNumber || roll.deliveryNoteNumber || "-"
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -712,7 +700,7 @@ export default function DeliveryNoteDetailPage() {
                                   className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                 />
                               ) : (
-                                roll.deliveryDate || dn.deliveryDate || "-"
+                                note.deliveryDate || roll.deliveryDate || "-"
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -752,10 +740,7 @@ export default function DeliveryNoteDetailPage() {
                       })
                     : [
                         <tr key={dnIdx} className="hover:bg-gray-50">
-                          <td
-                            colSpan={6}
-                            className="px-4 py-3 text-sm text-gray-500 text-center"
-                          >
+                          <td colSpan={6} className="px-4 py-3 text-sm text-gray-500 text-center">
                             No rolls data
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -767,9 +752,7 @@ export default function DeliveryNoteDetailPage() {
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                             {dn.customerName || "-"}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            -
-                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">-</td>
                         </tr>,
                       ],
                 )}
@@ -964,22 +947,21 @@ export default function DeliveryNoteDetailPage() {
       {showPodModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75"
-              onClick={closePodModal}
-            />
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={closePodModal} />
             <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4 border-b">
                 <h3 className="text-lg font-medium text-gray-900">
                   Proof of Delivery - Page {podPageNumber}
                 </h3>
-                <button
-                  onClick={closePodModal}
-                  className="text-gray-400 hover:text-gray-500"
-                >
+                <button onClick={closePodModal} className="text-gray-400 hover:text-gray-500">
                   <span className="sr-only">Close</span>
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -995,9 +977,7 @@ export default function DeliveryNoteDetailPage() {
                     className="w-full h-auto"
                   />
                 ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    Failed to load POD page
-                  </div>
+                  <div className="text-center py-12 text-gray-500">Failed to load POD page</div>
                 )}
               </div>
             </div>

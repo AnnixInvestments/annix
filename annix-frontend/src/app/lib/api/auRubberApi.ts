@@ -2025,6 +2025,36 @@ class AuRubberApiClient {
     return response.json();
   }
 
+  async acceptAnalyzedDeliveryNote(
+    file: File,
+    analyzedData: AnalyzedDeliveryNoteData,
+  ): Promise<RubberDeliveryNoteDto> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("analyzedData", JSON.stringify(analyzedData));
+
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(
+      `${this.baseURL}/rubber-lining/portal/delivery-notes/accept-analyzed`,
+      {
+        method: "POST",
+        headers,
+        body: formData,
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Request failed" }));
+      throw new Error(error.message || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  }
+
   async linkDeliveryNoteToCoc(
     deliveryNoteId: number,
     cocId: number,

@@ -1,11 +1,4 @@
-import {
-  IsArray,
-  IsDateString,
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  IsString,
-} from "class-validator";
+import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
 import { AuCocStatus } from "../entities/rubber-au-coc.entity";
 import { BatchPassFailStatus } from "../entities/rubber-compound-batch.entity";
 import {
