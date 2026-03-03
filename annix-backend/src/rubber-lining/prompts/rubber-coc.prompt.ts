@@ -131,9 +131,17 @@ export const DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting stru
 
 These delivery notes are typically from AU Industries or similar rubber suppliers.
 
+CRITICAL - DATE EXTRACTION:
+- The delivery date is ALWAYS in the TOP LEFT CORNER of the document header
+- Look for "DATE:" field near "DELIVERY NOTE" and "NUMBER:" - this is the ONLY date to extract
+- Format is DD/MM/YYYY (e.g., "25/02/2026") - convert to YYYY-MM-DD (e.g., "2026-02-25")
+- IGNORE ALL HANDWRITTEN DATES - these appear in stamps/signatures at the bottom of pages
+- IGNORE "Goods Received Date" stamps - these have handwritten dates that are often wrong
+- The printed header date is the AUTHORITATIVE delivery date for the document
+
 AU INDUSTRIES DELIVERY NOTE FORMAT:
 - Header shows "DELIVERY NOTE" with NUMBER field (e.g., "1298") - this is the DN number
-- DATE field in DD/MM/YYYY format - convert to YYYY-MM-DD - THIS IS THE PRINTED DATE, use this not handwritten dates
+- DATE field in header (top left) in DD/MM/YYYY format - convert to YYYY-MM-DD
 - FROM section shows the supplier (e.g., "AU INDUSTRIES (PTY) LTD")
 - TO section shows the CUSTOMER (e.g., "POLYMER LINING SYSTEMS (PTY) LTD") - extract this as customerName
 - Description column contains compound info like:

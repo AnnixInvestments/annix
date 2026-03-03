@@ -9,7 +9,7 @@ import {
   RubberDeliveryNoteDto,
   UpdateDeliveryNoteDto,
 } from "./dto/rubber-coc.dto";
-import { RubberCompany } from "./entities/rubber-company.entity";
+import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
 import {
   DeliveryNoteStatus,
   DeliveryNoteType,
@@ -383,23 +383,23 @@ export class RubberDeliveryNoteService {
     companyType: "supplier" | "customer",
   ): Promise<{ id: number; name: string }> {
     const normalizedName = name.trim().toUpperCase();
+    const typeEnum = companyType === "supplier" ? CompanyType.SUPPLIER : CompanyType.CUSTOMER;
 
     const existing = await this.companyRepository
       .createQueryBuilder("c")
       .where("UPPER(c.name) = :name", { name: normalizedName })
-      .andWhere("c.company_type = :type", { type: companyType })
+      .andWhere("c.company_type = :type", { type: typeEnum })
       .getOne();
 
     if (existing) {
       return { id: existing.id, name: existing.name };
     }
 
-    const newCompany = this.companyRepository.create({
-      name: name.trim(),
-      companyType,
-      isActive: true,
-      availableProducts: [],
-    });
+    const newCompany = new RubberCompany();
+    newCompany.firebaseUid = `pg_${generateUniqueId()}`;
+    newCompany.name = name.trim();
+    newCompany.companyType = typeEnum;
+    newCompany.availableProducts = [];
 
     const saved = await this.companyRepository.save(newCompany);
     return { id: saved.id, name: saved.name };
