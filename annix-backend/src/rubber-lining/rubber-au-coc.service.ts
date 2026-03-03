@@ -492,33 +492,51 @@ export class RubberAuCocService {
     let qualityConfig: RubberCompoundQualityConfig | null = null;
     let graphPdfPath: string | null = null;
 
-    if (coc.sourceDeliveryNoteId) {
-      const deliveryNote = await this.deliveryNoteRepository.findOne({
-        where: { id: coc.sourceDeliveryNoteId },
-        relations: ["linkedCoc"],
-      });
+    const matchedCalendererCoc = await this.findMatchingCalendererCoc(extractedRolls);
 
-      if (deliveryNote?.linkedCoc) {
-        const supplierCoc = deliveryNote.linkedCoc;
-        compoundCode = supplierCoc.compoundCode || compoundCode;
-        graphPdfPath = supplierCoc.graphPdfPath || null;
+    if (matchedCalendererCoc) {
+      this.logger.log(
+        `Matched calenderer CoC ${matchedCalendererCoc.id} (order: ${matchedCalendererCoc.orderNumber}) for AU CoC ${coc.cocNumber}`,
+      );
 
-        if (supplierCoc.productionDate) {
-          productionDate = formatDateZA(supplierCoc.productionDate);
-        }
+      compoundCode = matchedCalendererCoc.compoundCode || compoundCode;
 
-        if (compoundCode && compoundCode !== "Per Supplier CoC") {
-          qualityConfig = await this.qualityConfigRepository.findOne({
-            where: { compoundCode },
-          });
-          compoundDescription = qualityConfig?.compoundDescription || compoundDescription;
-        }
+      if (matchedCalendererCoc.productionDate) {
+        productionDate = formatDateZA(matchedCalendererCoc.productionDate);
+      }
 
-        const batches = await this.compoundBatchRepository.find({
-          where: { supplierCocId: supplierCoc.id },
-          order: { batchNumber: "ASC" },
+      const linkedCompounderIds = matchedCalendererCoc.extractedData?.linkedCompounderCocIds || [];
+      let compounderCoc: RubberSupplierCoc | null = null;
+
+      if (linkedCompounderIds.length > 0) {
+        compounderCoc = await this.supplierCocRepository.findOne({
+          where: { id: linkedCompounderIds[0] },
         });
 
+        if (compounderCoc) {
+          this.logger.log(
+            `Found linked compounder CoC ${compounderCoc.id} for calenderer ${matchedCalendererCoc.id}`,
+          );
+        }
+      }
+
+      graphPdfPath = compounderCoc?.graphPdfPath || matchedCalendererCoc.graphPdfPath || null;
+
+      if (compoundCode && compoundCode !== "Per Supplier CoC") {
+        qualityConfig = await this.qualityConfigRepository.findOne({
+          where: { compoundCode },
+        });
+        compoundDescription = qualityConfig?.compoundDescription || compoundDescription;
+      }
+
+      const compounderCocId = compounderCoc?.id || matchedCalendererCoc.id;
+      const batches = await this.compoundBatchRepository.find({
+        where: { supplierCocId: compounderCocId },
+        order: { batchNumber: "ASC" },
+      });
+
+      if (batches.length > 0) {
+        this.logger.log(`Found ${batches.length} compound batches from CoC ${compounderCocId}`);
         batchTestData = batches.map((batch) => ({
           batchNumber: batch.batchNumber,
           shoreA: batch.shoreAHardness ? Number(batch.shoreAHardness) : null,
@@ -528,7 +546,37 @@ export class RubberAuCocService {
           tensile: batch.tensileStrengthMpa ? Number(batch.tensileStrengthMpa) : null,
           elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
         }));
+      } else if (
+        compounderCoc?.extractedData?.batches &&
+        compounderCoc.extractedData.batches.length > 0
+      ) {
+        this.logger.log(
+          `Using extracted batch data from compounder CoC ${compounderCoc.id} (${compounderCoc.extractedData.batches.length} batches)`,
+        );
+        batchTestData = compounderCoc.extractedData.batches.map((batch) => ({
+          batchNumber: batch.batchNumber,
+          shoreA: batch.shoreA ?? null,
+          density: batch.specificGravity ?? null,
+          rebound: batch.reboundPercent ?? null,
+          tearStrength: batch.tearStrengthKnM ?? null,
+          tensile: batch.tensileStrengthMpa ?? null,
+          elongation: batch.elongationPercent ?? null,
+        }));
+      } else if (matchedCalendererCoc.extractedData?.batches) {
+        batchTestData = matchedCalendererCoc.extractedData.batches.map((batch) => ({
+          batchNumber: batch.batchNumber,
+          shoreA: batch.shoreA ?? null,
+          density: batch.specificGravity ?? null,
+          rebound: batch.reboundPercent ?? null,
+          tearStrength: batch.tearStrengthKnM ?? null,
+          tensile: batch.tensileStrengthMpa ?? null,
+          elongation: batch.elongationPercent ?? null,
+        }));
       }
+    } else {
+      this.logger.warn(
+        `No matching supplier CoC found for AU CoC ${coc.cocNumber} with rolls: ${extractedRolls.map((r) => r.rollNumber).join(", ")}`,
+      );
     }
 
     return {
@@ -542,6 +590,76 @@ export class RubberAuCocService {
       qualityConfig,
       graphPdfPath,
     };
+  }
+
+  private async findMatchingCalendererCoc(
+    extractedRolls: Array<{ rollNumber?: string | null }>,
+  ): Promise<RubberSupplierCoc | null> {
+    const rollNumbers = extractedRolls
+      .map((r) => r.rollNumber)
+      .filter((rn): rn is string => rn !== null && rn !== undefined);
+
+    if (rollNumbers.length === 0) {
+      return null;
+    }
+
+    const parsedRolls = rollNumbers.map((rn) => {
+      const parts = rn.split("-");
+      if (parts.length >= 2) {
+        return {
+          original: rn,
+          orderNumber: parts[0].trim(),
+          rollNumber: parts.slice(1).join("-").trim(),
+        };
+      }
+      return { original: rn, orderNumber: null, rollNumber: rn.trim() };
+    });
+
+    const orderNumbers = [...new Set(parsedRolls.map((p) => p.orderNumber).filter(Boolean))];
+    const rollNumberParts = [...new Set(parsedRolls.map((p) => p.rollNumber))];
+
+    this.logger.debug(
+      `Searching for calenderer CoCs with order numbers: ${orderNumbers.join(", ")} and roll numbers: ${rollNumberParts.join(", ")}`,
+    );
+
+    const calendererCocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
+      .getMany();
+
+    const matchedCoc = calendererCocs.find((coc) => {
+      const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
+        .trim()
+        .toUpperCase();
+      const cocRollNumbers = (coc.extractedData?.rollNumbers || []).map((rn) =>
+        rn.trim().toUpperCase(),
+      );
+
+      const orderMatch = orderNumbers.some(
+        (on) => on && cocOrderNumber === on.trim().toUpperCase(),
+      );
+
+      const rollMatch = rollNumberParts.some((rn) =>
+        cocRollNumbers.some(
+          (cocRn) => cocRn === rn.toUpperCase() || cocRn.includes(rn.toUpperCase()),
+        ),
+      );
+
+      return orderMatch && rollMatch;
+    });
+
+    if (matchedCoc) {
+      return matchedCoc;
+    }
+
+    const orderOnlyMatch = calendererCocs.find((coc) => {
+      const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
+        .trim()
+        .toUpperCase();
+      return orderNumbers.some((on) => on && cocOrderNumber === on.trim().toUpperCase());
+    });
+
+    return orderOnlyMatch || null;
   }
 
   private async createPdf(data: CocPdfData): Promise<Buffer> {
