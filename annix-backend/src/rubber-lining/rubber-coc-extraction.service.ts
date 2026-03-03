@@ -9,8 +9,8 @@ import { ExtractedCocData, SupplierCocType } from "./entities/rubber-supplier-co
 import {
   CALENDARER_COC_SYSTEM_PROMPT,
   COMPOUNDER_COC_SYSTEM_PROMPT,
-  CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
   CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
+  CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
   calendererCocExtractionPrompt,
   compounderCocExtractionPrompt,
   customerDeliveryNoteExtractionPrompt,

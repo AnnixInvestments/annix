@@ -158,6 +158,9 @@ export class RubberDeliveryNoteService {
     if (extractedData.deliveryDate) {
       note.deliveryDate = new Date(extractedData.deliveryDate);
     }
+    if (extractedData.customerReference) {
+      note.customerReference = extractedData.customerReference;
+    }
 
     await this.deliveryNoteRepository.save(note);
     return this.mapDeliveryNoteToDto(note);
