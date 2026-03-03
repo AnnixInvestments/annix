@@ -669,7 +669,7 @@ export default function DeliveryNoteDetailPage() {
                               {isEditing ? (
                                 <input
                                   type="text"
-                                  value={roll.deliveryNoteNumber || ""}
+                                  value={roll.deliveryNoteNumber || note.deliveryNoteNumber || ""}
                                   onChange={(e) =>
                                     handleRollFieldChange(
                                       dnIdx,
@@ -707,7 +707,7 @@ export default function DeliveryNoteDetailPage() {
                               {isEditing ? (
                                 <input
                                   type="text"
-                                  value={roll.customerName || ""}
+                                  value={roll.customerName || dn.customerName || ""}
                                   onChange={(e) =>
                                     handleRollFieldChange(
                                       dnIdx,
