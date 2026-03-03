@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { auRubberApiClient, type RubberRollStockDto } from "@/app/lib/api/auRubberApi";
 import type {
   CoatingAnalysis,
   JobCard,
@@ -100,11 +99,9 @@ function isValidLineItem(li: {
   return true;
 }
 
-interface RollAllocationSuggestion {
-  roll: RubberRollStockDto;
-  areaSqM: number;
-  percentUsed: number;
-}
+const STANDARD_ROLL_WIDTH_MM = 1200;
+const STANDARD_ROLL_LENGTH_M = 12.5;
+const STANDARD_ROLL_AREA_M2 = (STANDARD_ROLL_WIDTH_MM / 1000) * STANDARD_ROLL_LENGTH_M;
 
 interface RubberAllocationProps {
   lineItems: Array<{
@@ -112,53 +109,17 @@ interface RubberAllocationProps {
     itemCode: string | null;
     itemDescription: string | null;
   }>;
-  availableRolls: RubberRollStockDto[];
-  isLoadingRolls: boolean;
 }
 
-function RubberAllocationSection({
-  lineItems,
-  availableRolls,
-  isLoadingRolls,
-}: RubberAllocationProps) {
+function RubberAllocationSection({ lineItems }: RubberAllocationProps) {
   const totalM2Required = lineItems.reduce((sum, li) => sum + (li.m2 ? Number(li.m2) : 0), 0);
 
-  const rollsWithArea = availableRolls
-    .map((roll) => {
-      const areaSqM =
-        roll.widthMm && roll.lengthM ? (Number(roll.widthMm) / 1000) * Number(roll.lengthM) : 0;
-      return { roll, areaSqM };
-    })
-    .filter(({ areaSqM }) => areaSqM > 0)
-    .sort((a, b) => b.areaSqM - a.areaSqM);
-
-  const suggestAllocation = (): { suggestions: RollAllocationSuggestion[]; remaining: number } => {
-    let remaining = totalM2Required;
-    const suggestions: RollAllocationSuggestion[] = [];
-
-    const sortedRolls = [...rollsWithArea].sort((a, b) => b.areaSqM - a.areaSqM);
-
-    for (const { roll, areaSqM } of sortedRolls) {
-      if (remaining <= 0) break;
-
-      const amountFromRoll = Math.min(areaSqM, remaining);
-      const percentUsed = (amountFromRoll / areaSqM) * 100;
-
-      suggestions.push({
-        roll,
-        areaSqM,
-        percentUsed,
-      });
-
-      remaining -= areaSqM;
-    }
-
-    return { suggestions, remaining: Math.max(0, remaining) };
-  };
-
-  const { suggestions, remaining } = suggestAllocation();
-  const totalAvailable = rollsWithArea.reduce((sum, r) => sum + r.areaSqM, 0);
-  const hasSufficientStock = remaining === 0;
+  const rollsNeededExact = totalM2Required / STANDARD_ROLL_AREA_M2;
+  const fullRollsNeeded = Math.ceil(rollsNeededExact);
+  const totalRollArea = fullRollsNeeded * STANDARD_ROLL_AREA_M2;
+  const leftoverM2 = totalRollArea - totalM2Required;
+  const lastRollUsedM2 = STANDARD_ROLL_AREA_M2 - leftoverM2;
+  const lastRollUsedPercent = (lastRollUsedM2 / STANDARD_ROLL_AREA_M2) * 100;
 
   if (totalM2Required === 0) {
     return null;
@@ -168,106 +129,69 @@ function RubberAllocationSection({
     <div className="bg-white shadow rounded-lg overflow-hidden">
       <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
         <h3 className="text-lg leading-6 font-medium text-gray-900">Rubber Allocation</h3>
+        <p className="mt-1 text-sm text-gray-500">
+          Based on standard tank work rolls: {STANDARD_ROLL_WIDTH_MM}mm x {STANDARD_ROLL_LENGTH_M}m
+          = {STANDARD_ROLL_AREA_M2.toFixed(2)} m&#178; per roll
+        </p>
       </div>
       <div className="px-4 py-5 sm:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-blue-50 rounded-lg p-4">
             <p className="text-sm font-medium text-blue-600">Total Required</p>
             <p className="text-2xl font-bold text-blue-900">{totalM2Required.toFixed(2)} m&#178;</p>
           </div>
-          <div className="bg-green-50 rounded-lg p-4">
-            <p className="text-sm font-medium text-green-600">Available In Stock</p>
-            <p className="text-2xl font-bold text-green-900">
-              {isLoadingRolls ? "Loading..." : `${totalAvailable.toFixed(2)} m\u00B2`}
+          <div className="bg-teal-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-teal-600">Rolls Required</p>
+            <p className="text-2xl font-bold text-teal-900">{fullRollsNeeded}</p>
+            <p className="text-xs text-teal-600 mt-1">({totalRollArea.toFixed(2)} m&#178; total)</p>
+          </div>
+          <div className="bg-amber-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-amber-600">Last Roll Usage</p>
+            <p className="text-2xl font-bold text-amber-900">{lastRollUsedPercent.toFixed(0)}%</p>
+            <p className="text-xs text-amber-600 mt-1">
+              ({lastRollUsedM2.toFixed(2)} m&#178; used)
             </p>
           </div>
-          <div className={`rounded-lg p-4 ${hasSufficientStock ? "bg-green-50" : "bg-amber-50"}`}>
-            <p
-              className={`text-sm font-medium ${hasSufficientStock ? "text-green-600" : "text-amber-600"}`}
-            >
-              {hasSufficientStock ? "Sufficient Stock" : "Shortfall"}
-            </p>
-            <p
-              className={`text-2xl font-bold ${hasSufficientStock ? "text-green-900" : "text-amber-900"}`}
-            >
-              {hasSufficientStock ? "OK" : `${remaining.toFixed(2)} m\u00B2 short`}
-            </p>
+          <div className="bg-green-50 rounded-lg p-4">
+            <p className="text-sm font-medium text-green-600">Leftover</p>
+            <p className="text-2xl font-bold text-green-900">{leftoverM2.toFixed(2)} m&#178;</p>
+            <p className="text-xs text-green-600 mt-1">from last roll</p>
           </div>
         </div>
 
-        {suggestions.length > 0 && (
-          <div className="mt-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Suggested Roll Allocation</h4>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Roll Number
-                    </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Compound
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                      Dimensions
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                      Roll Area
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                      % Used
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {suggestions.map(({ roll, areaSqM, percentUsed }) => (
-                    <tr key={roll.id} className="hover:bg-gray-50">
-                      <td className="px-3 py-2 text-sm font-mono font-medium text-gray-900">
-                        {roll.rollNumber}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-gray-600">
-                        {roll.compoundName || roll.compoundCode || "-"}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-right text-gray-600">
-                        {roll.widthMm ? `${roll.widthMm}mm` : "-"} x{" "}
-                        {roll.lengthM ? `${roll.lengthM}m` : "-"}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-right font-semibold text-gray-900">
-                        {areaSqM.toFixed(2)} m&#178;
-                      </td>
-                      <td className="px-3 py-2 text-sm text-right">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            percentUsed >= 100
-                              ? "bg-green-100 text-green-800"
-                              : percentUsed >= 50
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {percentUsed >= 100 ? "100%" : `${percentUsed.toFixed(0)}%`}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {!hasSufficientStock && (
-              <p className="mt-3 text-sm text-amber-600">
-                Additional {remaining.toFixed(2)} m&#178; of rubber required. Consider ordering more
-                stock.
-              </p>
-            )}
-          </div>
-        )}
+        <div className="mt-4 bg-gray-50 rounded-lg p-4">
+          <h4 className="text-sm font-semibold text-gray-900 mb-3">Roll Breakdown</h4>
+          <div className="space-y-2">
+            {Array.from({ length: fullRollsNeeded }, (_, i) => {
+              const rollNum = i + 1;
+              const isLastRoll = rollNum === fullRollsNeeded;
+              const usedPercent = isLastRoll ? lastRollUsedPercent : 100;
+              const usedM2 = isLastRoll ? lastRollUsedM2 : STANDARD_ROLL_AREA_M2;
 
-        {!isLoadingRolls && rollsWithArea.length === 0 && (
-          <p className="text-sm text-gray-500 italic">
-            No rolls with dimensions available in stock. Roll dimensions (width and length) are
-            required to calculate area.
-          </p>
-        )}
+              return (
+                <div key={rollNum} className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-700 w-16">Roll {rollNum}</span>
+                  <div className="flex-1 bg-gray-200 rounded-full h-4 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${isLastRoll ? "bg-amber-500" : "bg-teal-500"}`}
+                      style={{ width: `${usedPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-sm text-gray-600 w-24 text-right">
+                    {usedM2.toFixed(2)} m&#178;
+                  </span>
+                  <span
+                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      isLastRoll ? "bg-amber-100 text-amber-800" : "bg-teal-100 text-teal-800"
+                    }`}
+                  >
+                    {usedPercent.toFixed(0)}%
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -318,8 +242,6 @@ export default function JobCardDetailPage() {
   const [isExtracting, setIsExtracting] = useState<number | null>(null);
   const [isDraggingAmendment, setIsDraggingAmendment] = useState(false);
   const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
-  const [availableRolls, setAvailableRolls] = useState<RubberRollStockDto[]>([]);
-  const [isLoadingRolls, setIsLoadingRolls] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -374,21 +296,6 @@ export default function JobCardDetailPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  useEffect(() => {
-    const fetchAvailableRolls = async () => {
-      try {
-        setIsLoadingRolls(true);
-        const rolls = await auRubberApiClient.rollStock({ status: "IN_STOCK" });
-        setAvailableRolls(rolls);
-      } catch {
-        setAvailableRolls([]);
-      } finally {
-        setIsLoadingRolls(false);
-      }
-    };
-    fetchAvailableRolls();
-  }, []);
 
   const fetchStockItems = async () => {
     try {
@@ -1280,13 +1187,7 @@ export default function JobCardDetailPage() {
       {(() => {
         const validItems = jobCard.lineItems?.filter(isValidLineItem) ?? [];
         const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
-        return hasM2Items ? (
-          <RubberAllocationSection
-            lineItems={validItems}
-            availableRolls={availableRolls}
-            isLoadingRolls={isLoadingRolls}
-          />
-        ) : null;
+        return hasM2Items ? <RubberAllocationSection lineItems={validItems} /> : null;
       })()}
 
       {versions.length > 0 && (
