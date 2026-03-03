@@ -211,6 +211,12 @@ export class DeliveryService {
         productCode?: string;
         quantity?: number;
         unitOfMeasure?: string;
+        unitPrice?: number;
+        lineTotal?: number;
+        isPaint?: boolean;
+        isTwoPack?: boolean;
+        volumeLiters?: number;
+        costPerLiter?: number;
       }>;
     } | null;
 
@@ -241,6 +247,12 @@ export class DeliveryService {
         productCode?: string;
         quantity?: number;
         unitOfMeasure?: string;
+        unitPrice?: number;
+        lineTotal?: number;
+        isPaint?: boolean;
+        isTwoPack?: boolean;
+        volumeLiters?: number;
+        costPerLiter?: number;
       }>;
     },
     receivedBy?: string,
@@ -312,6 +324,12 @@ export class DeliveryService {
       productCode?: string;
       quantity?: number;
       unitOfMeasure?: string;
+      unitPrice?: number;
+      lineTotal?: number;
+      isPaint?: boolean;
+      isTwoPack?: boolean;
+      volumeLiters?: number;
+      costPerLiter?: number;
     }>,
     receivedBy?: string,
   ): Promise<void> {
@@ -321,7 +339,25 @@ export class DeliveryService {
       }
 
       const sku = this.generateSku(item);
-      const quantity = item.quantity ?? 1;
+
+      let quantity: number;
+      let costPerUnit: number;
+      let unitOfMeasure: string;
+
+      if (item.isPaint && item.volumeLiters) {
+        quantity = item.volumeLiters;
+        unitOfMeasure = "L";
+        costPerUnit =
+          item.costPerLiter ?? (item.lineTotal ? item.lineTotal / item.volumeLiters : 0);
+        this.logger.log(
+          `Paint item: ${item.description} - ${quantity}L @ R${costPerUnit.toFixed(2)}/L`,
+        );
+      } else {
+        quantity = item.quantity ?? 1;
+        unitOfMeasure = item.unitOfMeasure || "each";
+        costPerUnit =
+          item.unitPrice ?? (item.lineTotal && item.quantity ? item.lineTotal / item.quantity : 0);
+      }
 
       let stockItem = await this.stockItemRepo.findOne({
         where: { sku, companyId },
@@ -329,6 +365,9 @@ export class DeliveryService {
 
       if (stockItem) {
         stockItem.quantity = stockItem.quantity + quantity;
+        if (costPerUnit > 0) {
+          stockItem.costPerUnit = costPerUnit;
+        }
         await this.stockItemRepo.save(stockItem);
         this.logger.log(`Updated existing stock item ${sku}: +${quantity}`);
       } else {
@@ -336,16 +375,18 @@ export class DeliveryService {
           sku,
           name: item.description,
           description: null,
-          category: "Uncategorized",
-          unitOfMeasure: item.unitOfMeasure || "each",
-          costPerUnit: 0,
+          category: item.isPaint ? "Paint" : "Uncategorized",
+          unitOfMeasure,
+          costPerUnit,
           quantity,
           minStockLevel: 0,
           needsQrPrint: true,
           companyId,
         });
         await this.stockItemRepo.save(stockItem);
-        this.logger.log(`Created new stock item ${sku}: ${item.description}`);
+        this.logger.log(
+          `Created new stock item ${sku}: ${item.description} @ R${costPerUnit.toFixed(2)}`,
+        );
       }
 
       const noteItem = this.deliveryNoteItemRepo.create({

@@ -306,18 +306,33 @@ ${pdfText}
 Return ONLY a valid JSON object with the extracted data.`;
 }
 
-export const UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes for rubber products.
+export const UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes and tax invoices for stock control.
 
-This delivery note could be from:
+This document could be from:
 1. A SUPPLIER delivering goods TO the company (inbound stock)
 2. The company delivering goods TO A CUSTOMER (outbound dispatch)
+3. A TAX INVOICE with pricing information
 
-Analyze the document to determine the direction and extract all relevant information.
+Analyze the document to determine the direction and extract all relevant information including PRICING.
+
+PAINT PRODUCTS - SPECIAL HANDLING:
+For paint products (e.g., CARBOGUARD, CARBOLINE, SIGMA, JOTUN, etc.):
+- The volume (liters) is typically in the description (e.g., "FOR 5L", "20L PACK", "4L")
+- Extract the volume as "volumeLiters" for each line item
+- For TWO-PACK paints (Part A and Part B):
+  - Part A (5L) + Part B (5L) = 10L kit when mixed
+  - Track each part separately with its own volume
+  - Each 5L Part A matches with 5L Part B to make one kit
+- Set "isPaint": true for paint products
+- Set "isTwoPack": true if it's a two-pack system (has Part A/B)
+- For paints, the "quantity" should be the NUMBER OF PACKS/UNITS ordered (typically 1)
+- The "volumeLiters" is the volume per pack (e.g., 5 for a 5L pack)
 
 Return a JSON object with this structure:
 {
-  "documentType": "SUPPLIER_DELIVERY" or "CUSTOMER_DELIVERY",
+  "documentType": "SUPPLIER_DELIVERY" or "CUSTOMER_DELIVERY" or "TAX_INVOICE",
   "deliveryNoteNumber": string or null,
+  "invoiceNumber": string or null,
   "deliveryDate": string or null (ISO format YYYY-MM-DD),
   "purchaseOrderNumber": string or null,
   "customerReference": string or null,
@@ -345,8 +360,16 @@ Return a JSON object with this structure:
       "description": string,
       "productCode": string or null,
       "compoundCode": string or null (e.g., "RSCA40", "AU-NR-60"),
-      "quantity": number or null,
-      "unitOfMeasure": string or null (e.g., "rolls", "kg", "m"),
+      "quantity": number or null (number of units/packs ordered),
+      "unitOfMeasure": string or null (e.g., "rolls", "kg", "m", "L", "ea"),
+      "unitPrice": number or null (price per unit EXCLUDING VAT),
+      "lineTotal": number or null (total for this line EXCLUDING VAT),
+      "vatAmount": number or null (VAT for this line),
+      "lineTotalIncVat": number or null (total for this line INCLUDING VAT),
+      "isPaint": boolean (true if this is a paint product),
+      "isTwoPack": boolean (true if this is a two-pack paint system),
+      "volumeLiters": number or null (volume in liters for paint products),
+      "costPerLiter": number or null (calculated: lineTotal / volumeLiters for paints),
       "rollNumber": string or null,
       "batchNumber": string or null,
       "thicknessMm": number or null,
@@ -361,7 +384,10 @@ Return a JSON object with this structure:
   "totals": {
     "totalQuantity": number or null,
     "totalWeightKg": number or null,
-    "numberOfRolls": number or null
+    "numberOfRolls": number or null,
+    "subtotalExclVat": number or null,
+    "vatTotal": number or null,
+    "grandTotalInclVat": number or null
   },
 
   "notes": string or null,
@@ -370,12 +396,19 @@ Return a JSON object with this structure:
 }
 
 Guidelines:
-- Determine document type by looking at FROM/TO fields and context
-- SUPPLIER_DELIVERY: goods coming IN from a supplier (e.g., Impilo, S&N Rubber, Polymer Lining Systems)
+- Determine document type by looking at FROM/TO fields, pricing, and context
+- SUPPLIER_DELIVERY: goods coming IN from a supplier
 - CUSTOMER_DELIVERY: goods going OUT to a customer
+- TAX_INVOICE: document with pricing/VAT details
 - Extract company details from letterhead, stamps, and address blocks
-- Parse product codes like "RSCA40-20.950.125" into components (compound, thickness, width, length)
-- Roll numbers often follow patterns like "154-41210" or "R-001"
-- Look for batch numbers, CoC references, or ticket numbers
-- Capture any handwritten notes or stamps about receipt confirmation
+- Parse product codes like "RSCA40-20.950.125" into components
+- ALWAYS extract pricing when available:
+  - unitPrice: the price for one unit (excl VAT)
+  - lineTotal: quantity × unitPrice (excl VAT)
+  - Look for columns like "Price", "Unit Price", "Amount", "Total"
+  - VAT is typically 15% in South Africa
+- For PAINT products:
+  - Look for volume indicators: "5L", "20L", "FOR 5L", "4 LITRE"
+  - Calculate costPerLiter = lineTotal / volumeLiters
+  - Identify two-pack systems by "PART A" and "PART B" in description
 - Return ONLY the JSON object, no additional text`;

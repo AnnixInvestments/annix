@@ -19,8 +19,9 @@ import {
 } from "./prompts/rubber-coc.prompt";
 
 export interface ExtractedUniversalDeliveryNote {
-  documentType: "SUPPLIER_DELIVERY" | "CUSTOMER_DELIVERY";
+  documentType: "SUPPLIER_DELIVERY" | "CUSTOMER_DELIVERY" | "TAX_INVOICE";
   deliveryNoteNumber: string | null;
+  invoiceNumber: string | null;
   deliveryDate: string | null;
   purchaseOrderNumber: string | null;
   customerReference: string | null;
@@ -46,6 +47,14 @@ export interface ExtractedUniversalDeliveryNote {
     compoundCode: string | null;
     quantity: number | null;
     unitOfMeasure: string | null;
+    unitPrice: number | null;
+    lineTotal: number | null;
+    vatAmount: number | null;
+    lineTotalIncVat: number | null;
+    isPaint: boolean | null;
+    isTwoPack: boolean | null;
+    volumeLiters: number | null;
+    costPerLiter: number | null;
     rollNumber: string | null;
     batchNumber: string | null;
     thicknessMm: number | null;
@@ -59,6 +68,9 @@ export interface ExtractedUniversalDeliveryNote {
     totalQuantity: number | null;
     totalWeightKg: number | null;
     numberOfRolls: number | null;
+    subtotalExclVat: number | null;
+    vatTotal: number | null;
+    grandTotalInclVat: number | null;
   };
   notes: string | null;
   receivedBySignature: boolean;

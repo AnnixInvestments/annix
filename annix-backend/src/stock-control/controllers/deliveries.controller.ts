@@ -162,8 +162,15 @@ export class DeliveriesController {
         lineItems?: Array<{
           description?: string;
           itemCode?: string;
+          productCode?: string;
           quantity?: number;
           unitOfMeasure?: string;
+          unitPrice?: number;
+          lineTotal?: number;
+          isPaint?: boolean;
+          isTwoPack?: boolean;
+          volumeLiters?: number;
+          costPerLiter?: number;
         }>;
       };
 
