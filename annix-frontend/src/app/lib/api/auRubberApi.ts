@@ -2088,6 +2088,30 @@ class AuRubberApiClient {
     return response.url;
   }
 
+  async replaceDeliveryNoteDocument(id: number, file: File): Promise<RubberDeliveryNoteDto> {
+    const url = `${this.baseURL}/rubber-lining/portal/delivery-notes/${id}/document`;
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+
+    const response = await fetch(url, {
+      method: "PUT",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Request failed" }));
+      throw new Error(error.message || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  }
+
   async analyzeCustomerDeliveryNotes(files: File[]): Promise<AnalyzeCustomerDnsResult> {
     return this.requestWithFiles("/rubber-lining/portal/customer-delivery-notes/analyze", files);
   }
