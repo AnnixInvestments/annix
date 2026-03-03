@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,7 +12,8 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { RubberCocExtractionService } from "../../rubber-lining/rubber-coc-extraction.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { DeliveryService } from "../services/delivery.service";
@@ -20,7 +22,10 @@ import { DeliveryService } from "../services/delivery.service";
 @Controller("stock-control/deliveries")
 @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
 export class DeliveriesController {
-  constructor(private readonly deliveryService: DeliveryService) {}
+  constructor(
+    private readonly deliveryService: DeliveryService,
+    private readonly extractionService: RubberCocExtractionService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: "List all delivery notes" })
@@ -68,5 +73,40 @@ export class DeliveriesController {
   @ApiOperation({ summary: "Get extraction status for delivery note" })
   async extractionStatus(@Req() req: any, @Param("id") id: number) {
     return this.deliveryService.extractionStatus(req.user.companyId, id);
+  }
+
+  @Post("analyze")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Analyze a delivery note photo or PDF to extract data" })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          format: "binary",
+          description: "Image (JPEG, PNG) or PDF file of the delivery note",
+        },
+      },
+    },
+  })
+  async analyzeDocument(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("No file provided");
+    }
+
+    const isPdf = file.mimetype === "application/pdf";
+    const isImage = file.mimetype.startsWith("image/");
+
+    if (!isPdf && !isImage) {
+      throw new BadRequestException("File must be an image (JPEG, PNG) or PDF");
+    }
+
+    if (isPdf) {
+      return this.extractionService.analyzeDeliveryNotePdf(file.buffer);
+    }
+
+    return this.extractionService.analyzeDeliveryNotePhoto([file.buffer]);
   }
 }

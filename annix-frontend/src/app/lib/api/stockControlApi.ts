@@ -866,6 +866,56 @@ export interface SubmitClarificationDto {
   confirmed?: boolean;
 }
 
+export interface AnalyzedDeliveryNoteCompany {
+  name: string | null;
+  address: string | null;
+  vatNumber: string | null;
+  contactPerson: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
+export interface AnalyzedDeliveryNoteLineItem {
+  description: string;
+  productCode: string | null;
+  compoundCode: string | null;
+  quantity: number | null;
+  unitOfMeasure: string | null;
+  rollNumber: string | null;
+  batchNumber: string | null;
+  thicknessMm: number | null;
+  widthMm: number | null;
+  lengthM: number | null;
+  weightKg: number | null;
+  color: string | null;
+  hardnessShoreA: number | null;
+}
+
+export interface AnalyzedDeliveryNoteData {
+  documentType: "SUPPLIER_DELIVERY" | "CUSTOMER_DELIVERY";
+  deliveryNoteNumber: string | null;
+  deliveryDate: string | null;
+  purchaseOrderNumber: string | null;
+  customerReference: string | null;
+  fromCompany: AnalyzedDeliveryNoteCompany;
+  toCompany: AnalyzedDeliveryNoteCompany;
+  lineItems: AnalyzedDeliveryNoteLineItem[];
+  totals: {
+    totalQuantity: number | null;
+    totalWeightKg: number | null;
+    numberOfRolls: number | null;
+  };
+  notes: string | null;
+  receivedBySignature: boolean;
+  receivedDate: string | null;
+}
+
+export interface AnalyzedDeliveryNoteResult {
+  data: AnalyzedDeliveryNoteData;
+  tokensUsed?: number;
+  processingTimeMs: number;
+}
+
 const TOKEN_KEYS = {
   accessToken: "stockControlAccessToken",
   refreshToken: "stockControlRefreshToken",
@@ -2328,6 +2378,27 @@ class StockControlApiClient {
     deliveryNoteId: number,
   ): Promise<{ status: string | null; extractedData: Record<string, unknown> | null }> {
     return this.request(`/stock-control/deliveries/${deliveryNoteId}/extraction`);
+  }
+
+  async analyzeDeliveryNotePhoto(file: File): Promise<AnalyzedDeliveryNoteResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/deliveries/analyze`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Analysis failed: ${errorText}`);
+    }
+
+    return response.json();
   }
 }
 

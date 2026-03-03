@@ -129,6 +129,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     RubberStockService,
     RubberBrandingService,
     RubberCocService,
+    RubberCocExtractionService,
     RubberDeliveryNoteService,
     RubberRollStockService,
     RubberAuCocService,
