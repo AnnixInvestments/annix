@@ -5,23 +5,20 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { stockControlApiClient, WorkflowNotification } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
+import { useNotificationCount } from "../hooks/useNotificationCount";
 
 export function NotificationBell() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { count: unreadCount, refetch: refetchCount } = useNotificationCount();
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const [notifs, count] = await Promise.all([
-        stockControlApiClient.unreadNotifications(),
-        stockControlApiClient.notificationCount(),
-      ]);
+      const notifs = await stockControlApiClient.unreadNotifications();
       setNotifications(notifs);
-      setUnreadCount(count.count);
     } catch (error) {
       console.error("Failed to fetch notifications:", error);
     }
@@ -45,29 +42,32 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleMarkAsRead = useCallback(async (notificationId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await stockControlApiClient.markNotificationAsRead(notificationId);
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
-  }, []);
+  const handleMarkAsRead = useCallback(
+    async (notificationId: number, e: React.MouseEvent) => {
+      e.stopPropagation();
+      try {
+        await stockControlApiClient.markNotificationAsRead(notificationId);
+        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+        refetchCount();
+      } catch (error) {
+        console.error("Failed to mark notification as read:", error);
+      }
+    },
+    [refetchCount],
+  );
 
   const handleMarkAllAsRead = useCallback(async () => {
     setIsLoading(true);
     try {
       await stockControlApiClient.markAllNotificationsAsRead();
       setNotifications([]);
-      setUnreadCount(0);
+      refetchCount();
     } catch (error) {
       console.error("Failed to mark all as read:", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [refetchCount]);
 
   const handleNotificationClick = useCallback(
     (notification: WorkflowNotification) => {
