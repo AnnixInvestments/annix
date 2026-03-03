@@ -1,0 +1,15 @@
+{
+  "presets": [
+    [
+      "next/babel",
+      {
+        "preset-env": {
+          "targets": {
+            "safari": "12",
+            "ios": "12"
+          }
+        }
+      }
+    ]
+  ]
+}

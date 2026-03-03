@@ -943,10 +943,10 @@ class StockControlApiClient {
 
     if (typeof window !== "undefined") {
       this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ??
+        localStorage.getItem(TOKEN_KEYS.accessToken) ||
         sessionStorage.getItem(TOKEN_KEYS.accessToken);
       this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
+        localStorage.getItem(TOKEN_KEYS.refreshToken) ||
         sessionStorage.getItem(TOKEN_KEYS.refreshToken);
     }
   }
@@ -958,10 +958,10 @@ class StockControlApiClient {
   private headers(): Record<string, string> {
     if (!this.accessToken && typeof window !== "undefined") {
       this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ??
+        localStorage.getItem(TOKEN_KEYS.accessToken) ||
         sessionStorage.getItem(TOKEN_KEYS.accessToken);
       this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
+        localStorage.getItem(TOKEN_KEYS.refreshToken) ||
         sessionStorage.getItem(TOKEN_KEYS.refreshToken);
     }
 
@@ -1000,10 +1000,10 @@ class StockControlApiClient {
   isAuthenticated(): boolean {
     if (!this.accessToken && typeof window !== "undefined") {
       this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ??
+        localStorage.getItem(TOKEN_KEYS.accessToken) ||
         sessionStorage.getItem(TOKEN_KEYS.accessToken);
       this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
+        localStorage.getItem(TOKEN_KEYS.refreshToken) ||
         sessionStorage.getItem(TOKEN_KEYS.refreshToken);
     }
     return !!this.accessToken;
