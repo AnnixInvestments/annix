@@ -129,31 +129,52 @@ Guidelines:
 
 export const DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes for rubber compound or rubber rolls.
 
-Extract information from the delivery note text and return a valid JSON object.
+These delivery notes are typically from AU Industries or similar rubber suppliers.
+
+AU INDUSTRIES DELIVERY NOTE FORMAT:
+- Header shows "DELIVERY NOTE" with NUMBER field (e.g., "1298") - this is the DN number
+- DATE field in DD/MM/YYYY format - convert to YYYY-MM-DD
+- FROM section shows the supplier (e.g., "AU INDUSTRIES (PTY) LTD")
+- Description column contains compound info like:
+  "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m, 249.37kg per Roll @ 1.05 S.G's"
+  This decodes as:
+  - RSCA40 = Roll Stock Cured A40
+  - 20 = thickness in mm
+  - 950 = width in mm
+  - 125 = length (12.5m - divide by 10 if > 100)
+- Roll No & Weight line: "154-41210 - 258Kg" means roll number "154-41210", weight 258kg
+  The format is ORDER_NUMBER-TICKET_NUMBER (e.g., 154-41210, 156-41213)
+
+IMPORTANT OCR CORRECTIONS:
+- Roll numbers starting with "5" at the beginning are often OCR errors for "1" (e.g., "554-41210" should be "154-41210")
+- Length values like 125 or 12.5 both mean 12.5 meters
+- If compound code shows "125" as the last segment, this means 12.5m length
+- Standard roll lengths are typically 12.5m, 10m, or 5m - prefer these common values
 
 Return a JSON object with this structure:
 {
-  "deliveryNoteNumber": string or null (e.g., "DN1294"),
+  "deliveryNoteNumber": string or null (just the number, e.g., "1298"),
   "deliveryDate": string or null (ISO date format YYYY-MM-DD),
-  "supplierName": string or null,
-  "batchRange": string or null (for compound: e.g., "225-230"),
-  "totalWeightKg": number or null (total weight for compound deliveries),
+  "supplierName": string or null (the FROM company),
+  "batchRange": string or null (for compound deliveries),
+  "totalWeightKg": number or null (for compound deliveries),
   "rolls": [
     {
-      "rollNumber": string,
-      "weightKg": number or null,
-      "widthMm": number or null,
-      "thicknessMm": number or null,
-      "lengthM": number or null
+      "rollNumber": string (format: "XXX-XXXXX", e.g., "154-41210"),
+      "thicknessMm": number or null (typically 3-20mm),
+      "widthMm": number or null (typically 800-1600mm),
+      "lengthM": number or null (typically 5, 10, or 12.5 meters),
+      "weightKg": number or null (actual roll weight)
     }
   ]
 }
 
 Guidelines:
-- Delivery notes may be for compound (bulk weight) or rolls (individual items)
-- For compound deliveries, look for batch number range and total weight
-- For roll deliveries, extract each roll with its dimensions
-- Roll width is typically 800-1600mm, thickness 3-20mm
+- Each delivery note page typically has ONE roll
+- Parse the compound code (e.g., RSCA40-20.950.125) to get thickness (20), width (950), length (12.5)
+- The roll number appears with its weight (e.g., "154-41210 - 258Kg")
+- Correct obvious OCR errors: if a roll number starts with 5XX-XXXXX and other rolls start with 1XX-XXXXX, correct to 1XX-XXXXX
+- When multiple pages/DNs exist, create one entry in the rolls array for each roll
 - Return ONLY the JSON object, no additional text`;
 
 export function compounderCocExtractionPrompt(pdfText: string): string {
@@ -251,3 +272,77 @@ ${pdfText}
 
 Return ONLY a valid JSON object with the extracted data.`;
 }
+
+export const UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes for rubber products.
+
+This delivery note could be from:
+1. A SUPPLIER delivering goods TO the company (inbound stock)
+2. The company delivering goods TO A CUSTOMER (outbound dispatch)
+
+Analyze the document to determine the direction and extract all relevant information.
+
+Return a JSON object with this structure:
+{
+  "documentType": "SUPPLIER_DELIVERY" or "CUSTOMER_DELIVERY",
+  "deliveryNoteNumber": string or null,
+  "deliveryDate": string or null (ISO format YYYY-MM-DD),
+  "purchaseOrderNumber": string or null,
+  "customerReference": string or null,
+
+  "fromCompany": {
+    "name": string or null,
+    "address": string or null,
+    "vatNumber": string or null,
+    "contactPerson": string or null,
+    "phone": string or null,
+    "email": string or null
+  },
+
+  "toCompany": {
+    "name": string or null,
+    "address": string or null,
+    "vatNumber": string or null,
+    "contactPerson": string or null,
+    "phone": string or null,
+    "email": string or null
+  },
+
+  "lineItems": [
+    {
+      "description": string,
+      "productCode": string or null,
+      "compoundCode": string or null (e.g., "RSCA40", "AU-NR-60"),
+      "quantity": number or null,
+      "unitOfMeasure": string or null (e.g., "rolls", "kg", "m"),
+      "rollNumber": string or null,
+      "batchNumber": string or null,
+      "thicknessMm": number or null,
+      "widthMm": number or null,
+      "lengthM": number or null,
+      "weightKg": number or null,
+      "color": string or null,
+      "hardnessShoreA": number or null
+    }
+  ],
+
+  "totals": {
+    "totalQuantity": number or null,
+    "totalWeightKg": number or null,
+    "numberOfRolls": number or null
+  },
+
+  "notes": string or null,
+  "receivedBySignature": boolean,
+  "receivedDate": string or null (ISO format YYYY-MM-DD)
+}
+
+Guidelines:
+- Determine document type by looking at FROM/TO fields and context
+- SUPPLIER_DELIVERY: goods coming IN from a supplier (e.g., Impilo, S&N Rubber, Polymer Lining Systems)
+- CUSTOMER_DELIVERY: goods going OUT to a customer
+- Extract company details from letterhead, stamps, and address blocks
+- Parse product codes like "RSCA40-20.950.125" into components (compound, thickness, width, length)
+- Roll numbers often follow patterns like "154-41210" or "R-001"
+- Look for batch numbers, CoC references, or ticket numbers
+- Capture any handwritten notes or stamps about receipt confirmation
+- Return ONLY the JSON object, no additional text`;

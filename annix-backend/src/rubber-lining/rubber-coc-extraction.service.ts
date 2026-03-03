@@ -15,7 +15,55 @@ import {
   customerDeliveryNoteExtractionPrompt,
   DELIVERY_NOTE_SYSTEM_PROMPT,
   deliveryNoteExtractionPrompt,
+  UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT,
 } from "./prompts/rubber-coc.prompt";
+
+export interface ExtractedUniversalDeliveryNote {
+  documentType: "SUPPLIER_DELIVERY" | "CUSTOMER_DELIVERY";
+  deliveryNoteNumber: string | null;
+  deliveryDate: string | null;
+  purchaseOrderNumber: string | null;
+  customerReference: string | null;
+  fromCompany: {
+    name: string | null;
+    address: string | null;
+    vatNumber: string | null;
+    contactPerson: string | null;
+    phone: string | null;
+    email: string | null;
+  };
+  toCompany: {
+    name: string | null;
+    address: string | null;
+    vatNumber: string | null;
+    contactPerson: string | null;
+    phone: string | null;
+    email: string | null;
+  };
+  lineItems: Array<{
+    description: string;
+    productCode: string | null;
+    compoundCode: string | null;
+    quantity: number | null;
+    unitOfMeasure: string | null;
+    rollNumber: string | null;
+    batchNumber: string | null;
+    thicknessMm: number | null;
+    widthMm: number | null;
+    lengthM: number | null;
+    weightKg: number | null;
+    color: string | null;
+    hardnessShoreA: number | null;
+  }>;
+  totals: {
+    totalQuantity: number | null;
+    totalWeightKg: number | null;
+    numberOfRolls: number | null;
+  };
+  notes: string | null;
+  receivedBySignature: boolean;
+  receivedDate: string | null;
+}
 
 interface GeminiResponse {
   candidates?: Array<{
@@ -412,6 +460,64 @@ export class RubberCocExtractionService {
 
     return {
       data: response.data as ExtractedDeliveryNoteData,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
+  async analyzeDeliveryNotePhoto(imageBuffers: Buffer[]): Promise<{
+    data: ExtractedUniversalDeliveryNote;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = Date.now();
+    this.logger.log(`Analyzing ${imageBuffers.length} delivery note photo(s)...`);
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const response = await this.callGeminiWithImages(
+      UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT,
+      "Please analyze this delivery note photo and extract all company information, stock details, and line items. Return ONLY a valid JSON object with the extracted data.",
+      imageBuffers,
+    );
+
+    const processingTimeMs = Date.now() - startTime;
+    this.logger.log(`Delivery note photo analyzed in ${processingTimeMs}ms`);
+
+    return {
+      data: response.data as ExtractedUniversalDeliveryNote,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
+  async analyzeDeliveryNotePdf(pdfBuffer: Buffer): Promise<{
+    data: ExtractedUniversalDeliveryNote;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = Date.now();
+    this.logger.log("Analyzing delivery note PDF...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const images = await this.convertPdfToImages(pdfBuffer);
+
+    const response = await this.callGeminiWithImages(
+      UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT,
+      "Please analyze this delivery note and extract all company information, stock details, and line items. Return ONLY a valid JSON object with the extracted data.",
+      images,
+    );
+
+    const processingTimeMs = Date.now() - startTime;
+    this.logger.log(`Delivery note PDF analyzed in ${processingTimeMs}ms`);
+
+    return {
+      data: response.data as ExtractedUniversalDeliveryNote,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };

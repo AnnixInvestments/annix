@@ -350,6 +350,55 @@ export interface ExtractedDeliveryNoteData {
   rolls?: ExtractedDeliveryNoteRoll[];
 }
 
+export interface AnalyzedDeliveryNoteCompany {
+  name: string | null;
+  address: string | null;
+  vatNumber: string | null;
+  contactPerson: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
+export interface AnalyzedDeliveryNoteLineItem {
+  description: string;
+  productCode: string | null;
+  compoundCode: string | null;
+  quantity: number | null;
+  unitOfMeasure: string | null;
+  rollNumber: string | null;
+  batchNumber: string | null;
+  thicknessMm: number | null;
+  widthMm: number | null;
+  lengthM: number | null;
+  weightKg: number | null;
+  color: string | null;
+  hardnessShoreA: number | null;
+}
+
+export interface AnalyzedDeliveryNoteResult {
+  success: boolean;
+  data: {
+    documentType: "SUPPLIER_DELIVERY" | "CUSTOMER_DELIVERY";
+    deliveryNoteNumber: string | null;
+    deliveryDate: string | null;
+    purchaseOrderNumber: string | null;
+    customerReference: string | null;
+    fromCompany: AnalyzedDeliveryNoteCompany;
+    toCompany: AnalyzedDeliveryNoteCompany;
+    lineItems: AnalyzedDeliveryNoteLineItem[];
+    totals: {
+      totalQuantity: number | null;
+      totalWeightKg: number | null;
+      numberOfRolls: number | null;
+    };
+    notes: string | null;
+    receivedBySignature: boolean;
+    receivedDate: string | null;
+  };
+  tokensUsed?: number;
+  processingTimeMs: number;
+}
+
 export interface RubberDeliveryNoteDto {
   id: number;
   firebaseUid: string;
@@ -363,7 +412,7 @@ export interface RubberDeliveryNoteDto {
   documentPath: string | null;
   status: DeliveryNoteStatus;
   statusLabel: string;
-  extractedData: ExtractedDeliveryNoteData | null;
+  extractedData: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null;
   linkedCocId: number | null;
   createdAt: string;
   updatedAt: string;
@@ -1934,6 +1983,26 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/delivery-notes/${id}/extract`, {
       method: "POST",
     });
+  }
+
+  async analyzeDeliveryNotePhoto(file: File): Promise<AnalyzedDeliveryNoteResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${this.baseUrl}/rubber-lining/portal/delivery-notes/analyze`, {
+      method: "POST",
+      headers: {
+        ...getAuthHeaders(),
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Request failed" }));
+      throw new Error(error.message || `HTTP ${response.status}`);
+    }
+
+    return response.json();
   }
 
   async linkDeliveryNoteToCoc(

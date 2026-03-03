@@ -29,11 +29,13 @@ export interface ExtractedDeliveryNoteData {
   totalWeightKg?: number;
   rolls?: Array<{
     rollNumber: string;
-    weightKg?: number;
-    widthMm?: number;
     thicknessMm?: number;
+    widthMm?: number;
     lengthM?: number;
+    weightKg?: number;
+    areaSqM?: number;
   }>;
+  userCorrected?: boolean;
 }
 
 export interface ExtractedCustomerDeliveryNoteLineItem {

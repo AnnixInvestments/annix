@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -12,10 +13,15 @@ import {
   Query,
   Req,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -1577,6 +1583,58 @@ Formula: totalPrice = totalKg × salePricePerKg
   async deleteDeliveryNote(@Param("id") id: string): Promise<void> {
     const deleted = await this.rubberDeliveryNoteService.deleteDeliveryNote(Number(id));
     if (!deleted) throw new NotFoundException("Delivery note not found");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/delivery-notes/analyze")
+  @ApiOperation({ summary: "Analyze delivery note photo or PDF using AI" })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          format: "binary",
+          description: "Photo (JPEG, PNG) or PDF of delivery note",
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor("file"))
+  async analyzeDeliveryNote(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+
+    const isAvailable = await this.rubberCocExtractionService.isAvailable();
+    if (!isAvailable) {
+      throw new NotFoundException(
+        "AI extraction service not available - GEMINI_API_KEY not configured",
+      );
+    }
+
+    const mimeType = file.mimetype.toLowerCase();
+    const isImage = mimeType.startsWith("image/");
+    const isPdf = mimeType === "application/pdf";
+
+    if (!isImage && !isPdf) {
+      throw new BadRequestException("File must be an image (JPEG, PNG) or PDF");
+    }
+
+    const result = isPdf
+      ? await this.rubberCocExtractionService.analyzeDeliveryNotePdf(file.buffer)
+      : await this.rubberCocExtractionService.analyzeDeliveryNotePhoto([file.buffer]);
+
+    return {
+      success: true,
+      data: result.data,
+      tokensUsed: result.tokensUsed,
+      processingTimeMs: result.processingTimeMs,
+    };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

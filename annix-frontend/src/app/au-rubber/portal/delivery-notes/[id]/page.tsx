@@ -162,6 +162,21 @@ export default function DeliveryNoteDetailPage() {
 
   const unlinkedCocs = availableCocs.filter((coc) => !coc.linkedDeliveryNoteId);
 
+  const hasExtractedData = note.extractedData && (() => {
+    if (Array.isArray(note.extractedData)) {
+      return note.extractedData.length > 0 && note.extractedData.some(
+        (item) => item.deliveryNoteNumber || item.deliveryDate || item.supplierName ||
+          item.batchRange || item.totalWeightKg || (item.rolls && item.rolls.length > 0)
+      );
+    }
+    return note.extractedData.deliveryNoteNumber ||
+      note.extractedData.deliveryDate ||
+      note.extractedData.supplierName ||
+      note.extractedData.batchRange ||
+      note.extractedData.totalWeightKg ||
+      (note.extractedData.rolls && note.extractedData.rolls.length > 0);
+  })();
+
   return (
     <div className="space-y-6">
       <Breadcrumb
@@ -182,13 +197,13 @@ export default function DeliveryNoteDetailPage() {
           </div>
         </div>
         <div className="flex space-x-3">
-          {note.status === "PENDING" && !note.extractedData && (
+          {note.status === "PENDING" && (
             <button
               onClick={handleExtract}
               disabled={isExtracting}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
-              {isExtracting ? "Extracting..." : "Extract Data"}
+              {isExtracting ? "Extracting..." : hasExtractedData ? "Re-extract Data" : "Extract Data"}
             </button>
           )}
           {note.status === "PENDING" && !note.linkedCocId && unlinkedCocs.length > 0 && (
@@ -211,147 +226,135 @@ export default function DeliveryNoteDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Delivery Note Details</h2>
-          <dl className="grid grid-cols-2 gap-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">DN Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">{note.deliveryNoteNumber || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Supplier</dt>
-              <dd className="mt-1 text-sm text-gray-900">{note.supplierCompanyName || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Type</dt>
-              <dd className="mt-1 text-sm text-gray-900">{note.deliveryNoteTypeLabel}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Delivery Date</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {note.deliveryDate ? new Date(note.deliveryDate).toLocaleDateString() : "-"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Status</dt>
-              <dd className="mt-1 text-sm text-gray-900">{note.statusLabel}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Created</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {new Date(note.createdAt).toLocaleString()}
-              </dd>
-            </div>
-            {note.linkedCocId && (
-              <div className="col-span-2">
-                <dt className="text-sm font-medium text-gray-500">Linked CoC</dt>
-                <dd className="mt-1 text-sm">
-                  <Link
-                    href={`/au-rubber/portal/supplier-cocs/${note.linkedCocId}`}
-                    className="text-yellow-600 hover:text-yellow-800"
-                  >
-                    View Linked CoC
-                  </Link>
-                </dd>
-              </div>
-            )}
-          </dl>
-        </div>
-
-        {note.extractedData && Object.keys(note.extractedData).length > 0 && (
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Extracted Data</h2>
-            <dl className="grid grid-cols-2 gap-4 mb-4">
-              {note.extractedData.deliveryNoteNumber && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">DN Number</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {note.extractedData.deliveryNoteNumber}
-                  </dd>
-                </div>
-              )}
-              {note.extractedData.deliveryDate && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Delivery Date</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{note.extractedData.deliveryDate}</dd>
-                </div>
-              )}
-              {note.extractedData.supplierName && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Supplier</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{note.extractedData.supplierName}</dd>
-                </div>
-              )}
-              {note.extractedData.batchRange && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Batch Range</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{note.extractedData.batchRange}</dd>
-                </div>
-              )}
-              {note.extractedData.totalWeightKg && (
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Total Weight</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {note.extractedData.totalWeightKg.toFixed(2)} kg
-                  </dd>
-                </div>
-              )}
-            </dl>
-            {note.extractedData.rolls && note.extractedData.rolls.length > 0 && (
-              <div className="mt-4 border-t pt-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">
-                  Extracted Rolls ({note.extractedData.rolls.length})
-                </h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                          Roll #
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                          Width (mm)
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                          Thickness (mm)
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                          Length (m)
-                        </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                          Weight (kg)
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {note.extractedData.rolls.map((roll, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 whitespace-nowrap font-medium text-gray-900">
-                            {roll.rollNumber || "-"}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-gray-600">
-                            {roll.widthMm ?? "-"}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-gray-600">
-                            {roll.thicknessMm ?? "-"}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-gray-600">
-                            {roll.lengthM ?? "-"}
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-gray-600">
-                            {roll.weightKg?.toFixed(2) ?? "-"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+      <div className="bg-white shadow rounded-lg p-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Delivery Note Details</h2>
+        <dl className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div>
+            <dt className="text-sm font-medium text-gray-500">DN Number</dt>
+            <dd className="mt-1 text-sm text-gray-900">{note.deliveryNoteNumber || "-"}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Supplier</dt>
+            <dd className="mt-1 text-sm text-gray-900">{note.supplierCompanyName || "-"}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Type</dt>
+            <dd className="mt-1 text-sm text-gray-900">{note.deliveryNoteTypeLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Delivery Date</dt>
+            <dd className="mt-1 text-sm text-gray-900">
+              {note.deliveryDate ? new Date(note.deliveryDate).toLocaleDateString() : "-"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Status</dt>
+            <dd className="mt-1 text-sm text-gray-900">{note.statusLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">Created</dt>
+            <dd className="mt-1 text-sm text-gray-900">
+              {new Date(note.createdAt).toLocaleString()}
+            </dd>
+          </div>
+        </dl>
+        {note.linkedCocId && (
+          <div className="mt-4 pt-4 border-t">
+            <Link
+              href={`/au-rubber/portal/supplier-cocs/${note.linkedCocId}`}
+              className="text-yellow-600 hover:text-yellow-800 text-sm font-medium"
+            >
+              View Linked CoC
+            </Link>
           </div>
         )}
       </div>
+
+      {note.extractedData && (Array.isArray(note.extractedData) ? note.extractedData.length > 0 : Object.keys(note.extractedData).length > 0) && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">Extracted Data</h2>
+          </div>
+          {(() => {
+            const extractedItems = Array.isArray(note.extractedData)
+              ? note.extractedData
+              : [note.extractedData];
+
+            const hasRolls = extractedItems.some((item) => item.rolls && item.rolls.length > 0);
+
+            return (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        DN Number
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Delivery Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Supplier
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Batch Range
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total Weight
+                      </th>
+                      {hasRolls && (
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Rolls
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {extractedItems.map((extracted, dnIdx) => (
+                      <tr key={dnIdx} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {extracted.deliveryNoteNumber || "-"}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          {extracted.deliveryDate || "-"}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          {extracted.supplierName || "-"}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          {extracted.batchRange || "-"}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                          {extracted.totalWeightKg ? `${extracted.totalWeightKg.toFixed(2)} kg` : "-"}
+                        </td>
+                        {hasRolls && (
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {extracted.rolls && extracted.rolls.length > 0 ? (
+                              <div className="space-y-1">
+                                {extracted.rolls.map((roll, idx) => (
+                                  <div key={idx} className="text-xs">
+                                    <span className="font-medium">{roll.rollNumber || "-"}</span>
+                                    {" - "}
+                                    {roll.widthMm ?? "-"}mm x {roll.thicknessMm ?? "-"}mm x {roll.lengthM ?? "-"}m
+                                    {" "}
+                                    ({roll.weightKg?.toFixed(2) ?? "-"} kg)
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {items.length > 0 && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
