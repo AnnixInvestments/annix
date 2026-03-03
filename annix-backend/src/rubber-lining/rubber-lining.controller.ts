@@ -1653,6 +1653,40 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id/document")
+  @ApiOperation({ summary: "Replace delivery note document" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  @ApiConsumes("multipart/form-data")
+  @UseInterceptors(FileInterceptor("file"))
+  async replaceDeliveryNoteDocument(
+    @Param("id") id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<RubberDeliveryNoteDto> {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+
+    const note = await this.rubberDeliveryNoteService.deliveryNoteById(Number(id));
+    if (!note) throw new NotFoundException("Delivery note not found");
+
+    const filePath = `au-rubber/delivery-notes/${note.id}/${file.originalname}`;
+    await this.storageService.upload(
+      {
+        buffer: file.buffer,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+      } as Express.Multer.File,
+      filePath,
+    );
+
+    const updated = await this.rubberDeliveryNoteService.updateDocumentPath(Number(id), filePath);
+    if (!updated) throw new NotFoundException("Failed to update delivery note");
+
+    return updated;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/delivery-notes/analyze")
   @ApiOperation({ summary: "Analyze delivery note photo or PDF using AI" })
   @ApiConsumes("multipart/form-data")

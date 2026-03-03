@@ -378,6 +378,18 @@ export class RubberDeliveryNoteService {
     return (result.affected || 0) > 0;
   }
 
+  async updateDocumentPath(id: number, documentPath: string): Promise<RubberDeliveryNoteDto | null> {
+    const note = await this.deliveryNoteRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany", "linkedCoc"],
+    });
+    if (!note) return null;
+
+    note.documentPath = documentPath;
+    await this.deliveryNoteRepository.save(note);
+    return this.mapDeliveryNoteToDto(note);
+  }
+
   async findOrCreateCompanyByName(
     name: string,
     companyType: "supplier" | "customer",
