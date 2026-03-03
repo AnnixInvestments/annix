@@ -88,7 +88,7 @@ export class InventoryController {
     return this.inventoryService.create(req.user.companyId, body);
   }
 
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("accounts", "manager", "admin")
   @Put(":id")
   @ApiOperation({ summary: "Update a stock item" })
   async update(@Req() req: any, @Param("id") id: number, @Body() body: any) {

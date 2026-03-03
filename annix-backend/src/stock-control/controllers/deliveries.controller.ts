@@ -167,6 +167,7 @@ export class DeliveriesController {
           unitOfMeasure?: string;
           unitPrice?: number;
           lineTotal?: number;
+          isReturned?: boolean;
           isPaint?: boolean;
           isTwoPack?: boolean;
           volumeLitersPerPack?: number;

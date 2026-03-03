@@ -237,6 +237,7 @@ export class DeliveryService {
         unitOfMeasure?: string;
         unitPrice?: number;
         lineTotal?: number;
+        isReturned?: boolean;
         isPaint?: boolean;
         isTwoPack?: boolean;
         volumeLitersPerPack?: number;
@@ -274,6 +275,7 @@ export class DeliveryService {
         unitOfMeasure?: string;
         unitPrice?: number;
         lineTotal?: number;
+        isReturned?: boolean;
         isPaint?: boolean;
         isTwoPack?: boolean;
         volumeLitersPerPack?: number;
@@ -352,6 +354,7 @@ export class DeliveryService {
       unitOfMeasure?: string;
       unitPrice?: number;
       lineTotal?: number;
+      isReturned?: boolean;
       isPaint?: boolean;
       isTwoPack?: boolean;
       volumeLitersPerPack?: number;
@@ -362,6 +365,11 @@ export class DeliveryService {
   ): Promise<void> {
     for (const item of lineItems) {
       if (!item.description) {
+        continue;
+      }
+
+      if (item.isReturned || /\breturned?\b/i.test(item.description)) {
+        this.logger.log(`Skipping returned item: ${item.description}`);
         continue;
       }
 

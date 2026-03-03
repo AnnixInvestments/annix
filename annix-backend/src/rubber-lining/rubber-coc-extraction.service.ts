@@ -51,6 +51,7 @@ export interface ExtractedUniversalDeliveryNote {
     lineTotal: number | null;
     vatAmount: number | null;
     lineTotalIncVat: number | null;
+    isReturned: boolean | null;
     isPaint: boolean | null;
     isTwoPack: boolean | null;
     volumeLitersPerPack: number | null;

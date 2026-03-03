@@ -315,6 +315,10 @@ This document could be from:
 
 Analyze the document to determine the direction and extract all relevant information including PRICING.
 
+RETURNED ITEMS - IMPORTANT:
+- If a line item has "Returned", "RETURNED", "Return", or "RETURN" anywhere in its description or notes, set "isReturned": true
+- Returned items should NOT be added to stock - they are credits/returns
+
 PAINT PRODUCTS - SPECIAL HANDLING:
 For paint products (e.g., CARBOGUARD, CARBOLINE, SIGMA, JOTUN, etc.):
 - The volume per pack is typically in the description (e.g., "FOR 5L", "20L PACK", "4L")
@@ -367,6 +371,7 @@ Return a JSON object with this structure:
       "lineTotal": number or null (total for this line EXCLUDING VAT),
       "vatAmount": number or null (VAT for this line),
       "lineTotalIncVat": number or null (total for this line INCLUDING VAT),
+      "isReturned": boolean (true if item has "Returned" or "Return" in description - DO NOT add to stock),
       "isPaint": boolean (true if this is a paint product),
       "isTwoPack": boolean (true if this is a two-pack paint system),
       "volumeLitersPerPack": number or null (volume per pack, e.g., 5 for "5L" pack),
