@@ -256,12 +256,25 @@ export class DeliveryService {
       ? new Date(analyzedData.deliveryDate)
       : new Date();
 
+    let deliveryNumber = analyzedData.deliveryNoteNumber || `DN-${Date.now()}`;
+
+    const existingNote = await this.deliveryNoteRepo.findOne({
+      where: { companyId, deliveryNumber },
+    });
+
+    if (existingNote) {
+      deliveryNumber = `${deliveryNumber}-${Date.now()}`;
+      this.logger.log(
+        `Delivery note ${analyzedData.deliveryNoteNumber} already exists, using ${deliveryNumber}`,
+      );
+    }
+
     this.logger.log(
-      `Creating delivery note: ${analyzedData.deliveryNoteNumber}, supplier: ${analyzedData.fromCompany?.name}, date: ${receivedDate.toISOString()}`,
+      `Creating delivery note: ${deliveryNumber}, supplier: ${analyzedData.fromCompany?.name}, date: ${receivedDate.toISOString()}`,
     );
 
     const deliveryNote = this.deliveryNoteRepo.create({
-      deliveryNumber: analyzedData.deliveryNoteNumber || `DN-${Date.now()}`,
+      deliveryNumber,
       supplierName: analyzedData.fromCompany?.name || "Unknown Supplier",
       receivedDate,
       notes: null,
