@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
+import PDFMerger from "pdf-merger-js";
 import { pdfToPng } from "pdf-to-png-converter";
 import PDFDocument from "pdfkit";
 import sharp from "sharp";
@@ -54,6 +55,7 @@ interface CocPdfData {
   batches: BatchTestData[];
   rollNumber: string;
   qualityConfig: RubberCompoundQualityConfig | null;
+  graphPdfPath?: string | null;
 }
 
 @Injectable()
@@ -200,6 +202,71 @@ export class RubberAuCocService {
     return cocDto;
   }
 
+  async createAuCocFromDeliveryNote(
+    deliveryNoteId: number,
+    createdBy?: string,
+  ): Promise<RubberAuCocDto> {
+    const deliveryNote = await this.deliveryNoteRepository.findOne({
+      where: { id: deliveryNoteId },
+      relations: ["supplierCompany"],
+    });
+
+    if (!deliveryNote) {
+      throw new BadRequestException("Delivery note not found");
+    }
+
+    if (!deliveryNote.supplierCompanyId) {
+      throw new BadRequestException("Delivery note has no customer assigned");
+    }
+
+    const customer = await this.companyRepository.findOne({
+      where: { id: deliveryNote.supplierCompanyId },
+    });
+
+    if (!customer) {
+      throw new BadRequestException("Customer company not found");
+    }
+
+    const extractedData = deliveryNote.extractedData;
+    const rolls = extractedData?.rolls || [];
+
+    const extractedRollData = rolls.map((roll) => ({
+      rollNumber: roll.rollNumber,
+      thicknessMm: roll.thicknessMm ?? null,
+      widthMm: roll.widthMm ?? null,
+      lengthM: roll.lengthM ?? null,
+      weightKg: roll.weightKg ?? null,
+      areaSqM: roll.areaSqM ?? null,
+    }));
+
+    const cocNumber = await this.generateCocNumber();
+
+    const auCoc = this.auCocRepository.create({
+      firebaseUid: `pg_${generateUniqueId()}`,
+      cocNumber,
+      customerCompanyId: deliveryNote.supplierCompanyId,
+      poNumber: deliveryNote.customerReference ?? null,
+      deliveryNoteRef: deliveryNote.deliveryNoteNumber,
+      sourceDeliveryNoteId: deliveryNoteId,
+      extractedRollData: extractedRollData.length > 0 ? extractedRollData : null,
+      status: AuCocStatus.DRAFT,
+      createdBy: createdBy ?? null,
+    });
+
+    const savedCoc = await this.auCocRepository.save(auCoc);
+
+    const result = await this.auCocRepository.findOne({
+      where: { id: savedCoc.id },
+      relations: ["customerCompany"],
+    });
+
+    this.logger.log(
+      `Created AU CoC ${cocNumber} from delivery note ${deliveryNote.deliveryNoteNumber} with ${extractedRollData.length} rolls`,
+    );
+
+    return this.mapAuCocToDto(result!);
+  }
+
   async generatePdf(id: number): Promise<{ buffer: Buffer; filename: string }> {
     try {
       this.logger.debug(`Generating PDF for AU CoC ${id}...`);
@@ -217,15 +284,36 @@ export class RubberAuCocService {
         relations: ["rollStock", "rollStock.compoundCoding"],
       });
 
-      if (items.length === 0) {
+      const hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
+
+      if (items.length === 0 && !hasExtractedRollData) {
         throw new BadRequestException("No rolls found for this CoC");
       }
 
-      this.logger.debug(`Found ${items.length} items, preparing PDF data...`);
-      const pdfData = await this.preparePdfData(coc, items);
+      this.logger.debug(
+        `Found ${items.length} stock items, ${hasExtractedRollData ? coc.extractedRollData!.length : 0} extracted rolls, preparing PDF data...`,
+      );
+      const pdfData =
+        items.length > 0
+          ? await this.preparePdfData(coc, items)
+          : await this.preparePdfDataFromExtractedRolls(coc);
       this.logger.debug("PDF data prepared, creating PDF...");
-      const buffer = await this.createPdf(pdfData);
+      let buffer = await this.createPdf(pdfData);
       const filename = `${coc.cocNumber}.pdf`;
+
+      if (pdfData.graphPdfPath) {
+        this.logger.debug(`Merging graph PDF from: ${pdfData.graphPdfPath}`);
+        try {
+          const graphBuffer = await this.storageService.download(pdfData.graphPdfPath);
+          const merger = new PDFMerger();
+          await merger.add(buffer);
+          await merger.add(graphBuffer);
+          buffer = await merger.saveAsBuffer();
+          this.logger.debug(`Merged graph PDF, final size: ${buffer.length} bytes`);
+        } catch (graphError) {
+          this.logger.warn(`Failed to merge graph PDF: ${graphError}`);
+        }
+      }
 
       this.logger.debug(`PDF created (${buffer.length} bytes), updating status...`);
       coc.status = AuCocStatus.GENERATED;
@@ -254,13 +342,30 @@ export class RubberAuCocService {
       relations: ["rollStock", "rollStock.compoundCoding"],
     });
 
-    if (items.length === 0) {
+    const hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
+
+    if (items.length === 0 && !hasExtractedRollData) {
       throw new BadRequestException("No rolls found for this CoC");
     }
 
-    const pdfData = await this.preparePdfData(coc, items);
-    const buffer = await this.createPdf(pdfData);
+    const pdfData =
+      items.length > 0
+        ? await this.preparePdfData(coc, items)
+        : await this.preparePdfDataFromExtractedRolls(coc);
+    let buffer = await this.createPdf(pdfData);
     const filename = `${coc.cocNumber}.pdf`;
+
+    if (pdfData.graphPdfPath) {
+      try {
+        const graphBuffer = await this.storageService.download(pdfData.graphPdfPath);
+        const merger = new PDFMerger();
+        await merger.add(buffer);
+        await merger.add(graphBuffer);
+        buffer = await merger.saveAsBuffer();
+      } catch (graphError) {
+        this.logger.warn(`Failed to merge graph PDF: ${graphError}`);
+      }
+    }
 
     return { buffer, filename };
   }
@@ -367,6 +472,75 @@ export class RubberAuCocService {
       batches: batchTestData,
       rollNumber,
       qualityConfig,
+    };
+  }
+
+  private async preparePdfDataFromExtractedRolls(coc: RubberAuCoc): Promise<CocPdfData> {
+    const extractedRolls = coc.extractedRollData || [];
+    const firstRoll = extractedRolls[0];
+
+    const rollDimensions = firstRoll
+      ? `${firstRoll.thicknessMm || "-"}mm x ${firstRoll.widthMm || "-"}mm x ${firstRoll.lengthM || "-"}m`
+      : "-";
+    const rollSizesQty = `${rollDimensions} ${extractedRolls.length} roll${extractedRolls.length !== 1 ? "s" : ""}`;
+    const rollNumber = firstRoll?.rollNumber || "-";
+
+    let compoundCode = "Per Supplier CoC";
+    let compoundDescription = "Rubber Compound";
+    let productionDate = formatDateZA(now().toJSDate());
+    let batchTestData: BatchTestData[] = [];
+    let qualityConfig: RubberCompoundQualityConfig | null = null;
+    let graphPdfPath: string | null = null;
+
+    if (coc.sourceDeliveryNoteId) {
+      const deliveryNote = await this.deliveryNoteRepository.findOne({
+        where: { id: coc.sourceDeliveryNoteId },
+        relations: ["linkedCoc"],
+      });
+
+      if (deliveryNote?.linkedCoc) {
+        const supplierCoc = deliveryNote.linkedCoc;
+        compoundCode = supplierCoc.compoundCode || compoundCode;
+        graphPdfPath = supplierCoc.graphPdfPath || null;
+
+        if (supplierCoc.productionDate) {
+          productionDate = formatDateZA(supplierCoc.productionDate);
+        }
+
+        if (compoundCode && compoundCode !== "Per Supplier CoC") {
+          qualityConfig = await this.qualityConfigRepository.findOne({
+            where: { compoundCode },
+          });
+          compoundDescription = qualityConfig?.compoundDescription || compoundDescription;
+        }
+
+        const batches = await this.compoundBatchRepository.find({
+          where: { supplierCocId: supplierCoc.id },
+          order: { batchNumber: "ASC" },
+        });
+
+        batchTestData = batches.map((batch) => ({
+          batchNumber: batch.batchNumber,
+          shoreA: batch.shoreAHardness ? Number(batch.shoreAHardness) : null,
+          density: batch.specificGravity ? Number(batch.specificGravity) : null,
+          rebound: batch.reboundPercent ? Number(batch.reboundPercent) : null,
+          tearStrength: batch.tearStrengthKnM ? Number(batch.tearStrengthKnM) : null,
+          tensile: batch.tensileStrengthMpa ? Number(batch.tensileStrengthMpa) : null,
+          elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
+        }));
+      }
+    }
+
+    return {
+      coc,
+      compoundCode,
+      compoundDescription,
+      productionDate,
+      rollSizesQty,
+      batches: batchTestData,
+      rollNumber,
+      qualityConfig,
+      graphPdfPath,
     };
   }
 
@@ -669,6 +843,8 @@ export class RubberAuCocService {
       customerCompanyName: coc.customerCompany?.name ?? null,
       poNumber: coc.poNumber,
       deliveryNoteRef: coc.deliveryNoteRef,
+      sourceDeliveryNoteId: coc.sourceDeliveryNoteId ?? null,
+      extractedRollData: coc.extractedRollData ?? null,
       status: coc.status,
       statusLabel: AU_COC_STATUS_LABELS[coc.status],
       generatedPdfPath: coc.generatedPdfPath,

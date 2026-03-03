@@ -351,6 +351,7 @@ export interface ExtractedDeliveryNoteData {
   deliveryDate?: string;
   supplierName?: string;
   customerName?: string;
+  customerReference?: string;
   batchRange?: string;
   totalWeightKg?: number;
   rolls?: ExtractedDeliveryNoteRoll[];
@@ -676,6 +677,15 @@ export interface ImportOtherStockResultDto {
   errors: { row: number; itemCode: string; error: string }[];
 }
 
+export interface ExtractedRollDataDto {
+  rollNumber: string;
+  thicknessMm?: number | null;
+  widthMm?: number | null;
+  lengthM?: number | null;
+  weightKg?: number | null;
+  areaSqM?: number | null;
+}
+
 export interface RubberAuCocDto {
   id: number;
   firebaseUid: string;
@@ -684,6 +694,8 @@ export interface RubberAuCocDto {
   customerCompanyName: string | null;
   poNumber: string | null;
   deliveryNoteRef: string | null;
+  sourceDeliveryNoteId: number | null;
+  extractedRollData: ExtractedRollDataDto[] | null;
   status: AuCocStatus;
   statusLabel: string;
   generatedPdfPath: string | null;
@@ -2075,7 +2087,7 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/delivery-notes/${deliveryNoteId}/items`);
   }
 
-  async acceptDeliveryNoteExtract(id: number): Promise<RubberDeliveryNoteDto> {
+  async acceptDeliveryNoteExtract(id: number): Promise<{ deliveryNoteIds: number[] }> {
     return this.request(`/rubber-lining/portal/delivery-notes/${id}/accept-extract`, {
       method: "PUT",
     });
@@ -2250,6 +2262,15 @@ class AuRubberApiClient {
       method: "POST",
       body: JSON.stringify({ recipientEmail }),
     });
+  }
+
+  async createAuCocFromDeliveryNote(deliveryNoteId: number): Promise<RubberAuCocDto> {
+    return this.request(
+      `/rubber-lining/portal/au-cocs/create-from-delivery-note/${deliveryNoteId}`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   auCocPdfUrl(id: number): string {

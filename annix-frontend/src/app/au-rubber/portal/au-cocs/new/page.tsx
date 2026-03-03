@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
@@ -9,6 +9,7 @@ import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 
 export default function NewAuCocPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
   const [availableRolls, setAvailableRolls] = useState<RubberRollStockDto[]>([]);
@@ -20,6 +21,17 @@ export default function NewAuCocPage() {
   const [deliveryNoteRef, setDeliveryNoteRef] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const customerIdParam = searchParams.get("customerId");
+    const dnRefParam = searchParams.get("dnRef");
+    if (customerIdParam) {
+      setCustomerId(Number(customerIdParam));
+    }
+    if (dnRefParam) {
+      setDeliveryNoteRef(dnRefParam);
+    }
+  }, [searchParams]);
 
   const fetchData = async () => {
     try {

@@ -242,11 +242,17 @@ These are delivery notes from AU Industries (or similar rubber suppliers) to the
 AU INDUSTRIES DELIVERY NOTE FORMAT:
 - Header shows "DELIVERY NOTE" with fields:
   - NUMBER: 1298 (the DN number)
-  - REFERENCE: PL7776/PO6719 (customer's PO reference)
+  - REFERENCE: PL7776/PO6719 (customer's PO reference) - THIS IS CRITICAL TO EXTRACT
   - DATE: 25/02/2026 (delivery date in DD/MM/YYYY format)
   - PAGE: 1/1
 - FROM section: AU INDUSTRIES (PTY) LTD
 - TO section: Customer name and address (e.g., POLYMER LINING SYSTEMS (PTY) LTD)
+
+CUSTOMER REFERENCE / PO NUMBER EXTRACTION - CRITICAL:
+- Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "P.O.:", "PO NUMBER:", "ORDER:", "YOUR REF:", "CUSTOMER REF:"
+- The reference/PO is often near the top of the document in the header area
+- Extract the FULL reference string (e.g., "PL7776/PO6719", "PO-12345", "ORD-2026-001")
+- This field is MANDATORY - search thoroughly for any reference number
 - Description column contains compound info like:
   "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m, 249.37kg per Roll @ 1.05 S.G's"
   This decodes as:
@@ -266,7 +272,7 @@ Return a JSON object with this structure:
   "deliveryNotes": [
     {
       "deliveryNoteNumber": string (e.g., "1298", "1299"),
-      "customerReference": string or null (e.g., "PL7776/PO6719"),
+      "customerReference": string or null (CRITICAL - extract PO/reference number, e.g., "PL7776/PO6719", "PO-12345"),
       "deliveryDate": string or null (ISO format YYYY-MM-DD, convert from DD/MM/YYYY),
       "customerName": string or null (the TO: company name),
       "lineItems": [

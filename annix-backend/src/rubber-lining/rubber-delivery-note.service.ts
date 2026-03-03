@@ -189,6 +189,9 @@ export class RubberDeliveryNoteService {
     if (enrichedData.deliveryDate) {
       note.deliveryDate = new Date(enrichedData.deliveryDate);
     }
+    if (enrichedData.customerReference !== undefined) {
+      note.customerReference = enrichedData.customerReference || null;
+    }
 
     await this.deliveryNoteRepository.save(note);
     return this.mapDeliveryNoteToDto(note);
@@ -418,6 +421,77 @@ export class RubberDeliveryNoteService {
 
     const saved: RubberCompany = await this.companyRepository.save(newCompany);
     return { id: saved.id, name: saved.name };
+  }
+
+  async acceptExtractAndSplit(id: number): Promise<{ deliveryNoteIds: number[] }> {
+    const note = await this.deliveryNoteRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany", "linkedCoc"],
+    });
+    if (!note) {
+      throw new BadRequestException("Delivery note not found");
+    }
+
+    const extractedData = note.extractedData;
+    if (!extractedData || !extractedData.rolls || extractedData.rolls.length === 0) {
+      return { deliveryNoteIds: [note.id] };
+    }
+
+    const rollsByDnNumber = new Map<string, typeof extractedData.rolls>();
+    extractedData.rolls.forEach((roll) => {
+      const dnNumber = roll.deliveryNoteNumber || note.deliveryNoteNumber || `DN-${note.id}`;
+      const existing = rollsByDnNumber.get(dnNumber) || [];
+      existing.push(roll);
+      rollsByDnNumber.set(dnNumber, existing);
+    });
+
+    if (rollsByDnNumber.size <= 1) {
+      return { deliveryNoteIds: [note.id] };
+    }
+
+    const deliveryNoteIds: number[] = [];
+    let isFirstGroup = true;
+
+    for (const [dnNumber, rolls] of rollsByDnNumber) {
+      const firstRoll = rolls[0];
+      const deliveryDate = firstRoll.deliveryDate || extractedData.deliveryDate;
+
+      if (isFirstGroup) {
+        note.deliveryNoteNumber = dnNumber;
+        note.deliveryDate = deliveryDate ? new Date(deliveryDate) : note.deliveryDate;
+        note.extractedData = {
+          ...extractedData,
+          deliveryNoteNumber: dnNumber,
+          deliveryDate,
+          rolls,
+        };
+        await this.deliveryNoteRepository.save(note);
+        deliveryNoteIds.push(note.id);
+        isFirstGroup = false;
+      } else {
+        const newNote = this.deliveryNoteRepository.create({
+          firebaseUid: `pg_${generateUniqueId()}`,
+          deliveryNoteType: note.deliveryNoteType,
+          deliveryNoteNumber: dnNumber,
+          deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+          customerReference: note.customerReference,
+          supplierCompanyId: note.supplierCompanyId,
+          documentPath: note.documentPath,
+          status: DeliveryNoteStatus.PENDING,
+          createdBy: note.createdBy,
+          extractedData: {
+            ...extractedData,
+            deliveryNoteNumber: dnNumber,
+            deliveryDate,
+            rolls,
+          },
+        });
+        const savedNote = await this.deliveryNoteRepository.save(newNote);
+        deliveryNoteIds.push(savedNote.id);
+      }
+    }
+
+    return { deliveryNoteIds };
   }
 
   private mapDeliveryNoteToDto(note: RubberDeliveryNote): RubberDeliveryNoteDto {

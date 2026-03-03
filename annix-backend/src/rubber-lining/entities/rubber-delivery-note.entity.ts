@@ -39,6 +39,7 @@ export interface ExtractedDeliveryNoteData {
   deliveryDate?: string;
   supplierName?: string;
   customerName?: string;
+  customerReference?: string;
   batchRange?: string;
   totalWeightKg?: number | null;
   rolls?: ExtractedDeliveryNoteRoll[];

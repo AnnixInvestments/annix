@@ -275,6 +275,10 @@ export class SaveExtractedDataCorrectionDto {
 
   @IsOptional()
   @IsString()
+  customerReference?: string;
+
+  @IsOptional()
+  @IsString()
   batchRange?: string;
 
   @IsOptional()
@@ -496,6 +500,15 @@ export class SellRollDto {
   poNumber?: string;
 }
 
+export interface ExtractedRollDataDto {
+  rollNumber: string;
+  thicknessMm?: number | null;
+  widthMm?: number | null;
+  lengthM?: number | null;
+  weightKg?: number | null;
+  areaSqM?: number | null;
+}
+
 export class RubberAuCocDto {
   id: number;
   firebaseUid: string;
@@ -504,6 +517,8 @@ export class RubberAuCocDto {
   customerCompanyName: string | null;
   poNumber: string | null;
   deliveryNoteRef: string | null;
+  sourceDeliveryNoteId: number | null;
+  extractedRollData: ExtractedRollDataDto[] | null;
   status: AuCocStatus;
   statusLabel: string;
   generatedPdfPath: string | null;

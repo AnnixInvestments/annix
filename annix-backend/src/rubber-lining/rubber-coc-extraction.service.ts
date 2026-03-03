@@ -297,6 +297,51 @@ export class RubberCocExtractionService {
     };
   }
 
+  async extractCustomerDeliveryNoteFromImages(pdfBuffer: Buffer): Promise<{
+    data: ExtractedCustomerDeliveryNoteData;
+    deliveryNotes: ExtractedCustomerDeliveryNoteData[];
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = Date.now();
+    this.logger.log("Extracting customer delivery note data using OCR...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const images = await this.convertPdfToImages(pdfBuffer);
+    this.logger.log(`Converted PDF to ${images.length} image(s) for OCR extraction`);
+
+    const response = await this.callGeminiWithImages(
+      CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
+      "Please extract structured data from these customer delivery note images. Look carefully for the REFERENCE or PO number field - this is CRITICAL to extract. Return ONLY a valid JSON object with the extracted data.",
+      images,
+    );
+
+    const processingTimeMs = Date.now() - startTime;
+    this.logger.log(`Customer delivery note extracted via OCR in ${processingTimeMs}ms`);
+
+    const rawData = response.data as unknown as ExtractedCustomerDeliveryNotesResult;
+    const deliveryNotes = rawData?.deliveryNotes || [];
+
+    this.logger.log(`Found ${deliveryNotes.length} delivery notes in document via OCR`);
+    deliveryNotes.forEach((dn, idx) => {
+      this.logger.log(
+        `DN ${idx + 1}: number=${dn.deliveryNoteNumber}, ref=${dn.customerReference}, date=${dn.deliveryDate}`,
+      );
+    });
+
+    const firstNote = deliveryNotes[0] || {};
+
+    return {
+      data: firstNote as ExtractedCustomerDeliveryNoteData,
+      deliveryNotes,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
   async extractByType(
     cocType: SupplierCocType,
     pdfText: string,

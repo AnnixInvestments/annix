@@ -1597,12 +1597,12 @@ Formula: totalPrice = totalKg × salePricePerKg
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/accept-extract")
-  @ApiOperation({ summary: "Accept extracted data (placeholder for SOH deduction)" })
+  @ApiOperation({
+    summary: "Accept extracted data and split into separate delivery notes if needed",
+  })
   @ApiParam({ name: "id", description: "Delivery note ID" })
-  async acceptDeliveryNoteExtract(@Param("id") id: string): Promise<RubberDeliveryNoteDto> {
-    const note = await this.rubberDeliveryNoteService.deliveryNoteById(Number(id));
-    if (!note) throw new NotFoundException("Delivery note not found");
-    return note;
+  async acceptDeliveryNoteExtract(@Param("id") id: string): Promise<{ deliveryNoteIds: number[] }> {
+    return this.rubberDeliveryNoteService.acceptExtractAndSplit(Number(id));
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
@@ -2075,6 +2075,23 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocService.autoCreateFromCustomerDeliveryNote(
       dto.deliveryNoteId,
       dto.customerCompanyId,
+      req.user?.email,
+    );
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/au-cocs/create-from-delivery-note/:deliveryNoteId")
+  @ApiOperation({
+    summary: "Create AU CoC directly from delivery note extracted data",
+  })
+  @ApiParam({ name: "deliveryNoteId", description: "Delivery note ID" })
+  async createAuCocFromDeliveryNote(
+    @Param("deliveryNoteId") deliveryNoteId: string,
+    @Req() req: { user?: { email?: string } },
+  ): Promise<RubberAuCocDto> {
+    return this.rubberAuCocService.createAuCocFromDeliveryNote(
+      Number(deliveryNoteId),
       req.user?.email,
     );
   }

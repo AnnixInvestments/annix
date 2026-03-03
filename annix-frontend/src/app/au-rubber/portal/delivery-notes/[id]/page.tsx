@@ -26,6 +26,7 @@ interface EditableExtractedData extends Omit<ExtractedDeliveryNoteData, "rolls">
   rolls?: EditableRoll[];
   isEdited?: boolean;
   customerName?: string;
+  customerReference?: string;
 }
 
 function calculateAreaSqM(widthMm?: number, lengthM?: number): number | null {
@@ -183,6 +184,7 @@ export default function DeliveryNoteDetailPage() {
         deliveryDate: firstDn?.deliveryDate,
         supplierName: firstDn?.supplierName,
         customerName: firstDn?.customerName,
+        customerReference: firstDn?.customerReference,
         batchRange: firstDn?.batchRange,
         totalWeightKg: firstDn?.totalWeightKg,
         rolls: allRolls,
@@ -215,9 +217,13 @@ export default function DeliveryNoteDetailPage() {
   const handleAcceptExtract = async () => {
     try {
       setIsAccepting(true);
-      await auRubberApiClient.acceptDeliveryNoteExtract(noteId);
-      showToast("Extract accepted", "success");
-      router.push("/au-rubber/portal/delivery-notes/suppliers");
+      const result = await auRubberApiClient.acceptDeliveryNoteExtract(noteId);
+      const count = result.deliveryNoteIds.length;
+      showToast(
+        count > 1 ? `Extract accepted - ${count} delivery notes created` : "Extract accepted",
+        "success",
+      );
+      router.push("/au-rubber/portal/delivery-notes/customers");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to accept extract", "error");
       setIsAccepting(false);
@@ -445,14 +451,20 @@ export default function DeliveryNoteDetailPage() {
 
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Delivery Note Details</h2>
-        <dl className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <dl className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
           <div>
             <dt className="text-sm font-medium text-gray-500">DN Number</dt>
             <dd className="mt-1 text-sm text-gray-900">{note.deliveryNoteNumber || "-"}</dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-gray-500">Supplier</dt>
+            <dt className="text-sm font-medium text-gray-500">Customer</dt>
             <dd className="mt-1 text-sm text-gray-900">{note.supplierCompanyName || "-"}</dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-gray-500">PO / Ref</dt>
+            <dd className="mt-1 text-sm text-gray-900 font-medium text-blue-600">
+              {note.customerReference || "-"}
+            </dd>
           </div>
           <div>
             <dt className="text-sm font-medium text-gray-500">Type</dt>
@@ -526,6 +538,50 @@ export default function DeliveryNoteDetailPage() {
             </div>
           </div>
 
+          {displayData.length > 0 && displayData[0]?.customerReference !== undefined && (
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center space-x-4">
+                <div>
+                  <span className="text-sm font-medium text-gray-500">
+                    Customer Ref / PO Number:
+                  </span>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={displayData[0]?.customerReference || ""}
+                      onChange={(e) => handleDnFieldChange(0, "customerReference", e.target.value)}
+                      className="ml-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                      placeholder="e.g. PL7894/PO6797"
+                    />
+                  ) : (
+                    <span className="ml-2 text-sm font-semibold text-gray-900">
+                      {displayData[0]?.customerReference || "-"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {displayData.length > 0 && !displayData[0]?.customerReference && isEditing && (
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+              <div className="flex items-center space-x-4">
+                <div>
+                  <span className="text-sm font-medium text-gray-500">
+                    Customer Ref / PO Number:
+                  </span>
+                  <input
+                    type="text"
+                    value={displayData[0]?.customerReference || ""}
+                    onChange={(e) => handleDnFieldChange(0, "customerReference", e.target.value)}
+                    className="ml-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                    placeholder="e.g. PL7894/PO6797"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -556,6 +612,9 @@ export default function DeliveryNoteDetailPage() {
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Customer
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    PO/Ref
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     POD
@@ -722,6 +781,9 @@ export default function DeliveryNoteDetailPage() {
                                 roll.customerName || dn.customerName || "-"
                               )}
                             </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 font-medium">
+                              {dn.customerReference || note.customerReference || "-"}
+                            </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm">
                               {note?.documentPath && roll.pageNumber ? (
                                 <button
@@ -751,6 +813,9 @@ export default function DeliveryNoteDetailPage() {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                             {dn.customerName || "-"}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 font-medium">
+                            {dn.customerReference || note.customerReference || "-"}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">-</td>
                         </tr>,

@@ -2,6 +2,7 @@
 
 import { FileText, Loader2, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { CustomerDnAnalysisModal } from "@/app/au-rubber/components/CustomerDnAnalysisModal";
@@ -33,6 +34,7 @@ type SortColumn =
   | "deliveryDate";
 
 export default function CustomerDeliveryNotesPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const [notes, setNotes] = useState<RubberDeliveryNoteDto[]>([]);
   const [customers, setCustomers] = useState<RubberCompanyDto[]>([]);
@@ -54,6 +56,7 @@ export default function CustomerDeliveryNotesPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeCustomerDnsResult | null>(null);
   const [analysisFiles, setAnalysisFiles] = useState<File[]>([]);
+  const [generatingCocForId, setGeneratingCocForId] = useState<number | null>(null);
 
   const fetchData = async () => {
     try {
@@ -125,7 +128,8 @@ export default function CustomerDeliveryNotesPage() {
       const matchesSearch =
         searchQuery === "" ||
         note.deliveryNoteNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.supplierCompanyName?.toLowerCase().includes(searchQuery.toLowerCase());
+        note.supplierCompanyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.customerReference?.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesSearch;
     }),
   );
@@ -241,6 +245,18 @@ export default function CustomerDeliveryNotesPage() {
     }
   };
 
+  const handleGenerateCoc = async (noteId: number) => {
+    try {
+      setGeneratingCocForId(noteId);
+      const coc = await auRubberApiClient.createAuCocFromDeliveryNote(noteId);
+      showToast(`AU Certificate ${coc.cocNumber} created`, "success");
+      router.push(`/au-rubber/portal/au-cocs/${coc.id}`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to create certificate", "error");
+      setGeneratingCocForId(null);
+    }
+  };
+
   const statusBadge = (status: DeliveryNoteStatus) => {
     const colors: Record<DeliveryNoteStatus, string> = {
       PENDING: "bg-gray-100 text-gray-800",
@@ -349,7 +365,7 @@ export default function CustomerDeliveryNotesPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="DN number, customer"
+              placeholder="DN number, customer, PO"
               className="block w-56 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
             />
           </div>
@@ -471,6 +487,12 @@ export default function CustomerDeliveryNotesPage() {
                 </th>
                 <th
                   scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Customer Ref
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort("deliveryNoteType")}
                 >
@@ -518,6 +540,9 @@ export default function CustomerDeliveryNotesPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {note.supplierCompanyName || "-"}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {note.customerReference || "-"}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {typeBadge(note.deliveryNoteType)}
                   </td>
@@ -533,6 +558,21 @@ export default function CustomerDeliveryNotesPage() {
                       >
                         View CoC
                       </Link>
+                    ) : note.extractedData ? (
+                      <button
+                        onClick={() => handleGenerateCoc(note.id)}
+                        disabled={generatingCocForId === note.id}
+                        className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {generatingCocForId === note.id ? (
+                          <>
+                            <Loader2 className="animate-spin h-3 w-3 mr-1" />
+                            Creating...
+                          </>
+                        ) : (
+                          "Auto Gen COC"
+                        )}
+                      </button>
                     ) : (
                       <span className="text-gray-400">Not linked</span>
                     )}

@@ -200,6 +200,11 @@ function GroupCard({
               <FileText className="h-5 w-5 text-blue-500 mr-2" />
               <span className="font-medium text-gray-900">{group.deliveryNoteNumber}</span>
             </div>
+            {override.customerReference && (
+              <span className="text-sm text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                PO: {override.customerReference}
+              </span>
+            )}
             {group.files.length > 1 && (
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                 {group.files.length} pages
@@ -264,14 +269,14 @@ function GroupCard({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Customer Reference
+                PO / Customer Reference
               </label>
               <input
                 type="text"
                 value={override.customerReference || ""}
                 onChange={(e) => onUpdateOverride("customerReference", e.target.value)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
-                placeholder="PO / Order Ref"
+                placeholder="e.g., PL7776/PO6719"
               />
             </div>
             <div>

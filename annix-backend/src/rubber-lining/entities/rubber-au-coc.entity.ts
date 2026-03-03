@@ -8,6 +8,16 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { RubberCompany } from "./rubber-company.entity";
+import { RubberDeliveryNote } from "./rubber-delivery-note.entity";
+
+export interface ExtractedRollData {
+  rollNumber: string;
+  thicknessMm?: number | null;
+  widthMm?: number | null;
+  lengthM?: number | null;
+  weightKg?: number | null;
+  areaSqM?: number | null;
+}
 
 export enum AuCocStatus {
   DRAFT = "DRAFT",
@@ -38,6 +48,16 @@ export class RubberAuCoc {
 
   @Column({ name: "delivery_note_ref", type: "varchar", length: 100, nullable: true })
   deliveryNoteRef: string | null;
+
+  @Column({ name: "source_delivery_note_id", type: "int", nullable: true })
+  sourceDeliveryNoteId: number | null;
+
+  @ManyToOne(() => RubberDeliveryNote, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "source_delivery_note_id" })
+  sourceDeliveryNote: RubberDeliveryNote;
+
+  @Column({ name: "extracted_roll_data", type: "jsonb", nullable: true })
+  extractedRollData: ExtractedRollData[] | null;
 
   @Column({
     name: "status",

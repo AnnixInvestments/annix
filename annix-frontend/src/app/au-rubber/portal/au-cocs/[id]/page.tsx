@@ -264,25 +264,103 @@ export default function AuCocDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Number of Rolls</dt>
               <dd className="mt-1 text-2xl font-semibold text-gray-900">
-                {coc.items?.length || 0}
+                {coc.items?.length || coc.extractedRollData?.length || 0}
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Total Weight</dt>
               <dd className="mt-1 text-2xl font-semibold text-gray-900">
-                {coc.items
-                  ?.reduce((sum, item) => {
-                    const testData = item.testDataSummary as Record<string, unknown> | null;
-                    const weight = testData?.rollWeightKg as number | undefined;
-                    return sum + (weight || 0);
-                  }, 0)
-                  .toFixed(2) || "0.00"}{" "}
-                kg
+                {(() => {
+                  if (coc.items && coc.items.length > 0) {
+                    return coc.items
+                      .reduce((sum, item) => {
+                        const testData = item.testDataSummary as Record<string, unknown> | null;
+                        const weight = testData?.rollWeightKg as number | undefined;
+                        return sum + (weight || 0);
+                      }, 0)
+                      .toFixed(2);
+                  }
+                  if (coc.extractedRollData && coc.extractedRollData.length > 0) {
+                    return coc.extractedRollData
+                      .reduce((sum, roll) => sum + (roll.weightKg || 0), 0)
+                      .toFixed(2);
+                  }
+                  return "0.00";
+                })()} kg
               </dd>
             </div>
           </dl>
         </div>
       </div>
+
+      {coc.extractedRollData &&
+        coc.extractedRollData.length > 0 &&
+        (!coc.items || coc.items.length === 0) && (
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">
+                Included Rolls (from Delivery Note)
+              </h2>
+            </div>
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Roll Number
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Thickness (mm)
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Width (mm)
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Length (m)
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Weight (kg)
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {coc.extractedRollData.map((roll, index) => (
+                  <tr key={index}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {roll.rollNumber}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {roll.thicknessMm ?? "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {roll.widthMm ?? "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {roll.lengthM ?? "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {roll.weightKg?.toFixed(2) ?? "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
       {coc.items && coc.items.length > 0 && (
         <div className="bg-white shadow rounded-lg overflow-hidden">

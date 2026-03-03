@@ -1233,7 +1233,7 @@ ${truncatedText}`;
             ? { currentPage: pageInfo.currentPage || null, totalPages: pageInfo.totalPages || null }
             : null,
           lineItems,
-          pdfText,
+          pdfText: "",
         });
       }
     }

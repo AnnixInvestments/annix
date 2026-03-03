@@ -364,6 +364,8 @@ export class RubberRollStockService {
           customerCompanyName: auCocRecord.customerCompany?.name ?? null,
           poNumber: auCocRecord.poNumber,
           deliveryNoteRef: auCocRecord.deliveryNoteRef,
+          sourceDeliveryNoteId: auCocRecord.sourceDeliveryNoteId ?? null,
+          extractedRollData: auCocRecord.extractedRollData ?? null,
           status: auCocRecord.status,
           statusLabel: auCocRecord.status,
           generatedPdfPath: auCocRecord.generatedPdfPath,
