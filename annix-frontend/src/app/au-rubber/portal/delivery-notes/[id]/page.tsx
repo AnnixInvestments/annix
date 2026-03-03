@@ -974,7 +974,7 @@ export default function DeliveryNoteDetailPage() {
                   <img
                     src={podPageUrl}
                     alt={`POD Page ${podPageNumber}`}
-                    className="w-full h-auto"
+                    className="max-w-full max-h-[calc(90vh-120px)] w-auto h-auto mx-auto object-contain"
                   />
                 ) : (
                   <div className="text-center py-12 text-gray-500">Failed to load POD page</div>

@@ -378,6 +378,33 @@ export class RubberDeliveryNoteService {
     return (result.affected || 0) > 0;
   }
 
+  async findOrCreateCompanyByName(
+    name: string,
+    companyType: "supplier" | "customer",
+  ): Promise<{ id: number; name: string }> {
+    const normalizedName = name.trim().toUpperCase();
+
+    const existing = await this.companyRepository
+      .createQueryBuilder("c")
+      .where("UPPER(c.name) = :name", { name: normalizedName })
+      .andWhere("c.company_type = :type", { type: companyType })
+      .getOne();
+
+    if (existing) {
+      return { id: existing.id, name: existing.name };
+    }
+
+    const newCompany = this.companyRepository.create({
+      name: name.trim(),
+      companyType,
+      isActive: true,
+      availableProducts: [],
+    });
+
+    const saved = await this.companyRepository.save(newCompany);
+    return { id: saved.id, name: saved.name };
+  }
+
   private mapDeliveryNoteToDto(note: RubberDeliveryNote): RubberDeliveryNoteDto {
     return {
       id: note.id,
