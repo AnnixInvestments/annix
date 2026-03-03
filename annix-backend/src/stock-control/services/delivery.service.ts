@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
@@ -10,6 +10,8 @@ import { InvoiceExtractionService } from "./invoice-extraction.service";
 
 @Injectable()
 export class DeliveryService {
+  private readonly logger = new Logger(DeliveryService.name);
+
   constructor(
     @InjectRepository(DeliveryNote)
     private readonly deliveryNoteRepo: Repository<DeliveryNote>,
@@ -190,6 +192,41 @@ export class DeliveryService {
     };
   }
 
+  async linkExtractedItemsToStock(
+    companyId: number,
+    id: number,
+    receivedBy?: string,
+  ): Promise<DeliveryNote> {
+    const note = await this.findById(companyId, id);
+
+    if (note.items && note.items.length > 0) {
+      this.logger.log(`Delivery note ${id} already has ${note.items.length} linked items`);
+      return note;
+    }
+
+    const extractedData = note.extractedData as {
+      lineItems?: Array<{
+        description?: string;
+        itemCode?: string;
+        productCode?: string;
+        quantity?: number;
+        unitOfMeasure?: string;
+      }>;
+    } | null;
+
+    if (!extractedData?.lineItems || extractedData.lineItems.length === 0) {
+      this.logger.log(`Delivery note ${id} has no extracted line items to link`);
+      return note;
+    }
+
+    this.logger.log(
+      `Linking ${extractedData.lineItems.length} extracted items to stock for delivery note ${id}`,
+    );
+    await this.createStockItemsFromExtracted(companyId, note, extractedData.lineItems, receivedBy);
+
+    return this.findById(companyId, id);
+  }
+
   async createFromAnalyzedData(
     companyId: number,
     file: Express.Multer.File,
@@ -208,15 +245,25 @@ export class DeliveryService {
     },
     receivedBy?: string,
   ): Promise<DeliveryNote> {
+    this.logger.log(`Uploading file for delivery note, size: ${file.size} bytes`);
     const uploadResult = await this.storageService.upload(
       file,
       `${StorageArea.STOCK_CONTROL}/deliveries`,
+    );
+    this.logger.log(`File uploaded successfully, path: ${uploadResult.path}`);
+
+    const receivedDate = analyzedData.deliveryDate
+      ? new Date(analyzedData.deliveryDate)
+      : new Date();
+
+    this.logger.log(
+      `Creating delivery note: ${analyzedData.deliveryNoteNumber}, supplier: ${analyzedData.fromCompany?.name}, date: ${receivedDate.toISOString()}`,
     );
 
     const deliveryNote = this.deliveryNoteRepo.create({
       deliveryNumber: analyzedData.deliveryNoteNumber || `DN-${Date.now()}`,
       supplierName: analyzedData.fromCompany?.name || "Unknown Supplier",
-      receivedDate: analyzedData.deliveryDate ? new Date(analyzedData.deliveryDate) : new Date(),
+      receivedDate,
       notes: null,
       photoUrl: uploadResult.path,
       receivedBy: receivedBy || null,
@@ -226,6 +273,109 @@ export class DeliveryService {
     });
 
     const savedNote = await this.deliveryNoteRepo.save(deliveryNote);
+    this.logger.log(`Delivery note saved with ID: ${savedNote.id}`);
+
+    if (analyzedData.lineItems && analyzedData.lineItems.length > 0) {
+      this.logger.log(
+        `Auto-creating ${analyzedData.lineItems.length} stock items from extracted data`,
+      );
+      await this.createStockItemsFromExtracted(
+        companyId,
+        savedNote,
+        analyzedData.lineItems,
+        receivedBy,
+      );
+    }
+
     return this.findById(companyId, savedNote.id);
+  }
+
+  private async createStockItemsFromExtracted(
+    companyId: number,
+    deliveryNote: DeliveryNote,
+    lineItems: Array<{
+      description?: string;
+      itemCode?: string;
+      productCode?: string;
+      quantity?: number;
+      unitOfMeasure?: string;
+    }>,
+    receivedBy?: string,
+  ): Promise<void> {
+    for (const item of lineItems) {
+      if (!item.description) {
+        continue;
+      }
+
+      const sku = this.generateSku(item);
+      const quantity = item.quantity ?? 1;
+
+      let stockItem = await this.stockItemRepo.findOne({
+        where: { sku, companyId },
+      });
+
+      if (stockItem) {
+        stockItem.quantity = stockItem.quantity + quantity;
+        await this.stockItemRepo.save(stockItem);
+        this.logger.log(`Updated existing stock item ${sku}: +${quantity}`);
+      } else {
+        stockItem = this.stockItemRepo.create({
+          sku,
+          name: item.description,
+          description: null,
+          category: "Uncategorized",
+          unitOfMeasure: item.unitOfMeasure || "each",
+          costPerUnit: 0,
+          quantity,
+          minStockLevel: 0,
+          needsQrPrint: true,
+          companyId,
+        });
+        await this.stockItemRepo.save(stockItem);
+        this.logger.log(`Created new stock item ${sku}: ${item.description}`);
+      }
+
+      const noteItem = this.deliveryNoteItemRepo.create({
+        deliveryNote,
+        stockItem,
+        quantityReceived: quantity,
+        photoUrl: null,
+        companyId,
+      });
+      await this.deliveryNoteItemRepo.save(noteItem);
+
+      const movement = this.movementRepo.create({
+        stockItem,
+        movementType: MovementType.IN,
+        quantity,
+        referenceType: ReferenceType.DELIVERY,
+        referenceId: deliveryNote.id,
+        notes: `Received via delivery ${deliveryNote.deliveryNumber}`,
+        createdBy: receivedBy || null,
+        companyId,
+      });
+      await this.movementRepo.save(movement);
+    }
+  }
+
+  private generateSku(item: {
+    itemCode?: string;
+    productCode?: string;
+    description?: string;
+  }): string {
+    if (item.itemCode) {
+      return item.itemCode.toUpperCase().replace(/\s+/g, "-");
+    }
+    if (item.productCode) {
+      return item.productCode.toUpperCase().replace(/\s+/g, "-");
+    }
+    const descWords = (item.description || "ITEM")
+      .toUpperCase()
+      .replace(/[^A-Z0-9\s]/g, "")
+      .split(/\s+/)
+      .filter((w) => w.length > 0)
+      .slice(0, 4)
+      .join("-");
+    return descWords || `ITEM-${Date.now()}`;
   }
 }

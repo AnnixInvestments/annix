@@ -2274,6 +2274,24 @@ class AuRubberApiClient {
     URL.revokeObjectURL(url);
   }
 
+  async autoCreateAuCocFromDeliveryNote(
+    deliveryNoteId: number,
+    customerCompanyId: number,
+  ): Promise<{
+    auCoc: RubberAuCocDto | null;
+    matchedSupplierCocs: { id: number; cocNumber: string | null; orderNumber: string | null }[];
+    message: string;
+  }> {
+    return this.request("/rubber-lining/portal/au-cocs/auto-create-from-dn", {
+      method: "POST",
+      body: JSON.stringify({ deliveryNoteId, customerCompanyId }),
+    });
+  }
+
+  auCocPdfWithGraphUrl(id: number, supplierCocId: number): string {
+    return `${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf-with-graph/${supplierCocId}`;
+  }
+
   async documentUrl(documentPath: string): Promise<string> {
     const response = await this.request<{ url: string }>(
       `/rubber-lining/portal/documents/url?path=${encodeURIComponent(documentPath)}`,

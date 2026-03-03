@@ -1587,6 +1587,10 @@ class StockControlApiClient {
     return response.json();
   }
 
+  async linkDeliveryNoteToStock(id: number): Promise<DeliveryNote> {
+    return this.request(`/stock-control/deliveries/${id}/link-to-stock`, { method: "POST" });
+  }
+
   async stockMovements(params?: {
     stockItemId?: number;
     movementType?: string;

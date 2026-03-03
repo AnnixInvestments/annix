@@ -244,7 +244,28 @@ export class RubberInboundEmailService {
 
   private async extractTextFromPdf(buffer: Buffer): Promise<string> {
     try {
-      const pdfData = await pdfParse(buffer);
+      const pageTexts: string[] = [];
+      let pageNumber = 0;
+
+      const pdfData = await pdfParse(buffer, {
+        pagerender: (pageData: {
+          getTextContent: () => Promise<{ items: Array<{ str: string }> }>;
+        }) => {
+          return pageData.getTextContent().then((textContent) => {
+            pageNumber++;
+            const pageText = textContent.items.map((item) => item.str).join(" ");
+            pageTexts.push(`\n--- PAGE ${pageNumber} ---\n${pageText}`);
+            return pageText;
+          });
+        },
+      });
+
+      if (pageTexts.length > 0) {
+        const totalPages = pageTexts.length;
+        this.logger.log(`Extracted text from ${totalPages} pages with page markers`);
+        return `DOCUMENT HAS ${totalPages} PAGES:\n${pageTexts.join("\n")}`;
+      }
+
       return pdfData.text || "";
     } catch (error) {
       this.logger.error(`Failed to extract text from PDF: ${error.message}`);

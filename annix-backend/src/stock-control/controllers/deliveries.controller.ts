@@ -4,6 +4,8 @@ import {
   Controller,
   Delete,
   Get,
+  InternalServerErrorException,
+  Logger,
   Param,
   Post,
   Req,
@@ -22,6 +24,8 @@ import { DeliveryService } from "../services/delivery.service";
 @Controller("stock-control/deliveries")
 @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
 export class DeliveriesController {
+  private readonly logger = new Logger(DeliveriesController.name);
+
   constructor(
     private readonly deliveryService: DeliveryService,
     private readonly extractionService: RubberCocExtractionService,
@@ -73,6 +77,12 @@ export class DeliveriesController {
   @ApiOperation({ summary: "Get extraction status for delivery note" })
   async extractionStatus(@Req() req: any, @Param("id") id: number) {
     return this.deliveryService.extractionStatus(req.user.companyId, id);
+  }
+
+  @Post(":id/link-to-stock")
+  @ApiOperation({ summary: "Create stock items from extracted delivery note data" })
+  async linkExtractedToStock(@Req() req: any, @Param("id") id: number) {
+    return this.deliveryService.linkExtractedItemsToStock(req.user.companyId, id, req.user.name);
   }
 
   @Post("analyze")
@@ -139,26 +149,47 @@ export class DeliveriesController {
       throw new BadRequestException("No file provided");
     }
 
-    const analyzedData = JSON.parse(analyzedDataJson) as {
-      deliveryNoteNumber?: string;
-      deliveryDate?: string;
-      fromCompany?: { name?: string };
-      toCompany?: { name?: string };
-      lineItems?: Array<{
-        description?: string;
-        itemCode?: string;
-        quantity?: number;
-        unitOfMeasure?: string;
-      }>;
-    };
+    if (!analyzedDataJson) {
+      throw new BadRequestException("No analyzed data provided");
+    }
 
-    const deliveryNote = await this.deliveryService.createFromAnalyzedData(
-      req.user.companyId,
-      file,
-      analyzedData,
-      req.user.name,
-    );
+    try {
+      const analyzedData = JSON.parse(analyzedDataJson) as {
+        deliveryNoteNumber?: string;
+        deliveryDate?: string;
+        fromCompany?: { name?: string };
+        toCompany?: { name?: string };
+        lineItems?: Array<{
+          description?: string;
+          itemCode?: string;
+          quantity?: number;
+          unitOfMeasure?: string;
+        }>;
+      };
 
-    return deliveryNote;
+      this.logger.log(
+        `Creating delivery note for company ${req.user.companyId} from analyzed data`,
+      );
+
+      const deliveryNote = await this.deliveryService.createFromAnalyzedData(
+        req.user.companyId,
+        file,
+        analyzedData,
+        req.user.name,
+      );
+
+      return deliveryNote;
+    } catch (error) {
+      this.logger.error(
+        `Failed to create delivery note: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to create delivery note: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
   }
 }

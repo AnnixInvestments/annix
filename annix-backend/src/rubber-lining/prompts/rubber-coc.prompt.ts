@@ -233,7 +233,9 @@ Return ONLY a valid JSON object with the extracted data.`;
 
 export const CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from customer delivery notes for rubber sheeting products.
 
-IMPORTANT: A single PDF may contain MULTIPLE delivery notes (one per page). You must detect and return ALL delivery notes found.
+CRITICAL: A single PDF may contain MULTIPLE delivery notes (one per page). You MUST detect and return ALL delivery notes found.
+The document text includes page markers like "--- PAGE 1 ---", "--- PAGE 2 ---", etc. Each page is typically a SEPARATE delivery note.
+If the document says "DOCUMENT HAS 4 PAGES", you should return 4 delivery notes in the array.
 
 These are delivery notes from AU Industries (or similar rubber suppliers) to their customers.
 
@@ -286,7 +288,8 @@ Return a JSON object with this structure:
 }
 
 Guidelines:
-- SCAN THROUGH THE ENTIRE DOCUMENT - each page with a unique NUMBER is a separate delivery note
+- SCAN THROUGH THE ENTIRE DOCUMENT - each page (marked by "--- PAGE X ---") is typically a separate delivery note
+- If you see "DOCUMENT HAS N PAGES", expect to find N delivery notes
 - Look for "NUMBER:" field to identify each delivery note (not the filename)
 - Parse dates from DD/MM/YYYY to YYYY-MM-DD format
 - Extract the compound code pattern (e.g., RSCA40-8.950.125) and parse its components
