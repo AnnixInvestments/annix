@@ -10,6 +10,7 @@ import type {
   StockItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 
 function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", {
@@ -55,6 +56,8 @@ interface CategoryGroup {
 }
 
 export default function InventoryPage() {
+  const { user } = useStockControlAuth();
+  const canEditPrices = user?.role === "admin" || user?.role === "manager" || user?.role === "accounts";
   const [items, setItems] = useState<StockItem[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
@@ -96,7 +99,11 @@ export default function InventoryPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isPrintingLabels, setIsPrintingLabels] = useState(false);
   const [pendingMinLevels, setPendingMinLevels] = useState<Map<number, number>>(new Map());
+  const [pendingPrices, setPendingPrices] = useState<Map<number, number>>(new Map());
+  const [pendingLocations, setPendingLocations] = useState<Map<number, number | null>>(new Map());
   const [isSavingMinLevels, setIsSavingMinLevels] = useState(false);
+  const [isSavingPrices, setIsSavingPrices] = useState(false);
+  const [isSavingLocations, setIsSavingLocations] = useState(false);
   const [showPrintDropdown, setShowPrintDropdown] = useState(false);
   const [printPreviewItems, setPrintPreviewItems] = useState<StockItem[] | null>(null);
   const [isStockTakeMode, setIsStockTakeMode] = useState(false);
@@ -374,6 +381,72 @@ export default function InventoryPage() {
 
   const minLevelForItem = (item: StockItem): number => {
     return pendingMinLevels.has(item.id) ? pendingMinLevels.get(item.id)! : item.minStockLevel;
+  };
+
+  const priceForItem = (item: StockItem): number => {
+    return pendingPrices.has(item.id) ? pendingPrices.get(item.id)! : item.costPerUnit;
+  };
+
+  const locationForItem = (item: StockItem): number | null => {
+    return pendingLocations.has(item.id) ? pendingLocations.get(item.id)! : item.locationId;
+  };
+
+  const updatePendingPrice = (itemId: number, value: number) => {
+    setPendingPrices((prev) => {
+      const next = new Map(prev);
+      next.set(itemId, value);
+      return next;
+    });
+  };
+
+  const updatePendingLocation = (itemId: number, value: number | null) => {
+    setPendingLocations((prev) => {
+      const next = new Map(prev);
+      next.set(itemId, value);
+      return next;
+    });
+  };
+
+  const clearAllPendingPrices = () => {
+    setPendingPrices(new Map());
+  };
+
+  const clearAllPendingLocations = () => {
+    setPendingLocations(new Map());
+  };
+
+  const saveAllPrices = async () => {
+    if (isSavingPrices || pendingPrices.size === 0) return;
+    try {
+      setIsSavingPrices(true);
+      const updates = Array.from(pendingPrices.entries()).map(([id, costPerUnit]) =>
+        stockControlApiClient.updateStockItem(id, { costPerUnit }),
+      );
+      await Promise.all(updates);
+      setPendingPrices(new Map());
+      fetchItems();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to update prices"));
+    } finally {
+      setIsSavingPrices(false);
+    }
+  };
+
+  const saveAllLocations = async () => {
+    if (isSavingLocations || pendingLocations.size === 0) return;
+    try {
+      setIsSavingLocations(true);
+      const updates = Array.from(pendingLocations.entries()).map(([id, locationId]) =>
+        stockControlApiClient.updateStockItem(id, { locationId }),
+      );
+      await Promise.all(updates);
+      setPendingLocations(new Map());
+      fetchItems();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to update locations"));
+    } finally {
+      setIsSavingLocations(false);
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -1128,6 +1201,68 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {pendingPrices.size > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span className="text-sm font-medium text-green-800">
+            {pendingPrices.size} unsaved price change{pendingPrices.size !== 1 ? "s" : ""}
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={clearAllPendingPrices}
+              className="text-sm text-green-700 hover:text-green-900"
+            >
+              Discard Changes
+            </button>
+            <button
+              onClick={saveAllPrices}
+              disabled={isSavingPrices}
+              className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+            >
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              {isSavingPrices ? "Saving..." : "Save Price Changes"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {pendingLocations.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span className="text-sm font-medium text-blue-800">
+            {pendingLocations.size} unsaved location change{pendingLocations.size !== 1 ? "s" : ""}
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={clearAllPendingLocations}
+              className="text-sm text-blue-700 hover:text-blue-900"
+            >
+              Discard Changes
+            </button>
+            <button
+              onClick={saveAllLocations}
+              disabled={isSavingLocations}
+              className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+            >
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              {isSavingLocations ? "Saving..." : "Save Location Changes"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {viewMode === "grouped" && groupedData.length > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">
@@ -1326,13 +1461,48 @@ export default function InventoryPage() {
                                 }`}
                               />
                             </td>
-                            <td className="hidden md:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                              {formatZAR(item.costPerUnit)}
+                            <td className="hidden md:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right">
+                              {canEditPrices ? (
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  value={priceForItem(item)}
+                                  onChange={(e) =>
+                                    updatePendingPrice(item.id, parseFloat(e.target.value) || 0)
+                                  }
+                                  className={`w-24 rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right ${
+                                    pendingPrices.has(item.id)
+                                      ? "border-green-500 bg-green-50"
+                                      : "border-gray-300"
+                                  }`}
+                                />
+                              ) : (
+                                <span className="text-gray-900">{formatZAR(item.costPerUnit)}</span>
+                              )}
                             </td>
-                            <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {item.locationId
-                                ? (locations.find((l) => l.id === item.locationId)?.name ?? "-")
-                                : "-"}
+                            <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
+                              <select
+                                value={locationForItem(item) ?? ""}
+                                onChange={(e) =>
+                                  updatePendingLocation(
+                                    item.id,
+                                    e.target.value ? parseInt(e.target.value, 10) : null,
+                                  )
+                                }
+                                className={`w-full rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm ${
+                                  pendingLocations.has(item.id)
+                                    ? "border-blue-500 bg-blue-50"
+                                    : "border-gray-300"
+                                }`}
+                              >
+                                <option value="">-</option>
+                                {locations.map((loc) => (
+                                  <option key={loc.id} value={loc.id}>
+                                    {loc.name}
+                                  </option>
+                                ))}
+                              </select>
                             </td>
                             <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-right text-sm">
                               <button
@@ -1518,13 +1688,48 @@ export default function InventoryPage() {
                           }`}
                         />
                       </td>
-                      <td className="hidden md:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                        {formatZAR(item.costPerUnit)}
+                      <td className="hidden md:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right">
+                        {canEditPrices ? (
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={priceForItem(item)}
+                            onChange={(e) =>
+                              updatePendingPrice(item.id, parseFloat(e.target.value) || 0)
+                            }
+                            className={`w-24 rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right ${
+                              pendingPrices.has(item.id)
+                                ? "border-green-500 bg-green-50"
+                                : "border-gray-300"
+                            }`}
+                          />
+                        ) : (
+                          <span className="text-gray-900">{formatZAR(item.costPerUnit)}</span>
+                        )}
                       </td>
-                      <td className="hidden xl:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.locationId
-                          ? (locations.find((l) => l.id === item.locationId)?.name ?? "-")
-                          : "-"}
+                      <td className="hidden xl:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
+                        <select
+                          value={locationForItem(item) ?? ""}
+                          onChange={(e) =>
+                            updatePendingLocation(
+                              item.id,
+                              e.target.value ? parseInt(e.target.value, 10) : null,
+                            )
+                          }
+                          className={`w-full rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm ${
+                            pendingLocations.has(item.id)
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          <option value="">-</option>
+                          {locations.map((loc) => (
+                            <option key={loc.id} value={loc.id}>
+                              {loc.name}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-right text-sm">
                         <button

@@ -368,8 +368,10 @@ export class DeliveryService {
         continue;
       }
 
-      if (item.isReturned || /\breturned?\b/i.test(item.description)) {
-        this.logger.log(`Skipping returned item: ${item.description}`);
+      const isReturned = item.isReturned || /\breturned?\b/i.test(item.description);
+
+      if (isReturned) {
+        await this.handleReturnedItem(companyId, deliveryNote, item, receivedBy);
         continue;
       }
 
@@ -449,6 +451,62 @@ export class DeliveryService {
       });
       await this.movementRepo.save(movement);
     }
+  }
+
+  private async handleReturnedItem(
+    companyId: number,
+    deliveryNote: DeliveryNote,
+    item: {
+      description?: string;
+      itemCode?: string;
+      productCode?: string;
+      quantity?: number;
+      unitOfMeasure?: string;
+      unitPrice?: number;
+      lineTotal?: number;
+      isPaint?: boolean;
+      volumeLitersPerPack?: number;
+      totalLiters?: number;
+    },
+    receivedBy?: string,
+  ): Promise<void> {
+    const sku = this.generateSku(item);
+
+    const stockItem = await this.stockItemRepo.findOne({
+      where: { sku, companyId },
+    });
+
+    if (!stockItem) {
+      this.logger.log(`Returned item not found in stock, skipping: ${item.description} (SKU: ${sku})`);
+      return;
+    }
+
+    let quantity: number;
+    if (item.isPaint) {
+      quantity =
+        item.totalLiters ??
+        (item.volumeLitersPerPack && item.quantity
+          ? item.volumeLitersPerPack * item.quantity
+          : (item.volumeLitersPerPack ?? 1));
+    } else {
+      quantity = item.quantity ?? 1;
+    }
+
+    stockItem.quantity = Math.max(0, stockItem.quantity - quantity);
+    await this.stockItemRepo.save(stockItem);
+    this.logger.log(`Reduced stock for returned item ${sku}: -${quantity} (new qty: ${stockItem.quantity})`);
+
+    const movement = this.movementRepo.create({
+      stockItem,
+      movementType: MovementType.OUT,
+      quantity,
+      referenceType: ReferenceType.DELIVERY,
+      referenceId: deliveryNote.id,
+      notes: `Returned via delivery ${deliveryNote.deliveryNumber}`,
+      createdBy: receivedBy || null,
+      companyId,
+    });
+    await this.movementRepo.save(movement);
   }
 
   private generateSku(item: {
