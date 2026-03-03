@@ -1765,7 +1765,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     const deliveryNote = await this.rubberDeliveryNoteService.createDeliveryNote(
       {
         deliveryNoteType: DeliveryNoteType.ROLL,
-        deliveryNoteNumber: analyzedData.deliveryNoteNumber || `SCAN_${Date.now()}`,
+        deliveryNoteNumber: analyzedData.deliveryNoteNumber ?? `SCAN_${Date.now()}`,
         deliveryDate: analyzedData.deliveryDate || null,
         supplierCompanyId: supplierCompany.id,
         documentPath: filePath,

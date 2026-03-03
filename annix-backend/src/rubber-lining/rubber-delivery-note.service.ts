@@ -401,7 +401,7 @@ export class RubberDeliveryNoteService {
     newCompany.companyType = typeEnum;
     newCompany.availableProducts = [];
 
-    const saved = await this.companyRepository.save(newCompany);
+    const saved: RubberCompany = await this.companyRepository.save(newCompany);
     return { id: saved.id, name: saved.name };
   }
 
