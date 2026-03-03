@@ -107,7 +107,11 @@ interface RollAllocationSuggestion {
 }
 
 interface RubberAllocationProps {
-  lineItems: Array<{ m2: number | null }>;
+  lineItems: Array<{
+    m2: number | null;
+    itemCode: string | null;
+    itemDescription: string | null;
+  }>;
   availableRolls: RubberRollStockDto[];
   isLoadingRolls: boolean;
 }
@@ -1273,13 +1277,17 @@ export default function JobCardDetailPage() {
         </div>
       )}
 
-      {jobCard.lineItems?.filter(isValidLineItem).some((li) => li.m2) && (
-        <RubberAllocationSection
-          lineItems={jobCard.lineItems.filter(isValidLineItem)}
-          availableRolls={availableRolls}
-          isLoadingRolls={isLoadingRolls}
-        />
-      )}
+      {(() => {
+        const validItems = jobCard.lineItems?.filter(isValidLineItem) ?? [];
+        const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
+        return hasM2Items ? (
+          <RubberAllocationSection
+            lineItems={validItems}
+            availableRolls={availableRolls}
+            isLoadingRolls={isLoadingRolls}
+          />
+        ) : null;
+      })()}
 
       {versions.length > 0 && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
