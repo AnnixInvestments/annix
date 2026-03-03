@@ -13,8 +13,11 @@
     "test:e2e": "cd annix-backend && pnpm test:e2e",
     "dev:backend": "cd annix-backend && pnpm start:dev",
     "dev:frontend": "cd annix-frontend && pnpm dev",
+    "dev:frontend:clean": "npx kill-port 3000 && cd annix-frontend && rm -rf .next/cache/turbopack .next/cache/swc && pnpm dev",
     "dev": "claude-swarm start",
     "stop": "claude-swarm stop",
+    "kill-ports": "npx kill-port 3000 4001",
+    "dev:clean": "pnpm kill-ports && pnpm dev",
     "dev:direct": "concurrently \"pnpm dev:backend\" \"pnpm dev:frontend\"",
     "build:backend": "cd annix-backend && pnpm build",
     "build:frontend": "cd annix-frontend && pnpm build",
@@ -33,6 +36,7 @@
     "@types/node": "^25.0.9",
     "chalk": "^4.1.2",
     "concurrently": "^8.2.2",
+    "kill-port": "^2.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
