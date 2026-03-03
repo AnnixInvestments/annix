@@ -131,7 +131,7 @@ export class DeliveryService {
   ): Promise<DeliveryNote> {
     const note = await this.findById(companyId, id);
     const result = await this.storageService.upload(file, "stock-control/deliveries");
-    note.photoUrl = result.url;
+    note.photoUrl = result.path;
     await this.deliveryNoteRepo.save(note);
     return this.findById(companyId, id);
   }
@@ -201,22 +201,16 @@ export class DeliveryService {
       lineItems?: Array<{
         description?: string;
         itemCode?: string;
+        productCode?: string;
         quantity?: number;
         unitOfMeasure?: string;
       }>;
     },
     receivedBy?: string,
   ): Promise<DeliveryNote> {
-    const fileName = `dn_${analyzedData.deliveryNoteNumber || "unknown"}_${Date.now()}${file.originalname.substring(file.originalname.lastIndexOf("."))}`;
-    const filePath = `${StorageArea.STOCK_CONTROL}/deliveries/${fileName}`;
-
-    await this.storageService.upload(
-      {
-        buffer: file.buffer,
-        originalname: fileName,
-        mimetype: file.mimetype,
-      } as Express.Multer.File,
-      filePath,
+    const uploadResult = await this.storageService.upload(
+      file,
+      `${StorageArea.STOCK_CONTROL}/deliveries`,
     );
 
     const deliveryNote = this.deliveryNoteRepo.create({
@@ -224,7 +218,7 @@ export class DeliveryService {
       supplierName: analyzedData.fromCompany?.name || "Unknown Supplier",
       receivedDate: analyzedData.deliveryDate ? new Date(analyzedData.deliveryDate) : new Date(),
       notes: null,
-      photoUrl: filePath,
+      photoUrl: uploadResult.path,
       receivedBy: receivedBy || null,
       companyId,
       extractionStatus: "completed",

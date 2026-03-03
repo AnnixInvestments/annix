@@ -6,6 +6,16 @@ import type { DeliveryNote, StockItem } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
+function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boolean } {
+  const linkedCount = delivery.items?.length ?? 0;
+  if (linkedCount > 0) {
+    return { count: linkedCount, isExtracted: false };
+  }
+  const extractedData = delivery.extractedData as { lineItems?: unknown[] } | null;
+  const extractedCount = extractedData?.lineItems?.length ?? 0;
+  return { count: extractedCount, isExtracted: extractedCount > 0 };
+}
+
 interface DeliveryFormItem {
   stockItemId: number;
   quantityReceived: number;
@@ -247,7 +257,19 @@ export default function DeliveriesPage() {
                     {delivery.receivedBy || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {delivery.items?.length ?? 0}
+                    {(() => {
+                      const { count, isExtracted } = itemsCount(delivery);
+                      return isExtracted ? (
+                        <span
+                          className="text-yellow-600"
+                          title="Extracted items (not yet linked to inventory)"
+                        >
+                          {count}*
+                        </span>
+                      ) : (
+                        count
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}
