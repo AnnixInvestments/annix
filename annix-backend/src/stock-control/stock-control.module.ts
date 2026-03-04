@@ -8,6 +8,7 @@ import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
 import { RubberLiningModule } from "../rubber-lining/rubber-lining.module";
+import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
 import { StockControlAuthController } from "./controllers/auth.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
@@ -143,6 +144,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     NbOdLookupModule,
     PipeScheduleModule,
     RubberLiningModule,
+    SharedModule,
     StorageModule,
   ],
   controllers: [

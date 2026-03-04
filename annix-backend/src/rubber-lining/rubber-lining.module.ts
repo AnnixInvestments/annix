@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { EmailModule } from "../email/email.module";
+import { SharedModule } from "../shared/shared.module";
 import { NixModule } from "../nix/nix.module";
 import { App } from "../rbac/entities/app.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
@@ -68,6 +69,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     EmailModule,
     NixModule,
     RbacModule,
+    SharedModule,
     TypeOrmModule.forFeature([
       App,
       UserAppAccess,
