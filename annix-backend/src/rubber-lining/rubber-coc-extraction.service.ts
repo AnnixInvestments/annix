@@ -449,7 +449,7 @@ export class RubberCocExtractionService {
     const pages = await pdfToPng(pdfInput, {
       disableFontFace: true,
       useSystemFonts: true,
-      viewportScale: 2.0,
+      viewportScale: 1.0,
     });
     this.logger.log(`Converted PDF to ${pages.length} image(s)`);
     return pages.filter((page) => page.content !== undefined).map((page) => page.content as Buffer);
@@ -464,7 +464,7 @@ export class RubberCocExtractionService {
     const pages = await pdfToPng(pdfInput, {
       disableFontFace: true,
       useSystemFonts: true,
-      viewportScale: 2.0,
+      viewportScale: 1.0,
       pagesToProcess: [pageNumber],
     });
 
