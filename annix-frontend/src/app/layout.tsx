@@ -1,3 +1,4 @@
+import "@/lib/polyfills";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Great_Vibes } from "next/font/google";
 import "./globals.css";

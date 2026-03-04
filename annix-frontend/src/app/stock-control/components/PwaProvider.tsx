@@ -161,7 +161,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       {showUpdatePrompt && (
         <div className="fixed top-4 left-4 right-4 z-[60] md:left-auto md:right-4 md:max-w-sm">
           <div className="bg-teal-600 text-white rounded-xl shadow-xl p-4">
-            <div className="flex items-start gap-3">
+            <div className="flex items-start space-x-3">
               <div className="flex-shrink-0">
                 <svg
                   className="w-6 h-6"
@@ -182,7 +182,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
                 <p className="text-sm text-teal-100 mt-1">
                   A new version of Stock Control is available.
                 </p>
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center space-x-2 mt-3">
                   <button
                     onClick={handleUpdate}
                     className="px-3 py-1.5 bg-white text-teal-600 text-sm font-medium rounded-lg hover:bg-teal-50 transition-colors"
@@ -219,7 +219,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       {showInstallPrompt && !isStandalone && (
         <div className="fixed bottom-4 left-4 right-4 z-[60] md:left-auto md:right-4 md:max-w-sm animate-slide-up">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 p-4">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start space-x-4">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 rounded-xl flex items-center justify-center">
                   <svg
@@ -246,7 +246,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
                     ? 'Tap the share button and select "Add to Home Screen" for the best experience.'
                     : "Install for quick access and offline support."}
                 </p>
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center space-x-2 mt-3">
                   {!isIos && (
                     <button
                       onClick={handleInstall}
@@ -281,8 +281,8 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
 
             {isIos && (
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700">
-                <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center gap-1">
+                <div className="flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center space-x-1">
                     <span className="font-medium">1.</span>
                     <svg
                       className="w-5 h-5"
@@ -312,7 +312,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
                       d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
                     />
                   </svg>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center space-x-1">
                     <span className="font-medium">2.</span>
                     <svg
                       className="w-5 h-5"
