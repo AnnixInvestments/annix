@@ -1358,57 +1358,88 @@ ${truncatedText}`;
     createdBy?: string,
   ): Promise<{ deliveryNoteIds: number[] }> {
     const deliveryNoteIds: number[] = [];
+    const errors: string[] = [];
+
+    this.logger.log(
+      `Starting creation of ${analysis.groups.length} customer DNs from ${files.length} files`,
+    );
 
     for (let groupIdx = 0; groupIdx < analysis.groups.length; groupIdx++) {
       const group = analysis.groups[groupIdx];
       const override = overrides[groupIdx] || {};
 
-      const customerId = override.customerId || group.customerId;
-      if (!customerId) {
-        this.logger.warn(`Skipping group ${group.deliveryNoteNumber}: no customer ID`);
-        continue;
-      }
-
-      const deliveryNoteNumber = override.deliveryNoteNumber || group.deliveryNoteNumber;
-      const customerReference = override.customerReference || group.customerReference;
-      const deliveryDate = override.deliveryDate || group.deliveryDate;
-
-      const groupFiles = group.files.map((f) => files[f.fileIndex]);
-      const firstFile = groupFiles[0];
-      if (!firstFile) continue;
-
-      const subPath = `au-rubber/customer-delivery-notes/${customerId}`;
-      const storageResult = await this.storageService.upload(firstFile, subPath);
-
-      const dn = await this.deliveryNoteService.createDeliveryNote(
-        {
-          deliveryNoteType: DeliveryNoteType.ROLL,
-          supplierCompanyId: customerId,
-          documentPath: storageResult.path,
-          deliveryNoteNumber,
-          deliveryDate: deliveryDate || undefined,
-          customerReference: customerReference || undefined,
-        },
-        createdBy,
-      );
-
-      for (const lineItem of group.allLineItems) {
-        await this.deliveryNoteService.createDeliveryNoteItem({
-          deliveryNoteId: dn.id,
-          compoundType: lineItem.compoundType,
-          thicknessMm: lineItem.thicknessMm,
-          widthMm: lineItem.widthMm,
-          lengthM: lineItem.lengthM,
-          quantity: lineItem.quantity,
-          rollWeightKg: lineItem.rollWeightKg,
-          cocBatchNumbers: lineItem.cocBatchNumbers,
-        });
-      }
-
-      deliveryNoteIds.push(dn.id);
       this.logger.log(
-        `Created customer DN ${dn.id} (${deliveryNoteNumber}) with ${group.allLineItems.length} line items`,
+        `Processing group ${groupIdx + 1}/${analysis.groups.length}: DN ${group.deliveryNoteNumber}`,
       );
+
+      try {
+        const customerId = override.customerId || group.customerId;
+        if (!customerId) {
+          this.logger.warn(`Skipping group ${group.deliveryNoteNumber}: no customer ID`);
+          errors.push(`Group ${group.deliveryNoteNumber}: no customer ID`);
+          continue;
+        }
+
+        const deliveryNoteNumber = override.deliveryNoteNumber || group.deliveryNoteNumber;
+        const customerReference = override.customerReference || group.customerReference;
+        const deliveryDate = override.deliveryDate || group.deliveryDate;
+
+        const groupFiles = group.files.map((f) => files[f.fileIndex]);
+        const firstFile = groupFiles[0];
+        if (!firstFile) {
+          this.logger.warn(`Skipping group ${deliveryNoteNumber}: no file available`);
+          errors.push(`Group ${deliveryNoteNumber}: no file available`);
+          continue;
+        }
+
+        const subPath = `au-rubber/customer-delivery-notes/${customerId}`;
+        this.logger.log(`Uploading file for DN ${deliveryNoteNumber} to ${subPath}`);
+        const storageResult = await this.storageService.upload(firstFile, subPath);
+        this.logger.log(`File uploaded to ${storageResult.path}`);
+
+        const dn = await this.deliveryNoteService.createDeliveryNote(
+          {
+            deliveryNoteType: DeliveryNoteType.ROLL,
+            supplierCompanyId: customerId,
+            documentPath: storageResult.path,
+            deliveryNoteNumber,
+            deliveryDate: deliveryDate || undefined,
+            customerReference: customerReference || undefined,
+          },
+          createdBy,
+        );
+
+        for (const lineItem of group.allLineItems) {
+          await this.deliveryNoteService.createDeliveryNoteItem({
+            deliveryNoteId: dn.id,
+            compoundType: lineItem.compoundType,
+            thicknessMm: lineItem.thicknessMm,
+            widthMm: lineItem.widthMm,
+            lengthM: lineItem.lengthM,
+            quantity: lineItem.quantity,
+            rollWeightKg: lineItem.rollWeightKg,
+            cocBatchNumbers: lineItem.cocBatchNumbers,
+          });
+        }
+
+        deliveryNoteIds.push(dn.id);
+        this.logger.log(
+          `Created customer DN ${dn.id} (${deliveryNoteNumber}) with ${group.allLineItems.length} line items`,
+        );
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Failed to create DN for group ${groupIdx + 1} (${group.deliveryNoteNumber}): ${errorMsg}`,
+        );
+        errors.push(`Group ${group.deliveryNoteNumber}: ${errorMsg}`);
+      }
+    }
+
+    this.logger.log(
+      `Completed DN creation: ${deliveryNoteIds.length} created, ${errors.length} errors`,
+    );
+    if (errors.length > 0) {
+      this.logger.warn(`DN creation errors: ${errors.join("; ")}`);
     }
 
     return { deliveryNoteIds };
