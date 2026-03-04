@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { PuppeteerPoolService } from "../shared/services/puppeteer-pool.service";
 import { RfqSurfaceProtection } from "./entities/rfq-surface-protection.entity";
 
 export interface SpDocumentData {
@@ -41,6 +42,7 @@ export class SpDocumentGenerationService {
   constructor(
     @InjectRepository(RfqSurfaceProtection)
     private readonly rfqSpRepo: Repository<RfqSurfaceProtection>,
+    private readonly puppeteerPool: PuppeteerPoolService,
   ) {}
 
   generateCoatingScheduleHtml(data: SpDocumentData): string {
@@ -767,64 +769,17 @@ export class SpDocumentGenerationService {
   }
 
   async generatePdf(html: string): Promise<Buffer> {
-    let puppeteer: typeof import("puppeteer");
-    try {
-      puppeteer = await import("puppeteer");
-    } catch (importError) {
-      this.logger.error("Failed to import puppeteer", importError);
-      throw new Error("PDF generation is not available");
-    }
-
-    let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
-    let page: Awaited<ReturnType<Awaited<ReturnType<typeof puppeteer.launch>>["newPage"]>> | null =
-      null;
-    try {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-        ],
-      });
-
-      page = await browser.newPage();
-      await page.setContent(html, {
-        waitUntil: "networkidle0",
-      });
-
-      const pdfBuffer = await page.pdf({
-        format: "A4",
-        printBackground: true,
-        margin: {
-          top: "15mm",
-          bottom: "15mm",
-          left: "12mm",
-          right: "12mm",
-        },
-      });
-
-      return Buffer.from(pdfBuffer);
-    } catch (error) {
-      this.logger.error("Failed to generate PDF", error);
-      throw new Error("Failed to generate PDF");
-    } finally {
-      if (page) {
-        try {
-          await page.close();
-        } catch {
-          this.logger.warn("Page close failed");
-        }
-      }
-      if (browser) {
-        try {
-          await browser.close();
-        } catch {
-          this.logger.warn("Browser close failed");
-        }
-      }
-    }
+    this.logger.log("Generating PDF via pooled browser...");
+    return this.puppeteerPool.generatePdfFromHtml(html, {
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "15mm",
+        bottom: "15mm",
+        left: "12mm",
+        right: "12mm",
+      },
+    });
   }
 
   calculateQuantitySummary(sp: RfqSurfaceProtection, items?: SpLineItem[]): SpQuantitySummary {

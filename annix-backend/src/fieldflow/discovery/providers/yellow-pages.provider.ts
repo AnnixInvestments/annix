@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import * as puppeteer from "puppeteer";
+import { PuppeteerPoolService } from "../../../shared/services/puppeteer-pool.service";
 import { DiscoveryProvider, DiscoverySearchParams } from "../discovery-source.interface";
 import { DiscoveredBusiness, DiscoverySource } from "../dto";
 
@@ -14,6 +14,8 @@ interface ScrapedBusiness {
 export class YellowPagesProvider implements DiscoveryProvider {
   private readonly logger = new Logger(YellowPagesProvider.name);
   readonly source = DiscoverySource.YELLOW_PAGES;
+
+  constructor(private readonly puppeteerPool: PuppeteerPoolService) {}
 
   isConfigured(): boolean {
     return true;
@@ -37,9 +39,6 @@ export class YellowPagesProvider implements DiscoveryProvider {
     centerLat: number,
     centerLng: number,
   ): Promise<DiscoveredBusiness[]> {
-    let browser: puppeteer.Browser | null = null;
-    let page: puppeteer.Page | null = null;
-
     const location = await this.approximateCityFromCoordinates(centerLat, centerLng);
 
     const encodedTerm = encodeURIComponent(searchTerm);
@@ -47,39 +46,39 @@ export class YellowPagesProvider implements DiscoveryProvider {
     const url = `https://www.yellowpages.co.za/search?what=${encodedTerm}&where=${encodedLocation}`;
 
     try {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      });
+      const scrapedBusinesses = await this.puppeteerPool.executeWithPage({
+        url,
+        waitUntil: "networkidle2",
+        timeout: 30000,
+        execute: async (page) => {
+          return page.evaluate(() => {
+            const results: {
+              name: string;
+              address: string | null;
+              phone: string | null;
+              category: string | null;
+            }[] = [];
+            const listings = document.querySelectorAll(".listing-item, .business-listing, .result");
 
-      page = await browser.newPage();
-      await page.setUserAgent(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      );
+            listings.forEach((listing) => {
+              const nameEl = listing.querySelector(".listing-name, .business-name, h2, h3");
+              const addressEl = listing.querySelector(".listing-address, .address, .location");
+              const phoneEl = listing.querySelector(".listing-phone, .phone, [href^='tel:']");
+              const categoryEl = listing.querySelector(".listing-category, .category");
 
-      await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
-
-      const scrapedBusinesses = await page.evaluate(() => {
-        const results: ScrapedBusiness[] = [];
-        const listings = document.querySelectorAll(".listing-item, .business-listing, .result");
-
-        listings.forEach((listing) => {
-          const nameEl = listing.querySelector(".listing-name, .business-name, h2, h3");
-          const addressEl = listing.querySelector(".listing-address, .address, .location");
-          const phoneEl = listing.querySelector(".listing-phone, .phone, [href^='tel:']");
-          const categoryEl = listing.querySelector(".listing-category, .category");
-
-          if (nameEl) {
-            results.push({
-              name: nameEl.textContent?.trim() ?? "",
-              address: addressEl?.textContent?.trim() ?? null,
-              phone: phoneEl?.textContent?.trim() ?? null,
-              category: categoryEl?.textContent?.trim() ?? null,
+              if (nameEl) {
+                results.push({
+                  name: nameEl.textContent?.trim() ?? "",
+                  address: addressEl?.textContent?.trim() ?? null,
+                  phone: phoneEl?.textContent?.trim() ?? null,
+                  category: categoryEl?.textContent?.trim() ?? null,
+                });
+              }
             });
-          }
-        });
 
-        return results;
+            return results;
+          });
+        },
       });
 
       return scrapedBusinesses
@@ -91,21 +90,6 @@ export class YellowPagesProvider implements DiscoveryProvider {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Yellow Pages scraping error: ${errorMessage}`);
       return [];
-    } finally {
-      if (page) {
-        try {
-          await page.close();
-        } catch {
-          this.logger.warn("Page close failed");
-        }
-      }
-      if (browser) {
-        try {
-          await browser.close();
-        } catch {
-          this.logger.warn("Browser close failed");
-        }
-      }
     }
   }
 

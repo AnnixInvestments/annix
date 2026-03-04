@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { PuppeteerPoolService } from "../../shared/services/puppeteer-pool.service";
 import type {
   MeetingOutcomesReport,
   MonthlySalesReport,
@@ -15,6 +16,8 @@ import {
 @Injectable()
 export class PdfGenerationService {
   private readonly logger = new Logger(PdfGenerationService.name);
+
+  constructor(private readonly puppeteerPool: PuppeteerPoolService) {}
 
   async generateWeeklyActivityPdf(report: WeeklyActivityReport, repName: string): Promise<Buffer> {
     const html = weeklyActivityTemplate(report, repName);
@@ -43,63 +46,16 @@ export class PdfGenerationService {
   }
 
   private async generatePdfFromHtml(html: string): Promise<Buffer> {
-    let puppeteer: typeof import("puppeteer");
-    try {
-      puppeteer = await import("puppeteer");
-    } catch (importError) {
-      this.logger.error("Failed to import puppeteer", importError);
-      throw new Error("PDF generation is not available");
-    }
-
-    let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
-    let page: Awaited<ReturnType<Awaited<ReturnType<typeof puppeteer.launch>>["newPage"]>> | null =
-      null;
-    try {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-        ],
-      });
-
-      page = await browser.newPage();
-      await page.setContent(html, {
-        waitUntil: "networkidle0",
-      });
-
-      const pdfBuffer = await page.pdf({
-        format: "A4",
-        printBackground: true,
-        margin: {
-          top: "20mm",
-          bottom: "20mm",
-          left: "15mm",
-          right: "15mm",
-        },
-      });
-
-      return Buffer.from(pdfBuffer);
-    } catch (error) {
-      this.logger.error("Failed to generate PDF", error);
-      throw new Error("Failed to generate PDF");
-    } finally {
-      if (page) {
-        try {
-          await page.close();
-        } catch {
-          this.logger.warn("Page close failed");
-        }
-      }
-      if (browser) {
-        try {
-          await browser.close();
-        } catch {
-          this.logger.warn("Browser close failed");
-        }
-      }
-    }
+    this.logger.log("Generating PDF via pooled browser...");
+    return this.puppeteerPool.generatePdfFromHtml(html, {
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20mm",
+        bottom: "20mm",
+        left: "15mm",
+        right: "15mm",
+      },
+    });
   }
 }

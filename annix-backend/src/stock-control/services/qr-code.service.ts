@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
 import { ILike, In, Repository } from "typeorm";
+import { PuppeteerPoolService } from "../../shared/services/puppeteer-pool.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -24,6 +25,7 @@ export class QrCodeService {
     private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    private readonly puppeteerPool: PuppeteerPoolService,
   ) {}
 
   async stockItemQrPng(itemId: number, companyId: number): Promise<Buffer> {
@@ -700,63 +702,16 @@ export class QrCodeService {
     html: string,
     pageOptions: { format?: string; width?: string; height?: string },
   ): Promise<Buffer> {
-    let puppeteer: typeof import("puppeteer");
-    try {
-      puppeteer = await import("puppeteer");
-    } catch (importError) {
-      this.logger.error("Failed to import puppeteer", importError);
-      throw new Error("PDF generation is not available");
-    }
-
-    let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
-    try {
-      this.logger.log("Launching puppeteer browser...");
-      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-      this.logger.log(`Using executable path: ${executablePath ?? "bundled"}`);
-      browser = await puppeteer.launch({
-        headless: "shell",
-        timeout: 60000,
-        executablePath: executablePath ?? undefined,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-          "--disable-extensions",
-          "--disable-software-rasterizer",
-          "--single-process",
-          "--no-zygote",
-          "--disable-features=VizDisplayCompositor",
-        ],
-      });
-      this.logger.log("Browser launched successfully");
-
-      const page = await browser.newPage();
-      page.setDefaultTimeout(30000);
-      this.logger.log("Setting page content...");
-      await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 30000 });
-      this.logger.log("Generating PDF...");
-
-      const pdfBuffer = await page.pdf({
-        ...(pageOptions.format ? { format: pageOptions.format as "A4" } : {}),
-        ...(pageOptions.width ? { width: pageOptions.width, height: pageOptions.height } : {}),
-        printBackground: true,
-        margin: { top: "0", bottom: "0", left: "0", right: "0" },
-        timeout: 30000,
-      });
-
-      this.logger.log(`PDF generated successfully: ${pdfBuffer.length} bytes`);
-      return Buffer.from(pdfBuffer);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      this.logger.error(`Failed to generate PDF: ${errorMessage}`, error);
-      throw new Error(`Failed to generate PDF: ${errorMessage}`);
-    } finally {
-      if (browser) {
-        this.logger.log("Closing browser...");
-        await browser.close();
-      }
-    }
+    this.logger.log("Generating PDF via pooled browser...");
+    const pdfBuffer = await this.puppeteerPool.generatePdfFromHtml(html, {
+      format: pageOptions.format as "A4" | "Letter" | undefined,
+      width: pageOptions.width,
+      height: pageOptions.height,
+      printBackground: true,
+      margin: { top: "0", bottom: "0", left: "0", right: "0" },
+    });
+    this.logger.log(`PDF generated successfully: ${pdfBuffer.length} bytes`);
+    return pdfBuffer;
   }
 }
 
