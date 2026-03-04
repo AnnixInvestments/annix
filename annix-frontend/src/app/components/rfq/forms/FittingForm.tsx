@@ -3,10 +3,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkingConditionsSection } from "@/app/components/rfq/sections/WorkingConditionsSection";
 import { ClosureLengthSelector } from "@/app/components/rfq/selectors/ClosureLengthSelector";
-import {
-  formatNotesForDisplay,
-  SmartNotesDropdown,
-} from "@/app/components/rfq/selectors/SmartNotesDropdown";
+import { formatNotesForDisplay, SmartNotesDropdown, } from "@/app/components/rfq/selectors/SmartNotesDropdown";
 import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
 import { MaterialSuitabilityWarning } from "@/app/components/rfq/warnings/MaterialSuitabilityWarning";
 import { Select } from "@/app/components/ui/Select";
@@ -14,25 +11,25 @@ import { masterDataApi } from "@/app/lib/api/client";
 import {
   ALL_FITTING_SIZES,
   BS_4504_PRESSURE_CLASSES,
+  closureWeight as getClosureWeight,
   FITTING_CLASS_WALL_THICKNESS,
   FITTING_END_OPTIONS,
-  closureWeight as getClosureWeight,
   fittingFlangeConfig as getFittingFlangeConfig,
-  reducerFlangeConfig as getReducerFlangeConfig,
   getScheduleListForSpec,
-  tackWeldWeight as getTackWeldWeight,
-  weldCountPerFitting as getWeldCountPerFitting,
   hasLooseFlange,
-  REDUCER_END_OPTIONS,
   recommendedFlangeTypeCode,
   recommendedPressureClassId,
-  SABS_1123_PRESSURE_CLASSES,
+  REDUCER_END_OPTIONS,
+  reducerFlangeConfig as getReducerFlangeConfig,
   SABS62_FITTING_SIZES,
   SABS719_FITTING_SIZES,
+  SABS_1123_PRESSURE_CLASSES,
   standardReducerLengthForNb,
+  tackWeldWeight as getTackWeldWeight,
   validSmallNbForLargeNb,
+  weldCountPerFitting as getWeldCountPerFitting,
 } from "@/app/lib/config/rfq";
-import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
+import { fetchFlangeSpecsStatic, FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 import { log } from "@/app/lib/logger";
 import {
   blankFlangeWeight,
@@ -52,10 +49,7 @@ import {
   getMinWallThicknessForNB,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
-import {
-  getLateralDimensionsForAngle,
-  LateralAngleRange,
-} from "@/app/lib/utils/sabs719LateralData";
+import { getLateralDimensionsForAngle, LateralAngleRange, } from "@/app/lib/utils/sabs719LateralData";
 import { getGussetSection } from "@/app/lib/utils/sabs719TeeData";
 import { groupSteelSpecifications, isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
@@ -157,12 +151,12 @@ function FittingFormComponent({
     });
   }, [entry.id, entry.specs, onUpdateEntry]);
 
-  const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-  const flangePressureClassId =
-    entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-  const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
-  const nominalBoreMm = entry.specs?.nominalBoreMm;
-  const pipeEndConfiguration = entry.specs?.pipeEndConfiguration || "PE";
+  const specs = entry.specs ?? {};
+  const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
+  const flangePressureClassId = specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
+  const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
+  const nominalBoreMm = specs.nominalBoreMm;
+  const pipeEndConfiguration = specs.pipeEndConfiguration || "PE";
   const hasFlanges = pipeEndConfiguration !== "PE";
 
   const flangeTypesLength = masterData?.flangeTypes?.length ?? 0;
@@ -213,8 +207,8 @@ function FittingFormComponent({
     masterData?.flangeTypes,
   ]);
 
-  const fittingType = entry.specs?.fittingType;
-  const fittingNb = entry.specs?.nominalDiameterMm;
+  const fittingType = specs.fittingType;
+  const fittingNb = specs.nominalDiameterMm;
   const isTeeType = [
     "SHORT_TEE",
     "GUSSET_TEE",
@@ -228,19 +222,14 @@ function FittingFormComponent({
   const isLateral = ["LATERAL", "REDUCING_LATERAL"].includes(fittingType || "");
   const isReducer = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(fittingType || "");
   const isOffsetBend = fittingType === "OFFSET_BEND";
-  const isSABS719ForDims =
-    (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+  const isSABS719ForDims = (specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
   const effectiveStandardForDims =
-    entry.specs?.fittingStandard || (isSABS719ForDims ? "SABS719" : "SABS62");
+      specs.fittingStandard || (isSABS719ForDims ? "SABS719" : "SABS62");
 
   useEffect(() => {
     const trackingKey = `${entry.id}-${fittingType}-${fittingNb}`;
     const needsAutoPopulation =
-      isTeeType &&
-      fittingType &&
-      fittingNb &&
-      !entry.specs?.pipeLengthAMm &&
-      !entry.specs?.pipeLengthBMm;
+        isTeeType && fittingType && fittingNb && !specs.pipeLengthAMm && !specs.pipeLengthBMm;
 
     if (!needsAutoPopulation || autoPopulatedDimensionsRef.current.has(trackingKey)) {
       return;
@@ -254,7 +243,7 @@ function FittingFormComponent({
         effectiveStandardForDims as "SABS62" | "SABS719",
         fittingType!,
         fittingNb!,
-        entry.specs?.angleRange,
+          specs.angleRange,
       )
       .then((dims) => {
         if (dims) {
@@ -310,20 +299,20 @@ function FittingFormComponent({
   // Auto-populate lateral height (A/C/E dimension) when angle range or nominal bore changes
   useEffect(() => {
     const isLateralType = fittingType === "LATERAL" || fittingType === "Y_PIECE";
-    const angleRange = entry.specs?.angleRange as LateralAngleRange | undefined;
-    const nominalBore = entry.specs?.nominalDiameterMm;
+    const angleRange = specs.angleRange as LateralAngleRange | undefined;
+    const nominalBore = specs.nominalDiameterMm;
 
     if (!isLateralType || !angleRange || !nominalBore) {
       return;
     }
 
     // Skip if user has manually overridden the value
-    if (entry.specs?.lateralHeightOverride) {
+    if (specs.lateralHeightOverride) {
       return;
     }
 
     const lateralDims = getLateralDimensionsForAngle(nominalBore, angleRange);
-    if (lateralDims && entry.specs?.lateralHeightMm !== lateralDims.heightMm) {
+    if (lateralDims && specs.lateralHeightMm !== lateralDims.heightMm) {
       onUpdateEntry(entry.id, {
         specs: {
           ...entry.specs,
@@ -334,15 +323,15 @@ function FittingFormComponent({
     }
   }, [
     entry.id,
-    entry.specs?.angleRange,
-    entry.specs?.nominalDiameterMm,
-    entry.specs?.lateralHeightOverride,
-    entry.specs?.lateralHeightMm,
+    specs.angleRange,
+    specs.nominalDiameterMm,
+    specs.lateralHeightOverride,
+    specs.lateralHeightMm,
     fittingType,
     onUpdateEntry,
   ]);
 
-  const fittingQuantityDisplayValue = entry.specs?.quantityValue ?? "";
+  const fittingQuantityDisplayValue = specs.quantityValue ?? "";
 
   return (
     <>
@@ -350,7 +339,7 @@ function FittingFormComponent({
         entryId={entry.id}
         itemType="fitting"
         showSplitToggle={
-          entry.specs?.fittingType &&
+            specs.fittingType &&
           [
             "SHORT_TEE",
             "GUSSET_TEE",
@@ -367,7 +356,7 @@ function FittingFormComponent({
             "CON_REDUCER",
             "ECCENTRIC_REDUCER",
             "OFFSET_BEND",
-          ].includes(entry.specs?.fittingType)
+          ].includes(specs.fittingType)
         }
         formContent={
           <>
@@ -436,8 +425,8 @@ function FittingFormComponent({
               color="green"
               entryId={entry.id}
               idPrefix="fitting"
-              workingPressureBar={entry.specs?.workingPressureBar}
-              workingTemperatureC={entry.specs?.workingTemperatureC}
+              workingPressureBar={specs.workingPressureBar}
+              workingTemperatureC={specs.workingTemperatureC}
               globalPressureBar={globalSpecs?.workingPressureBar}
               globalTemperatureC={globalSpecs?.workingTemperatureC}
               onPressureChange={handleWorkingPressureChange}
@@ -450,7 +439,7 @@ function FittingFormComponent({
                   <label className="block text-xs font-semibold text-green-900 dark:text-green-300 mb-1">
                     Steel Specification *{(() => {
                       const hasGlobal = !!globalSpecs?.steelSpecificationId;
-                      const hasOverride = !!entry.specs?.steelSpecificationId;
+                    const hasOverride = !!specs.steelSpecificationId;
                       if (hasGlobal && !hasOverride)
                         return (
                           <span className="text-green-600 dark:text-green-400 text-xs ml-1 font-normal">
@@ -469,10 +458,10 @@ function FittingFormComponent({
                   {(() => {
                     const selectId = `fitting-steel-spec-wc-${entry.id}`;
                     const effectiveSpecId =
-                      entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                    const isOverride = !!entry.specs?.steelSpecificationId;
+                        specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                    const isOverride = !!specs.steelSpecificationId;
                     const isFromGlobal =
-                      !entry.specs?.steelSpecificationId && !!globalSpecs?.steelSpecificationId;
+                        !specs.steelSpecificationId && !!globalSpecs?.steelSpecificationId;
 
                     return (
                       <Select
@@ -530,21 +519,18 @@ function FittingFormComponent({
             <MaterialSuitabilityWarning
               color="green"
               steelSpecName={(() => {
-                const steelSpecId =
-                  entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                 return (
                   masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || ""
                 );
               })()}
-              effectivePressure={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar}
-              effectiveTemperature={
-                entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC
-              }
+              effectivePressure={specs.workingPressureBar || globalSpecs?.workingPressureBar}
+              effectiveTemperature={specs.workingTemperatureC || globalSpecs?.workingTemperatureC}
               allSteelSpecs={masterData.steelSpecs || []}
               onSelectSpec={(spec) => {
-                const nominalDiameter = entry.specs?.nominalDiameterMm;
-                let scheduleNumber = entry.specs?.scheduleNumber;
-                let wallThicknessMm = entry.specs?.wallThicknessMm;
+                const nominalDiameter = specs.nominalDiameterMm;
+                let scheduleNumber = specs.scheduleNumber;
+                let wallThicknessMm = specs.wallThicknessMm;
 
                 if (nominalDiameter && globalSpecs?.workingPressureBar) {
                   const schedules = getScheduleListForSpec(nominalDiameter, spec.id);
@@ -581,12 +567,11 @@ function FittingFormComponent({
             />
             {/* PSL Level and CVN Fields - Only for API 5L specs */}
             {(() => {
-              const steelSpecId =
-                entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+              const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
               const steelSpecName =
                 masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || "";
               const showPslFields = isApi5LSpec(steelSpecName);
-              const pslLevel = entry.specs?.pslLevel;
+              const pslLevel = specs.pslLevel;
               const showCvnFields = pslLevel === "PSL2";
 
               if (!showPslFields) return null;
@@ -635,7 +620,7 @@ function FittingFormComponent({
                             type="number"
                             step="0.1"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.cvnTestTemperatureC ?? ""}
+                            value={specs.cvnTestTemperatureC ?? ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -658,7 +643,7 @@ function FittingFormComponent({
                             step="0.1"
                             min="0"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.cvnAverageJoules ?? ""}
+                            value={specs.cvnAverageJoules ?? ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -679,7 +664,7 @@ function FittingFormComponent({
                             step="0.1"
                             min="0"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.cvnMinimumJoules ?? ""}
+                            value={specs.cvnMinimumJoules ?? ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -707,7 +692,7 @@ function FittingFormComponent({
                         <input
                           type="text"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={entry.specs?.heatNumber || ""}
+                          value={specs.heatNumber || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -726,7 +711,7 @@ function FittingFormComponent({
                         <input
                           type="text"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={entry.specs?.mtcReference || ""}
+                          value={specs.mtcReference || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -750,7 +735,7 @@ function FittingFormComponent({
                         <input
                           type="checkbox"
                           id={`nace-compliant-${entry.id}`}
-                          checked={entry.specs?.naceCompliant || false}
+                          checked={specs.naceCompliant || false}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -774,7 +759,7 @@ function FittingFormComponent({
                         </label>
                         <select
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={entry.specs?.h2sZone || ""}
+                          value={specs.h2sZone || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -799,7 +784,7 @@ function FittingFormComponent({
                           step="0.1"
                           max="70"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={entry.specs?.maxHardnessHrc ?? ""}
+                          value={specs.maxHardnessHrc ?? ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -815,7 +800,7 @@ function FittingFormComponent({
                         <input
                           type="checkbox"
                           id={`ssc-tested-${entry.id}`}
-                          checked={entry.specs?.sscTested || false}
+                          checked={specs.sscTested || false}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -835,8 +820,8 @@ function FittingFormComponent({
                       </div>
                     </div>
                     {/* Sour service validation warning */}
-                    {entry.specs?.naceCompliant &&
-                      entry.specs?.maxHardnessHrc &&
+                    {specs.naceCompliant &&
+                        specs.maxHardnessHrc &&
                       entry.specs.maxHardnessHrc > 22 && (
                         <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
                           Sour service materials require hardness ≤22 HRC per NACE MR0175
@@ -863,10 +848,9 @@ function FittingFormComponent({
                   {(() => {
                     const selectId = `fitting-type-${entry.id}`;
                     const isSABS719 =
-                      (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) ===
-                      8;
+                        (specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                     const effectiveStandard =
-                      entry.specs?.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
+                        specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
                     const sabs62Options = [
                       { value: "EQUAL_TEE", label: "Equal Tee" },
                       { value: "UNEQUAL_TEE", label: "Unequal Tee" },
@@ -897,7 +881,7 @@ function FittingFormComponent({
                     return (
                       <Select
                         id={selectId}
-                        value={entry.specs?.fittingType || ""}
+                        value={specs.fittingType || ""}
                         onChange={(fittingType) => {
                           if (!fittingType) return;
 
@@ -915,14 +899,14 @@ function FittingFormComponent({
                             fittingType,
                           );
                           const wasReducer = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
-                            entry.specs?.fittingType || "",
+                              specs.fittingType || "",
                           );
                           const isNewOffsetBend = fittingType === "OFFSET_BEND";
-                          const wasOffsetBend = entry.specs?.fittingType === "OFFSET_BEND";
+                          const wasOffsetBend = specs.fittingType === "OFFSET_BEND";
                           const isNewTwoEndType = isNewReducer || isNewOffsetBend;
                           const wasTwoEndType = wasReducer || wasOffsetBend;
 
-                          const currentEndConfig = entry.specs?.pipeEndConfiguration;
+                          const currentEndConfig = specs.pipeEndConfiguration;
                           const validTwoEndConfigs = [
                             "PE",
                             "FOE",
@@ -956,33 +940,29 @@ function FittingFormComponent({
                               fittingType,
                               pipeEndConfiguration: needsEndConfigReset ? "PE" : currentEndConfig,
                               branchNominalDiameterMm: isReducingTee
-                                ? entry.specs?.branchNominalDiameterMm
+                                  ? specs.branchNominalDiameterMm
                                 : undefined,
                               teeNominalDiameterMm: isUnequalTee
-                                ? entry.specs?.teeNominalDiameterMm
+                                  ? specs.teeNominalDiameterMm
                                 : undefined,
                               teeSteelSpecificationId: isUnequalTee
-                                ? entry.specs?.teeSteelSpecificationId
+                                  ? specs.teeSteelSpecificationId
                                 : undefined,
-                              stubLocation: isEqualTee ? undefined : entry.specs?.stubLocation,
-                              pipeLengthAOverride: isEqualTee
-                                ? false
-                                : entry.specs?.pipeLengthAOverride,
-                              pipeLengthBOverride: isEqualTee
-                                ? false
-                                : entry.specs?.pipeLengthBOverride,
+                              stubLocation: isEqualTee ? undefined : specs.stubLocation,
+                              pipeLengthAOverride: isEqualTee ? false : specs.pipeLengthAOverride,
+                              pipeLengthBOverride: isEqualTee ? false : specs.pipeLengthBOverride,
                             },
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
 
-                          if (fittingType && entry.specs?.nominalDiameterMm) {
+                          if (fittingType && specs.nominalDiameterMm) {
                             masterDataApi
                               .getFittingDimensions(
                                 effectiveStandard as "SABS62" | "SABS719",
                                 fittingType,
                                 entry.specs.nominalDiameterMm,
-                                entry.specs?.angleRange,
+                                  specs.angleRange,
                               )
                               .then((dims) => {
                                 if (dims) {
@@ -1012,17 +992,11 @@ function FittingFormComponent({
                                     pipeLengthB = dimB;
                                   }
 
-                                  if (
-                                    pipeLengthA &&
-                                    (isEqualTee || !entry.specs?.pipeLengthAOverride)
-                                  ) {
+                                  if (pipeLengthA && (isEqualTee || !specs.pipeLengthAOverride)) {
                                     pipeUpdates.pipeLengthAMm = pipeLengthA;
                                     pipeUpdates.pipeLengthAMmAuto = pipeLengthA;
                                   }
-                                  if (
-                                    pipeLengthB &&
-                                    (isEqualTee || !entry.specs?.pipeLengthBOverride)
-                                  ) {
+                                  if (pipeLengthB && (isEqualTee || !specs.pipeLengthBOverride)) {
                                     pipeUpdates.pipeLengthBMm = pipeLengthB;
                                     pipeUpdates.pipeLengthBMmAuto = pipeLengthB;
                                   }
@@ -1052,7 +1026,7 @@ function FittingFormComponent({
 
                 {/* Nominal Diameter - Linked to Steel Specification */}
                 {(() => {
-                  const fittingType = entry.specs?.fittingType || "";
+                  const fittingType = specs.fittingType || "";
                   const isTeeType = [
                     "SHORT_TEE",
                     "GUSSET_TEE",
@@ -1065,7 +1039,7 @@ function FittingFormComponent({
                     "SWEEP_TEE",
                     "GUSSETTED_TEE",
                   ].includes(fittingType);
-                  const isMissingForPreview = isTeeType && !entry.specs?.nominalDiameterMm;
+                  const isMissingForPreview = isTeeType && !specs.nominalDiameterMm;
                   return (
                     <div
                       className={
@@ -1083,10 +1057,9 @@ function FittingFormComponent({
                       {(() => {
                         const selectId = `fitting-nb-${entry.id}`;
                         const isSABS719 =
-                          (entry.specs?.steelSpecificationId ??
-                            globalSpecs?.steelSpecificationId) === 8;
+                            (specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                         const effectiveStandard =
-                          entry.specs?.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
+                            specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
                         const sizes =
                           effectiveStandard === "SABS719"
                             ? [...SABS719_FITTING_SIZES]
@@ -1100,9 +1073,7 @@ function FittingFormComponent({
                           <Select
                             id={selectId}
                             value={
-                              entry.specs?.nominalDiameterMm
-                                ? String(entry.specs.nominalDiameterMm)
-                                : ""
+                              specs.nominalDiameterMm ? String(entry.specs.nominalDiameterMm) : ""
                             }
                             onChange={(selectedValue) => {
                               if (!selectedValue) return;
@@ -1110,16 +1081,15 @@ function FittingFormComponent({
                               const nominalDiameter = parseInt(selectedValue, 10);
                               if (Number.isNaN(nominalDiameter)) return;
 
-                              let matchedSchedule = entry.specs?.scheduleNumber;
-                              let matchedWT = entry.specs?.wallThicknessMm;
+                              let matchedSchedule = specs.scheduleNumber;
+                              let matchedWT = specs.wallThicknessMm;
 
                               if (
                                 effectiveStandard === "SABS719" &&
                                 globalSpecs?.workingPressureBar
                               ) {
                                 const effectiveSpecId2 =
-                                  entry.specs?.steelSpecificationId ??
-                                  globalSpecs?.steelSpecificationId;
+                                    specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                                 const availableSchedules = getScheduleListForSpec(
                                   nominalDiameter,
                                   effectiveSpecId2,
@@ -1150,19 +1120,18 @@ function FittingFormComponent({
                               const isReducingTeeType = [
                                 "SHORT_REDUCING_TEE",
                                 "GUSSET_REDUCING_TEE",
-                              ].includes(entry.specs?.fittingType || "");
-                              const currentBranchNB = entry.specs?.branchNominalDiameterMm;
+                              ].includes(specs.fittingType || "");
+                              const currentBranchNB = specs.branchNominalDiameterMm;
                               const shouldClearBranch =
                                 isReducingTeeType &&
                                 currentBranchNB &&
                                 currentBranchNB >= nominalDiameter;
 
                               const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
-                                entry.specs?.fittingType || "",
+                                  specs.fittingType || "",
                               );
                               const steelSpecId =
-                                entry.specs?.steelSpecificationId ||
-                                globalSpecs?.steelSpecificationId;
+                                  specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                               const steelSpecName = masterData?.steelSpecifications?.find(
                                 (s: { id: number }) => s.id === steelSpecId,
                               )?.steelSpecName;
@@ -1181,7 +1150,7 @@ function FittingFormComponent({
                                 wallThicknessMm: matchedWT,
                                 branchNominalDiameterMm: shouldClearBranch
                                   ? undefined
-                                  : entry.specs?.branchNominalDiameterMm,
+                                    : specs.branchNominalDiameterMm,
                                 ...(isReducerType && reducerLength
                                   ? {
                                       reducerLengthMm: reducerLength,
@@ -1194,10 +1163,10 @@ function FittingFormComponent({
                               immediateEntry.description = generateItemDescription(immediateEntry);
                               onUpdateEntry(entry.id, immediateEntry);
 
-                              const fittingType = entry.specs?.fittingType;
-                              const angleRange = entry.specs?.angleRange;
-                              const pipeLengthAOverride = entry.specs?.pipeLengthAOverride;
-                              const pipeLengthBOverride = entry.specs?.pipeLengthBOverride;
+                              const fittingType = specs.fittingType;
+                              const angleRange = specs.angleRange;
+                              const pipeLengthAOverride = specs.pipeLengthAOverride;
+                              const pipeLengthBOverride = specs.pipeLengthBOverride;
 
                               if (fittingType && nominalDiameter) {
                                 masterDataApi
@@ -1267,10 +1236,9 @@ function FittingFormComponent({
                       })()}
                       {(() => {
                         const isSABS719 =
-                          (entry.specs?.steelSpecificationId ??
-                            globalSpecs?.steelSpecificationId) === 8;
+                            (specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
                         const effectiveStandard =
-                          entry.specs?.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
+                            specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
                         const sizes =
                           effectiveStandard === "SABS719"
                             ? [...SABS719_FITTING_SIZES]
@@ -1298,9 +1266,9 @@ function FittingFormComponent({
                       <span className="text-gray-500 text-xs ml-1 font-normal">(outlet)</span>
                     </label>
                     {(() => {
-                      const mainNB = entry.specs?.nominalDiameterMm || 0;
+                      const mainNB = specs.nominalDiameterMm || 0;
                       const mainSteelSpecId =
-                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                          specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                       const steelSpecName = masterData?.steelSpecifications?.find(
                         (s: { id: number }) => s.id === mainSteelSpecId,
                       )?.steelSpecName;
@@ -1314,7 +1282,7 @@ function FittingFormComponent({
                         <Select
                           id={`fitting-small-nb-${entry.id}`}
                           value={
-                            entry.specs?.smallNominalDiameterMm
+                            specs.smallNominalDiameterMm
                               ? String(entry.specs.smallNominalDiameterMm)
                               : ""
                           }
@@ -1322,8 +1290,7 @@ function FittingFormComponent({
                             if (!value) return;
                             const smallDiameter = Number(value);
                             const steelSpecId =
-                              entry.specs?.steelSpecificationId ||
-                              globalSpecs?.steelSpecificationId;
+                                specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                             const steelSpecName = masterData?.steelSpecifications?.find(
                               (s: { id: number }) => s.id === steelSpecId,
                             )?.steelSpecName;
@@ -1348,12 +1315,12 @@ function FittingFormComponent({
                         />
                       );
                     })()}
-                    {entry.specs?.nominalDiameterMm && (
+                    {specs.nominalDiameterMm && (
                       <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         {
                           validSmallNbForLargeNb(
-                            entry.specs?.nominalDiameterMm || 0,
-                            entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId,
+                              specs.nominalDiameterMm || 0,
+                              specs.steelSpecificationId || globalSpecs?.steelSpecificationId,
                           ).length
                         }{" "}
                         sizes available
@@ -1365,23 +1332,23 @@ function FittingFormComponent({
                 {/* Schedule/Wall Thickness */}
                 {(() => {
                   const effectiveSpecId =
-                    entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                      specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                   const steelSpecName =
                     masterData.steelSpecs?.find((s: any) => s.id === effectiveSpecId)
                       ?.steelSpecName || "";
-                  const nbValue = entry.specs?.nominalDiameterMm || 0;
+                  const nbValue = specs.nominalDiameterMm || 0;
 
                   const isSABS719Steel =
                     steelSpecName.includes("SABS 719") ||
                     steelSpecName.includes("SANS 719") ||
                     effectiveSpecId === 8;
                   const fittingStandard =
-                    entry.specs?.fittingStandard || (isSABS719Steel ? "SABS719" : "SABS62");
+                      specs.fittingStandard || (isSABS719Steel ? "SABS719" : "SABS62");
                   const isSABS62Fitting = fittingStandard === "SABS62";
 
                   if (isSABS62Fitting) {
                     const selectId = `fitting-sabs62-grade-${entry.id}`;
-                    const currentGrade = entry.specs?.scheduleNumber || "MEDIUM";
+                    const currentGrade = specs.scheduleNumber || "MEDIUM";
                     const isHeavy = currentGrade === "HEAVY";
 
                     const mediumSchedules = getScheduleListForSpec(nbValue, 7, "SABS 62 Medium");
@@ -1439,7 +1406,7 @@ function FittingFormComponent({
                     steelSpecName,
                   );
 
-                  if (globalSpecs?.workingPressureBar && entry.specs?.nominalDiameterMm) {
+                  if (globalSpecs?.workingPressureBar && specs.nominalDiameterMm) {
                     const minWT = getMinWallThicknessForNB(
                       nbValue,
                       globalSpecs?.workingPressureBar || 0,
@@ -1477,7 +1444,7 @@ function FittingFormComponent({
                         </label>
                         <Select
                           id={selectId}
-                          value={entry.specs?.scheduleNumber || ""}
+                          value={specs.scheduleNumber || ""}
                           onChange={(schedule) => {
                             if (!schedule) return;
                             const selectedDim = allSchedules.find(
@@ -1490,7 +1457,7 @@ function FittingFormComponent({
                                 ...entry.specs,
                                 scheduleNumber: schedule,
                                 wallThicknessMm:
-                                  selectedDim?.wallThicknessMm || entry.specs?.wallThicknessMm,
+                                    selectedDim?.wallThicknessMm || specs.wallThicknessMm,
                               },
                             });
                             debouncedCalculate();
@@ -1498,7 +1465,7 @@ function FittingFormComponent({
                           options={options}
                           placeholder="Select schedule..."
                         />
-                        {entry.specs?.wallThicknessMm && (
+                        {specs.wallThicknessMm && (
                           <p className="text-xs text-green-700 mt-1">
                             WT: {entry.specs.wallThicknessMm}mm
                           </p>
@@ -1541,7 +1508,7 @@ function FittingFormComponent({
                       </label>
                       <Select
                         id={selectId}
-                        value={entry.specs?.scheduleNumber || ""}
+                        value={specs.scheduleNumber || ""}
                         onChange={(scheduleNumber) => {
                           if (!scheduleNumber) return;
                           const schedules = getScheduleListForSpec(
@@ -1571,7 +1538,7 @@ function FittingFormComponent({
                         options={manualOptions}
                         placeholder="Select Schedule"
                       />
-                      {entry.specs?.wallThicknessMm && (
+                      {specs.wallThicknessMm && (
                         <p className="text-xs text-gray-600 mt-1">
                           WT: {entry.specs.wallThicknessMm}mm
                         </p>
@@ -1592,12 +1559,12 @@ function FittingFormComponent({
                     <span className="ml-1 text-xs font-normal text-green-600">(Auto)</span>
                   </label>
                   {(() => {
-                    const dn = entry.specs?.nominalDiameterMm;
-                    const schedule = entry.specs?.scheduleNumber || "";
+                    const dn = specs.nominalDiameterMm;
+                    const schedule = specs.scheduleNumber || "";
                     const steelSpecId =
-                      entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                        specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                     const isSABS719 = steelSpecId === 8;
-                    const pipeWallThickness = entry.specs?.wallThicknessMm;
+                    const pipeWallThickness = specs.wallThicknessMm;
                     const numFlanges = entry.calculation?.numberOfFlanges || 0;
 
                     if (numFlanges === 0) {
@@ -1684,8 +1651,7 @@ function FittingFormComponent({
 
               {(() => {
                 const selectedStandard = masterData.flangeStandards?.find(
-                  (fs: any) =>
-                    fs.id === (entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId),
+                    (fs: any) => fs.id === (specs.flangeStandardId || globalSpecs?.flangeStandardId),
                 );
                 const isSabs1123 =
                   selectedStandard?.code?.toUpperCase().includes("SABS") &&
@@ -1695,10 +1661,8 @@ function FittingFormComponent({
                   selectedStandard?.code?.includes("4504");
                 const hasThreeDropdowns = isSabs1123 || isBs4504;
 
-                const effectiveStandardId =
-                  entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                const effectiveTypeCode =
-                  entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                const effectiveStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
+                const effectiveTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
                 const normalizedTypeCode = effectiveTypeCode?.replace(/^\//, "") || "";
 
                 const globalClass = masterData.pressureClasses?.find(
@@ -1715,7 +1679,7 @@ function FittingFormComponent({
                     )
                   : null;
                 const effectiveClassId =
-                  entry.specs?.flangePressureClassId ||
+                    specs.flangePressureClassId ||
                   matchingClassForGlobal?.id ||
                   globalSpecs?.flangePressureClassId;
 
@@ -1742,7 +1706,7 @@ function FittingFormComponent({
                   globalSpecs?.flangeTypeCode && effectiveTypeCode !== globalSpecs?.flangeTypeCode;
 
                 const workingPressureBar =
-                  entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                    specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
                 const selectedPressureClass = masterData.pressureClasses?.find(
                   (pc: any) => pc.id === effectiveClassId,
                 );
@@ -1763,10 +1727,10 @@ function FittingFormComponent({
                   "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
 
                 // Get flange configuration for blank flange options
-                const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                const fittingEndConfig = specs.pipeEndConfiguration || "PE";
                 const fittingFlangeConfig = getFittingFlangeConfig(
                   fittingEndConfig,
-                  entry.specs?.foePosition,
+                    specs.foePosition,
                 );
                 const reducerFlangeConfigVal = getReducerFlangeConfig(fittingEndConfig);
                 const hasFlangesSelected = isReducer
@@ -1792,7 +1756,7 @@ function FittingFormComponent({
                       { key: "outlet", label: "Outlet", hasFlange: fittingFlangeConfig.hasOutlet },
                       { key: "branch", label: "Branch", hasFlange: fittingFlangeConfig.hasBranch },
                     ].filter((p) => p.hasFlange);
-                const currentBlankPositions = entry.specs?.blankFlangePositions || [];
+                const currentBlankPositions = specs.blankFlangePositions || [];
 
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
@@ -1807,7 +1771,7 @@ function FittingFormComponent({
                         )}
                       </label>
                       <select
-                        value={entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ""}
+                          value={specs.flangeStandardId || globalSpecs?.flangeStandardId || ""}
                         onChange={(e) => {
                           const standardId = parseInt(e.target.value, 10) || undefined;
                           onUpdateEntry(entry.id, {
@@ -1853,7 +1817,7 @@ function FittingFormComponent({
                       </label>
                       {hasThreeDropdowns ? (
                         <select
-                          value={entry.specs?.flangePressureClassId || effectiveClassId || ""}
+                            value={specs.flangePressureClassId || effectiveClassId || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -1898,7 +1862,7 @@ function FittingFormComponent({
                         </select>
                       ) : (
                         <select
-                          value={entry.specs?.flangePressureClassId || effectiveClassId || ""}
+                            value={specs.flangePressureClassId || effectiveClassId || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -1919,8 +1883,7 @@ function FittingFormComponent({
                         >
                           <option value="">Select Class...</option>
                           {(() => {
-                            const stdId =
-                              entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                            const stdId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
                             const filtered = stdId
                               ? pressureClassesByStandard[stdId] || []
                               : masterData.pressureClasses || [];
@@ -1946,7 +1909,7 @@ function FittingFormComponent({
                       </label>
                       {hasThreeDropdowns ? (
                         <select
-                          value={entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode || ""}
+                            value={specs.flangeTypeCode || globalSpecs?.flangeTypeCode || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -2021,7 +1984,7 @@ function FittingFormComponent({
                         )}
                       </div>
                       <select
-                        value={entry.specs?.pipeEndConfiguration || "PE"}
+                          value={specs.pipeEndConfiguration || "PE"}
                         onChange={async (e) => {
                           const newConfig = e.target.value;
                           let weldDetails = null;
@@ -2033,13 +1996,13 @@ function FittingFormComponent({
                           const effectiveFlangeTypeCode =
                             globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(newConfig);
                           const flangeStandardIdLocal =
-                            entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                              specs.flangeStandardId || globalSpecs?.flangeStandardId;
                           const flangeStandardLocal = masterData.flangeStandards?.find(
                             (s: any) => s.id === flangeStandardIdLocal,
                           );
                           const flangeCodeLocal = flangeStandardLocal?.code || "";
                           const workingPressureLocal =
-                            entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                              specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
                           let availableClasses = flangeStandardIdLocal
                             ? pressureClassesByStandard[flangeStandardIdLocal] || []
                             : [];
@@ -2059,8 +2022,7 @@ function FittingFormComponent({
                                   flangeCodeLocal,
                                   effectiveFlangeTypeCode,
                                 )
-                              : entry.specs?.flangePressureClassId ||
-                                globalSpecs?.flangePressureClassId;
+                                : specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                           const updatedEntry: any = {
                             specs: {
                               ...entry.specs,
@@ -2093,7 +2055,7 @@ function FittingFormComponent({
                         ))}
                       </select>
                       {(() => {
-                        const storedConfig = entry.specs?.pipeEndConfiguration;
+                        const storedConfig = specs.pipeEndConfiguration;
                         const validOptions =
                           isReducer || isOffsetBend ? REDUCER_END_OPTIONS : FITTING_END_OPTIONS;
                         const isValidConfig = validOptions.some(
@@ -2108,7 +2070,7 @@ function FittingFormComponent({
                           </p>
                         );
                       })()}
-                      {entry.specs?.pipeEndConfiguration === "2X_LF_FOE" && (
+                      {specs.pipeEndConfiguration === "2X_LF_FOE" && (
                         <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
                           <p className="text-xs font-semibold text-amber-800 mb-1.5">
                             Select fixed flange position:
@@ -2122,7 +2084,7 @@ function FittingFormComponent({
                                 <input
                                   type="radio"
                                   name={`foe-position-${entry.id}`}
-                                  checked={entry.specs?.foePosition === position}
+                                  checked={specs.foePosition === position}
                                   onChange={() => {
                                     const updatedEntry: any = {
                                       specs: {
@@ -2161,7 +2123,7 @@ function FittingFormComponent({
                   <label className="flex items-center gap-1.5 text-xs font-medium text-blue-900 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={entry.specs?.hasStubs || false}
+                      checked={specs.hasStubs || false}
                       onChange={(e) => {
                         onUpdateEntry(entry.id, {
                           specs: {
@@ -2171,7 +2133,7 @@ function FittingFormComponent({
                             stubs: e.target.checked
                               ? [
                                   {
-                                    steelSpecId: entry.specs?.steelSpecificationId,
+                                    steelSpecId: specs.steelSpecificationId,
                                     nominalBoreMm: 50,
                                     distanceFromOutletMm: 100,
                                     outletLocation: "branch",
@@ -2227,7 +2189,7 @@ function FittingFormComponent({
 
                 {/* Pipe Length A - or Angle Range for Laterals/Y-Pieces (not for reducers or offset bends) */}
                 {(() => {
-                  const fittingType = entry.specs?.fittingType;
+                  const fittingType = specs.fittingType;
                   const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
                     fittingType || "",
                   );
@@ -2245,8 +2207,7 @@ function FittingFormComponent({
                     fittingType || "",
                   );
                   const isTee = isEqualTee || isUnequalTee || isReducingTee;
-                  const isAutoA =
-                    entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
+                  const isAutoA = specs.pipeLengthAMmAuto && !specs.pipeLengthAOverride;
 
                   if (isLateral) {
                     return (
@@ -2255,27 +2216,23 @@ function FittingFormComponent({
                           Angle Range *
                         </label>
                         <select
-                          value={entry.specs?.angleRange || ""}
+                            value={specs.angleRange || ""}
                           onChange={async (e) => {
                             const angleRange = e.target.value;
                             const isSABS719 =
-                              (entry.specs?.steelSpecificationId ??
-                                globalSpecs?.steelSpecificationId) === 8;
+                                (specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId) ===
+                                8;
                             const effectiveStandard =
-                              entry.specs?.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
+                                specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
 
-                            let pipeLengthA = entry.specs?.pipeLengthAMm;
-                            let pipeLengthB = entry.specs?.pipeLengthBMm;
-                            let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
-                            let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
-                            let lateralHeightMm = entry.specs?.lateralHeightMm;
-                            let lateralHeightMmAuto = entry.specs?.lateralHeightMmAuto;
+                            let pipeLengthA = specs.pipeLengthAMm;
+                            let pipeLengthB = specs.pipeLengthBMm;
+                            let pipeLengthAMmAuto = specs.pipeLengthAMmAuto;
+                            let pipeLengthBMmAuto = specs.pipeLengthBMmAuto;
+                            let lateralHeightMm = specs.lateralHeightMm;
+                            let lateralHeightMmAuto = specs.lateralHeightMmAuto;
 
-                            if (
-                              entry.specs?.fittingType &&
-                              entry.specs?.nominalDiameterMm &&
-                              angleRange
-                            ) {
+                            if (specs.fittingType && specs.nominalDiameterMm && angleRange) {
                               try {
                                 const dims = await masterDataApi.getFittingDimensions(
                                   effectiveStandard as "SABS62" | "SABS719",
@@ -2286,11 +2243,11 @@ function FittingFormComponent({
                                 if (dims) {
                                   const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
                                   const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
-                                  if (dimA && !entry.specs?.pipeLengthAOverride) {
+                                  if (dimA && !specs.pipeLengthAOverride) {
                                     pipeLengthA = dimA;
                                     pipeLengthAMmAuto = dimA;
                                   }
-                                  if (dimB && !entry.specs?.pipeLengthBOverride) {
+                                  if (dimB && !specs.pipeLengthBOverride) {
                                     pipeLengthB = dimB;
                                     pipeLengthBMmAuto = dimB;
                                   }
@@ -2304,7 +2261,7 @@ function FittingFormComponent({
                                 entry.specs.nominalDiameterMm,
                                 angleRange as LateralAngleRange,
                               );
-                              if (lateralDims && !entry.specs?.lateralHeightOverride) {
+                              if (lateralDims && !specs.lateralHeightOverride) {
                                 lateralHeightMm = lateralDims.heightMm;
                                 lateralHeightMmAuto = lateralDims.heightMm;
                               }
@@ -2344,7 +2301,7 @@ function FittingFormComponent({
                         {!isEqualTee && isAutoA && (
                           <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>
                         )}
-                        {!isEqualTee && entry.specs?.pipeLengthAOverride && (
+                        {!isEqualTee && specs.pipeLengthAOverride && (
                           <span className="text-orange-600 text-xs ml-1 font-normal">
                             (Override)
                           </span>
@@ -2352,13 +2309,12 @@ function FittingFormComponent({
                       </label>
                       <input
                         type="number"
-                        value={entry.specs?.pipeLengthAMm || ""}
+                        value={specs.pipeLengthAMm || ""}
                         onChange={(e) => {
                           if (isEqualTee) return;
                           const newValue = Number(e.target.value);
                           const isOverride =
-                            entry.specs?.pipeLengthAMmAuto &&
-                            newValue !== entry.specs?.pipeLengthAMmAuto;
+                              specs.pipeLengthAMmAuto && newValue !== specs.pipeLengthAMmAuto;
                           onUpdateEntry(entry.id, {
                             specs: {
                               ...entry.specs,
@@ -2386,7 +2342,7 @@ function FittingFormComponent({
 
                 {/* Pipe Length B - or Degrees for Laterals (not for reducers or offset bends) */}
                 {(() => {
-                  const fittingType = entry.specs?.fittingType;
+                  const fittingType = specs.fittingType;
                   const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
                     fittingType || "",
                   );
@@ -2405,8 +2361,7 @@ function FittingFormComponent({
                     fittingType || "",
                   );
                   const isTee = isEqualTee || isUnequalTee || isReducingTee;
-                  const isAutoB =
-                    entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
+                  const isAutoB = specs.pipeLengthBMmAuto && !specs.pipeLengthBOverride;
 
                   if (isLateral) {
                     return (
@@ -2416,7 +2371,7 @@ function FittingFormComponent({
                         </label>
                         <input
                           type="number"
-                          value={entry.specs?.degrees || ""}
+                          value={specs.degrees || ""}
                           onChange={(e) => {
                             onUpdateEntry(entry.id, {
                               specs: { ...entry.specs, degrees: Number(e.target.value) },
@@ -2439,7 +2394,7 @@ function FittingFormComponent({
                           {isAutoB && (
                             <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>
                           )}
-                          {entry.specs?.pipeLengthBOverride && (
+                          {specs.pipeLengthBOverride && (
                             <span className="text-orange-600 text-xs ml-1 font-normal">
                               (Override)
                             </span>
@@ -2447,12 +2402,11 @@ function FittingFormComponent({
                         </label>
                         <input
                           type="number"
-                          value={entry.specs?.pipeLengthBMm || ""}
+                          value={specs.pipeLengthBMm || ""}
                           onChange={(e) => {
                             const newValue = Number(e.target.value);
                             const isOverride =
-                              entry.specs?.pipeLengthBMmAuto &&
-                              newValue !== entry.specs?.pipeLengthBMmAuto;
+                                specs.pipeLengthBMmAuto && newValue !== specs.pipeLengthBMmAuto;
                             onUpdateEntry(entry.id, {
                               specs: {
                                 ...entry.specs,
@@ -2479,7 +2433,7 @@ function FittingFormComponent({
                         {!isEqualTee && isAutoB && (
                           <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>
                         )}
-                        {!isEqualTee && entry.specs?.pipeLengthBOverride && (
+                        {!isEqualTee && specs.pipeLengthBOverride && (
                           <span className="text-orange-600 text-xs ml-1 font-normal">
                             (Override)
                           </span>
@@ -2487,13 +2441,12 @@ function FittingFormComponent({
                       </label>
                       <input
                         type="number"
-                        value={entry.specs?.pipeLengthBMm || ""}
+                        value={specs.pipeLengthBMm || ""}
                         onChange={(e) => {
                           if (isEqualTee) return;
                           const newValue = Number(e.target.value);
                           const isOverride =
-                            entry.specs?.pipeLengthBMmAuto &&
-                            newValue !== entry.specs?.pipeLengthBMmAuto;
+                              specs.pipeLengthBMmAuto && newValue !== specs.pipeLengthBMmAuto;
                           onUpdateEntry(entry.id, {
                             specs: {
                               ...entry.specs,
@@ -2524,21 +2477,20 @@ function FittingFormComponent({
                   <div>
                     <label className="block text-xs font-semibold text-blue-900 mb-1">
                       Pipe Length A (mm) *
-                      {entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride && (
+                      {specs.pipeLengthAMmAuto && !specs.pipeLengthAOverride && (
                         <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>
                       )}
-                      {entry.specs?.pipeLengthAOverride && (
+                      {specs.pipeLengthAOverride && (
                         <span className="text-orange-600 text-xs ml-1 font-normal">(Override)</span>
                       )}
                     </label>
                     <input
                       type="number"
-                      value={entry.specs?.pipeLengthAMm || ""}
+                      value={specs.pipeLengthAMm || ""}
                       onChange={(e) => {
                         const newValue = Number(e.target.value);
                         const isOverride =
-                          entry.specs?.pipeLengthAMmAuto &&
-                          newValue !== entry.specs?.pipeLengthAMmAuto;
+                            specs.pipeLengthAMmAuto && newValue !== specs.pipeLengthAMmAuto;
                         onUpdateEntry(entry.id, {
                           specs: {
                             ...entry.specs,
@@ -2559,21 +2511,20 @@ function FittingFormComponent({
                   <div>
                     <label className="block text-xs font-semibold text-blue-900 mb-1">
                       Pipe Length B (mm) *
-                      {entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride && (
+                      {specs.pipeLengthBMmAuto && !specs.pipeLengthBOverride && (
                         <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>
                       )}
-                      {entry.specs?.pipeLengthBOverride && (
+                      {specs.pipeLengthBOverride && (
                         <span className="text-orange-600 text-xs ml-1 font-normal">(Override)</span>
                       )}
                     </label>
                     <input
                       type="number"
-                      value={entry.specs?.pipeLengthBMm || ""}
+                      value={specs.pipeLengthBMm || ""}
                       onChange={(e) => {
                         const newValue = Number(e.target.value);
                         const isOverride =
-                          entry.specs?.pipeLengthBMmAuto &&
-                          newValue !== entry.specs?.pipeLengthBMmAuto;
+                            specs.pipeLengthBMmAuto && newValue !== specs.pipeLengthBMmAuto;
                         onUpdateEntry(entry.id, {
                           specs: {
                             ...entry.specs,
@@ -2593,8 +2544,8 @@ function FittingFormComponent({
                 {isLateral && (
                   <div>
                     {(() => {
-                      const angleRange = entry.specs?.angleRange as LateralAngleRange | undefined;
-                      const nominalBore = entry.specs?.nominalDiameterMm;
+                      const angleRange = specs.angleRange as LateralAngleRange | undefined;
+                      const nominalBore = specs.nominalDiameterMm;
                       const dimensionLabel =
                         angleRange === "60-90" ? "A" : angleRange === "45-59" ? "C" : "E";
                       const lateralDims =
@@ -2602,12 +2553,10 @@ function FittingFormComponent({
                           ? getLateralDimensionsForAngle(nominalBore, angleRange)
                           : null;
                       const autoHeight = lateralDims?.heightMm;
-                      const currentHeight = entry.specs?.lateralHeightMm;
+                      const currentHeight = specs.lateralHeightMm;
                       const isAuto =
-                        autoHeight &&
-                        currentHeight === autoHeight &&
-                        !entry.specs?.lateralHeightOverride;
-                      const isOverride = entry.specs?.lateralHeightOverride;
+                          autoHeight && currentHeight === autoHeight && !specs.lateralHeightOverride;
+                      const isOverride = specs.lateralHeightOverride;
 
                       return (
                         <>
@@ -2624,7 +2573,7 @@ function FittingFormComponent({
                           </label>
                           <input
                             type="number"
-                            value={entry.specs?.lateralHeightMm || ""}
+                            value={specs.lateralHeightMm || ""}
                             onChange={(e) => {
                               const newValue = Number(e.target.value);
                               const isOverrideNow = autoHeight && newValue !== autoHeight;
@@ -2655,10 +2604,9 @@ function FittingFormComponent({
                     </label>
                     {(() => {
                       const mainSteelSpecId =
-                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                      const teeSteelSpecId =
-                        entry.specs?.teeSteelSpecificationId || mainSteelSpecId;
-                      const isUsingMainSpec = !entry.specs?.teeSteelSpecificationId;
+                          specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const teeSteelSpecId = specs.teeSteelSpecificationId || mainSteelSpecId;
+                      const isUsingMainSpec = !specs.teeSteelSpecificationId;
 
                       return (
                         <Select
@@ -2695,11 +2643,10 @@ function FittingFormComponent({
                       <span className="text-blue-600 text-xs ml-1 font-normal">(Branch)</span>
                     </label>
                     {(() => {
-                      const mainNB = entry.specs?.nominalDiameterMm || 0;
+                      const mainNB = specs.nominalDiameterMm || 0;
                       const mainSteelSpecId =
-                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                      const teeSteelSpecId =
-                        entry.specs?.teeSteelSpecificationId || mainSteelSpecId;
+                          specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const teeSteelSpecId = specs.teeSteelSpecificationId || mainSteelSpecId;
                       const isSABS719Tee = teeSteelSpecId === 8;
                       const availableSizes = isSABS719Tee
                         ? [...SABS719_FITTING_SIZES]
@@ -2714,7 +2661,7 @@ function FittingFormComponent({
                         <Select
                           id={`fitting-tee-nb-blue-${entry.id}`}
                           value={
-                            entry.specs?.teeNominalDiameterMm
+                            specs.teeNominalDiameterMm
                               ? String(entry.specs.teeNominalDiameterMm)
                               : ""
                           }
@@ -2746,7 +2693,7 @@ function FittingFormComponent({
                     </label>
                     <input
                       type="number"
-                      value={entry.specs?.stubLocation || ""}
+                      value={specs.stubLocation || ""}
                       onChange={(e) => {
                         const value = e.target.value ? Number(e.target.value) : undefined;
                         onUpdateEntry(entry.id, {
@@ -2765,19 +2712,19 @@ function FittingFormComponent({
                   <div>
                     <label className="block text-xs font-semibold text-blue-900 mb-1">
                       Length (mm)
-                      {entry.specs?.reducerLengthMmAuto && !entry.specs?.reducerLengthOverride && (
+                      {specs.reducerLengthMmAuto && !specs.reducerLengthOverride && (
                         <span className="text-green-600 text-xs ml-1 font-normal">(auto)</span>
                       )}
-                      {entry.specs?.reducerLengthOverride && (
+                      {specs.reducerLengthOverride && (
                         <span className="text-orange-600 text-xs ml-1 font-normal">(override)</span>
                       )}
                     </label>
                     <input
                       type="number"
-                      value={entry.specs?.reducerLengthMm || ""}
+                      value={specs.reducerLengthMm || ""}
                       onChange={(e) => {
                         const newValue = e.target.value ? Number(e.target.value) : undefined;
-                        const autoLength = entry.specs?.reducerLengthMmAuto;
+                        const autoLength = specs.reducerLengthMmAuto;
                         const isOverrideNow = autoLength && newValue !== autoLength;
                         onUpdateEntry(entry.id, {
                           specs: {
@@ -2790,7 +2737,7 @@ function FittingFormComponent({
                       }}
                       className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
                       placeholder={
-                        entry.specs?.reducerLengthMmAuto
+                        specs.reducerLengthMmAuto
                           ? `e.g., ${entry.specs.reducerLengthMmAuto}`
                           : "Length"
                       }
@@ -2805,14 +2752,14 @@ function FittingFormComponent({
                     <input
                       type="checkbox"
                       id={`reducer-stub-${entry.id}`}
-                      checked={entry.specs?.hasReducerStub || false}
+                      checked={specs.hasReducerStub || false}
                       onChange={(e) => {
                         onUpdateEntry(entry.id, {
                           specs: {
                             ...entry.specs,
                             hasReducerStub: e.target.checked,
                             reducerStubNbMm: e.target.checked
-                              ? entry.specs?.reducerStubNbMm || 50
+                                ? specs.reducerStubNbMm || 50
                               : undefined,
                           },
                         });
@@ -2838,7 +2785,7 @@ function FittingFormComponent({
                     </label>
                     <input
                       type="number"
-                      value={entry.specs?.offsetLengthA || ""}
+                      value={specs.offsetLengthA || ""}
                       onChange={(e) => {
                         onUpdateEntry(entry.id, {
                           specs: {
@@ -2864,7 +2811,7 @@ function FittingFormComponent({
                     </label>
                     <input
                       type="number"
-                      value={entry.specs?.offsetLengthB || ""}
+                      value={specs.offsetLengthB || ""}
                       onChange={(e) => {
                         onUpdateEntry(entry.id, {
                           specs: {
@@ -2890,7 +2837,7 @@ function FittingFormComponent({
                     </label>
                     <input
                       type="number"
-                      value={entry.specs?.offsetLengthC || ""}
+                      value={specs.offsetLengthC || ""}
                       onChange={(e) => {
                         onUpdateEntry(entry.id, {
                           specs: {
@@ -2914,7 +2861,7 @@ function FittingFormComponent({
                       Offset Angle (°)
                     </label>
                     <select
-                      value={entry.specs?.offsetAngleDegrees || ""}
+                        value={specs.offsetAngleDegrees || ""}
                       onChange={(e) => {
                         const angle = e.target.value ? Number(e.target.value) : undefined;
                         onUpdateEntry(entry.id, {
@@ -2939,7 +2886,7 @@ function FittingFormComponent({
               </div>
 
               {/* Reducer Stub Sub-fields - Shown when Add Center Stub is checked */}
-              {isReducer && entry.specs?.hasReducerStub && (
+              {isReducer && specs.hasReducerStub && (
                 <div className="mt-3 pt-3 border-t border-blue-200 grid grid-cols-4 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-blue-900 mb-1">
@@ -2947,10 +2894,9 @@ function FittingFormComponent({
                     </label>
                     {(() => {
                       const mainSteelSpecId =
-                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                      const stubSteelSpecId =
-                        entry.specs?.reducerStubSteelSpecId || mainSteelSpecId;
-                      const isUsingMainSpec = !entry.specs?.reducerStubSteelSpecId;
+                          specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const stubSteelSpecId = specs.reducerStubSteelSpecId || mainSteelSpecId;
+                      const isUsingMainSpec = !specs.reducerStubSteelSpecId;
                       return (
                         <Select
                           value={String(stubSteelSpecId || "")}
@@ -2981,11 +2927,11 @@ function FittingFormComponent({
                       Stub NB (mm)
                     </label>
                     {(() => {
-                      const smallNB = entry.specs?.smallNominalDiameterMm || 0;
+                      const smallNB = specs.smallNominalDiameterMm || 0;
                       const maxStubNB = smallNB - 50;
                       const stubSteelSpecId =
-                        entry.specs?.reducerStubSteelSpecId ||
-                        entry.specs?.steelSpecificationId ||
+                          specs.reducerStubSteelSpecId ||
+                          specs.steelSpecificationId ||
                         globalSpecs?.steelSpecificationId;
                       const stubSteelSpec = masterData?.steelSpecs?.find(
                         (s: any) => s.id === stubSteelSpecId,
@@ -3002,7 +2948,7 @@ function FittingFormComponent({
                       );
                       return (
                         <select
-                          value={entry.specs?.reducerStubNbMm || ""}
+                            value={specs.reducerStubNbMm || ""}
                           onChange={(e) => {
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -3032,9 +2978,7 @@ function FittingFormComponent({
                     <input
                       type="number"
                       value={
-                        entry.specs?.reducerLengthMm
-                          ? Math.round(entry.specs.reducerLengthMm / 2)
-                          : ""
+                        specs.reducerLengthMm ? Math.round(entry.specs.reducerLengthMm / 2) : ""
                       }
                       disabled
                       className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-gray-100 text-gray-700 cursor-not-allowed"
@@ -3050,7 +2994,7 @@ function FittingFormComponent({
                       type="number"
                       min="0"
                       max="360"
-                      value={entry.specs?.reducerStubAngleDegrees ?? 0}
+                      value={specs.reducerStubAngleDegrees ?? 0}
                       onChange={(e) => {
                         const angle = Math.min(360, Math.max(0, Number(e.target.value) || 0));
                         onUpdateEntry(entry.id, {
@@ -3073,7 +3017,7 @@ function FittingFormComponent({
             </div>
 
             {/* Stubs Configuration Section - Only for Laterals when hasStubs is checked */}
-            {isLateral && entry.specs?.hasStubs && (
+            {isLateral && specs.hasStubs && (
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
                 <h4 className="text-sm font-bold text-orange-900 border-b border-orange-400 pb-1.5 mb-3">
                   Stub Configuration
@@ -3086,12 +3030,12 @@ function FittingFormComponent({
                         No. of Stubs
                       </label>
                       <select
-                        value={entry.specs?.numberOfStubs || 1}
+                          value={specs.numberOfStubs || 1}
                         onChange={(e) => {
                           const count = Number(e.target.value) as 1 | 2 | 3;
-                          const currentStubs = entry.specs?.stubs || [];
+                          const currentStubs = specs.stubs || [];
                           const defaultStub = {
-                            steelSpecId: entry.specs?.steelSpecificationId,
+                            steelSpecId: specs.steelSpecificationId,
                             nominalBoreMm: 50,
                             distanceFromOutletMm: 100,
                             stubLengthMm: 150,
@@ -3146,7 +3090,7 @@ function FittingFormComponent({
 
                   {/* Stub Details */}
                   <div className="space-y-3">
-                    {(entry.specs?.stubs || []).map((stub: any, stubIndex: number) => (
+                    {(specs.stubs || []).map((stub: any, stubIndex: number) => (
                       <div
                         key={stubIndex}
                         className="bg-white border border-orange-200 rounded-md p-3"
@@ -3159,7 +3103,7 @@ function FittingFormComponent({
                                 type="checkbox"
                                 checked={stub.hasBlankFlange || false}
                                 onChange={(e) => {
-                                  const newStubs = [...(entry.specs?.stubs || [])];
+                                  const newStubs = [...(specs.stubs || [])];
                                   newStubs[stubIndex] = {
                                     ...newStubs[stubIndex],
                                     hasBlankFlange: e.target.checked,
@@ -3185,7 +3129,7 @@ function FittingFormComponent({
                             <select
                               value={stub.outletLocation || "branch"}
                               onChange={(e) => {
-                                const newStubs = [...(entry.specs?.stubs || [])];
+                                const newStubs = [...(specs.stubs || [])];
                                 newStubs[stubIndex] = {
                                   ...newStubs[stubIndex],
                                   outletLocation: e.target.value,
@@ -3194,9 +3138,9 @@ function FittingFormComponent({
                                   specs: { ...entry.specs, stubs: newStubs },
                                 });
                               }}
-                              disabled={entry.specs?.numberOfStubs === 3}
+                              disabled={specs.numberOfStubs === 3}
                               className={`w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 ${
-                                entry.specs?.numberOfStubs === 3
+                                  specs.numberOfStubs === 3
                                   ? "bg-gray-100 cursor-not-allowed"
                                   : "bg-white"
                               }`}
@@ -3215,7 +3159,7 @@ function FittingFormComponent({
                             <Select
                               value={String(stub.steelSpecId || "")}
                               onChange={(value) => {
-                                const newStubs = [...(entry.specs?.stubs || [])];
+                                const newStubs = [...(specs.stubs || [])];
                                 newStubs[stubIndex] = {
                                   ...newStubs[stubIndex],
                                   steelSpecId: value ? parseInt(value, 10) : undefined,
@@ -3238,7 +3182,7 @@ function FittingFormComponent({
                             <select
                               value={stub.nominalBoreMm || ""}
                               onChange={(e) => {
-                                const newStubs = [...(entry.specs?.stubs || [])];
+                                const newStubs = [...(specs.stubs || [])];
                                 newStubs[stubIndex] = {
                                   ...newStubs[stubIndex],
                                   nominalBoreMm: e.target.value
@@ -3271,7 +3215,7 @@ function FittingFormComponent({
                               type="number"
                               value={stub.distanceFromOutletMm || ""}
                               onChange={(e) => {
-                                const newStubs = [...(entry.specs?.stubs || [])];
+                                const newStubs = [...(specs.stubs || [])];
                                 newStubs[stubIndex] = {
                                   ...newStubs[stubIndex],
                                   distanceFromOutletMm: e.target.value
@@ -3297,7 +3241,7 @@ function FittingFormComponent({
                               type="number"
                               value={stub.stubLengthMm || ""}
                               onChange={(e) => {
-                                const newStubs = [...(entry.specs?.stubs || [])];
+                                const newStubs = [...(specs.stubs || [])];
                                 newStubs[stubIndex] = {
                                   ...newStubs[stubIndex],
                                   stubLengthMm: e.target.value ? Number(e.target.value) : undefined,
@@ -3320,7 +3264,7 @@ function FittingFormComponent({
                             <select
                               value={stub.positionDegrees ?? 0}
                               onChange={(e) => {
-                                const newStubs = [...(entry.specs?.stubs || [])];
+                                const newStubs = [...(specs.stubs || [])];
                                 newStubs[stubIndex] = {
                                   ...newStubs[stubIndex],
                                   positionDegrees: Number(e.target.value),
@@ -3353,7 +3297,7 @@ function FittingFormComponent({
                             <select
                               value={stub.endConfiguration || "plain"}
                               onChange={(e) => {
-                                const newStubs = [...(entry.specs?.stubs || [])];
+                                const newStubs = [...(specs.stubs || [])];
                                 newStubs[stubIndex] = {
                                   ...newStubs[stubIndex],
                                   endConfiguration: e.target.value,
@@ -3383,7 +3327,7 @@ function FittingFormComponent({
                                 value={stub.flangeStandardId || ""}
                                 onChange={(e) => {
                                   const standardId = parseInt(e.target.value, 10) || undefined;
-                                  const newStubs = [...(entry.specs?.stubs || [])];
+                                  const newStubs = [...(specs.stubs || [])];
                                   newStubs[stubIndex] = {
                                     ...newStubs[stubIndex],
                                     flangeStandardId: standardId,
@@ -3418,7 +3362,7 @@ function FittingFormComponent({
                               <select
                                 value={stub.flangePressureClassId || ""}
                                 onChange={(e) => {
-                                  const newStubs = [...(entry.specs?.stubs || [])];
+                                  const newStubs = [...(specs.stubs || [])];
                                   newStubs[stubIndex] = {
                                     ...newStubs[stubIndex],
                                     flangePressureClassId:
@@ -3482,7 +3426,7 @@ function FittingFormComponent({
                                   <select
                                     value={stub.flangeTypeCode || ""}
                                     onChange={(e) => {
-                                      const newStubs = [...(entry.specs?.stubs || [])];
+                                      const newStubs = [...(specs.stubs || [])];
                                       newStubs[stubIndex] = {
                                         ...newStubs[stubIndex],
                                         flangeTypeCode: e.target.value || undefined,
@@ -3517,8 +3461,8 @@ function FittingFormComponent({
             </h4>
             <div className="space-y-3">
               {/* Branch Nominal Diameter - For Reducing Tees */}
-              {(entry.specs?.fittingType === "SHORT_REDUCING_TEE" ||
-                entry.specs?.fittingType === "GUSSET_REDUCING_TEE") && (
+              {(specs.fittingType === "SHORT_REDUCING_TEE" ||
+                  specs.fittingType === "GUSSET_REDUCING_TEE") && (
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                     Branch Nominal Diameter (mm) *
@@ -3526,7 +3470,7 @@ function FittingFormComponent({
                   </label>
                   {(() => {
                     const selectId = `fitting-branch-nb-${entry.id}`;
-                    const mainNB = entry.specs?.nominalDiameterMm || 0;
+                    const mainNB = specs.nominalDiameterMm || 0;
                     const sizes = [...SABS719_FITTING_SIZES].filter((nb) => nb < mainNB);
                     const options = sizes.map((nb: number) => ({
                       value: String(nb),
@@ -3537,7 +3481,7 @@ function FittingFormComponent({
                       <Select
                         id={selectId}
                         value={
-                          entry.specs?.branchNominalDiameterMm
+                          specs.branchNominalDiameterMm
                             ? String(entry.specs.branchNominalDiameterMm)
                             : ""
                         }
@@ -3565,7 +3509,7 @@ function FittingFormComponent({
                   )}
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     Branch/outlet size must be smaller than main pipe (
-                    {entry.specs?.nominalDiameterMm || "--"}mm)
+                    {specs.nominalDiameterMm || "--"}mm)
                   </p>
                 </div>
               )}
@@ -3579,14 +3523,12 @@ function FittingFormComponent({
               )}
 
               {/* Closure Length Field - Only shown when L/F configuration is selected */}
-              {hasLooseFlange(entry.specs?.pipeEndConfiguration || "") && (
+              {hasLooseFlange(specs.pipeEndConfiguration || "") && (
                 <div className="bg-purple-50 dark:bg-purple-900/30 p-3 rounded-md border border-purple-200 dark:border-purple-700">
                   <ClosureLengthSelector
-                    nominalBore={entry.specs?.nominalDiameterMm || 100}
-                    currentValue={entry.specs?.closureLengthMm || null}
-                    wallThickness={
-                      entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5
-                    }
+                      nominalBore={specs.nominalDiameterMm || 100}
+                      currentValue={specs.closureLengthMm || null}
+                      wallThickness={specs.wallThicknessMm || entry.calculation?.wallThicknessMm || 5}
                     onUpdate={(closureLength) =>
                       onUpdateEntry(entry.id, {
                         specs: { ...entry.specs, closureLengthMm: closureLength },
@@ -3644,33 +3586,32 @@ function FittingFormComponent({
                 </h4>
                 <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 p-3 rounded-md">
                   {(() => {
-                    const fittingType = entry.specs?.fittingType || "Tee";
-                    const nominalBore =
-                      entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 0;
+                    const fittingType = specs.fittingType || "Tee";
+                    const nominalBore = specs.nominalDiameterMm || specs.nominalBoreMm || 0;
 
                     const isReducerCalc = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
                       fittingType,
                     );
                     if (isReducerCalc) {
                       const largeNB = nominalBore;
-                      const smallNB = entry.specs?.smallNominalDiameterMm || largeNB / 2;
-                      const reducerLengthMm = entry.specs?.reducerLengthMm || 280;
-                      const quantity = entry.specs?.quantityValue || 1;
-                      const hasStub = entry.specs?.hasReducerStub || false;
-                      const stubNB = entry.specs?.reducerStubNbMm || 50;
+                      const smallNB = specs.smallNominalDiameterMm || largeNB / 2;
+                      const reducerLengthMm = specs.reducerLengthMm || 280;
+                      const quantity = specs.quantityValue || 1;
+                      const hasStub = specs.hasReducerStub || false;
+                      const stubNB = specs.reducerStubNbMm || 50;
                       const stubLocationMm = reducerLengthMm / 2;
 
                       const steelSpecId =
-                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                          specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                       const steelSpec = masterData?.steelSpecs?.find(
                         (s: any) => s.id === steelSpecId,
                       );
                       const steelSpecName = steelSpec?.steelSpecName || "";
 
                       const flangeStandardId =
-                        entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                          specs.flangeStandardId || globalSpecs?.flangeStandardId;
                       const flangePressureClassId =
-                        entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                          specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                       const flangeStandard = masterData.flangeStandards?.find(
                         (s: any) => s.id === flangeStandardId,
                       );
@@ -3679,10 +3620,9 @@ function FittingFormComponent({
                         (p: any) => p.id === flangePressureClassId,
                       );
                       const pressureClassDesignation = pressureClass?.designation || "";
-                      const flangeTypeCode =
-                        entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                      const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
-                      const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      const endConfig = specs.pipeEndConfiguration || "PE";
                       const hasLargeFlange =
                         endConfig === "FBE" ||
                         endConfig === "FOE" ||
@@ -3875,23 +3815,23 @@ function FittingFormComponent({
 
                     const isOffsetBendCalc = fittingType === "OFFSET_BEND";
                     if (isOffsetBendCalc) {
-                      const lengthA = entry.specs?.offsetLengthA || 0;
-                      const lengthB = entry.specs?.offsetLengthB || 0;
-                      const lengthC = entry.specs?.offsetLengthC || 0;
-                      const offsetAngle = entry.specs?.offsetAngleDegrees || 45;
-                      const quantity = entry.specs?.quantityValue || 1;
+                      const lengthA = specs.offsetLengthA || 0;
+                      const lengthB = specs.offsetLengthB || 0;
+                      const lengthC = specs.offsetLengthC || 0;
+                      const offsetAngle = specs.offsetAngleDegrees || 45;
+                      const quantity = specs.quantityValue || 1;
 
                       const steelSpecId =
-                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                          specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                       const steelSpec = masterData?.steelSpecs?.find(
                         (s: any) => s.id === steelSpecId,
                       );
                       const steelSpecName = steelSpec?.steelSpecName || "";
 
                       const flangeStandardId =
-                        entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                          specs.flangeStandardId || globalSpecs?.flangeStandardId;
                       const flangePressureClassId =
-                        entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                          specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                       const flangeStandard = masterData.flangeStandards?.find(
                         (s: any) => s.id === flangeStandardId,
                       );
@@ -3900,10 +3840,9 @@ function FittingFormComponent({
                         (p: any) => p.id === flangePressureClassId,
                       );
                       const pressureClassDesignation = pressureClass?.designation || "";
-                      const flangeTypeCode =
-                        entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                      const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
-                      const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      const endConfig = specs.pipeEndConfiguration || "PE";
                       const hasStartFlange =
                         endConfig === "FBE" ||
                         endConfig === "FOE" ||
@@ -4034,29 +3973,29 @@ function FittingFormComponent({
                     ].includes(fittingType);
                     // For unequal tees, use teeNominalDiameterMm; for reducing tees, use branchNominalDiameterMm
                     const branchNB =
-                      entry.specs?.branchNominalDiameterMm ||
-                      entry.specs?.branchNominalBoreMm ||
-                      entry.specs?.teeNominalDiameterMm ||
+                        specs.branchNominalDiameterMm ||
+                        specs.branchNominalBoreMm ||
+                        specs.teeNominalDiameterMm ||
                       nominalBore;
-                    const pipeALength = entry.specs?.pipeLengthAMm || 0;
-                    const pipeBLength = entry.specs?.pipeLengthBMm || 0;
-                    const teeHeight = entry.specs?.teeHeightMm || 0;
-                    const quantity = entry.specs?.quantityValue || 1;
+                    const pipeALength = specs.pipeLengthAMm || 0;
+                    const pipeBLength = specs.pipeLengthBMm || 0;
+                    const teeHeight = specs.teeHeightMm || 0;
+                    const quantity = specs.quantityValue || 1;
 
                     const flangeConfig = getFittingFlangeConfig(
-                      entry.specs?.pipeEndConfiguration || "PE",
-                      entry.specs?.foePosition,
+                        specs.pipeEndConfiguration || "PE",
+                        specs.foePosition,
                     );
                     const numFlanges =
                       (flangeConfig.hasInlet ? 1 : 0) +
                       (flangeConfig.hasOutlet ? 1 : 0) +
                       (flangeConfig.hasBranch ? 1 : 0);
 
-                    const schedule = entry.specs?.scheduleNumber || "";
+                    const schedule = specs.scheduleNumber || "";
                     const pipeWallThickness = entry.calculation?.wallThicknessMm;
 
                     const steelSpecId =
-                      entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                        specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                     const steelSpec = masterData?.steelSpecs?.find(
                       (s: any) => s.id === steelSpecId,
                     );
@@ -4099,8 +4038,8 @@ function FittingFormComponent({
                       (nominalBore ? nbToOdMap[nominalBore] || nominalBore * 1.05 : 0);
                     const branchOdMm = branchNB ? nbToOdMap[branchNB] || branchNB * 1.05 : 0;
                     const flangeConfigCalc = getFittingFlangeConfig(
-                      entry.specs?.pipeEndConfiguration || "PE",
-                      entry.specs?.foePosition,
+                        specs.pipeEndConfiguration || "PE",
+                        specs.foePosition,
                     );
                     const mainFlangeWeldCount =
                       (flangeConfigCalc.hasInlet && flangeConfigCalc.inletType !== "loose"
@@ -4170,9 +4109,9 @@ function FittingFormComponent({
                       (flangeConfig.branchType === "rotating" ? branchRingWeight : 0);
 
                     const flangeStandardId =
-                      entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                        specs.flangeStandardId || globalSpecs?.flangeStandardId;
                     const flangePressureClassId =
-                      entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                        specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                     const flangeStandard = masterData.flangeStandards?.find(
                       (s: any) => s.id === flangeStandardId,
                     );
@@ -4181,8 +4120,7 @@ function FittingFormComponent({
                       (p: any) => p.id === flangePressureClassId,
                     );
                     const pressureClassDesignation = pressureClass?.designation || "";
-                    const flangeTypeCode =
-                      entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
                     const mainFlangeWeightPerUnit =
                       nominalBore && pressureClassDesignation
@@ -4212,7 +4150,7 @@ function FittingFormComponent({
                       mainFlangeCount * mainFlangeWeightPerUnit +
                       branchFlangeCount * branchFlangeWeightPerUnit;
 
-                    const blankPositions = entry.specs?.blankFlangePositions || [];
+                    const blankPositions = specs.blankFlangePositions || [];
                     const blankFlangeCount = blankPositions.length;
                     const isSans1123 =
                       flangeStandardCode.includes("SABS 1123") ||
@@ -4237,9 +4175,9 @@ function FittingFormComponent({
                         ? getTackWeldWeight(nominalBore, tackWeldEnds)
                         : 0;
 
-                    const closureLengthMm = entry.specs?.closureLengthMm || 0;
+                    const closureLengthMm = specs.closureLengthMm || 0;
                     const closureWallThickness =
-                      entry.specs?.wallThicknessMm ||
+                        specs.wallThicknessMm ||
                       entry.calculation?.wallThicknessMm ||
                       pipeWallThickness ||
                       5;
@@ -4253,7 +4191,7 @@ function FittingFormComponent({
                           )
                         : 0;
 
-                    const stubsData = (entry.specs?.stubs || []).map((stub: any) => {
+                    const stubsData = (specs.stubs || []).map((stub: any) => {
                       const stubNB = stub.nominalBoreMm || 50;
                       const stubOdMm = nbToOdMap[stubNB] || stubNB * 1.05;
                       const stubWallThickness =
@@ -4577,7 +4515,7 @@ function FittingFormComponent({
                           const isLateralFitting = ["LATERAL", "REDUCING_LATERAL"].includes(
                             fittingType,
                           );
-                          const angleRange = entry.specs?.angleRange as string | undefined;
+                          const angleRange = specs.angleRange as string | undefined;
                           const isAngle45OrAbove = angleRange === "60-90" || angleRange === "45-59";
                           const junctionWeldLabel = isLateralFitting
                             ? isAngle45OrAbove
@@ -4739,7 +4677,7 @@ function FittingFormComponent({
             );
           }
 
-          const fittingType = entry.specs?.fittingType || "";
+          const fittingType = specs.fittingType || "";
           const isTeeType = [
             "SHORT_TEE",
             "GUSSET_TEE",
@@ -4797,7 +4735,7 @@ function FittingFormComponent({
             );
           }
 
-          if (!entry.specs?.nominalDiameterMm) {
+          if (!specs.nominalDiameterMm) {
             return (
               <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
                 Select nominal bore to see 3D preview
@@ -4814,27 +4752,25 @@ function FittingFormComponent({
             ? ("gusset" as const)
             : ("short" as const);
 
-          const nominalBore = entry.specs?.nominalDiameterMm || 500;
-          const branchNominalBore = entry.specs?.branchNominalDiameterMm;
-          const wallThickness =
-            entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 8;
+          const nominalBore = specs.nominalDiameterMm || 500;
+          const branchNominalBore = specs.branchNominalDiameterMm;
+          const wallThickness = specs.wallThicknessMm || entry.calculation?.wallThicknessMm || 8;
           const outerDiameter = entry.calculation?.outsideDiameterMm;
 
           const steelSpec = masterData.steelSpecs?.find(
-            (s: any) =>
-              s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId),
+              (s: any) => s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
           );
 
-          const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+          const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
           const flangePressureClassId =
-            entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+              specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
           const flangeStandard = masterData.flangeStandards?.find(
             (s: any) => s.id === flangeStandardId,
           );
           const pressureClass = masterData.pressureClasses?.find(
             (p: any) => p.id === flangePressureClassId,
           );
-          const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+          const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
           const flangeStandardName =
             flangeStandard?.code === "SABS_1123"
               ? "SABS 1123"
@@ -4843,17 +4779,17 @@ function FittingFormComponent({
                 : flangeStandard?.code?.replace(/_/g, " ") || "";
           const pressureClassDesignation = pressureClass?.designation || "";
 
-          const teeNominalBore = entry.specs?.teeNominalDiameterMm;
+          const teeNominalBore = specs.teeNominalDiameterMm;
 
           if (isLateralType && Lateral3DPreview) {
-            const angleRange = entry.specs?.angleRange as "60-90" | "45-59" | "30-44" | undefined;
+            const angleRange = specs.angleRange as "60-90" | "45-59" | "30-44" | undefined;
             const defaultAngles: Record<string, number> = {
               "60-90": 60,
               "45-59": 45,
               "30-44": 30,
             };
             const angleDegrees = angleRange ? defaultAngles[angleRange] || 60 : 60;
-            const stubsForPreview = (entry.specs?.stubs || []).map((stub: any) => {
+            const stubsForPreview = (specs.stubs || []).map((stub: any) => {
               const locationMap: Record<string, "branch" | "mainA" | "mainB"> = {
                 inlet: "mainA",
                 outlet: "mainB",
@@ -4873,10 +4809,10 @@ function FittingFormComponent({
               };
             });
             const lateralFlangeConfig = getFittingFlangeConfig(
-              entry.specs?.pipeEndConfiguration || "",
-              entry.specs?.foePosition,
+                specs.pipeEndConfiguration || "",
+                specs.foePosition,
             );
-            const blankPositions = entry.specs?.blankFlangePositions || [];
+            const blankPositions = specs.blankFlangePositions || [];
             return (
               <Lateral3DPreview
                 nominalBore={nominalBore}
@@ -4893,21 +4829,21 @@ function FittingFormComponent({
                 hasBlankInlet={blankPositions.includes("inlet")}
                 hasBlankOutlet={blankPositions.includes("outlet")}
                 hasBlankBranch={blankPositions.includes("branch")}
-                closureLengthMm={entry.specs?.closureLengthMm || 150}
+                closureLengthMm={specs.closureLengthMm || 150}
                 stubs={stubsForPreview}
               />
             );
           }
 
           if (isReducerType && Reducer3DPreview) {
-            const smallNominalBore = entry.specs?.smallNominalDiameterMm || nominalBore / 2;
-            const reducerLength = entry.specs?.reducerLengthMm || 280;
+            const smallNominalBore = specs.smallNominalDiameterMm || nominalBore / 2;
+            const reducerLength = specs.reducerLengthMm || 280;
             const reducerType = fittingType === "CON_REDUCER" ? "CONCENTRIC" : "ECCENTRIC";
-            const hasStub = entry.specs?.hasReducerStub || false;
-            const stubNb = entry.specs?.reducerStubNbMm || 50;
+            const hasStub = specs.hasReducerStub || false;
+            const stubNb = specs.reducerStubNbMm || 50;
             const stubLocation = reducerLength ? Math.round(reducerLength / 2) : undefined;
 
-            const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+            const endConfig = specs.pipeEndConfiguration || "PE";
             const hasLargeFlange =
               endConfig === "FBE" ||
               endConfig === "FOE" ||
@@ -4936,7 +4872,7 @@ function FittingFormComponent({
                   ? "loose"
                   : "fixed";
 
-            const blankPositions = entry.specs?.blankFlangePositions || [];
+            const blankPositions = specs.blankFlangePositions || [];
             return (
               <Reducer3DPreview
                 key={`reducer-${entry.id}-${reducerType}`}
@@ -4954,19 +4890,19 @@ function FittingFormComponent({
                 hasCenterStub={hasStub}
                 stubNominalBore={stubNb}
                 stubLocationMm={stubLocation}
-                stubAngleDegrees={entry.specs?.reducerStubAngleDegrees || 0}
-                closureLengthMm={entry.specs?.closureLengthMm || 150}
+                stubAngleDegrees={specs.reducerStubAngleDegrees || 0}
+                closureLengthMm={specs.closureLengthMm || 150}
               />
             );
           }
 
           if (isOffsetBendType && OffsetBend3DPreview) {
-            const lengthA = entry.specs?.offsetLengthA || 300;
-            const lengthB = entry.specs?.offsetLengthB || 200;
-            const lengthC = entry.specs?.offsetLengthC || 300;
-            const offsetAngle = entry.specs?.offsetAngleDegrees || 45;
+            const lengthA = specs.offsetLengthA || 300;
+            const lengthB = specs.offsetLengthB || 200;
+            const lengthC = specs.offsetLengthC || 300;
+            const offsetAngle = specs.offsetAngleDegrees || 45;
 
-            const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+            const endConfig = specs.pipeEndConfiguration || "PE";
             const hasStartFlange =
               endConfig === "FBE" ||
               endConfig === "FOE" ||
@@ -4994,7 +4930,7 @@ function FittingFormComponent({
                 hasEndFlange={hasEndFlange}
                 startFlangeType={offsetStartFlangeType}
                 endFlangeType={offsetEndFlangeType}
-                closureLengthMm={entry.specs?.closureLengthMm || 150}
+                closureLengthMm={specs.closureLengthMm || 150}
               />
             );
           }
@@ -5011,51 +4947,38 @@ function FittingFormComponent({
               outerDiameter={outerDiameter}
               wallThickness={wallThickness}
               teeType={teeType}
-              runLength={entry.specs?.pipeLengthAMm}
-              branchPositionMm={entry.specs?.stubLocation}
+              runLength={specs.pipeLengthAMm}
+              branchPositionMm={specs.stubLocation}
               materialName={steelSpec?.steelSpecName}
               hasInletFlange={
-                getFittingFlangeConfig(
-                  entry.specs?.pipeEndConfiguration || "",
-                  entry.specs?.foePosition,
-                ).hasInlet
+                getFittingFlangeConfig(specs.pipeEndConfiguration || "", specs.foePosition).hasInlet
               }
               hasOutletFlange={
-                getFittingFlangeConfig(
-                  entry.specs?.pipeEndConfiguration || "",
-                  entry.specs?.foePosition,
-                ).hasOutlet
+                getFittingFlangeConfig(specs.pipeEndConfiguration || "", specs.foePosition)
+                    .hasOutlet
               }
               hasBranchFlange={
-                getFittingFlangeConfig(
-                  entry.specs?.pipeEndConfiguration || "",
-                  entry.specs?.foePosition,
-                ).hasBranch
+                getFittingFlangeConfig(specs.pipeEndConfiguration || "", specs.foePosition)
+                    .hasBranch
               }
               inletFlangeType={
-                getFittingFlangeConfig(
-                  entry.specs?.pipeEndConfiguration || "",
-                  entry.specs?.foePosition,
-                ).inletType
+                getFittingFlangeConfig(specs.pipeEndConfiguration || "", specs.foePosition)
+                    .inletType
               }
               outletFlangeType={
-                getFittingFlangeConfig(
-                  entry.specs?.pipeEndConfiguration || "",
-                  entry.specs?.foePosition,
-                ).outletType
+                getFittingFlangeConfig(specs.pipeEndConfiguration || "", specs.foePosition)
+                    .outletType
               }
               branchFlangeType={
-                getFittingFlangeConfig(
-                  entry.specs?.pipeEndConfiguration || "",
-                  entry.specs?.foePosition,
-                ).branchType
+                getFittingFlangeConfig(specs.pipeEndConfiguration || "", specs.foePosition)
+                    .branchType
               }
-              closureLengthMm={entry.specs?.closureLengthMm || 150}
-              addBlankFlange={entry.specs?.addBlankFlange}
-              blankFlangeCount={entry.specs?.blankFlangeCount}
-              blankFlangePositions={entry.specs?.blankFlangePositions}
-              savedCameraPosition={entry.specs?.savedCameraPosition}
-              savedCameraTarget={entry.specs?.savedCameraTarget}
+              closureLengthMm={specs.closureLengthMm || 150}
+              addBlankFlange={specs.addBlankFlange}
+              blankFlangeCount={specs.blankFlangeCount}
+              blankFlangePositions={specs.blankFlangePositions}
+              savedCameraPosition={specs.savedCameraPosition}
+              savedCameraTarget={specs.savedCameraTarget}
               onCameraChange={(
                 position: [number, number, number],
                 target: [number, number, number],

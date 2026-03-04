@@ -134,12 +134,13 @@ function BendFormComponent({
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
 
-  const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-  const flangePressureClassId =
-    entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-  const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
-  const nominalBoreMm = entry.specs?.nominalBoreMm;
-  const bendEndConfiguration = entry.specs?.bendEndConfiguration || "PE";
+  const specs = entry.specs ?? {};
+
+  const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
+  const flangePressureClassId = specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
+  const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
+  const nominalBoreMm = specs.nominalBoreMm;
+  const bendEndConfiguration = specs.bendEndConfiguration || "PE";
   const hasFlanges = bendEndConfiguration !== "PE";
 
   const groupedSteelOptions = useMemo(
@@ -191,11 +192,11 @@ function BendFormComponent({
   ]);
 
   const steelSpec = masterData?.steelSpecs?.find(
-    (s: any) => s.id === (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId),
+    (s: any) => s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
   );
   const steelSpecName = steelSpec?.steelSpecName || "";
   const isSABS719 = steelSpecName.includes("SABS 719") || steelSpecName.includes("SANS 719");
-  const currentBendStyle = entry.specs?.bendStyle || (isSABS719 ? "segmented" : "pulled");
+  const currentBendStyle = specs.bendStyle || (isSABS719 ? "segmented" : "pulled");
   const isCurrentlySegmented = currentBendStyle === "segmented";
 
   const [lastFetchedParams, setLastFetchedParams] = useState<string | null>(null);
@@ -215,7 +216,7 @@ function BendFormComponent({
   const handleSteelSpecChange = useCallback(
     (value: string) => {
       const newSpecId = value ? Number(value) : undefined;
-      const nominalBore = entry.specs?.nominalBoreMm;
+      const nominalBore = specs.nominalBoreMm;
 
       const newSpec = newSpecId
         ? masterData.steelSpecs?.find((s: any) => s.id === newSpecId)
@@ -223,7 +224,7 @@ function BendFormComponent({
       const newSpecName = newSpec?.steelSpecName || "";
       const isNewSABS719 = newSpecName.includes("SABS 719") || newSpecName.includes("SANS 719");
 
-      const oldSpecId = entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+      const oldSpecId = specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
       const oldSpec = oldSpecId
         ? masterData.steelSpecs?.find((s: any) => s.id === oldSpecId)
         : null;
@@ -237,14 +238,14 @@ function BendFormComponent({
         specs: {
           ...entry.specs,
           steelSpecificationId: newSpecId,
-          scheduleNumber: specTypeChanged ? undefined : entry.specs?.scheduleNumber,
-          wallThicknessMm: specTypeChanged ? undefined : entry.specs?.wallThicknessMm,
-          bendType: specTypeChanged ? undefined : entry.specs?.bendType,
-          bendRadiusType: specTypeChanged ? undefined : entry.specs?.bendRadiusType,
-          bendDegrees: specTypeChanged ? undefined : entry.specs?.bendDegrees,
-          numberOfSegments: specTypeChanged ? undefined : entry.specs?.numberOfSegments,
-          centerToFaceMm: specTypeChanged ? undefined : entry.specs?.centerToFaceMm,
-          bendRadiusMm: specTypeChanged ? undefined : entry.specs?.bendRadiusMm,
+          scheduleNumber: specTypeChanged ? undefined : specs.scheduleNumber,
+          wallThicknessMm: specTypeChanged ? undefined : specs.wallThicknessMm,
+          bendType: specTypeChanged ? undefined : specs.bendType,
+          bendRadiusType: specTypeChanged ? undefined : specs.bendRadiusType,
+          bendDegrees: specTypeChanged ? undefined : specs.bendDegrees,
+          numberOfSegments: specTypeChanged ? undefined : specs.numberOfSegments,
+          centerToFaceMm: specTypeChanged ? undefined : specs.centerToFaceMm,
+          bendRadiusMm: specTypeChanged ? undefined : specs.bendRadiusMm,
           ...(clearPslFields
             ? {
                 pslLevel: null,
@@ -263,9 +264,9 @@ function BendFormComponent({
       if (
         !specTypeChanged &&
         nominalBore &&
-        entry.specs?.scheduleNumber &&
-        entry.specs?.bendType &&
-        entry.specs?.bendDegrees
+        specs.scheduleNumber &&
+        specs.bendType &&
+        specs.bendDegrees
       ) {
         debouncedCalculate();
       }
@@ -313,11 +314,11 @@ function BendFormComponent({
   const handleItemTypeChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const newItemType = e.target.value;
-      const oldItemType = entry.specs?.bendItemType || "BEND";
+      const oldItemType = specs.bendItemType || "BEND";
       const isFixed90 = newItemType === "SWEEP_TEE" || newItemType === "DUCKFOOT_BEND";
       const switchingToOrFromSweepTee =
         (newItemType === "SWEEP_TEE") !== (oldItemType === "SWEEP_TEE");
-      const currentNB = entry.specs?.nominalBoreMm;
+      const currentNB = specs.nominalBoreMm;
       const sweepTeeValidNBs = [
         200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900,
       ];
@@ -329,52 +330,50 @@ function BendFormComponent({
         specs: {
           ...entry.specs,
           bendItemType: newItemType,
-          bendDegrees: isFixed90 ? 90 : entry.specs?.bendDegrees,
-          bendEndConfiguration: switchingToOrFromSweepTee
-            ? "PE"
-            : entry.specs?.bendEndConfiguration,
-          nominalBoreMm: nbInvalidForSweepTee ? undefined : entry.specs?.nominalBoreMm,
-          numberOfTangents: hideTangentsAndStubs ? 0 : entry.specs?.numberOfTangents,
-          tangentLengths: hideTangentsAndStubs ? [] : entry.specs?.tangentLengths,
-          numberOfStubs: hideTangentsAndStubs ? 0 : entry.specs?.numberOfStubs,
-          stubs: hideTangentsAndStubs ? [] : entry.specs?.stubs,
-          closureLengthMm: hideTangentsAndStubs ? undefined : entry.specs?.closureLengthMm,
+          bendDegrees: isFixed90 ? 90 : specs.bendDegrees,
+          bendEndConfiguration: switchingToOrFromSweepTee ? "PE" : specs.bendEndConfiguration,
+          nominalBoreMm: nbInvalidForSweepTee ? undefined : specs.nominalBoreMm,
+          numberOfTangents: hideTangentsAndStubs ? 0 : specs.numberOfTangents,
+          tangentLengths: hideTangentsAndStubs ? [] : specs.tangentLengths,
+          numberOfStubs: hideTangentsAndStubs ? 0 : specs.numberOfStubs,
+          stubs: hideTangentsAndStubs ? [] : specs.stubs,
+          closureLengthMm: hideTangentsAndStubs ? undefined : specs.closureLengthMm,
           duckfootBasePlateXMm:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootBasePlateXMm : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootBasePlateXMm : undefined,
           duckfootBasePlateYMm:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootBasePlateYMm : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootBasePlateYMm : undefined,
           duckfootInletCentreHeightMm:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootInletCentreHeightMm : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootInletCentreHeightMm : undefined,
           duckfootRibThicknessT2Mm:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootRibThicknessT2Mm : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootRibThicknessT2Mm : undefined,
           duckfootPlateThicknessT1Mm:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootPlateThicknessT1Mm : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootPlateThicknessT1Mm : undefined,
           duckfootGussetPointDDegrees:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetPointDDegrees : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetPointDDegrees : undefined,
           duckfootGussetPointCDegrees:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetPointCDegrees : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetPointCDegrees : undefined,
           duckfootGussetCount:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetCount : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetCount : undefined,
           duckfootGussetPlacement:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetPlacement : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetPlacement : undefined,
           duckfootGussetThicknessMm:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetThicknessMm : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetThicknessMm : undefined,
           duckfootGussetMaterialGrade:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetMaterialGrade : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetMaterialGrade : undefined,
           duckfootGussetHeelOffsetMm:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetHeelOffsetMm : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetHeelOffsetMm : undefined,
           duckfootGussetAngleDegrees:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetAngleDegrees : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetAngleDegrees : undefined,
           duckfootGussetWeldType:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetWeldType : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetWeldType : undefined,
           duckfootGussetWeldElectrode:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetWeldElectrode : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetWeldElectrode : undefined,
           duckfootGussetPreheatTempC:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetPreheatTempC : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetPreheatTempC : undefined,
           duckfootGussetPwhtRequired:
-            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetPwhtRequired : undefined,
+            newItemType === "DUCKFOOT_BEND" ? specs.duckfootGussetPwhtRequired : undefined,
           sweepTeePipeALengthMm:
-            newItemType === "SWEEP_TEE" ? entry.specs?.sweepTeePipeALengthMm : undefined,
+            newItemType === "SWEEP_TEE" ? specs.sweepTeePipeALengthMm : undefined,
         },
       };
       updatedEntry.description = generateItemDescription(updatedEntry);
@@ -385,9 +384,9 @@ function BendFormComponent({
 
   const handleTangentCountChange = useCallback(
     (count: number, newLengths: number[]) => {
-      const currentNumStubs = entry.specs?.numberOfStubs || 0;
+      const currentNumStubs = specs.numberOfStubs || 0;
       const adjustedNumStubs = count < 2 && currentNumStubs > 1 ? 1 : currentNumStubs;
-      const currentStubs = entry.specs?.stubs || [];
+      const currentStubs = specs.stubs || [];
       const adjustedStubs =
         adjustedNumStubs < currentNumStubs ? currentStubs.slice(0, adjustedNumStubs) : currentStubs;
       const updatedEntry = {
@@ -402,12 +401,7 @@ function BendFormComponent({
       };
       updatedEntry.description = generateItemDescription(updatedEntry);
       onUpdateEntry(entry.id, updatedEntry);
-      if (
-        entry.specs?.nominalBoreMm &&
-        entry.specs?.scheduleNumber &&
-        entry.specs?.bendType &&
-        entry.specs?.bendDegrees
-      ) {
+      if (specs.nominalBoreMm && specs.scheduleNumber && specs.bendType && specs.bendDegrees) {
         debouncedCalculate();
       }
     },
@@ -416,17 +410,12 @@ function BendFormComponent({
 
   const handleTangentLengthChange = useCallback(
     (index: number, length: number) => {
-      const lengths = [...(entry.specs?.tangentLengths || [])];
+      const lengths = [...(specs.tangentLengths || [])];
       lengths[index] = length;
       onUpdateEntry(entry.id, {
         specs: { ...entry.specs, tangentLengths: lengths },
       });
-      if (
-        entry.specs?.nominalBoreMm &&
-        entry.specs?.scheduleNumber &&
-        entry.specs?.bendType &&
-        entry.specs?.bendDegrees
-      ) {
+      if (specs.nominalBoreMm && specs.scheduleNumber && specs.bendType && specs.bendDegrees) {
         debouncedCalculate();
       }
     },
@@ -437,10 +426,10 @@ function BendFormComponent({
 
   useEffect(() => {
     const fetchAndSetPipeALength = async () => {
-      if (entry.specs?.bendItemType !== "SWEEP_TEE") {
+      if (specs.bendItemType !== "SWEEP_TEE") {
         return;
       }
-      if (!entry.specs?.nominalBoreMm) {
+      if (!specs.nominalBoreMm) {
         return;
       }
 
@@ -459,10 +448,10 @@ function BendFormComponent({
       };
 
       const sweepTeeRadiusType = isCurrentlySegmented
-        ? entry.specs?.bendRadiusType
+        ? specs.bendRadiusType
           ? segmentedToSweepTeeMap[entry.specs.bendRadiusType]
           : null
-        : entry.specs?.bendType
+        : specs.bendType
           ? pulledToSweepTeeMap[entry.specs.bendType]
           : null;
 
@@ -494,10 +483,10 @@ function BendFormComponent({
 
     fetchAndSetPipeALength();
   }, [
-    entry.specs?.bendItemType,
-    entry.specs?.nominalBoreMm,
-    entry.specs?.bendRadiusType,
-    entry.specs?.bendType,
+    specs.bendItemType,
+    specs.nominalBoreMm,
+    specs.bendRadiusType,
+    specs.bendType,
     isCurrentlySegmented,
     lastFetchedParams,
     entry.id,
@@ -505,12 +494,15 @@ function BendFormComponent({
     onUpdateEntry,
   ]);
 
+  const stub0 = specs.stubs?.[0] ?? {};
+  const stub1 = specs.stubs?.[1] ?? {};
+
   return (
     <>
       <SplitPaneLayout
         entryId={entry.id}
         itemType="bend"
-        showSplitToggle={entry.specs?.nominalBoreMm && entry.specs?.bendDegrees}
+        showSplitToggle={specs.nominalBoreMm && specs.bendDegrees}
         formContent={
           <>
             {/* Material Type Badge for non-steel materials */}
@@ -562,8 +554,8 @@ function BendFormComponent({
               color="purple"
               entryId={entry.id}
               idPrefix="bend"
-              workingPressureBar={entry.specs?.workingPressureBar}
-              workingTemperatureC={entry.specs?.workingTemperatureC}
+              workingPressureBar={specs.workingPressureBar}
+              workingTemperatureC={specs.workingTemperatureC}
               globalPressureBar={globalSpecs?.workingPressureBar}
               globalTemperatureC={globalSpecs?.workingTemperatureC}
               onPressureChange={handleWorkingPressureChange}
@@ -580,7 +572,7 @@ function BendFormComponent({
                     <select
                       id={`bend-item-type-${entry.id}`}
                       data-nix-target="bend-item-type"
-                      value={entry.specs?.bendItemType || "BEND"}
+                      value={specs.bendItemType || "BEND"}
                       onChange={handleItemTypeChange}
                       className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                     >
@@ -597,7 +589,7 @@ function BendFormComponent({
                   <div>
                     {(() => {
                       const globalSpecId = globalSpecs?.steelSpecificationId;
-                      const effectiveSpecId = entry.specs?.steelSpecificationId || globalSpecId;
+                      const effectiveSpecId = specs.steelSpecificationId || globalSpecId;
                       const isSteelFromGlobal = globalSpecId && effectiveSpecId === globalSpecId;
                       const isSteelOverride = globalSpecId && effectiveSpecId !== globalSpecId;
                       const selectId = `bend-steel-spec-${entry.id}`;
@@ -610,9 +602,9 @@ function BendFormComponent({
                       const defaultSelectClass = "w-full";
 
                       const effectivePressure =
-                        entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
+                        specs.workingPressureBar || globalSpecs?.workingPressureBar;
                       const effectiveTemp =
-                        entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC;
+                        specs.workingTemperatureC || globalSpecs?.workingTemperatureC;
                       const selectedSpec = masterData.steelSpecs?.find(
                         (s: any) => s.id === effectiveSpecId,
                       );
@@ -669,16 +661,13 @@ function BendFormComponent({
             <MaterialSuitabilityWarning
               color="purple"
               steelSpecName={(() => {
-                const steelSpecId =
-                  entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                 return (
                   masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || ""
                 );
               })()}
-              effectivePressure={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar}
-              effectiveTemperature={
-                entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC
-              }
+              effectivePressure={specs.workingPressureBar || globalSpecs?.workingPressureBar}
+              effectiveTemperature={specs.workingTemperatureC || globalSpecs?.workingTemperatureC}
               allSteelSpecs={masterData.steelSpecs || []}
               onSelectSpec={(spec) =>
                 onUpdateEntry(entry.id, {
@@ -688,12 +677,11 @@ function BendFormComponent({
             />
             {/* PSL Level and CVN Fields - Only for API 5L specs */}
             {(() => {
-              const steelSpecId =
-                entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+              const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
               const steelSpecName =
                 masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || "";
               const showPslFields = isApi5LSpec(steelSpecName);
-              const pslLevel = entry.specs?.pslLevel;
+              const pslLevel = specs.pslLevel;
               const showCvnFields = pslLevel === "PSL2";
 
               if (!showPslFields) return null;
@@ -742,7 +730,7 @@ function BendFormComponent({
                             type="number"
                             step="0.1"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.cvnTestTemperatureC ?? ""}
+                            value={specs.cvnTestTemperatureC ?? ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -765,7 +753,7 @@ function BendFormComponent({
                             step="0.1"
                             min="0"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.cvnAverageJoules ?? ""}
+                            value={specs.cvnAverageJoules ?? ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -786,7 +774,7 @@ function BendFormComponent({
                             step="0.1"
                             min="0"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.cvnMinimumJoules ?? ""}
+                            value={specs.cvnMinimumJoules ?? ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -814,7 +802,7 @@ function BendFormComponent({
                         <input
                           type="text"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={entry.specs?.heatNumber || ""}
+                          value={specs.heatNumber || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -833,7 +821,7 @@ function BendFormComponent({
                         <input
                           type="text"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={entry.specs?.mtcReference || ""}
+                          value={specs.mtcReference || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -857,7 +845,7 @@ function BendFormComponent({
                         <input
                           type="checkbox"
                           id={`nace-compliant-${entry.id}`}
-                          checked={entry.specs?.naceCompliant || false}
+                          checked={specs.naceCompliant || false}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -881,7 +869,7 @@ function BendFormComponent({
                         </label>
                         <select
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={entry.specs?.h2sZone || ""}
+                          value={specs.h2sZone || ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -906,7 +894,7 @@ function BendFormComponent({
                           step="0.1"
                           max="70"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                          value={entry.specs?.maxHardnessHrc ?? ""}
+                          value={specs.maxHardnessHrc ?? ""}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -922,7 +910,7 @@ function BendFormComponent({
                         <input
                           type="checkbox"
                           id={`ssc-tested-${entry.id}`}
-                          checked={entry.specs?.sscTested || false}
+                          checked={specs.sscTested || false}
                           onChange={(e) =>
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -942,8 +930,8 @@ function BendFormComponent({
                       </div>
                     </div>
                     {/* Sour service validation warning */}
-                    {entry.specs?.naceCompliant &&
-                      entry.specs?.maxHardnessHrc &&
+                    {specs.naceCompliant &&
+                      specs.maxHardnessHrc &&
                       entry.specs.maxHardnessHrc > 22 && (
                         <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
                           Sour service materials require hardness ≤22 HRC per NACE MR0175
@@ -957,7 +945,7 @@ function BendFormComponent({
             {/* Conditional Bend Layout - SABS 719 vs SABS 62 */}
             {(() => {
               const effectiveSteelSpecId =
-                entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
               const steelSpec = masterData.steelSpecs?.find(
                 (s: any) => s.id === effectiveSteelSpecId,
               );
@@ -972,13 +960,12 @@ function BendFormComponent({
               const isPulledOnly = allowedTypes.length === 1 && allowedTypes[0] === "pulled";
 
               // Determine effective bend style (explicit selection or default from spec)
-              const effectiveBendStyle =
-                entry.specs?.bendStyle || (isSABS719 ? "segmented" : "pulled");
+              const effectiveBendStyle = specs.bendStyle || (isSABS719 ? "segmented" : "pulled");
               const isSegmentedStyle = effectiveBendStyle === "segmented";
 
               // Common Steel Spec dropdown (used in both layouts)
               const steelGlobalSpecId = globalSpecs?.steelSpecificationId;
-              const steelEffectiveSpecId = entry.specs?.steelSpecificationId || steelGlobalSpecId;
+              const steelEffectiveSpecId = specs.steelSpecificationId || steelGlobalSpecId;
               const isSteelFromGlobal2 =
                 steelGlobalSpecId && steelEffectiveSpecId === steelGlobalSpecId;
               const isSteelOverride2 =
@@ -992,9 +979,8 @@ function BendFormComponent({
               const steelDefaultSelectClass = "w-full";
 
               const effectivePressure2 =
-                entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
-              const effectiveTemp2 =
-                entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC;
+                specs.workingPressureBar || globalSpecs?.workingPressureBar;
+              const effectiveTemp2 = specs.workingTemperatureC || globalSpecs?.workingTemperatureC;
               const selectedSteelSpec2 = masterData.steelSpecs?.find(
                 (s: any) => s.id === steelEffectiveSpecId,
               );
@@ -1039,7 +1025,7 @@ function BendFormComponent({
                         className={steelSelectClass2}
                         onChange={(value) => {
                           const newSpecId = value ? Number(value) : undefined;
-                          const nominalBore = entry.specs?.nominalBoreMm;
+                          const nominalBore = specs.nominalBoreMm;
 
                           const newSpec = newSpecId
                             ? masterData.steelSpecs?.find((s: any) => s.id === newSpecId)
@@ -1049,7 +1035,7 @@ function BendFormComponent({
                             newSpecName.includes("SABS 719") || newSpecName.includes("SANS 719");
 
                           const oldSpecId =
-                            entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                            specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                           const oldSpec = oldSpecId
                             ? masterData.steelSpecs?.find((s: any) => s.id === oldSpecId)
                             : null;
@@ -1133,18 +1119,14 @@ function BendFormComponent({
                               nominalBoreMm: keepNB ? nominalBore : undefined,
                               scheduleNumber: keepNB ? matchedSchedule : undefined,
                               wallThicknessMm: keepNB ? matchedWT : undefined,
-                              bendType: specTypeChanged ? undefined : entry.specs?.bendType,
-                              bendRadiusType: specTypeChanged
-                                ? undefined
-                                : entry.specs?.bendRadiusType,
-                              bendDegrees: specTypeChanged ? undefined : entry.specs?.bendDegrees,
+                              bendType: specTypeChanged ? undefined : specs.bendType,
+                              bendRadiusType: specTypeChanged ? undefined : specs.bendRadiusType,
+                              bendDegrees: specTypeChanged ? undefined : specs.bendDegrees,
                               numberOfSegments: specTypeChanged
                                 ? undefined
-                                : entry.specs?.numberOfSegments,
-                              centerToFaceMm: specTypeChanged
-                                ? undefined
-                                : entry.specs?.centerToFaceMm,
-                              bendRadiusMm: specTypeChanged ? undefined : entry.specs?.bendRadiusMm,
+                                : specs.numberOfSegments,
+                              centerToFaceMm: specTypeChanged ? undefined : specs.centerToFaceMm,
+                              bendRadiusMm: specTypeChanged ? undefined : specs.bendRadiusMm,
                             },
                           };
                           updatedEntry.description = generateItemDescription(updatedEntry);
@@ -1189,7 +1171,7 @@ function BendFormComponent({
                         (s: any) => s.id === effectiveSteelSpecId,
                       );
                       const steelSpecName = steelSpec?.steelSpecName || "";
-                      const isSweepTeeItem = entry.specs?.bendItemType === "SWEEP_TEE";
+                      const isSweepTeeItem = specs.bendItemType === "SWEEP_TEE";
 
                       if (isSweepTeeItem) {
                         const sweepTeeNBs = [
@@ -1213,7 +1195,7 @@ function BendFormComponent({
                       }));
                     })();
 
-                    const selectedNB = entry.specs?.nominalBoreMm;
+                    const selectedNB = specs.nominalBoreMm;
                     const nbValid = selectedNB
                       ? isNominalBoreValidForSpec(steelSpecName, selectedNB)
                       : true;
@@ -1223,9 +1205,7 @@ function BendFormComponent({
                       <>
                         <Select
                           id={selectId}
-                          value={
-                            entry.specs?.nominalBoreMm ? String(entry.specs.nominalBoreMm) : ""
-                          }
+                          value={specs.nominalBoreMm ? String(entry.specs.nominalBoreMm) : ""}
                           onChange={(value) => {
                             const nominalBore = parseInt(value, 10);
                             if (!nominalBore) return;
@@ -1290,8 +1270,8 @@ function BendFormComponent({
 
                             if (
                               isSegmentedStyle &&
-                              entry.specs?.bendRadiusType &&
-                              entry.specs?.numberOfSegments
+                              specs.bendRadiusType &&
+                              specs.numberOfSegments
                             ) {
                               const cfResult = getSABS719CenterToFaceBySegments(
                                 entry.specs.bendRadiusType,
@@ -1304,11 +1284,7 @@ function BendFormComponent({
                               }
                             }
 
-                            if (
-                              !isSegmentedStyle &&
-                              entry.specs?.bendType &&
-                              entry.specs?.bendDegrees
-                            ) {
+                            if (!isSegmentedStyle && specs.bendType && specs.bendDegrees) {
                               const bendType = entry.specs.bendType as SABS62BendType;
                               newCenterToFace = sabs62CFInterpolated(
                                 bendType,
@@ -1318,7 +1294,7 @@ function BendFormComponent({
                               newBendRadius = SABS62_BEND_RADIUS[bendType]?.[nominalBore];
                             }
 
-                            const isSweepTee = entry.specs?.bendItemType === "SWEEP_TEE";
+                            const isSweepTee = specs.bendItemType === "SWEEP_TEE";
                             const updatedEntry: any = {
                               ...entry,
                               specs: {
@@ -1330,7 +1306,7 @@ function BendFormComponent({
                                 bendRadiusMm: newBendRadius,
                                 sweepTeePipeALengthMm: isSweepTee
                                   ? undefined
-                                  : entry.specs?.sweepTeePipeALengthMm,
+                                  : specs.sweepTeePipeALengthMm,
                               },
                             };
                             if (isSweepTee) {
@@ -1341,8 +1317,8 @@ function BendFormComponent({
                             onUpdateEntry(entry.id, updatedEntry);
 
                             const hasBendSpecs = isSegmentedStyle
-                              ? entry.specs?.bendRadiusType && entry.specs?.bendDegrees
-                              : entry.specs?.bendType && entry.specs?.bendDegrees;
+                              ? specs.bendRadiusType && specs.bendDegrees
+                              : specs.bendType && specs.bendDegrees;
                             if (matchedSchedule && hasBendSpecs) {
                               debouncedCalculate();
                             }
@@ -1379,16 +1355,16 @@ function BendFormComponent({
                     >
                       ?
                     </span>
-                    {entry.specs?.scheduleNumber && globalSpecs?.workingPressureBar && (
+                    {specs.scheduleNumber && globalSpecs?.workingPressureBar && (
                       <span className="text-green-600 text-xs ml-2">(Auto)</span>
                     )}
                   </label>
                   {(() => {
                     const selectId = `bend-schedule-${entry.id}`;
                     const schedEffectiveSpecId =
-                      entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                      specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                     const schedules = getScheduleListForSpec(
-                      entry.specs?.nominalBoreMm || 0,
+                      specs.nominalBoreMm || 0,
                       schedEffectiveSpecId,
                       steelSpecName,
                     );
@@ -1400,7 +1376,7 @@ function BendFormComponent({
                     return (
                       <Select
                         id={selectId}
-                        value={entry.specs?.scheduleNumber || ""}
+                        value={specs.scheduleNumber || ""}
                         onChange={(schedule) => {
                           if (!schedule) return;
                           const scheduleData = schedules.find(
@@ -1418,14 +1394,12 @@ function BendFormComponent({
                           onUpdateEntry(entry.id, updatedEntry);
                         }}
                         options={options}
-                        placeholder={
-                          entry.specs?.nominalBoreMm ? "Select Schedule" : "Select NB first"
-                        }
-                        disabled={!entry.specs?.nominalBoreMm}
+                        placeholder={specs.nominalBoreMm ? "Select Schedule" : "Select NB first"}
+                        disabled={!specs.nominalBoreMm}
                       />
                     );
                   })()}
-                  {entry.specs?.wallThicknessMm && (
+                  {specs.wallThicknessMm && (
                     <p className="text-xs text-green-700 mt-0.5">
                       WT: {entry.specs.wallThicknessMm}mm
                     </p>
@@ -1460,21 +1434,20 @@ function BendFormComponent({
                       },
                       { value: "pulled", label: "Pulled Bend" },
                     ];
-                    const currentStyle =
-                      entry.specs?.bendStyle || (isSABS719 ? "segmented" : "pulled");
+                    const currentStyle = specs.bendStyle || (isSABS719 ? "segmented" : "pulled");
 
                     return (
                       <Select
                         id={selectId}
                         value={currentStyle}
                         onChange={(style) => {
-                          const currentBendType = entry.specs?.bendType;
-                          const currentRadiusType = entry.specs?.bendRadiusType;
+                          const currentBendType = specs.bendType;
+                          const currentRadiusType = specs.bendRadiusType;
                           const switchingToSegmented = style === "segmented";
                           const switchingToPulled = style === "pulled";
-                          const nominalBore = entry.specs?.nominalBoreMm;
-                          const bendDegrees = entry.specs?.bendDegrees;
-                          const numberOfSegments = entry.specs?.numberOfSegments;
+                          const nominalBore = specs.nominalBoreMm;
+                          const bendDegrees = specs.bendDegrees;
+                          const numberOfSegments = specs.numberOfSegments;
 
                           let newBendType: string | undefined;
                           let newBendRadiusType: string | undefined;
@@ -1525,7 +1498,7 @@ function BendFormComponent({
                               bendType: switchingToPulled ? newBendType : undefined,
                               bendRadiusType: switchingToSegmented ? newBendRadiusType : undefined,
                               numberOfSegments: switchingToSegmented
-                                ? entry.specs?.numberOfSegments
+                                ? specs.numberOfSegments
                                 : undefined,
                               centerToFaceMm: newCenterToFace,
                               bendRadiusMm: newBendRadius,
@@ -1534,7 +1507,7 @@ function BendFormComponent({
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
 
-                          if (nominalBore && entry.specs?.scheduleNumber && bendDegrees) {
+                          if (nominalBore && specs.scheduleNumber && bendDegrees) {
                             debouncedCalculate();
                           }
                         }}
@@ -1571,11 +1544,10 @@ function BendFormComponent({
                     return (
                       <Select
                         id={selectId}
-                        value={entry.specs?.bendType || ""}
+                        value={specs.bendType || ""}
                         onChange={(bendType) => {
-                          const isSweepTee = entry.specs?.bendItemType === "SWEEP_TEE";
-                          const isFixed90 =
-                            isSweepTee || entry.specs?.bendItemType === "DUCKFOOT_BEND";
+                          const isSweepTee = specs.bendItemType === "SWEEP_TEE";
+                          const isFixed90 = isSweepTee || specs.bendItemType === "DUCKFOOT_BEND";
                           const updatedEntry: any = {
                             ...entry,
                             specs: {
@@ -1587,7 +1559,7 @@ function BendFormComponent({
                               bendRadiusMm: undefined,
                               sweepTeePipeALengthMm: isSweepTee
                                 ? undefined
-                                : entry.specs?.sweepTeePipeALengthMm,
+                                : specs.sweepTeePipeALengthMm,
                             },
                           };
                           if (isSweepTee) {
@@ -1627,9 +1599,9 @@ function BendFormComponent({
                     return (
                       <Select
                         id={selectId}
-                        value={entry.specs?.bendRadiusType || ""}
+                        value={specs.bendRadiusType || ""}
                         onChange={(radiusType) => {
-                          const isSweepTee = entry.specs?.bendItemType === "SWEEP_TEE";
+                          const isSweepTee = specs.bendItemType === "SWEEP_TEE";
                           const updatedEntry: any = {
                             ...entry,
                             specs: {
@@ -1642,7 +1614,7 @@ function BendFormComponent({
                               bendDegrees: isSweepTee ? 90 : undefined,
                               sweepTeePipeALengthMm: isSweepTee
                                 ? undefined
-                                : entry.specs?.sweepTeePipeALengthMm,
+                                : specs.sweepTeePipeALengthMm,
                             },
                           };
                           if (isSweepTee) {
@@ -1661,18 +1633,17 @@ function BendFormComponent({
               );
 
               // Angle Dropdown - uses different angle lists based on bend style
-              const pulledBendType = entry.specs?.bendType as SABS62BendType | undefined;
-              const currentNB = entry.specs?.nominalBoreMm;
+              const pulledBendType = specs.bendType as SABS62BendType | undefined;
+              const currentNB = specs.nominalBoreMm;
               const availableAngles =
                 !isSegmentedStyle && pulledBendType && currentNB
                   ? sabs62AvailableAngles(pulledBendType, currentNB)
                   : [];
 
               const isFixedAngle90 =
-                entry.specs?.bendItemType === "SWEEP_TEE" ||
-                entry.specs?.bendItemType === "DUCKFOOT_BEND";
+                specs.bendItemType === "SWEEP_TEE" || specs.bendItemType === "DUCKFOOT_BEND";
               const isMissingBendAngle =
-                entry.specs?.nominalBoreMm && !entry.specs?.bendDegrees && !isFixedAngle90;
+                specs.nominalBoreMm && !specs.bendDegrees && !isFixedAngle90;
 
               const AngleDropdown = (
                 <div
@@ -1732,7 +1703,7 @@ function BendFormComponent({
                       return (
                         <Select
                           id={selectId}
-                          value={entry.specs?.bendDegrees ? String(entry.specs.bendDegrees) : ""}
+                          value={specs.bendDegrees ? String(entry.specs.bendDegrees) : ""}
                           onChange={(value) => {
                             const rawDegrees = value ? parseFloat(value) : undefined;
                             const bendDegrees =
@@ -1744,8 +1715,8 @@ function BendFormComponent({
                             if (
                               !isSegmentedStyle &&
                               bendDegrees &&
-                              entry.specs?.nominalBoreMm &&
-                              entry.specs?.bendType
+                              specs.nominalBoreMm &&
+                              specs.bendType
                             ) {
                               const bendType = entry.specs.bendType as SABS62BendType;
                               centerToFaceMm = sabs62CFInterpolated(
@@ -1765,16 +1736,12 @@ function BendFormComponent({
                                 bendRadiusMm,
                                 numberOfSegments: isSegmentedStyle
                                   ? undefined
-                                  : entry.specs?.numberOfSegments,
+                                  : specs.numberOfSegments,
                               },
                             };
                             updatedEntry.description = generateItemDescription(updatedEntry);
                             onUpdateEntry(entry.id, updatedEntry);
-                            if (
-                              bendDegrees &&
-                              entry.specs?.nominalBoreMm &&
-                              entry.specs?.scheduleNumber
-                            ) {
+                            if (bendDegrees && specs.nominalBoreMm && specs.scheduleNumber) {
                               debouncedCalculate();
                             }
                           }}
@@ -1793,20 +1760,20 @@ function BendFormComponent({
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                     C/F (mm)
-                    {entry.specs?.centerToFaceMm && (
+                    {specs.centerToFaceMm && (
                       <span className="text-green-600 text-xs ml-1">(Auto)</span>
                     )}
                   </label>
                   <input
                     type="text"
                     value={
-                      entry.specs?.centerToFaceMm
+                      specs.centerToFaceMm
                         ? `${Number(entry.specs.centerToFaceMm).toFixed(1)} mm`
                         : "Select specs"
                     }
                     disabled
                     className={`w-full px-2 py-1.5 border rounded text-xs cursor-not-allowed ${
-                      entry.specs?.centerToFaceMm
+                      specs.centerToFaceMm
                         ? "bg-green-50 border-green-300 text-green-900 font-medium"
                         : "bg-gray-100 border-gray-300 text-gray-600"
                     }`}
@@ -1818,9 +1785,9 @@ function BendFormComponent({
               const SegmentsDropdown = (
                 <div>
                   {(() => {
-                    const bendRadiusType = entry.specs?.bendRadiusType;
-                    const bendDeg = entry.specs?.bendDegrees || 0;
-                    const nominalBore = entry.specs?.nominalBoreMm || 0;
+                    const bendRadiusType = specs.bendRadiusType;
+                    const bendDeg = specs.bendDegrees || 0;
+                    const nominalBore = specs.nominalBoreMm || 0;
 
                     if (!bendRadiusType || bendDeg <= 0) {
                       return (
@@ -1856,11 +1823,11 @@ function BendFormComponent({
                       return [5, 6, 7];
                     };
 
-                    const isSweepTee = entry.specs?.bendItemType === "SWEEP_TEE";
+                    const isSweepTee = specs.bendItemType === "SWEEP_TEE";
                     const segmentOptions = getSegmentOptions(bendDeg, bendRadiusType, isSweepTee);
                     const isAutoFill = bendDeg <= 11;
 
-                    if (isAutoFill && entry.specs?.numberOfSegments !== 2) {
+                    if (isAutoFill && specs.numberOfSegments !== 2) {
                       setTimeout(() => {
                         const cfResult = getSABS719CenterToFaceBySegments(
                           bendRadiusType,
@@ -1878,7 +1845,7 @@ function BendFormComponent({
                         };
                         updatedEntry.description = generateItemDescription(updatedEntry);
                         onUpdateEntry(entry.id, updatedEntry);
-                        if (nominalBore && entry.specs?.scheduleNumber) {
+                        if (nominalBore && specs.scheduleNumber) {
                           debouncedCalculate();
                         }
                       }, 50);
@@ -1916,7 +1883,7 @@ function BendFormComponent({
                           </span>
                         </label>
                         <select
-                          value={entry.specs?.numberOfSegments || ""}
+                          value={specs.numberOfSegments || ""}
                           onChange={(e) => {
                             const segments = e.target.value
                               ? parseInt(e.target.value, 10)
@@ -1945,7 +1912,7 @@ function BendFormComponent({
                             };
                             updatedEntry.description = generateItemDescription(updatedEntry);
                             onUpdateEntry(entry.id, updatedEntry);
-                            if (segments && nominalBore && entry.specs?.scheduleNumber) {
+                            if (segments && nominalBore && specs.scheduleNumber) {
                               debouncedCalculate();
                             }
                           }}
@@ -1976,7 +1943,7 @@ function BendFormComponent({
                   </label>
                   <input
                     type="number"
-                    value={entry.specs?.quantityValue ?? ""}
+                    value={specs.quantityValue ?? ""}
                     onChange={(e) => {
                       if (isUnregisteredCustomer) {
                         const rect = e.target.getBoundingClientRect();
@@ -1995,10 +1962,10 @@ function BendFormComponent({
                         specs: { ...entry.specs, quantityValue: quantity },
                       });
                       if (
-                        entry.specs?.nominalBoreMm &&
-                        entry.specs?.scheduleNumber &&
-                        entry.specs?.bendType &&
-                        entry.specs?.bendDegrees
+                        specs.nominalBoreMm &&
+                        specs.scheduleNumber &&
+                        specs.bendType &&
+                        specs.bendDegrees
                       ) {
                         debouncedCalculate();
                       }
@@ -2037,12 +2004,12 @@ function BendFormComponent({
                       {/* Segmented: Angle | Segments | C/F | (Pipe A Length for Sweep Tee) | Quantity */}
                       <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
                         <div
-                          className={`grid grid-cols-1 sm:grid-cols-2 ${entry.specs?.bendItemType === "SWEEP_TEE" ? "md:grid-cols-5" : "md:grid-cols-4"} gap-3`}
+                          className={`grid grid-cols-1 sm:grid-cols-2 ${specs.bendItemType === "SWEEP_TEE" ? "md:grid-cols-5" : "md:grid-cols-4"} gap-3`}
                         >
                           {AngleDropdown}
                           {SegmentsDropdown}
                           {CFDisplay}
-                          {entry.specs?.bendItemType === "SWEEP_TEE" && (
+                          {specs.bendItemType === "SWEEP_TEE" && (
                             <div>
                               <div className="flex items-center justify-between mb-1">
                                 <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100">
@@ -2064,7 +2031,7 @@ function BendFormComponent({
                               </div>
                               <input
                                 type="number"
-                                value={entry.specs?.sweepTeePipeALengthMm || ""}
+                                value={specs.sweepTeePipeALengthMm || ""}
                                 onChange={(e) => {
                                   const value = e.target.value
                                     ? parseFloat(e.target.value)
@@ -2087,9 +2054,9 @@ function BendFormComponent({
                         </div>
                       </div>
                       {/* Pressure Derating for Segmented Bends - Single line */}
-                      {entry.specs?.numberOfSegments &&
-                        entry.specs?.numberOfSegments > 1 &&
-                        entry.specs?.bendDegrees &&
+                      {specs.numberOfSegments &&
+                        specs.numberOfSegments > 1 &&
+                        specs.bendDegrees &&
                         (() => {
                           const derating = segmentedBendDeratingFactor(
                             entry.specs.numberOfSegments,
@@ -2121,11 +2088,11 @@ function BendFormComponent({
                       {/* Pulled: Angle | C/F | (Pipe A Length for Sweep Tee) | QTY */}
                       <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
                         <div
-                          className={`grid grid-cols-1 sm:grid-cols-2 ${entry.specs?.bendItemType === "SWEEP_TEE" ? "md:grid-cols-4" : "md:grid-cols-3"} gap-3`}
+                          className={`grid grid-cols-1 sm:grid-cols-2 ${specs.bendItemType === "SWEEP_TEE" ? "md:grid-cols-4" : "md:grid-cols-3"} gap-3`}
                         >
                           {AngleDropdown}
                           {CFDisplay}
-                          {entry.specs?.bendItemType === "SWEEP_TEE" && (
+                          {specs.bendItemType === "SWEEP_TEE" && (
                             <div>
                               <div className="flex items-center justify-between mb-1">
                                 <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100">
@@ -2147,7 +2114,7 @@ function BendFormComponent({
                               </div>
                               <input
                                 type="number"
-                                value={entry.specs?.sweepTeePipeALengthMm || ""}
+                                value={specs.sweepTeePipeALengthMm || ""}
                                 onChange={(e) => {
                                   const value = e.target.value
                                     ? parseFloat(e.target.value)
@@ -2178,10 +2145,8 @@ function BendFormComponent({
             {/* Flange Configuration Row - 4 columns (matching Pipes form) */}
             <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mt-3">
               {(() => {
-                const effectiveStandardId =
-                  entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                const effectiveFlangeTypeCode =
-                  entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                const effectiveStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
+                const effectiveFlangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
                 const normalizedFlangeTypeCode = effectiveFlangeTypeCode?.replace(/^\//, "") || "";
                 const selectedStandard = masterData.flangeStandards?.find(
                   (fs: any) => fs.id === effectiveStandardId,
@@ -2216,10 +2181,10 @@ function BendFormComponent({
                     )
                   : null;
                 const effectivePressureClassId =
-                  entry.specs?.flangePressureClassId ||
+                  specs.flangePressureClassId ||
                   matchingClassForGlobal?.id ||
                   globalSpecs?.flangePressureClassId;
-                const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+                const bendEndConfig = specs.bendEndConfiguration || "PE";
                 const configUpper = bendEndConfig.toUpperCase();
                 const hasInletFlange = ["FOE", "FBE", "FOE_LF", "FOE_RF", "2X_RF", "2xLF"].includes(
                   configUpper,
@@ -2232,7 +2197,7 @@ function BendFormComponent({
                   ...(hasInletFlange ? [{ key: "inlet", label: "Inlet" }] : []),
                   ...(hasOutletFlange ? [{ key: "outlet", label: "Outlet" }] : []),
                 ];
-                const currentBlankPositions = entry.specs?.blankFlangePositions || [];
+                const currentBlankPositions = specs.blankFlangePositions || [];
 
                 const isStandardFromGlobal =
                   globalSpecs?.flangeStandardId &&
@@ -2309,7 +2274,7 @@ function BendFormComponent({
                         effectiveFlangeTypeCode !== globalSpecs?.flangeTypeCode;
 
                       const workingPressureBar =
-                        entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                        specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
                       const selectedPressureClass = masterData.pressureClasses?.find(
                         (pc: any) => pc.id === effectivePressureClassId,
                       );
@@ -2531,7 +2496,7 @@ function BendFormComponent({
                               </span>
                             </label>
                             <select
-                              value={entry.specs?.bendEndConfiguration || "PE"}
+                              value={specs.bendEndConfiguration || "PE"}
                               onChange={(e) => {
                                 const newConfig = e.target.value;
                                 const updatedEntry: any = {
@@ -2549,7 +2514,7 @@ function BendFormComponent({
                               }}
                               className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                             >
-                              {(entry.specs?.bendItemType === "SWEEP_TEE"
+                              {(specs.bendItemType === "SWEEP_TEE"
                                 ? FITTING_END_OPTIONS
                                 : BEND_END_OPTIONS
                               ).map((opt) => (
@@ -2568,14 +2533,12 @@ function BendFormComponent({
             </div>
 
             {/* Closure Length Field - Only shown when L/F configuration is selected */}
-            {hasLooseFlange(entry.specs?.bendEndConfiguration || "") && (
+            {hasLooseFlange(specs.bendEndConfiguration || "") && (
               <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg p-3 mt-3">
                 <ClosureLengthSelector
-                  nominalBore={entry.specs?.nominalBoreMm || 100}
-                  currentValue={entry.specs?.closureLengthMm || null}
-                  wallThickness={
-                    entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5
-                  }
+                  nominalBore={specs.nominalBoreMm || 100}
+                  currentValue={specs.closureLengthMm || null}
+                  wallThickness={specs.wallThicknessMm || entry.calculation?.wallThicknessMm || 5}
                   onUpdate={(closureLength) => {
                     const updatedEntry = {
                       ...entry,
@@ -2591,7 +2554,7 @@ function BendFormComponent({
             )}
 
             {/* Duckfoot Steelwork Row - Only shown when Item Type is Duckfoot Bend */}
-            {entry.specs?.bendItemType === "DUCKFOOT_BEND" && (
+            {specs.bendItemType === "DUCKFOOT_BEND" && (
               <div className="bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-700 rounded-lg p-3 mt-3">
                 <div className="mb-2">
                   <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
@@ -2599,7 +2562,7 @@ function BendFormComponent({
                   </h4>
                 </div>
                 {(() => {
-                  const nominalBore = entry.specs?.nominalBoreMm;
+                  const nominalBore = specs.nominalBoreMm;
                   const duckfootDefaults: Record<
                     number,
                     { x: number; y: number; t1: number; t2: number; inletH: number }
@@ -2640,7 +2603,7 @@ function BendFormComponent({
                         </label>
                         <input
                           type="number"
-                          value={entry.specs?.duckfootBasePlateXMm || defaults?.x || ""}
+                          value={specs.duckfootBasePlateXMm || defaults?.x || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2667,7 +2630,7 @@ function BendFormComponent({
                         </label>
                         <input
                           type="number"
-                          value={entry.specs?.duckfootBasePlateYMm || defaults?.y || ""}
+                          value={specs.duckfootBasePlateYMm || defaults?.y || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2694,7 +2657,7 @@ function BendFormComponent({
                         </label>
                         <input
                           type="number"
-                          value={entry.specs?.duckfootInletCentreHeightMm || defaults?.inletH || ""}
+                          value={specs.duckfootInletCentreHeightMm || defaults?.inletH || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2721,7 +2684,7 @@ function BendFormComponent({
                         </label>
                         <input
                           type="number"
-                          value={entry.specs?.duckfootPlateThicknessT1Mm || defaults?.t1 || ""}
+                          value={specs.duckfootPlateThicknessT1Mm || defaults?.t1 || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2748,7 +2711,7 @@ function BendFormComponent({
                         </label>
                         <input
                           type="number"
-                          value={entry.specs?.duckfootRibThicknessT2Mm || defaults?.t2 || ""}
+                          value={specs.duckfootRibThicknessT2Mm || defaults?.t2 || ""}
                           onChange={(e) => {
                             const value = e.target.value ? parseFloat(e.target.value) : undefined;
                             const updatedEntry = {
@@ -2774,7 +2737,7 @@ function BendFormComponent({
                           </span>
                         </label>
                         <select
-                          value={entry.specs?.duckfootGussetPointDDegrees || 15}
+                          value={specs.duckfootGussetPointDDegrees || 15}
                           onChange={(e) => {
                             const value = parseInt(e.target.value, 10);
                             const updatedEntry = {
@@ -2806,7 +2769,7 @@ function BendFormComponent({
                           </span>
                         </label>
                         <select
-                          value={entry.specs?.duckfootGussetPointCDegrees || 75}
+                          value={specs.duckfootGussetPointCDegrees || 75}
                           onChange={(e) => {
                             const value = parseInt(e.target.value, 10);
                             const updatedEntry = {
@@ -2837,9 +2800,9 @@ function BendFormComponent({
                     Gusset Configuration
                   </h5>
                   {(() => {
-                    const nominalBore = entry.specs?.nominalBoreMm;
+                    const nominalBore = specs.nominalBoreMm;
                     const workingPressure =
-                      entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
+                      specs.workingPressureBar || globalSpecs?.workingPressureBar;
                     const recommendedCount = nominalBore
                       ? recommendDuckfootGussetCount(nominalBore)
                       : 2;
@@ -2864,7 +2827,7 @@ function BendFormComponent({
                             </span>
                           </label>
                           <select
-                            value={entry.specs?.duckfootGussetCount || recommendedCount}
+                            value={specs.duckfootGussetCount || recommendedCount}
                             onChange={(e) => {
                               const value = parseInt(e.target.value, 10);
                               const updatedEntry = {
@@ -2892,7 +2855,7 @@ function BendFormComponent({
                             </span>
                           </label>
                           <select
-                            value={entry.specs?.duckfootGussetPlacement || "HEEL_ONLY"}
+                            value={specs.duckfootGussetPlacement || "HEEL_ONLY"}
                             onChange={(e) => {
                               const updatedEntry = {
                                 ...entry,
@@ -2920,9 +2883,7 @@ function BendFormComponent({
                           </label>
                           <input
                             type="number"
-                            value={
-                              entry.specs?.duckfootGussetThicknessMm || recommendedThickness || ""
-                            }
+                            value={specs.duckfootGussetThicknessMm || recommendedThickness || ""}
                             onChange={(e) => {
                               const value = e.target.value ? parseFloat(e.target.value) : undefined;
                               const updatedEntry = {
@@ -2951,7 +2912,7 @@ function BendFormComponent({
                             </span>
                           </label>
                           <select
-                            value={entry.specs?.duckfootGussetMaterialGrade || "A36"}
+                            value={specs.duckfootGussetMaterialGrade || "A36"}
                             onChange={(e) => {
                               const updatedEntry = {
                                 ...entry,
@@ -2981,7 +2942,7 @@ function BendFormComponent({
                             </span>
                           </label>
                           <select
-                            value={entry.specs?.duckfootGussetWeldType || "FILLET"}
+                            value={specs.duckfootGussetWeldType || "FILLET"}
                             onChange={(e) => {
                               const updatedEntry = {
                                 ...entry,
@@ -3007,7 +2968,7 @@ function BendFormComponent({
                             </span>
                           </label>
                           <select
-                            value={entry.specs?.duckfootGussetWeldElectrode || "E7018"}
+                            value={specs.duckfootGussetWeldElectrode || "E7018"}
                             onChange={(e) => {
                               const updatedEntry = {
                                 ...entry,
@@ -3038,7 +2999,7 @@ function BendFormComponent({
                           </label>
                           <input
                             type="number"
-                            value={entry.specs?.duckfootGussetPreheatTempC || ""}
+                            value={specs.duckfootGussetPreheatTempC || ""}
                             onChange={(e) => {
                               const value = e.target.value
                                 ? parseInt(e.target.value, 10)
@@ -3069,7 +3030,7 @@ function BendFormComponent({
                           <div className="flex items-center h-[30px]">
                             <input
                               type="checkbox"
-                              checked={entry.specs?.duckfootGussetPwhtRequired || false}
+                              checked={specs.duckfootGussetPwhtRequired || false}
                               onChange={(e) => {
                                 const updatedEntry = {
                                   ...entry,
@@ -3093,7 +3054,7 @@ function BendFormComponent({
                   })()}
                 </div>
 
-                {entry.specs?.nominalBoreMm && (
+                {specs.nominalBoreMm && (
                   <div className="mt-2 text-xs text-orange-700 dark:text-orange-300">
                     <span className="font-medium">Note:</span> Default dimensions are based on MPS
                     manual page 30 for {entry.specs.nominalBoreMm}NB duckfoot elbows/bends.
@@ -3103,116 +3064,794 @@ function BendFormComponent({
             )}
 
             {/* Tangent Extensions Row - hide for Sweep Tees and Duckfoot Bends */}
-            {entry.specs?.bendItemType !== "SWEEP_TEE" &&
-              entry.specs?.bendItemType !== "DUCKFOOT_BEND" && (
-                <TangentExtensionsSection
-                  entryId={entry.id}
-                  numberOfTangents={entry.specs?.numberOfTangents || 0}
-                  tangentLengths={entry.specs?.tangentLengths || []}
-                  onTangentCountChange={handleTangentCountChange}
-                  onTangentLengthChange={handleTangentLengthChange}
-                />
-              )}
+            {specs.bendItemType !== "SWEEP_TEE" && specs.bendItemType !== "DUCKFOOT_BEND" && (
+              <TangentExtensionsSection
+                entryId={entry.id}
+                numberOfTangents={specs.numberOfTangents || 0}
+                tangentLengths={specs.tangentLengths || []}
+                onTangentCountChange={handleTangentCountChange}
+                onTangentLengthChange={handleTangentLengthChange}
+              />
+            )}
 
             {/* Stub Connections Section - hide for Sweep Tees and Duckfoot Bends */}
-            {entry.specs?.bendItemType !== "SWEEP_TEE" &&
-              entry.specs?.bendItemType !== "DUCKFOOT_BEND" && (
-                <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3 mt-3">
-                  <div className="mb-2">
-                    <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
-                      Stub Connections
-                    </h4>
+            {specs.bendItemType !== "SWEEP_TEE" && specs.bendItemType !== "DUCKFOOT_BEND" && (
+              <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3 mt-3">
+                <div className="mb-2">
+                  <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                    Stub Connections
+                  </h4>
+                </div>
+                {/* Stub 1 Row - All fields in one row */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                  {/* No Of Stubs */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-0.5">
+                      No. of Stubs
+                    </label>
+                    {(() => {
+                      const selectId = `bend-num-stubs-${entry.id}`;
+                      const numTangents = specs.numberOfTangents || 0;
+                      const options =
+                        numTangents >= 2
+                          ? [
+                              { value: "0", label: "0 - None" },
+                              { value: "1", label: "1 - Single" },
+                              { value: "2", label: "2 - Both" },
+                            ]
+                          : [
+                              { value: "0", label: "0 - None" },
+                              { value: "1", label: "1 - Single" },
+                            ];
+                      const currentValue = specs.numberOfStubs || 0;
+                      const effectiveValue = currentValue > 1 && numTangents < 2 ? 1 : currentValue;
+                      return (
+                        <Select
+                          id={selectId}
+                          value={String(effectiveValue)}
+                          onChange={(value) => {
+                            const count = parseInt(value, 10) || 0;
+                            const currentStubs = specs.stubs || [];
+                            const mainNB = specs.nominalBoreMm || 50;
+                            const defaultStubNB = mainNB <= 50 ? mainNB : 50;
+                            const defaultStub = {
+                              nominalBoreMm: defaultStubNB,
+                              length: 150,
+                              orientation: "outside",
+                              flangeSpec: "",
+                            };
+                            const newStubs =
+                              count === 0
+                                ? []
+                                : count === 1
+                                  ? [currentStubs[0] || defaultStub]
+                                  : [
+                                      currentStubs[0] || defaultStub,
+                                      currentStubs[1] || defaultStub,
+                                    ];
+                            const updatedEntry = {
+                              ...entry,
+                              specs: { ...entry.specs, numberOfStubs: count, stubs: newStubs },
+                            };
+                            updatedEntry.description = generateItemDescription(updatedEntry);
+                            onUpdateEntry(entry.id, updatedEntry);
+                          }}
+                          options={options}
+                          placeholder="Stubs"
+                        />
+                      );
+                    })()}
                   </div>
-                  {/* Stub 1 Row - All fields in one row */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
-                    {/* No Of Stubs */}
+                  {/* Steel Spec - visible when stubs >= 1 */}
+                  {(specs.numberOfStubs || 0) >= 1 && (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-0.5">
-                        No. of Stubs
+                      <label className="block text-xs text-gray-600 mb-0.5">
+                        Steel Spec
+                        {stub0.steelSpecificationId && (
+                          <span className="text-purple-600 ml-1">*</span>
+                        )}
                       </label>
                       {(() => {
-                        const selectId = `bend-num-stubs-${entry.id}`;
-                        const numTangents = entry.specs?.numberOfTangents || 0;
-                        const options =
-                          numTangents >= 2
-                            ? [
-                                { value: "0", label: "0 - None" },
-                                { value: "1", label: "1 - Single" },
-                                { value: "2", label: "2 - Both" },
-                              ]
-                            : [
-                                { value: "0", label: "0 - None" },
-                                { value: "1", label: "1 - Single" },
-                              ];
-                        const currentValue = entry.specs?.numberOfStubs || 0;
-                        const effectiveValue =
-                          currentValue > 1 && numTangents < 2 ? 1 : currentValue;
+                        const selectId = `bend-stub1-steel-spec-${entry.id}`;
+                        const stub1EffectiveSpecId =
+                          stub0.steelSpecificationId ||
+                          specs.steelSpecificationId ||
+                          globalSpecs?.steelSpecificationId;
                         return (
                           <Select
                             id={selectId}
-                            value={String(effectiveValue)}
+                            value={String(stub1EffectiveSpecId || "")}
                             onChange={(value) => {
-                              const count = parseInt(value, 10) || 0;
-                              const currentStubs = entry.specs?.stubs || [];
-                              const mainNB = entry.specs?.nominalBoreMm || 50;
-                              const defaultStubNB = mainNB <= 50 ? mainNB : 50;
-                              const defaultStub = {
-                                nominalBoreMm: defaultStubNB,
-                                length: 150,
-                                orientation: "outside",
-                                flangeSpec: "",
+                              const newSpecId = value ? Number(value) : undefined;
+                              const stubs = [...(specs.stubs || [])];
+                              stubs[0] = {
+                                ...stubs[0],
+                                steelSpecificationId: newSpecId,
+                                nominalBoreMm: undefined,
+                                wallThicknessMm: undefined,
                               };
-                              const newStubs =
-                                count === 0
-                                  ? []
-                                  : count === 1
-                                    ? [currentStubs[0] || defaultStub]
-                                    : [
-                                        currentStubs[0] || defaultStub,
-                                        currentStubs[1] || defaultStub,
-                                      ];
-                              const updatedEntry = {
-                                ...entry,
-                                specs: { ...entry.specs, numberOfStubs: count, stubs: newStubs },
-                              };
+                              const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
                             }}
-                            options={options}
-                            placeholder="Stubs"
+                            options={[]}
+                            groupedOptions={groupedSteelOptions}
+                            placeholder="Spec"
                           />
                         );
                       })()}
                     </div>
-                    {/* Steel Spec - visible when stubs >= 1 */}
-                    {(entry.specs?.numberOfStubs || 0) >= 1 && (
+                  )}
+                  {/* NB - visible when stubs >= 1 */}
+                  {(specs.numberOfStubs || 0) >= 1 && (
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-0.5">NB</label>
+                      {(() => {
+                        const selectId = `bend-stub1-nb-${entry.id}`;
+                        const stub1EffectiveSpecId =
+                          stub0.steelSpecificationId ||
+                          specs.steelSpecificationId ||
+                          globalSpecs?.steelSpecificationId;
+                        const stub1SteelSpec = masterData.steelSpecs?.find(
+                          (s: any) => s.id === stub1EffectiveSpecId,
+                        );
+                        const stub1SteelSpecName = stub1SteelSpec?.steelSpecName || "";
+                        const stub1FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(
+                          ([pattern]) => stub1SteelSpecName.includes(pattern),
+                        )?.[1];
+                        const allStub1Nbs = stub1FallbackNBs || [
+                          15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300,
+                        ];
+                        const mainBendNB = specs.nominalBoreMm || 0;
+                        const stub1Nbs = allStub1Nbs.filter((nb: number) => nb <= mainBendNB);
+                        const options = stub1Nbs.map((nb: number) => ({
+                          value: String(nb),
+                          label: `${nb} NB`,
+                        }));
+                        return (
+                          <Select
+                            id={selectId}
+                            value={
+                              stub0.nominalBoreMm ? String(entry.specs.stubs[0].nominalBoreMm) : ""
+                            }
+                            onChange={(value) => {
+                              const stubs = [...(specs.stubs || [])];
+                              stubs[0] = { ...stubs[0], nominalBoreMm: parseInt(value, 10) || 0 };
+                              const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            options={options}
+                            placeholder="NB"
+                          />
+                        );
+                      })()}
+                    </div>
+                  )}
+                  {/* W/T - visible when stubs >= 1 */}
+                  {(specs.numberOfStubs || 0) >= 1 && (
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-0.5">
+                        W/T
+                        {stub0.wallThicknessOverride ? (
+                          <span className="text-purple-600 ml-1">*</span>
+                        ) : stub0.nominalBoreMm ? (
+                          <span className="text-green-600 ml-1">(A)</span>
+                        ) : null}
+                      </label>
+                      {(() => {
+                        const selectId = `bend-stub1-wt-${entry.id}`;
+                        const stub1NB = stub0.nominalBoreMm;
+                        const steelSpecId =
+                          stub0.steelSpecificationId ||
+                          specs.steelSpecificationId ||
+                          globalSpecs?.steelSpecificationId;
+                        const stub1SteelSpec = masterData.steelSpecs?.find(
+                          (s: any) => s.id === steelSpecId,
+                        );
+                        const stub1SpecName = stub1SteelSpec?.steelSpecName || "";
+                        const isSABS719 =
+                          stub1SpecName.includes("SABS 719") || stub1SpecName.includes("SANS 719");
+                        const SABS_719_WT: Record<number, number> = {
+                          200: 5.2,
+                          250: 5.2,
+                          300: 6.4,
+                          350: 6.4,
+                          400: 6.4,
+                          450: 6.4,
+                          500: 6.4,
+                          550: 6.4,
+                          600: 6.4,
+                          650: 8.0,
+                          700: 8.0,
+                          750: 8.0,
+                          800: 8.0,
+                          850: 9.5,
+                          900: 9.5,
+                          1000: 9.5,
+                          1050: 9.5,
+                          1200: 12.7,
+                        };
+                        const ASTM_STUB_WT: Record<number, number> = {
+                          15: 2.77,
+                          20: 2.87,
+                          25: 3.38,
+                          32: 3.56,
+                          40: 3.68,
+                          50: 3.91,
+                          65: 5.16,
+                          80: 5.49,
+                          100: 6.02,
+                          125: 6.55,
+                          150: 7.11,
+                          200: 8.18,
+                          250: 9.27,
+                          300: 10.31,
+                        };
+                        const getSabs719Wt = (nb: number): number => {
+                          const sizes = Object.keys(SABS_719_WT)
+                            .map(Number)
+                            .sort((a, b) => a - b);
+                          let closest = sizes[0];
+                          for (const size of sizes) {
+                            if (size <= nb) closest = size;
+                            else break;
+                          }
+                          return SABS_719_WT[closest] || specs.wallThicknessMm || 6.4;
+                        };
+                        const autoWt = stub1NB
+                          ? isSABS719
+                            ? getSabs719Wt(stub1NB)
+                            : ASTM_STUB_WT[stub1NB] || stub1NB * 0.05
+                          : null;
+                        const currentWt = stub0.wallThicknessMm;
+                        const wtOptions = isSABS719
+                          ? [
+                              ...(autoWt
+                                ? [
+                                    {
+                                      value: String(autoWt),
+                                      label: `${autoWt.toFixed(1)} (Auto)`,
+                                    },
+                                  ]
+                                : []),
+                              { value: "4.0", label: "4.0" },
+                              { value: "5.0", label: "5.0" },
+                              { value: "5.2", label: "5.2" },
+                              { value: "6.0", label: "6.0" },
+                              { value: "6.4", label: "6.4" },
+                              { value: "8.0", label: "8.0" },
+                              { value: "9.5", label: "9.5" },
+                              { value: "10.0", label: "10.0" },
+                              { value: "12.0", label: "12.0" },
+                              { value: "12.7", label: "12.7" },
+                            ].filter(
+                              (opt, idx, arr) =>
+                                arr.findIndex((o) => o.value === opt.value) === idx,
+                            )
+                          : [
+                              ...(autoWt
+                                ? [
+                                    {
+                                      value: String(autoWt),
+                                      label: `${autoWt.toFixed(2)} (Auto)`,
+                                    },
+                                  ]
+                                : []),
+                              { value: "2.77", label: "2.77" },
+                              { value: "3.38", label: "3.38" },
+                              { value: "3.91", label: "3.91" },
+                              { value: "5.16", label: "5.16" },
+                              { value: "5.49", label: "5.49" },
+                              { value: "6.02", label: "6.02" },
+                              { value: "6.55", label: "6.55" },
+                              { value: "7.11", label: "7.11" },
+                              { value: "8.18", label: "8.18" },
+                              { value: "9.27", label: "9.27" },
+                              { value: "10.31", label: "10.31" },
+                            ].filter(
+                              (opt, idx, arr) =>
+                                arr.findIndex((o) => o.value === opt.value) === idx,
+                            );
+                        return (
+                          <Select
+                            id={selectId}
+                            value={currentWt ? String(currentWt) : autoWt ? String(autoWt) : ""}
+                            onChange={(value) => {
+                              const stubs = [...(specs.stubs || [])];
+                              const newWt = parseFloat(value) || 0;
+                              const isOverride = autoWt && newWt !== autoWt;
+                              stubs[0] = {
+                                ...stubs[0],
+                                wallThicknessMm: newWt,
+                                wallThicknessOverride: isOverride,
+                              };
+                              const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            options={wtOptions}
+                            placeholder="W/T"
+                          />
+                        );
+                      })()}
+                    </div>
+                  )}
+                  {/* Position on T1 - visible when stubs >= 1 */}
+                  {(specs.numberOfStubs || 0) >= 1 && (
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-0.5">Position</label>
+                      {(() => {
+                        const selectId = `bend-stub1-angle-${entry.id}`;
+                        const angleOptions = [
+                          { value: "0", label: "0° (Top)" },
+                          { value: "45", label: "45°" },
+                          { value: "90", label: "90° (Side)" },
+                          { value: "135", label: "135°" },
+                          { value: "180", label: "180° (Bot)" },
+                          { value: "225", label: "225°" },
+                          { value: "270", label: "270° (Side)" },
+                          { value: "315", label: "315°" },
+                        ];
+                        return (
+                          <Select
+                            id={selectId}
+                            value={String(stub0.angleDegrees ?? "0")}
+                            onChange={(value) => {
+                              const stubs = [...(specs.stubs || [])];
+                              stubs[0] = {
+                                ...stubs[0],
+                                angleDegrees: parseInt(value, 10) || 0,
+                                tangent: 1,
+                              };
+                              const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            options={angleOptions}
+                            placeholder="Pos"
+                          />
+                        );
+                      })()}
+                    </div>
+                  )}
+                  {/* Length - visible when stubs >= 1 */}
+                  {(specs.numberOfStubs || 0) >= 1 && (
+                    <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
+                      <label className="block text-xs text-purple-800 dark:text-purple-300 mb-0.5">
+                        Length (mm)
+                      </label>
+                      <input
+                        type="number"
+                        value={stub0.length || ""}
+                        onChange={(e) => {
+                          const stubs = [...(specs.stubs || [])];
+                          stubs[0] = { ...stubs[0], length: parseInt(e.target.value, 10) || 0 };
+                          const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                          updatedEntry.description = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, updatedEntry);
+                        }}
+                        className="w-full px-2 py-1 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded text-xs focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
+                        placeholder="150"
+                      />
+                    </div>
+                  )}
+                  {/* Location - visible when stubs >= 1 */}
+                  {(specs.numberOfStubs || 0) >= 1 && (
+                    <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
+                      <label className="block text-xs text-purple-800 dark:text-purple-300 mb-0.5">
+                        Location (mm)
+                      </label>
+                      <input
+                        type="number"
+                        value={stub0.locationFromFlange || ""}
+                        onChange={(e) => {
+                          const stubs = [...(specs.stubs || [])];
+                          stubs[0] = {
+                            ...stubs[0],
+                            locationFromFlange: parseInt(e.target.value, 10) || 0,
+                          };
+                          const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                          updatedEntry.description = generateItemDescription(updatedEntry);
+                          onUpdateEntry(entry.id, updatedEntry);
+                        }}
+                        className="w-full px-2 py-1 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded text-xs focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
+                        placeholder="From flange"
+                      />
+                    </div>
+                  )}
+                </div>
+                {/* Stub 1 Flange - shown below the row when stubs >= 1 */}
+                {(specs.numberOfStubs || 0) >= 1 && (
+                  <div className="mt-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
+                    {(() => {
+                      const effectiveStandardId =
+                        stub0.flangeStandardId || globalSpecs?.flangeStandardId;
+                      const effectiveFlangeTypeCode =
+                        stub0.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                      const normalizedFlangeTypeCode =
+                        effectiveFlangeTypeCode?.replace(/^\//, "") || "";
+                      const selectedStandard = masterData.flangeStandards?.find(
+                        (fs: any) => fs.id === effectiveStandardId,
+                      );
+                      const isSabs1123 =
+                        selectedStandard?.code?.toUpperCase().includes("SABS") &&
+                        selectedStandard?.code?.includes("1123");
+                      const isBs4504 =
+                        selectedStandard?.code?.toUpperCase().includes("BS") &&
+                        selectedStandard?.code?.includes("4504");
+                      const showFlangeType = isSabs1123 || isBs4504;
+                      const flangeTypes = isSabs1123
+                        ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
+                        : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || [];
+                      const pressureClasses = isSabs1123
+                        ? SABS_1123_PRESSURE_CLASSES
+                        : BS_4504_PRESSURE_CLASSES;
+
+                      const stub1GlobalClass = masterData.pressureClasses?.find(
+                        (p: any) => p.id === globalSpecs?.flangePressureClassId,
+                      );
+                      const stub1GlobalBasePressure =
+                        stub1GlobalClass?.designation?.replace(/\/\d+$/, "") || "";
+                      const stub1TargetDesignation =
+                        normalizedFlangeTypeCode && stub1GlobalBasePressure
+                          ? `${stub1GlobalBasePressure}/${normalizedFlangeTypeCode}`
+                          : null;
+                      const stub1MatchingClass = stub1TargetDesignation
+                        ? masterData.pressureClasses?.find(
+                            (pc: any) => pc.designation === stub1TargetDesignation,
+                          )
+                        : null;
+                      const effectivePressureClassId =
+                        stub0.flangePressureClassId ||
+                        stub1MatchingClass?.id ||
+                        globalSpecs?.flangePressureClassId;
+
+                      const stub1EffectiveStandardId =
+                        stub0.flangeStandardId || globalSpecs?.flangeStandardId;
+                      const stub1EffectiveClassId = effectivePressureClassId;
+                      const stub1EffectiveTypeCode =
+                        stub0.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                      const stub1EffectiveClass = masterData.pressureClasses?.find(
+                        (p: any) => p.id === stub1EffectiveClassId,
+                      );
+                      const stub1EffectiveBasePressure =
+                        stub1EffectiveClass?.designation?.replace(/\/\d+$/, "") || "";
+                      const isStandardFromGlobal =
+                        globalSpecs?.flangeStandardId &&
+                        stub1EffectiveStandardId === globalSpecs?.flangeStandardId &&
+                        !stub0.flangeStandardId;
+                      const isClassFromGlobal =
+                        globalSpecs?.flangePressureClassId &&
+                        stub1EffectiveBasePressure === stub1GlobalBasePressure &&
+                        !stub0.flangePressureClassId;
+                      const isTypeFromGlobal =
+                        globalSpecs?.flangeTypeCode &&
+                        stub1EffectiveTypeCode === globalSpecs?.flangeTypeCode &&
+                        !stub0.flangeTypeCode;
+                      const isStandardOverride =
+                        stub0.flangeStandardId &&
+                        stub0.flangeStandardId !== globalSpecs?.flangeStandardId;
+                      const isClassOverride =
+                        stub0.flangePressureClassId &&
+                        stub1EffectiveBasePressure !== stub1GlobalBasePressure;
+                      const isTypeOverride =
+                        stub0.flangeTypeCode &&
+                        stub0.flangeTypeCode !== globalSpecs?.flangeTypeCode;
+
+                      const stub1SelectedStandard = masterData.flangeStandards?.find(
+                        (s: any) => s.id === stub1EffectiveStandardId,
+                      );
+                      const stub1StandardCode = stub1SelectedStandard?.code?.toUpperCase() || "";
+                      const stub1IsSabs1123 =
+                        (stub1StandardCode.includes("SABS") ||
+                          stub1StandardCode.includes("SANS")) &&
+                        stub1StandardCode.includes("1123");
+                      const stub1IsBs4504 =
+                        (stub1StandardCode.includes("BS") && stub1StandardCode.includes("4504")) ||
+                        (stub1StandardCode.includes("EN") &&
+                          (stub1StandardCode.includes("1092") ||
+                            stub1StandardCode.includes("10921")));
+                      const stub1SelectedClass = masterData.pressureClasses?.find(
+                        (pc: any) => pc.id === stub1EffectiveClassId,
+                      );
+                      const stub1PressureClassRatingRaw = stub1SelectedClass?.designation
+                        ? parseInt(stub1SelectedClass.designation.replace(/[^\d]/g, ""), 10)
+                        : 0;
+                      const stub1WorkingPressureBar =
+                        specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                      const stub1IsPressureClassUnsuitable =
+                        stub1EffectiveClassId &&
+                        stub1WorkingPressureBar > 0 &&
+                        stub1PressureClassRatingRaw > 0 &&
+                        ((stub1IsSabs1123 &&
+                          stub1PressureClassRatingRaw < stub1WorkingPressureBar * 100) ||
+                          (stub1IsBs4504 && stub1PressureClassRatingRaw < stub1WorkingPressureBar));
+                      const globalSelectClass =
+                        "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400";
+                      const overrideSelectClass =
+                        "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400";
+                      const unsuitableSelectClass =
+                        "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400";
+                      const defaultSelectClass =
+                        "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
+                      return (
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
+                          {/* Title as first column */}
+                          <div className="flex items-center">
+                            <span className="text-xs font-semibold text-orange-900 dark:text-amber-200">
+                              Stub 1 Flange
+                            </span>
+                          </div>
+                          {/* Standard */}
+                          <div>
+                            <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
+                              Standard
+                              {isStandardFromGlobal && (
+                                <span className="ml-1 text-green-600 dark:text-lime-400">
+                                  (From Specs Page)
+                                </span>
+                              )}
+                              {isStandardOverride && (
+                                <span className="ml-1 text-yellow-600 dark:text-yellow-400">
+                                  (Override)
+                                </span>
+                              )}
+                            </label>
+                            <select
+                              value={effectiveStandardId || ""}
+                              onChange={(e) => {
+                                const standardId = parseInt(e.target.value, 10) || undefined;
+                                const stubs = [...(specs.stubs || [])];
+                                stubs[0] = {
+                                  ...stubs[0],
+                                  flangeStandardId: standardId,
+                                  flangePressureClassId: undefined,
+                                  flangeTypeCode: undefined,
+                                };
+                                onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                if (standardId) {
+                                  getFilteredPressureClasses(standardId);
+                                }
+                              }}
+                              className={
+                                isStandardFromGlobal
+                                  ? globalSelectClass
+                                  : isStandardOverride
+                                    ? overrideSelectClass
+                                    : defaultSelectClass
+                              }
+                            >
+                              <option value="">Select...</option>
+                              {masterData.flangeStandards?.map((s: any) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.code}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {/* Class */}
+                          <div>
+                            <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
+                              {stub1IsSabs1123 ? "Class (kPa)" : "Class"}
+                              {isClassFromGlobal && !stub1IsPressureClassUnsuitable && (
+                                <span className="ml-1 text-green-600 dark:text-lime-400">
+                                  (From Specs Page)
+                                </span>
+                              )}
+                              {isClassOverride && !stub1IsPressureClassUnsuitable && (
+                                <span className="ml-1 text-yellow-600 dark:text-yellow-400">
+                                  (Override)
+                                </span>
+                              )}
+                              {stub1IsPressureClassUnsuitable && (
+                                <span className="ml-1 text-red-600 dark:text-red-400">
+                                  (NOT SUITABLE)
+                                </span>
+                              )}
+                            </label>
+                            {showFlangeType ? (
+                              <select
+                                value={effectivePressureClassId || ""}
+                                onChange={(e) => {
+                                  const stubs = [...(specs.stubs || [])];
+                                  stubs[0] = {
+                                    ...stubs[0],
+                                    flangePressureClassId:
+                                      parseInt(e.target.value, 10) || undefined,
+                                  };
+                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                }}
+                                className={
+                                  stub1IsPressureClassUnsuitable
+                                    ? unsuitableSelectClass
+                                    : isClassFromGlobal
+                                      ? globalSelectClass
+                                      : isClassOverride
+                                        ? overrideSelectClass
+                                        : defaultSelectClass
+                                }
+                              >
+                                <option value="">Select...</option>
+                                {pressureClasses.map((pc) => {
+                                  const pcValue = String(pc.value);
+                                  const equivalentValue = pcValue === "64" ? "63" : pcValue;
+                                  const targetDesignation = normalizedFlangeTypeCode
+                                    ? `${pcValue}/${normalizedFlangeTypeCode}`
+                                    : null;
+                                  const matchingPc = masterData.pressureClasses?.find(
+                                    (mpc: any) => {
+                                      if (
+                                        targetDesignation &&
+                                        mpc.designation === targetDesignation
+                                      )
+                                        return true;
+                                      return (
+                                        mpc.designation?.includes(pcValue) ||
+                                        mpc.designation?.includes(equivalentValue)
+                                      );
+                                    },
+                                  );
+                                  return matchingPc ? (
+                                    <option key={matchingPc.id} value={matchingPc.id}>
+                                      {stub1IsSabs1123 ? pc.value : pc.label}
+                                    </option>
+                                  ) : null;
+                                })}
+                              </select>
+                            ) : (
+                              <select
+                                value={effectivePressureClassId || ""}
+                                onChange={(e) => {
+                                  const stubs = [...(specs.stubs || [])];
+                                  stubs[0] = {
+                                    ...stubs[0],
+                                    flangePressureClassId:
+                                      parseInt(e.target.value, 10) || undefined,
+                                  };
+                                  onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                }}
+                                className={
+                                  stub1IsPressureClassUnsuitable
+                                    ? unsuitableSelectClass
+                                    : isClassFromGlobal
+                                      ? globalSelectClass
+                                      : isClassOverride
+                                        ? overrideSelectClass
+                                        : defaultSelectClass
+                                }
+                              >
+                                <option value="">Select...</option>
+                                {(
+                                  pressureClassesByStandard[effectiveStandardId || 0] ||
+                                  masterData.pressureClasses ||
+                                  []
+                                ).map((pc: any) => (
+                                  <option key={pc.id} value={pc.id}>
+                                    {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                          {/* Type */}
+                          <div>
+                            <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
+                              Type
+                              {isTypeFromGlobal && showFlangeType && (
+                                <span className="ml-1 text-green-600 dark:text-lime-400">
+                                  (From Specs Page)
+                                </span>
+                              )}
+                              {isTypeOverride && showFlangeType && (
+                                <span className="ml-1 text-yellow-600 dark:text-yellow-400">
+                                  (Override)
+                                </span>
+                              )}
+                            </label>
+                            {showFlangeType ? (
+                              <select
+                                value={effectiveFlangeTypeCode || ""}
+                                onChange={(e) => {
+                                  const stubs = [...(specs.stubs || [])];
+                                  stubs[0] = {
+                                    ...stubs[0],
+                                    flangeTypeCode: e.target.value || undefined,
+                                  };
+                                  const updatedEntry = {
+                                    ...entry,
+                                    specs: { ...entry.specs, stubs },
+                                  };
+                                  updatedEntry.description = generateItemDescription(updatedEntry);
+                                  onUpdateEntry(entry.id, updatedEntry);
+                                }}
+                                className={
+                                  isTypeFromGlobal
+                                    ? globalSelectClass
+                                    : isTypeOverride
+                                      ? overrideSelectClass
+                                      : defaultSelectClass
+                                }
+                              >
+                                <option value="">Select...</option>
+                                {flangeTypes.map((ft) => (
+                                  <option key={ft.code} value={ft.code}>
+                                    {ft.name} ({ft.code})
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <div className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                                N/A
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-end">
+                            <label className="flex items-center gap-1.5 pb-1.5">
+                              <input
+                                type="checkbox"
+                                checked={stub0.hasBlankFlange || false}
+                                onChange={(e) => {
+                                  const stubs = [...(specs.stubs || [])];
+                                  stubs[0] = { ...stubs[0], hasBlankFlange: e.target.checked };
+                                  const updatedEntry = {
+                                    ...entry,
+                                    specs: { ...entry.specs, stubs },
+                                  };
+                                  updatedEntry.description = generateItemDescription(updatedEntry);
+                                  onUpdateEntry(entry.id, updatedEntry);
+                                }}
+                                className="w-3 h-3 text-red-600 rounded focus:ring-red-500"
+                              />
+                              <span className="text-xs text-red-700 font-medium">
+                                + Blank ({stub0.nominalBoreMm || "?"}NB)
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Stub 2 Section - only show when 2 stubs AND 2 tangents selected */}
+                {(specs.numberOfStubs || 0) >= 2 && (specs.numberOfTangents || 0) >= 2 && (
+                  <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded border border-green-300 dark:border-green-600">
+                    <p className="text-xs font-medium text-green-900 dark:text-green-300 mb-2">
+                      Stub 2{" "}
+                      <span className="text-gray-500 dark:text-gray-400 font-normal">(on T2)</span>
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-2">
                       <div>
                         <label className="block text-xs text-gray-600 mb-0.5">
                           Steel Spec
-                          {entry.specs?.stubs?.[0]?.steelSpecificationId && (
+                          {stub1.steelSpecificationId && (
                             <span className="text-purple-600 ml-1">*</span>
                           )}
                         </label>
                         {(() => {
-                          const selectId = `bend-stub1-steel-spec-${entry.id}`;
-                          const stub1EffectiveSpecId =
-                            entry.specs?.stubs?.[0]?.steelSpecificationId ||
-                            entry.specs?.steelSpecificationId ||
+                          const selectId = `bend-stub2-steel-spec-${entry.id}`;
+                          const stub2EffectiveSpecId =
+                            stub1.steelSpecificationId ||
+                            specs.steelSpecificationId ||
                             globalSpecs?.steelSpecificationId;
+
                           return (
                             <Select
                               id={selectId}
-                              value={String(stub1EffectiveSpecId || "")}
+                              value={String(stub2EffectiveSpecId || "")}
                               onChange={(value) => {
                                 const newSpecId = value ? Number(value) : undefined;
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[0] = {
-                                  ...stubs[0],
+                                const stubs = [...(specs.stubs || [])];
+                                stubs[1] = {
+                                  ...stubs[1],
                                   steelSpecificationId: newSpecId,
                                   nominalBoreMm: undefined,
                                   wallThicknessMm: undefined,
                                 };
-                                const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                const updatedEntry = {
+                                  ...entry,
+                                  specs: { ...entry.specs, stubs },
+                                };
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
@@ -3223,80 +3862,82 @@ function BendFormComponent({
                           );
                         })()}
                       </div>
-                    )}
-                    {/* NB - visible when stubs >= 1 */}
-                    {(entry.specs?.numberOfStubs || 0) >= 1 && (
                       <div>
                         <label className="block text-xs text-gray-600 mb-0.5">NB</label>
                         {(() => {
-                          const selectId = `bend-stub1-nb-${entry.id}`;
-                          const stub1EffectiveSpecId =
-                            entry.specs?.stubs?.[0]?.steelSpecificationId ||
-                            entry.specs?.steelSpecificationId ||
+                          const selectId = `bend-stub2-nb-${entry.id}`;
+                          const stub2EffectiveSpecId =
+                            stub1.steelSpecificationId ||
+                            specs.steelSpecificationId ||
                             globalSpecs?.steelSpecificationId;
-                          const stub1SteelSpec = masterData.steelSpecs?.find(
-                            (s: any) => s.id === stub1EffectiveSpecId,
+                          const stub2SteelSpec = masterData.steelSpecs?.find(
+                            (s: any) => s.id === stub2EffectiveSpecId,
                           );
-                          const stub1SteelSpecName = stub1SteelSpec?.steelSpecName || "";
-                          const stub1FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(
-                            ([pattern]) => stub1SteelSpecName.includes(pattern),
+                          const stub2SteelSpecName = stub2SteelSpec?.steelSpecName || "";
+                          const stub2FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(
+                            ([pattern]) => stub2SteelSpecName.includes(pattern),
                           )?.[1];
-                          const allStub1Nbs = stub1FallbackNBs || [
+                          const allStub2Nbs = stub2FallbackNBs || [
                             15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300,
                           ];
-                          const mainBendNB = entry.specs?.nominalBoreMm || 0;
-                          const stub1Nbs = allStub1Nbs.filter((nb: number) => nb <= mainBendNB);
-                          const options = stub1Nbs.map((nb: number) => ({
+                          const mainBendNB = specs.nominalBoreMm || 0;
+                          const stub2Nbs = allStub2Nbs.filter((nb: number) => nb <= mainBendNB);
+                          const options = stub2Nbs.map((nb: number) => ({
                             value: String(nb),
                             label: `${nb} NB`,
                           }));
+
                           return (
                             <Select
                               id={selectId}
                               value={
-                                entry.specs?.stubs?.[0]?.nominalBoreMm
-                                  ? String(entry.specs.stubs[0].nominalBoreMm)
+                                stub1.nominalBoreMm
+                                  ? String(entry.specs.stubs[1].nominalBoreMm)
                                   : ""
                               }
                               onChange={(value) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[0] = { ...stubs[0], nominalBoreMm: parseInt(value, 10) || 0 };
-                                const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                const stubs = [...(specs.stubs || [])];
+                                stubs[1] = {
+                                  ...stubs[1],
+                                  nominalBoreMm: parseInt(value, 10) || 0,
+                                };
+                                const updatedEntry = {
+                                  ...entry,
+                                  specs: { ...entry.specs, stubs },
+                                };
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
                               options={options}
-                              placeholder="NB"
+                              placeholder="Select NB"
                             />
                           );
                         })()}
                       </div>
-                    )}
-                    {/* W/T - visible when stubs >= 1 */}
-                    {(entry.specs?.numberOfStubs || 0) >= 1 && (
                       <div>
                         <label className="block text-xs text-gray-600 mb-0.5">
-                          W/T
-                          {entry.specs?.stubs?.[0]?.wallThicknessOverride ? (
-                            <span className="text-purple-600 ml-1">*</span>
-                          ) : entry.specs?.stubs?.[0]?.nominalBoreMm ? (
-                            <span className="text-green-600 ml-1">(A)</span>
+                          W/T (mm)
+                          {stub1.wallThicknessOverride ? (
+                            <span className="text-purple-600 ml-1">(Override)</span>
+                          ) : stub1.nominalBoreMm ? (
+                            <span className="text-green-600 ml-1">(Auto)</span>
                           ) : null}
                         </label>
                         {(() => {
-                          const selectId = `bend-stub1-wt-${entry.id}`;
-                          const stub1NB = entry.specs?.stubs?.[0]?.nominalBoreMm;
+                          const selectId = `bend-stub2-wt-${entry.id}`;
+                          const stub2NB = stub1.nominalBoreMm;
                           const steelSpecId =
-                            entry.specs?.stubs?.[0]?.steelSpecificationId ||
-                            entry.specs?.steelSpecificationId ||
+                            stub1.steelSpecificationId ||
+                            specs.steelSpecificationId ||
                             globalSpecs?.steelSpecificationId;
-                          const stub1SteelSpec = masterData.steelSpecs?.find(
+                          const stub2SteelSpec = masterData.steelSpecs?.find(
                             (s: any) => s.id === steelSpecId,
                           );
-                          const stub1SpecName = stub1SteelSpec?.steelSpecName || "";
+                          const stub2SpecName = stub2SteelSpec?.steelSpecName || "";
                           const isSABS719 =
-                            stub1SpecName.includes("SABS 719") ||
-                            stub1SpecName.includes("SANS 719");
+                            stub2SpecName.includes("SABS 719") ||
+                            stub2SpecName.includes("SANS 719");
+
                           const SABS_719_WT: Record<number, number> = {
                             200: 5.2,
                             250: 5.2,
@@ -3333,6 +3974,7 @@ function BendFormComponent({
                             250: 9.27,
                             300: 10.31,
                           };
+
                           const getSabs719Wt = (nb: number): number => {
                             const sizes = Object.keys(SABS_719_WT)
                               .map(Number)
@@ -3342,33 +3984,35 @@ function BendFormComponent({
                               if (size <= nb) closest = size;
                               else break;
                             }
-                            return SABS_719_WT[closest] || entry.specs?.wallThicknessMm || 6.4;
+                            return SABS_719_WT[closest] || specs.wallThicknessMm || 6.4;
                           };
-                          const autoWt = stub1NB
+
+                          const autoWt = stub2NB
                             ? isSABS719
-                              ? getSabs719Wt(stub1NB)
-                              : ASTM_STUB_WT[stub1NB] || stub1NB * 0.05
+                              ? getSabs719Wt(stub2NB)
+                              : ASTM_STUB_WT[stub2NB] || stub2NB * 0.05
                             : null;
-                          const currentWt = entry.specs?.stubs?.[0]?.wallThicknessMm;
+                          const currentWt = stub1.wallThicknessMm;
+
                           const wtOptions = isSABS719
                             ? [
                                 ...(autoWt
                                   ? [
                                       {
                                         value: String(autoWt),
-                                        label: `${autoWt.toFixed(1)} (Auto)`,
+                                        label: `${autoWt.toFixed(1)} (Auto - SABS 719)`,
                                       },
                                     ]
                                   : []),
-                                { value: "4.0", label: "4.0" },
-                                { value: "5.0", label: "5.0" },
+                                { value: "4.0", label: "4.0 (WT4)" },
+                                { value: "5.0", label: "5.0 (WT5)" },
                                 { value: "5.2", label: "5.2" },
-                                { value: "6.0", label: "6.0" },
+                                { value: "6.0", label: "6.0 (WT6)" },
                                 { value: "6.4", label: "6.4" },
-                                { value: "8.0", label: "8.0" },
+                                { value: "8.0", label: "8.0 (WT8)" },
                                 { value: "9.5", label: "9.5" },
-                                { value: "10.0", label: "10.0" },
-                                { value: "12.0", label: "12.0" },
+                                { value: "10.0", label: "10.0 (WT10)" },
+                                { value: "12.0", label: "12.0 (WT12)" },
                                 { value: "12.7", label: "12.7" },
                               ].filter(
                                 (opt, idx, arr) =>
@@ -3398,41 +4042,44 @@ function BendFormComponent({
                                 (opt, idx, arr) =>
                                   arr.findIndex((o) => o.value === opt.value) === idx,
                               );
+
                           return (
                             <Select
                               id={selectId}
                               value={currentWt ? String(currentWt) : autoWt ? String(autoWt) : ""}
                               onChange={(value) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
+                                const stubs = [...(specs.stubs || [])];
                                 const newWt = parseFloat(value) || 0;
                                 const isOverride = autoWt && newWt !== autoWt;
-                                stubs[0] = {
-                                  ...stubs[0],
+                                stubs[1] = {
+                                  ...stubs[1],
                                   wallThicknessMm: newWt,
                                   wallThicknessOverride: isOverride,
                                 };
-                                const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                const updatedEntry = {
+                                  ...entry,
+                                  specs: { ...entry.specs, stubs },
+                                };
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
                               options={wtOptions}
-                              placeholder="W/T"
+                              placeholder="Select W/T"
                             />
                           );
                         })()}
                       </div>
-                    )}
-                    {/* Position on T1 - visible when stubs >= 1 */}
-                    {(entry.specs?.numberOfStubs || 0) >= 1 && (
                       <div>
-                        <label className="block text-xs text-gray-600 mb-0.5">Position</label>
+                        <label className="block text-xs text-gray-600 mb-0.5">
+                          Position <span className="text-gray-400">on T2</span>
+                        </label>
                         {(() => {
-                          const selectId = `bend-stub1-angle-${entry.id}`;
+                          const selectId = `bend-stub2-angle-${entry.id}`;
                           const angleOptions = [
                             { value: "0", label: "0° (Top)" },
                             { value: "45", label: "45°" },
                             { value: "90", label: "90° (Side)" },
                             { value: "135", label: "135°" },
-                            { value: "180", label: "180° (Bot)" },
+                            { value: "180", label: "180° (Bottom)" },
                             { value: "225", label: "225°" },
                             { value: "270", label: "270° (Side)" },
                             { value: "315", label: "315°" },
@@ -3440,37 +4087,38 @@ function BendFormComponent({
                           return (
                             <Select
                               id={selectId}
-                              value={String(entry.specs?.stubs?.[0]?.angleDegrees ?? "0")}
+                              value={String(stub1.angleDegrees ?? "0")}
                               onChange={(value) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[0] = {
-                                  ...stubs[0],
+                                const stubs = [...(specs.stubs || [])];
+                                stubs[1] = {
+                                  ...stubs[1],
                                   angleDegrees: parseInt(value, 10) || 0,
-                                  tangent: 1,
+                                  tangent: 2,
                                 };
-                                const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
+                                const updatedEntry = {
+                                  ...entry,
+                                  specs: { ...entry.specs, stubs },
+                                };
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
                               options={angleOptions}
-                              placeholder="Pos"
+                              placeholder="Select angle"
                             />
                           );
                         })()}
                       </div>
-                    )}
-                    {/* Length - visible when stubs >= 1 */}
-                    {(entry.specs?.numberOfStubs || 0) >= 1 && (
                       <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
-                        <label className="block text-xs text-purple-800 dark:text-purple-300 mb-0.5">
-                          Length (mm)
-                        </label>
+                        <label className="block text-xs text-purple-800 mb-0.5">Length (mm)</label>
                         <input
                           type="number"
-                          value={entry.specs?.stubs?.[0]?.length || ""}
+                          value={stub1.length || ""}
                           onChange={(e) => {
-                            const stubs = [...(entry.specs?.stubs || [])];
-                            stubs[0] = { ...stubs[0], length: parseInt(e.target.value, 10) || 0 };
+                            const stubs = [...(specs.stubs || [])];
+                            stubs[1] = {
+                              ...stubs[1],
+                              length: parseInt(e.target.value, 10) || 0,
+                            };
                             const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
                             updatedEntry.description = generateItemDescription(updatedEntry);
                             onUpdateEntry(entry.id, updatedEntry);
@@ -3479,20 +4127,17 @@ function BendFormComponent({
                           placeholder="150"
                         />
                       </div>
-                    )}
-                    {/* Location - visible when stubs >= 1 */}
-                    {(entry.specs?.numberOfStubs || 0) >= 1 && (
                       <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
-                        <label className="block text-xs text-purple-800 dark:text-purple-300 mb-0.5">
+                        <label className="block text-xs text-purple-800 mb-0.5">
                           Location (mm)
                         </label>
                         <input
                           type="number"
-                          value={entry.specs?.stubs?.[0]?.locationFromFlange || ""}
+                          value={stub1.locationFromFlange || ""}
                           onChange={(e) => {
-                            const stubs = [...(entry.specs?.stubs || [])];
-                            stubs[0] = {
-                              ...stubs[0],
+                            const stubs = [...(specs.stubs || [])];
+                            stubs[1] = {
+                              ...stubs[1],
                               locationFromFlange: parseInt(e.target.value, 10) || 0,
                             };
                             const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
@@ -3503,17 +4148,14 @@ function BendFormComponent({
                           placeholder="From flange"
                         />
                       </div>
-                    )}
-                  </div>
-                  {/* Stub 1 Flange - shown below the row when stubs >= 1 */}
-                  {(entry.specs?.numberOfStubs || 0) >= 1 && (
+                    </div>
+                    {/* Stub 2 Flange - matching Stub 1 layout */}
                     <div className="mt-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
                       {(() => {
                         const effectiveStandardId =
-                          entry.specs?.stubs?.[0]?.flangeStandardId ||
-                          globalSpecs?.flangeStandardId;
+                          stub1.flangeStandardId || globalSpecs?.flangeStandardId;
                         const effectiveFlangeTypeCode =
-                          entry.specs?.stubs?.[0]?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                          stub1.flangeTypeCode || globalSpecs?.flangeTypeCode;
                         const normalizedFlangeTypeCode =
                           effectiveFlangeTypeCode?.replace(/^\//, "") || "";
                         const selectedStandard = masterData.flangeStandards?.find(
@@ -3533,89 +4175,88 @@ function BendFormComponent({
                           ? SABS_1123_PRESSURE_CLASSES
                           : BS_4504_PRESSURE_CLASSES;
 
-                        const stub1GlobalClass = masterData.pressureClasses?.find(
+                        const stub2GlobalClass = masterData.pressureClasses?.find(
                           (p: any) => p.id === globalSpecs?.flangePressureClassId,
                         );
-                        const stub1GlobalBasePressure =
-                          stub1GlobalClass?.designation?.replace(/\/\d+$/, "") || "";
-                        const stub1TargetDesignation =
-                          normalizedFlangeTypeCode && stub1GlobalBasePressure
-                            ? `${stub1GlobalBasePressure}/${normalizedFlangeTypeCode}`
+                        const stub2GlobalBasePressure =
+                          stub2GlobalClass?.designation?.replace(/\/\d+$/, "") || "";
+                        const stub2TargetDesignation =
+                          normalizedFlangeTypeCode && stub2GlobalBasePressure
+                            ? `${stub2GlobalBasePressure}/${normalizedFlangeTypeCode}`
                             : null;
-                        const stub1MatchingClass = stub1TargetDesignation
+                        const stub2MatchingClass = stub2TargetDesignation
                           ? masterData.pressureClasses?.find(
-                              (pc: any) => pc.designation === stub1TargetDesignation,
+                              (pc: any) => pc.designation === stub2TargetDesignation,
                             )
                           : null;
                         const effectivePressureClassId =
-                          entry.specs?.stubs?.[0]?.flangePressureClassId ||
-                          stub1MatchingClass?.id ||
+                          stub1.flangePressureClassId ||
+                          stub2MatchingClass?.id ||
                           globalSpecs?.flangePressureClassId;
 
-                        const stub1EffectiveStandardId =
-                          entry.specs?.stubs?.[0]?.flangeStandardId ||
-                          globalSpecs?.flangeStandardId;
-                        const stub1EffectiveClassId = effectivePressureClassId;
-                        const stub1EffectiveTypeCode =
-                          entry.specs?.stubs?.[0]?.flangeTypeCode || globalSpecs?.flangeTypeCode;
-                        const stub1EffectiveClass = masterData.pressureClasses?.find(
-                          (p: any) => p.id === stub1EffectiveClassId,
+                        const stub2EffectiveStandardId =
+                          stub1.flangeStandardId || globalSpecs?.flangeStandardId;
+                        const stub2EffectiveClassId = effectivePressureClassId;
+                        const stub2EffectiveTypeCode =
+                          stub1.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                        const stub2EffectiveClass = masterData.pressureClasses?.find(
+                          (p: any) => p.id === stub2EffectiveClassId,
                         );
-                        const stub1EffectiveBasePressure =
-                          stub1EffectiveClass?.designation?.replace(/\/\d+$/, "") || "";
+                        const stub2EffectiveBasePressure =
+                          stub2EffectiveClass?.designation?.replace(/\/\d+$/, "") || "";
                         const isStandardFromGlobal =
                           globalSpecs?.flangeStandardId &&
-                          stub1EffectiveStandardId === globalSpecs?.flangeStandardId &&
-                          !entry.specs?.stubs?.[0]?.flangeStandardId;
+                          stub2EffectiveStandardId === globalSpecs?.flangeStandardId &&
+                          !stub1.flangeStandardId;
                         const isClassFromGlobal =
                           globalSpecs?.flangePressureClassId &&
-                          stub1EffectiveBasePressure === stub1GlobalBasePressure &&
-                          !entry.specs?.stubs?.[0]?.flangePressureClassId;
+                          stub2EffectiveBasePressure === stub2GlobalBasePressure &&
+                          !stub1.flangePressureClassId;
                         const isTypeFromGlobal =
                           globalSpecs?.flangeTypeCode &&
-                          stub1EffectiveTypeCode === globalSpecs?.flangeTypeCode &&
-                          !entry.specs?.stubs?.[0]?.flangeTypeCode;
+                          stub2EffectiveTypeCode === globalSpecs?.flangeTypeCode &&
+                          !stub1.flangeTypeCode;
                         const isStandardOverride =
-                          entry.specs?.stubs?.[0]?.flangeStandardId &&
-                          entry.specs?.stubs?.[0]?.flangeStandardId !==
-                            globalSpecs?.flangeStandardId;
+                          stub1.flangeStandardId &&
+                          stub1.flangeStandardId !== globalSpecs?.flangeStandardId;
                         const isClassOverride =
-                          entry.specs?.stubs?.[0]?.flangePressureClassId &&
-                          stub1EffectiveBasePressure !== stub1GlobalBasePressure;
+                          stub1.flangePressureClassId &&
+                          stub2EffectiveBasePressure !== stub2GlobalBasePressure;
                         const isTypeOverride =
-                          entry.specs?.stubs?.[0]?.flangeTypeCode &&
-                          entry.specs?.stubs?.[0]?.flangeTypeCode !== globalSpecs?.flangeTypeCode;
+                          stub1.flangeTypeCode &&
+                          stub1.flangeTypeCode !== globalSpecs?.flangeTypeCode;
 
-                        const stub1SelectedStandard = masterData.flangeStandards?.find(
-                          (s: any) => s.id === stub1EffectiveStandardId,
+                        const stub2SelectedStandard = masterData.flangeStandards?.find(
+                          (s: any) => s.id === stub2EffectiveStandardId,
                         );
-                        const stub1StandardCode = stub1SelectedStandard?.code?.toUpperCase() || "";
-                        const stub1IsSabs1123 =
-                          (stub1StandardCode.includes("SABS") ||
-                            stub1StandardCode.includes("SANS")) &&
-                          stub1StandardCode.includes("1123");
-                        const stub1IsBs4504 =
-                          (stub1StandardCode.includes("BS") &&
-                            stub1StandardCode.includes("4504")) ||
-                          (stub1StandardCode.includes("EN") &&
-                            (stub1StandardCode.includes("1092") ||
-                              stub1StandardCode.includes("10921")));
-                        const stub1SelectedClass = masterData.pressureClasses?.find(
-                          (pc: any) => pc.id === stub1EffectiveClassId,
+                        const stub2StandardCode = stub2SelectedStandard?.code?.toUpperCase() || "";
+                        const stub2IsSabs1123 =
+                          (stub2StandardCode.includes("SABS") ||
+                            stub2StandardCode.includes("SANS")) &&
+                          stub2StandardCode.includes("1123");
+                        const stub2IsBs4504 =
+                          (stub2StandardCode.includes("BS") &&
+                            stub2StandardCode.includes("4504")) ||
+                          (stub2StandardCode.includes("EN") &&
+                            (stub2StandardCode.includes("1092") ||
+                              stub2StandardCode.includes("10921")));
+                        const stub2SelectedClass = masterData.pressureClasses?.find(
+                          (pc: any) => pc.id === stub2EffectiveClassId,
                         );
-                        const stub1PressureClassRatingRaw = stub1SelectedClass?.designation
-                          ? parseInt(stub1SelectedClass.designation.replace(/[^\d]/g, ""), 10)
+                        const stub2PressureClassRatingRaw = stub2SelectedClass?.designation
+                          ? parseInt(stub2SelectedClass.designation.replace(/[^\d]/g, ""), 10)
                           : 0;
-                        const stub1WorkingPressureBar =
-                          entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
-                        const stub1IsPressureClassUnsuitable =
-                          stub1EffectiveClassId &&
-                          stub1WorkingPressureBar > 0 &&
-                          stub1PressureClassRatingRaw > 0 &&
-                          ((stub1IsSabs1123 &&
-                            stub1PressureClassRatingRaw < stub1WorkingPressureBar * 100) ||
-                            (stub1IsBs4504 &&
-                              stub1PressureClassRatingRaw < stub1WorkingPressureBar));
+                        const stub2WorkingPressureBar =
+                          specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                        const stub2IsPressureClassUnsuitable =
+                          stub2EffectiveClassId &&
+                          stub2WorkingPressureBar > 0 &&
+                          stub2PressureClassRatingRaw > 0 &&
+                          ((stub2IsSabs1123 &&
+                            stub2PressureClassRatingRaw < stub2WorkingPressureBar * 100) ||
+                            (stub2IsBs4504 &&
+                              stub2PressureClassRatingRaw < stub2WorkingPressureBar));
+
                         const globalSelectClass =
                           "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400";
                         const overrideSelectClass =
@@ -3629,7 +4270,7 @@ function BendFormComponent({
                             {/* Title as first column */}
                             <div className="flex items-center">
                               <span className="text-xs font-semibold text-orange-900 dark:text-amber-200">
-                                Stub 1 Flange
+                                Stub 2 Flange
                               </span>
                             </div>
                             {/* Standard */}
@@ -3651,9 +4292,9 @@ function BendFormComponent({
                                 value={effectiveStandardId || ""}
                                 onChange={(e) => {
                                   const standardId = parseInt(e.target.value, 10) || undefined;
-                                  const stubs = [...(entry.specs?.stubs || [])];
-                                  stubs[0] = {
-                                    ...stubs[0],
+                                  const stubs = [...(specs.stubs || [])];
+                                  stubs[1] = {
+                                    ...stubs[1],
                                     flangeStandardId: standardId,
                                     flangePressureClassId: undefined,
                                     flangeTypeCode: undefined,
@@ -3682,18 +4323,18 @@ function BendFormComponent({
                             {/* Class */}
                             <div>
                               <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                                {stub1IsSabs1123 ? "Class (kPa)" : "Class"}
-                                {isClassFromGlobal && !stub1IsPressureClassUnsuitable && (
+                                {stub2IsSabs1123 ? "Class (kPa)" : "Class"}
+                                {isClassFromGlobal && !stub2IsPressureClassUnsuitable && (
                                   <span className="ml-1 text-green-600 dark:text-lime-400">
                                     (From Specs Page)
                                   </span>
                                 )}
-                                {isClassOverride && !stub1IsPressureClassUnsuitable && (
+                                {isClassOverride && !stub2IsPressureClassUnsuitable && (
                                   <span className="ml-1 text-yellow-600 dark:text-yellow-400">
                                     (Override)
                                   </span>
                                 )}
-                                {stub1IsPressureClassUnsuitable && (
+                                {stub2IsPressureClassUnsuitable && (
                                   <span className="ml-1 text-red-600 dark:text-red-400">
                                     (NOT SUITABLE)
                                   </span>
@@ -3703,16 +4344,18 @@ function BendFormComponent({
                                 <select
                                   value={effectivePressureClassId || ""}
                                   onChange={(e) => {
-                                    const stubs = [...(entry.specs?.stubs || [])];
-                                    stubs[0] = {
-                                      ...stubs[0],
+                                    const stubs = [...(specs.stubs || [])];
+                                    stubs[1] = {
+                                      ...stubs[1],
                                       flangePressureClassId:
                                         parseInt(e.target.value, 10) || undefined,
                                     };
-                                    onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                    onUpdateEntry(entry.id, {
+                                      specs: { ...entry.specs, stubs },
+                                    });
                                   }}
                                   className={
-                                    stub1IsPressureClassUnsuitable
+                                    stub2IsPressureClassUnsuitable
                                       ? unsuitableSelectClass
                                       : isClassFromGlobal
                                         ? globalSelectClass
@@ -3743,7 +4386,7 @@ function BendFormComponent({
                                     );
                                     return matchingPc ? (
                                       <option key={matchingPc.id} value={matchingPc.id}>
-                                        {stub1IsSabs1123 ? pc.value : pc.label}
+                                        {stub2IsSabs1123 ? pc.value : pc.label}
                                       </option>
                                     ) : null;
                                   })}
@@ -3752,16 +4395,18 @@ function BendFormComponent({
                                 <select
                                   value={effectivePressureClassId || ""}
                                   onChange={(e) => {
-                                    const stubs = [...(entry.specs?.stubs || [])];
-                                    stubs[0] = {
-                                      ...stubs[0],
+                                    const stubs = [...(specs.stubs || [])];
+                                    stubs[1] = {
+                                      ...stubs[1],
                                       flangePressureClassId:
                                         parseInt(e.target.value, 10) || undefined,
                                     };
-                                    onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
+                                    onUpdateEntry(entry.id, {
+                                      specs: { ...entry.specs, stubs },
+                                    });
                                   }}
                                   className={
-                                    stub1IsPressureClassUnsuitable
+                                    stub2IsPressureClassUnsuitable
                                       ? unsuitableSelectClass
                                       : isClassFromGlobal
                                         ? globalSelectClass
@@ -3802,9 +4447,9 @@ function BendFormComponent({
                                 <select
                                   value={effectiveFlangeTypeCode || ""}
                                   onChange={(e) => {
-                                    const stubs = [...(entry.specs?.stubs || [])];
-                                    stubs[0] = {
-                                      ...stubs[0],
+                                    const stubs = [...(specs.stubs || [])];
+                                    stubs[1] = {
+                                      ...stubs[1],
                                       flangeTypeCode: e.target.value || undefined,
                                     };
                                     const updatedEntry = {
@@ -3840,10 +4485,13 @@ function BendFormComponent({
                               <label className="flex items-center gap-1.5 pb-1.5">
                                 <input
                                   type="checkbox"
-                                  checked={entry.specs?.stubs?.[0]?.hasBlankFlange || false}
+                                  checked={stub1.hasBlankFlange || false}
                                   onChange={(e) => {
-                                    const stubs = [...(entry.specs?.stubs || [])];
-                                    stubs[0] = { ...stubs[0], hasBlankFlange: e.target.checked };
+                                    const stubs = [...(specs.stubs || [])];
+                                    stubs[1] = {
+                                      ...stubs[1],
+                                      hasBlankFlange: e.target.checked,
+                                    };
                                     const updatedEntry = {
                                       ...entry,
                                       specs: { ...entry.specs, stubs },
@@ -3855,7 +4503,7 @@ function BendFormComponent({
                                   className="w-3 h-3 text-red-600 rounded focus:ring-red-500"
                                 />
                                 <span className="text-xs text-red-700 font-medium">
-                                  + Blank ({entry.specs?.stubs?.[0]?.nominalBoreMm || "?"}NB)
+                                  + Blank ({stub1.nominalBoreMm || "?"}NB)
                                 </span>
                               </label>
                             </div>
@@ -3863,729 +4511,10 @@ function BendFormComponent({
                         );
                       })()}
                     </div>
-                  )}
-
-                  {/* Stub 2 Section - only show when 2 stubs AND 2 tangents selected */}
-                  {(entry.specs?.numberOfStubs || 0) >= 2 &&
-                    (entry.specs?.numberOfTangents || 0) >= 2 && (
-                      <div className="mt-2 p-2 bg-white dark:bg-gray-800 rounded border border-green-300 dark:border-green-600">
-                        <p className="text-xs font-medium text-green-900 dark:text-green-300 mb-2">
-                          Stub 2{" "}
-                          <span className="text-gray-500 dark:text-gray-400 font-normal">
-                            (on T2)
-                          </span>
-                        </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-2">
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-0.5">
-                              Steel Spec
-                              {entry.specs?.stubs?.[1]?.steelSpecificationId && (
-                                <span className="text-purple-600 ml-1">*</span>
-                              )}
-                            </label>
-                            {(() => {
-                              const selectId = `bend-stub2-steel-spec-${entry.id}`;
-                              const stub2EffectiveSpecId =
-                                entry.specs?.stubs?.[1]?.steelSpecificationId ||
-                                entry.specs?.steelSpecificationId ||
-                                globalSpecs?.steelSpecificationId;
-
-                              return (
-                                <Select
-                                  id={selectId}
-                                  value={String(stub2EffectiveSpecId || "")}
-                                  onChange={(value) => {
-                                    const newSpecId = value ? Number(value) : undefined;
-                                    const stubs = [...(entry.specs?.stubs || [])];
-                                    stubs[1] = {
-                                      ...stubs[1],
-                                      steelSpecificationId: newSpecId,
-                                      nominalBoreMm: undefined,
-                                      wallThicknessMm: undefined,
-                                    };
-                                    const updatedEntry = {
-                                      ...entry,
-                                      specs: { ...entry.specs, stubs },
-                                    };
-                                    updatedEntry.description =
-                                      generateItemDescription(updatedEntry);
-                                    onUpdateEntry(entry.id, updatedEntry);
-                                  }}
-                                  options={[]}
-                                  groupedOptions={groupedSteelOptions}
-                                  placeholder="Spec"
-                                />
-                              );
-                            })()}
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-0.5">NB</label>
-                            {(() => {
-                              const selectId = `bend-stub2-nb-${entry.id}`;
-                              const stub2EffectiveSpecId =
-                                entry.specs?.stubs?.[1]?.steelSpecificationId ||
-                                entry.specs?.steelSpecificationId ||
-                                globalSpecs?.steelSpecificationId;
-                              const stub2SteelSpec = masterData.steelSpecs?.find(
-                                (s: any) => s.id === stub2EffectiveSpecId,
-                              );
-                              const stub2SteelSpecName = stub2SteelSpec?.steelSpecName || "";
-                              const stub2FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(
-                                ([pattern]) => stub2SteelSpecName.includes(pattern),
-                              )?.[1];
-                              const allStub2Nbs = stub2FallbackNBs || [
-                                15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300,
-                              ];
-                              const mainBendNB = entry.specs?.nominalBoreMm || 0;
-                              const stub2Nbs = allStub2Nbs.filter((nb: number) => nb <= mainBendNB);
-                              const options = stub2Nbs.map((nb: number) => ({
-                                value: String(nb),
-                                label: `${nb} NB`,
-                              }));
-
-                              return (
-                                <Select
-                                  id={selectId}
-                                  value={
-                                    entry.specs?.stubs?.[1]?.nominalBoreMm
-                                      ? String(entry.specs.stubs[1].nominalBoreMm)
-                                      : ""
-                                  }
-                                  onChange={(value) => {
-                                    const stubs = [...(entry.specs?.stubs || [])];
-                                    stubs[1] = {
-                                      ...stubs[1],
-                                      nominalBoreMm: parseInt(value, 10) || 0,
-                                    };
-                                    const updatedEntry = {
-                                      ...entry,
-                                      specs: { ...entry.specs, stubs },
-                                    };
-                                    updatedEntry.description =
-                                      generateItemDescription(updatedEntry);
-                                    onUpdateEntry(entry.id, updatedEntry);
-                                  }}
-                                  options={options}
-                                  placeholder="Select NB"
-                                />
-                              );
-                            })()}
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-0.5">
-                              W/T (mm)
-                              {entry.specs?.stubs?.[1]?.wallThicknessOverride ? (
-                                <span className="text-purple-600 ml-1">(Override)</span>
-                              ) : entry.specs?.stubs?.[1]?.nominalBoreMm ? (
-                                <span className="text-green-600 ml-1">(Auto)</span>
-                              ) : null}
-                            </label>
-                            {(() => {
-                              const selectId = `bend-stub2-wt-${entry.id}`;
-                              const stub2NB = entry.specs?.stubs?.[1]?.nominalBoreMm;
-                              const steelSpecId =
-                                entry.specs?.stubs?.[1]?.steelSpecificationId ||
-                                entry.specs?.steelSpecificationId ||
-                                globalSpecs?.steelSpecificationId;
-                              const stub2SteelSpec = masterData.steelSpecs?.find(
-                                (s: any) => s.id === steelSpecId,
-                              );
-                              const stub2SpecName = stub2SteelSpec?.steelSpecName || "";
-                              const isSABS719 =
-                                stub2SpecName.includes("SABS 719") ||
-                                stub2SpecName.includes("SANS 719");
-
-                              const SABS_719_WT: Record<number, number> = {
-                                200: 5.2,
-                                250: 5.2,
-                                300: 6.4,
-                                350: 6.4,
-                                400: 6.4,
-                                450: 6.4,
-                                500: 6.4,
-                                550: 6.4,
-                                600: 6.4,
-                                650: 8.0,
-                                700: 8.0,
-                                750: 8.0,
-                                800: 8.0,
-                                850: 9.5,
-                                900: 9.5,
-                                1000: 9.5,
-                                1050: 9.5,
-                                1200: 12.7,
-                              };
-                              const ASTM_STUB_WT: Record<number, number> = {
-                                15: 2.77,
-                                20: 2.87,
-                                25: 3.38,
-                                32: 3.56,
-                                40: 3.68,
-                                50: 3.91,
-                                65: 5.16,
-                                80: 5.49,
-                                100: 6.02,
-                                125: 6.55,
-                                150: 7.11,
-                                200: 8.18,
-                                250: 9.27,
-                                300: 10.31,
-                              };
-
-                              const getSabs719Wt = (nb: number): number => {
-                                const sizes = Object.keys(SABS_719_WT)
-                                  .map(Number)
-                                  .sort((a, b) => a - b);
-                                let closest = sizes[0];
-                                for (const size of sizes) {
-                                  if (size <= nb) closest = size;
-                                  else break;
-                                }
-                                return SABS_719_WT[closest] || entry.specs?.wallThicknessMm || 6.4;
-                              };
-
-                              const autoWt = stub2NB
-                                ? isSABS719
-                                  ? getSabs719Wt(stub2NB)
-                                  : ASTM_STUB_WT[stub2NB] || stub2NB * 0.05
-                                : null;
-                              const currentWt = entry.specs?.stubs?.[1]?.wallThicknessMm;
-
-                              const wtOptions = isSABS719
-                                ? [
-                                    ...(autoWt
-                                      ? [
-                                          {
-                                            value: String(autoWt),
-                                            label: `${autoWt.toFixed(1)} (Auto - SABS 719)`,
-                                          },
-                                        ]
-                                      : []),
-                                    { value: "4.0", label: "4.0 (WT4)" },
-                                    { value: "5.0", label: "5.0 (WT5)" },
-                                    { value: "5.2", label: "5.2" },
-                                    { value: "6.0", label: "6.0 (WT6)" },
-                                    { value: "6.4", label: "6.4" },
-                                    { value: "8.0", label: "8.0 (WT8)" },
-                                    { value: "9.5", label: "9.5" },
-                                    { value: "10.0", label: "10.0 (WT10)" },
-                                    { value: "12.0", label: "12.0 (WT12)" },
-                                    { value: "12.7", label: "12.7" },
-                                  ].filter(
-                                    (opt, idx, arr) =>
-                                      arr.findIndex((o) => o.value === opt.value) === idx,
-                                  )
-                                : [
-                                    ...(autoWt
-                                      ? [
-                                          {
-                                            value: String(autoWt),
-                                            label: `${autoWt.toFixed(2)} (Auto)`,
-                                          },
-                                        ]
-                                      : []),
-                                    { value: "2.77", label: "2.77" },
-                                    { value: "3.38", label: "3.38" },
-                                    { value: "3.91", label: "3.91" },
-                                    { value: "5.16", label: "5.16" },
-                                    { value: "5.49", label: "5.49" },
-                                    { value: "6.02", label: "6.02" },
-                                    { value: "6.55", label: "6.55" },
-                                    { value: "7.11", label: "7.11" },
-                                    { value: "8.18", label: "8.18" },
-                                    { value: "9.27", label: "9.27" },
-                                    { value: "10.31", label: "10.31" },
-                                  ].filter(
-                                    (opt, idx, arr) =>
-                                      arr.findIndex((o) => o.value === opt.value) === idx,
-                                  );
-
-                              return (
-                                <Select
-                                  id={selectId}
-                                  value={
-                                    currentWt ? String(currentWt) : autoWt ? String(autoWt) : ""
-                                  }
-                                  onChange={(value) => {
-                                    const stubs = [...(entry.specs?.stubs || [])];
-                                    const newWt = parseFloat(value) || 0;
-                                    const isOverride = autoWt && newWt !== autoWt;
-                                    stubs[1] = {
-                                      ...stubs[1],
-                                      wallThicknessMm: newWt,
-                                      wallThicknessOverride: isOverride,
-                                    };
-                                    const updatedEntry = {
-                                      ...entry,
-                                      specs: { ...entry.specs, stubs },
-                                    };
-                                    onUpdateEntry(entry.id, updatedEntry);
-                                  }}
-                                  options={wtOptions}
-                                  placeholder="Select W/T"
-                                />
-                              );
-                            })()}
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-0.5">
-                              Position <span className="text-gray-400">on T2</span>
-                            </label>
-                            {(() => {
-                              const selectId = `bend-stub2-angle-${entry.id}`;
-                              const angleOptions = [
-                                { value: "0", label: "0° (Top)" },
-                                { value: "45", label: "45°" },
-                                { value: "90", label: "90° (Side)" },
-                                { value: "135", label: "135°" },
-                                { value: "180", label: "180° (Bottom)" },
-                                { value: "225", label: "225°" },
-                                { value: "270", label: "270° (Side)" },
-                                { value: "315", label: "315°" },
-                              ];
-                              return (
-                                <Select
-                                  id={selectId}
-                                  value={String(entry.specs?.stubs?.[1]?.angleDegrees ?? "0")}
-                                  onChange={(value) => {
-                                    const stubs = [...(entry.specs?.stubs || [])];
-                                    stubs[1] = {
-                                      ...stubs[1],
-                                      angleDegrees: parseInt(value, 10) || 0,
-                                      tangent: 2,
-                                    };
-                                    const updatedEntry = {
-                                      ...entry,
-                                      specs: { ...entry.specs, stubs },
-                                    };
-                                    updatedEntry.description =
-                                      generateItemDescription(updatedEntry);
-                                    onUpdateEntry(entry.id, updatedEntry);
-                                  }}
-                                  options={angleOptions}
-                                  placeholder="Select angle"
-                                />
-                              );
-                            })()}
-                          </div>
-                          <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
-                            <label className="block text-xs text-purple-800 mb-0.5">
-                              Length (mm)
-                            </label>
-                            <input
-                              type="number"
-                              value={entry.specs?.stubs?.[1]?.length || ""}
-                              onChange={(e) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[1] = {
-                                  ...stubs[1],
-                                  length: parseInt(e.target.value, 10) || 0,
-                                };
-                                const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
-                                updatedEntry.description = generateItemDescription(updatedEntry);
-                                onUpdateEntry(entry.id, updatedEntry);
-                              }}
-                              className="w-full px-2 py-1 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded text-xs focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
-                              placeholder="150"
-                            />
-                          </div>
-                          <div className="bg-purple-50 dark:bg-purple-900/30 p-1 rounded border border-purple-200 dark:border-purple-700">
-                            <label className="block text-xs text-purple-800 mb-0.5">
-                              Location (mm)
-                            </label>
-                            <input
-                              type="number"
-                              value={entry.specs?.stubs?.[1]?.locationFromFlange || ""}
-                              onChange={(e) => {
-                                const stubs = [...(entry.specs?.stubs || [])];
-                                stubs[1] = {
-                                  ...stubs[1],
-                                  locationFromFlange: parseInt(e.target.value, 10) || 0,
-                                };
-                                const updatedEntry = { ...entry, specs: { ...entry.specs, stubs } };
-                                updatedEntry.description = generateItemDescription(updatedEntry);
-                                onUpdateEntry(entry.id, updatedEntry);
-                              }}
-                              className="w-full px-2 py-1 bg-purple-50 dark:bg-purple-900/30 border border-purple-300 dark:border-purple-600 rounded text-xs focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
-                              placeholder="From flange"
-                            />
-                          </div>
-                        </div>
-                        {/* Stub 2 Flange - matching Stub 1 layout */}
-                        <div className="mt-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg px-3 py-2">
-                          {(() => {
-                            const effectiveStandardId =
-                              entry.specs?.stubs?.[1]?.flangeStandardId ||
-                              globalSpecs?.flangeStandardId;
-                            const effectiveFlangeTypeCode =
-                              entry.specs?.stubs?.[1]?.flangeTypeCode ||
-                              globalSpecs?.flangeTypeCode;
-                            const normalizedFlangeTypeCode =
-                              effectiveFlangeTypeCode?.replace(/^\//, "") || "";
-                            const selectedStandard = masterData.flangeStandards?.find(
-                              (fs: any) => fs.id === effectiveStandardId,
-                            );
-                            const isSabs1123 =
-                              selectedStandard?.code?.toUpperCase().includes("SABS") &&
-                              selectedStandard?.code?.includes("1123");
-                            const isBs4504 =
-                              selectedStandard?.code?.toUpperCase().includes("BS") &&
-                              selectedStandard?.code?.includes("4504");
-                            const showFlangeType = isSabs1123 || isBs4504;
-                            const flangeTypes = isSabs1123
-                              ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
-                              : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || [];
-                            const pressureClasses = isSabs1123
-                              ? SABS_1123_PRESSURE_CLASSES
-                              : BS_4504_PRESSURE_CLASSES;
-
-                            const stub2GlobalClass = masterData.pressureClasses?.find(
-                              (p: any) => p.id === globalSpecs?.flangePressureClassId,
-                            );
-                            const stub2GlobalBasePressure =
-                              stub2GlobalClass?.designation?.replace(/\/\d+$/, "") || "";
-                            const stub2TargetDesignation =
-                              normalizedFlangeTypeCode && stub2GlobalBasePressure
-                                ? `${stub2GlobalBasePressure}/${normalizedFlangeTypeCode}`
-                                : null;
-                            const stub2MatchingClass = stub2TargetDesignation
-                              ? masterData.pressureClasses?.find(
-                                  (pc: any) => pc.designation === stub2TargetDesignation,
-                                )
-                              : null;
-                            const effectivePressureClassId =
-                              entry.specs?.stubs?.[1]?.flangePressureClassId ||
-                              stub2MatchingClass?.id ||
-                              globalSpecs?.flangePressureClassId;
-
-                            const stub2EffectiveStandardId =
-                              entry.specs?.stubs?.[1]?.flangeStandardId ||
-                              globalSpecs?.flangeStandardId;
-                            const stub2EffectiveClassId = effectivePressureClassId;
-                            const stub2EffectiveTypeCode =
-                              entry.specs?.stubs?.[1]?.flangeTypeCode ||
-                              globalSpecs?.flangeTypeCode;
-                            const stub2EffectiveClass = masterData.pressureClasses?.find(
-                              (p: any) => p.id === stub2EffectiveClassId,
-                            );
-                            const stub2EffectiveBasePressure =
-                              stub2EffectiveClass?.designation?.replace(/\/\d+$/, "") || "";
-                            const isStandardFromGlobal =
-                              globalSpecs?.flangeStandardId &&
-                              stub2EffectiveStandardId === globalSpecs?.flangeStandardId &&
-                              !entry.specs?.stubs?.[1]?.flangeStandardId;
-                            const isClassFromGlobal =
-                              globalSpecs?.flangePressureClassId &&
-                              stub2EffectiveBasePressure === stub2GlobalBasePressure &&
-                              !entry.specs?.stubs?.[1]?.flangePressureClassId;
-                            const isTypeFromGlobal =
-                              globalSpecs?.flangeTypeCode &&
-                              stub2EffectiveTypeCode === globalSpecs?.flangeTypeCode &&
-                              !entry.specs?.stubs?.[1]?.flangeTypeCode;
-                            const isStandardOverride =
-                              entry.specs?.stubs?.[1]?.flangeStandardId &&
-                              entry.specs?.stubs?.[1]?.flangeStandardId !==
-                                globalSpecs?.flangeStandardId;
-                            const isClassOverride =
-                              entry.specs?.stubs?.[1]?.flangePressureClassId &&
-                              stub2EffectiveBasePressure !== stub2GlobalBasePressure;
-                            const isTypeOverride =
-                              entry.specs?.stubs?.[1]?.flangeTypeCode &&
-                              entry.specs?.stubs?.[1]?.flangeTypeCode !==
-                                globalSpecs?.flangeTypeCode;
-
-                            const stub2SelectedStandard = masterData.flangeStandards?.find(
-                              (s: any) => s.id === stub2EffectiveStandardId,
-                            );
-                            const stub2StandardCode =
-                              stub2SelectedStandard?.code?.toUpperCase() || "";
-                            const stub2IsSabs1123 =
-                              (stub2StandardCode.includes("SABS") ||
-                                stub2StandardCode.includes("SANS")) &&
-                              stub2StandardCode.includes("1123");
-                            const stub2IsBs4504 =
-                              (stub2StandardCode.includes("BS") &&
-                                stub2StandardCode.includes("4504")) ||
-                              (stub2StandardCode.includes("EN") &&
-                                (stub2StandardCode.includes("1092") ||
-                                  stub2StandardCode.includes("10921")));
-                            const stub2SelectedClass = masterData.pressureClasses?.find(
-                              (pc: any) => pc.id === stub2EffectiveClassId,
-                            );
-                            const stub2PressureClassRatingRaw = stub2SelectedClass?.designation
-                              ? parseInt(stub2SelectedClass.designation.replace(/[^\d]/g, ""), 10)
-                              : 0;
-                            const stub2WorkingPressureBar =
-                              entry.specs?.workingPressureBar ||
-                              globalSpecs?.workingPressureBar ||
-                              0;
-                            const stub2IsPressureClassUnsuitable =
-                              stub2EffectiveClassId &&
-                              stub2WorkingPressureBar > 0 &&
-                              stub2PressureClassRatingRaw > 0 &&
-                              ((stub2IsSabs1123 &&
-                                stub2PressureClassRatingRaw < stub2WorkingPressureBar * 100) ||
-                                (stub2IsBs4504 &&
-                                  stub2PressureClassRatingRaw < stub2WorkingPressureBar));
-
-                            const globalSelectClass =
-                              "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400";
-                            const overrideSelectClass =
-                              "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400";
-                            const unsuitableSelectClass =
-                              "w-full px-2 py-1.5 border-2 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400";
-                            const defaultSelectClass =
-                              "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
-                            return (
-                              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
-                                {/* Title as first column */}
-                                <div className="flex items-center">
-                                  <span className="text-xs font-semibold text-orange-900 dark:text-amber-200">
-                                    Stub 2 Flange
-                                  </span>
-                                </div>
-                                {/* Standard */}
-                                <div>
-                                  <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                                    Standard
-                                    {isStandardFromGlobal && (
-                                      <span className="ml-1 text-green-600 dark:text-lime-400">
-                                        (From Specs Page)
-                                      </span>
-                                    )}
-                                    {isStandardOverride && (
-                                      <span className="ml-1 text-yellow-600 dark:text-yellow-400">
-                                        (Override)
-                                      </span>
-                                    )}
-                                  </label>
-                                  <select
-                                    value={effectiveStandardId || ""}
-                                    onChange={(e) => {
-                                      const standardId = parseInt(e.target.value, 10) || undefined;
-                                      const stubs = [...(entry.specs?.stubs || [])];
-                                      stubs[1] = {
-                                        ...stubs[1],
-                                        flangeStandardId: standardId,
-                                        flangePressureClassId: undefined,
-                                        flangeTypeCode: undefined,
-                                      };
-                                      onUpdateEntry(entry.id, { specs: { ...entry.specs, stubs } });
-                                      if (standardId) {
-                                        getFilteredPressureClasses(standardId);
-                                      }
-                                    }}
-                                    className={
-                                      isStandardFromGlobal
-                                        ? globalSelectClass
-                                        : isStandardOverride
-                                          ? overrideSelectClass
-                                          : defaultSelectClass
-                                    }
-                                  >
-                                    <option value="">Select...</option>
-                                    {masterData.flangeStandards?.map((s: any) => (
-                                      <option key={s.id} value={s.id}>
-                                        {s.code}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                {/* Class */}
-                                <div>
-                                  <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                                    {stub2IsSabs1123 ? "Class (kPa)" : "Class"}
-                                    {isClassFromGlobal && !stub2IsPressureClassUnsuitable && (
-                                      <span className="ml-1 text-green-600 dark:text-lime-400">
-                                        (From Specs Page)
-                                      </span>
-                                    )}
-                                    {isClassOverride && !stub2IsPressureClassUnsuitable && (
-                                      <span className="ml-1 text-yellow-600 dark:text-yellow-400">
-                                        (Override)
-                                      </span>
-                                    )}
-                                    {stub2IsPressureClassUnsuitable && (
-                                      <span className="ml-1 text-red-600 dark:text-red-400">
-                                        (NOT SUITABLE)
-                                      </span>
-                                    )}
-                                  </label>
-                                  {showFlangeType ? (
-                                    <select
-                                      value={effectivePressureClassId || ""}
-                                      onChange={(e) => {
-                                        const stubs = [...(entry.specs?.stubs || [])];
-                                        stubs[1] = {
-                                          ...stubs[1],
-                                          flangePressureClassId:
-                                            parseInt(e.target.value, 10) || undefined,
-                                        };
-                                        onUpdateEntry(entry.id, {
-                                          specs: { ...entry.specs, stubs },
-                                        });
-                                      }}
-                                      className={
-                                        stub2IsPressureClassUnsuitable
-                                          ? unsuitableSelectClass
-                                          : isClassFromGlobal
-                                            ? globalSelectClass
-                                            : isClassOverride
-                                              ? overrideSelectClass
-                                              : defaultSelectClass
-                                      }
-                                    >
-                                      <option value="">Select...</option>
-                                      {pressureClasses.map((pc) => {
-                                        const pcValue = String(pc.value);
-                                        const equivalentValue = pcValue === "64" ? "63" : pcValue;
-                                        const targetDesignation = normalizedFlangeTypeCode
-                                          ? `${pcValue}/${normalizedFlangeTypeCode}`
-                                          : null;
-                                        const matchingPc = masterData.pressureClasses?.find(
-                                          (mpc: any) => {
-                                            if (
-                                              targetDesignation &&
-                                              mpc.designation === targetDesignation
-                                            )
-                                              return true;
-                                            return (
-                                              mpc.designation?.includes(pcValue) ||
-                                              mpc.designation?.includes(equivalentValue)
-                                            );
-                                          },
-                                        );
-                                        return matchingPc ? (
-                                          <option key={matchingPc.id} value={matchingPc.id}>
-                                            {stub2IsSabs1123 ? pc.value : pc.label}
-                                          </option>
-                                        ) : null;
-                                      })}
-                                    </select>
-                                  ) : (
-                                    <select
-                                      value={effectivePressureClassId || ""}
-                                      onChange={(e) => {
-                                        const stubs = [...(entry.specs?.stubs || [])];
-                                        stubs[1] = {
-                                          ...stubs[1],
-                                          flangePressureClassId:
-                                            parseInt(e.target.value, 10) || undefined,
-                                        };
-                                        onUpdateEntry(entry.id, {
-                                          specs: { ...entry.specs, stubs },
-                                        });
-                                      }}
-                                      className={
-                                        stub2IsPressureClassUnsuitable
-                                          ? unsuitableSelectClass
-                                          : isClassFromGlobal
-                                            ? globalSelectClass
-                                            : isClassOverride
-                                              ? overrideSelectClass
-                                              : defaultSelectClass
-                                      }
-                                    >
-                                      <option value="">Select...</option>
-                                      {(
-                                        pressureClassesByStandard[effectiveStandardId || 0] ||
-                                        masterData.pressureClasses ||
-                                        []
-                                      ).map((pc: any) => (
-                                        <option key={pc.id} value={pc.id}>
-                                          {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  )}
-                                </div>
-                                {/* Type */}
-                                <div>
-                                  <label className="block text-xs text-gray-700 dark:text-gray-300 mb-0.5">
-                                    Type
-                                    {isTypeFromGlobal && showFlangeType && (
-                                      <span className="ml-1 text-green-600 dark:text-lime-400">
-                                        (From Specs Page)
-                                      </span>
-                                    )}
-                                    {isTypeOverride && showFlangeType && (
-                                      <span className="ml-1 text-yellow-600 dark:text-yellow-400">
-                                        (Override)
-                                      </span>
-                                    )}
-                                  </label>
-                                  {showFlangeType ? (
-                                    <select
-                                      value={effectiveFlangeTypeCode || ""}
-                                      onChange={(e) => {
-                                        const stubs = [...(entry.specs?.stubs || [])];
-                                        stubs[1] = {
-                                          ...stubs[1],
-                                          flangeTypeCode: e.target.value || undefined,
-                                        };
-                                        const updatedEntry = {
-                                          ...entry,
-                                          specs: { ...entry.specs, stubs },
-                                        };
-                                        updatedEntry.description =
-                                          generateItemDescription(updatedEntry);
-                                        onUpdateEntry(entry.id, updatedEntry);
-                                      }}
-                                      className={
-                                        isTypeFromGlobal
-                                          ? globalSelectClass
-                                          : isTypeOverride
-                                            ? overrideSelectClass
-                                            : defaultSelectClass
-                                      }
-                                    >
-                                      <option value="">Select...</option>
-                                      {flangeTypes.map((ft) => (
-                                        <option key={ft.code} value={ft.code}>
-                                          {ft.name} ({ft.code})
-                                        </option>
-                                      ))}
-                                    </select>
-                                  ) : (
-                                    <div className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded text-xs bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                                      N/A
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex items-end">
-                                  <label className="flex items-center gap-1.5 pb-1.5">
-                                    <input
-                                      type="checkbox"
-                                      checked={entry.specs?.stubs?.[1]?.hasBlankFlange || false}
-                                      onChange={(e) => {
-                                        const stubs = [...(entry.specs?.stubs || [])];
-                                        stubs[1] = {
-                                          ...stubs[1],
-                                          hasBlankFlange: e.target.checked,
-                                        };
-                                        const updatedEntry = {
-                                          ...entry,
-                                          specs: { ...entry.specs, stubs },
-                                        };
-                                        updatedEntry.description =
-                                          generateItemDescription(updatedEntry);
-                                        onUpdateEntry(entry.id, updatedEntry);
-                                      }}
-                                      className="w-3 h-3 text-red-600 rounded focus:ring-red-500"
-                                    />
-                                    <span className="text-xs text-red-700 font-medium">
-                                      + Blank ({entry.specs?.stubs?.[1]?.nominalBoreMm || "?"}NB)
-                                    </span>
-                                  </label>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Operating Conditions - Hidden: Uses global specs for working pressure/temp */}
 
@@ -4716,9 +4645,9 @@ function BendFormComponent({
               </div>
             ) : Bend3DPreview ? (
               (() => {
-                const canRenderPreview = entry.specs?.nominalBoreMm && entry.specs?.bendDegrees;
+                const canRenderPreview = specs.nominalBoreMm && specs.bendDegrees;
                 log.info(
-                  `🎨 BendForm preview check - entry.id: ${entry.id}, nominalBoreMm: ${entry.specs?.nominalBoreMm}, bendDegrees: ${entry.specs?.bendDegrees}, canRender: ${!!canRenderPreview}`,
+                  `🎨 BendForm preview check - entry.id: ${entry.id}, nominalBoreMm: ${specs.nominalBoreMm}, bendDegrees: ${specs.bendDegrees}, canRender: ${!!canRenderPreview}`,
                 );
                 if (!canRenderPreview) {
                   return (
@@ -4727,17 +4656,16 @@ function BendFormComponent({
                     </div>
                   );
                 }
-                const flangeStandardId =
-                  entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
                 const flangePressureClassId =
-                  entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                  specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                 const flangeStandard = masterData.flangeStandards?.find(
                   (s: any) => s.id === flangeStandardId,
                 );
                 const pressureClass = masterData.pressureClasses?.find(
                   (p: any) => p.id === flangePressureClassId,
                 );
-                const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
                 const flangeStandardName =
                   flangeStandard?.code === "SABS_1123"
                     ? "SABS 1123"
@@ -4748,8 +4676,7 @@ function BendFormComponent({
                 const steelSpecName =
                   masterData.steelSpecs.find(
                     (s: any) =>
-                      s.id ===
-                      (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId),
+                      s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
                   )?.steelSpecName || "";
                 const previewIsSABS719 =
                   steelSpecName.includes("SABS 719") || steelSpecName.includes("SANS 719");
@@ -4763,27 +4690,26 @@ function BendFormComponent({
                         entry.specs.nominalBoreMm * 1.05
                       }
                       wallThickness={
-                        entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5
+                        specs.wallThicknessMm || entry.calculation?.wallThicknessMm || 5
                       }
                       bendAngle={entry.specs.bendDegrees}
                       bendType={entry.specs.bendType || "1.5D"}
-                      tangent1={entry.specs?.tangentLengths?.[0] || 0}
-                      tangent2={entry.specs?.tangentLengths?.[1] || 0}
+                      tangent1={specs.tangentLengths?.[0] || 0}
+                      tangent2={specs.tangentLengths?.[1] || 0}
                       schedule={entry.specs.scheduleNumber}
                       materialName={steelSpecName}
-                      numberOfSegments={entry.specs?.numberOfSegments}
+                      numberOfSegments={specs.numberOfSegments}
                       isSegmented={
-                        entry.specs?.bendStyle === "segmented" ||
-                        (!entry.specs?.bendStyle && previewIsSABS719)
+                        specs.bendStyle === "segmented" || (!specs.bendStyle && previewIsSABS719)
                       }
-                      stubs={entry.specs?.stubs}
-                      numberOfStubs={entry.specs?.numberOfStubs || 0}
-                      flangeConfig={entry.specs?.bendEndConfiguration || "PE"}
-                      closureLengthMm={entry.specs?.closureLengthMm || 0}
-                      addBlankFlange={entry.specs?.addBlankFlange}
-                      blankFlangePositions={entry.specs?.blankFlangePositions}
-                      savedCameraPosition={entry.specs?.savedCameraPosition}
-                      savedCameraTarget={entry.specs?.savedCameraTarget}
+                      stubs={specs.stubs}
+                      numberOfStubs={specs.numberOfStubs || 0}
+                      flangeConfig={specs.bendEndConfiguration || "PE"}
+                      closureLengthMm={specs.closureLengthMm || 0}
+                      addBlankFlange={specs.addBlankFlange}
+                      blankFlangePositions={specs.blankFlangePositions}
+                      savedCameraPosition={specs.savedCameraPosition}
+                      savedCameraTarget={specs.savedCameraTarget}
                       onCameraChange={(
                         position: [number, number, number],
                         target: [number, number, number],
@@ -4805,20 +4731,20 @@ function BendFormComponent({
                       flangeStandardName={flangeStandardName}
                       pressureClassDesignation={pressureClassDesignation}
                       flangeTypeCode={flangeTypeCode}
-                      centerToFaceMm={entry.specs?.centerToFaceMm}
-                      bendRadiusMm={entry.specs?.bendRadiusMm}
-                      bendItemType={entry.specs?.bendItemType}
-                      duckfootBasePlateXMm={entry.specs?.duckfootBasePlateXMm}
-                      duckfootBasePlateYMm={entry.specs?.duckfootBasePlateYMm}
-                      duckfootInletCentreHeightMm={entry.specs?.duckfootInletCentreHeightMm}
-                      duckfootPlateThicknessT1Mm={entry.specs?.duckfootPlateThicknessT1Mm}
-                      duckfootRibThicknessT2Mm={entry.specs?.duckfootRibThicknessT2Mm}
-                      duckfootGussetPointDDegrees={entry.specs?.duckfootGussetPointDDegrees}
-                      duckfootGussetPointCDegrees={entry.specs?.duckfootGussetPointCDegrees}
-                      duckfootGussetCount={entry.specs?.duckfootGussetCount}
-                      duckfootGussetPlacement={entry.specs?.duckfootGussetPlacement}
-                      duckfootGussetThicknessMm={entry.specs?.duckfootGussetThicknessMm}
-                      sweepTeePipeALengthMm={entry.specs?.sweepTeePipeALengthMm}
+                      centerToFaceMm={specs.centerToFaceMm}
+                      bendRadiusMm={specs.bendRadiusMm}
+                      bendItemType={specs.bendItemType}
+                      duckfootBasePlateXMm={specs.duckfootBasePlateXMm}
+                      duckfootBasePlateYMm={specs.duckfootBasePlateYMm}
+                      duckfootInletCentreHeightMm={specs.duckfootInletCentreHeightMm}
+                      duckfootPlateThicknessT1Mm={specs.duckfootPlateThicknessT1Mm}
+                      duckfootRibThicknessT2Mm={specs.duckfootRibThicknessT2Mm}
+                      duckfootGussetPointDDegrees={specs.duckfootGussetPointDDegrees}
+                      duckfootGussetPointCDegrees={specs.duckfootGussetPointCDegrees}
+                      duckfootGussetCount={specs.duckfootGussetCount}
+                      duckfootGussetPlacement={specs.duckfootGussetPlacement}
+                      duckfootGussetThicknessMm={specs.duckfootGussetThicknessMm}
+                      sweepTeePipeALengthMm={specs.sweepTeePipeALengthMm}
                     />
                   </div>
                 );
@@ -4871,16 +4797,16 @@ function BendFormComponent({
             {entry.calculation ? (
               <div className="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 p-3 rounded-md">
                 {(() => {
-                  const cf = Number(entry.specs?.centerToFaceMm) || 0;
-                  const tangent1 = entry.specs?.tangentLengths?.[0] || 0;
-                  const tangent2 = entry.specs?.tangentLengths?.[1] || 0;
-                  const numTangents = entry.specs?.numberOfTangents || 0;
-                  const stubs = entry.specs?.stubs || [];
+                  const cf = Number(specs.centerToFaceMm) || 0;
+                  const tangent1 = specs.tangentLengths?.[0] || 0;
+                  const tangent2 = specs.tangentLengths?.[1] || 0;
+                  const numTangents = specs.numberOfTangents || 0;
+                  const stubs = specs.stubs || [];
                   const stub1NB = stubs[0]?.nominalBoreMm;
                   const stub2NB = stubs[1]?.nominalBoreMm;
                   const stub1HasFlange = !!stub1NB;
                   const stub2HasFlange = !!stub2NB;
-                  const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+                  const bendEndConfig = specs.bendEndConfiguration || "PE";
                   const end1 = cf + tangent1;
                   const end2 = cf + tangent2;
                   let cfDisplay = "";
@@ -4895,7 +4821,7 @@ function BendFormComponent({
                   } else {
                     cfDisplay = `${cf.toFixed(0)}`;
                   }
-                  const isSweepTeeItem = entry.specs?.bendItemType === "SWEEP_TEE";
+                  const isSweepTeeItem = specs.bendItemType === "SWEEP_TEE";
                   const bendFlangeCount = isSweepTeeItem
                     ? getFlangeCountPerFitting(bendEndConfig)
                     : getFlangeCountPerBend(bendEndConfig);
@@ -4904,13 +4830,13 @@ function BendFormComponent({
                     : getFlangeWeldCountPerBend(bendEndConfig);
                   const stub1FlangeCount = stub1HasFlange ? 1 : 0;
                   const stub2FlangeCount = stub2HasFlange ? 1 : 0;
-                  const numSegments = entry.specs?.numberOfSegments || 0;
+                  const numSegments = specs.numberOfSegments || 0;
                   const totalFlanges = bendFlangeCount + stub1FlangeCount + stub2FlangeCount;
-                  const dn = entry.specs?.nominalBoreMm;
-                  const schedule = entry.specs?.scheduleNumber || "";
+                  const dn = specs.nominalBoreMm;
+                  const schedule = specs.scheduleNumber || "";
                   const pipeWallThickness = entry.calculation?.wallThicknessMm;
                   const steelSpecId =
-                    entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                    specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                   const isSABS719 = steelSpecId === 8;
                   const scheduleUpper = schedule.toUpperCase();
                   const isStdSchedule = scheduleUpper.includes("40") || scheduleUpper === "STD";
@@ -4954,17 +4880,17 @@ function BendFormComponent({
                   const mitreWeldCount = numSegments > 1 ? numSegments - 1 : 0;
                   // Steinmetz curve saddle weld for sweep tees (bicylindric intersection)
                   // AWS D1.1 Clause 9.5.4: Total weld length for 90° equal-diameter intersection ≈ 2.7 × OD
-                  const isSweepTeeCalc = entry.specs?.bendItemType === "SWEEP_TEE";
+                  const isSweepTeeCalc = specs.bendItemType === "SWEEP_TEE";
                   const STEINMETZ_FACTOR = 2.7;
                   const saddleWeldLinear = isSweepTeeCalc ? STEINMETZ_FACTOR * mainOdMm : 0;
                   const isPulledBendForVol =
-                    entry.specs?.bendStyle === "pulled" || (!entry.specs?.bendStyle && !isSABS719);
-                  const tangent1LenForVol = entry.specs?.tangentLengths?.[0] || 0;
-                  const tangent2LenForVol = entry.specs?.tangentLengths?.[1] || 0;
+                    specs.bendStyle === "pulled" || (!specs.bendStyle && !isSABS719);
+                  const tangent1LenForVol = specs.tangentLengths?.[0] || 0;
+                  const tangent2LenForVol = specs.tangentLengths?.[1] || 0;
                   const tangentButtWeldCount = isPulledBendForVol
                     ? (tangent1LenForVol > 0 ? 1 : 0) + (tangent2LenForVol > 0 ? 1 : 0)
                     : 0;
-                  const numStubs = entry.specs?.numberOfStubs || 0;
+                  const numStubs = specs.numberOfStubs || 0;
                   const baseWeldVolume =
                     mainOdMm && pipeWallThickness
                       ? calculateBendWeldVolume({
@@ -5016,10 +4942,9 @@ function BendFormComponent({
                       }
                     : null;
 
-                  const flangeStandardId =
-                    entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                  const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
                   const flangePressureClassId =
-                    entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                    specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                   const flangeStandard = masterData.flangeStandards?.find(
                     (s: any) => s.id === flangeStandardId,
                   );
@@ -5028,7 +4953,7 @@ function BendFormComponent({
                     (p: any) => p.id === flangePressureClassId,
                   );
                   const pressureClassDesignation = pressureClass?.designation || "";
-                  const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                  const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
                   const mainFlangeWeightPerUnit =
                     dn && pressureClassDesignation
@@ -5069,8 +4994,8 @@ function BendFormComponent({
                   const dynamicTotalFlangeWeight =
                     mainFlangesWeight + stub1FlangesWeight + stub2FlangesWeight;
 
-                  const bendQuantity = entry.specs?.quantityValue || 1;
-                  const blankPositions = entry.specs?.blankFlangePositions || [];
+                  const bendQuantity = specs.quantityValue || 1;
+                  const blankPositions = specs.blankFlangePositions || [];
                   const blankFlangeCount = blankPositions.length * bendQuantity;
                   const isSans1123 =
                     flangeStandardCode.includes("SABS 1123") ||
@@ -5083,13 +5008,11 @@ function BendFormComponent({
                       : 0;
                   const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
-                  const tackWeldEnds = tackWeldEndsPerBend(
-                    entry.specs?.bendEndConfiguration || "PE",
-                  );
+                  const tackWeldEnds = tackWeldEndsPerBend(specs.bendEndConfiguration || "PE");
                   const tackWeldTotalWeight =
                     dn && tackWeldEnds > 0 ? getTackWeldWeight(dn, tackWeldEnds) * bendQuantity : 0;
 
-                  const closureLengthMm = entry.specs?.closureLengthMm || 0;
+                  const closureLengthMm = specs.closureLengthMm || 0;
                   const closureWallThickness = pipeWallThickness || 5;
                   const closureTotalWeight =
                     dn && closureLengthMm > 0 && closureWallThickness > 0
@@ -5120,8 +5043,7 @@ function BendFormComponent({
                   const mainCrossSection =
                     mainOdMm > 0 ? (Math.PI * (mainOdMm * mainOdMm - mainID * mainID)) / 4 : 0;
                   const tangentTotalLength =
-                    (entry.specs?.tangentLengths?.[0] || 0) +
-                    (entry.specs?.tangentLengths?.[1] || 0);
+                    (specs.tangentLengths?.[0] || 0) + (specs.tangentLengths?.[1] || 0);
                   const tangentWeight =
                     mainCrossSection > 0 && tangentTotalLength > 0
                       ? (mainCrossSection / 1000000) *
@@ -5129,9 +5051,7 @@ function BendFormComponent({
                         STEEL_DENSITY_KG_M3
                       : 0;
 
-                  const pipeALengthMm = isSweepTeeCalc
-                    ? entry.specs?.sweepTeePipeALengthMm || 0
-                    : 0;
+                  const pipeALengthMm = isSweepTeeCalc ? specs.sweepTeePipeALengthMm || 0 : 0;
                   const pipeAWeight =
                     mainCrossSection > 0 && pipeALengthMm > 0
                       ? (mainCrossSection / 1000000) * (pipeALengthMm / 1000) * STEEL_DENSITY_KG_M3
@@ -5152,8 +5072,8 @@ function BendFormComponent({
                     closureTotalWeight +
                     pipeAWeight;
 
-                  const teeNumStubs = entry.specs?.numberOfStubs || 0;
-                  const teeStubs = entry.specs?.stubs || [];
+                  const teeNumStubs = specs.numberOfStubs || 0;
+                  const teeStubs = specs.stubs || [];
                   const teeStub1NB = teeStubs[0]?.nominalBoreMm;
                   const teeStub2NB = teeStubs[1]?.nominalBoreMm;
                   const teeStub1OD = teeStub1NB ? nbToOdMap[teeStub1NB] || teeStub1NB * 1.05 : 0;
@@ -5184,20 +5104,20 @@ function BendFormComponent({
                   const hasTeeWelds = teeNumStubs > 0 && (teeStub1NB || teeStub2NB);
 
                   const isPulledBend =
-                    entry.specs?.bendStyle === "pulled" || (!entry.specs?.bendStyle && !isSABS719);
-                  const tangent1HasLength = (entry.specs?.tangentLengths?.[0] || 0) > 0;
-                  const tangent2HasLength = (entry.specs?.tangentLengths?.[1] || 0) > 0;
+                    specs.bendStyle === "pulled" || (!specs.bendStyle && !isSABS719);
+                  const tangent1HasLength = (specs.tangentLengths?.[0] || 0) > 0;
+                  const tangent2HasLength = (specs.tangentLengths?.[1] || 0) > 0;
                   const buttWeldCount = isPulledBend
                     ? (tangent1HasLength ? 1 : 0) + (tangent2HasLength ? 1 : 0)
                     : 0;
                   const mainCircForButtWeld = mainOdMm > 0 ? Math.PI * mainOdMm : 0;
                   const buttWeldLinear = buttWeldCount * mainCircForButtWeld;
 
-                  const cfVal = Number(entry.specs?.centerToFaceMm) || 0;
-                  const tan1 = entry.specs?.tangentLengths?.[0] || 0;
-                  const tan2 = entry.specs?.tangentLengths?.[1] || 0;
-                  const numSt = entry.specs?.numberOfStubs || 0;
-                  const stubsList = entry.specs?.stubs || [];
+                  const cfVal = Number(specs.centerToFaceMm) || 0;
+                  const tan1 = specs.tangentLengths?.[0] || 0;
+                  const tan2 = specs.tangentLengths?.[1] || 0;
+                  const numSt = specs.numberOfStubs || 0;
+                  const stubsList = specs.stubs || [];
                   const st1Len = stubsList[0]?.length || 0;
                   const st2Len = stubsList[1]?.length || 0;
 
@@ -5254,13 +5174,13 @@ function BendFormComponent({
                         <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
                           {cfDisplay} C/F
                         </p>
-                        {entry.specs?.sweepTeePipeALengthMm > 0 && (
+                        {specs.sweepTeePipeALengthMm > 0 && (
                           <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">
                             {entry.specs.sweepTeePipeALengthMm}mm Pipe A
                           </p>
                         )}
                         <p className="text-xs text-purple-500 dark:text-purple-400">
-                          Radius: {Number(entry.specs?.bendRadiusMm || 0).toFixed(0)}mm
+                          Radius: {Number(specs.bendRadiusMm || 0).toFixed(0)}mm
                         </p>
                         <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">
                           {mainLengthDisplay}
@@ -5378,7 +5298,7 @@ function BendFormComponent({
                           : 0;
                         const stub1FlangeWeldLinear = stub1FlangeCount * 2 * stub1Circ;
                         const stub2FlangeWeldLinear = stub2FlangeCount * 2 * stub2Circ;
-                        const hasBranchConnection = (entry.specs?.sweepTeePipeALengthMm || 0) > 0;
+                        const hasBranchConnection = (specs.sweepTeePipeALengthMm || 0) > 0;
                         const branchFlangeConfig = hasBranchConnection
                           ? getFittingFlangeConfig(bendEndConfig)
                           : null;
@@ -5407,7 +5327,7 @@ function BendFormComponent({
                         // DATA-DRIVEN: Calculate when Pipe A length exists (sweep tee geometry)
                         const STEINMETZ_FACTOR = 2.7;
                         const AWS_EFFECTIVE_FACTOR = 1 / 1.5;
-                        const hasSweepTeeGeometry = (entry.specs?.sweepTeePipeALengthMm || 0) > 0;
+                        const hasSweepTeeGeometry = (specs.sweepTeePipeALengthMm || 0) > 0;
                         const saddleWeldLinear =
                           hasSweepTeeGeometry && mainOdMm > 0 ? STEINMETZ_FACTOR * mainOdMm : 0;
 
@@ -5437,18 +5357,18 @@ function BendFormComponent({
                           dn && duckfootWeldDefaults[dn]
                             ? duckfootWeldDefaults[dn]
                             : { x: 500, y: 400, h: 400 };
-                        const duckfootBasePlateXMm = entry.specs?.duckfootBasePlateXMm || 0;
-                        const duckfootBasePlateYMm = entry.specs?.duckfootBasePlateYMm || 0;
+                        const duckfootBasePlateXMm = specs.duckfootBasePlateXMm || 0;
+                        const duckfootBasePlateYMm = specs.duckfootBasePlateYMm || 0;
                         const hasDuckfootGeometry =
                           duckfootBasePlateXMm > 0 || duckfootBasePlateYMm > 0;
                         const effectiveDuckfootX = duckfootBasePlateXMm || duckfootDefaults.x;
                         const effectiveDuckfootY = duckfootBasePlateYMm || duckfootDefaults.y;
                         const duckfootRibHeightMm = duckfootDefaults.h;
-                        const duckfootPointDDeg = entry.specs?.duckfootGussetPointDDegrees || 15;
-                        const duckfootPointCDeg = entry.specs?.duckfootGussetPointCDegrees || 75;
+                        const duckfootPointDDeg = specs.duckfootGussetPointDDegrees || 15;
+                        const duckfootPointCDeg = specs.duckfootGussetPointCDegrees || 75;
 
                         const outerRadiusMm = mainOdMm / 2;
-                        const bendRadiusMm = entry.specs?.bendRadiusMm || (dn ? dn * 1.5 : 750);
+                        const bendRadiusMm = specs.bendRadiusMm || (dn ? dn * 1.5 : 750);
                         const extradosRadiusMm = bendRadiusMm + outerRadiusMm;
                         const duckfootYOffsetMm = 800;
 
@@ -5617,14 +5537,12 @@ function BendFormComponent({
                           const mainOdM = mainOdMm / 1000;
                           const mainIdM = mainIdMm / 1000;
 
-                          const bendDegrees = entry.specs?.bendDegrees || 90;
+                          const bendDegrees = specs.bendDegrees || 90;
                           const bendAngleRad = (bendDegrees * Math.PI) / 180;
 
-                          const centerLineBendRadiusMm = entry.specs?.bendRadiusMm
+                          const centerLineBendRadiusMm = specs.bendRadiusMm
                             ? entry.specs.bendRadiusMm
-                            : dn *
-                              (parseFloat((entry.specs?.bendType || "1.5D").replace("D", "")) ||
-                                1.5);
+                            : dn * (parseFloat((specs.bendType || "1.5D").replace("D", "")) || 1.5);
 
                           const bendArcLengthMm = centerLineBendRadiusMm * bendAngleRad;
                           const bendArcLengthM = bendArcLengthMm / 1000;
@@ -5632,8 +5550,7 @@ function BendFormComponent({
                           const bendIntM2 = Math.PI * mainIdM * bendArcLengthM;
 
                           const tangentTotalMm =
-                            (entry.specs?.tangentLengths?.[0] || 0) +
-                            (entry.specs?.tangentLengths?.[1] || 0);
+                            (specs.tangentLengths?.[0] || 0) + (specs.tangentLengths?.[1] || 0);
                           const tangentTotalM = tangentTotalMm / 1000;
                           const tangentExtM2 = Math.PI * mainOdM * tangentTotalM;
                           const tangentIntM2 = Math.PI * mainIdM * tangentTotalM;

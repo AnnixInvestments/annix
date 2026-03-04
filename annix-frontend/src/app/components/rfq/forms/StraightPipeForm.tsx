@@ -218,12 +218,12 @@ function StraightPipeFormComponent({
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
 
-  const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-  const flangePressureClassId =
-    entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-  const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
-  const nominalBoreMm = entry.specs?.nominalBoreMm;
-  const pipeEndConfiguration = entry.specs?.pipeEndConfiguration || "PE";
+  const specs = entry.specs ?? {};
+  const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
+  const flangePressureClassId = specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
+  const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
+  const nominalBoreMm = specs.nominalBoreMm;
+  const pipeEndConfiguration = specs.pipeEndConfiguration || "PE";
   const hasFlanges = pipeEndConfiguration !== "PE";
 
   const groupedSteelOptions = useMemo(
@@ -259,14 +259,12 @@ function StraightPipeFormComponent({
 
       const recommendedPressureClassId = value
         ? findRecommendedPressureClass(availableClasses, value, isSabs1123, isBs4504) ||
-          entry.specs?.flangePressureClassId
-        : entry.specs?.flangePressureClassId;
+          specs.flangePressureClassId
+        : specs.flangePressureClassId;
 
-      const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+      const endConfig = specs.pipeEndConfiguration || "PE";
       const effectiveFlangeTypeCode =
-        entry.specs?.flangeTypeCode ||
-        globalSpecs?.flangeTypeCode ||
-        recommendedFlangeTypeCode(endConfig);
+        specs.flangeTypeCode || globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(endConfig);
 
       onUpdateEntry(entry.id, {
         specs: {
@@ -387,12 +385,12 @@ function StraightPipeFormComponent({
   const handleScheduleChange = useCallback(
     (newSchedule: string) => {
       const fallbackEffectiveSpecId =
-        entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+        specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
       const fallbackSpecName =
         masterData.steelSpecs?.find((s: any) => s.id === fallbackEffectiveSpecId)?.steelSpecName ||
         "";
       const fallbackSchedules = getScheduleListForSpec(
-        entry.specs?.nominalBoreMm,
+        specs.nominalBoreMm,
         fallbackEffectiveSpecId,
         fallbackSpecName,
       );
@@ -412,7 +410,7 @@ function StraightPipeFormComponent({
         specs: {
           ...entry.specs,
           scheduleNumber: newSchedule,
-          wallThicknessMm: autoWallThickness || entry.specs?.wallThicknessMm,
+          wallThicknessMm: autoWallThickness || specs.wallThicknessMm,
         },
         isScheduleOverridden: newSchedule !== entry.minimumSchedule,
       };
@@ -526,20 +524,16 @@ function StraightPipeFormComponent({
     masterData?.flangeTypes,
   ]);
 
-  const quantityType = entry.specs.quantityType;
-  const quantityValue = entry.specs.quantityValue;
-  const individualPipeLength = entry.specs.individualPipeLength;
-
   const totalLineDisplayValue =
-    quantityType === "total_length"
-      ? quantityValue || ""
-      : (quantityValue || 1) * (individualPipeLength || 0);
+    specs.quantityType === "total_length"
+      ? specs.quantityValue || ""
+      : (specs.quantityValue || 1) * (specs.individualPipeLength || 0);
 
   const qtyEachDisplayValue =
-    quantityType === "number_of_pipes"
-      ? (quantityValue ?? "")
-      : individualPipeLength
-        ? Math.ceil((quantityValue || 0) / individualPipeLength)
+    specs.quantityType === "number_of_pipes"
+      ? (specs.quantityValue ?? "")
+      : specs.individualPipeLength
+        ? Math.ceil((specs.quantityValue || 0) / specs.individualPipeLength)
         : "";
 
   return (
@@ -547,7 +541,7 @@ function StraightPipeFormComponent({
       <SplitPaneLayout
         entryId={entry.id}
         itemType="straight_pipe"
-        showSplitToggle={entry.specs?.nominalBoreMm}
+        showSplitToggle={specs.nominalBoreMm}
         formContent={
           <>
             {/* Material Type Badge for non-steel materials */}
@@ -615,16 +609,16 @@ function StraightPipeFormComponent({
               <div className="flex justify-between items-center mb-2">
                 <h4 className="text-xs font-semibold text-gray-800">
                   Working Conditions
-                  {!entry.specs?.workingPressureBar && !entry.specs?.workingTemperatureC && (
+                  {!specs.workingPressureBar && !specs.workingTemperatureC && (
                     <span className="ml-2 text-xs font-normal text-blue-600">
                       (From Specs Page)
                     </span>
                   )}
-                  {(entry.specs?.workingPressureBar || entry.specs?.workingTemperatureC) && (
+                  {(specs.workingPressureBar || specs.workingTemperatureC) && (
                     <span className="ml-2 text-xs font-normal text-blue-600">(Override)</span>
                   )}
                 </h4>
-                {(entry.specs?.workingPressureBar || entry.specs?.workingTemperatureC) && (
+                {(specs.workingPressureBar || specs.workingTemperatureC) && (
                   <button
                     type="button"
                     onClick={() =>
@@ -660,7 +654,7 @@ function StraightPipeFormComponent({
                   <select
                     id={`pipe-pressure-${entry.id}`}
                     aria-describedby={`pipe-pressure-help-${entry.id}`}
-                    value={entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || ""}
+                    value={specs.workingPressureBar || globalSpecs?.workingPressureBar || ""}
                     onChange={(e) =>
                       handleWorkingPressureChange(
                         e.target.value ? Number(e.target.value) : undefined,
@@ -693,9 +687,7 @@ function StraightPipeFormComponent({
                   <select
                     id={`pipe-temp-${entry.id}`}
                     aria-describedby={`pipe-temp-help-${entry.id}`}
-                    value={
-                      entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC || ""
-                    }
+                    value={specs.workingTemperatureC || globalSpecs?.workingTemperatureC || ""}
                     onChange={(e) =>
                       handleTemperatureChange(e.target.value ? Number(e.target.value) : undefined)
                     }
@@ -713,7 +705,7 @@ function StraightPipeFormComponent({
                 <div>
                   {(() => {
                     const globalSpecId = globalSpecs?.steelSpecificationId;
-                    const effectiveSpecId = entry.specs?.steelSpecificationId || globalSpecId;
+                    const effectiveSpecId = specs.steelSpecificationId || globalSpecId;
                     const isSteelFromGlobal = globalSpecId && effectiveSpecId === globalSpecId;
                     const isSteelOverride = globalSpecId && effectiveSpecId !== globalSpecId;
                     const selectId = `pipe-steel-spec-wc-${entry.id}`;
@@ -754,7 +746,7 @@ function StraightPipeFormComponent({
                           }
                           onChange={(value) => {
                             const specId = value ? Number(value) : undefined;
-                            const nominalBore = entry.specs?.nominalBoreMm;
+                            const nominalBore = specs.nominalBoreMm;
 
                             if (!specId || !nominalBore) {
                               const newSpecName = specId
@@ -869,18 +861,14 @@ function StraightPipeFormComponent({
                 color="blue"
                 steelSpecName={(() => {
                   const steelSpecId =
-                    entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                    specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                   return (
                     masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName ||
                     ""
                   );
                 })()}
-                effectivePressure={
-                  entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar
-                }
-                effectiveTemperature={
-                  entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC
-                }
+                effectivePressure={specs.workingPressureBar || globalSpecs?.workingPressureBar}
+                effectiveTemperature={specs.workingTemperatureC || globalSpecs?.workingTemperatureC}
                 allSteelSpecs={masterData.steelSpecs || []}
                 onSelectSpec={(spec) =>
                   onUpdateEntry(entry.id, {
@@ -890,13 +878,12 @@ function StraightPipeFormComponent({
               />
               {/* PSL Level and CVN Fields - Only for API 5L specs */}
               {(() => {
-                const steelSpecId =
-                  entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                 const steelSpecName =
                   masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName ||
                   "";
                 const showPslFields = isApi5LSpec(steelSpecName);
-                const pslLevel = entry.specs?.pslLevel;
+                const pslLevel = specs.pslLevel;
                 const showCvnFields = pslLevel === "PSL2";
 
                 if (!showPslFields) return null;
@@ -945,7 +932,7 @@ function StraightPipeFormComponent({
                               type="number"
                               step="0.1"
                               className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                              value={entry.specs?.cvnTestTemperatureC ?? ""}
+                              value={specs.cvnTestTemperatureC ?? ""}
                               onChange={(e) =>
                                 onUpdateEntry(entry.id, {
                                   specs: {
@@ -968,7 +955,7 @@ function StraightPipeFormComponent({
                               step="0.1"
                               min="0"
                               className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                              value={entry.specs?.cvnAverageJoules ?? ""}
+                              value={specs.cvnAverageJoules ?? ""}
                               onChange={(e) =>
                                 onUpdateEntry(entry.id, {
                                   specs: {
@@ -991,7 +978,7 @@ function StraightPipeFormComponent({
                               step="0.1"
                               min="0"
                               className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                              value={entry.specs?.cvnMinimumJoules ?? ""}
+                              value={specs.cvnMinimumJoules ?? ""}
                               onChange={(e) =>
                                 onUpdateEntry(entry.id, {
                                   specs: {
@@ -1010,12 +997,12 @@ function StraightPipeFormComponent({
                     </div>
                     {/* PSL2 CVN Validation Warning */}
                     {showCvnFields &&
-                      (entry.specs?.cvnTestTemperatureC === null ||
-                        entry.specs?.cvnTestTemperatureC === undefined ||
-                        entry.specs?.cvnAverageJoules === null ||
-                        entry.specs?.cvnAverageJoules === undefined ||
-                        entry.specs?.cvnMinimumJoules === null ||
-                        entry.specs?.cvnMinimumJoules === undefined) && (
+                      (specs.cvnTestTemperatureC === null ||
+                        specs.cvnTestTemperatureC === undefined ||
+                        specs.cvnAverageJoules === null ||
+                        specs.cvnAverageJoules === undefined ||
+                        specs.cvnMinimumJoules === null ||
+                        specs.cvnMinimumJoules === undefined) && (
                         <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
                           PSL2 requires all CVN test data (temperature, average, and minimum values)
                         </div>
@@ -1033,7 +1020,7 @@ function StraightPipeFormComponent({
                           <input
                             type="text"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.heatNumber || ""}
+                            value={specs.heatNumber || ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -1052,7 +1039,7 @@ function StraightPipeFormComponent({
                           <input
                             type="text"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.mtcReference || ""}
+                            value={specs.mtcReference || ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -1071,7 +1058,7 @@ function StraightPipeFormComponent({
                           <input
                             type="text"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.lotNumber || ""}
+                            value={specs.lotNumber || ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -1095,7 +1082,7 @@ function StraightPipeFormComponent({
                           <input
                             type="checkbox"
                             id={`nace-compliant-${entry.id}`}
-                            checked={entry.specs?.naceCompliant || false}
+                            checked={specs.naceCompliant || false}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -1119,7 +1106,7 @@ function StraightPipeFormComponent({
                           </label>
                           <select
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.h2sZone || ""}
+                            value={specs.h2sZone || ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -1144,7 +1131,7 @@ function StraightPipeFormComponent({
                             step="0.1"
                             max="70"
                             className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                            value={entry.specs?.maxHardnessHrc ?? ""}
+                            value={specs.maxHardnessHrc ?? ""}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -1160,7 +1147,7 @@ function StraightPipeFormComponent({
                           <input
                             type="checkbox"
                             id={`ssc-tested-${entry.id}`}
-                            checked={entry.specs?.sscTested || false}
+                            checked={specs.sscTested || false}
                             onChange={(e) =>
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -1180,8 +1167,8 @@ function StraightPipeFormComponent({
                         </div>
                       </div>
                       {/* Sour service validation warning */}
-                      {entry.specs?.naceCompliant &&
-                        entry.specs?.maxHardnessHrc &&
+                      {specs.naceCompliant &&
+                        specs.maxHardnessHrc &&
                         entry.specs.maxHardnessHrc > 22 && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
                             Sour service materials require hardness ≤22 HRC per NACE MR0175
@@ -1199,14 +1186,13 @@ function StraightPipeFormComponent({
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
                 {/* Nominal Bore - moved from Working Conditions */}
                 {(() => {
-                  const isMissingForPreview =
-                    entry.specs?.individualPipeLength && !entry.specs?.nominalBoreMm;
+                  const isMissingForPreview = specs.individualPipeLength && !specs.nominalBoreMm;
                   const effectiveSpecId =
-                    entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                    specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                   const steelSpecName =
                     masterData.steelSpecs?.find((s: any) => s.id === effectiveSpecId)
                       ?.steelSpecName || "";
-                  const hasItemOverride = !!entry.specs?.steelSpecificationId;
+                  const hasItemOverride = !!specs.steelSpecificationId;
 
                   const allAvailableNBs = hasItemOverride
                     ? [...SABS62_FITTING_SIZES, ...SABS719_FITTING_SIZES]
@@ -1277,32 +1263,32 @@ function StraightPipeFormComponent({
                     >
                       ?
                     </span>
-                    {entry.specs?.scheduleNumber && (
+                    {specs.scheduleNumber && (
                       <span className="ml-1 text-green-600 text-xs">
                         ({entry.specs.wallThicknessMm?.toFixed(2)}mm)
                       </span>
                     )}
                   </label>
                   <select
-                    value={entry.specs?.scheduleNumber || ""}
+                    value={specs.scheduleNumber || ""}
                     onChange={(e) => handleScheduleChange(e.target.value)}
-                    disabled={!entry.specs?.nominalBoreMm}
+                    disabled={!specs.nominalBoreMm}
                     className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 disabled:bg-gray-100 disabled:text-gray-500"
                   >
-                    {!entry.specs?.nominalBoreMm ? (
+                    {!specs.nominalBoreMm ? (
                       <option value="">Select NB first</option>
                     ) : (
                       <>
                         <option value="">Select schedule...</option>
                         {(() => {
                           const fallbackEffectiveSpecId =
-                            entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                            specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                           const fallbackSpecName =
                             masterData.steelSpecs?.find(
                               (s: any) => s.id === fallbackEffectiveSpecId,
                             )?.steelSpecName || "";
                           const fallbackSchedules = getScheduleListForSpec(
-                            entry.specs?.nominalBoreMm,
+                            specs.nominalBoreMm,
                             fallbackEffectiveSpecId,
                             fallbackSpecName,
                           );
@@ -1310,12 +1296,10 @@ function StraightPipeFormComponent({
                           const allSchedules =
                             fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
                           const effectivePressure =
-                            entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                            specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
                           const effectiveTemp =
-                            entry.specs?.workingTemperatureC ||
-                            globalSpecs?.workingTemperatureC ||
-                            20;
-                          const nominalBore = entry.specs?.nominalBoreMm;
+                            specs.workingTemperatureC || globalSpecs?.workingTemperatureC || 20;
+                          const nominalBore = specs.nominalBoreMm;
                           const od = nbToOdMap[nominalBore] || nominalBore * 1.05;
                           const materialCode =
                             fallbackEffectiveSpecId === 1
@@ -1381,20 +1365,20 @@ function StraightPipeFormComponent({
                   {/* Schedule validation warning */}
                   {(() => {
                     const minimumWT = entry.minimumWallThickness || 0;
-                    const selectedWT = entry.specs?.wallThicknessMm || 0;
-                    const hasSchedule = entry.specs?.scheduleNumber;
+                    const selectedWT = specs.wallThicknessMm || 0;
+                    const hasSchedule = specs.scheduleNumber;
 
                     if (!hasSchedule || minimumWT <= 0) return null;
                     if (selectedWT >= minimumWT) return null;
 
                     const shortfall = minimumWT - selectedWT;
                     const fallbackEffectiveSpecId =
-                      entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                      specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                     const fallbackSpecName =
                       masterData.steelSpecs?.find((s: any) => s.id === fallbackEffectiveSpecId)
                         ?.steelSpecName || "";
                     const allSchedules = getScheduleListForSpec(
-                      entry.specs?.nominalBoreMm,
+                      specs.nominalBoreMm,
                       fallbackEffectiveSpecId,
                       fallbackSpecName,
                     );
@@ -1451,10 +1435,10 @@ function StraightPipeFormComponent({
                   </label>
                   <Select
                     id={`pipe-type-${entry.id}`}
-                    value={entry.specs?.pipeType || "plain"}
+                    value={specs.pipeType || "plain"}
                     onChange={(value) => {
                       const newPipeType = value;
-                      const currentEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      const currentEndConfig = specs.pipeEndConfiguration || "PE";
                       const isPuddleEndConfig =
                         currentEndConfig === "FOE" || currentEndConfig === "FBE";
                       const updatedSpecs: any = {
@@ -1524,15 +1508,13 @@ function StraightPipeFormComponent({
                     </span>
                   </label>
                   {(() => {
-                    const weldCount = getWeldCountPerPipe(
-                      entry.specs?.pipeEndConfiguration || "PE",
-                    );
-                    const dn = entry.specs?.nominalBoreMm;
-                    const schedule = entry.specs?.scheduleNumber || "";
+                    const weldCount = getWeldCountPerPipe(specs.pipeEndConfiguration || "PE");
+                    const dn = specs.nominalBoreMm;
+                    const schedule = specs.scheduleNumber || "";
                     const steelSpecId =
-                      entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                     const isSABS719 = steelSpecId === 8;
-                    const pipeWallThickness = entry.specs?.wallThicknessMm;
+                    const pipeWallThickness = specs.wallThicknessMm;
 
                     if (weldCount === 0) {
                       return (
@@ -1609,16 +1591,16 @@ function StraightPipeFormComponent({
             </div>
 
             {/* Spigot Configuration - Only for Spigot Pipe */}
-            {entry.specs?.pipeType === "spigot" && (
+            {specs.pipeType === "spigot" && (
               <SpigotConfigurationSection
                 entryId={entry.id}
-                spigotSteelSpecificationId={entry.specs?.spigotSteelSpecificationId}
-                numberOfSpigots={entry.specs?.numberOfSpigots || 2}
-                spigotNominalBoreMm={entry.specs?.spigotNominalBoreMm}
-                spigotDistanceFromEndMm={entry.specs?.spigotDistanceFromEndMm}
-                spigotHeightMm={entry.specs?.spigotHeightMm}
-                mainPipeSteelSpecificationId={entry.specs?.steelSpecificationId}
-                mainPipeNominalBoreMm={entry.specs?.nominalBoreMm}
+                spigotSteelSpecificationId={specs.spigotSteelSpecificationId}
+                numberOfSpigots={specs.numberOfSpigots || 2}
+                spigotNominalBoreMm={specs.spigotNominalBoreMm}
+                spigotDistanceFromEndMm={specs.spigotDistanceFromEndMm}
+                spigotHeightMm={specs.spigotHeightMm}
+                mainPipeSteelSpecificationId={specs.steelSpecificationId}
+                mainPipeNominalBoreMm={specs.nominalBoreMm}
                 globalSteelSpecificationId={globalSpecs?.steelSpecificationId}
                 steelSpecs={masterData.steelSpecs || []}
                 nominalBores={nominalBores}
@@ -1632,7 +1614,7 @@ function StraightPipeFormComponent({
             )}
 
             {/* Plain Pipe, Spigot Pipe, and Puddle Pipe sections */}
-            {(!entry.specs?.pipeType ||
+            {(!specs.pipeType ||
               entry.specs.pipeType === "plain" ||
               entry.specs.pipeType === "spigot" ||
               entry.specs.pipeType === "puddle") && (
@@ -1645,7 +1627,7 @@ function StraightPipeFormComponent({
                   {(() => {
                     const selectedStandard = masterData.flangeStandards?.find(
                       (fs: any) =>
-                        fs.id === (entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId),
+                        fs.id === (specs.flangeStandardId || globalSpecs?.flangeStandardId),
                     );
                     const isSabs1123 =
                       selectedStandard?.code?.toUpperCase().includes("SABS") &&
@@ -1655,7 +1637,7 @@ function StraightPipeFormComponent({
                       selectedStandard?.code?.includes("4504");
                     const showFlangeType = isSabs1123 || isBs4504;
 
-                    const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                    const pipeEndConfig = specs.pipeEndConfiguration || "PE";
                     const configUpper = pipeEndConfig.toUpperCase();
                     const hasInletFlange = ["FBE", "FOE_LF", "FOE_RF", "2X_RF", "2XLF"].includes(
                       configUpper,
@@ -1673,12 +1655,11 @@ function StraightPipeFormComponent({
                       ...(hasInletFlange ? [{ key: "inlet", label: "End A" }] : []),
                       ...(hasOutletFlange ? [{ key: "outlet", label: "End B" }] : []),
                     ];
-                    const currentBlankPositions = entry.specs?.blankFlangePositions || [];
+                    const currentBlankPositions = specs.blankFlangePositions || [];
 
                     const effectiveStandardId =
-                      entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                    const effectiveTypeCode =
-                      entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                      specs.flangeStandardId || globalSpecs?.flangeStandardId;
+                    const effectiveTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
                     const normalizedTypeCode = effectiveTypeCode?.replace(/^\//, "") || "";
 
                     const globalClass = masterData.pressureClasses?.find(
@@ -1696,7 +1677,7 @@ function StraightPipeFormComponent({
                         )
                       : null;
                     const effectiveClassId =
-                      entry.specs?.flangePressureClassId ||
+                      specs.flangePressureClassId ||
                       matchingClassForGlobal?.id ||
                       globalSpecs?.flangePressureClassId;
 
@@ -1725,7 +1706,7 @@ function StraightPipeFormComponent({
                       effectiveTypeCode !== globalSpecs?.flangeTypeCode;
 
                     const workingPressureBar =
-                      entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                      specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
                     const selectedPressureClass = masterData.pressureClasses?.find(
                       (pc: any) => pc.id === effectiveClassId,
                     );
@@ -1768,9 +1749,7 @@ function StraightPipeFormComponent({
                               </span>
                             </label>
                             <select
-                              value={
-                                entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId || ""
-                              }
+                              value={specs.flangeStandardId || globalSpecs?.flangeStandardId || ""}
                               onChange={(e) => {
                                 const newFlangeStandardId = e.target.value
                                   ? Number(e.target.value)
@@ -1780,16 +1759,14 @@ function StraightPipeFormComponent({
                                 );
                                 const newStandardCode = newStandard?.code || "";
 
-                                const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+                                const endConfig = specs.pipeEndConfiguration || "PE";
                                 const effectiveFlangeTypeCode =
-                                  entry.specs?.flangeTypeCode ||
+                                  specs.flangeTypeCode ||
                                   globalSpecs?.flangeTypeCode ||
                                   recommendedFlangeTypeCode(endConfig);
 
                                 const workingPressure =
-                                  entry.specs?.workingPressureBar ||
-                                  globalSpecs?.workingPressureBar ||
-                                  0;
+                                  specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
 
                                 let newPressureClassId: number | undefined;
                                 if (newFlangeStandardId && workingPressure > 0) {
@@ -1880,7 +1857,7 @@ function StraightPipeFormComponent({
                               </span>
                             </label>
                             <select
-                              value={entry.specs?.flangePressureClassId || effectiveClassId || ""}
+                              value={specs.flangePressureClassId || effectiveClassId || ""}
                               onChange={(e) => {
                                 const newFlangePressureClassId = e.target.value
                                   ? Number(e.target.value)
@@ -1912,7 +1889,7 @@ function StraightPipeFormComponent({
                               }
                               onFocus={() => {
                                 const stdId =
-                                  entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                  specs.flangeStandardId || globalSpecs?.flangeStandardId;
                                 if (stdId && !pressureClassesByStandard[stdId]) {
                                   getFilteredPressureClasses(stdId);
                                 }
@@ -1970,7 +1947,7 @@ function StraightPipeFormComponent({
                                   });
                                 } else {
                                   const stdId =
-                                    entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                    specs.flangeStandardId || globalSpecs?.flangeStandardId;
                                   const filteredClasses = stdId
                                     ? pressureClassesByStandard[stdId]
                                     : [];
@@ -2001,9 +1978,7 @@ function StraightPipeFormComponent({
                             </label>
                             {showFlangeType ? (
                               <select
-                                value={
-                                  entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode || ""
-                                }
+                                value={specs.flangeTypeCode || globalSpecs?.flangeTypeCode || ""}
                                 onChange={(e) => {
                                   const updatedEntry = {
                                     ...entry,
@@ -2057,7 +2032,7 @@ function StraightPipeFormComponent({
                                 ?
                               </span>
                             </label>
-                            {entry.specs?.pipeType === "spigot" ? (
+                            {specs.pipeType === "spigot" ? (
                               <div className="px-2 py-1.5 bg-teal-100 border border-teal-300 rounded text-xs text-teal-800 font-medium">
                                 FBE - Flanged Both Ends
                               </div>
@@ -2066,7 +2041,7 @@ function StraightPipeFormComponent({
                                 id={`pipe-config-${entry.id}`}
                                 value={
                                   entry.specs.pipeEndConfiguration ||
-                                  (entry.specs?.pipeType === "puddle" ? "FOE" : "PE")
+                                  (specs.pipeType === "puddle" ? "FOE" : "PE")
                                 }
                                 onChange={async (value) => {
                                   const newConfig = value;
@@ -2085,7 +2060,7 @@ function StraightPipeFormComponent({
                                     recommendedFlangeTypeCode(newConfig);
 
                                   const flangeStandardId =
-                                    entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                                    specs.flangeStandardId || globalSpecs?.flangeStandardId;
                                   const flangeStandard = masterData.flangeStandards?.find(
                                     (s: any) => s.id === flangeStandardId,
                                   );
@@ -2095,7 +2070,7 @@ function StraightPipeFormComponent({
                                     flangeCode.includes("SANS 1123");
 
                                   const workingPressure =
-                                    entry.specs?.workingPressureBar ||
+                                    specs.workingPressureBar ||
                                     globalSpecs?.workingPressureBar ||
                                     0;
                                   let availableClasses = flangeStandardId
@@ -2117,7 +2092,7 @@ function StraightPipeFormComponent({
                                           flangeCode,
                                           effectiveFlangeTypeCode,
                                         )
-                                      : entry.specs?.flangePressureClassId ||
+                                      : specs.flangePressureClassId ||
                                         globalSpecs?.flangePressureClassId;
 
                                   const updatedEntry: any = {
@@ -2140,7 +2115,7 @@ function StraightPipeFormComponent({
                                   });
                                   onUpdateEntry(entry.id, updatedEntry);
                                   // For plain pipes, focus the Pipe Length field next
-                                  if (entry.specs?.pipeType === "plain" || !entry.specs?.pipeType) {
+                                  if (specs.pipeType === "plain" || !specs.pipeType) {
                                     setTimeout(() => {
                                       const pipeLengthInput = document.getElementById(
                                         `pipe-length-${entry.id}`,
@@ -2156,7 +2131,7 @@ function StraightPipeFormComponent({
                                     }, 100);
                                   }
                                   // For puddle pipes, focus the Puddle Flange OD field next
-                                  if (entry.specs?.pipeType === "puddle") {
+                                  if (specs.pipeType === "puddle") {
                                     setTimeout(() => {
                                       const puddleOdInput = document.getElementById(
                                         `puddle-od-${entry.id}`,
@@ -2173,7 +2148,7 @@ function StraightPipeFormComponent({
                                   }
                                 }}
                                 options={
-                                  entry.specs?.pipeType === "puddle"
+                                  specs.pipeType === "puddle"
                                     ? [
                                         { value: "PE", label: "PE - Plain Ended" },
                                         { value: "FOE", label: "FOE - Flanged One End" },
@@ -2239,7 +2214,7 @@ function StraightPipeFormComponent({
                   })()}
                   {/* Warning for pressure override - only show if actual pressure rating differs, not just flange type */}
                   {(() => {
-                    const currentClassId = entry.specs?.flangePressureClassId;
+                    const currentClassId = specs.flangePressureClassId;
                     const recommendedClassId = globalSpecs?.flangePressureClassId;
                     if (
                       currentClassId &&
@@ -2270,34 +2245,33 @@ function StraightPipeFormComponent({
                   })()}
 
                   {/* Spigot Flange Configuration - Only shown for Spigot Pipe */}
-                  {entry.specs?.pipeType === "spigot" &&
-                    entry.specs?.numberOfSpigots &&
-                    entry.specs?.numberOfSpigots >= 2 && (
+                  {specs.pipeType === "spigot" &&
+                    specs.numberOfSpigots &&
+                    specs.numberOfSpigots >= 2 && (
                       <div className="mt-2 pt-2 border-t border-amber-300">
                         <h5 className="text-xs font-semibold text-teal-700 mb-1">
                           Spigot Flange Configuration
                         </h5>
                         {(() => {
                           const mainFlangeStandardId =
-                            entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                            specs.flangeStandardId || globalSpecs?.flangeStandardId;
                           const spigotFlangeStandardId =
-                            entry.specs?.spigotFlangeStandardId || mainFlangeStandardId;
-                          const isStandardFromMain = !entry.specs?.spigotFlangeStandardId;
+                            specs.spigotFlangeStandardId || mainFlangeStandardId;
+                          const isStandardFromMain = !specs.spigotFlangeStandardId;
 
                           const mainPressureClassId =
-                            entry.specs?.flangePressureClassId ||
-                            globalSpecs?.flangePressureClassId;
+                            specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                           const spigotPressureClassId =
-                            entry.specs?.spigotFlangePressureClassId || mainPressureClassId;
-                          const isClassFromMain = !entry.specs?.spigotFlangePressureClassId;
+                            specs.spigotFlangePressureClassId || mainPressureClassId;
+                          const isClassFromMain = !specs.spigotFlangePressureClassId;
 
                           const mainFlangeTypeCode =
-                            entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                            specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
                           const spigotFlangeTypeCode =
-                            entry.specs?.spigotFlangeTypeCode || mainFlangeTypeCode;
-                          const isTypeFromMain = !entry.specs?.spigotFlangeTypeCode;
+                            specs.spigotFlangeTypeCode || mainFlangeTypeCode;
+                          const isTypeFromMain = !specs.spigotFlangeTypeCode;
 
-                          const spigotFlangeConfig = entry.specs?.spigotFlangeConfig || "PE";
+                          const spigotFlangeConfig = specs.spigotFlangeConfig || "PE";
 
                           const selectedStandard = masterData.flangeStandards?.find(
                             (fs: any) => fs.id === spigotFlangeStandardId,
@@ -2320,8 +2294,8 @@ function StraightPipeFormComponent({
                               []
                             : [];
 
-                          const numberOfSpigots = entry.specs?.numberOfSpigots || 2;
-                          const spigotBlankFlanges = entry.specs?.spigotBlankFlanges || [];
+                          const numberOfSpigots = specs.numberOfSpigots || 2;
+                          const spigotBlankFlanges = specs.spigotBlankFlanges || [];
 
                           const mainSelectClass =
                             "w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 text-gray-900 bg-white border-green-500";
@@ -2516,7 +2490,7 @@ function StraightPipeFormComponent({
                     )}
 
                   {/* Puddle Flange Dims - Only shown for Puddle Pipe */}
-                  {entry.specs?.pipeType === "puddle" && (
+                  {specs.pipeType === "puddle" && (
                     <div className="mt-2 pt-2 border-t border-amber-300">
                       <h5 className="text-xs font-semibold text-amber-700 mb-1">
                         Puddle Flange Dims
@@ -2530,7 +2504,7 @@ function StraightPipeFormComponent({
                           <input
                             id={`puddle-od-${entry.id}`}
                             type="number"
-                            value={entry.specs?.puddleFlangeOdMm || ""}
+                            value={specs.puddleFlangeOdMm || ""}
                             onChange={(e) => {
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -2552,7 +2526,7 @@ function StraightPipeFormComponent({
                           </label>
                           <input
                             type="number"
-                            value={entry.specs?.puddleFlangePcdMm || ""}
+                            value={specs.puddleFlangePcdMm || ""}
                             onChange={(e) => {
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -2574,7 +2548,7 @@ function StraightPipeFormComponent({
                           </label>
                           <input
                             type="number"
-                            value={entry.specs?.puddleFlangeHoleCount || ""}
+                            value={specs.puddleFlangeHoleCount || ""}
                             onChange={(e) => {
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -2596,7 +2570,7 @@ function StraightPipeFormComponent({
                           </label>
                           <input
                             type="number"
-                            value={entry.specs?.puddleFlangeHoleIdMm || ""}
+                            value={specs.puddleFlangeHoleIdMm || ""}
                             onChange={(e) => {
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -2618,7 +2592,7 @@ function StraightPipeFormComponent({
                           </label>
                           <input
                             type="number"
-                            value={entry.specs?.puddleFlangeThicknessMm || ""}
+                            value={specs.puddleFlangeThicknessMm || ""}
                             onChange={(e) => {
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -2640,7 +2614,7 @@ function StraightPipeFormComponent({
                           </label>
                           <input
                             type="number"
-                            value={entry.specs?.puddleFlangeLocationMm || ""}
+                            value={specs.puddleFlangeLocationMm || ""}
                             onChange={(e) => {
                               onUpdateEntry(entry.id, {
                                 specs: {
@@ -2665,7 +2639,7 @@ function StraightPipeFormComponent({
                     {/* Pipe Length */}
                     {(() => {
                       const isMissingForPreview =
-                        entry.specs?.nominalBoreMm && !entry.specs?.individualPipeLength;
+                        specs.nominalBoreMm && !specs.individualPipeLength;
                       return (
                         <div
                           data-nix-target="pipe-length-input"
@@ -2687,7 +2661,7 @@ function StraightPipeFormComponent({
                               )}
                             </label>
                             <div className="flex gap-1">
-                              {(entry.specs?.pipeType === "puddle"
+                              {(specs.pipeType === "puddle"
                                 ? PUDDLE_PIPE_LENGTHS_M
                                 : STANDARD_PIPE_LENGTHS_M
                               ).map((pl) => (
@@ -2759,9 +2733,9 @@ function StraightPipeFormComponent({
                     {hasLooseFlange(entry.specs.pipeEndConfiguration || "") ? (
                       <div>
                         <ClosureLengthSelector
-                          nominalBore={entry.specs?.nominalBoreMm || 100}
-                          currentValue={entry.specs?.closureLengthMm || null}
-                          wallThickness={entry.specs?.wallThicknessMm || 5}
+                          nominalBore={specs.nominalBoreMm || 100}
+                          currentValue={specs.closureLengthMm || null}
+                          wallThickness={specs.wallThicknessMm || 5}
                           onUpdate={(closureLength) =>
                             onUpdateEntry(entry.id, {
                               specs: { ...entry.specs, closureLengthMm: closureLength },
@@ -2879,8 +2853,7 @@ function StraightPipeFormComponent({
             </div>
           ) : Pipe3DPreview ? (
             (() => {
-              const canRenderPreview =
-                entry.specs?.nominalBoreMm && entry.specs?.individualPipeLength;
+              const canRenderPreview = specs.nominalBoreMm && specs.individualPipeLength;
               if (!canRenderPreview) {
                 return (
                   <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
@@ -2888,17 +2861,16 @@ function StraightPipeFormComponent({
                   </div>
                 );
               }
-              const flangeStandardId =
-                entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+              const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
               const flangePressureClassId =
-                entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
               const flangeStandard = masterData.flangeStandards?.find(
                 (s: any) => s.id === flangeStandardId,
               );
               const pressureClass = masterData.pressureClasses?.find(
                 (p: any) => p.id === flangePressureClassId,
               );
-              const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+              const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
               const flangeStandardName =
                 flangeStandard?.code === "SABS_1123"
                   ? "SABS 1123"
@@ -2921,15 +2893,15 @@ function StraightPipeFormComponent({
                       masterData.steelSpecs.find(
                         (s: any) =>
                           s.id ===
-                          (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId),
+                          (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
                       )?.steelSpecName
                     }
                     nominalBoreMm={entry.specs.nominalBoreMm}
                     pressureClass={globalSpecs?.pressureClassDesignation || "PN16"}
-                    addBlankFlange={entry.specs?.addBlankFlange}
-                    blankFlangePositions={entry.specs?.blankFlangePositions}
-                    savedCameraPosition={entry.specs?.savedCameraPosition}
-                    savedCameraTarget={entry.specs?.savedCameraTarget}
+                    addBlankFlange={specs.addBlankFlange}
+                    blankFlangePositions={specs.blankFlangePositions}
+                    savedCameraPosition={specs.savedCameraPosition}
+                    savedCameraTarget={specs.savedCameraTarget}
                     onCameraChange={(
                       position: [number, number, number],
                       target: [number, number, number],
@@ -2947,20 +2919,20 @@ function StraightPipeFormComponent({
                     flangeStandardName={flangeStandardName}
                     pressureClassDesignation={pressureClassDesignation}
                     flangeTypeCode={flangeTypeCode}
-                    pipeType={entry.specs?.pipeType}
-                    numberOfSpigots={entry.specs?.numberOfSpigots}
-                    spigotNominalBoreMm={entry.specs?.spigotNominalBoreMm}
-                    spigotDistanceFromEndMm={entry.specs?.spigotDistanceFromEndMm}
-                    spigotHeightMm={entry.specs?.spigotHeightMm}
-                    individualPipeLengthM={entry.specs?.individualPipeLength}
-                    spigotFlangeConfig={entry.specs?.spigotFlangeConfig}
-                    spigotBlankFlanges={entry.specs?.spigotBlankFlanges}
-                    puddleFlangeOdMm={entry.specs?.puddleFlangeOdMm}
-                    puddleFlangePcdMm={entry.specs?.puddleFlangePcdMm}
-                    puddleFlangeHoleCount={entry.specs?.puddleFlangeHoleCount}
-                    puddleFlangeHoleIdMm={entry.specs?.puddleFlangeHoleIdMm}
-                    puddleFlangeThicknessMm={entry.specs?.puddleFlangeThicknessMm}
-                    puddleFlangeLocationMm={entry.specs?.puddleFlangeLocationMm}
+                    pipeType={specs.pipeType}
+                    numberOfSpigots={specs.numberOfSpigots}
+                    spigotNominalBoreMm={specs.spigotNominalBoreMm}
+                    spigotDistanceFromEndMm={specs.spigotDistanceFromEndMm}
+                    spigotHeightMm={specs.spigotHeightMm}
+                    individualPipeLengthM={specs.individualPipeLength}
+                    spigotFlangeConfig={specs.spigotFlangeConfig}
+                    spigotBlankFlanges={specs.spigotBlankFlanges}
+                    puddleFlangeOdMm={specs.puddleFlangeOdMm}
+                    puddleFlangePcdMm={specs.puddleFlangePcdMm}
+                    puddleFlangeHoleCount={specs.puddleFlangeHoleCount}
+                    puddleFlangeHoleIdMm={specs.puddleFlangeHoleIdMm}
+                    puddleFlangeThicknessMm={specs.puddleFlangeThicknessMm}
+                    puddleFlangeLocationMm={specs.puddleFlangeLocationMm}
                   />
                 </div>
               );
@@ -3039,12 +3011,12 @@ function StraightPipeFormComponent({
                     );
                     const totalFlanges =
                       physicalFlanges * (entry.calculation?.calculatedPipeCount || 0);
-                    const nominalBore = entry.specs?.nominalBoreMm;
+                    const nominalBore = specs.nominalBoreMm;
 
                     const flangeStandardId =
-                      entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                      specs.flangeStandardId || globalSpecs?.flangeStandardId;
                     const flangePressureClassId =
-                      entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                      specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
 
                     const flangeStandard = masterData.flangeStandards?.find(
                       (s: any) => s.id === flangeStandardId,
@@ -3054,8 +3026,7 @@ function StraightPipeFormComponent({
                       (p: any) => p.id === flangePressureClassId,
                     );
                     const pressureClassDesignation = pressureClass?.designation || "";
-                    const flangeTypeCode =
-                      entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
                     const flangeWeightPerUnit =
                       nominalBore && pressureClassDesignation
@@ -3069,7 +3040,7 @@ function StraightPipeFormComponent({
                         : entry.calculation?.flangeWeightPerUnit || 0;
                     const dynamicTotalFlangeWeight = totalFlanges * flangeWeightPerUnit;
 
-                    const blankPositions = entry.specs?.blankFlangePositions || [];
+                    const blankPositions = specs.blankFlangePositions || [];
                     const blankFlangeCount =
                       blankPositions.length * (entry.calculation?.calculatedPipeCount || 0);
                     const isSans1123 =
@@ -3083,18 +3054,16 @@ function StraightPipeFormComponent({
                         : 0;
                     const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
-                    const tackWeldEnds = getTackWeldEndsPerPipe(
-                      entry.specs?.pipeEndConfiguration || "PE",
-                    );
+                    const tackWeldEnds = getTackWeldEndsPerPipe(specs.pipeEndConfiguration || "PE");
                     const tackWeldTotalWeight =
                       nominalBore && tackWeldEnds > 0
                         ? getTackWeldWeight(nominalBore, tackWeldEnds) *
                           (entry.calculation?.calculatedPipeCount || 0)
                         : 0;
 
-                    const closureLengthMm = entry.specs?.closureLengthMm || 0;
+                    const closureLengthMm = specs.closureLengthMm || 0;
                     const wallThickness =
-                      entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 0;
+                      specs.wallThicknessMm || entry.calculation?.wallThicknessMm || 0;
                     const closureTotalWeight =
                       nominalBore && closureLengthMm > 0 && wallThickness > 0
                         ? getClosureWeight(nominalBore, closureLengthMm, wallThickness, nbToOdMap) *
@@ -3102,12 +3071,12 @@ function StraightPipeFormComponent({
                         : 0;
 
                     // Spigot weight calculation
-                    const isSpigotPipe = entry.specs?.pipeType === "spigot";
-                    const spigotCount = entry.specs?.numberOfSpigots || 0;
-                    const spigotNb = entry.specs?.spigotNominalBoreMm || 0;
-                    const spigotHeight = entry.specs?.spigotHeightMm || 150;
-                    const spigotFlangeConfig = entry.specs?.spigotFlangeConfig || "PE";
-                    const spigotBlankFlanges = entry.specs?.spigotBlankFlanges || [];
+                    const isSpigotPipe = specs.pipeType === "spigot";
+                    const spigotCount = specs.numberOfSpigots || 0;
+                    const spigotNb = specs.spigotNominalBoreMm || 0;
+                    const spigotHeight = specs.spigotHeightMm || 150;
+                    const spigotFlangeConfig = specs.spigotFlangeConfig || "PE";
+                    const spigotBlankFlanges = specs.spigotBlankFlanges || [];
                     const nbToOdLookup: Record<number, number> = {
                       15: 21.3,
                       20: 26.9,
@@ -3150,12 +3119,12 @@ function StraightPipeFormComponent({
                       isSpigotPipe && (spigotFlangeConfig === "FAE" || spigotFlangeConfig === "RF");
                     const isSpigotRF = spigotFlangeConfig === "RF";
                     const spigotFlangeStdId =
-                      entry.specs?.spigotFlangeStandardId ||
-                      entry.specs?.flangeStandardId ||
+                      specs.spigotFlangeStandardId ||
+                      specs.flangeStandardId ||
                       globalSpecs?.flangeStandardId;
                     const spigotPressureClassId =
-                      entry.specs?.spigotFlangePressureClassId ||
-                      entry.specs?.flangePressureClassId ||
+                      specs.spigotFlangePressureClassId ||
+                      specs.flangePressureClassId ||
                       globalSpecs?.flangePressureClassId;
                     const spigotFlangeStd = masterData.flangeStandards?.find(
                       (s: any) => s.id === spigotFlangeStdId,
@@ -3166,8 +3135,8 @@ function StraightPipeFormComponent({
                     );
                     const spigotPressureClassDesignation = spigotPressureClass?.designation || "";
                     const spigotFlangeTypeCode =
-                      entry.specs?.spigotFlangeTypeCode ||
-                      entry.specs?.flangeTypeCode ||
+                      specs.spigotFlangeTypeCode ||
+                      specs.flangeTypeCode ||
                       globalSpecs?.flangeTypeCode;
 
                     const singleSpigotFlangeWeight =
@@ -3224,9 +3193,9 @@ function StraightPipeFormComponent({
                     // Puddle flange weight calculation
                     // Formula: Weight = π × (R_outer² - R_inner²) × thickness × density
                     // Where R_inner = pipe OD (puddle flange slips over pipe)
-                    const isPuddlePipe = entry.specs?.pipeType === "puddle";
-                    const puddleFlangeOd = entry.specs?.puddleFlangeOdMm || 0;
-                    const puddleFlangeThickness = entry.specs?.puddleFlangeThicknessMm || 0;
+                    const isPuddlePipe = specs.pipeType === "puddle";
+                    const puddleFlangeOd = specs.puddleFlangeOdMm || 0;
+                    const puddleFlangeThickness = specs.puddleFlangeThicknessMm || 0;
                     const pipeOdMm = entry.calculation?.outsideDiameterMm || 0;
                     const singlePuddleFlangeWeight =
                       isPuddlePipe &&
@@ -3315,12 +3284,12 @@ function StraightPipeFormComponent({
                     );
                     const totalFlanges =
                       physicalFlanges * (entry.calculation?.calculatedPipeCount || 0);
-                    const nominalBore = entry.specs?.nominalBoreMm;
+                    const nominalBore = specs.nominalBoreMm;
 
                     const flangeStandardId =
-                      entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                      specs.flangeStandardId || globalSpecs?.flangeStandardId;
                     const flangePressureClassId =
-                      entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                      specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
 
                     const flangeStandard = masterData.flangeStandards?.find(
                       (s: any) => s.id === flangeStandardId,
@@ -3330,8 +3299,7 @@ function StraightPipeFormComponent({
                       (p: any) => p.id === flangePressureClassId,
                     );
                     const pressureClassDesignation = pressureClass?.designation || "";
-                    const flangeTypeCode =
-                      entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
                     const flangeWeightPerUnit =
                       nominalBore && pressureClassDesignation
@@ -3345,7 +3313,7 @@ function StraightPipeFormComponent({
                         : entry.calculation?.flangeWeightPerUnit || 0;
                     const regularFlangeWeight = totalFlanges * flangeWeightPerUnit;
 
-                    const blankPositions = entry.specs?.blankFlangePositions || [];
+                    const blankPositions = specs.blankFlangePositions || [];
                     const blankFlangeCount =
                       blankPositions.length * (entry.calculation?.calculatedPipeCount || 0);
                     const isSans1123 =
@@ -3360,16 +3328,14 @@ function StraightPipeFormComponent({
                     const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
                     // Puddle flange calculations
-                    const isPuddlePipe = entry.specs?.pipeType === "puddle";
+                    const isPuddlePipe = specs.pipeType === "puddle";
                     const hasPuddleFlange =
-                      isPuddlePipe &&
-                      entry.specs?.puddleFlangeOdMm &&
-                      entry.specs?.puddleFlangeThicknessMm;
-                    const puddleOd = entry.specs?.puddleFlangeOdMm || 0;
-                    const puddleThickness = entry.specs?.puddleFlangeThicknessMm || 0;
-                    const puddlePcd = entry.specs?.puddleFlangePcdMm;
-                    const puddleHoles = entry.specs?.puddleFlangeHoleCount;
-                    const puddleHoleId = entry.specs?.puddleFlangeHoleIdMm;
+                      isPuddlePipe && specs.puddleFlangeOdMm && specs.puddleFlangeThicknessMm;
+                    const puddleOd = specs.puddleFlangeOdMm || 0;
+                    const puddleThickness = specs.puddleFlangeThicknessMm || 0;
+                    const puddlePcd = specs.puddleFlangePcdMm;
+                    const puddleHoles = specs.puddleFlangeHoleCount;
+                    const puddleHoleId = specs.puddleFlangeHoleIdMm;
                     const pipeOd = entry.calculation?.outsideDiameterMm || 0;
                     const numPipes = entry.calculation?.calculatedPipeCount || 1;
                     const steelDensityKgM3 = 7850;
@@ -3384,19 +3350,19 @@ function StraightPipeFormComponent({
                     const puddleFlangeCount = hasPuddleFlange ? numPipes : 0;
 
                     // Spigot flange calculations
-                    const isSpigotPipe = entry.specs?.pipeType === "spigot";
-                    const spigotCount = entry.specs?.numberOfSpigots || 0;
-                    const spigotNb = entry.specs?.spigotNominalBoreMm || 0;
-                    const spigotFlangeConfig = entry.specs?.spigotFlangeConfig || "PE";
+                    const isSpigotPipe = specs.pipeType === "spigot";
+                    const spigotCount = specs.numberOfSpigots || 0;
+                    const spigotNb = specs.spigotNominalBoreMm || 0;
+                    const spigotFlangeConfig = specs.spigotFlangeConfig || "PE";
                     const hasSpigotFlanges =
                       isSpigotPipe && (spigotFlangeConfig === "FAE" || spigotFlangeConfig === "RF");
                     const spigotFlangeStdId =
-                      entry.specs?.spigotFlangeStandardId ||
-                      entry.specs?.flangeStandardId ||
+                      specs.spigotFlangeStandardId ||
+                      specs.flangeStandardId ||
                       globalSpecs?.flangeStandardId;
                     const spigotPressureClassId =
-                      entry.specs?.spigotFlangePressureClassId ||
-                      entry.specs?.flangePressureClassId ||
+                      specs.spigotFlangePressureClassId ||
+                      specs.flangePressureClassId ||
                       globalSpecs?.flangePressureClassId;
                     const spigotFlangeStd = masterData.flangeStandards?.find(
                       (s: any) => s.id === spigotFlangeStdId,
@@ -3407,8 +3373,8 @@ function StraightPipeFormComponent({
                     );
                     const spigotPressureClassDesignation = spigotPressureClass?.designation || "";
                     const spigotFlangeTypeCode =
-                      entry.specs?.spigotFlangeTypeCode ||
-                      entry.specs?.flangeTypeCode ||
+                      specs.spigotFlangeTypeCode ||
+                      specs.flangeTypeCode ||
                       globalSpecs?.flangeTypeCode;
                     const spigotFlangeWeightPerUnit =
                       hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
@@ -3425,7 +3391,7 @@ function StraightPipeFormComponent({
                       spigotFlangeWeightPerUnit * totalSpigotFlangeCount;
 
                     // Spigot blank flanges
-                    const spigotBlankPositions = entry.specs?.spigotBlankFlanges || [];
+                    const spigotBlankPositions = specs.spigotBlankFlanges || [];
                     const spigotBlankCount = spigotBlankPositions.length * numPipes;
                     const isSans1123Spigot =
                       (spigotFlangeStdCode.toUpperCase().includes("SABS") ||
@@ -3575,11 +3541,9 @@ function StraightPipeFormComponent({
                     // Calculate flange welds dynamically based on configuration
                     const pipeEndConfig = entry.specs.pipeEndConfiguration || "PE";
                     const baseFlangeWeldsPerPipe = getFlangeWeldCountPerPipe(pipeEndConfig);
-                    const isPuddlePipe = entry.specs?.pipeType === "puddle";
+                    const isPuddlePipe = specs.pipeType === "puddle";
                     const hasPuddleFlange =
-                      isPuddlePipe &&
-                      entry.specs?.puddleFlangeOdMm &&
-                      entry.specs?.puddleFlangeThicknessMm;
+                      isPuddlePipe && specs.puddleFlangeOdMm && specs.puddleFlangeThicknessMm;
                     const flangeWeldsPerPipe = baseFlangeWeldsPerPipe + (hasPuddleFlange ? 1 : 0);
                     const numPipes = entry.calculation?.calculatedPipeCount || 1;
                     const totalFlangeWelds = flangeWeldsPerPipe * numPipes;
@@ -3594,9 +3558,9 @@ function StraightPipeFormComponent({
                     const flangeWeldLengthM = (circumferenceMm * 2 * totalFlangeWelds) / 1000;
 
                     // Spigot weld calculations
-                    const isSpigotPipe = entry.specs?.pipeType === "spigot";
-                    const spigotCount = entry.specs?.numberOfSpigots || 0;
-                    const spigotNb = entry.specs?.spigotNominalBoreMm || 0;
+                    const isSpigotPipe = specs.pipeType === "spigot";
+                    const spigotCount = specs.numberOfSpigots || 0;
+                    const spigotNb = specs.spigotNominalBoreMm || 0;
                     const nbToOd: Record<number, number> = {
                       15: 21.3,
                       20: 26.9,

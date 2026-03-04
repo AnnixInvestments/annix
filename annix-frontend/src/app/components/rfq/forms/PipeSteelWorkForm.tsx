@@ -40,13 +40,13 @@ export default function PipeSteelWorkForm({
   generateItemDescription,
   requiredProducts = [],
 }: PipeSteelWorkFormProps) {
-  const workType = entry.specs?.workType || "pipe_support";
-  const nominalDiameterMm =
-    entry.specs?.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
-  const bracketType = entry.specs?.bracketType || "clevis_hanger";
-  const pipelineLengthM = entry.specs?.pipelineLengthM || null;
-  const branchDiameterMm = entry.specs?.branchDiameterMm || null;
-  const quantity = entry.specs?.quantity;
+  const specs = entry.specs ?? {};
+  const workType = specs.workType || "pipe_support";
+  const nominalDiameterMm = specs.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
+  const bracketType = specs.bracketType || "clevis_hanger";
+  const pipelineLengthM = specs.pipelineLengthM || null;
+  const branchDiameterMm = specs.branchDiameterMm || null;
+  const quantity = specs.quantity;
 
   const { supportSpacing, bracketTypes, bracketDimensions, calculationResults, isLoading, error } =
     usePipeSteelWorkCalculations({
@@ -227,7 +227,7 @@ export default function PipeSteelWorkForm({
                     </label>
                     <Select
                       id={`media-type-${entry.id}`}
-                      value={entry.specs?.mediaType || "water_filled"}
+                      value={specs.mediaType || "water_filled"}
                       onChange={(value) => {
                         onUpdateEntry(entry.id, {
                           specs: { ...entry.specs, mediaType: value },
