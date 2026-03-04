@@ -89,6 +89,7 @@ export interface AnalyzeFilesResult {
 
 export interface AnalyzedCustomerDnFile {
   filename: string;
+  originalFileIndex: number;
   deliveryNoteNumber: string | null;
   customerReference: string | null;
   deliveryDate: string | null;
@@ -1228,6 +1229,7 @@ ${truncatedText}`;
 
         analyzedFiles.push({
           filename: filenameWithIndex,
+          originalFileIndex: i,
           deliveryNoteNumber: (extractedData.deliveryNoteNumber as string) || null,
           customerReference: (extractedData.customerReference as string) || null,
           deliveryDate: (extractedData.deliveryDate as string) || null,
@@ -1313,7 +1315,7 @@ ${truncatedText}`;
       const group = groupMap.get(dnNumber)!;
 
       group.files.push({
-        fileIndex: index,
+        fileIndex: file.originalFileIndex,
         filename: file.filename,
         pageNumber: file.pageInfo?.currentPage || null,
       });

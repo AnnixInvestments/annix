@@ -446,6 +446,7 @@ export interface RubberDeliveryNoteItemDto {
 
 export interface AnalyzedCustomerDnFile {
   filename: string;
+  originalFileIndex: number;
   deliveryNoteNumber: string | null;
   customerReference: string | null;
   deliveryDate: string | null;
