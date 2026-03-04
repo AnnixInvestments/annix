@@ -113,6 +113,20 @@ const url = await this.storageService.getPresignedUrl(filePath, 3600);
 - `annix-backend/docs/AWS_S3_SETUP_GUIDE.md` - AWS setup instructions
 - `annix-backend/scripts/deploy-s3-storage.sh` - Deployment automation
 
+## Build & Dev Servers — NEVER RUN DURING DEVELOPMENT
+- **A Claude Swarm orchestrator manages all builds and dev servers during development** — agents must NEVER run build or dev commands while developing
+- **NEVER run during development**: `pnpm run build`, `next build`, `pnpm run dev`, `nest start`, `npm run build`, `npm run dev`, `npm run start:dev`, or equivalent
+- **NEVER run**: `./run-dev.sh`, `./kill-dev.sh`, or any swarm lifecycle scripts
+- Running builds while the dev server is active **corrupts caches** and breaks the app
+- The swarm automatically rebuilds on file changes — just edit files and check the logs
+- **To verify your changes compiled**: read the swarm logs:
+  - Frontend: `logs/frontend.log`
+  - Backend: `logs/backend.log`
+  - Combined: `logs/annix.log`
+- **To check swarm status**: read `.claude-swarm/registry.json`
+- **Type checking only** (`npx tsc --noEmit`) is safe — it doesn't interfere with running servers
+- **Git hooks** (pre-push) run builds independently and this is expected — do not bypass them
+
 ## Git Commits
 
 ### Autonomous Operation Mode
