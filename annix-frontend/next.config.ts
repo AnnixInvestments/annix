@@ -4,7 +4,11 @@ import path from "node:path";
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, ".."),
-  transpilePackages: ["@annix/product-data"],
+  transpilePackages: [
+    "@annix/product-data",
+    "@tanstack/react-query",
+    "@tanstack/query-core",
+  ],
 
   async rewrites() {
     return [

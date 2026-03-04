@@ -7,7 +7,9 @@
           "targets": {
             "safari": "12",
             "ios": "12"
-          }
+          },
+          "useBuiltIns": "usage",
+          "corejs": 3
         }
       }
     ]
