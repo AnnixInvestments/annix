@@ -3,7 +3,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
 import { ILike, In, Repository } from "typeorm";
-import { PuppeteerPoolService } from "../../shared/services/puppeteer-pool.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -25,7 +24,6 @@ export class QrCodeService {
     private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
-    private readonly puppeteerPool: PuppeteerPoolService,
   ) {}
 
   async stockItemQrPng(itemId: number, companyId: number): Promise<Buffer> {
@@ -40,35 +38,53 @@ export class QrCodeService {
 
   async stockItemLabelPdf(itemId: number, companyId: number): Promise<Buffer> {
     const item = await this.findStockItem(itemId, companyId);
-    const qrDataUrl = await QRCode.toDataURL(`stock:${itemId}`, { width: 300, margin: 2 });
+    const qrBuffer = await QRCode.toBuffer(`stock:${itemId}`, { width: 300, margin: 2 });
 
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    @page { size: 210mm 148mm landscape; margin: 0; }
-    body { margin: 0; padding: 20mm; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 108mm; box-sizing: border-box; }
-    .company { font-size: 10pt; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4mm; }
-    .name { font-size: 22pt; font-weight: bold; color: #111827; text-align: center; margin-bottom: 3mm; }
-    .sku { font-size: 14pt; font-family: monospace; color: #374151; margin-bottom: 6mm; }
-    .qr { margin-bottom: 4mm; }
-    .qr img { width: 40mm; height: 40mm; }
-    .code { font-size: 9pt; font-family: monospace; color: #9ca3af; margin-bottom: 3mm; }
-    .location { font-size: 11pt; color: #4b5563; }
-  </style>
-</head>
-<body>
-  <div class="company">Stock Control</div>
-  <div class="name">${escapeHtml(item.name)}</div>
-  <div class="sku">${escapeHtml(item.sku)}</div>
-  <div class="qr"><img src="${qrDataUrl}" /></div>
-  <div class="code">stock:${item.id}</div>
-  ${item.location ? `<div class="location">${escapeHtml(item.location)}</div>` : ""}
-</body>
-</html>`;
+    const mmToPt = (mm: number) => mm * 2.83465;
+    const pageWidth = mmToPt(210);
+    const pageHeight = mmToPt(148);
 
-    return this.htmlToPdf(html, { width: "210mm", height: "148mm" });
+    const doc = new PDFDocument({
+      size: [pageWidth, pageHeight],
+      margin: 0,
+    });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+
+    const centerX = pageWidth / 2;
+    let y = mmToPt(20);
+
+    doc.fillColor("#6b7280").fontSize(10).font("Helvetica");
+    doc.text("STOCK CONTROL", 0, y, { width: pageWidth, align: "center" });
+    y += mmToPt(6);
+
+    doc.fillColor("#111827").fontSize(22).font("Helvetica-Bold");
+    doc.text(item.name, mmToPt(15), y, { width: pageWidth - mmToPt(30), align: "center" });
+    y += mmToPt(10);
+
+    doc.fillColor("#374151").fontSize(14).font("Courier");
+    doc.text(item.sku, 0, y, { width: pageWidth, align: "center" });
+    y += mmToPt(8);
+
+    const qrSize = mmToPt(40);
+    doc.image(qrBuffer, centerX - qrSize / 2, y, { width: qrSize });
+    y += qrSize + mmToPt(3);
+
+    doc.fillColor("#9ca3af").fontSize(9).font("Courier");
+    doc.text(`stock:${item.id}`, 0, y, { width: pageWidth, align: "center" });
+    y += mmToPt(5);
+
+    if (item.location) {
+      doc.fillColor("#4b5563").fontSize(11).font("Helvetica");
+      doc.text(item.location, 0, y, { width: pageWidth, align: "center" });
+    }
+
+    doc.end();
+
+    return new Promise((resolve, reject) => {
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+    });
   }
 
   async jobCardPdf(jobId: number, companyId: number): Promise<Buffer> {
@@ -586,84 +602,77 @@ export class QrCodeService {
       throw new NotFoundException("No stock items found");
     }
 
-    const labelsHtml = await Promise.all(
-      stockItems.map(async (item) => {
-        const qrDataUrl = await QRCode.toDataURL(`stock:${item.id}`, {
-          width: 200,
-          margin: 1,
-        });
-        const locationName = item.locationEntity?.name ?? item.location ?? "";
-        return `
-          <div class="label">
-            <div class="qr"><img src="${qrDataUrl}" /></div>
-            <div class="info">
-              <div class="name">${escapeHtml(item.name)}</div>
-              <div class="sku">${escapeHtml(item.sku)}</div>
-              ${locationName ? `<div class="location">${escapeHtml(locationName)}</div>` : ""}
-            </div>
-          </div>`;
-      }),
-    );
-
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    @page { size: A4; margin: 10mm; }
-    body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-    .labels-container { display: flex; flex-wrap: wrap; gap: 5mm; }
-    .label { width: 62mm; height: 30mm; border: 1px solid #d1d5db; border-radius: 2mm; overflow: hidden; page-break-inside: avoid; display: flex; padding: 2mm; box-sizing: border-box; }
-    .qr { width: 24mm; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-    .qr img { width: 22mm; height: 22mm; }
-    .info { flex: 1; padding-left: 2mm; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-    .name { font-size: 9pt; font-weight: bold; color: #111827; line-height: 1.2; margin-bottom: 1mm; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-    .sku { font-size: 8pt; font-family: monospace; color: #0d9488; margin-bottom: 1mm; }
-    .location { font-size: 7pt; color: #6b7280; }
-  </style>
-</head>
-<body>
-  <div class="labels-container">
-    ${labelsHtml.join("")}
-  </div>
-</body>
-</html>`;
-
-    return this.htmlToPdf(html, { format: "A4" });
+    return this.generateBatchStockItemLabelsPdf(stockItems);
   }
 
-  private buildCoatingSpecHtml(coatingAnalysis: JobCardCoatingAnalysis | null): string {
-    if (!coatingAnalysis || !coatingAnalysis.coats || coatingAnalysis.coats.length === 0) {
-      return "";
+  private async generateBatchStockItemLabelsPdf(stockItems: StockItem[]): Promise<Buffer> {
+    const mmToPt = (mm: number) => mm * 2.83465;
+
+    const labelWidth = mmToPt(62);
+    const labelHeight = mmToPt(30);
+    const gap = mmToPt(5);
+    const margin = mmToPt(10);
+    const labelsPerRow = 3;
+    const labelsPerPage = 21;
+
+    const doc = new PDFDocument({ size: "A4", margin: 0 });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+
+    for (let i = 0; i < stockItems.length; i++) {
+      const item = stockItems[i];
+      const labelIndexOnPage = i % labelsPerPage;
+
+      if (labelIndexOnPage === 0 && i > 0) {
+        doc.addPage();
+      }
+
+      const col = labelIndexOnPage % labelsPerRow;
+      const row = Math.floor(labelIndexOnPage / labelsPerRow);
+
+      const x = margin + col * (labelWidth + gap);
+      const y = margin + row * (labelHeight + gap);
+
+      doc.roundedRect(x, y, labelWidth, labelHeight, mmToPt(2)).strokeColor("#d1d5db").stroke();
+
+      const qrSize = mmToPt(22);
+      const qrX = x + mmToPt(2);
+      const qrY = y + (labelHeight - qrSize) / 2;
+
+      const qrBuffer = await QRCode.toBuffer(`stock:${item.id}`, { width: 150, margin: 1 });
+      doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
+
+      const infoX = qrX + qrSize + mmToPt(2);
+      const infoWidth = labelWidth - qrSize - mmToPt(6);
+      let infoY = y + mmToPt(4);
+
+      doc.fillColor("#111827").fontSize(9).font("Helvetica-Bold");
+      const nameHeight = doc.heightOfString(item.name, { width: infoWidth });
+      const maxNameHeight = mmToPt(10);
+      doc.text(item.name, infoX, infoY, {
+        width: infoWidth,
+        height: Math.min(nameHeight, maxNameHeight),
+        ellipsis: true,
+      });
+      infoY += Math.min(nameHeight, maxNameHeight) + mmToPt(1);
+
+      doc.fillColor("#0d9488").fontSize(8).font("Courier");
+      doc.text(item.sku, infoX, infoY, { width: infoWidth });
+      infoY += mmToPt(4);
+
+      const locationName = item.locationEntity?.name ?? item.location ?? "";
+      if (locationName) {
+        doc.fillColor("#6b7280").fontSize(7).font("Helvetica");
+        doc.text(locationName, infoX, infoY, { width: infoWidth });
+      }
     }
 
-    const coatsRows = coatingAnalysis.coats
-      .map(
-        (coat) => `
-        <tr>
-          <td>${escapeHtml(coat.product)}</td>
-          <td class="right">${coat.minDftUm}-${coat.maxDftUm}</td>
-          <td class="right">${coat.coverageM2PerLiter.toFixed(2)}</td>
-          <td class="right">${coat.litersRequired.toFixed(2)}</td>
-        </tr>`,
-      )
-      .join("");
+    doc.end();
 
-    return `
-  <div class="section-title">Coating Specification</div>
-  <table>
-    <thead>
-      <tr>
-        <th>Product</th>
-        <th style="text-align: right;">DFT (µm)</th>
-        <th style="text-align: right;">Coverage (m²/L)</th>
-        <th style="text-align: right;">Allowed Litres</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${coatsRows}
-    </tbody>
-  </table>`;
+    return new Promise((resolve, reject) => {
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+    });
   }
 
   private async findStaffMember(staffId: number, companyId: number): Promise<StaffMember> {
@@ -697,28 +706,4 @@ export class QrCodeService {
     }
     return jobCard;
   }
-
-  private async htmlToPdf(
-    html: string,
-    pageOptions: { format?: string; width?: string; height?: string },
-  ): Promise<Buffer> {
-    this.logger.log("Generating PDF via pooled browser...");
-    const pdfBuffer = await this.puppeteerPool.generatePdfFromHtml(html, {
-      format: pageOptions.format as "A4" | "Letter" | undefined,
-      width: pageOptions.width,
-      height: pageOptions.height,
-      printBackground: true,
-      margin: { top: "0", bottom: "0", left: "0", right: "0" },
-    });
-    this.logger.log(`PDF generated successfully: ${pdfBuffer.length} bytes`);
-    return pdfBuffer;
-  }
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
