@@ -58,6 +58,8 @@ export default function DeliveryNoteDetailPage() {
   const [podPageNumber, setPodPageNumber] = useState<number | null>(null);
   const [podPageUrl, setPodPageUrl] = useState<string | null>(null);
   const [isLoadingPod, setIsLoadingPod] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const noteId = Number(params.id);
 
@@ -253,6 +255,19 @@ export default function DeliveryNoteDetailPage() {
     setPodPageUrl(null);
   };
 
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await auRubberApiClient.deleteDeliveryNote(noteId);
+      showToast("Delivery note deleted successfully", "success");
+      router.push("/au-rubber/portal/delivery-notes/customers");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to delete delivery note", "error");
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const handleLinkCoc = async () => {
     if (!selectedCocId) {
       showToast("Please select a CoC", "error");
@@ -444,6 +459,15 @@ export default function DeliveryNoteDetailPage() {
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
             >
               {isFinalizing ? "Finalizing..." : "Finalize & Create Stock"}
+            </button>
+          )}
+          {note.status !== "STOCK_CREATED" && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={isDeleting}
+              className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 disabled:opacity-50"
+            >
+              Delete
             </button>
           )}
         </div>
@@ -1044,6 +1068,38 @@ export default function DeliveryNoteDetailPage() {
                 ) : (
                   <div className="text-center py-12 text-gray-500">Failed to load POD page</div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              onClick={() => setShowDeleteConfirm(false)}
+            />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Delivery Note</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Are you sure you want to delete this delivery note? This action cannot be undone.
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
               </div>
             </div>
           </div>

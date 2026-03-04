@@ -181,7 +181,7 @@ export default function CustomerDeliveryNotesPage() {
       showToast(`Created ${result.deliveryNoteIds.length} delivery note(s)`, "success");
       setAnalysisResult(null);
       setAnalysisFiles([]);
-      fetchData();
+      await fetchData();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create delivery notes", "error");
     } finally {
@@ -237,7 +237,7 @@ export default function CustomerDeliveryNotesPage() {
       setUploadDnNumber("");
       setUploadDeliveryDate("");
       setUploadFiles([]);
-      fetchData();
+      await fetchData();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create delivery note", "error");
     } finally {

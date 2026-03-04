@@ -1975,6 +1975,12 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/delivery-notes/${id}`);
   }
 
+  async deleteDeliveryNote(id: number): Promise<void> {
+    return this.request(`/rubber-lining/portal/delivery-notes/${id}`, {
+      method: "DELETE",
+    });
+  }
+
   async uploadDeliveryNote(data: {
     deliveryNoteType: DeliveryNoteType;
     supplierCompanyId: number;
