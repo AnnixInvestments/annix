@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { SharedModule } from "../shared/shared.module";
 import { CoatingSystem } from "./entities/coating-system.entity";
 import { RfqSurfaceProtection } from "./entities/rfq-surface-protection.entity";
 import { SpCoatingRate } from "./entities/sp-coating-rate.entity";
@@ -10,6 +11,7 @@ import { SurfaceProtectionService } from "./surface-protection.service";
 
 @Module({
   imports: [
+    SharedModule,
     TypeOrmModule.forFeature([
       CoatingSystem,
       RfqSurfaceProtection,
