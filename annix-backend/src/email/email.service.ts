@@ -259,7 +259,7 @@ export class EmailService {
   ): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verifyPath = liteMode
-      ? "/stock-control/lite/verify-email"
+      ? "/api/stock-control/lite/verify-email"
       : "/stock-control/verify-email";
     const verificationLink = `${frontendUrl}${verifyPath}?token=${verificationToken}`;
 

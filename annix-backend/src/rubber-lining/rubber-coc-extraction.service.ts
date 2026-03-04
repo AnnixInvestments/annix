@@ -360,47 +360,62 @@ export class RubberCocExtractionService {
     systemPrompt: string,
     userPrompt: string,
   ): Promise<{ data: Record<string, unknown>; tokensUsed?: number }> {
-    const response = await fetch(
-      `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: systemPrompt }, { text: userPrompt }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 8192,
-            responseMimeType: "application/json",
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        }),
-      },
-    );
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: systemPrompt }, { text: userPrompt }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 8192,
+              responseMimeType: "application/json",
+            },
+          }),
+          signal: controller.signal,
+        },
+      );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      this.logger.error(`Gemini API error: ${response.status} - ${errorText}`);
-      throw new Error(`Gemini API error: ${response.status}`);
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(`Gemini API error: ${response.status} - ${errorText}`);
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      const data: GeminiResponse = await response.json();
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!content) {
+        this.logger.warn("No content in Gemini response");
+        return { data: {}, tokensUsed: data.usageMetadata?.totalTokenCount };
+      }
+
+      const parsed = this.parseJsonResponse(content);
+      return {
+        data: parsed,
+        tokensUsed: data.usageMetadata?.totalTokenCount,
+      };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === "AbortError") {
+        this.logger.error("Gemini API request timed out after 90 seconds");
+        throw new Error("Gemini API request timed out");
+      }
+      throw error;
     }
-
-    const data: GeminiResponse = await response.json();
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!content) {
-      this.logger.warn("No content in Gemini response");
-      return { data: {}, tokensUsed: data.usageMetadata?.totalTokenCount };
-    }
-
-    const parsed = this.parseJsonResponse(content);
-    return {
-      data: parsed,
-      tokensUsed: data.usageMetadata?.totalTokenCount,
-    };
   }
 
   private parseJsonResponse(content: string): Record<string, unknown> {
@@ -473,47 +488,62 @@ export class RubberCocExtractionService {
       },
     }));
 
-    const response = await fetch(
-      `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: systemPrompt }, { text: userPrompt }, ...imageParts],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 8192,
-            responseMimeType: "application/json",
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        }),
-      },
-    );
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: systemPrompt }, { text: userPrompt }, ...imageParts],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 8192,
+              responseMimeType: "application/json",
+            },
+          }),
+          signal: controller.signal,
+        },
+      );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      this.logger.error(`Gemini Vision API error: ${response.status} - ${errorText}`);
-      throw new Error(`Gemini Vision API error: ${response.status}`);
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(`Gemini Vision API error: ${response.status} - ${errorText}`);
+        throw new Error(`Gemini Vision API error: ${response.status}`);
+      }
+
+      const data: GeminiResponse = await response.json();
+      const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!content) {
+        this.logger.warn("No content in Gemini Vision response");
+        return { data: {}, tokensUsed: data.usageMetadata?.totalTokenCount };
+      }
+
+      const parsed = this.parseJsonResponse(content);
+      return {
+        data: parsed,
+        tokensUsed: data.usageMetadata?.totalTokenCount,
+      };
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === "AbortError") {
+        this.logger.error("Gemini Vision API request timed out after 120 seconds");
+        throw new Error("Gemini Vision API request timed out");
+      }
+      throw error;
     }
-
-    const data: GeminiResponse = await response.json();
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!content) {
-      this.logger.warn("No content in Gemini Vision response");
-      return { data: {}, tokensUsed: data.usageMetadata?.totalTokenCount };
-    }
-
-    const parsed = this.parseJsonResponse(content);
-    return {
-      data: parsed,
-      tokensUsed: data.usageMetadata?.totalTokenCount,
-    };
   }
 
   async extractDeliveryNoteFromImages(pdfBuffer: Buffer): Promise<{
