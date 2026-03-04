@@ -29,6 +29,7 @@ import { ReferenceDataModule } from "./reference-data";
 import { RemoteAccessModule } from "./remote-access/remote-access.module";
 import { RfqModule } from "./rfq/rfq.module";
 import { AuthSharedModule } from "./shared/auth/auth-shared.module";
+import { SharedModule } from "./shared/shared.module";
 import { SteelSpecificationModule } from "./steel-specification/steel-specification.module";
 import { StorageModule } from "./storage/storage.module";
 import { StructuralSteelModule } from "./structural-steel/structural-steel.module";
@@ -59,6 +60,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     }),
     TypeOrmModule.forRoot(typeormConfig()),
 
+    SharedModule,
     AuthSharedModule,
     AuthModule,
     UserModule,
