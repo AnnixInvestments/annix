@@ -94,10 +94,12 @@ export default function DeliveryNoteDetailPage() {
   const initializeEditableData = (): EditableExtractedData[] => {
     if (!note?.extractedData) return [];
     const items = Array.isArray(note.extractedData) ? note.extractedData : [note.extractedData];
-    return items.map((item) => ({
-      ...item,
-      rolls: item.rolls?.map((roll) => ({ ...roll })),
-    }));
+    return items
+      .filter((item): item is ExtractedDeliveryNoteData => item !== null && item !== undefined)
+      .map((item) => ({
+        ...item,
+        rolls: item.rolls?.map((roll) => ({ ...roll })),
+      }));
   };
 
   const handleStartEditing = () => {
@@ -369,12 +371,13 @@ export default function DeliveryNoteDetailPage() {
           note.extractedData.length > 0 &&
           note.extractedData.some(
             (item) =>
-              item.deliveryNoteNumber ||
-              item.deliveryDate ||
-              item.supplierName ||
-              item.batchRange ||
-              item.totalWeightKg ||
-              (item.rolls && item.rolls.length > 0),
+              item &&
+              (item.deliveryNoteNumber ||
+                item.deliveryDate ||
+                item.supplierName ||
+                item.batchRange ||
+                item.totalWeightKg ||
+                (item.rolls && item.rolls.length > 0)),
           )
         );
       }
@@ -392,9 +395,9 @@ export default function DeliveryNoteDetailPage() {
   const displayData: EditableExtractedData[] = isEditing
     ? editedData
     : note.extractedData
-      ? Array.isArray(note.extractedData)
-        ? note.extractedData
-        : [note.extractedData]
+      ? (Array.isArray(note.extractedData) ? note.extractedData : [note.extractedData]).filter(
+          (item): item is ExtractedDeliveryNoteData => item !== null && item !== undefined,
+        )
       : [];
 
   return (
