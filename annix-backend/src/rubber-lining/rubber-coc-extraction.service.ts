@@ -489,7 +489,7 @@ export class RubberCocExtractionService {
     }));
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000);
+    const timeoutId = setTimeout(() => controller.abort(), 180000);
 
     try {
       const response = await fetch(
@@ -539,7 +539,7 @@ export class RubberCocExtractionService {
     } catch (error) {
       clearTimeout(timeoutId);
       if (error.name === "AbortError") {
-        this.logger.error("Gemini Vision API request timed out after 120 seconds");
+        this.logger.error("Gemini Vision API request timed out after 180 seconds");
         throw new Error("Gemini Vision API request timed out");
       }
       throw error;
