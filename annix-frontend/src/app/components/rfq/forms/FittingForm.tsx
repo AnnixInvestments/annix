@@ -342,6 +342,8 @@ function FittingFormComponent({
     onUpdateEntry,
   ]);
 
+  const fittingQuantityDisplayValue = entry.specs?.quantityValue ?? "";
+
   return (
     <>
       <SplitPaneLayout
@@ -2196,7 +2198,7 @@ function FittingFormComponent({
                   </label>
                   <input
                     type="number"
-                    value={entry.specs?.quantityValue ?? ""}
+                    value={fittingQuantityDisplayValue}
                     onChange={(e) => {
                       const rawValue = e.target.value;
                       if (rawValue === "") {

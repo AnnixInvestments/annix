@@ -526,6 +526,22 @@ function StraightPipeFormComponent({
     masterData?.flangeTypes,
   ]);
 
+  const quantityType = entry.specs.quantityType;
+  const quantityValue = entry.specs.quantityValue;
+  const individualPipeLength = entry.specs.individualPipeLength;
+
+  const totalLineDisplayValue =
+    quantityType === "total_length"
+      ? quantityValue || ""
+      : (quantityValue || 1) * (individualPipeLength || 0);
+
+  const qtyEachDisplayValue =
+    quantityType === "number_of_pipes"
+      ? (quantityValue ?? "")
+      : individualPipeLength
+        ? Math.ceil((quantityValue || 0) / individualPipeLength)
+        : "";
+
   return (
     <>
       <SplitPaneLayout
@@ -2764,12 +2780,7 @@ function StraightPipeFormComponent({
                         <input
                           type="number"
                           step="0.001"
-                          value={
-                            entry.specs.quantityType === "total_length"
-                              ? entry.specs.quantityValue || ""
-                              : (entry.specs.quantityValue || 1) *
-                                (entry.specs.individualPipeLength || 0)
-                          }
+                          value={totalLineDisplayValue}
                           onChange={(e) => {
                             const totalLength = Number(e.target.value);
                             const updatedEntry = calculateQuantities(
@@ -2798,16 +2809,7 @@ function StraightPipeFormComponent({
                         type="number"
                         min="1"
                         max={isUnregisteredCustomer ? MAX_QUANTITY_UNREGISTERED : undefined}
-                        value={
-                          entry.specs.quantityType === "number_of_pipes"
-                            ? (entry.specs.quantityValue ?? "")
-                            : entry.specs.individualPipeLength
-                              ? Math.ceil(
-                                  (entry.specs.quantityValue || 0) /
-                                    entry.specs.individualPipeLength,
-                                )
-                              : ""
-                        }
+                        value={qtyEachDisplayValue}
                         onChange={(e) => {
                           if (isUnregisteredCustomer) {
                             const rect = e.target.getBoundingClientRect();
