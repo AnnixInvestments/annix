@@ -28,6 +28,14 @@ primary_region = 'jnb'
   min_machines_running = 1
   processes = ['app']
 
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 50
+    soft_limit = 25
+
+  [http_service.http_options]
+    idle_timeout = 120
+
 [checks]
   [checks.health]
     grace_period = '30s'
