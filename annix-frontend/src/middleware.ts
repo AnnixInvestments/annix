@@ -6,7 +6,9 @@ export function middleware(request: NextRequest) {
   if (pathname === "/stock-control/lite/verify-email") {
     const userAgent = request.headers.get("user-agent") || "";
 
-    const iosMatch = userAgent.match(/iPhone OS (\d+)_/);
+    const iphoneMatch = userAgent.match(/iPhone OS (\d+)_/);
+    const ipadMatch = userAgent.match(/CPU OS (\d+)_/);
+    const iosMatch = iphoneMatch || ipadMatch;
     const isLegacyiOS = iosMatch && parseInt(iosMatch[1], 10) <= 12;
 
     const safariMatch = userAgent.match(/Version\/(\d+)/);
