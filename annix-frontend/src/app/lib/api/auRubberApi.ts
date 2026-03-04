@@ -1916,6 +1916,12 @@ class AuRubberApiClient {
     });
   }
 
+  async deleteSupplierCoc(id: number): Promise<void> {
+    return this.request(`/rubber-lining/portal/supplier-cocs/${id}`, {
+      method: "DELETE",
+    });
+  }
+
   async linkCocToDeliveryNote(
     cocId: number,
     deliveryNoteId: number,
@@ -2293,6 +2299,12 @@ class AuRubberApiClient {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  async deleteAuCoc(id: number): Promise<void> {
+    return this.request(`/rubber-lining/portal/au-cocs/${id}`, {
+      method: "DELETE",
+    });
   }
 
   async autoCreateAuCocFromDeliveryNote(

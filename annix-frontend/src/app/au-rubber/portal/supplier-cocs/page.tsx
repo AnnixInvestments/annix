@@ -1,9 +1,10 @@
 "use client";
 
-import { CheckCircle, FileText, LineChart, X } from "lucide-react";
+import { CheckCircle, FileText, LineChart, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import {
   auRubberApiClient,
@@ -50,6 +51,7 @@ type SortColumn =
 
 export default function SupplierCocsPage() {
   const { showToast } = useToast();
+  const { isAdmin } = useAuRubberAuth();
   const { colors, branding } = useAuRubberBranding();
   const [logoObjectUrl, setLogoObjectUrl] = useState<string | null>(null);
   const [cocs, setCocs] = useState<RubberSupplierCocDto[]>([]);
@@ -75,6 +77,9 @@ export default function SupplierCocsPage() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [analysisDots, setAnalysisDots] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let revoked = false;
@@ -338,6 +343,22 @@ export default function SupplierCocsPage() {
     );
   };
 
+  const handleDelete = async () => {
+    if (!deletingId) return;
+    try {
+      setIsDeleting(true);
+      await auRubberApiClient.deleteSupplierCoc(deletingId);
+      showToast("Supplier CoC deleted successfully", "success");
+      setShowDeleteModal(false);
+      setDeletingId(null);
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to delete supplier CoC", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -548,6 +569,18 @@ export default function SupplierCocsPage() {
                     >
                       View
                     </Link>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setDeletingId(coc.id);
+                          setShowDeleteModal(true);
+                        }}
+                        className="text-red-600 hover:text-red-800 inline-flex items-center"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -885,6 +918,41 @@ export default function SupplierCocsPage() {
               }
             }
           `}</style>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              onClick={() => setShowDeleteModal(false)}
+            />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Supplier CoC</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Are you sure you want to delete this supplier CoC? This action cannot be undone.
+              </p>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeletingId(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
