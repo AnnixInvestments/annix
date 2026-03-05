@@ -708,8 +708,10 @@ export default function DeliveryNoteDetailPage() {
                                     }
                                     className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
+                                ) : roll.thicknessMm != null ? (
+                                  roll.thicknessMm
                                 ) : (
-                                  (roll.thicknessMm != null ? roll.thicknessMm : "-")
+                                  "-"
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -727,8 +729,10 @@ export default function DeliveryNoteDetailPage() {
                                     }
                                     className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
+                                ) : roll.widthMm != null ? (
+                                  roll.widthMm
                                 ) : (
-                                  (roll.widthMm != null ? roll.widthMm : "-")
+                                  "-"
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -747,8 +751,10 @@ export default function DeliveryNoteDetailPage() {
                                     }
                                     className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
+                                ) : roll.lengthM != null ? (
+                                  roll.lengthM
                                 ) : (
-                                  (roll.lengthM != null ? roll.lengthM : "-")
+                                  "-"
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -770,8 +776,10 @@ export default function DeliveryNoteDetailPage() {
                                     }
                                     className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
+                                ) : safeFixed(roll.weightKg, 2) != null ? (
+                                  safeFixed(roll.weightKg, 2)
                                 ) : (
-                                  (safeFixed(roll.weightKg, 2) != null ? safeFixed(roll.weightKg, 2) : "-")
+                                  "-"
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
