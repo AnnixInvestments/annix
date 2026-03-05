@@ -140,10 +140,11 @@ export class NixChatService {
 
     const startTime = Date.now();
 
-    const { content: responseContent, providerUsed, tokensUsed } = await this.aiChatService.chat(
-      conversationHistory,
-      systemPrompt,
-    );
+    const {
+      content: responseContent,
+      providerUsed,
+      tokensUsed,
+    } = await this.aiChatService.chat(conversationHistory, systemPrompt);
 
     const processingTimeMs = Date.now() - startTime;
 
