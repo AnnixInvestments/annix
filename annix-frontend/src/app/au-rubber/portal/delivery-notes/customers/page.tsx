@@ -721,8 +721,8 @@ export default function CustomerDeliveryNotesPage() {
       )}
 
       {isAnalyzing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-75">
-          <div className="bg-white rounded-lg p-8 flex flex-col items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white/95 rounded-lg p-8 flex flex-col items-center shadow-2xl">
             <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
             <p className="text-lg font-medium text-gray-900">Analyzing delivery notes...</p>
             <p className="text-sm text-gray-500 mt-1">
