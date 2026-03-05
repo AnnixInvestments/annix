@@ -27,11 +27,25 @@ export default function GlobalError({
           }}
         >
           <div style={{ textAlign: "center", maxWidth: "32rem", padding: "1rem" }}>
-            <div style={{ color: "#ef4444", fontSize: "1.125rem", fontWeight: 600, marginBottom: "0.5rem" }}>
+            <div
+              style={{
+                color: "#ef4444",
+                fontSize: "1.125rem",
+                fontWeight: 600,
+                marginBottom: "0.5rem",
+              }}
+            >
               Something went wrong
             </div>
             <p style={{ color: "#4b5563", marginBottom: "0.5rem" }}>{error.message}</p>
-            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1.5rem" }}>
+            <div
+              style={{
+                display: "flex",
+                gap: "0.75rem",
+                justifyContent: "center",
+                marginTop: "1.5rem",
+              }}
+            >
               <a
                 href="/"
                 style={{
