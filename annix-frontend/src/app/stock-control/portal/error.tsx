@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-export default function DeliveryNoteDetailError({
+export default function StockControlPortalError({
   error,
   reset,
 }: {
@@ -10,7 +10,7 @@ export default function DeliveryNoteDetailError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("DeliveryNote detail error:", error);
+    console.error("Stock Control portal error:", error);
   }, [error]);
 
   return (
@@ -25,15 +25,15 @@ export default function DeliveryNoteDetailError({
         )}
         <div className="flex gap-3 justify-center mt-6">
           <a
-            href="/au-rubber/portal/delivery-notes"
+            href="/stock-control/portal/dashboard"
             className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 text-sm font-medium"
           >
-            Back to Delivery Notes
+            Back to Dashboard
           </a>
           <button
             onClick={reset}
             type="button"
-            className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 text-sm font-medium"
+            className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 text-sm font-medium"
           >
             Try Again
           </button>
