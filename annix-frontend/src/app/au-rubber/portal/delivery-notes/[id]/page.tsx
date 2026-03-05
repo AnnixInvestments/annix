@@ -107,7 +107,9 @@ export default function DeliveryNoteDetailPage() {
       .filter((item): item is ExtractedDeliveryNoteData => item !== null && item !== undefined)
       .map((item) => ({
         ...item,
-        rolls: item.rolls?.filter(Boolean).map((roll) => ({ ...roll })),
+        rolls: item.rolls
+          ?.filter((r): r is ExtractedDeliveryNoteRoll => r != null && typeof r === "object")
+          .map((roll) => ({ ...roll })),
       }));
   };
 
@@ -660,182 +662,194 @@ export default function DeliveryNoteDetailPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {displayData.flatMap((dn, dnIdx) =>
                   dn.rolls && dn.rolls.length > 0
-                    ? dn.rolls.filter(Boolean).map((roll, rollIdx) => {
-                        const areaSqM = calculateAreaSqM(roll.widthMm, roll.lengthM);
+                    ? dn.rolls
+                        .filter((r): r is EditableRoll => r != null && typeof r === "object")
+                        .map((roll, rollIdx) => {
+                          const areaSqM = calculateAreaSqM(roll.widthMm, roll.lengthM);
 
-                        return (
-                          <tr
-                            key={`${dnIdx}-${rollIdx}`}
-                            className={`hover:bg-gray-50 ${roll.isEdited ? "bg-yellow-50" : ""}`}
-                          >
-                            <td className="px-4 py-3 whitespace-nowrap text-sm">
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={roll.rollNumber || ""}
-                                  onChange={(e) =>
-                                    handleRollFieldChange(
-                                      dnIdx,
-                                      rollIdx,
-                                      "rollNumber",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                              ) : (
-                                <span className="font-medium text-gray-900">
-                                  {roll.rollNumber || "-"}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  value={roll.thicknessMm ?? ""}
-                                  onChange={(e) =>
-                                    handleRollFieldChange(
-                                      dnIdx,
-                                      rollIdx,
-                                      "thicknessMm",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                              ) : (
-                                (roll.thicknessMm ?? "-")
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  value={roll.widthMm ?? ""}
-                                  onChange={(e) =>
-                                    handleRollFieldChange(dnIdx, rollIdx, "widthMm", e.target.value)
-                                  }
-                                  className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                              ) : (
-                                (roll.widthMm ?? "-")
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  value={roll.lengthM ?? ""}
-                                  onChange={(e) =>
-                                    handleRollFieldChange(dnIdx, rollIdx, "lengthM", e.target.value)
-                                  }
-                                  className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                              ) : (
-                                (roll.lengthM ?? "-")
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                              {areaSqM ? areaSqM.toFixed(2) : "-"}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                              {isEditing ? (
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={roll.weightKg ?? ""}
-                                  onChange={(e) =>
-                                    handleRollFieldChange(
-                                      dnIdx,
-                                      rollIdx,
-                                      "weightKg",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                              ) : (
-                                (safeFixed(roll.weightKg, 2) ?? "-")
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={roll.deliveryNoteNumber || note.deliveryNoteNumber || ""}
-                                  onChange={(e) =>
-                                    handleRollFieldChange(
-                                      dnIdx,
-                                      rollIdx,
-                                      "deliveryNoteNumber",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                              ) : (
-                                roll.deliveryNoteNumber || note.deliveryNoteNumber || "-"
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                              {isEditing ? (
-                                <input
-                                  type="date"
-                                  value={roll.deliveryDate || note.deliveryDate || ""}
-                                  onChange={(e) =>
-                                    handleRollFieldChange(
-                                      dnIdx,
-                                      rollIdx,
-                                      "deliveryDate",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                              ) : (
-                                note.deliveryDate || "-"
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={roll.customerName || dn.customerName || ""}
-                                  onChange={(e) =>
-                                    handleRollFieldChange(
-                                      dnIdx,
-                                      rollIdx,
-                                      "customerName",
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                                />
-                              ) : (
-                                roll.customerName || dn.customerName || "-"
-                              )}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 font-medium">
-                              {dn.customerReference || note.customerReference || "-"}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm">
-                              {note?.documentPath && roll.pageNumber ? (
-                                <button
-                                  onClick={() => handleViewPod(roll.pageNumber!)}
-                                  className="text-blue-600 hover:text-blue-800 font-medium"
-                                  title={`View page ${roll.pageNumber}`}
-                                >
-                                  View
-                                </button>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
+                          return (
+                            <tr
+                              key={`${dnIdx}-${rollIdx}`}
+                              className={`hover:bg-gray-50 ${roll.isEdited ? "bg-yellow-50" : ""}`}
+                            >
+                              <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={roll.rollNumber || ""}
+                                    onChange={(e) =>
+                                      handleRollFieldChange(
+                                        dnIdx,
+                                        rollIdx,
+                                        "rollNumber",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-28 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                  />
+                                ) : (
+                                  <span className="font-medium text-gray-900">
+                                    {roll.rollNumber || "-"}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    value={roll.thicknessMm ?? ""}
+                                    onChange={(e) =>
+                                      handleRollFieldChange(
+                                        dnIdx,
+                                        rollIdx,
+                                        "thicknessMm",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                  />
+                                ) : (
+                                  (roll.thicknessMm ?? "-")
+                                )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    value={roll.widthMm ?? ""}
+                                    onChange={(e) =>
+                                      handleRollFieldChange(
+                                        dnIdx,
+                                        rollIdx,
+                                        "widthMm",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                  />
+                                ) : (
+                                  (roll.widthMm ?? "-")
+                                )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={roll.lengthM ?? ""}
+                                    onChange={(e) =>
+                                      handleRollFieldChange(
+                                        dnIdx,
+                                        rollIdx,
+                                        "lengthM",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                  />
+                                ) : (
+                                  (roll.lengthM ?? "-")
+                                )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {areaSqM ? areaSqM.toFixed(2) : "-"}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {isEditing ? (
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={roll.weightKg ?? ""}
+                                    onChange={(e) =>
+                                      handleRollFieldChange(
+                                        dnIdx,
+                                        rollIdx,
+                                        "weightKg",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                  />
+                                ) : (
+                                  (safeFixed(roll.weightKg, 2) ?? "-")
+                                )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={roll.deliveryNoteNumber || note.deliveryNoteNumber || ""}
+                                    onChange={(e) =>
+                                      handleRollFieldChange(
+                                        dnIdx,
+                                        rollIdx,
+                                        "deliveryNoteNumber",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                  />
+                                ) : (
+                                  roll.deliveryNoteNumber || note.deliveryNoteNumber || "-"
+                                )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {isEditing ? (
+                                  <input
+                                    type="date"
+                                    value={roll.deliveryDate || note.deliveryDate || ""}
+                                    onChange={(e) =>
+                                      handleRollFieldChange(
+                                        dnIdx,
+                                        rollIdx,
+                                        "deliveryDate",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                  />
+                                ) : (
+                                  note.deliveryDate || "-"
+                                )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={roll.customerName || dn.customerName || ""}
+                                    onChange={(e) =>
+                                      handleRollFieldChange(
+                                        dnIdx,
+                                        rollIdx,
+                                        "customerName",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                  />
+                                ) : (
+                                  roll.customerName || dn.customerName || "-"
+                                )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 font-medium">
+                                {dn.customerReference || note.customerReference || "-"}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                {note?.documentPath && roll.pageNumber ? (
+                                  <button
+                                    onClick={() => handleViewPod(roll.pageNumber!)}
+                                    className="text-blue-600 hover:text-blue-800 font-medium"
+                                    title={`View page ${roll.pageNumber}`}
+                                  >
+                                    View
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
                     : [
                         <tr key={dnIdx} className="hover:bg-gray-50">
                           <td colSpan={6} className="px-4 py-3 text-sm text-gray-500 text-center">
