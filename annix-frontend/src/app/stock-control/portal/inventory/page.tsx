@@ -123,9 +123,9 @@ export default function InventoryPage() {
 
   const allItems = (): StockItem[] => {
     if (viewMode === "grouped") {
-      return groupedData.flatMap((g) => g.items);
+      return groupedData.flatMap((g) => g.items).filter((item): item is StockItem => item != null && typeof item === "object");
     }
-    return items;
+    return items.filter((item): item is StockItem => item != null && typeof item === "object");
   };
 
   const handlePrintStockList = (mode: "all" | "selected") => {
@@ -1391,7 +1391,7 @@ export default function InventoryPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {group.items.map((item) => (
+                        {group.items.filter((item): item is StockItem => item != null && typeof item === "object").map((item) => (
                           <tr
                             key={item.id}
                             className={
@@ -1615,7 +1615,7 @@ export default function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {items.map((item) => (
+                  {items.filter((item): item is StockItem => item != null && typeof item === "object").map((item) => (
                     <tr
                       key={item.id}
                       className={
@@ -2001,7 +2001,7 @@ export default function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {printPreviewItems.map((item) => (
+                      {printPreviewItems.filter((item): item is StockItem => item != null && typeof item === "object").map((item) => (
                         <tr
                           key={item.id}
                           className={
