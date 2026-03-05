@@ -1253,7 +1253,10 @@ ${truncatedText}`;
 
     const existingDnNumbers: string[] = [];
     for (const { number: dnNumber, customerId } of dnNumbersWithCustomers) {
-      const existing = await this.deliveryNoteService.findByDnNumberAndCompany(dnNumber, customerId);
+      const existing = await this.deliveryNoteService.findByDnNumberAndCompany(
+        dnNumber,
+        customerId,
+      );
       if (existing) {
         existingDnNumbers.push(dnNumber);
       }

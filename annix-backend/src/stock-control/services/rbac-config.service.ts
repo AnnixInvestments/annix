@@ -54,7 +54,10 @@ export class RbacConfigService {
     return config;
   }
 
-  async updateNavConfig(companyId: number, config: Record<string, string[]>): Promise<Record<string, string[]>> {
+  async updateNavConfig(
+    companyId: number,
+    config: Record<string, string[]>,
+  ): Promise<Record<string, string[]>> {
     const mergedConfig = { ...config };
 
     IMMUTABLE_NAV_KEYS.forEach((key) => {

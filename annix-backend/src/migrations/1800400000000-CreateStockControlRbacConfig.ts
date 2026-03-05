@@ -20,6 +20,6 @@ export class CreateStockControlRbacConfig1800400000000 implements MigrationInter
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS stock_control_rbac_config`);
+    await queryRunner.query("DROP TABLE IF EXISTS stock_control_rbac_config");
   }
 }

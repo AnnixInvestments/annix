@@ -1,6 +1,14 @@
 "use client";
 
-import { AlertTriangle, Check, ChevronDown, ChevronRight, FileText, RefreshCw, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import type {
   AnalyzeCustomerDnsResult,
@@ -99,7 +107,9 @@ export function CustomerDnAnalysisModal({
                   isExpanded={expandedGroups.has(groupIndex)}
                   onToggle={() => toggleGroup(groupIndex)}
                   onUpdateOverride={(field, value) => updateOverride(groupIndex, field, value)}
-                  isExisting={analysis.existingDnNumbers?.includes(group.deliveryNoteNumber) ?? false}
+                  isExisting={
+                    analysis.existingDnNumbers?.includes(group.deliveryNoteNumber) ?? false
+                  }
                 />
               ))}
             </div>

@@ -84,8 +84,7 @@ function isValidLineItem(li: LineItemImportRow): boolean {
   }
 
   const qty = li.quantity ? parseFloat(li.quantity) : null;
-  const hasNoData =
-    !description && !li.itemNo && !li.jtNo && (qty === null || Number.isNaN(qty));
+  const hasNoData = !description && !li.itemNo && !li.jtNo && (qty === null || Number.isNaN(qty));
   if (hasNoData && itemCode) {
     const looksLikeLabel = /^[A-Za-z\s]+$/.test(itemCode) && itemCode.length < 30;
     if (looksLikeLabel) {
