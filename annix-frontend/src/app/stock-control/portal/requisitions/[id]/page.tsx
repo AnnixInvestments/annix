@@ -95,7 +95,7 @@ export default function RequisitionDetailPage() {
     if (value === undefined) return;
 
     const item = requisition?.items.find((i) => i.id === itemId);
-    const currentValue = item?.reorderQty?.toString() ?? "";
+    const currentValue = item?.reorderQty != null ? item.reorderQty.toString() : "";
     if (value === currentValue) return;
 
     try {
@@ -119,7 +119,7 @@ export default function RequisitionDetailPage() {
     if (value === undefined) return;
 
     const item = requisition?.items.find((i) => i.id === itemId);
-    const currentValue = item?.reqNumber ?? "";
+    const currentValue = item ? item.reqNumber || "" : "";
     if (value === currentValue) return;
 
     try {
@@ -136,7 +136,7 @@ export default function RequisitionDetailPage() {
 
   const reorderQtyValue = (itemId: number, dbValue: number | null): string => {
     const pending = pendingReorderQty.get(itemId);
-    return pending !== undefined ? pending : (dbValue?.toString() ?? "");
+    return pending !== undefined ? pending : dbValue != null ? dbValue.toString() : "";
   };
 
   const reqNumberValue = (itemId: number, dbValue: string | null): string => {
@@ -156,7 +156,7 @@ export default function RequisitionDetailPage() {
   ];
 
   const exportData = () =>
-    (requisition?.items ?? []).map((item) => ({
+    (requisition?.items || []).map((item) => ({
       productName: item.productName,
       area: item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : item.area || "-",
       litresRequired: Number(item.litresRequired).toFixed(1),
@@ -168,9 +168,9 @@ export default function RequisitionDetailPage() {
     }));
 
   const exportMetadata = () => ({
-    Requisition: requisition?.requisitionNumber ?? "",
-    Status: requisition?.status ?? "",
-    "Created By": requisition?.createdBy ?? "-",
+    Requisition: requisition ? requisition.requisitionNumber : "",
+    Status: requisition ? requisition.status : "",
+    "Created By": requisition ? requisition.createdBy || "-" : "-",
     Created: requisition ? formatDateZA(requisition.createdAt) : "",
     ...(requisition?.jobCard
       ? { "Job Card": `${requisition.jobCard.jobNumber} - ${requisition.jobCard.jobName}` }

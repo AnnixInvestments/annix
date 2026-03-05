@@ -180,7 +180,7 @@ export default function IssueStockPage() {
       const dto: BatchIssuanceDto = {
         issuerStaffId: issuer.id,
         recipientStaffId: recipient.id,
-        jobCardId: jobCard?.id ?? null,
+        jobCardId: jobCard ? jobCard.id : null,
         items: items.map((item) => ({
           stockItemId: item.stockItem.id,
           quantity: item.quantity,

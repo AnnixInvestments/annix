@@ -512,7 +512,9 @@ export default function InventoryPage() {
         setImportMapping(response.mapping || null);
         setParsedRows([]);
       } else {
-        setParsedRows(Array.isArray(response.rows) ? (response.rows as Record<string, unknown>[]) : []);
+        setParsedRows(
+          Array.isArray(response.rows) ? (response.rows as Record<string, unknown>[]) : [],
+        );
         setImportHeaders([]);
         setImportRawRows([]);
         setImportMapping(null);
@@ -779,9 +781,7 @@ export default function InventoryPage() {
                 {importFormat === "excel" ? (
                   (() => {
                     const headersEmpty = importHeaders.every((h) => h.trim() === "");
-                    const effectiveHeaders = headersEmpty
-                      ? (importRawRows[0] || [])
-                      : importHeaders;
+                    const effectiveHeaders = headersEmpty ? importRawRows[0] || [] : importHeaders;
                     const effectiveDataRows = headersEmpty ? importRawRows.slice(1) : importRawRows;
                     return (
                       <table className="min-w-full divide-y divide-gray-200">

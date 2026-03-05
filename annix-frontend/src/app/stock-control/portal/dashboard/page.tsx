@@ -103,7 +103,7 @@ export default function StockControlDashboard() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/30" />
           <div className="relative px-4 py-6 sm:px-8 sm:py-10">
             <h1 className="text-xl sm:text-3xl font-bold text-white">
-              Welcome back, {user?.name?.split(" ")[0] ?? "there"}
+              Welcome back, {user?.name ? user.name.split(" ")[0] : "there"}
             </h1>
             <p className="mt-1 sm:mt-2 text-white/80 text-xs sm:text-sm">
               Overview of inventory, jobs, and recent activity
@@ -117,7 +117,7 @@ export default function StockControlDashboard() {
         >
           <div className="relative px-4 py-5 sm:px-8 sm:py-8">
             <h1 className="text-lg sm:text-2xl font-bold text-white">
-              Welcome back, {user?.name?.split(" ")[0] ?? "there"}
+              Welcome back, {user?.name ? user.name.split(" ")[0] : "there"}
             </h1>
             <p className="mt-1 text-white/80 text-xs sm:text-sm">
               Overview of inventory, jobs, and recent activity
@@ -154,7 +154,7 @@ export default function StockControlDashboard() {
                 <dl>
                   <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Items</dt>
                   <dd className="text-lg sm:text-2xl font-semibold text-gray-900">
-                    {stats?.totalItems ?? 0}
+                    {stats ? stats.totalItems : 0}
                   </dd>
                 </dl>
               </div>
@@ -186,7 +186,7 @@ export default function StockControlDashboard() {
                 <dl>
                   <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Value</dt>
                   <dd className="text-sm sm:text-2xl font-semibold text-gray-900 truncate">
-                    {formatZAR(stats?.totalValue ?? 0)}
+                    {formatZAR(stats ? stats.totalValue : 0)}
                   </dd>
                 </dl>
               </div>
@@ -220,7 +220,7 @@ export default function StockControlDashboard() {
                     Low Stock
                   </dt>
                   <dd className="text-lg sm:text-2xl font-semibold text-gray-900">
-                    {stats?.lowStockCount ?? 0}
+                    {stats ? stats.lowStockCount : 0}
                   </dd>
                 </dl>
               </div>
@@ -255,7 +255,7 @@ export default function StockControlDashboard() {
                 <dl>
                   <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Jobs</dt>
                   <dd className="text-lg sm:text-2xl font-semibold text-gray-900">
-                    {stats?.activeJobs ?? 0}
+                    {stats ? stats.activeJobs : 0}
                   </dd>
                 </dl>
               </div>

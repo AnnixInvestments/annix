@@ -94,8 +94,12 @@ function VerifyEmailContent() {
       if (brandingSelection === "custom" && normalizedUrl && brandingAuthorized) {
         try {
           const candidates = await stockControlApiClient.scrapeBranding(normalizedUrl);
-          const firstLogo = candidates.logoCandidates[0]?.url ?? undefined;
-          const firstHero = candidates.heroCandidates[0]?.url ?? undefined;
+          const firstLogo = candidates.logoCandidates[0]
+            ? candidates.logoCandidates[0].url
+            : undefined;
+          const firstHero = candidates.heroCandidates[0]
+            ? candidates.heroCandidates[0].url
+            : undefined;
 
           if (firstLogo || firstHero) {
             const processed = await stockControlApiClient.processBrandingSelection({

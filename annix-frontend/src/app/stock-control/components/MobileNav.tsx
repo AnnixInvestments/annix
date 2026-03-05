@@ -91,10 +91,10 @@ export function MobileNav({ isOpen, onClose }: MobileNavProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate" style={{ color: colors.sidebarText }}>
-                  {user?.name ?? "Stock Control"}
+                  {user ? user.name : "Stock Control"}
                 </p>
                 <p className="text-xs truncate" style={{ color: colors.sidebarText, opacity: 0.6 }}>
-                  {user?.email ?? ""}
+                  {user ? user.email : ""}
                 </p>
               </div>
             </div>

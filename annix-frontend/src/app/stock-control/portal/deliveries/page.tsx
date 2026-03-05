@@ -7,12 +7,12 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
 function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boolean } {
-  const linkedCount = delivery.items?.length ?? 0;
+  const linkedCount = delivery.items ? delivery.items.length : 0;
   if (linkedCount > 0) {
     return { count: linkedCount, isExtracted: false };
   }
   const extractedData = delivery.extractedData as { lineItems?: unknown[] } | null;
-  const extractedCount = extractedData?.lineItems?.length ?? 0;
+  const extractedCount = extractedData?.lineItems ? extractedData.lineItems.length : 0;
   return { count: extractedCount, isExtracted: extractedCount > 0 };
 }
 

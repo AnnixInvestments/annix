@@ -53,7 +53,7 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
             c.label.toLowerCase().includes("rear") ||
             c.label.toLowerCase().includes("environment"),
         );
-        const cameraId = backCamera?.id ?? cameras[0].id;
+        const cameraId = backCamera ? backCamera.id : cameras[0].id;
 
         await scanner.start(
           cameraId,

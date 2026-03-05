@@ -28,7 +28,7 @@ function extractedLineItems(delivery: DeliveryNote): ExtractedLineItem[] {
   const data = delivery.extractedData as {
     lineItems?: ExtractedLineItem[];
   } | null;
-  return data?.lineItems ?? [];
+  return data?.lineItems || [];
 }
 
 export default function DeliveryDetailPage() {
@@ -225,7 +225,7 @@ export default function DeliveryDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Items Count</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {delivery.items?.length ?? extractedLineItems(delivery).length ?? 0}
+                {delivery.items ? delivery.items.length : extractedLineItems(delivery).length || 0}
               </dd>
             </div>
             {delivery.notes && (

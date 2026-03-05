@@ -196,7 +196,7 @@ export const offlinePendingActions = {
 export const offlineSyncMeta = {
   async lastSyncTime(entity: string): Promise<string | null> {
     const meta = await syncMeta(entity);
-    return meta?.lastSync ?? null;
+    return meta ? meta.lastSync : null;
   },
 
   async updateLastSync(entity: string): Promise<void> {

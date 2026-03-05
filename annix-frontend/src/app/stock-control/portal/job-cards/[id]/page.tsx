@@ -1357,8 +1357,8 @@ export default function JobCardDetailPage() {
                       (sum, a) =>
                         sum +
                         ((a.extractedData as { totalExternalM2?: number })
-                        ? (a.extractedData as { totalExternalM2?: number }).totalExternalM2 || 0
-                        : 0),
+                          ? (a.extractedData as { totalExternalM2?: number }).totalExternalM2 || 0
+                          : 0),
                       0,
                     )
                     .toFixed(2)}{" "}
@@ -1370,7 +1370,9 @@ export default function JobCardDetailPage() {
                     .reduce(
                       (sum, a) =>
                         sum +
-                        ((a.extractedData as { totalInternalM2?: number })?.totalInternalM2 ?? 0),
+                        ((a.extractedData as { totalInternalM2?: number })
+                          ? (a.extractedData as { totalInternalM2?: number }).totalInternalM2 || 0
+                          : 0),
                       0,
                     )
                     .toFixed(2)}{" "}

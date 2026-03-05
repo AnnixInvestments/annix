@@ -446,11 +446,11 @@ function savedMappingToRegions(
     dueDate: toRegion(config.dueDate),
     notes: toRegion(config.notes),
     reference: toRegion(config.reference),
-    itemCode: toRegion(config.lineItems?.itemCode ?? null),
-    itemDescription: toRegion(config.lineItems?.itemDescription ?? null),
-    itemNo: toRegion(config.lineItems?.itemNo ?? null),
-    quantity: toRegion(config.lineItems?.quantity ?? null),
-    jtNo: toRegion(config.lineItems?.jtNo ?? null),
+    itemCode: toRegion(config.lineItems ? config.lineItems.itemCode : null),
+    itemDescription: toRegion(config.lineItems ? config.lineItems.itemDescription : null),
+    itemNo: toRegion(config.lineItems ? config.lineItems.itemNo : null),
+    quantity: toRegion(config.lineItems ? config.lineItems.quantity : null),
+    jtNo: toRegion(config.lineItems ? config.lineItems.jtNo : null),
   };
 
   const customFields: CustomFieldDef[] = (config.customFields ?? []).map((cf, idx) => ({
@@ -677,9 +677,10 @@ export default function JobCardImportPage() {
   }, []);
 
   const calculateM2ForRows = useCallback(async (rows: JobCardImportRow[]) => {
-    const descriptions = rows.flatMap(
-      (r) =>
-        r.lineItems?.map((li) => li.itemDescription).filter((d): d is string => Boolean(d)) ?? [],
+    const descriptions = rows.flatMap((r) =>
+      r.lineItems
+        ? r.lineItems.map((li) => li.itemDescription).filter((d): d is string => Boolean(d))
+        : [],
     );
     if (descriptions.length === 0) return;
 
@@ -840,7 +841,7 @@ export default function JobCardImportPage() {
           const manualVal = manualM2[manualKey];
           if (manualVal != null) return { ...li, m2: manualVal };
           const m2r = li.itemDescription ? m2Results[li.itemDescription] : null;
-          const autoM2 = m2r?.externalM2 ?? m2r?.totalM2;
+          const autoM2 = m2r ? m2r.externalM2 || m2r.totalM2 : undefined;
           return autoM2 != null ? { ...li, m2: autoM2 } : li;
         }),
       }));
@@ -1116,7 +1117,10 @@ export default function JobCardImportPage() {
                           const isClickable = activeField !== null;
                           const activeColors = activeField
                             ? FIELD_COLORS[
-                                allFieldDefs.find((f) => f.key === activeField)?.color ?? "teal"
+                                (() => {
+                                  const fd = allFieldDefs.find((f) => f.key === activeField);
+                                  return fd ? fd.color : "teal";
+                                })()
                               ]
                             : null;
 
@@ -1594,7 +1598,7 @@ export default function JobCardImportPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {mappedRows.map((row, index) => {
                       const missingRequired = !row.jobNumber || !row.jobName;
-                      const lineCount = row.lineItems?.length ?? 0;
+                      const lineCount = row.lineItems ? row.lineItems.length : 0;
                       const isExpanded = expandedJobs.has(row.jobNumber ?? "");
                       const extraFields = [
                         row.poNumber ? `PO: ${row.poNumber}` : null,
@@ -1719,7 +1723,9 @@ export default function JobCardImportPage() {
                                               (() => {
                                                 const manualKey = `${index}-${liIdx}`;
                                                 const manualVal = manualM2[manualKey];
-                                                const autoVal = m2r?.externalM2 ?? m2r?.totalM2;
+                                                const autoVal = m2r
+                                                  ? m2r.externalM2 || m2r.totalM2
+                                                  : undefined;
                                                 const displayVal = manualVal ?? autoVal;
                                                 return displayVal != null ? (
                                                   <span

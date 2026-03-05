@@ -267,7 +267,8 @@ function RegisterContent() {
           <h1 className="text-3xl font-bold text-white">ASCA Stock Control</h1>
           {isInvited ? (
             <p className="mt-2 text-xl text-teal-200">
-              Join {invitation?.companyName ?? "the team"} as {invitation?.role ?? "member"}
+              Join {invitation ? invitation.companyName : "the team"} as{" "}
+              {invitation ? invitation.role : "member"}
             </p>
           ) : (
             <p className="mt-2 text-xl text-teal-200">Create your account</p>

@@ -379,7 +379,10 @@ export default function StaffPage() {
                     </td>
                     <td className="hidden px-3 py-4 whitespace-nowrap text-sm text-gray-500 md:table-cell sm:px-6">
                       {member.departmentId
-                        ? (departments.find((d) => d.id === member.departmentId)?.name ?? "-")
+                        ? (() => {
+                            const dept = departments.find((d) => d.id === member.departmentId);
+                            return dept ? dept.name : "-";
+                          })()
                         : "-"}
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap sm:px-6">
@@ -540,7 +543,9 @@ export default function StaffPage() {
                     currentPhotoUrl={
                       capturedFile
                         ? URL.createObjectURL(capturedFile)
-                        : (editingMember?.photoUrl ?? undefined)
+                        : editingMember
+                          ? editingMember.photoUrl || undefined
+                          : undefined
                     }
                   />
                 </div>

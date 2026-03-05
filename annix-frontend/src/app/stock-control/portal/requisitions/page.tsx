@@ -168,7 +168,7 @@ export default function RequisitionsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {req.items?.length ?? 0}
+                    {req.items ? req.items.length : 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDateZA(req.createdAt)}

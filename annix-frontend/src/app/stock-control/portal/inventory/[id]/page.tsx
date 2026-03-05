@@ -298,7 +298,10 @@ export default function InventoryDetailPage() {
                   <dt className="text-sm font-medium text-gray-500">Location</dt>
                   <dd className="mt-1 text-sm text-gray-900">
                     {item.locationId
-                      ? (locations.find((l) => l.id === item.locationId)?.name ?? "-")
+                      ? (() => {
+                          const loc = locations.find((l) => l.id === item.locationId);
+                          return loc ? loc.name : "-";
+                        })()
                       : "-"}
                   </dd>
                 </div>
