@@ -28,7 +28,7 @@ function isImportRowBlank(row: string[]): boolean {
 }
 
 function isImportSectionTitle(row: string[]): boolean {
-  const firstCell = row[0]?.trim() ?? "";
+  const firstCell = row[0] ? row[0].trim() : "";
   if (firstCell === "" || firstCell === "0") {
     return false;
   } else {
@@ -248,7 +248,7 @@ export default function InventoryPage() {
           stockControlApiClient.locations(),
         ]);
         setItems(Array.isArray(result.items) ? result.items : []);
-        setTotal(result.total ?? 0);
+        setTotal(result.total || 0);
         setCategories(Array.isArray(cats) ? cats : []);
         setLocations(locs);
         setGroupedData([]);
@@ -509,10 +509,10 @@ export default function InventoryPage() {
       if (response.format === "excel" && response.headers && response.rawRows) {
         setImportHeaders(response.headers);
         setImportRawRows(response.rawRows);
-        setImportMapping(response.mapping ?? null);
+        setImportMapping(response.mapping || null);
         setParsedRows([]);
       } else {
-        setParsedRows((response.rows as Record<string, unknown>[]) ?? []);
+        setParsedRows(Array.isArray(response.rows) ? (response.rows as Record<string, unknown>[]) : []);
         setImportHeaders([]);
         setImportRawRows([]);
         setImportMapping(null);
@@ -780,7 +780,7 @@ export default function InventoryPage() {
                   (() => {
                     const headersEmpty = importHeaders.every((h) => h.trim() === "");
                     const effectiveHeaders = headersEmpty
-                      ? (importRawRows[0] ?? [])
+                      ? (importRawRows[0] || [])
                       : importHeaders;
                     const effectiveDataRows = headersEmpty ? importRawRows.slice(1) : importRawRows;
                     return (
@@ -812,7 +812,7 @@ export default function InventoryPage() {
                                 >
                                   <td className="px-4 py-3 text-sm text-gray-500">{rowIdx + 1}</td>
                                   {effectiveHeaders.map((header, colIdx) => {
-                                    const cell = row[colIdx] ?? "";
+                                    const cell = row[colIdx] || "";
                                     const displayValue =
                                       sectionTitle && (cell.trim() === "0" || cell.trim() === "")
                                         ? ""
@@ -859,7 +859,7 @@ export default function InventoryPage() {
                           <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
                           {Object.keys(parsedRows[0]).map((header) => (
                             <td key={header} className="px-4 py-3 text-sm text-gray-900">
-                              {String(row[header] ?? "")}
+                              {String(row[header] || "")}
                             </td>
                           ))}
                         </tr>
@@ -1905,7 +1905,7 @@ export default function InventoryPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Location</label>
                   <select
-                    value={modalForm.locationId ?? ""}
+                    value={modalForm.locationId != null ? modalForm.locationId : ""}
                     onChange={(e) =>
                       setModalForm({
                         ...modalForm,

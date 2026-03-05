@@ -1096,12 +1096,23 @@ export default function JobCardDetailPage() {
                 <dd className="mt-1 text-sm text-gray-900">{jobCard.reference}</dd>
               </div>
             )}
-            {jobCard.notes && (
-              <div className="col-span-2">
-                <dt className="text-sm font-medium text-gray-500">Notes</dt>
-                <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{jobCard.notes}</dd>
-              </div>
-            )}
+            {(() => {
+              const cleanedNotes = (jobCard.notes || "")
+                .split("\n")
+                .filter((line) => {
+                  const trimmed = line.trim();
+                  if (!trimmed) return false;
+                  return !INVALID_LINE_ITEM_PATTERNS.some((pattern) => pattern.test(trimmed));
+                })
+                .join("\n")
+                .trim();
+              return cleanedNotes ? (
+                <div className="col-span-2">
+                  <dt className="text-sm font-medium text-gray-500">Notes</dt>
+                  <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{cleanedNotes}</dd>
+                </div>
+              ) : null;
+            })()}
           </dl>
           {coatingAnalysis &&
             coatingAnalysis.status === "analysed" &&
@@ -1333,7 +1344,9 @@ export default function JobCardDetailPage() {
             {attachments.some(
               (a) =>
                 a.extractionStatus === "analysed" &&
-                ((a.extractedData as { totalExternalM2?: number })?.totalExternalM2 ?? 0) > 0,
+                ((a.extractedData as { totalExternalM2?: number })
+                  ? (a.extractedData as { totalExternalM2?: number }).totalExternalM2 || 0
+                  : 0) > 0,
             ) && (
               <div className="flex items-center space-x-4 text-sm">
                 <span className="text-gray-500">From drawings:</span>
@@ -1343,7 +1356,9 @@ export default function JobCardDetailPage() {
                     .reduce(
                       (sum, a) =>
                         sum +
-                        ((a.extractedData as { totalExternalM2?: number })?.totalExternalM2 ?? 0),
+                        ((a.extractedData as { totalExternalM2?: number })
+                        ? (a.extractedData as { totalExternalM2?: number }).totalExternalM2 || 0
+                        : 0),
                       0,
                     )
                     .toFixed(2)}{" "}
@@ -1457,7 +1472,7 @@ export default function JobCardDetailPage() {
           notes.includes("liner");
         if (!isRubberJob) return null;
 
-        const validItems = jobCard.lineItems?.filter(isValidLineItem) ?? [];
+        const validItems = jobCard.lineItems ? jobCard.lineItems.filter(isValidLineItem) : [];
         const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
         return hasM2Items ? <RubberAllocationSection lineItems={validItems} /> : null;
       })()}
