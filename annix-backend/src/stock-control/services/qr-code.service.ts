@@ -3,9 +3,15 @@ import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
 import { ILike, In, Repository } from "typeorm";
+import { formatDateTime } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
+import {
+  ApprovalStatus,
+  JobCardApproval,
+  WorkflowStep,
+} from "../entities/job-card-approval.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockItem } from "../entities/stock-item.entity";
 
@@ -22,6 +28,8 @@ export class QrCodeService {
     private readonly staffMemberRepo: Repository<StaffMember>,
     @InjectRepository(JobCardCoatingAnalysis)
     private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
+    @InjectRepository(JobCardApproval)
+    private readonly approvalRepo: Repository<JobCardApproval>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -327,25 +335,25 @@ export class QrCodeService {
       y += mmToPt(8);
     }
 
-    doc.fillColor("#6b7280").fontSize(7).font("Helvetica-Bold");
-    doc.text("NOTES", margin, y);
-    y += mmToPt(3);
-    doc.roundedRect(margin, y, contentWidth, mmToPt(30)).strokeColor("#d1d5db").stroke();
-
     if (jobCard.notes) {
+      doc.fillColor("#6b7280").fontSize(7).font("Helvetica-Bold");
+      doc.text("NOTES", margin, y);
+      y += mmToPt(3);
       doc.fillColor("#111827").fontSize(9).font("Helvetica");
-      doc.text(jobCard.notes, margin + 5, y + 5, { width: contentWidth - 10, height: mmToPt(28) });
+      doc.text(jobCard.notes, margin, y, { width: contentWidth });
+      y += mmToPt(8);
     }
 
-    y += mmToPt(35);
-    doc
-      .moveTo(margin, y)
-      .lineTo(margin + contentWidth, y)
-      .strokeColor("#e5e7eb")
-      .stroke();
-    y += 5;
+    const approvals = await this.approvalRepo.find({
+      where: { jobCardId: jobId, companyId },
+      order: { createdAt: "ASC" },
+    });
+
+    this.drawSignatureBoxes(doc, approvals, margin, contentWidth);
+
+    const pageHeight = doc.page.height;
     doc.fillColor("#9ca3af").fontSize(7).font("Helvetica");
-    doc.text("Generated from Stock Control System", margin, y, {
+    doc.text("Generated from Stock Control System", margin, pageHeight - mmToPt(12), {
       width: contentWidth,
       align: "center",
     });
@@ -355,6 +363,85 @@ export class QrCodeService {
     return new Promise((resolve, reject) => {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
+    });
+  }
+
+  private drawSignatureBoxes(
+    doc: typeof PDFDocument,
+    approvals: JobCardApproval[],
+    margin: number,
+    contentWidth: number,
+  ): void {
+    const stepLabels: { step: WorkflowStep; label: string }[] = [
+      { step: WorkflowStep.DOCUMENT_UPLOAD, label: "Document Upload" },
+      { step: WorkflowStep.ADMIN_APPROVAL, label: "Admin Approval" },
+      { step: WorkflowStep.MANAGER_APPROVAL, label: "Manager Approval" },
+      { step: WorkflowStep.REQUISITION_SENT, label: "Requisition Sent" },
+      { step: WorkflowStep.STOCK_ALLOCATION, label: "Stock Allocation" },
+      { step: WorkflowStep.MANAGER_FINAL, label: "Final Approval" },
+      { step: WorkflowStep.READY_FOR_DISPATCH, label: "Ready for Dispatch" },
+      { step: WorkflowStep.DISPATCHED, label: "Dispatched" },
+    ];
+
+    const approvalMap = new Map(
+      approvals.filter((a) => a.status === ApprovalStatus.APPROVED).map((a) => [a.step, a]),
+    );
+
+    const pageHeight = doc.page.height;
+    const mmToPt = (mm: number) => mm * 2.83465;
+    const boxesPerRow = 4;
+    const boxGap = 4;
+    const boxWidth = (contentWidth - boxGap * (boxesPerRow - 1)) / boxesPerRow;
+    const boxHeight = mmToPt(18);
+    const startY = pageHeight - mmToPt(55);
+
+    doc
+      .moveTo(margin, startY - 8)
+      .lineTo(margin + contentWidth, startY - 8)
+      .strokeColor("#e5e7eb")
+      .stroke();
+
+    doc
+      .fontSize(8)
+      .font("Helvetica-Bold")
+      .fillColor("#374151")
+      .text("Workflow Sign-Off", margin, startY - 6, { align: "center", width: contentWidth });
+
+    stepLabels.forEach(({ step, label }, index) => {
+      const row = Math.floor(index / boxesPerRow);
+      const col = index % boxesPerRow;
+      const x = margin + col * (boxWidth + boxGap);
+      const y = startY + 10 + row * (boxHeight + boxGap);
+
+      doc.save();
+      doc.rect(x, y, boxWidth, boxHeight).lineWidth(0.5).strokeColor("#CCCCCC").stroke();
+      doc.restore();
+
+      doc
+        .fontSize(6.5)
+        .font("Helvetica-Bold")
+        .fillColor("#374151")
+        .text(label, x + 3, y + 3, { width: boxWidth - 6 });
+
+      const approval = approvalMap.get(step);
+      if (approval) {
+        doc
+          .fontSize(6.5)
+          .font("Helvetica")
+          .fillColor("#111827")
+          .text(approval.approvedByName || "Unknown", x + 3, y + 13, { width: boxWidth - 6 });
+        doc
+          .fontSize(5.5)
+          .fillColor("#6b7280")
+          .text(formatDateTime(approval.approvedAt), x + 3, y + 23, { width: boxWidth - 6 });
+        if (approval.signatureUrl) {
+          doc
+            .fontSize(5.5)
+            .fillColor("#2563EB")
+            .text("[Signed]", x + 3, y + 32, { width: boxWidth - 6 });
+        }
+        doc.fillColor("#111827");
+      }
     });
   }
 

@@ -289,8 +289,7 @@ export class StockControlAuthController {
     return this.lookupService.deleteLocation(req.user.companyId, id);
   }
 
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
-  @StockControlRoles("admin")
+  @UseGuards(StockControlAuthGuard)
   @Get("rbac-config")
   @ApiOperation({ summary: "Nav RBAC configuration for company" })
   async rbacConfig(@Req() req: any) {
