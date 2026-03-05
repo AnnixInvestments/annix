@@ -30,7 +30,9 @@ function calculateFinalPrice(
   const categoryMarkup = settings.categoryMarkups.find(
     (m) => m.compoundType.toLowerCase() === compound?.toLowerCase(),
   );
-  const markupPercent = categoryMarkup ? categoryMarkup.markupPercent : settings.defaultMarginPercent;
+  const markupPercent = categoryMarkup
+    ? categoryMarkup.markupPercent
+    : settings.defaultMarginPercent;
 
   const afterMaterial = baseCost * (settings.baseMaterialPercent / 100);
   const afterProcessing = afterMaterial + settings.processingFeePerKg;

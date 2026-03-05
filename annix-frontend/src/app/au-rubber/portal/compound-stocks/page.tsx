@@ -658,7 +658,9 @@ export default function CompoundStocksPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Location</label>
                       <select
-                        value={openingStockForm.locationId != null ? openingStockForm.locationId : ""}
+                        value={
+                          openingStockForm.locationId != null ? openingStockForm.locationId : ""
+                        }
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,

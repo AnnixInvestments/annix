@@ -292,9 +292,9 @@ export function ProductImportModal({
         specificGravity: p.specificGravity ?? undefined,
         costPerKg: p.baseCostPerKg ?? undefined,
         markup: costSettings
-          ? (costSettings.categoryMarkups.find(
+          ? costSettings.categoryMarkups.find(
               (m) => m.compoundType.toLowerCase() === p.compound?.toLowerCase(),
-            )?.markupPercent || costSettings.defaultMarginPercent)
+            )?.markupPercent || costSettings.defaultMarginPercent
           : undefined,
       }));
 
