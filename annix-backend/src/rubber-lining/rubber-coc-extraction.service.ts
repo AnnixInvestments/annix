@@ -85,6 +85,7 @@ interface GeminiResponse {
     content?: {
       parts?: Array<{ text?: string }>;
     };
+    finishReason?: string;
   }>;
   usageMetadata?: {
     totalTokenCount?: number;
@@ -379,7 +380,7 @@ export class RubberCocExtractionService {
             ],
             generationConfig: {
               temperature: 0.1,
-              maxOutputTokens: 8192,
+              maxOutputTokens: 32768,
               responseMimeType: "application/json",
             },
           }),
@@ -507,7 +508,7 @@ export class RubberCocExtractionService {
             ],
             generationConfig: {
               temperature: 0.1,
-              maxOutputTokens: 8192,
+              maxOutputTokens: 32768,
               responseMimeType: "application/json",
             },
           }),
@@ -524,12 +525,23 @@ export class RubberCocExtractionService {
       }
 
       const data: GeminiResponse = await response.json();
+      const finishReason = data.candidates?.[0]?.finishReason;
       const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (finishReason === "MAX_TOKENS") {
+        this.logger.warn(
+          `Gemini Vision response was truncated (MAX_TOKENS). Output may be incomplete. Tokens used: ${data.usageMetadata?.totalTokenCount}`,
+        );
+      }
 
       if (!content) {
         this.logger.warn("No content in Gemini Vision response");
         return { data: {}, tokensUsed: data.usageMetadata?.totalTokenCount };
       }
+
+      this.logger.log(
+        `Gemini Vision response: finishReason=${finishReason}, contentLength=${content.length}, tokens=${data.usageMetadata?.totalTokenCount}`,
+      );
 
       const parsed = this.parseJsonResponse(content);
       return {
