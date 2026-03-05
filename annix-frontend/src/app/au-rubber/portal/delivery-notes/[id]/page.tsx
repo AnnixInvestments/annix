@@ -107,7 +107,7 @@ export default function DeliveryNoteDetailPage() {
       .filter((item): item is ExtractedDeliveryNoteData => item !== null && item !== undefined)
       .map((item) => ({
         ...item,
-        rolls: item.rolls?.map((roll) => ({ ...roll })),
+        rolls: item.rolls?.filter(Boolean).map((roll) => ({ ...roll })),
       }));
   };
 
@@ -660,7 +660,7 @@ export default function DeliveryNoteDetailPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {displayData.flatMap((dn, dnIdx) =>
                   dn.rolls && dn.rolls.length > 0
-                    ? dn.rolls.map((roll, rollIdx) => {
+                    ? dn.rolls.filter(Boolean).map((roll, rollIdx) => {
                         const areaSqM = calculateAreaSqM(roll.widthMm, roll.lengthM);
 
                         return (
