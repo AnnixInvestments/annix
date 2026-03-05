@@ -175,9 +175,7 @@ export class JobCardPdfService {
         .text(jobCard.description, leftCol, y + 15, { width: 495 });
     }
 
-    const noteTexts = (noteItems || [])
-      .map((item) => (item.itemCode || "").trim())
-      .filter(Boolean);
+    const noteTexts = (noteItems || []).map((item) => (item.itemCode || "").trim()).filter(Boolean);
     const combinedNotes = [jobCard.notes, ...noteTexts].filter(Boolean).join("\n\n");
 
     if (combinedNotes) {
