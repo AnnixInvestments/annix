@@ -96,7 +96,8 @@ function isValidLineItem(li: {
     !li.itemDescription && !li.itemNo && !li.jtNo && (qty === null || Number.isNaN(qty));
   if (hasNoData && itemCode) {
     const looksLikeLabel = /^[A-Za-z\s]+$/.test(itemCode) && itemCode.length < 30;
-    if (looksLikeLabel) {
+    const isLongTextNote = itemCode.length > 60;
+    if (looksLikeLabel || isLongTextNote) {
       return false;
     }
   }
@@ -1106,10 +1107,24 @@ export default function JobCardDetailPage() {
                 })
                 .join("\n")
                 .trim();
-              return cleanedNotes ? (
+              const noteLineItems = (jobCard.lineItems || [])
+                .filter((li) => {
+                  const code = (li.itemCode || "").trim();
+                  const hasNoData =
+                    !li.itemDescription &&
+                    !li.itemNo &&
+                    !li.jtNo &&
+                    (li.quantity === null || Number.isNaN(li.quantity));
+                  return hasNoData && code && code.length > 60;
+                })
+                .map((li) => (li.itemCode || "").trim());
+              const combinedNotes = [cleanedNotes, ...noteLineItems].filter(Boolean).join("\n\n");
+              return combinedNotes ? (
                 <div className="col-span-2">
                   <dt className="text-sm font-medium text-gray-500">Notes</dt>
-                  <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{cleanedNotes}</dd>
+                  <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+                    {combinedNotes}
+                  </dd>
                 </div>
               ) : null;
             })()}
