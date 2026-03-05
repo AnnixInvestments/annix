@@ -495,8 +495,9 @@ export class QrCodeService {
       if (hasNoData && code) {
         const isMultiLine = code.includes("\n");
         const looksLikeLabel = /^[A-Za-z\s]+$/.test(code) && code.length < 30;
+        const isLongTextNote = code.length > 60;
 
-        if (isMultiLine) {
+        if (isMultiLine || isLongTextNote) {
           noteItems.push(item);
           return;
         }
