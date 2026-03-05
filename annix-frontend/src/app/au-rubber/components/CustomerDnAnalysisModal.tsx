@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Check, ChevronDown, ChevronRight, FileText, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronRight, FileText, RefreshCw, X } from "lucide-react";
 import { useState } from "react";
 import type {
   AnalyzeCustomerDnsResult,
@@ -99,6 +99,7 @@ export function CustomerDnAnalysisModal({
                   isExpanded={expandedGroups.has(groupIndex)}
                   onToggle={() => toggleGroup(groupIndex)}
                   onUpdateOverride={(field, value) => updateOverride(groupIndex, field, value)}
+                  isExisting={analysis.existingDnNumbers?.includes(group.deliveryNoteNumber) ?? false}
                 />
               ))}
             </div>
@@ -166,6 +167,7 @@ interface GroupCardProps {
   override: CustomerDnOverride;
   customers: RubberCompanyDto[];
   isExpanded: boolean;
+  isExisting: boolean;
   onToggle: () => void;
   onUpdateOverride: (field: keyof CustomerDnOverride, value: unknown) => void;
 }
@@ -176,6 +178,7 @@ function GroupCard({
   override,
   customers,
   isExpanded,
+  isExisting,
   onToggle,
   onUpdateOverride,
 }: GroupCardProps) {
@@ -216,15 +219,20 @@ function GroupCard({
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          {isValid ? (
-            <span className="inline-flex items-center text-green-600 text-sm">
-              <Check className="h-4 w-4 mr-1" />
-              Ready
-            </span>
-          ) : (
+          {!isValid ? (
             <span className="inline-flex items-center text-yellow-600 text-sm">
               <AlertTriangle className="h-4 w-4 mr-1" />
               Needs customer
+            </span>
+          ) : isExisting ? (
+            <span className="inline-flex items-center text-amber-600 text-sm">
+              <RefreshCw className="h-4 w-4 mr-1" />
+              Will overwrite
+            </span>
+          ) : (
+            <span className="inline-flex items-center text-green-600 text-sm">
+              <Check className="h-4 w-4 mr-1" />
+              Ready
             </span>
           )}
         </div>

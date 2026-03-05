@@ -5,7 +5,7 @@ import { generateUniqueId } from "../lib/datetime";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE, StorageResult } from "../storage/storage.interface";
 import { RubberCompany } from "./entities/rubber-company.entity";
-import { DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
+import { DeliveryNoteStatus, DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { RubberCocService } from "./rubber-coc.service";
@@ -129,6 +129,7 @@ export interface AnalyzeCustomerDnsResult {
   files: AnalyzedCustomerDnFile[];
   groups: CustomerDnGroup[];
   unmatchedCustomerNames: string[];
+  existingDnNumbers: string[];
 }
 
 interface SupplierMapping {
@@ -1246,8 +1247,20 @@ ${truncatedText}`;
 
     const groups = this.groupCustomerDnsByNumber(analyzedFiles);
 
+    const dnNumbersWithCustomers = groups
+      .filter((g) => g.deliveryNoteNumber && g.customerId)
+      .map((g) => ({ number: g.deliveryNoteNumber, customerId: g.customerId! }));
+
+    const existingDnNumbers: string[] = [];
+    for (const { number: dnNumber, customerId } of dnNumbersWithCustomers) {
+      const existing = await this.deliveryNoteService.findByDnNumberAndCompany(dnNumber, customerId);
+      if (existing) {
+        existingDnNumbers.push(dnNumber);
+      }
+    }
+
     this.logger.log(
-      `Analysis complete: ${analyzedFiles.length} files, ${groups.length} groups, ${extractionErrors.length} errors`,
+      `Analysis complete: ${analyzedFiles.length} files, ${groups.length} groups, ${extractionErrors.length} errors, ${existingDnNumbers.length} existing DNs`,
     );
 
     if (extractionErrors.length > 0) {
@@ -1258,6 +1271,7 @@ ${truncatedText}`;
       files: analyzedFiles,
       groups,
       unmatchedCustomerNames,
+      existingDnNumbers,
     };
   }
 
@@ -1399,21 +1413,43 @@ ${truncatedText}`;
         const storageResult = await this.storageService.upload(firstFile, subPath);
         this.logger.log(`File uploaded to ${storageResult.path}`);
 
-        const dn = await this.deliveryNoteService.createDeliveryNote(
-          {
-            deliveryNoteType: DeliveryNoteType.ROLL,
-            supplierCompanyId: customerId,
-            documentPath: storageResult.path,
+        const existingDn = await this.deliveryNoteService.findByDnNumberAndCompany(
+          deliveryNoteNumber,
+          customerId,
+        );
+
+        let dnId: number;
+
+        if (existingDn) {
+          this.logger.log(
+            `Found existing DN ${existingDn.id} for ${deliveryNoteNumber} - overwriting`,
+          );
+          await this.deliveryNoteService.updateDeliveryNote(existingDn.id, {
             deliveryNoteNumber,
             deliveryDate: deliveryDate || undefined,
-            customerReference: customerReference || undefined,
-          },
-          createdBy,
-        );
+            status: DeliveryNoteStatus.PENDING,
+          });
+          await this.deliveryNoteService.updateDocumentPath(existingDn.id, storageResult.path);
+          await this.deliveryNoteService.replaceDeliveryNoteItems(existingDn.id);
+          dnId = existingDn.id;
+        } else {
+          const dn = await this.deliveryNoteService.createDeliveryNote(
+            {
+              deliveryNoteType: DeliveryNoteType.ROLL,
+              supplierCompanyId: customerId,
+              documentPath: storageResult.path,
+              deliveryNoteNumber,
+              deliveryDate: deliveryDate || undefined,
+              customerReference: customerReference || undefined,
+            },
+            createdBy,
+          );
+          dnId = dn.id;
+        }
 
         for (const lineItem of group.allLineItems) {
           await this.deliveryNoteService.createDeliveryNoteItem({
-            deliveryNoteId: dn.id,
+            deliveryNoteId: dnId,
             compoundType: lineItem.compoundType,
             thicknessMm: lineItem.thicknessMm,
             widthMm: lineItem.widthMm,
@@ -1424,9 +1460,9 @@ ${truncatedText}`;
           });
         }
 
-        deliveryNoteIds.push(dn.id);
+        deliveryNoteIds.push(dnId);
         this.logger.log(
-          `Created customer DN ${dn.id} (${deliveryNoteNumber}) with ${group.allLineItems.length} line items`,
+          `${existingDn ? "Overwrote" : "Created"} customer DN ${dnId} (${deliveryNoteNumber}) with ${group.allLineItems.length} line items`,
         );
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);

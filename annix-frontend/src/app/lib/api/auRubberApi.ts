@@ -484,6 +484,7 @@ export interface AnalyzeCustomerDnsResult {
   files: AnalyzedCustomerDnFile[];
   groups: CustomerDnGroup[];
   unmatchedCustomerNames: string[];
+  existingDnNumbers?: string[];
 }
 
 export interface CustomerDnOverride {

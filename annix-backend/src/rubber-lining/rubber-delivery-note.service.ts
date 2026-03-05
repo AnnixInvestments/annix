@@ -275,6 +275,20 @@ export class RubberDeliveryNoteService {
     return this.mapDeliveryNoteToDto(note);
   }
 
+  async findByDnNumberAndCompany(
+    deliveryNoteNumber: string,
+    supplierCompanyId: number,
+  ): Promise<RubberDeliveryNote | null> {
+    return this.deliveryNoteRepository.findOne({
+      where: { deliveryNoteNumber, supplierCompanyId },
+      relations: ["supplierCompany", "linkedCoc"],
+    });
+  }
+
+  async replaceDeliveryNoteItems(deliveryNoteId: number): Promise<void> {
+    await this.deliveryNoteItemRepository.delete({ deliveryNoteId });
+  }
+
   async deleteDeliveryNote(id: number): Promise<boolean> {
     const result = await this.deliveryNoteRepository.delete(id);
     return (result.affected || 0) > 0;
