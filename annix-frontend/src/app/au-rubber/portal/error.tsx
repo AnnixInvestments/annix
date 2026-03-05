@@ -25,7 +25,7 @@ export default function AuRubberPortalError({
         )}
         <div className="flex gap-3 justify-center mt-6">
           <a
-            href="/au-rubber/portal"
+            href="/au-rubber/portal/dashboard"
             className="px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 text-sm font-medium"
           >
             Back to Dashboard
