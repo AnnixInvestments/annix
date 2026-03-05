@@ -21,8 +21,6 @@ function VerifyEmailContent() {
   const [brandingAuthorized, setBrandingAuthorized] = useState(false);
   const [brandingError, setBrandingError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [liteMode, setLiteMode] = useState(false);
-
   useEffect(() => {
     if (!token) {
       setStatus("error");
@@ -33,7 +31,6 @@ function VerifyEmailContent() {
     stockControlApiClient
       .verifyEmail(token)
       .then((response) => {
-        setLiteMode(response.liteMode);
         if (response.needsBranding) {
           setStatus("branding");
         } else {
@@ -47,7 +44,7 @@ function VerifyEmailContent() {
       });
   }, [token]);
 
-  const loginUrl = liteMode ? "/stock-control/lite/login" : "/stock-control/login";
+  const loginUrl = "/stock-control/login";
 
   const isValidUrl = (url: string): boolean => {
     try {

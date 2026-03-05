@@ -13,14 +13,8 @@ export class InvitationController {
   @StockControlRoles("admin")
   @Post()
   @ApiOperation({ summary: "Create a team invitation" })
-  async create(@Req() req: any, @Body() body: { email: string; role: string; liteMode?: boolean }) {
-    return this.invitationService.create(
-      req.user.companyId,
-      req.user.id,
-      body.email,
-      body.role,
-      body.liteMode ?? false,
-    );
+  async create(@Req() req: any, @Body() body: { email: string; role: string }) {
+    return this.invitationService.create(req.user.companyId, req.user.id, body.email, body.role);
   }
 
   @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
@@ -45,7 +39,6 @@ export class InvitationController {
       role: invitation.role,
       companyName: invitation.company?.name ?? null,
       status: invitation.status,
-      liteMode: invitation.liteMode,
     };
   }
 

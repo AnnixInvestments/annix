@@ -48,9 +48,6 @@ export class StockControlUser {
   @Column({ name: "reset_password_expires", type: "timestamptz", nullable: true })
   resetPasswordExpires: Date | null;
 
-  @Column({ name: "lite_mode", type: "boolean", default: false })
-  liteMode: boolean;
-
   @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;

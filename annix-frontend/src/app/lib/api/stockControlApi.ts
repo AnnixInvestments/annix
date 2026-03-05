@@ -10,7 +10,6 @@ export interface StockControlUser {
   email: string;
   name: string;
   role: string;
-  liteMode?: boolean;
 }
 
 export interface StockControlLoginResponse {
@@ -42,7 +41,6 @@ export interface StockControlUserProfile {
   websiteUrl: string | null;
   createdAt: string;
   companyUpdatedAt: string | null;
-  liteMode?: boolean;
 }
 
 export interface CompanyDetailsUpdate {
@@ -73,7 +71,6 @@ export interface StockControlInvitation {
   email: string;
   token: string;
   role: string;
-  liteMode: boolean;
   status: string;
   expiresAt: string;
   acceptedAt: string | null;
@@ -1121,14 +1118,12 @@ class StockControlApiClient {
     userId: number;
     email: string;
     needsBranding: boolean;
-    liteMode: boolean;
   }> {
     const response = await this.request<{
       message: string;
       userId: number;
       email: string;
       needsBranding: boolean;
-      liteMode: boolean;
       accessToken?: string;
       refreshToken?: string;
     }>(`/stock-control/auth/verify-email?token=${encodeURIComponent(token)}`);
@@ -1305,14 +1300,10 @@ class StockControlApiClient {
     return this.request("/stock-control/invitations");
   }
 
-  async createInvitation(
-    email: string,
-    role: string,
-    liteMode: boolean = false,
-  ): Promise<StockControlInvitation> {
+  async createInvitation(email: string, role: string): Promise<StockControlInvitation> {
     return this.request("/stock-control/invitations", {
       method: "POST",
-      body: JSON.stringify({ email, role, liteMode }),
+      body: JSON.stringify({ email, role }),
     });
   }
 

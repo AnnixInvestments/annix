@@ -28,11 +28,7 @@ export default function StockControlLoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading && profile) {
-      if (profile.liteMode) {
-        router.push("/stock-control/lite");
-      } else {
-        router.push("/stock-control/portal/dashboard");
-      }
+      router.push("/stock-control/portal/dashboard");
     }
   }, [isAuthenticated, authLoading, profile, router]);
 

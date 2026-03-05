@@ -255,13 +255,9 @@ export class EmailService {
   async sendStockControlVerificationEmail(
     email: string,
     verificationToken: string,
-    liteMode = false,
   ): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const verifyPath = liteMode
-      ? "/api/stock-control/lite/verify-email"
-      : "/stock-control/verify-email";
-    const verificationLink = `${frontendUrl}${verifyPath}?token=${verificationToken}`;
+    const verificationLink = `${frontendUrl}/stock-control/verify-email?token=${verificationToken}`;
 
     const html = `
       <!DOCTYPE html>
@@ -371,13 +367,9 @@ export class EmailService {
     companyName: string,
     inviterName: string,
     role: string,
-    liteMode: boolean = false,
   ): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const registerLink = `${frontendUrl}/stock-control/register?invitation=${token}`;
-    const liteModeNote = liteMode
-      ? `<p style="background-color: #f0f9ff; border-left: 4px solid #0d9488; padding: 12px; margin: 16px 0;"><strong>Note:</strong> You will be using <strong>Lite Mode</strong>, which is optimized for older devices and basic stock operations.</p>`
-      : "";
 
     const html = `
       <!DOCTYPE html>
@@ -390,7 +382,6 @@ export class EmailService {
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #0d9488;">You've Been Invited!</h1>
           <p><strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> on ASCA Stock Control as a <strong>${role}</strong>.</p>
-          ${liteModeNote}
           <p>As a team member, you'll be able to:</p>
           <ul>
             <li>Access the stock control system</li>
