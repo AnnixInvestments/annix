@@ -697,7 +697,7 @@ export default function DeliveryNoteDetailPage() {
                                 {isEditing ? (
                                   <input
                                     type="number"
-                                    value={roll.thicknessMm ?? ""}
+                                    value={roll.thicknessMm != null ? roll.thicknessMm : ""}
                                     onChange={(e) =>
                                       handleRollFieldChange(
                                         dnIdx,
@@ -709,14 +709,14 @@ export default function DeliveryNoteDetailPage() {
                                     className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
-                                  (roll.thicknessMm ?? "-")
+                                  (roll.thicknessMm != null ? roll.thicknessMm : "-")
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="number"
-                                    value={roll.widthMm ?? ""}
+                                    value={roll.widthMm != null ? roll.widthMm : ""}
                                     onChange={(e) =>
                                       handleRollFieldChange(
                                         dnIdx,
@@ -728,7 +728,7 @@ export default function DeliveryNoteDetailPage() {
                                     className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
-                                  (roll.widthMm ?? "-")
+                                  (roll.widthMm != null ? roll.widthMm : "-")
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -736,7 +736,7 @@ export default function DeliveryNoteDetailPage() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    value={roll.lengthM ?? ""}
+                                    value={roll.lengthM != null ? roll.lengthM : ""}
                                     onChange={(e) =>
                                       handleRollFieldChange(
                                         dnIdx,
@@ -748,7 +748,7 @@ export default function DeliveryNoteDetailPage() {
                                     className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
-                                  (roll.lengthM ?? "-")
+                                  (roll.lengthM != null ? roll.lengthM : "-")
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -759,7 +759,7 @@ export default function DeliveryNoteDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={roll.weightKg ?? ""}
+                                    value={roll.weightKg != null ? roll.weightKg : ""}
                                     onChange={(e) =>
                                       handleRollFieldChange(
                                         dnIdx,
@@ -771,7 +771,7 @@ export default function DeliveryNoteDetailPage() {
                                     className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
-                                  (safeFixed(roll.weightKg, 2) ?? "-")
+                                  (safeFixed(roll.weightKg, 2) != null ? safeFixed(roll.weightKg, 2) : "-")
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -983,13 +983,13 @@ export default function DeliveryNoteDetailPage() {
                           {item.rollNumber || "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.thicknessMm ?? "-"}
+                          {item.thicknessMm != null ? item.thicknessMm : "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.widthMm ?? "-"}
+                          {item.widthMm != null ? item.widthMm : "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.lengthM ?? "-"}
+                          {item.lengthM != null ? item.lengthM : "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {itemAreaSqM ? itemAreaSqM.toFixed(2) : "-"}
