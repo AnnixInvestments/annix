@@ -1138,12 +1138,7 @@ export default function DeliveryNoteDetailPage() {
                   )}
                   <button onClick={closePodModal} className="text-gray-400 hover:text-gray-500">
                     <span className="sr-only">Close</span>
-                    <svg
-                      className="h-6 w-6"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
