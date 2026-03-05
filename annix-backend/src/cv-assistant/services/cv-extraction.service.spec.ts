@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { CvExtractionService } from "./cv-extraction.service";
@@ -32,6 +33,10 @@ describe("CvExtractionService", () => {
         {
           provide: AiChatService,
           useValue: mockAiChatService,
+        },
+        {
+          provide: AiUsageService,
+          useValue: { log: jest.fn() },
         },
       ],
     }).compile();
@@ -82,6 +87,8 @@ describe("CvExtractionService", () => {
           references: [],
           summary: "Experienced software developer",
         }),
+        providerUsed: "gemini",
+        tokensUsed: 100,
       };
 
       (mockAiChatService.chat as jest.Mock).mockResolvedValue(aiResponse);
@@ -104,6 +111,7 @@ describe("CvExtractionService", () => {
     it("should return empty data structure when AI response has no JSON", async () => {
       (mockAiChatService.chat as jest.Mock).mockResolvedValue({
         content: "Sorry, I could not parse this CV",
+        providerUsed: "gemini",
       });
 
       const result = await service.extractDataFromCv("some cv text");

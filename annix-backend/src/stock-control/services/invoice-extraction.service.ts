@@ -1,6 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../../lib/datetime";
 import { ClaudeChatProvider } from "../../nix/ai-providers/claude-chat.provider";
 import {
@@ -89,6 +91,7 @@ export class InvoiceExtractionService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockPriceHistory)
     private readonly priceHistoryRepo: Repository<StockPriceHistory>,
+    private readonly aiUsageService: AiUsageService,
   ) {
     this.claudeProvider = new ClaudeChatProvider();
   }
@@ -107,12 +110,20 @@ export class InvoiceExtractionService {
     await this.invoiceRepo.save(invoice);
 
     try {
-      const response = await this.claudeProvider.chatWithImage(
+      const { content: response, tokensUsed } = await this.claudeProvider.chatWithImage(
         imageBase64,
         mediaType,
         "Extract the invoice details from this scanned invoice image. Return JSON only.",
         INVOICE_EXTRACTION_PROMPT,
       );
+
+      this.aiUsageService.log({
+        app: AiApp.STOCK_CONTROL,
+        actionType: "invoice-extraction",
+        provider: AiProvider.CLAUDE,
+        tokensUsed,
+        pageCount: 1,
+      });
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -174,12 +185,20 @@ export class InvoiceExtractionService {
     receivedDate?: string;
     lineItems?: { description: string; quantity: number; sku?: string }[];
   }> {
-    const response = await this.claudeProvider.chatWithImage(
+    const { content: response, tokensUsed } = await this.claudeProvider.chatWithImage(
       imageBase64,
       mediaType,
       "Extract the delivery note details from this scanned delivery note image. Return JSON only.",
       DELIVERY_NOTE_EXTRACTION_PROMPT,
     );
+
+    this.aiUsageService.log({
+      app: AiApp.STOCK_CONTROL,
+      actionType: "delivery-note-extraction",
+      provider: AiProvider.CLAUDE,
+      tokensUsed,
+      pageCount: 1,
+    });
 
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

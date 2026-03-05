@@ -1,5 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import pdfParse from "pdf-parse";
+import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { ExtractedCvData } from "../entities/candidate.entity";
@@ -13,6 +15,7 @@ export class CvExtractionService {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
+    private readonly aiUsageService: AiUsageService,
   ) {}
 
   async extractTextFromPdf(storagePath: string): Promise<string> {
@@ -28,11 +31,19 @@ export class CvExtractionService {
 
   async extractDataFromCv(cvText: string): Promise<ExtractedCvData> {
     try {
-      const { content } = await this.aiChatService.chat(
+      const { content, providerUsed, tokensUsed } = await this.aiChatService.chat(
         [{ role: "user", content: cvExtractionPrompt(cvText) }],
         CV_EXTRACTION_SYSTEM_PROMPT,
         "gemini",
       );
+
+      this.aiUsageService.log({
+        app: AiApp.CV_ASSISTANT,
+        actionType: "cv-extraction",
+        provider: providerUsed.includes("claude") ? AiProvider.CLAUDE : AiProvider.GEMINI,
+        model: providerUsed,
+        tokensUsed,
+      });
 
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {

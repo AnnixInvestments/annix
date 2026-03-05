@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
+import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiChatService } from "../ai-providers/ai-chat.service";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
 import { NixChatSession } from "../entities/nix-chat-session.entity";
@@ -72,6 +73,7 @@ describe("NixChatService", () => {
         { provide: getRepositoryToken(NixChatMessage), useValue: mockMessageRepo },
         { provide: NixItemParserService, useValue: mockItemParserService },
         { provide: AiChatService, useValue: mockAiChatService },
+        { provide: AiUsageService, useValue: { log: jest.fn() } },
       ],
     }).compile();
 
@@ -186,6 +188,7 @@ describe("NixChatService", () => {
         messageRepository as any,
         {} as any,
         mockAiChatServiceUnavailable as any,
+        { log: jest.fn() } as any,
       );
 
       await expect(
@@ -278,6 +281,7 @@ describe("NixChatService", () => {
         messageRepository as any,
         {} as any,
         mockAiChatServiceUnavailable as any,
+        { log: jest.fn() } as any,
       );
 
       const generator = serviceWithoutProvider.streamMessage({ sessionId: 1, message: "Hello" });

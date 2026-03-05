@@ -1,5 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { pdfToPng } from "pdf-to-png-converter";
+import { AiUsageService } from "../ai-usage/ai-usage.service";
+import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
 import {
   ExtractedCustomerDeliveryNoteData,
   ExtractedCustomerDeliveryNotesResult,
@@ -99,7 +101,7 @@ export class RubberCocExtractionService {
   private readonly model = "gemini-2.0-flash";
   private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
-  constructor() {
+  constructor(private readonly aiUsageService: AiUsageService) {
     this.apiKey = process.env.GEMINI_API_KEY || "";
     if (!this.apiKey) {
       this.logger.warn("GEMINI_API_KEY not configured - CoC extraction will be unavailable");
@@ -184,6 +186,7 @@ export class RubberCocExtractionService {
     const response = await this.callGemini(
       COMPOUNDER_COC_SYSTEM_PROMPT,
       compounderCocExtractionPrompt(pdfText),
+      "compounder-coc-extraction",
     );
 
     const processingTimeMs = Date.now() - startTime;
@@ -211,6 +214,7 @@ export class RubberCocExtractionService {
     const response = await this.callGemini(
       CALENDARER_COC_SYSTEM_PROMPT,
       calendererCocExtractionPrompt(pdfText),
+      "calenderer-coc-extraction",
     );
 
     const processingTimeMs = Date.now() - startTime;
@@ -251,6 +255,7 @@ export class RubberCocExtractionService {
     const response = await this.callGemini(
       DELIVERY_NOTE_SYSTEM_PROMPT,
       deliveryNoteExtractionPrompt(pdfText),
+      "delivery-note-extraction",
     );
 
     const processingTimeMs = Date.now() - startTime;
@@ -279,6 +284,7 @@ export class RubberCocExtractionService {
     const response = await this.callGemini(
       CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
       customerDeliveryNoteExtractionPrompt(pdfText),
+      "customer-dn-extraction",
     );
 
     const processingTimeMs = Date.now() - startTime;
@@ -319,6 +325,7 @@ export class RubberCocExtractionService {
       CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
       "Analyze these delivery note images. In the header box at the top, find the REFERENCE: field (between NUMBER: and DATE:) and extract the PO/reference number. This is CRITICAL. Return ONLY valid JSON.",
       images,
+      "customer-dn-ocr-extraction",
     );
 
     const processingTimeMs = Date.now() - startTime;
@@ -360,6 +367,7 @@ export class RubberCocExtractionService {
   private async callGemini(
     systemPrompt: string,
     userPrompt: string,
+    actionType?: string,
   ): Promise<{ data: Record<string, unknown>; tokensUsed?: number }> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 90000);
@@ -405,9 +413,21 @@ export class RubberCocExtractionService {
       }
 
       const parsed = this.parseJsonResponse(content);
+      const tokensUsed = data.usageMetadata?.totalTokenCount;
+
+      if (actionType) {
+        this.aiUsageService.log({
+          app: AiApp.AU_RUBBER,
+          actionType,
+          provider: AiProvider.GEMINI,
+          model: this.model,
+          tokensUsed,
+        });
+      }
+
       return {
         data: parsed,
-        tokensUsed: data.usageMetadata?.totalTokenCount,
+        tokensUsed,
       };
     } catch (error) {
       clearTimeout(timeoutId);
@@ -481,6 +501,7 @@ export class RubberCocExtractionService {
     systemPrompt: string,
     userPrompt: string,
     images: Buffer[],
+    actionType?: string,
   ): Promise<{ data: Record<string, unknown>; tokensUsed?: number }> {
     const imageParts = images.map((img) => ({
       inline_data: {
@@ -544,9 +565,22 @@ export class RubberCocExtractionService {
       );
 
       const parsed = this.parseJsonResponse(content);
+      const tokensUsed = data.usageMetadata?.totalTokenCount;
+
+      if (actionType) {
+        this.aiUsageService.log({
+          app: AiApp.AU_RUBBER,
+          actionType,
+          provider: AiProvider.GEMINI,
+          model: this.model,
+          tokensUsed,
+          pageCount: images.length,
+        });
+      }
+
       return {
         data: parsed,
-        tokensUsed: data.usageMetadata?.totalTokenCount,
+        tokensUsed,
       };
     } catch (error) {
       clearTimeout(timeoutId);
@@ -576,6 +610,7 @@ export class RubberCocExtractionService {
       DELIVERY_NOTE_SYSTEM_PROMPT,
       "Please extract structured data from this scanned delivery note image. Return ONLY a valid JSON object with the extracted data.",
       images,
+      "delivery-note-ocr-extraction",
     );
 
     const processingTimeMs = Date.now() - startTime;
@@ -604,6 +639,7 @@ export class RubberCocExtractionService {
       UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT,
       "Please analyze this delivery note photo and extract all company information, stock details, and line items. Return ONLY a valid JSON object with the extracted data.",
       imageBuffers,
+      "delivery-note-photo-analysis",
     );
 
     const processingTimeMs = Date.now() - startTime;
@@ -634,6 +670,7 @@ export class RubberCocExtractionService {
       UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT,
       "Please analyze this delivery note and extract all company information, stock details, and line items. Return ONLY a valid JSON object with the extracted data.",
       images,
+      "delivery-note-pdf-analysis",
     );
 
     const processingTimeMs = Date.now() - startTime;

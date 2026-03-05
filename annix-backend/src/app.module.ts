@@ -5,6 +5,7 @@ import { ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AppController } from "./app.controller";
 
+import { AiUsageModule } from "./ai-usage/ai-usage.module";
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
 import { BendDimensionController } from "./bend-dimension/bend-dimension.controller";
@@ -59,6 +60,8 @@ import { WorkflowModule } from "./workflow/workflow.module";
       ],
     }),
     TypeOrmModule.forRoot(typeormConfig()),
+
+    AiUsageModule,
 
     SharedModule,
     AuthSharedModule,

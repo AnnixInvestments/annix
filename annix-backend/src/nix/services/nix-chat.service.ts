@@ -1,6 +1,8 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
+import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../ai-providers/ai-chat.service";
 import { ChatMessage } from "../ai-providers/claude-chat.provider";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
@@ -59,6 +61,7 @@ export class NixChatService {
     private readonly messageRepository: Repository<NixChatMessage>,
     private readonly itemParserService: NixItemParserService,
     private readonly aiChatService: AiChatService,
+    private readonly aiUsageService: AiUsageService,
   ) {}
 
   async createSession(dto: CreateSessionDto): Promise<NixChatSession> {
@@ -137,12 +140,21 @@ export class NixChatService {
 
     const startTime = Date.now();
 
-    const { content: responseContent, providerUsed } = await this.aiChatService.chat(
+    const { content: responseContent, providerUsed, tokensUsed } = await this.aiChatService.chat(
       conversationHistory,
       systemPrompt,
     );
 
     const processingTimeMs = Date.now() - startTime;
+
+    this.aiUsageService.log({
+      app: AiApp.NIX,
+      actionType: "chat",
+      provider: providerUsed.includes("claude") ? AiProvider.CLAUDE : AiProvider.GEMINI,
+      model: providerUsed,
+      tokensUsed,
+      processingTimeMs,
+    });
 
     await this.saveMessage(dto.sessionId, "user", dto.message);
 
@@ -251,6 +263,14 @@ export class NixChatService {
 
     session.lastInteractionAt = new Date();
     await this.sessionRepository.save(session);
+
+    this.aiUsageService.log({
+      app: AiApp.NIX,
+      actionType: "stream-chat",
+      provider: providerUsed.includes("claude") ? AiProvider.CLAUDE : AiProvider.GEMINI,
+      model: providerUsed,
+      processingTimeMs,
+    });
 
     yield { type: "message_stop", metadata: { processingTimeMs, provider: providerUsed } };
   }

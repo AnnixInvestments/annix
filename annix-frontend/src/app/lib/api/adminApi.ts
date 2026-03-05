@@ -1295,6 +1295,54 @@ class AdminApiClient {
       body: JSON.stringify({ productKeys }),
     });
   }
+
+  async aiUsageLogs(params?: AiUsageQueryParams): Promise<AiUsageListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.app) searchParams.append("app", params.app);
+    if (params?.provider) searchParams.append("provider", params.provider);
+    if (params?.from) searchParams.append("from", params.from);
+    if (params?.to) searchParams.append("to", params.to);
+    if (params?.page) searchParams.append("page", params.page.toString());
+    if (params?.limit) searchParams.append("limit", params.limit.toString());
+
+    const queryString = searchParams.toString();
+    return this.request<AiUsageListResponse>(
+      `/admin/ai-usage${queryString ? `?${queryString}` : ""}`,
+    );
+  }
+}
+
+export interface AiUsageQueryParams {
+  app?: string;
+  provider?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AiUsageLog {
+  id: number;
+  app: string;
+  actionType: string;
+  provider: string;
+  model: string | null;
+  tokensUsed: number | null;
+  pageCount: number | null;
+  processingTimeMs: number | null;
+  contextInfo: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface AiUsageListResponse {
+  data: AiUsageLog[];
+  total: number;
+  page: number;
+  limit: number;
+  summary: {
+    totalTokens: number;
+    totalCalls: number;
+  };
 }
 
 export interface NixUploadResponse {

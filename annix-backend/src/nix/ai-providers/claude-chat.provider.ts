@@ -185,18 +185,24 @@ export class ClaudeChatProvider {
     }
   }
 
-  async chat(messages: ChatMessage[], systemPrompt?: string): Promise<string> {
+  async chat(
+    messages: ChatMessage[],
+    systemPrompt?: string,
+  ): Promise<{ content: string; tokensUsed?: number }> {
     const chunks: string[] = [];
+    let tokensUsed: number | undefined;
 
     for await (const chunk of this.streamChat(messages, systemPrompt)) {
       if (chunk.type === "content_delta" && chunk.delta) {
         chunks.push(chunk.delta);
+      } else if (chunk.type === "message_stop" && chunk.metadata?.usage) {
+        tokensUsed = chunk.metadata.usage.inputTokens + chunk.metadata.usage.outputTokens;
       } else if (chunk.type === "error") {
         throw new Error(chunk.error);
       }
     }
 
-    return chunks.join("");
+    return { content: chunks.join(""), tokensUsed };
   }
 
   async chatWithImage(
@@ -204,7 +210,7 @@ export class ClaudeChatProvider {
     mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp",
     prompt: string,
     systemPrompt?: string,
-  ): Promise<string> {
+  ): Promise<{ content: string; tokensUsed?: number }> {
     const message: ChatMessage = {
       role: "user",
       content: [

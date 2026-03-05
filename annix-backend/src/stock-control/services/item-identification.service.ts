@@ -50,7 +50,7 @@ If you cannot identify any items or the image is unclear, return an empty items 
       : "Please identify the items in this image.";
 
     try {
-      const response = await this.claudeProvider.chatWithImage(
+      const { content: response } = await this.claudeProvider.chatWithImage(
         imageBase64,
         mediaType,
         prompt,

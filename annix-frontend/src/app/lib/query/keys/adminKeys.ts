@@ -1,4 +1,4 @@
-import type { AdminRfqQueryDto, CustomerQueryDto } from "@/app/lib/api/adminApi";
+import type { AdminRfqQueryDto, AiUsageQueryParams, CustomerQueryDto } from "@/app/lib/api/adminApi";
 
 export const adminKeys = {
   customers: {
@@ -41,5 +41,10 @@ export const adminKeys = {
     detail: (id: string) => [...adminKeys.secureDocuments.all, "detail", id] as const,
     local: () => [...adminKeys.secureDocuments.all, "local"] as const,
     entityFolders: () => [...adminKeys.secureDocuments.all, "entityFolders"] as const,
+  },
+  aiUsage: {
+    all: ["admin", "aiUsage"] as const,
+    list: (params?: AiUsageQueryParams) =>
+      [...adminKeys.aiUsage.all, "list", params ?? {}] as const,
   },
 } as const;

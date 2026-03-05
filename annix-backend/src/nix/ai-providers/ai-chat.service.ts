@@ -1,4 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { ChatMessage, ClaudeChatProvider, StreamChunk } from "./claude-chat.provider";
 import { GeminiChatProvider } from "./gemini-chat.provider";
 
@@ -8,7 +10,7 @@ interface ChatProvider {
   readonly name: string;
   isAvailable(): Promise<boolean>;
   streamChat(messages: ChatMessage[], systemPrompt?: string): AsyncGenerator<StreamChunk>;
-  chat(messages: ChatMessage[], systemPrompt?: string): Promise<string>;
+  chat(messages: ChatMessage[], systemPrompt?: string): Promise<{ content: string; tokensUsed?: number }>;
 }
 
 @Injectable()
@@ -17,7 +19,7 @@ export class AiChatService implements OnModuleInit {
   private readonly providers: Map<string, ChatProvider> = new Map();
   private preferredProvider: AiChatProviderType;
 
-  constructor() {
+  constructor(private readonly aiUsageService: AiUsageService) {
     this.providers.set("gemini", new GeminiChatProvider());
     this.providers.set("claude", new ClaudeChatProvider());
 
@@ -83,7 +85,7 @@ export class AiChatService implements OnModuleInit {
     messages: ChatMessage[],
     systemPrompt?: string,
     providerOverride?: AiChatProviderType,
-  ): Promise<{ content: string; providerUsed: string }> {
+  ): Promise<{ content: string; providerUsed: string; tokensUsed?: number }> {
     const providerToUse = providerOverride || this.preferredProvider;
     const { provider, usedFallback } = await this.selectProviderWithFallback(providerToUse);
 
@@ -100,8 +102,8 @@ export class AiChatService implements OnModuleInit {
     this.logger.log(`Using chat provider: ${provider.name}`);
 
     try {
-      const content = await provider.chat(messages, systemPrompt);
-      return { content, providerUsed: provider.name };
+      const result = await provider.chat(messages, systemPrompt);
+      return { content: result.content, providerUsed: provider.name, tokensUsed: result.tokensUsed };
     } catch (error) {
       this.logger.error(`Chat failed with ${provider.name}: ${error.message}`);
 
@@ -109,8 +111,8 @@ export class AiChatService implements OnModuleInit {
       if (fallbackProvider) {
         this.logger.log(`Attempting fallback to: ${fallbackProvider.name}`);
         try {
-          const content = await fallbackProvider.chat(messages, systemPrompt);
-          return { content, providerUsed: fallbackProvider.name };
+          const result = await fallbackProvider.chat(messages, systemPrompt);
+          return { content: result.content, providerUsed: fallbackProvider.name, tokensUsed: result.tokensUsed };
         } catch (fallbackError) {
           this.logger.error(`Fallback also failed: ${fallbackError.message}`);
           throw new Error(`All AI providers failed. Last error: ${fallbackError.message}`);

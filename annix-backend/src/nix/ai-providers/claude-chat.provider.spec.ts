@@ -351,7 +351,7 @@ describe("ClaudeChatProvider", () => {
 
       const result = await provider.chat(mockMessages);
 
-      expect(result).toBe("Hello world!");
+      expect(result.content).toBe("Hello world!");
     });
 
     it("should throw error when stream contains error", async () => {
@@ -412,7 +412,7 @@ describe("ClaudeChatProvider", () => {
 
       const result = await provider.chat(mockMessages);
 
-      expect(result).toBe("");
+      expect(result.content).toBe("");
     });
   });
 });

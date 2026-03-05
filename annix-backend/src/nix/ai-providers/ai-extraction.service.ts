@@ -1,4 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { AiApp, AiProvider as AiProviderEnum } from "../../ai-usage/entities/ai-usage-log.entity";
 import { ExtractedItem, SpecificationCellData } from "../services/excel-extractor.service";
 import { AiExtractedItem, AiExtractionRequest, AiProvider } from "./ai-provider.interface";
 import { ClaudeProvider } from "./claude.provider";
@@ -12,7 +14,7 @@ export class AiExtractionService implements OnModuleInit {
   private readonly providers: Map<string, AiProvider> = new Map();
   private preferredProvider: AiProviderType;
 
-  constructor() {
+  constructor(private readonly aiUsageService: AiUsageService) {
     this.providers.set("gemini", new GeminiProvider());
     this.providers.set("claude", new ClaudeProvider());
 
@@ -104,6 +106,20 @@ export class AiExtractionService implements OnModuleInit {
 
     const items = this.convertToExtractedItems(response.items);
     const specificationCells = this.convertToSpecificationCells(response.specifications);
+
+    const providerEnum = provider.name.toLowerCase().includes("claude")
+      ? AiProviderEnum.CLAUDE
+      : AiProviderEnum.GEMINI;
+
+    this.aiUsageService.log({
+      app: AiApp.NIX,
+      actionType: "rfq-extraction",
+      provider: providerEnum,
+      model: provider.name,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs: response.processingTimeMs,
+      contextInfo: documentName ? { documentName } : undefined,
+    });
 
     return {
       items,

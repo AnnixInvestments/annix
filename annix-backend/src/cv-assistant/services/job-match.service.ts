@@ -1,4 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ExtractedCvData, MatchAnalysis } from "../entities/candidate.entity";
 import { JobPosting } from "../entities/job-posting.entity";
@@ -8,7 +10,10 @@ import { JOB_MATCH_SYSTEM_PROMPT, jobMatchPrompt } from "../prompts/job-match.pr
 export class JobMatchService {
   private readonly logger = new Logger(JobMatchService.name);
 
-  constructor(private readonly aiChatService: AiChatService) {}
+  constructor(
+    private readonly aiChatService: AiChatService,
+    private readonly aiUsageService: AiUsageService,
+  ) {}
 
   async analyzeMatch(
     candidateData: ExtractedCvData,
@@ -32,11 +37,19 @@ export class JobMatchService {
         },
       );
 
-      const { content } = await this.aiChatService.chat(
+      const { content, providerUsed, tokensUsed } = await this.aiChatService.chat(
         [{ role: "user", content: prompt }],
         JOB_MATCH_SYSTEM_PROMPT,
         "gemini",
       );
+
+      this.aiUsageService.log({
+        app: AiApp.CV_ASSISTANT,
+        actionType: "job-match",
+        provider: providerUsed.includes("claude") ? AiProvider.CLAUDE : AiProvider.GEMINI,
+        model: providerUsed,
+        tokensUsed,
+      });
 
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {

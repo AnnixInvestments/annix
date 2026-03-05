@@ -22,6 +22,7 @@ import { SupplierOnboarding } from "../supplier/entities/supplier-onboarding.ent
 import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
 import { SupplierSession } from "../supplier/entities/supplier-session.entity";
 import { User } from "../user/entities/user.entity";
+import { AdminAiUsageController } from "./admin-ai-usage.controller";
 import { AdminAuthController } from "./admin-auth.controller";
 import { AdminAuthService } from "./admin-auth.service";
 import { AdminDashboardController } from "./admin-dashboard.controller";
@@ -77,6 +78,7 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
     AdminRfqService,
   ],
   controllers: [
+    AdminAiUsageController,
     AdminAuthController,
     AdminDashboardController,
     AdminFeedbackController,

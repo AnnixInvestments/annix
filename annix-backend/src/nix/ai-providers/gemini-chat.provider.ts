@@ -133,7 +133,10 @@ export class GeminiChatProvider {
     }
   }
 
-  async chat(messages: ChatMessage[], systemPrompt?: string): Promise<string> {
+  async chat(
+    messages: ChatMessage[],
+    systemPrompt?: string,
+  ): Promise<{ content: string; tokensUsed?: number }> {
     if (!this.apiKey) {
       throw new Error("Gemini API key not configured");
     }
@@ -168,6 +171,9 @@ export class GeminiChatProvider {
     }
 
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    return {
+      content: data.candidates?.[0]?.content?.parts?.[0]?.text || "",
+      tokensUsed: data.usageMetadata?.totalTokenCount ?? undefined,
+    };
   }
 }
