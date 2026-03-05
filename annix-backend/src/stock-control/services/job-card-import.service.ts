@@ -47,11 +47,11 @@ export interface JobCardImportResult {
 }
 
 const INVALID_LINE_ITEM_PATTERNS = [
-  /^production$/i,
+  /^production\b/i,
   /^foreman?\s*sign/i,
   /^forman\s*sign/i,
   /^material\s*spec/i,
-  /^job\s*comp\s*date/i,
+  /^job\s*comp(letion)?\s*date/i,
   /^completion\s*date/i,
   /^supervisor/i,
   /^quality\s*control/i,
@@ -70,20 +70,22 @@ const INVALID_LINE_ITEM_PATTERNS = [
 function isValidLineItem(li: LineItemImportRow): boolean {
   const itemCode = (li.itemCode || "").trim();
   const description = (li.itemDescription || "").trim();
-  const textToCheck = itemCode || description;
+  const textsToCheck = [itemCode, description].filter(Boolean);
 
-  if (!textToCheck) {
+  if (textsToCheck.length === 0) {
     return false;
   }
 
-  const isFormLabel = INVALID_LINE_ITEM_PATTERNS.some((pattern) => pattern.test(textToCheck));
+  const isFormLabel = textsToCheck.some((text) =>
+    INVALID_LINE_ITEM_PATTERNS.some((pattern) => pattern.test(text)),
+  );
   if (isFormLabel) {
     return false;
   }
 
   const qty = li.quantity ? parseFloat(li.quantity) : null;
   const hasNoData =
-    !li.itemDescription && !li.itemNo && !li.jtNo && (qty === null || Number.isNaN(qty));
+    !description && !li.itemNo && !li.jtNo && (qty === null || Number.isNaN(qty));
   if (hasNoData && itemCode) {
     const looksLikeLabel = /^[A-Za-z\s]+$/.test(itemCode) && itemCode.length < 30;
     if (looksLikeLabel) {
@@ -115,6 +117,8 @@ Line items typically appear in a table format with columns for:
 - Item No / Mark No
 - Quantity / Qty
 - JT No / Job Ticket
+
+CRITICAL: The line items table ends at or just before the "Notes" row. Do NOT include any rows after "Notes" as line items. Rows like "PRODUCTION", "Foreman Sign", "Forman Sign", "Material Spec", "Job Comp Date", "Completion Date", "Supervisor", "Quality Control", "Approved By", "Checked By" are form footer labels - they are NOT line items. Set lineItemsEndRow to the last actual work item row, BEFORE Notes and any footer labels.
 
 Analyze the grid and return JSON with this structure:
 {
