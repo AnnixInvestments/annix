@@ -1,6 +1,4 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { AiUsageService } from "../../ai-usage/ai-usage.service";
-import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { ChatMessage, ClaudeChatProvider, StreamChunk } from "./claude-chat.provider";
 import { GeminiChatProvider } from "./gemini-chat.provider";
 
@@ -10,7 +8,10 @@ interface ChatProvider {
   readonly name: string;
   isAvailable(): Promise<boolean>;
   streamChat(messages: ChatMessage[], systemPrompt?: string): AsyncGenerator<StreamChunk>;
-  chat(messages: ChatMessage[], systemPrompt?: string): Promise<{ content: string; tokensUsed?: number }>;
+  chat(
+    messages: ChatMessage[],
+    systemPrompt?: string,
+  ): Promise<{ content: string; tokensUsed?: number }>;
 }
 
 @Injectable()
@@ -19,7 +20,7 @@ export class AiChatService implements OnModuleInit {
   private readonly providers: Map<string, ChatProvider> = new Map();
   private preferredProvider: AiChatProviderType;
 
-  constructor(private readonly aiUsageService: AiUsageService) {
+  constructor() {
     this.providers.set("gemini", new GeminiChatProvider());
     this.providers.set("claude", new ClaudeChatProvider());
 
@@ -103,7 +104,11 @@ export class AiChatService implements OnModuleInit {
 
     try {
       const result = await provider.chat(messages, systemPrompt);
-      return { content: result.content, providerUsed: provider.name, tokensUsed: result.tokensUsed };
+      return {
+        content: result.content,
+        providerUsed: provider.name,
+        tokensUsed: result.tokensUsed,
+      };
     } catch (error) {
       this.logger.error(`Chat failed with ${provider.name}: ${error.message}`);
 
@@ -112,7 +117,11 @@ export class AiChatService implements OnModuleInit {
         this.logger.log(`Attempting fallback to: ${fallbackProvider.name}`);
         try {
           const result = await fallbackProvider.chat(messages, systemPrompt);
-          return { content: result.content, providerUsed: fallbackProvider.name, tokensUsed: result.tokensUsed };
+          return {
+            content: result.content,
+            providerUsed: fallbackProvider.name,
+            tokensUsed: result.tokensUsed,
+          };
         } catch (fallbackError) {
           this.logger.error(`Fallback also failed: ${fallbackError.message}`);
           throw new Error(`All AI providers failed. Last error: ${fallbackError.message}`);

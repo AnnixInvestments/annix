@@ -31,9 +31,9 @@ export class CreateAiUsageLogsTable1800200000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_ai_usage_logs_provider`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_ai_usage_logs_created_at`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_ai_usage_logs_app`);
-    await queryRunner.query(`DROP TABLE IF EXISTS ai_usage_logs`);
+    await queryRunner.query("DROP INDEX IF EXISTS idx_ai_usage_logs_provider");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_ai_usage_logs_created_at");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_ai_usage_logs_app");
+    await queryRunner.query("DROP TABLE IF EXISTS ai_usage_logs");
   }
 }

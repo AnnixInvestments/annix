@@ -1,4 +1,3 @@
-export { useAiUsageLogs } from "./admin/useAiUsage";
 export {
   useAdminCustomerCustomFields,
   useAdminCustomerDetail,
@@ -24,6 +23,7 @@ export {
 export { useAdminRfqDetail, useAdminRfqs } from "./admin/useAdminRfqs";
 export { useAdminSupplierDetail } from "./admin/useAdminSupplierDetail";
 export { useAdminSuppliers, useInviteSupplier } from "./admin/useAdminSuppliers";
+export { useAiUsageLogs } from "./admin/useAiUsage";
 export { useFeatureFlags, useToggleFeatureFlag } from "./admin/useFeatureFlags";
 export {
   useRbacAllUsers,

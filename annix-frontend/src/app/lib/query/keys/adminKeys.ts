@@ -1,4 +1,8 @@
-import type { AdminRfqQueryDto, AiUsageQueryParams, CustomerQueryDto } from "@/app/lib/api/adminApi";
+import type {
+  AdminRfqQueryDto,
+  AiUsageQueryParams,
+  CustomerQueryDto,
+} from "@/app/lib/api/adminApi";
 
 export const adminKeys = {
   customers: {
