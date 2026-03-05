@@ -2458,6 +2458,17 @@ class StockControlApiClient {
 
     return response.json();
   }
+
+  async navRbacConfig(): Promise<Record<string, string[]>> {
+    return this.request("/stock-control/auth/rbac-config");
+  }
+
+  async updateNavRbacConfig(config: Record<string, string[]>): Promise<Record<string, string[]>> {
+    return this.request("/stock-control/auth/rbac-config", {
+      method: "PATCH",
+      body: JSON.stringify({ config }),
+    });
+  }
 }
 
 export const stockControlApiClient = new StockControlApiClient();

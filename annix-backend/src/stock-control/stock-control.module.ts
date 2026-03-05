@@ -53,6 +53,7 @@ import { StockControlUser } from "./entities/stock-control-user.entity";
 import { StockIssuance } from "./entities/stock-issuance.entity";
 import { StockItem } from "./entities/stock-item.entity";
 import { StockMovement } from "./entities/stock-movement.entity";
+import { StockControlRbacConfig } from "./entities/stock-control-rbac-config.entity";
 import { StockPriceHistory } from "./entities/stock-price-history.entity";
 import { SupplierInvoice } from "./entities/supplier-invoice.entity";
 import { SupplierInvoiceItem } from "./entities/supplier-invoice-item.entity";
@@ -83,6 +84,7 @@ import { LookupService } from "./services/lookup.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
 import { PriceHistoryService } from "./services/price-history.service";
+import { RbacConfigService } from "./services/rbac-config.service";
 import { PublicBrandingService } from "./services/public-branding.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { ReportsService } from "./services/reports.service";
@@ -125,6 +127,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       SupplierInvoiceItem,
       InvoiceClarification,
       StockPriceHistory,
+      StockControlRbacConfig,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -201,6 +204,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     InvoiceExtractionService,
     InvoiceService,
     PriceHistoryService,
+    RbacConfigService,
   ],
 })
 export class StockControlModule {}

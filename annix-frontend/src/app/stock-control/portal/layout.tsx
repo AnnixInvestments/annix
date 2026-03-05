@@ -10,6 +10,7 @@ import {
   StockControlBrandingProvider,
   useStockControlBranding,
 } from "../context/StockControlBrandingContext";
+import { StockControlRbacProvider } from "../context/StockControlRbacContext";
 import { useIsMobile } from "../hooks/useMediaQuery";
 
 function MainContent({ children }: { children: React.ReactNode }) {
@@ -48,14 +49,16 @@ function PortalContent({ children }: { children: React.ReactNode }) {
 
   return (
     <StockControlBrandingProvider>
-      <div className="flex h-screen bg-gray-50">
-        {!isMobile && <StockControlSidebar />}
-        {isMobile && <MobileNav isOpen={mobileNavOpen} onClose={handleMobileNavClose} />}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <StockControlHeader showMenuButton={isMobile} onMenuToggle={handleMenuToggle} />
-          <MainContent>{children}</MainContent>
+      <StockControlRbacProvider>
+        <div className="flex h-screen bg-gray-50">
+          {!isMobile && <StockControlSidebar />}
+          {isMobile && <MobileNav isOpen={mobileNavOpen} onClose={handleMobileNavClose} />}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <StockControlHeader showMenuButton={isMobile} onMenuToggle={handleMenuToggle} />
+            <MainContent>{children}</MainContent>
+          </div>
         </div>
-      </div>
+      </StockControlRbacProvider>
     </StockControlBrandingProvider>
   );
 }

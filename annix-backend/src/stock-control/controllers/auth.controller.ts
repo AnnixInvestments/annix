@@ -23,6 +23,7 @@ import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-contro
 import { StockControlAuthService } from "../services/auth.service";
 import { BrandingScraperService } from "../services/branding-scraper.service";
 import { LookupService } from "../services/lookup.service";
+import { RbacConfigService } from "../services/rbac-config.service";
 
 @ApiTags("Stock Control - Auth")
 @Controller("stock-control/auth")
@@ -31,6 +32,7 @@ export class StockControlAuthController {
     private readonly authService: StockControlAuthService,
     private readonly brandingScraperService: BrandingScraperService,
     private readonly lookupService: LookupService,
+    private readonly rbacConfigService: RbacConfigService,
   ) {}
 
   @Post("register")
@@ -285,5 +287,21 @@ export class StockControlAuthController {
   @ApiOperation({ summary: "Soft delete a location" })
   async deleteLocation(@Req() req: any, @Param("id") id: number) {
     return this.lookupService.deleteLocation(req.user.companyId, id);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Get("rbac-config")
+  @ApiOperation({ summary: "Nav RBAC configuration for company" })
+  async rbacConfig(@Req() req: any) {
+    return this.rbacConfigService.navConfig(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Patch("rbac-config")
+  @ApiOperation({ summary: "Update nav RBAC configuration" })
+  async updateRbacConfig(@Req() req: any, @Body() body: { config: Record<string, string[]> }) {
+    return this.rbacConfigService.updateNavConfig(req.user.companyId, body.config);
   }
 }
