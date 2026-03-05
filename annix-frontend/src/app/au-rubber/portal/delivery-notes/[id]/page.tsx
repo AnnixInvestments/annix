@@ -36,6 +36,12 @@ function calculateAreaSqM(widthMm?: number, lengthM?: number): number | null {
   return null;
 }
 
+function safeFixed(value: unknown, decimals: number): string | null {
+  const num = Number(value);
+  if (Number.isNaN(num)) return null;
+  return num.toFixed(decimals);
+}
+
 export default function DeliveryNoteDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -72,6 +78,9 @@ export default function DeliveryNoteDetailPage() {
         auRubberApiClient.supplierCocs({ processingStatus: "APPROVED" }),
         auRubberApiClient.companies(),
       ]);
+      if (!noteData || !noteData.id) {
+        throw new Error("Delivery note not found");
+      }
       setNote(noteData);
       setItems(Array.isArray(itemsData) ? itemsData : []);
       setAvailableCocs(Array.isArray(cocsData) ? cocsData : []);
@@ -748,7 +757,7 @@ export default function DeliveryNoteDetailPage() {
                                   className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                 />
                               ) : (
-                                (roll.weightKg?.toFixed(2) ?? "-")
+                                (safeFixed(roll.weightKg, 2) ?? "-")
                               )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
@@ -948,7 +957,7 @@ export default function DeliveryNoteDetailPage() {
                             : ""}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.weightKg?.toFixed(2) || "-"}
+                          {safeFixed(item.weightKg, 2) || "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.linkedBatchIds?.length || 0}
@@ -972,7 +981,7 @@ export default function DeliveryNoteDetailPage() {
                           {itemAreaSqM ? itemAreaSqM.toFixed(2) : "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.rollWeightKg?.toFixed(2) || "-"}
+                          {safeFixed(item.rollWeightKg, 2) || "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.linkedBatchIds?.length || 0}
