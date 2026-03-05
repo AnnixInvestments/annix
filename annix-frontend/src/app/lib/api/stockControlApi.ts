@@ -1740,9 +1740,7 @@ class StockControlApiClient {
           throw new Error(`Download failed (${retryResponse.status})`);
         }
         const blob = await retryResponse.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, "_blank");
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        this.triggerDownload(blob, filename);
         return;
       }
     }
@@ -1752,8 +1750,17 @@ class StockControlApiClient {
     }
 
     const blob = await response.blob();
+    this.triggerDownload(blob, filename);
+  }
+
+  private triggerDownload(blob: Blob, filename: string): void {
     const blobUrl = URL.createObjectURL(blob);
-    window.open(blobUrl, "_blank");
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
   }
 

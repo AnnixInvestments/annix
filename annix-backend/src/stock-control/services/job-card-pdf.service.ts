@@ -4,10 +4,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
 import { Repository } from "typeorm";
-import { formatDateLongZA } from "../../lib/datetime";
+import { formatDateTime } from "../../lib/datetime";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
-import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
+import { ApprovalStatus, JobCardApproval, WorkflowStep } from "../entities/job-card-approval.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 
 @Injectable()
@@ -44,8 +44,8 @@ export class JobCardPdfService {
     });
 
     const approvals = await this.approvalRepo.find({
-      where: { jobCardId, companyId, status: ApprovalStatus.APPROVED },
-      order: { approvedAt: "ASC" },
+      where: { jobCardId, companyId },
+      order: { createdAt: "ASC" },
     });
 
     const coatingAnalysis = await this.coatingAnalysisRepo.findOne({
@@ -92,7 +92,7 @@ export class JobCardPdfService {
       currentY = this.drawLineItems(doc, jobCard, currentY);
       currentY = this.drawCoatingSpecification(doc, coatingAnalysis, currentY);
       currentY = this.drawAllocations(doc, jobCard, currentY);
-      this.drawApprovals(doc, approvals, currentY);
+      this.drawSignatureBoxes(doc, approvals);
       this.drawFooter(doc);
 
       doc.end();
@@ -203,10 +203,10 @@ export class JobCardPdfService {
     let y = startY + 20;
 
     doc.fontSize(9).font("Helvetica-Bold");
-    doc.text("Item Code", 50, y);
-    doc.text("Description", 130, y);
-    doc.text("Qty", 400, y);
-    doc.text("JT No", 450, y);
+    doc.text("#", 50, y, { width: 20 });
+    doc.text("Item Code", 70, y);
+    doc.text("Qty", 470, y);
+    doc.text("JT No", 510, y);
 
     y += 15;
     doc.moveTo(50, y).lineTo(545, y).stroke();
@@ -254,11 +254,15 @@ export class JobCardPdfService {
 
       return true;
     });
-    filteredItems.slice(0, 15).forEach((item) => {
-      doc.text(item.itemCode || "-", 50, y, { width: 75 });
-      doc.text(item.itemDescription || "-", 130, y, { width: 260 });
-      doc.text(String(item.quantity || "-"), 400, y);
-      doc.text(item.jtNo || "-", 450, y);
+    filteredItems.slice(0, 15).forEach((item, index) => {
+      const itemCode = item.itemCode || "-";
+      const description = item.itemDescription || "";
+      const label = description ? `${itemCode} - ${description}` : itemCode;
+
+      doc.text(String(index + 1), 50, y, { width: 20 });
+      doc.text(label, 70, y, { width: 395 });
+      doc.text(String(item.quantity || "-"), 470, y);
+      doc.text(item.jtNo || "-", 510, y);
       y += 15;
     });
 
@@ -363,35 +367,64 @@ export class JobCardPdfService {
     return y + 10;
   }
 
-  private drawApprovals(
+  private drawSignatureBoxes(
     doc: typeof PDFDocument,
     approvals: JobCardApproval[],
-    startY: number,
   ): void {
-    if (approvals.length === 0) {
-      return;
-    }
+    const stepLabels: { step: WorkflowStep; label: string }[] = [
+      { step: WorkflowStep.DOCUMENT_UPLOAD, label: "Document Upload" },
+      { step: WorkflowStep.ADMIN_APPROVAL, label: "Admin Approval" },
+      { step: WorkflowStep.MANAGER_APPROVAL, label: "Manager Approval" },
+      { step: WorkflowStep.REQUISITION_SENT, label: "Requisition Sent" },
+      { step: WorkflowStep.STOCK_ALLOCATION, label: "Stock Allocation" },
+      { step: WorkflowStep.MANAGER_FINAL, label: "Final Approval" },
+      { step: WorkflowStep.READY_FOR_DISPATCH, label: "Ready for Dispatch" },
+      { step: WorkflowStep.DISPATCHED, label: "Dispatched" },
+    ];
+
+    const approvalMap = new Map(
+      approvals
+        .filter((a) => a.status === ApprovalStatus.APPROVED)
+        .map((a) => [a.step, a]),
+    );
+
+    const pageHeight = doc.page.height;
+    const boxWidth = 120;
+    const boxHeight = 50;
+    const boxGap = 4;
+    const startX = 50;
+    const startY = pageHeight - 165;
+    const boxesPerRow = 4;
+
     doc
-      .moveTo(50, startY - 10)
+      .moveTo(startX, startY - 10)
       .lineTo(545, startY - 10)
       .stroke();
 
-    doc.fontSize(12).font("Helvetica-Bold").text("Approvals", 50, startY);
+    doc.fontSize(9).font("Helvetica-Bold").text("Workflow Sign-Off", startX, startY - 8, { align: "center", width: 495 });
 
-    let y = startY + 20;
+    stepLabels.forEach(({ step, label }, index) => {
+      const row = Math.floor(index / boxesPerRow);
+      const col = index % boxesPerRow;
+      const x = startX + col * (boxWidth + boxGap);
+      const y = startY + 8 + row * (boxHeight + boxGap);
 
-    approvals.forEach((approval) => {
-      const stepName = approval.step.replace(/_/g, " ");
-      const date = approval.approvedAt ? formatDateLongZA(approval.approvedAt) : "-";
+      doc.save();
+      doc.rect(x, y, boxWidth, boxHeight).lineWidth(0.5).strokeColor("#CCCCCC").stroke();
+      doc.strokeColor("black").lineWidth(1);
+      doc.restore();
 
-      doc.fontSize(9).font("Helvetica-Bold").text(stepName, 50, y);
-      doc.font("Helvetica").text(`${approval.approvedByName || "Unknown"} - ${date}`, 180, y);
+      doc.fontSize(7).font("Helvetica-Bold").fillColor("black").text(label, x + 4, y + 4, { width: boxWidth - 8 });
 
-      if (approval.signatureUrl) {
-        doc.fontSize(8).fillColor("blue").text("[Signed]", 450, y).fillColor("black");
+      const approval = approvalMap.get(step);
+      if (approval) {
+        doc.fontSize(7).font("Helvetica").text(approval.approvedByName || "Unknown", x + 4, y + 16, { width: boxWidth - 8 });
+        doc.fontSize(6).fillColor("#666666").text(formatDateTime(approval.approvedAt), x + 4, y + 28, { width: boxWidth - 8 });
+        if (approval.signatureUrl) {
+          doc.fontSize(6).fillColor("#2563EB").text("[Signed]", x + 4, y + 38, { width: boxWidth - 8 });
+        }
+        doc.fillColor("black");
       }
-
-      y += 18;
     });
   }
 
@@ -401,7 +434,7 @@ export class JobCardPdfService {
     doc
       .fontSize(8)
       .font("Helvetica")
-      .text(`Generated: ${formatDateLongZA(new Date())}`, 50, pageHeight - 50, {
+      .text(`Generated: ${formatDateTime(new Date())}`, 50, pageHeight - 50, {
         align: "center",
         width: 495,
       });
