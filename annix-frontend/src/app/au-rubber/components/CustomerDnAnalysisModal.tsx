@@ -108,7 +108,8 @@ export function CustomerDnAnalysisModal({
                   onToggle={() => toggleGroup(groupIndex)}
                   onUpdateOverride={(field, value) => updateOverride(groupIndex, field, value)}
                   isExisting={
-                    analysis.existingDnNumbers?.includes(group.deliveryNoteNumber) ?? false
+                    Array.isArray(analysis.existingDnNumbers) &&
+                    analysis.existingDnNumbers.includes(group.deliveryNoteNumber)
                   }
                 />
               ))}
