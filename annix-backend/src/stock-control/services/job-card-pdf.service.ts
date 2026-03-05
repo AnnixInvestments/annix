@@ -7,7 +7,11 @@ import { Repository } from "typeorm";
 import { formatDateTime } from "../../lib/datetime";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
-import { ApprovalStatus, JobCardApproval, WorkflowStep } from "../entities/job-card-approval.entity";
+import {
+  ApprovalStatus,
+  JobCardApproval,
+  WorkflowStep,
+} from "../entities/job-card-approval.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 
 @Injectable()
@@ -367,10 +371,7 @@ export class JobCardPdfService {
     return y + 10;
   }
 
-  private drawSignatureBoxes(
-    doc: typeof PDFDocument,
-    approvals: JobCardApproval[],
-  ): void {
+  private drawSignatureBoxes(doc: typeof PDFDocument, approvals: JobCardApproval[]): void {
     const stepLabels: { step: WorkflowStep; label: string }[] = [
       { step: WorkflowStep.DOCUMENT_UPLOAD, label: "Document Upload" },
       { step: WorkflowStep.ADMIN_APPROVAL, label: "Admin Approval" },
@@ -383,9 +384,7 @@ export class JobCardPdfService {
     ];
 
     const approvalMap = new Map(
-      approvals
-        .filter((a) => a.status === ApprovalStatus.APPROVED)
-        .map((a) => [a.step, a]),
+      approvals.filter((a) => a.status === ApprovalStatus.APPROVED).map((a) => [a.step, a]),
     );
 
     const pageHeight = doc.page.height;
@@ -401,7 +400,10 @@ export class JobCardPdfService {
       .lineTo(545, startY - 10)
       .stroke();
 
-    doc.fontSize(9).font("Helvetica-Bold").text("Workflow Sign-Off", startX, startY - 8, { align: "center", width: 495 });
+    doc
+      .fontSize(9)
+      .font("Helvetica-Bold")
+      .text("Workflow Sign-Off", startX, startY - 8, { align: "center", width: 495 });
 
     stepLabels.forEach(({ step, label }, index) => {
       const row = Math.floor(index / boxesPerRow);
@@ -414,14 +416,27 @@ export class JobCardPdfService {
       doc.strokeColor("black").lineWidth(1);
       doc.restore();
 
-      doc.fontSize(7).font("Helvetica-Bold").fillColor("black").text(label, x + 4, y + 4, { width: boxWidth - 8 });
+      doc
+        .fontSize(7)
+        .font("Helvetica-Bold")
+        .fillColor("black")
+        .text(label, x + 4, y + 4, { width: boxWidth - 8 });
 
       const approval = approvalMap.get(step);
       if (approval) {
-        doc.fontSize(7).font("Helvetica").text(approval.approvedByName || "Unknown", x + 4, y + 16, { width: boxWidth - 8 });
-        doc.fontSize(6).fillColor("#666666").text(formatDateTime(approval.approvedAt), x + 4, y + 28, { width: boxWidth - 8 });
+        doc
+          .fontSize(7)
+          .font("Helvetica")
+          .text(approval.approvedByName || "Unknown", x + 4, y + 16, { width: boxWidth - 8 });
+        doc
+          .fontSize(6)
+          .fillColor("#666666")
+          .text(formatDateTime(approval.approvedAt), x + 4, y + 28, { width: boxWidth - 8 });
         if (approval.signatureUrl) {
-          doc.fontSize(6).fillColor("#2563EB").text("[Signed]", x + 4, y + 38, { width: boxWidth - 8 });
+          doc
+            .fontSize(6)
+            .fillColor("#2563EB")
+            .text("[Signed]", x + 4, y + 38, { width: boxWidth - 8 });
         }
         doc.fillColor("black");
       }
