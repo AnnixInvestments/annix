@@ -1495,7 +1495,7 @@ export default function InventoryPage() {
                               </td>
                               <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
                                 <select
-                                  value={locationForItem(item) ?? ""}
+                                  value={locationForItem(item) || ""}
                                   onChange={(e) =>
                                     updatePendingLocation(
                                       item.id,
@@ -1724,7 +1724,7 @@ export default function InventoryPage() {
                         </td>
                         <td className="hidden xl:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
                           <select
-                            value={locationForItem(item) ?? ""}
+                            value={locationForItem(item) || ""}
                             onChange={(e) =>
                               updatePendingLocation(
                                 item.id,
