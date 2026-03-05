@@ -9,7 +9,7 @@ import { StockControlAuthController } from "./auth.controller";
 
 describe("StockControlAuthController - RBAC endpoints", () => {
   let controller: StockControlAuthController;
-  let rbacConfigService: jest.Mocked<Partial<RbacConfigService>>;
+  let rbacConfigService: { navConfig: jest.Mock; updateNavConfig: jest.Mock };
 
   const mockReq = (companyId: number) => ({
     user: { id: 1, companyId, role: "admin" },
@@ -62,7 +62,7 @@ describe("StockControlAuthController - RBAC endpoints", () => {
         dashboard: ["viewer", "storeman", "accounts", "manager", "admin"],
         settings: ["admin"],
       };
-      rbacConfigService.navConfig!.mockResolvedValue(expectedConfig);
+      rbacConfigService.navConfig.mockResolvedValue(expectedConfig);
 
       const result = await controller.rbacConfig(mockReq(7));
 
@@ -71,7 +71,7 @@ describe("StockControlAuthController - RBAC endpoints", () => {
     });
 
     it("should pass the companyId from the JWT user", async () => {
-      rbacConfigService.navConfig!.mockResolvedValue({});
+      rbacConfigService.navConfig.mockResolvedValue({});
 
       await controller.rbacConfig(mockReq(42));
 
@@ -86,7 +86,7 @@ describe("StockControlAuthController - RBAC endpoints", () => {
         inventory: ["admin"],
       };
       const expectedResult = { ...config, settings: ["admin"] };
-      rbacConfigService.updateNavConfig!.mockResolvedValue(expectedResult);
+      rbacConfigService.updateNavConfig.mockResolvedValue(expectedResult);
 
       const result = await controller.updateRbacConfig(mockReq(7), { config });
 
@@ -96,7 +96,7 @@ describe("StockControlAuthController - RBAC endpoints", () => {
 
     it("should use the companyId from JWT, not from the body", async () => {
       const config = { dashboard: ["admin"] };
-      rbacConfigService.updateNavConfig!.mockResolvedValue(config);
+      rbacConfigService.updateNavConfig.mockResolvedValue(config);
 
       await controller.updateRbacConfig(mockReq(99), { config });
 
