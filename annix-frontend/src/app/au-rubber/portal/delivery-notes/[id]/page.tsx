@@ -1076,17 +1076,83 @@ export default function DeliveryNoteDetailPage() {
                 <h3 className="text-lg font-medium text-gray-900">
                   Proof of Delivery - Page {podPageNumber}
                 </h3>
-                <button onClick={closePodModal} className="text-gray-400 hover:text-gray-500">
-                  <span className="sr-only">Close</span>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
+                <div className="flex items-center space-x-2">
+                  {podPageUrl && (
+                    <>
+                      <button
+                        onClick={() => {
+                          const printWindow = window.open("", "_blank");
+                          if (printWindow) {
+                            printWindow.document.write(
+                              `<html><head><title>POD Page ${podPageNumber}</title></head><body style="margin:0;display:flex;justify-content:center"><img src="${podPageUrl}" onload="window.print();window.close()" style="max-width:100%" /></body></html>`,
+                            );
+                            printWindow.document.close();
+                          }
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                        title="Print"
+                      >
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const response = await fetch(podPageUrl);
+                          const blob = await response.blob();
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `POD-Page-${podPageNumber}.png`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                        title="Download"
+                      >
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                          />
+                        </svg>
+                      </button>
+                    </>
+                  )}
+                  <button onClick={closePodModal} className="text-gray-400 hover:text-gray-500">
+                    <span className="sr-only">Close</span>
+                    <svg
+                      className="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
               <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
                 {isLoadingPod ? (
