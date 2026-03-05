@@ -88,8 +88,10 @@ export class JobCardPdfService {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
+      const { noteItems } = this.partitionLineItems(jobCard.lineItems);
+
       this.drawHeader(doc, company, jobCard);
-      this.drawJobCardDetails(doc, jobCard);
+      this.drawJobCardDetails(doc, jobCard, noteItems);
       this.drawQrCode(doc, qrDataUrl);
 
       let currentY = 280;
@@ -130,7 +132,11 @@ export class JobCardPdfService {
     doc.moveTo(50, 100).lineTo(545, 100).stroke();
   }
 
-  private drawJobCardDetails(doc: typeof PDFDocument, jobCard: JobCard): void {
+  private drawJobCardDetails(
+    doc: typeof PDFDocument,
+    jobCard: JobCard,
+    noteItems: JobCard["lineItems"],
+  ): void {
     let y = 115;
     const leftCol = 50;
     const rightCol = 300;
@@ -169,7 +175,12 @@ export class JobCardPdfService {
         .text(jobCard.description, leftCol, y + 15, { width: 495 });
     }
 
-    if (jobCard.notes) {
+    const noteTexts = (noteItems || [])
+      .map((item) => (item.itemCode || "").trim())
+      .filter(Boolean);
+    const combinedNotes = [jobCard.notes, ...noteTexts].filter(Boolean).join("\n\n");
+
+    if (combinedNotes) {
       const descHeight = jobCard.description
         ? 30 + Math.ceil(jobCard.description.length / 80) * 12
         : 0;
@@ -178,7 +189,7 @@ export class JobCardPdfService {
         .font("Helvetica-Bold")
         .text("Notes:", leftCol, y)
         .font("Helvetica")
-        .text(jobCard.notes, leftCol, y + 15, { width: 495 });
+        .text(combinedNotes, leftCol, y + 15, { width: 495 });
     }
   }
 
@@ -217,47 +228,7 @@ export class JobCardPdfService {
     y += 5;
 
     doc.font("Helvetica").fontSize(8);
-    const filteredItems = jobCard.lineItems.filter((item) => {
-      const code = (item.itemCode || "").trim();
-      const description = (item.itemDescription || "").trim();
-      const textToCheck = code || description;
-
-      if (!textToCheck) return false;
-
-      const invalidPatterns = [
-        /^production$/i,
-        /^foreman?\s*sign/i,
-        /^forman\s*sign/i,
-        /^material\s*spec/i,
-        /^job\s*comp\s*date/i,
-        /^completion\s*date/i,
-        /^supervisor/i,
-        /^quality\s*control/i,
-        /^qc\s*sign/i,
-        /^inspector/i,
-        /^approved\s*by/i,
-        /^checked\s*by/i,
-        /^date$/i,
-        /^signature$/i,
-        /^sign$/i,
-        /^remarks$/i,
-        /^comments$/i,
-        /^notes$/i,
-      ];
-
-      const isFormLabel = invalidPatterns.some((pattern) => pattern.test(textToCheck));
-      if (isFormLabel) return false;
-
-      const qty = item.quantity;
-      const hasNoData =
-        !description && !item.itemNo && !item.jtNo && (qty === null || Number.isNaN(qty));
-      if (hasNoData && code) {
-        const looksLikeLabel = /^[A-Za-z\s]+$/.test(code) && code.length < 30;
-        if (looksLikeLabel) return false;
-      }
-
-      return true;
-    });
+    const { filteredItems } = this.partitionLineItems(jobCard.lineItems);
     filteredItems.slice(0, 15).forEach((item, index) => {
       const itemCode = item.itemCode || "-";
       const description = item.itemDescription || "";
@@ -441,6 +412,65 @@ export class JobCardPdfService {
         doc.fillColor("black");
       }
     });
+  }
+
+  private partitionLineItems(lineItems: JobCard["lineItems"]): {
+    filteredItems: JobCard["lineItems"];
+    noteItems: JobCard["lineItems"];
+  } {
+    const filteredItems: JobCard["lineItems"] = [];
+    const noteItems: JobCard["lineItems"] = [];
+
+    (lineItems || []).forEach((item) => {
+      const code = (item.itemCode || "").trim();
+      const description = (item.itemDescription || "").trim();
+      const textToCheck = code || description;
+
+      if (!textToCheck) return;
+
+      const invalidPatterns = [
+        /^production$/i,
+        /^foreman?\s*sign/i,
+        /^forman\s*sign/i,
+        /^material\s*spec/i,
+        /^job\s*comp\s*date/i,
+        /^completion\s*date/i,
+        /^supervisor/i,
+        /^quality\s*control/i,
+        /^qc\s*sign/i,
+        /^inspector/i,
+        /^approved\s*by/i,
+        /^checked\s*by/i,
+        /^date$/i,
+        /^signature$/i,
+        /^sign$/i,
+        /^remarks$/i,
+        /^comments$/i,
+        /^notes$/i,
+      ];
+
+      const isFormLabel = invalidPatterns.some((pattern) => pattern.test(textToCheck));
+      if (isFormLabel) return;
+
+      const qty = item.quantity;
+      const hasNoData =
+        !description && !item.itemNo && !item.jtNo && (qty === null || Number.isNaN(qty));
+
+      if (hasNoData && code) {
+        const isMultiLine = code.includes("\n");
+        const looksLikeLabel = /^[A-Za-z\s]+$/.test(code) && code.length < 30;
+
+        if (isMultiLine) {
+          noteItems.push(item);
+          return;
+        }
+        if (looksLikeLabel) return;
+      }
+
+      filteredItems.push(item);
+    });
+
+    return { filteredItems, noteItems };
   }
 
   private drawFooter(doc: typeof PDFDocument): void {
