@@ -64,9 +64,7 @@ describe("RbacConfigService", () => {
     });
 
     it("should fill in defaults for nav keys not present in stored config", async () => {
-      mockRepo.find.mockResolvedValue([
-        { companyId: 1, navKey: "dashboard", role: "admin" },
-      ]);
+      mockRepo.find.mockResolvedValue([{ companyId: 1, navKey: "dashboard", role: "admin" }]);
 
       const result = await service.navConfig(1);
 
@@ -166,9 +164,7 @@ describe("RbacConfigService", () => {
     });
 
     it("should return the refreshed config after update", async () => {
-      mockRepo.find
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+      mockRepo.find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       const result = await service.updateNavConfig(1, { dashboard: ["admin"] });
 
