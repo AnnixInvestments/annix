@@ -1612,18 +1612,20 @@ Formula: totalPrice = totalKg × salePricePerKg
         await this.rubberCocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
 
       const allRolls = customerResult.deliveryNotes.flatMap((dn, dnIdx) =>
-        (dn.lineItems || []).map((item) => ({
-          rollNumber: item.rollNumber ?? null,
-          thicknessMm: item.thicknessMm ?? null,
-          widthMm: item.widthMm ?? null,
-          lengthM: item.lengthM ?? null,
-          weightKg: item.actualWeightKg ?? null,
-          areaSqM: item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
-          deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
-          deliveryDate: dn.deliveryDate ?? null,
-          customerName: dn.customerName ?? null,
-          pageNumber: dnIdx + 1,
-        })),
+        (dn.lineItems || [])
+          .filter((item) => item != null && typeof item === "object")
+          .map((item) => ({
+            rollNumber: item.rollNumber ?? null,
+            thicknessMm: item.thicknessMm ?? null,
+            widthMm: item.widthMm ?? null,
+            lengthM: item.lengthM ?? null,
+            weightKg: item.actualWeightKg ?? null,
+            areaSqM: item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
+            deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
+            deliveryDate: dn.deliveryDate ?? null,
+            customerName: dn.customerName ?? null,
+            pageNumber: dnIdx + 1,
+          })),
       );
 
       const firstDn = customerResult.deliveryNotes[0];

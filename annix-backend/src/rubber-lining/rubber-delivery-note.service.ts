@@ -152,13 +152,13 @@ export class RubberDeliveryNoteService {
     if (!note) return null;
 
     note.extractedData = extractedData;
-    if (extractedData.deliveryNoteNumber) {
+    if (extractedData.deliveryNoteNumber && !note.deliveryNoteNumber) {
       note.deliveryNoteNumber = extractedData.deliveryNoteNumber;
     }
-    if (extractedData.deliveryDate) {
+    if (extractedData.deliveryDate && !note.deliveryDate) {
       note.deliveryDate = new Date(extractedData.deliveryDate);
     }
-    if (extractedData.customerReference) {
+    if (extractedData.customerReference && !note.customerReference) {
       note.customerReference = extractedData.customerReference;
     }
 
@@ -455,12 +455,14 @@ export class RubberDeliveryNoteService {
     }
 
     const rollsByDnNumber = new Map<string, typeof extractedData.rolls>();
-    extractedData.rolls.forEach((roll) => {
-      const dnNumber = roll.deliveryNoteNumber || note.deliveryNoteNumber || `DN-${note.id}`;
-      const existing = rollsByDnNumber.get(dnNumber) || [];
-      existing.push(roll);
-      rollsByDnNumber.set(dnNumber, existing);
-    });
+    extractedData.rolls
+      .filter((roll) => roll != null && typeof roll === "object")
+      .forEach((roll) => {
+        const dnNumber = roll.deliveryNoteNumber || note.deliveryNoteNumber || `DN-${note.id}`;
+        const existing = rollsByDnNumber.get(dnNumber) || [];
+        existing.push(roll);
+        rollsByDnNumber.set(dnNumber, existing);
+      });
 
     if (rollsByDnNumber.size <= 1) {
       return { deliveryNoteIds: [note.id] };

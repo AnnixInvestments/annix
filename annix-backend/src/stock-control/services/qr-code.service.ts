@@ -103,7 +103,9 @@ export class QrCodeService {
       where: { jobCardId: jobId, companyId },
     });
 
-    const lineItems = (jobCard.lineItems ?? []).sort((a, b) => a.sortOrder - b.sortOrder);
+    const { filteredItems: lineItems, noteItems } = this.partitionLineItems(
+      (jobCard.lineItems ?? []).sort((a, b) => a.sortOrder - b.sortOrder),
+    );
 
     const mmToPt = (mm: number) => mm * 2.83465;
     const margin = mmToPt(15);
@@ -335,12 +337,15 @@ export class QrCodeService {
       y += mmToPt(8);
     }
 
-    if (jobCard.notes) {
+    const noteTexts = noteItems.map((item) => (item.itemCode || "").trim()).filter(Boolean);
+    const combinedNotes = [jobCard.notes, ...noteTexts].filter(Boolean).join("\n\n");
+
+    if (combinedNotes) {
       doc.fillColor("#6b7280").fontSize(7).font("Helvetica-Bold");
       doc.text("NOTES", margin, y);
       y += mmToPt(3);
       doc.fillColor("#111827").fontSize(9).font("Helvetica");
-      doc.text(jobCard.notes, margin, y, { width: contentWidth });
+      doc.text(combinedNotes, margin, y, { width: contentWidth });
       y += mmToPt(8);
     }
 
@@ -443,6 +448,65 @@ export class QrCodeService {
         doc.fillColor("#111827");
       }
     });
+  }
+
+  private partitionLineItems(lineItems: JobCard["lineItems"]): {
+    filteredItems: JobCard["lineItems"];
+    noteItems: JobCard["lineItems"];
+  } {
+    const filteredItems: JobCard["lineItems"] = [];
+    const noteItems: JobCard["lineItems"] = [];
+
+    (lineItems || []).forEach((item) => {
+      const code = (item.itemCode || "").trim();
+      const description = (item.itemDescription || "").trim();
+      const textToCheck = code || description;
+
+      if (!textToCheck) return;
+
+      const invalidPatterns = [
+        /^production$/i,
+        /^foreman?\s*sign/i,
+        /^forman\s*sign/i,
+        /^material\s*spec/i,
+        /^job\s*comp\s*date/i,
+        /^completion\s*date/i,
+        /^supervisor/i,
+        /^quality\s*control/i,
+        /^qc\s*sign/i,
+        /^inspector/i,
+        /^approved\s*by/i,
+        /^checked\s*by/i,
+        /^date$/i,
+        /^signature$/i,
+        /^sign$/i,
+        /^remarks$/i,
+        /^comments$/i,
+        /^notes$/i,
+      ];
+
+      const isFormLabel = invalidPatterns.some((pattern) => pattern.test(textToCheck));
+      if (isFormLabel) return;
+
+      const qty = item.quantity;
+      const hasNoData =
+        !description && !item.itemNo && !item.jtNo && (qty === null || Number.isNaN(qty));
+
+      if (hasNoData && code) {
+        const isMultiLine = code.includes("\n");
+        const looksLikeLabel = /^[A-Za-z\s]+$/.test(code) && code.length < 30;
+
+        if (isMultiLine) {
+          noteItems.push(item);
+          return;
+        }
+        if (looksLikeLabel) return;
+      }
+
+      filteredItems.push(item);
+    });
+
+    return { filteredItems, noteItems };
   }
 
   async staffIdCardPdf(staffId: number, companyId: number): Promise<Buffer> {
