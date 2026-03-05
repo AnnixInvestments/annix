@@ -499,7 +499,7 @@ export default function StockControlSettingsPage() {
     setInviteSending(true);
 
     try {
-      await stockControlApiClient.createInvitation(inviteEmail.trim(), inviteRole, inviteLiteMode);
+      await stockControlApiClient.createInvitation(inviteEmail.trim(), inviteRole);
       setInviteEmail("");
       setInviteRole("storeman");
       setInviteLiteMode(false);
