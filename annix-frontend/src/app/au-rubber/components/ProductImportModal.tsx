@@ -294,7 +294,7 @@ export function ProductImportModal({
         markup: costSettings
           ? (costSettings.categoryMarkups.find(
               (m) => m.compoundType.toLowerCase() === p.compound?.toLowerCase(),
-            )?.markupPercent ?? costSettings.defaultMarginPercent)
+            )?.markupPercent || costSettings.defaultMarginPercent)
           : undefined,
       }));
 

@@ -277,7 +277,7 @@ export default function AuRubberCodingsPage() {
             currentPage={currentPage}
             totalItems={codings.length}
             itemsPerPage={ITEMS_PER_PAGE}
-            itemName={currentTypeInfo?.label.toLowerCase() ?? "codings"}
+            itemName={currentTypeInfo ? currentTypeInfo.label.toLowerCase() : "codings"}
             onPageChange={setCurrentPage}
           />
         </div>

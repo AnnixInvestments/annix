@@ -419,34 +419,34 @@ export default function QualityTrackingDetailPage() {
                       {new Date(batch.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {batch.shoreA?.toFixed(1) ?? "-"}
+                      {batch.shoreA != null ? batch.shoreA.toFixed(1) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {batch.specificGravity?.toFixed(3) ?? "-"}
+                      {batch.specificGravity != null ? batch.specificGravity.toFixed(3) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {batch.rebound?.toFixed(1) ?? "-"}
+                      {batch.rebound != null ? batch.rebound.toFixed(1) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {batch.tearStrength?.toFixed(1) ?? "-"}
+                      {batch.tearStrength != null ? batch.tearStrength.toFixed(1) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {batch.tensile?.toFixed(1) ?? "-"}
+                      {batch.tensile != null ? batch.tensile.toFixed(1) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {batch.elongation?.toFixed(0) ?? "-"}
+                      {batch.elongation != null ? batch.elongation.toFixed(0) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 bg-blue-50">
-                      {batch.sMin?.toFixed(2) ?? "-"}
+                      {batch.sMin != null ? batch.sMin.toFixed(2) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 bg-blue-50">
-                      {batch.sMax?.toFixed(2) ?? "-"}
+                      {batch.sMax != null ? batch.sMax.toFixed(2) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 bg-blue-50">
-                      {batch.ts2?.toFixed(2) ?? "-"}
+                      {batch.ts2 != null ? batch.ts2.toFixed(2) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 bg-blue-50">
-                      {batch.tc90?.toFixed(2) ?? "-"}
+                      {batch.tc90 != null ? batch.tc90.toFixed(2) : "-"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm">
                       {batch.passFailStatus ? (

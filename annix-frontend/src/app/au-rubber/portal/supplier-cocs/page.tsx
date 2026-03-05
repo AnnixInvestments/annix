@@ -114,7 +114,7 @@ export default function SupplierCocsPage() {
     const match = companies.find((c) =>
       matchNames.some((name) => c.name.toLowerCase().includes(name.toLowerCase())),
     );
-    return match?.id ?? null;
+    return match ? match.id : null;
   };
 
   useEffect(() => {

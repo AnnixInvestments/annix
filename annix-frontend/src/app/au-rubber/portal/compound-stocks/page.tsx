@@ -562,7 +562,7 @@ export default function CompoundStocksPage() {
                           );
                           setOpeningStockForm({
                             ...openingStockForm,
-                            compoundCodingId: match?.id ?? 0,
+                            compoundCodingId: match ? match.id : 0,
                           });
                         }}
                         placeholder="Type or select compound code"
@@ -606,7 +606,7 @@ export default function CompoundStocksPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={openingStockForm.costPerKg ?? ""}
+                        value={openingStockForm.costPerKg != null ? openingStockForm.costPerKg : ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -658,7 +658,7 @@ export default function CompoundStocksPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Location</label>
                       <select
-                        value={openingStockForm.locationId ?? ""}
+                        value={openingStockForm.locationId != null ? openingStockForm.locationId : ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -681,7 +681,7 @@ export default function CompoundStocksPage() {
                       </label>
                       <input
                         type="text"
-                        value={openingStockForm.batchNumber ?? ""}
+                        value={openingStockForm.batchNumber || ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -696,7 +696,7 @@ export default function CompoundStocksPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Notes</label>
                     <textarea
-                      value={openingStockForm.notes ?? ""}
+                      value={openingStockForm.notes || ""}
                       onChange={(e) =>
                         setOpeningStockForm({
                           ...openingStockForm,
@@ -794,10 +794,10 @@ export default function CompoundStocksPage() {
                                   {row.quantityKg}
                                 </td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.costPerKg ?? "-"}
+                                  {row.costPerKg != null ? row.costPerKg : "-"}
                                 </td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.location ?? "-"}
+                                  {row.location || "-"}
                                 </td>
                               </tr>
                             ))}

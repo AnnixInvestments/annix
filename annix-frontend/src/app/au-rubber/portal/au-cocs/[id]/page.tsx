@@ -353,7 +353,7 @@ export default function AuCocDetailPage() {
                       {roll.lengthM ?? "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {roll.weightKg?.toFixed(2) ?? "-"}
+                      {roll.weightKg != null ? roll.weightKg.toFixed(2) : "-"}
                     </td>
                   </tr>
                 ))}

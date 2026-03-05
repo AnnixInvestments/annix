@@ -886,7 +886,7 @@ export default function AuRubberOrderDetailPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-center text-sm text-gray-900">
-                          {product?.specificGravity ?? "-"}
+                          {product ? product.specificGravity || "-" : "-"}
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select
