@@ -12,7 +12,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "dashboard",
     href: "/stock-control/portal/dashboard",
     label: "Dashboard",
-    defaultRoles: ["viewer", "storeman", "manager", "admin"],
+    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -28,7 +28,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "inventory",
     href: "/stock-control/portal/inventory",
     label: "Inventory",
-    defaultRoles: ["viewer", "storeman", "manager", "admin"],
+    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -44,7 +44,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "job-cards",
     href: "/stock-control/portal/job-cards",
     label: "Job Cards",
-    defaultRoles: ["viewer", "storeman", "manager", "admin"],
+    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -60,7 +60,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "staff",
     href: "/stock-control/portal/staff",
     label: "Staff",
-    defaultRoles: ["viewer", "storeman", "manager", "admin"],
+    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -76,7 +76,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "deliveries",
     href: "/stock-control/portal/deliveries",
     label: "Deliveries",
-    defaultRoles: ["viewer", "storeman", "manager", "admin"],
+    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -108,7 +108,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "requisitions",
     href: "/stock-control/portal/requisitions",
     label: "Requisitions",
-    defaultRoles: ["viewer", "storeman", "manager", "admin"],
+    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -124,7 +124,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "notifications",
     href: "/stock-control/portal/notifications",
     label: "Notifications",
-    defaultRoles: ["viewer", "storeman", "manager", "admin"],
+    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -177,4 +177,4 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
   },
 ];
 
-export const ALL_ROLES = ["viewer", "storeman", "manager", "admin"] as const;
+export const ALL_ROLES = ["viewer", "storeman", "accounts", "manager", "admin"] as const;
