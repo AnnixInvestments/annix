@@ -275,18 +275,21 @@ export interface CuttingPlan {
 }
 
 function parseNb(description: string): number | null {
-  const match = description.match(/(\d+)\s*NB/i);
+  const match = description.match(/(\d+)\s*(?:mm\s*)?NB/i);
   return match ? parseInt(match[1], 10) : null;
 }
 
 function parseOd(description: string): number | null {
-  const match = description.match(/(\d+)\s*OD/i);
+  const match = description.match(/(\d+)\s*(?:mm\s*)?OD/i);
   return match ? parseInt(match[1], 10) : null;
 }
 
 function parseLength(description: string): number | null {
-  const lgMatch = description.match(/(\d+)\s*LG/i);
+  const lgMatch = description.match(/(\d+)\s*(?:mm\s*)?LG/i);
   if (lgMatch) return parseInt(lgMatch[1], 10);
+
+  const longMatch = description.match(/(\d+)\s*(?:mm\s*)?LONG/i);
+  if (longMatch) return parseInt(longMatch[1], 10);
 
   const mmMatch = description.match(/(\d+)\s*mm\b/i);
   if (mmMatch) return parseInt(mmMatch[1], 10);
@@ -495,123 +498,92 @@ export function parsePipeItem(
   };
 }
 
-function determineRollSpec(itemWidthMm: number): RollSpecification {
-  const canDouble = itemWidthMm * 2 <= ROLL_WIDTH_MAX_MM;
-  const canTriple = itemWidthMm * 3 <= ROLL_WIDTH_MAX_MM;
+function rotateIfNeeded(item: ParsedPipeItem): ParsedPipeItem {
+  const w = item.rubberWidthMm;
+  const l = item.rubberLengthMm;
+  const normalFits = w <= ROLL_WIDTH_MAX_MM;
+  const rotatedFits = l <= ROLL_WIDTH_MAX_MM;
 
-  let lanes = 1;
-  let rollWidthMm = itemWidthMm;
-
-  if (canTriple && itemWidthMm <= 450) {
-    lanes = 3;
-    rollWidthMm = roundUpToNearest(itemWidthMm * 3, ROLL_WIDTH_INCREMENT_MM);
-  } else if (canDouble && itemWidthMm <= 700) {
-    lanes = 2;
-    rollWidthMm = roundUpToNearest(itemWidthMm * 2, ROLL_WIDTH_INCREMENT_MM);
+  if (normalFits && !rotatedFits) return item;
+  if (!normalFits && rotatedFits) {
+    return { ...item, rubberWidthMm: l, rubberLengthMm: w };
   }
+  if (normalFits && rotatedFits) {
+    return w <= l ? item : { ...item, rubberWidthMm: l, rubberLengthMm: w };
+  }
+  return w <= l ? item : { ...item, rubberWidthMm: l, rubberLengthMm: w };
+}
 
-  rollWidthMm = Math.max(ROLL_WIDTH_MIN_MM, Math.min(ROLL_WIDTH_MAX_MM, rollWidthMm));
-  const laneWidthMm = Math.floor(rollWidthMm / lanes);
+function expandAndRotateItems(parsedItems: ParsedPipeItem[]): ParsedPipeItem[] {
+  return parsedItems
+    .filter((item) => item.isValidPipe)
+    .flatMap((item) => {
+      const rotated = rotateIfNeeded(item);
+      const count = Number(item.quantity) || 1;
+      return Array.from({ length: count }, (_, i) => ({
+        ...rotated,
+        id: count > 1 ? `${item.id}-${i + 1}` : item.id,
+      }));
+    });
+}
 
-  return {
+function buildRollsForItems(parsedItems: ParsedPipeItem[]): RollAllocation[] {
+  const items = expandAndRotateItems(parsedItems);
+  if (items.length === 0) return [];
+
+  const maxWidthNeeded = Math.max(...items.map((i) => i.rubberWidthMm));
+  const rollWidthMm = Math.max(
+    ROLL_WIDTH_MIN_MM,
+    Math.min(ROLL_WIDTH_MAX_MM, roundUpToNearest(maxWidthNeeded, ROLL_WIDTH_INCREMENT_MM)),
+  );
+  const rollSpec: RollSpecification = {
     widthMm: rollWidthMm,
     lengthM: ROLL_LENGTH_MAX_M,
     areaSqM: (rollWidthMm / 1000) * ROLL_LENGTH_MAX_M,
-    lanes,
-    laneWidthMm,
+    lanes: 1,
+    laneWidthMm: rollWidthMm,
   };
-}
 
-interface ItemWithLane extends ParsedPipeItem {
-  assignedLane: number;
-}
-
-function optimizeCuttingWithLanes(
-  items: ParsedPipeItem[],
-  rollSpec: RollSpecification,
-): RollAllocation[] {
-  const rolls: RollAllocation[] = [];
-  const rollLengthMm = rollSpec.lengthM * 1000;
-  const lanes = rollSpec.lanes;
-
+  const rollLengthMm = ROLL_LENGTH_MAX_M * 1000;
   const sortedItems = [...items].sort((a, b) => b.rubberLengthMm - a.rubberLengthMm);
   const placed = new Set<string>();
+  const rolls: RollAllocation[] = [];
 
   while (placed.size < sortedItems.length) {
-    const lanePositions: number[] = Array(lanes).fill(0);
+    let position = 0;
     const cuts: CutPiece[] = [];
 
     for (const item of sortedItems) {
       if (placed.has(item.id)) continue;
 
-      for (let lane = 0; lane < lanes; lane++) {
-        if (lanePositions[lane] + item.rubberLengthMm <= rollLengthMm) {
-          cuts.push({
-            itemId: item.id,
-            itemNo: item.itemNo,
-            description: item.description,
-            widthMm: item.rubberWidthMm,
-            lengthMm: item.rubberLengthMm,
-            positionMm: lanePositions[lane],
-            lane,
-          });
-          lanePositions[lane] += item.rubberLengthMm;
-          placed.add(item.id);
-          break;
-        }
+      if (position + item.rubberLengthMm <= rollLengthMm) {
+        cuts.push({
+          itemId: item.id,
+          itemNo: item.itemNo,
+          description: item.description,
+          widthMm: item.rubberWidthMm,
+          lengthMm: item.rubberLengthMm,
+          positionMm: position,
+          lane: 0,
+        });
+        position += item.rubberLengthMm;
+        placed.add(item.id);
       }
     }
 
-    const totalUsed = lanePositions.reduce((sum, pos) => sum + pos, 0);
-    const totalCapacity = rollLengthMm * lanes;
-    const wastePercentage = ((totalCapacity - totalUsed) / totalCapacity) * 100;
+    const wastePercentage = ((rollLengthMm - position) / rollLengthMm) * 100;
 
     rolls.push({
       rollIndex: rolls.length + 1,
       rollSpec,
       cuts,
-      usedLengthMm: lanePositions,
+      usedLengthMm: [position],
       wastePercentage,
-      hasLengthwiseCut: lanes > 1,
+      hasLengthwiseCut: false,
     });
   }
 
   return rolls;
-}
-
-function groupItemsByRequiredWidth(items: ParsedPipeItem[]): Map<number, ParsedPipeItem[]> {
-  const groups = new Map<number, ParsedPipeItem[]>();
-
-  for (const item of items) {
-    if (!item.isValidPipe) continue;
-
-    const widthKey = item.rubberWidthMm;
-    const existing = groups.get(widthKey) || [];
-
-    for (let i = 0; i < item.quantity; i++) {
-      existing.push({
-        ...item,
-        id: item.quantity > 1 ? `${item.id}-${i + 1}` : item.id,
-      });
-    }
-
-    groups.set(widthKey, existing);
-  }
-
-  return groups;
-}
-
-function buildRollsForItems(parsedItems: ParsedPipeItem[]): RollAllocation[] {
-  const widthGroups = groupItemsByRequiredWidth(parsedItems);
-  const allRolls: RollAllocation[] = [];
-
-  for (const [widthMm, items] of widthGroups) {
-    const rollSpec = determineRollSpec(widthMm);
-    const rolls = optimizeCuttingWithLanes(items, rollSpec);
-    allRolls.push(...rolls);
-  }
-
-  return allRolls;
 }
 
 function rollStats(rolls: RollAllocation[]): {
@@ -689,7 +661,7 @@ export function calculateCuttingPlan(
     const m2 = item.m2 ? Number(item.m2) : null;
     const itemNo = item.itemNo || null;
 
-    const parsed = parsePipeItem(String(item.id || Math.random()), desc, qty, m2, itemNo);
+    const parsed = parsePipeItem(String(item.id || Math.random()), desc, Number(qty), m2, itemNo);
 
     if (parsed.isValidPipe) {
       parsedItems.push(parsed);

@@ -377,16 +377,25 @@ export class JobCardPdfService {
       rolls: stockRolls,
     };
 
-    const plan = calculateCuttingPlan(
-      filteredItems.map((li) => ({
-        id: li.id,
-        itemCode: li.itemCode,
-        itemDescription: li.itemDescription,
-        itemNo: li.itemNo,
-        quantity: li.quantity,
-        m2: li.m2,
-      })),
-      stockRolls.length > 0 ? stockQuery : null,
+    const calcItems = filteredItems.map((li) => ({
+      id: li.id,
+      itemCode: li.itemCode,
+      itemDescription: li.itemDescription,
+      itemNo: li.itemNo,
+      quantity: li.quantity,
+      m2: li.m2,
+    }));
+
+    this.logger.log(
+      `Rubber PDF for JC ${jobCard.id}: ${calcItems.length} filtered items, ` +
+        `descriptions: [${calcItems.map((i) => `"${i.itemDescription || i.itemCode}"`).join(", ")}]`,
+    );
+
+    const plan = calculateCuttingPlan(calcItems, stockRolls.length > 0 ? stockQuery : null);
+
+    this.logger.log(
+      `Rubber PDF for JC ${jobCard.id}: hasPipeItems=${plan.hasPipeItems}, ` +
+        `rolls=${plan.rolls.length}, totalUsed=${plan.totalUsedSqM.toFixed(2)}m²`,
     );
 
     return { plan, stockRolls, isRubberJob: true, totalM2 };
