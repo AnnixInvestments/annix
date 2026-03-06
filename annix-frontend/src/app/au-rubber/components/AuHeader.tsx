@@ -289,164 +289,158 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
   const userInitials = `${firstInitial}${lastInitial}`.toUpperCase();
 
   return (
-    <header className="relative z-50 flex flex-col shadow-md" style={{ backgroundColor: colors.background }}>
-      <div className="h-14 flex items-center justify-between px-4">
-        <div className="flex items-center">
-          {logoObjectUrl ? (
-            <img src={logoObjectUrl} alt="Logo" className="h-9 max-w-[100px] object-contain" />
-          ) : (
-            <div className="text-xl font-bold" style={{ color: colors.accent }}>
-              AU
-            </div>
-          )}
-          <span className="ml-2 text-white text-base font-medium hidden sm:inline">Rubber App</span>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <div className="hidden sm:block">
-            <div className="relative">
-              <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                placeholder="Search..."
-                className="w-48 lg:w-64 pl-9 pr-3 py-1.5 text-sm bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-opacity-20"
-              />
-            </div>
+    <header
+      className="relative z-50 flex items-center h-12 px-4 shadow-md"
+      style={{ backgroundColor: colors.background }}
+    >
+      <div className="flex items-center shrink-0">
+        {logoObjectUrl ? (
+          <img src={logoObjectUrl} alt="Logo" className="h-8 max-w-[100px] object-contain" />
+        ) : (
+          <div className="text-xl font-bold" style={{ color: colors.accent }}>
+            AU
           </div>
-          <ThemeToggle
-            className="p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
-            iconClassName="w-5 h-5 text-white"
-          />
-          <div className="relative" ref={userMenuRef}>
-            <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center justify-center w-9 h-9 rounded-full text-white font-semibold text-sm hover:ring-2 hover:ring-yellow-400 transition-all"
-              style={{ backgroundColor: colors.accent }}
-            >
-              {userInitials}
-            </button>
-            {showUserMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900 truncate">{fullName}</p>
-                    <p className="text-xs text-gray-500 truncate">{user?.email || ""}</p>
-                  </div>
-                  <div className="py-1">
-                    <Link
-                      href="/au-rubber/portal/settings"
-                      onClick={() => setShowUserMenu(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Settings
-                    </Link>
-                    {isAdmin && (
-                      <Link
-                        href="/au-rubber/portal/rbac"
-                        onClick={() => setShowUserMenu(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        RBAC
-                      </Link>
-                    )}
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        )}
+        <span className="ml-2 text-white text-base font-medium hidden sm:inline">Rubber App</span>
       </div>
 
-      <nav className="scrollbar-hide">
-        <div className="flex items-center px-4 gap-1 pb-2">
-          {filteredSingleNavItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
-                isActive(item.href)
+      <nav className="flex items-center gap-1 ml-4 overflow-x-auto scrollbar-hide">
+        {filteredSingleNavItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
+              isActive(item.href)
+                ? "bg-black/20 text-white"
+                : "text-white/70 hover:bg-black/10 hover:text-white"
+            }`}
+          >
+            <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
+            {item.label}
+          </Link>
+        ))}
+
+        {filteredNavSections.map((section) => (
+          <div
+            key={section.label}
+            className="relative"
+            onMouseEnter={() => handleSectionEnter(section.label)}
+            onMouseLeave={handleSectionLeave}
+          >
+            <button
+              className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
+                isSectionActive(section) || hoveredSection === section.label
                   ? "bg-black/20 text-white"
                   : "text-white/70 hover:bg-black/10 hover:text-white"
               }`}
             >
-              <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
+              {section.label}
+              <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
 
-          {filteredNavSections.map((section) => (
-            <div
-              key={section.label}
-              className="relative"
-              onMouseEnter={() => handleSectionEnter(section.label)}
-              onMouseLeave={handleSectionLeave}
-            >
-              <button
-                className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
-                  isSectionActive(section) || hoveredSection === section.label
-                    ? "bg-black/20 text-white"
-                    : "text-white/70 hover:bg-black/10 hover:text-white"
-                }`}
-              >
-                {section.label}
-                <svg
-                  className="w-3 h-3 ml-0.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
-
-              {hoveredSection === section.label && (
-                <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
-                  {section.items.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`block px-4 py-2 text-sm transition-colors ${
-                        isActive(item.href)
-                          ? "bg-yellow-50 text-yellow-800 font-medium"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                      onClick={() => setHoveredSection(null)}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+            {hoveredSection === section.label && (
+              <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                {section.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`block px-4 py-2 text-sm transition-colors ${
+                      isActive(item.href)
+                        ? "bg-yellow-50 text-yellow-800 font-medium"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                    onClick={() => setHoveredSection(null)}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
       </nav>
+
+      <div className="flex items-center space-x-2 ml-auto shrink-0">
+        <div className="hidden sm:block">
+          <div className="relative">
+            <svg
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              placeholder="Search..."
+              className="w-48 lg:w-64 pl-9 pr-3 py-1.5 text-sm bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:bg-opacity-20"
+            />
+          </div>
+        </div>
+        <ThemeToggle
+          className="p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
+          iconClassName="w-5 h-5 text-white"
+        />
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="flex items-center justify-center w-9 h-9 rounded-full text-white font-semibold text-sm hover:ring-2 hover:ring-yellow-400 transition-all"
+            style={{ backgroundColor: colors.accent }}
+          >
+            {userInitials}
+          </button>
+          {showUserMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-sm font-medium text-gray-900 truncate">{fullName}</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.email || ""}</p>
+                </div>
+                <div className="py-1">
+                  <Link
+                    href="/au-rubber/portal/settings"
+                    onClick={() => setShowUserMenu(false)}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Settings
+                  </Link>
+                  {isAdmin && (
+                    <Link
+                      href="/au-rubber/portal/rbac"
+                      onClick={() => setShowUserMenu(false)}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      RBAC
+                    </Link>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </header>
   );
 }
