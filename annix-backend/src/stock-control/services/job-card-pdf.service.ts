@@ -631,7 +631,10 @@ export class JobCardPdfService {
   }
 
   private cuttingDiagramHeight(roll: RollAllocation): number {
-    const rollRectHeight = Math.max(60, roll.bands.reduce((sum, b) => sum + Math.max(12, b.lanes * 12), 0));
+    const rollRectHeight = Math.max(
+      60,
+      roll.bands.reduce((sum, b) => sum + Math.max(12, b.lanes * 12), 0),
+    );
     const headerHeight = 15;
     const cutListHeight = roll.cuts.length * 10 + 5;
     const offcutHeight = roll.offcuts.length > 0 ? roll.offcuts.length * 8 + 10 : 0;
@@ -644,9 +647,7 @@ export class JobCardPdfService {
 
     rolls.forEach((roll) => {
       const specKey = `${roll.rollSpec.widthMm}-${roll.rollSpec.lengthM}`;
-      const bandsKey = roll.bands
-        .map((b) => `${b.lanes}:${b.laneWidthMm}:${b.heightMm}`)
-        .join("|");
+      const bandsKey = roll.bands.map((b) => `${b.lanes}:${b.laneWidthMm}:${b.heightMm}`).join("|");
       const cutsKey = roll.cuts
         .map((c) => `${c.widthMm}:${c.lengthMm}:${c.band}:${c.lane}`)
         .sort()
@@ -684,7 +685,10 @@ export class JobCardPdfService {
     const leftMargin = 50;
     const diagramWidth = 495;
     const bands = roll.bands;
-    const rollRectHeight = Math.max(60, bands.reduce((sum, b) => sum + Math.max(12, b.lanes * 12), 0));
+    const rollRectHeight = Math.max(
+      60,
+      bands.reduce((sum, b) => sum + Math.max(12, b.lanes * 12), 0),
+    );
     const rollLengthMm = roll.rollSpec.lengthM * 1000;
     const scale = diagramWidth / rollLengthMm;
     const totalBandHeight = bands.reduce((sum, b) => sum + b.heightMm, 0);
