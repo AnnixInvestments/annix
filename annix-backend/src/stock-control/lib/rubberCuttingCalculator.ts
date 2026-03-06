@@ -245,6 +245,11 @@ function parseNb(description: string): number | null {
   return match ? parseInt(match[1], 10) : null;
 }
 
+function parseOd(description: string): number | null {
+  const match = description.match(/(\d+)\s*OD/i);
+  return match ? parseInt(match[1], 10) : null;
+}
+
 function parseLength(description: string): number | null {
   const lgMatch = description.match(/(\d+)\s*LG/i);
   if (lgMatch) return parseInt(lgMatch[1], 10);
@@ -296,6 +301,9 @@ function parseItemType(description: string): string | null {
     { pattern: /\bOFFSET\b/i, type: "offset" },
     { pattern: /\bVALVE\b/i, type: "valve" },
     { pattern: /\bSPOOL\b/i, type: "spool" },
+    { pattern: /\bPULLEY\b/i, type: "pulley" },
+    { pattern: /\bDRUM\b/i, type: "drum" },
+    { pattern: /\bROLLER\b/i, type: "roller" },
   ];
 
   for (const { pattern, type } of patterns) {
@@ -333,28 +341,36 @@ export function parsePipeItem(
   itemNo: string | null,
 ): ParsedPipeItem {
   const nbMm = parseNb(description);
+  const directOd = parseOd(description);
   const lengthMm = parseLength(description);
   const schedule = parseSchedule(description);
   const flangeConfig = parseFlangeConfig(description);
   const itemType = parseItemType(description);
   const openEnds = openEndsFromConfig(flangeConfig);
 
-  const isValidPipe = nbMm !== null && lengthMm !== null && lengthMm > 0;
+  const hasDimensions = (nbMm !== null || directOd !== null) && lengthMm !== null && lengthMm > 0;
+  const isOdBased = nbMm === null && directOd !== null;
 
   let odMm: number | null = null;
   let idMm: number | null = null;
   let rubberWidthMm = 0;
   let rubberLengthMm = 0;
 
-  if (isValidPipe && nbMm) {
-    odMm = nbToOd(nbMm);
-    const wt = wallThickness(nbMm, schedule);
-    idMm = odMm - 2 * wt;
+  if (hasDimensions) {
+    if (isOdBased && directOd) {
+      odMm = directOd;
+      const circumference = Math.PI * directOd;
+      rubberWidthMm = roundUpToNearest(circumference, ROLL_WIDTH_INCREMENT_MM);
+      rubberLengthMm = lengthMm;
+    } else if (nbMm) {
+      odMm = nbToOd(nbMm);
+      const wt = wallThickness(nbMm, schedule);
+      idMm = odMm - 2 * wt;
 
-    const circumference = Math.PI * idMm;
-    rubberWidthMm = roundUpToNearest(circumference, ROLL_WIDTH_INCREMENT_MM);
-
-    rubberLengthMm = lengthMm + openEnds * OPEN_END_ALLOWANCE_MM;
+      const circumference = Math.PI * idMm;
+      rubberWidthMm = roundUpToNearest(circumference, ROLL_WIDTH_INCREMENT_MM);
+      rubberLengthMm = lengthMm + openEnds * OPEN_END_ALLOWANCE_MM;
+    }
   }
 
   return {
@@ -372,7 +388,7 @@ export function parsePipeItem(
     rubberWidthMm,
     rubberLengthMm,
     quantity,
-    isValidPipe,
+    isValidPipe: hasDimensions && rubberWidthMm > 0,
     m2,
   };
 }
