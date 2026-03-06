@@ -6,6 +6,7 @@ import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { CoatingAnalysisService } from "./coating-analysis.service";
+import { M2CalculationService } from "./m2-calculation.service";
 
 describe("CoatingAnalysisService", () => {
   let service: CoatingAnalysisService;
@@ -32,6 +33,10 @@ describe("CoatingAnalysisService", () => {
     chat: jest.fn(),
   };
 
+  const mockM2CalculationService = {
+    calculateM2ForLineItems: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -41,6 +46,7 @@ describe("CoatingAnalysisService", () => {
         { provide: getRepositoryToken(JobCardLineItem), useValue: mockLineItemRepo },
         { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
         { provide: AiChatService, useValue: mockAiChatService },
+        { provide: M2CalculationService, useValue: mockM2CalculationService },
       ],
     }).compile();
 
