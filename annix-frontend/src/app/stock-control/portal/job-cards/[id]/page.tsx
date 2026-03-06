@@ -1277,8 +1277,7 @@ export default function JobCardDetailPage() {
             </div>
           )}
           {(!coatingAnalysis ||
-            (coatingAnalysis.status === "analysed" &&
-              coatingAnalysis.coats.length === 0)) && (
+            (coatingAnalysis.status === "analysed" && coatingAnalysis.coats.length === 0)) && (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">
