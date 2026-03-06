@@ -31,6 +31,7 @@ import {
 import { Response } from "express";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
+import { SageExportService } from "../sage-export/sage-export.service";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
@@ -146,6 +147,7 @@ import { RubberOtherStockService } from "./rubber-other-stock.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
+import { RubberSageInvoiceAdapterService } from "./rubber-sage-invoice-adapter.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService, StockLocationDto } from "./rubber-stock-location.service";
 import {
@@ -176,6 +178,8 @@ export class RubberLiningController {
     private readonly rubberOtherStockService: RubberOtherStockService,
     private readonly rubberCocExtractionService: RubberCocExtractionService,
     private readonly rubberTaxInvoiceService: RubberTaxInvoiceService,
+    private readonly rubberSageAdapterService: RubberSageInvoiceAdapterService,
+    private readonly sageExportService: SageExportService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -2654,6 +2658,58 @@ Formula: totalPrice = totalKg × salePricePerKg
       status,
       companyId: companyId ? Number(companyId) : undefined,
     });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/tax-invoices/export/sage-preview")
+  @ApiOperation({ summary: "Preview Sage CSV export" })
+  @ApiQuery({ name: "dateFrom", required: false })
+  @ApiQuery({ name: "dateTo", required: false })
+  @ApiQuery({ name: "excludeExported", required: false })
+  async sageExportPreview(
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string,
+    @Query("excludeExported") excludeExported?: string,
+  ): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
+    return this.rubberSageAdapterService.previewCount({
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      excludeExported: excludeExported !== "false",
+    });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/tax-invoices/export/sage-csv")
+  @ApiOperation({ summary: "Download Sage CSV export" })
+  @ApiQuery({ name: "dateFrom", required: false })
+  @ApiQuery({ name: "dateTo", required: false })
+  @ApiQuery({ name: "excludeExported", required: false })
+  async sageExportCsv(
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string,
+    @Query("excludeExported") excludeExported?: string,
+    @Res() res?: Response,
+  ): Promise<void> {
+    const filters = {
+      dateFrom: dateFrom || null,
+      dateTo: dateTo || null,
+      excludeExported: excludeExported !== "false",
+    };
+
+    const { invoices, invoiceIds } =
+      await this.rubberSageAdapterService.exportableInvoices(filters);
+    const csvBuffer = this.sageExportService.generateCsv(invoices);
+
+    await this.rubberSageAdapterService.markExported(invoiceIds);
+
+    res!.set({
+      "Content-Type": "text/csv",
+      "Content-Disposition": "attachment; filename=sage-invoices.csv",
+      "Content-Length": csvBuffer.length,
+    });
+    res!.send(csvBuffer);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

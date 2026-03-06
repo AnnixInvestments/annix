@@ -2844,7 +2844,9 @@ class AuRubberApiClient {
     if (params.excludeExported !== undefined) {
       query.set("excludeExported", String(params.excludeExported));
     }
-    return this.request(`/rubber-lining/portal/tax-invoices/export/sage-preview?${query.toString()}`);
+    return this.request(
+      `/rubber-lining/portal/tax-invoices/export/sage-preview?${query.toString()}`,
+    );
   }
 
   async sageExportCsv(params: {

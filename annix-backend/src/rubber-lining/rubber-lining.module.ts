@@ -6,6 +6,7 @@ import { NixModule } from "../nix/nix.module";
 import { App } from "../rbac/entities/app.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import { RbacModule } from "../rbac/rbac.module";
+import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import {
   RubberAdhesionRequirement,
@@ -61,6 +62,7 @@ import { RubberProductImportService } from "./rubber-product-import.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
+import { RubberSageInvoiceAdapterService } from "./rubber-sage-invoice-adapter.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService } from "./rubber-stock-location.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
@@ -71,6 +73,7 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
     EmailModule,
     NixModule,
     RbacModule,
+    SageExportModule,
     SharedModule,
     TypeOrmModule.forFeature([
       App,
@@ -128,6 +131,7 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
     RubberProductImportService,
     RubberOtherStockService,
     RubberTaxInvoiceService,
+    RubberSageInvoiceAdapterService,
     AuRubberAccessGuard,
   ],
   exports: [
