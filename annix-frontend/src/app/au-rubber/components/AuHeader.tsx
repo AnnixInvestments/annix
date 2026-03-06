@@ -289,7 +289,7 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
   const userInitials = `${firstInitial}${lastInitial}`.toUpperCase();
 
   return (
-    <header className="flex flex-col shadow-md" style={{ backgroundColor: colors.background }}>
+    <header className="relative z-50 flex flex-col shadow-md" style={{ backgroundColor: colors.background }}>
       <div className="h-14 flex items-center justify-between px-4">
         <div className="flex items-center">
           {logoObjectUrl ? (
@@ -378,7 +378,7 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
         </div>
       </div>
 
-      <nav className="overflow-x-auto scrollbar-hide">
+      <nav className="scrollbar-hide">
         <div className="flex items-center px-4 gap-1 pb-2">
           {filteredSingleNavItems.map((item) => (
             <Link
