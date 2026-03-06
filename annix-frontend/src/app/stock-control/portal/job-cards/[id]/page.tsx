@@ -806,9 +806,7 @@ function RubberSOHPanel({
                 {idx === 0 && !isSelected && (
                   <span className="text-xs text-gray-400 italic">recommended</span>
                 )}
-                {isSelected && (
-                  <span className="text-xs text-green-700 font-medium">Selected</span>
-                )}
+                {isSelected && <span className="text-xs text-green-700 font-medium">Selected</span>}
                 {planDecision !== "rejected" && !isSelected && (
                   <button
                     type="button"
@@ -937,7 +935,11 @@ function RubberSOHPanel({
   );
 }
 
-function RubberAllocationSection({ lineItems, jobCardId, rubberPlanOverride }: RubberAllocationProps) {
+function RubberAllocationSection({
+  lineItems,
+  jobCardId,
+  rubberPlanOverride,
+}: RubberAllocationProps) {
   const [stockOptions, setStockOptions] = useState<RubberStockOptionsResponse | null>(null);
   const [override, setOverride] = useState<RubberPlanOverride | null>(rubberPlanOverride);
 
@@ -986,8 +988,8 @@ function RubberAllocationSection({ lineItems, jobCardId, rubberPlanOverride }: R
         <h3 className="text-lg leading-6 font-medium text-gray-900">Rubber Allocation</h3>
         {plan.hasPipeItems && (
           <p className="mt-1 text-sm text-gray-500">
-            Internal lining uses ID circumference; pulleys/drums/rollers use OD circumference.
-            +50mm bevel allowance on all cuts. Roll widths: 800-1450mm. Lengths: up to 12.5m.
+            Internal lining uses ID circumference; pulleys/drums/rollers use OD circumference. +50mm
+            bevel allowance on all cuts. Roll widths: 800-1450mm. Lengths: up to 12.5m.
           </p>
         )}
       </div>
@@ -2083,7 +2085,11 @@ export default function JobCardDetailPage() {
         const validItems = jobCard.lineItems ? jobCard.lineItems.filter(isValidLineItem) : [];
         const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
         return hasM2Items ? (
-          <RubberAllocationSection lineItems={validItems} jobCardId={jobCard.id} rubberPlanOverride={jobCard.rubberPlanOverride ?? null} />
+          <RubberAllocationSection
+            lineItems={validItems}
+            jobCardId={jobCard.id}
+            rubberPlanOverride={jobCard.rubberPlanOverride ?? null}
+          />
         ) : null;
       })()}
 

@@ -458,7 +458,10 @@ export function parsePipeItem(
       odMm = directOd || (nbMm ? nbToOd(nbMm) : null);
       if (odMm) {
         const circumference = Math.PI * odMm;
-        rubberWidthMm = roundUpToNearest(circumference + BEVEL_ALLOWANCE_MM, ROLL_WIDTH_INCREMENT_MM);
+        rubberWidthMm = roundUpToNearest(
+          circumference + BEVEL_ALLOWANCE_MM,
+          ROLL_WIDTH_INCREMENT_MM,
+        );
         rubberLengthMm = lengthMm + BEVEL_ALLOWANCE_MM;
       }
     } else if (nbMm) {

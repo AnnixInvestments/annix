@@ -1589,10 +1589,7 @@ class StockControlApiClient {
     return this.request(`/stock-control/job-cards/${jobCardId}/rubber-stock-options`);
   }
 
-  async updateRubberPlan(
-    jobCardId: number,
-    override: RubberPlanOverride,
-  ): Promise<JobCard> {
+  async updateRubberPlan(jobCardId: number, override: RubberPlanOverride): Promise<JobCard> {
     return this.request(`/stock-control/job-cards/${jobCardId}/rubber-plan`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

@@ -173,11 +173,7 @@ export class JobCardsController {
   @StockControlRoles("manager", "admin")
   @Put(":id/rubber-plan")
   @ApiOperation({ summary: "Accept or override the rubber cutting plan" })
-  async updateRubberPlan(
-    @Req() req: any,
-    @Param("id") id: number,
-    @Body() body: any,
-  ) {
+  async updateRubberPlan(@Req() req: any, @Param("id") id: number, @Body() body: any) {
     const jobCard = await this.jobCardService.findById(req.user.companyId, id);
     jobCard.rubberPlanOverride = {
       status: body.status,

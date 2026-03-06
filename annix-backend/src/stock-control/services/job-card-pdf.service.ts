@@ -431,14 +431,22 @@ export class JobCardPdfService {
     }
 
     const manualOverride = jobCard.rubberPlanOverride;
-    if (manualOverride?.status === "manual" && manualOverride.manualRolls && manualOverride.manualRolls.length > 0) {
+    if (
+      manualOverride?.status === "manual" &&
+      manualOverride.manualRolls &&
+      manualOverride.manualRolls.length > 0
+    ) {
       doc.fontSize(9).font("Helvetica-Bold");
       doc.text("MANUAL CUTTING PLAN (Manager Override)", 50, y);
       y += 14;
 
       if (manualOverride.reviewedBy) {
         doc.fontSize(7).font("Helvetica");
-        doc.text(`Reviewed by: ${manualOverride.reviewedBy}  ${manualOverride.reviewedAt || ""}`, 50, y);
+        doc.text(
+          `Reviewed by: ${manualOverride.reviewedBy}  ${manualOverride.reviewedAt || ""}`,
+          50,
+          y,
+        );
         y += 10;
       }
 
