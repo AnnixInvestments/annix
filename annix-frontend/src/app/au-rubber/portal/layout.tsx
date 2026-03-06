@@ -6,7 +6,6 @@ import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { AuHeader } from "../components/AuHeader";
-import { AuSidebar } from "../components/AuSidebar";
 
 function MainContent({ children }: { children: React.ReactNode }) {
   const { branding } = useAuRubberBranding();
@@ -57,12 +56,9 @@ function MainContent({ children }: { children: React.ReactNode }) {
 
 function PortalContent({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen bg-gray-50">
-      <AuSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <AuHeader />
-        <MainContent>{children}</MainContent>
-      </div>
+    <div className="flex flex-col h-screen bg-gray-50">
+      <AuHeader />
+      <MainContent>{children}</MainContent>
     </div>
   );
 }
