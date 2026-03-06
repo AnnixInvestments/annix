@@ -154,6 +154,7 @@ export interface JobCard {
   notes: string | null;
   reference: string | null;
   customFields: Record<string, string> | null;
+  rubberPlanOverride: RubberPlanOverride | null;
   status: string;
   versionNumber?: number;
   sourceFilePath?: string | null;
@@ -298,6 +299,26 @@ export interface RubberStockOptionsResponse {
   stockItems: RubberStockOption[];
   availableThicknesses: number[];
   plyCombinations: RubberPlyCombination[];
+}
+
+export interface RubberPlanManualRoll {
+  widthMm: number;
+  lengthM: number;
+  thicknessMm: number;
+  cuts: Array<{
+    description: string;
+    widthMm: number;
+    lengthMm: number;
+    quantity: number;
+  }>;
+}
+
+export interface RubberPlanOverride {
+  status: "accepted" | "manual";
+  selectedPlyCombination: number[] | null;
+  manualRolls: RubberPlanManualRoll[] | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
 }
 
 export interface StockControlSupplierDto {
@@ -1566,6 +1587,17 @@ class StockControlApiClient {
 
   async rubberStockOptions(jobCardId: number): Promise<RubberStockOptionsResponse> {
     return this.request(`/stock-control/job-cards/${jobCardId}/rubber-stock-options`);
+  }
+
+  async updateRubberPlan(
+    jobCardId: number,
+    override: RubberPlanOverride,
+  ): Promise<JobCard> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/rubber-plan`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(override),
+    });
   }
 
   async uploadAllocationPhoto(

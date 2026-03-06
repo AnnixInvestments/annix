@@ -170,6 +170,27 @@ export class JobCardsController {
     };
   }
 
+  @StockControlRoles("manager", "admin")
+  @Put(":id/rubber-plan")
+  @ApiOperation({ summary: "Accept or override the rubber cutting plan" })
+  async updateRubberPlan(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: any,
+  ) {
+    const jobCard = await this.jobCardService.findById(req.user.companyId, id);
+    jobCard.rubberPlanOverride = {
+      status: body.status,
+      selectedPlyCombination: body.selectedPlyCombination || null,
+      manualRolls: body.manualRolls || null,
+      reviewedBy: req.user.name,
+      reviewedAt: new Date().toISOString(),
+    };
+    return this.jobCardService.update(req.user.companyId, id, {
+      rubberPlanOverride: jobCard.rubberPlanOverride,
+    });
+  }
+
   @Post(":id/allocate")
   @ApiOperation({ summary: "Allocate stock to a job card" })
   async allocateStock(@Param("id") id: number, @Body() body: any, @Req() req: any) {

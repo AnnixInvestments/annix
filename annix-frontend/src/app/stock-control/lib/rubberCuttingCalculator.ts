@@ -445,7 +445,8 @@ export function parsePipeItem(
   const openEnds = openEndsFromConfig(flangeConfig);
 
   const hasDimensions = (nbMm !== null || directOd !== null) && lengthMm !== null && lengthMm > 0;
-  const isOdBased = nbMm === null && directOd !== null;
+  const isExternalLining = itemType === "pulley" || itemType === "drum" || itemType === "roller";
+  const isOdBased = isExternalLining || (nbMm === null && directOd !== null);
 
   let odMm: number | null = null;
   let idMm: number | null = null;
@@ -453,11 +454,13 @@ export function parsePipeItem(
   let rubberLengthMm = 0;
 
   if (hasDimensions) {
-    if (isOdBased && directOd) {
-      odMm = directOd;
-      const circumference = Math.PI * directOd;
-      rubberWidthMm = roundUpToNearest(circumference + BEVEL_ALLOWANCE_MM, ROLL_WIDTH_INCREMENT_MM);
-      rubberLengthMm = lengthMm + BEVEL_ALLOWANCE_MM;
+    if (isOdBased) {
+      odMm = directOd || (nbMm ? nbToOd(nbMm) : null);
+      if (odMm) {
+        const circumference = Math.PI * odMm;
+        rubberWidthMm = roundUpToNearest(circumference + BEVEL_ALLOWANCE_MM, ROLL_WIDTH_INCREMENT_MM);
+        rubberLengthMm = lengthMm + BEVEL_ALLOWANCE_MM;
+      }
     } else if (nbMm) {
       odMm = nbToOd(nbMm);
       const wt = wallThickness(nbMm, schedule);

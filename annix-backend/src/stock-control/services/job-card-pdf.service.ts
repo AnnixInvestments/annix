@@ -430,7 +430,61 @@ export class JobCardPdfService {
       y += 12;
     }
 
-    if (plan.hasPipeItems) {
+    const manualOverride = jobCard.rubberPlanOverride;
+    if (manualOverride?.status === "manual" && manualOverride.manualRolls && manualOverride.manualRolls.length > 0) {
+      doc.fontSize(9).font("Helvetica-Bold");
+      doc.text("MANUAL CUTTING PLAN (Manager Override)", 50, y);
+      y += 14;
+
+      if (manualOverride.reviewedBy) {
+        doc.fontSize(7).font("Helvetica");
+        doc.text(`Reviewed by: ${manualOverride.reviewedBy}  ${manualOverride.reviewedAt || ""}`, 50, y);
+        y += 10;
+      }
+
+      manualOverride.manualRolls.forEach((mRoll, rollIdx) => {
+        const pageHeight = doc.page.height;
+        const estimatedHeight = 30 + mRoll.cuts.length * 10;
+        if (y + estimatedHeight > pageHeight - 165) {
+          doc.addPage();
+          y = 50;
+        }
+
+        doc.fontSize(8).font("Helvetica-Bold");
+        doc.text(
+          `Roll ${rollIdx + 1}: ${mRoll.widthMm}mm × ${mRoll.lengthM}m × ${mRoll.thicknessMm}mm`,
+          50,
+          y,
+        );
+        y += 12;
+
+        if (mRoll.cuts.length > 0) {
+          doc.fontSize(7).font("Helvetica");
+          mRoll.cuts.forEach((cut) => {
+            doc.text(
+              `  ${cut.description || "Cut"}: ${cut.widthMm}mm × ${cut.lengthMm}mm × ${cut.quantity}`,
+              60,
+              y,
+            );
+            y += 10;
+          });
+        }
+        y += 5;
+      });
+
+      if (plan.genericM2Total > 0) {
+        doc.fontSize(8).font("Helvetica");
+        doc.text(`Plus generic m² items: ${plan.genericM2Total.toFixed(2)} m²`, 50, y);
+        y += 12;
+      }
+    } else if (plan.hasPipeItems) {
+      if (manualOverride?.status === "accepted") {
+        doc.fontSize(8).font("Helvetica-Bold").fillColor("#166534");
+        doc.text("ACCEPTED BY MANAGER", 50, y);
+        doc.fillColor("#000000");
+        y += 12;
+      }
+
       doc.fontSize(9).font("Helvetica-Bold");
       doc.text(`Rolls Required: ${plan.totalRollsNeeded}`, 50, y);
       doc.text(`Used: ${plan.totalUsedSqM.toFixed(2)} m²`, 200, y);

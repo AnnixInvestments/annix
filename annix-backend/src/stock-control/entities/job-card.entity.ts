@@ -17,6 +17,26 @@ import { JobCardVersion } from "./job-card-version.entity";
 import { StockAllocation } from "./stock-allocation.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 
+export interface RubberPlanManualRoll {
+  widthMm: number;
+  lengthM: number;
+  thicknessMm: number;
+  cuts: Array<{
+    description: string;
+    widthMm: number;
+    lengthMm: number;
+    quantity: number;
+  }>;
+}
+
+export interface RubberPlanOverride {
+  status: "accepted" | "manual";
+  selectedPlyCombination: number[] | null;
+  manualRolls: RubberPlanManualRoll[] | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+}
+
 export enum JobCardStatus {
   DRAFT = "draft",
   ACTIVE = "active",
@@ -79,6 +99,9 @@ export class JobCard {
 
   @Column({ name: "custom_fields", type: "jsonb", nullable: true })
   customFields: Record<string, string> | null;
+
+  @Column({ name: "rubber_plan_override", type: "jsonb", nullable: true })
+  rubberPlanOverride: RubberPlanOverride | null;
 
   @Column({ type: "varchar", length: 50, default: JobCardStatus.DRAFT })
   status: JobCardStatus;

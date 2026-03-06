@@ -11,6 +11,8 @@ import type {
   JobCardAttachment,
   JobCardVersion,
   Requisition,
+  RubberPlanManualRoll,
+  RubberPlanOverride,
   RubberStockOptionsResponse,
   StaffMember,
   StockAllocation,
@@ -199,6 +201,7 @@ interface RubberAllocationProps {
     quantity: number | null;
   }>;
   jobCardId: number;
+  rubberPlanOverride: RubberPlanOverride | null;
 }
 
 function CuttingDiagram({
@@ -504,20 +507,256 @@ function StockAvailabilityBadge({ status }: { status: "in_stock" | "partial" | "
   );
 }
 
+function ManualRollInput({
+  rolls,
+  onChange,
+}: {
+  rolls: RubberPlanManualRoll[];
+  onChange: (rolls: RubberPlanManualRoll[]) => void;
+}) {
+  const addRoll = () => {
+    onChange([...rolls, { widthMm: 1200, lengthM: 12.5, thicknessMm: 5, cuts: [] }]);
+  };
+
+  const updateRoll = (idx: number, field: keyof RubberPlanManualRoll, value: number) => {
+    const updated = rolls.map((r, i) => (i === idx ? { ...r, [field]: value } : r));
+    onChange(updated);
+  };
+
+  const removeRoll = (idx: number) => {
+    onChange(rolls.filter((_, i) => i !== idx));
+  };
+
+  const addCut = (rollIdx: number) => {
+    const updated = rolls.map((r, i) =>
+      i === rollIdx
+        ? { ...r, cuts: [...r.cuts, { description: "", widthMm: 0, lengthMm: 0, quantity: 1 }] }
+        : r,
+    );
+    onChange(updated);
+  };
+
+  const updateCut = (rollIdx: number, cutIdx: number, field: string, value: string | number) => {
+    const updated = rolls.map((r, ri) =>
+      ri === rollIdx
+        ? {
+            ...r,
+            cuts: r.cuts.map((c, ci) => (ci === cutIdx ? { ...c, [field]: value } : c)),
+          }
+        : r,
+    );
+    onChange(updated);
+  };
+
+  const removeCut = (rollIdx: number, cutIdx: number) => {
+    const updated = rolls.map((r, ri) =>
+      ri === rollIdx ? { ...r, cuts: r.cuts.filter((_, ci) => ci !== cutIdx) } : r,
+    );
+    onChange(updated);
+  };
+
+  return (
+    <div className="space-y-4">
+      {rolls.map((roll, rollIdx) => (
+        <div key={rollIdx} className="border border-amber-200 rounded-lg p-4 bg-amber-50">
+          <div className="flex items-center justify-between mb-3">
+            <h5 className="text-sm font-semibold text-gray-900">Roll {rollIdx + 1}</h5>
+            <button
+              type="button"
+              onClick={() => removeRoll(rollIdx)}
+              className="text-xs text-red-600 hover:text-red-800"
+            >
+              Remove
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Width (mm)</label>
+              <input
+                type="number"
+                value={roll.widthMm}
+                onChange={(e) => updateRoll(rollIdx, "widthMm", Number(e.target.value))}
+                className="w-full px-2 py-1.5 border rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Length (m)</label>
+              <input
+                type="number"
+                step="0.5"
+                value={roll.lengthM}
+                onChange={(e) => updateRoll(rollIdx, "lengthM", Number(e.target.value))}
+                className="w-full px-2 py-1.5 border rounded text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Thickness (mm)</label>
+              <input
+                type="number"
+                value={roll.thicknessMm}
+                onChange={(e) => updateRoll(rollIdx, "thicknessMm", Number(e.target.value))}
+                className="w-full px-2 py-1.5 border rounded text-sm"
+              />
+            </div>
+          </div>
+          {roll.cuts.length > 0 && (
+            <div className="space-y-2 mb-2">
+              <p className="text-xs font-medium text-gray-600">Cuts:</p>
+              {roll.cuts.map((cut, cutIdx) => (
+                <div key={cutIdx} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Description"
+                    value={cut.description}
+                    onChange={(e) => updateCut(rollIdx, cutIdx, "description", e.target.value)}
+                    className="flex-1 px-2 py-1 border rounded text-xs"
+                  />
+                  <input
+                    type="number"
+                    placeholder="W mm"
+                    value={cut.widthMm || ""}
+                    onChange={(e) => updateCut(rollIdx, cutIdx, "widthMm", Number(e.target.value))}
+                    className="w-20 px-2 py-1 border rounded text-xs"
+                  />
+                  <input
+                    type="number"
+                    placeholder="L mm"
+                    value={cut.lengthMm || ""}
+                    onChange={(e) => updateCut(rollIdx, cutIdx, "lengthMm", Number(e.target.value))}
+                    className="w-20 px-2 py-1 border rounded text-xs"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Qty"
+                    value={cut.quantity}
+                    onChange={(e) => updateCut(rollIdx, cutIdx, "quantity", Number(e.target.value))}
+                    className="w-14 px-2 py-1 border rounded text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeCut(rollIdx, cutIdx)}
+                    className="text-red-500 hover:text-red-700 text-xs"
+                  >
+                    X
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => addCut(rollIdx)}
+            className="text-xs text-blue-600 hover:text-blue-800"
+          >
+            + Add cut
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={addRoll}
+        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:border-gray-400 hover:text-gray-600"
+      >
+        + Add roll
+      </button>
+    </div>
+  );
+}
+
 function RubberSOHPanel({
   stockOptions,
   plan,
+  existingOverride,
+  jobCardId,
+  onOverrideSaved,
 }: {
   stockOptions: RubberStockOptionsResponse;
   plan: CuttingPlan;
+  existingOverride: RubberPlanOverride | null;
+  jobCardId: number;
+  onOverrideSaved: (override: RubberPlanOverride) => void;
 }) {
+  const [planDecision, setPlanDecision] = useState<"pending" | "accepted" | "rejected">(
+    existingOverride?.status === "accepted"
+      ? "accepted"
+      : existingOverride?.status === "manual"
+        ? "rejected"
+        : "pending",
+  );
+  const [selectedPly, setSelectedPly] = useState<number[] | null>(
+    existingOverride?.selectedPlyCombination || null,
+  );
+  const [manualRolls, setManualRolls] = useState<RubberPlanManualRoll[]>(
+    existingOverride?.manualRolls || [],
+  );
+  const [saving, setSaving] = useState(false);
+
+  const handleAcceptPlan = async () => {
+    setSaving(true);
+    try {
+      const override: RubberPlanOverride = {
+        status: "accepted",
+        selectedPlyCombination: selectedPly,
+        manualRolls: null,
+        reviewedBy: null,
+        reviewedAt: null,
+      };
+      await stockControlApiClient.updateRubberPlan(jobCardId, override);
+      setPlanDecision("accepted");
+      onOverrideSaved(override);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRejectPlan = () => {
+    setPlanDecision("rejected");
+    if (manualRolls.length === 0) {
+      setManualRolls([{ widthMm: 1200, lengthM: 12.5, thicknessMm: 5, cuts: [] }]);
+    }
+  };
+
+  const handleSaveManual = async () => {
+    setSaving(true);
+    try {
+      const override: RubberPlanOverride = {
+        status: "manual",
+        selectedPlyCombination: null,
+        manualRolls,
+        reviewedBy: null,
+        reviewedAt: null,
+      };
+      await stockControlApiClient.updateRubberPlan(jobCardId, override);
+      onOverrideSaved(override);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    setPlanDecision("pending");
+    setSelectedPly(null);
+    setManualRolls([]);
+  };
+
   if (!stockOptions.rubberSpec && stockOptions.plyCombinations.length === 0) {
     return null;
   }
 
   return (
     <div className="mt-6 pt-6 border-t border-gray-200">
-      <h4 className="text-sm font-semibold text-gray-900 mb-3">Stock on Hand Match</h4>
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-semibold text-gray-900">Cutting Plan Review</h4>
+        {planDecision !== "pending" && (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="text-xs text-gray-500 hover:text-gray-700 underline"
+          >
+            Reset decisions
+          </button>
+        )}
+      </div>
 
       {stockOptions.rubberSpec && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
@@ -534,35 +773,59 @@ function RubberSOHPanel({
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
             Ply Combinations
           </p>
-          {stockOptions.plyCombinations.map((combo, idx) => (
-            <div key={idx} className="flex items-center gap-3 p-2 bg-white border rounded">
-              <div className="flex items-center gap-1">
-                {combo.thicknesses.map((t, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium"
+          {stockOptions.plyCombinations.map((combo, idx) => {
+            const isSelected =
+              selectedPly !== null &&
+              combo.thicknesses.length === selectedPly.length &&
+              combo.thicknesses.every((t, i) => t === selectedPly[i]);
+
+            return (
+              <div
+                key={idx}
+                className={`flex items-center gap-3 p-2 border rounded ${isSelected ? "border-green-500 bg-green-50" : "bg-white"}`}
+              >
+                <div className="flex items-center gap-1">
+                  {combo.thicknesses.map((t, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium"
+                    >
+                      {t}mm
+                    </span>
+                  ))}
+                </div>
+                <StockAvailabilityBadge
+                  status={
+                    combo.allInStock
+                      ? "in_stock"
+                      : combo.partiallyInStock
+                        ? "partial"
+                        : "out_of_stock"
+                  }
+                />
+                {idx === 0 && !isSelected && (
+                  <span className="text-xs text-gray-400 italic">recommended</span>
+                )}
+                {isSelected && (
+                  <span className="text-xs text-green-700 font-medium">Selected</span>
+                )}
+                {planDecision !== "rejected" && !isSelected && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPly(combo.thicknesses)}
+                    className="ml-auto text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
                   >
-                    {t}mm
-                  </span>
-                ))}
+                    Select
+                  </button>
+                )}
               </div>
-              <StockAvailabilityBadge
-                status={
-                  combo.allInStock
-                    ? "in_stock"
-                    : combo.partiallyInStock
-                      ? "partial"
-                      : "out_of_stock"
-                }
-              />
-              {idx === 0 && <span className="text-xs text-gray-400 italic">recommended</span>}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {plan.isMultiPly && plan.plies.length > 1 && (
-        <div className="space-y-2">
+        <div className="space-y-2 mb-4">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
             Per Ply Breakdown
           </p>
@@ -595,6 +858,60 @@ function RubberSOHPanel({
         </div>
       )}
 
+      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-4">
+        <span className="text-sm font-medium text-gray-700">Auto-generated cutting plan:</span>
+        <div className="flex items-center gap-2 ml-auto">
+          {planDecision === "accepted" ? (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              Accepted
+            </span>
+          ) : planDecision === "rejected" ? (
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+              Overridden
+            </span>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleAcceptPlan}
+                disabled={saving}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Accept Plan"}
+              </button>
+              <button
+                type="button"
+                onClick={handleRejectPlan}
+                disabled={saving}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                Override
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {planDecision === "rejected" && (
+        <div className="border-2 border-amber-300 rounded-lg p-4 bg-amber-50">
+          <h5 className="text-sm font-semibold text-amber-900 mb-3">Manual Roll Specification</h5>
+          <p className="text-xs text-amber-700 mb-4">
+            Specify your own roll sizes and cutting instructions below.
+          </p>
+          <ManualRollInput rolls={manualRolls} onChange={setManualRolls} />
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={handleSaveManual}
+              disabled={saving || manualRolls.length === 0}
+              className="px-4 py-2 rounded text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Manual Plan"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {stockOptions.stockItems.length > 0 && (
         <details className="mt-4">
           <summary className="text-xs font-medium text-gray-500 cursor-pointer hover:text-gray-700">
@@ -620,8 +937,9 @@ function RubberSOHPanel({
   );
 }
 
-function RubberAllocationSection({ lineItems, jobCardId }: RubberAllocationProps) {
+function RubberAllocationSection({ lineItems, jobCardId, rubberPlanOverride }: RubberAllocationProps) {
   const [stockOptions, setStockOptions] = useState<RubberStockOptionsResponse | null>(null);
+  const [override, setOverride] = useState<RubberPlanOverride | null>(rubberPlanOverride);
 
   useEffect(() => {
     stockControlApiClient
@@ -668,8 +986,8 @@ function RubberAllocationSection({ lineItems, jobCardId }: RubberAllocationProps
         <h3 className="text-lg leading-6 font-medium text-gray-900">Rubber Allocation</h3>
         {plan.hasPipeItems && (
           <p className="mt-1 text-sm text-gray-500">
-            Pipe dimensions detected. Rubber width calculated from pipe ID (circumference) +50mm
-            bevel. Roll widths: 800-1450mm (50mm increments). Lengths: 8-12.5m (0.5m increments).
+            Internal lining uses ID circumference; pulleys/drums/rollers use OD circumference.
+            +50mm bevel allowance on all cuts. Roll widths: 800-1450mm. Lengths: up to 12.5m.
           </p>
         )}
       </div>
@@ -689,7 +1007,15 @@ function RubberAllocationSection({ lineItems, jobCardId }: RubberAllocationProps
           </div>
         )}
 
-        {stockOptions && <RubberSOHPanel stockOptions={stockOptions} plan={plan} />}
+        {stockOptions && (
+          <RubberSOHPanel
+            stockOptions={stockOptions}
+            plan={plan}
+            existingOverride={override}
+            jobCardId={jobCardId}
+            onOverrideSaved={setOverride}
+          />
+        )}
       </div>
     </div>
   );
@@ -1757,7 +2083,7 @@ export default function JobCardDetailPage() {
         const validItems = jobCard.lineItems ? jobCard.lineItems.filter(isValidLineItem) : [];
         const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
         return hasM2Items ? (
-          <RubberAllocationSection lineItems={validItems} jobCardId={jobCard.id} />
+          <RubberAllocationSection lineItems={validItems} jobCardId={jobCard.id} rubberPlanOverride={jobCard.rubberPlanOverride ?? null} />
         ) : null;
       })()}
 
