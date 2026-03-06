@@ -240,7 +240,8 @@ export default function InventoryPage() {
         const locationGroups: LocationGroup[] = Object.entries(byLocation)
           .map(([key, items]) => {
             const locationId = key === "null" ? null : Number(key);
-            const locationName = locationId != null ? (locMap.get(locationId) || "Unknown") : "No Location Assigned";
+            const locationName =
+              locationId != null ? locMap.get(locationId) || "Unknown" : "No Location Assigned";
             const sortedItems = [...items].sort((a, b) => {
               const catCmp = (a.category || "").localeCompare(b.category || "");
               if (catCmp !== 0) return catCmp;
@@ -1296,10 +1297,7 @@ export default function InventoryPage() {
             {groupedData.length} location{groupedData.length !== 1 ? "s" : ""}, {total} items total
           </span>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={expandAllGroups}
-              className="text-sm text-teal-600 hover:text-teal-800"
-            >
+            <button onClick={expandAllGroups} className="text-sm text-teal-600 hover:text-teal-800">
               Expand All
             </button>
             <span className="text-gray-400">|</span>
@@ -1335,7 +1333,10 @@ export default function InventoryPage() {
             </div>
           ) : (
             groupedData.map((group) => (
-              <div key={group.locationId ?? "no-location"} className="bg-white shadow rounded-lg overflow-x-auto">
+              <div
+                key={group.locationId ?? "no-location"}
+                className="bg-white shadow rounded-lg overflow-x-auto"
+              >
                 <button
                   onClick={() => toggleGroupExpanded(group.locationId)}
                   className={`w-full px-6 py-4 flex items-center justify-between transition-colors ${
@@ -1358,14 +1359,20 @@ export default function InventoryPage() {
                         d="M9 5l7 7-7 7"
                       />
                     </svg>
-                    <span className={`font-semibold ${group.locationId === null ? "text-amber-800" : "text-gray-900"}`}>
+                    <span
+                      className={`font-semibold ${group.locationId === null ? "text-amber-800" : "text-gray-900"}`}
+                    >
                       {group.locationName}
                     </span>
-                    <span className={`text-sm ${group.locationId === null ? "text-amber-600" : "text-gray-500"}`}>
+                    <span
+                      className={`text-sm ${group.locationId === null ? "text-amber-600" : "text-gray-500"}`}
+                    >
                       ({group.items.length} item{group.items.length !== 1 ? "s" : ""})
                     </span>
                   </div>
-                  <span className={`text-sm ${group.locationId === null ? "text-amber-700" : "text-gray-600"}`}>
+                  <span
+                    className={`text-sm ${group.locationId === null ? "text-amber-700" : "text-gray-600"}`}
+                  >
                     {formatZAR(group.items.reduce((sum, i) => sum + i.costPerUnit * i.quantity, 0))}
                   </span>
                 </button>
