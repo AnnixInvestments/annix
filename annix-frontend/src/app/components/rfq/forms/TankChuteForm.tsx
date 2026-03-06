@@ -188,8 +188,7 @@ export default function TankChuteForm({
     "bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 dark:bg-amber-900/20 dark:border-amber-700";
 
   return (
-    <>
-      <SplitPaneLayout
+    <SplitPaneLayout
         entryId={entry.id}
         itemType="tank_chute"
         showSplitToggle={true}
@@ -882,6 +881,5 @@ export default function TankChuteForm({
           </div>
         }
       />
-    </>
   );
 }
