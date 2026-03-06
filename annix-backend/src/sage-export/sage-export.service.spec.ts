@@ -121,7 +121,13 @@ describe("SageExportService", () => {
     it("should handle null unitPrice as 0.00", () => {
       const inv = invoice({
         lineItems: [
-          { description: "Unknown", quantity: 1, unitPrice: null, vatRate: 15, accountCode: "5000" },
+          {
+            description: "Unknown",
+            quantity: 1,
+            unitPrice: null,
+            vatRate: 15,
+            accountCode: "5000",
+          },
         ],
       });
       const rows = parseCsv(service.generateCsv([inv]));
@@ -141,7 +147,13 @@ describe("SageExportService", () => {
       const inv = invoice({
         supplierName: "Smith, Jones & Co",
         lineItems: [
-          { description: "Pipe, 50NB", quantity: 1, unitPrice: 100, vatRate: 15, accountCode: "5000" },
+          {
+            description: "Pipe, 50NB",
+            quantity: 1,
+            unitPrice: 100,
+            vatRate: 15,
+            accountCode: "5000",
+          },
         ],
       });
       const rows = parseCsv(service.generateCsv([inv]));

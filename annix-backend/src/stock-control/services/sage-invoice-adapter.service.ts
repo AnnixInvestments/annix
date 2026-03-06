@@ -3,7 +3,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import type { SageExportFilterDto } from "../../sage-export/dto/sage-export.dto";
-import type { SageExportInvoice, SageExportLineItem } from "../../sage-export/interfaces/sage-invoice";
+import type {
+  SageExportInvoice,
+  SageExportLineItem,
+} from "../../sage-export/interfaces/sage-invoice";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 
 const DEFAULT_VAT_RATE = 15;
@@ -60,7 +63,10 @@ export class SageInvoiceAdapterService {
     );
   }
 
-  async previewCount(companyId: number, filters: SageExportFilterDto): Promise<{
+  async previewCount(
+    companyId: number,
+    filters: SageExportFilterDto,
+  ): Promise<{
     invoiceCount: number;
     lineItemCount: number;
     totalAmount: number;

@@ -2416,7 +2416,8 @@ class StockControlApiClient {
     const query = new URLSearchParams();
     if (params.dateFrom) query.set("dateFrom", params.dateFrom);
     if (params.dateTo) query.set("dateTo", params.dateTo);
-    if (params.excludeExported !== undefined) query.set("excludeExported", String(params.excludeExported));
+    if (params.excludeExported !== undefined)
+      query.set("excludeExported", String(params.excludeExported));
     return this.request(`/stock-control/invoices/export/sage-preview?${query.toString()}`);
   }
 
@@ -2428,7 +2429,8 @@ class StockControlApiClient {
     const query = new URLSearchParams();
     if (params.dateFrom) query.set("dateFrom", params.dateFrom);
     if (params.dateTo) query.set("dateTo", params.dateTo);
-    if (params.excludeExported !== undefined) query.set("excludeExported", String(params.excludeExported));
+    if (params.excludeExported !== undefined)
+      query.set("excludeExported", String(params.excludeExported));
     const url = `${this.baseURL}/stock-control/invoices/export/sage-csv?${query.toString()}`;
     const response = await fetch(url, { headers: this.headers() });
     if (!response.ok) {

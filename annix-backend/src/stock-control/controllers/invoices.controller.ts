@@ -59,8 +59,15 @@ export class InvoicesController {
   @StockControlRoles("manager", "admin")
   @Get("export/sage-csv")
   @ApiOperation({ summary: "Download approved invoices as Sage CSV" })
-  async sageExportCsv(@Req() req: any, @Query() filters: SageExportFilterDto, @Res() res: Response) {
-    const { invoices, invoiceIds } = await this.sageAdapter.exportableInvoices(req.user.companyId, filters);
+  async sageExportCsv(
+    @Req() req: any,
+    @Query() filters: SageExportFilterDto,
+    @Res() res: Response,
+  ) {
+    const { invoices, invoiceIds } = await this.sageAdapter.exportableInvoices(
+      req.user.companyId,
+      filters,
+    );
     const csv = this.sageExportService.generateCsv(invoices);
     await this.sageAdapter.markExported(req.user.companyId, invoiceIds);
 

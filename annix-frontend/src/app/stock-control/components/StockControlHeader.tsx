@@ -260,12 +260,11 @@ export function StockControlHeader({
                 >
                   <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
                   {item.label}
-                  {item.href === "/stock-control/portal/notifications" &&
-                    notificationCount > 0 && (
-                      <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
-                        {notificationCount > 9 ? "9+" : notificationCount}
-                      </span>
-                    )}
+                  {item.href === "/stock-control/portal/notifications" && notificationCount > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                      {notificationCount > 9 ? "9+" : notificationCount}
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>
