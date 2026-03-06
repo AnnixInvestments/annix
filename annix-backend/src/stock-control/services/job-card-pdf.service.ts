@@ -96,6 +96,7 @@ export class JobCardPdfService {
 
       let currentY = 280;
       currentY = this.drawLineItems(doc, jobCard, currentY);
+      currentY = this.drawRubberAllocation(doc, jobCard, currentY);
       currentY = this.drawCoatingSpecification(doc, coatingAnalysis, currentY);
       currentY = this.drawAllocations(doc, jobCard, currentY);
       this.drawSignatureBoxes(doc, approvals);
@@ -305,6 +306,76 @@ export class JobCardPdfService {
     return y + 10;
   }
 
+  private drawRubberAllocation(doc: typeof PDFDocument, jobCard: JobCard, startY: number): number {
+    const allText = [
+      jobCard.notes || "",
+      ...(jobCard.lineItems || []).map((li) => `${li.itemCode || ""} ${li.itemDescription || ""}`),
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    const isRubberJob =
+      allText.includes("rubber") ||
+      allText.includes("r/l") ||
+      allText.includes("lining") ||
+      allText.includes("liner") ||
+      allText.includes("lagging");
+
+    if (!isRubberJob) return startY;
+
+    const totalM2 = (jobCard.lineItems || []).reduce(
+      (sum, li) => sum + (li.m2 ? Number(li.m2) : 0),
+      0,
+    );
+
+    if (totalM2 <= 0) return startY;
+
+    const rollAreaM2 = 15.0;
+    const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
+    const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;
+    const lastRollPercent = Math.round((lastRollUsage / rollAreaM2) * 100);
+    const leftover = rollsNeeded * rollAreaM2 - totalM2;
+
+    doc
+      .moveTo(50, startY - 10)
+      .lineTo(545, startY - 10)
+      .stroke();
+
+    doc.fontSize(12).font("Helvetica-Bold").text("Rubber Allocation", 50, startY);
+
+    let y = startY + 15;
+    doc
+      .fontSize(8)
+      .font("Helvetica")
+      .text("Standard tank work rolls: 1200mm x 12.5m = 15.00 m² per roll", 50, y);
+
+    y += 15;
+    doc.fontSize(9).font("Helvetica-Bold");
+    doc.text(`Total Required: ${totalM2.toFixed(2)} m²`, 50, y);
+    doc.text(`Rolls Required: ${rollsNeeded}`, 200, y);
+    doc.text(`Last Roll Usage: ${lastRollPercent}%`, 320, y);
+    doc.text(`Leftover: ${leftover.toFixed(2)} m²`, 450, y);
+
+    y += 15;
+    const itemsWithM2 = (jobCard.lineItems || []).filter(
+      (li) => li.m2 !== null && Number(li.m2) > 0,
+    );
+    if (itemsWithM2.length > 0) {
+      doc.fontSize(8).font("Helvetica");
+      itemsWithM2.forEach((li) => {
+        const label = li.itemDescription
+          ? `${li.itemCode || ""} - ${li.itemDescription}`
+          : li.itemCode || "-";
+        const qty = li.quantity ? `× ${li.quantity}` : "";
+        doc.text(`${label} ${qty}`.trim(), 60, y, { width: 380 });
+        doc.text(`${Number(li.m2).toFixed(2)} m²`, 450, y);
+        y += 12;
+      });
+    }
+
+    return y + 10;
+  }
+
   private drawAllocations(doc: typeof PDFDocument, jobCard: JobCard, startY: number): number {
     if (!jobCard.allocations || jobCard.allocations.length === 0) {
       return startY;
@@ -458,8 +529,10 @@ export class JobCardPdfService {
         const isMultiLine = code.includes("\n");
         const looksLikeLabel = /^[A-Za-z\s]+$/.test(code) && code.length < 30;
         const isLongTextNote = code.length > 60;
+        const isRubberSpecNote =
+          /^r\/l\b/i.test(code) || /rubber\s+(lining|sheet|lagging)/i.test(code);
 
-        if (isMultiLine || isLongTextNote) {
+        if (isMultiLine || isLongTextNote || isRubberSpecNote) {
           noteItems.push(item);
           return;
         }

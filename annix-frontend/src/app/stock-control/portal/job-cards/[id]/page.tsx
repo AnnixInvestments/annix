@@ -97,7 +97,9 @@ function isValidLineItem(li: {
   if (hasNoData && itemCode) {
     const looksLikeLabel = /^[A-Za-z\s]+$/.test(itemCode) && itemCode.length < 30;
     const isLongTextNote = itemCode.length > 60;
-    if (looksLikeLabel || isLongTextNote) {
+    const isRubberSpecNote =
+      /^r\/l\b/i.test(itemCode) || /rubber\s+(lining|sheet|lagging)/i.test(itemCode);
+    if (looksLikeLabel || isLongTextNote || isRubberSpecNote) {
       return false;
     }
   }
@@ -1115,7 +1117,11 @@ export default function JobCardDetailPage() {
                     !li.itemNo &&
                     !li.jtNo &&
                     (li.quantity === null || Number.isNaN(li.quantity));
-                  return hasNoData && code && code.length > 60;
+                  if (!hasNoData || !code) return false;
+                  const isLongTextNote = code.length > 60;
+                  const isRubberSpecNote =
+                    /^r\/l\b/i.test(code) || /rubber\s+(lining|sheet|lagging)/i.test(code);
+                  return isLongTextNote || isRubberSpecNote;
                 })
                 .map((li) => (li.itemCode || "").trim());
               const combinedNotes = [cleanedNotes, ...noteLineItems].filter(Boolean).join("\n\n");
