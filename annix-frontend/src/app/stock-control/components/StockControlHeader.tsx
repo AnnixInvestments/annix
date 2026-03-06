@@ -77,8 +77,8 @@ export function StockControlHeader({
         className="flex flex-col shadow-md pt-[env(safe-area-inset-top)]"
         style={{ backgroundColor: colors.background }}
       >
-        <div className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6">
-          <div className="flex items-center">
+        <div className="h-14 sm:h-16 flex items-center px-3 sm:px-6">
+          <div className="flex items-center shrink-0">
             {showMenuButton && (
               <button
                 onClick={onMenuToggle}
@@ -109,7 +109,33 @@ export function StockControlHeader({
             </span>
           </div>
 
-          <div className="flex items-center space-x-1 sm:space-x-3">
+          {!showMenuButton && (
+            <nav className="hidden sm:flex items-center mx-4 overflow-x-auto scrollbar-hide">
+              <div className="flex items-center gap-1">
+                {visibleNavItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
+                      isActive(item.href)
+                        ? "bg-black/20 text-white"
+                        : "text-white/70 hover:bg-black/10 hover:text-white"
+                    }`}
+                  >
+                    <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
+                    {item.label}
+                    {item.href === "/stock-control/portal/notifications" && notificationCount > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                        {notificationCount > 9 ? "9+" : notificationCount}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </nav>
+          )}
+
+          <div className="flex items-center space-x-1 sm:space-x-3 ml-auto shrink-0">
             <div className="hidden sm:block">
               <div className="relative">
                 <svg
@@ -245,31 +271,6 @@ export function StockControlHeader({
           </div>
         </div>
 
-        {!showMenuButton && (
-          <nav className="hidden sm:block overflow-x-auto scrollbar-hide">
-            <div className="flex items-center px-4 gap-1 pb-2">
-              {visibleNavItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
-                    isActive(item.href)
-                      ? "bg-black/20 text-white"
-                      : "text-white/70 hover:bg-black/10 hover:text-white"
-                  }`}
-                >
-                  <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
-                  {item.label}
-                  {item.href === "/stock-control/portal/notifications" && notificationCount > 0 && (
-                    <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
-                      {notificationCount > 9 ? "9+" : notificationCount}
-                    </span>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </nav>
-        )}
       </header>
 
       <RbacConfigPanel isOpen={rbacPanelOpen} onClose={() => setRbacPanelOpen(false)} />
