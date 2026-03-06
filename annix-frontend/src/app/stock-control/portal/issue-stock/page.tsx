@@ -127,7 +127,7 @@ export default function IssueStockPage() {
 
   const handleUpdateQuantity = (index: number, quantity: number) => {
     const newItems = [...items];
-    newItems[index] = { ...newItems[index], quantity: Math.max(1, quantity) };
+    newItems[index] = { ...newItems[index], quantity };
     setItems(newItems);
   };
 
@@ -563,7 +563,7 @@ export default function IssueStockPage() {
                             max={item.stockItem.quantity}
                             value={item.quantity}
                             onChange={(e) =>
-                              handleUpdateQuantity(index, parseInt(e.target.value, 10) || 1)
+                              handleUpdateQuantity(index, parseInt(e.target.value, 10) || 0)
                             }
                             className={`w-16 text-center rounded-md border shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-1 ${
                               item.quantity > item.stockItem.quantity
