@@ -17,6 +17,7 @@ interface NavItem {
 
 interface NavSection {
   label: string;
+  icon: React.ReactNode;
   items: NavItem[];
 }
 
@@ -27,6 +28,16 @@ interface SingleNavItem extends NavItem {
 const navSections: NavSection[] = [
   {
     label: "Products",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+        />
+      </svg>
+    ),
     items: [
       {
         href: "/au-rubber/portal/products",
@@ -42,6 +53,16 @@ const navSections: NavSection[] = [
   },
   {
     label: "Suppliers",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+        />
+      </svg>
+    ),
     items: [
       {
         href: "/au-rubber/portal/delivery-notes/suppliers",
@@ -62,6 +83,16 @@ const navSections: NavSection[] = [
   },
   {
     label: "Customers",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+      </svg>
+    ),
     items: [
       {
         href: "/au-rubber/portal/delivery-notes/customers",
@@ -82,6 +113,16 @@ const navSections: NavSection[] = [
   },
   {
     label: "Documents",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+        />
+      </svg>
+    ),
     items: [
       {
         href: "/au-rubber/portal/quality-tracking",
@@ -97,6 +138,16 @@ const navSections: NavSection[] = [
   },
   {
     label: "Stock",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+        />
+      </svg>
+    ),
     items: [
       {
         href: "/au-rubber/portal/compound-stocks",
@@ -137,6 +188,16 @@ const navSections: NavSection[] = [
   },
   {
     label: "Prices",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+        />
+      </svg>
+    ),
     items: [
       {
         href: "/au-rubber/portal/pricing-tiers",
@@ -304,12 +365,12 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
         <span className="ml-2 text-white text-base font-medium hidden sm:inline">Rubber App</span>
       </div>
 
-      <nav className="flex items-center gap-1 ml-4 overflow-x-auto scrollbar-hide">
+      <nav className="flex items-center flex-1 ml-4">
         {filteredSingleNavItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
               isActive(item.href)
                 ? "bg-black/20 text-white"
                 : "text-white/70 hover:bg-black/10 hover:text-white"
@@ -323,19 +384,20 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
         {filteredNavSections.map((section) => (
           <div
             key={section.label}
-            className="relative"
+            className="relative flex-1"
             onMouseEnter={() => handleSectionEnter(section.label)}
             onMouseLeave={handleSectionLeave}
           >
             <button
-              className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
+              className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                 isSectionActive(section) || hoveredSection === section.label
                   ? "bg-black/20 text-white"
                   : "text-white/70 hover:bg-black/10 hover:text-white"
               }`}
             >
+              <span className="[&>svg]:w-4 [&>svg]:h-4">{section.icon}</span>
               {section.label}
-              <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
