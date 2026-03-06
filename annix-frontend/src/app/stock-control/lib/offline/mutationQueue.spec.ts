@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./stores", () => ({
   offlinePendingActions: {
@@ -11,16 +11,16 @@ vi.mock("./stores", () => ({
   },
 }));
 
-import { offlinePendingActions } from "./stores";
 import {
   addMutationQueueListener,
-  pendingMutations,
   pendingMutationCount,
+  pendingMutations,
+  processMutation,
   removeMutation,
   retryMutation,
-  processMutation,
 } from "./mutationQueue";
 import type { PendingAction } from "./stores";
+import { offlinePendingActions } from "./stores";
 
 const mockStore = vi.mocked(offlinePendingActions);
 

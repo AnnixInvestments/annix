@@ -53,8 +53,7 @@ describe("RubberQualityTrackingService", () => {
   });
 
   describe("calculateMetricStats", () => {
-    const calculate = (values: (number | null)[]) =>
-      (service as any).calculateMetricStats(values);
+    const calculate = (values: (number | null)[]) => (service as any).calculateMetricStats(values);
 
     it("should return null when fewer than 2 valid values", () => {
       expect(calculate([5])).toBeNull();
@@ -71,7 +70,7 @@ describe("RubberQualityTrackingService", () => {
 
     it("should calculate standard deviation (population) correctly", () => {
       const result = calculate([10, 20, 30]);
-      const expectedStdDev = Math.sqrt(((100 + 0 + 100) / 3));
+      const expectedStdDev = Math.sqrt((100 + 0 + 100) / 3);
 
       expect(result.stdDev).toBeCloseTo(expectedStdDev, 1);
     });
@@ -161,8 +160,7 @@ describe("RubberQualityTrackingService", () => {
   });
 
   describe("determineCompoundStatus", () => {
-    const status = (alertCount: number) =>
-      (service as any).determineCompoundStatus(alertCount);
+    const status = (alertCount: number) => (service as any).determineCompoundStatus(alertCount);
 
     it("should return normal when no alerts", () => {
       expect(status(0)).toBe("normal");
