@@ -93,6 +93,21 @@ export class JobCardsController {
     return this.coatingAnalysisService.analyseJobCard(id, req.user.companyId);
   }
 
+  @Put(":id/coating-analysis/surface-area")
+  @ApiOperation({ summary: "Update surface area for coating analysis" })
+  async updateSurfaceArea(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: { extM2: number; intM2: number },
+  ) {
+    return this.coatingAnalysisService.updateSurfaceArea(
+      req.user.companyId,
+      id,
+      body.extM2,
+      body.intM2,
+    );
+  }
+
   @Post(":id/allocate")
   @ApiOperation({ summary: "Allocate stock to a job card" })
   async allocateStock(@Param("id") id: number, @Body() body: any, @Req() req: any) {

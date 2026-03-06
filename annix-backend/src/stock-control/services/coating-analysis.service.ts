@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
@@ -189,6 +189,35 @@ export class CoatingAnalysisService {
     return this.analysisRepo.findOne({
       where: { jobCardId, companyId },
     });
+  }
+
+  async updateSurfaceArea(
+    companyId: number,
+    jobCardId: number,
+    extM2: number,
+    intM2: number,
+  ): Promise<JobCardCoatingAnalysis> {
+    const analysis = await this.analysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
+    if (!analysis) {
+      throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
+    }
+
+    analysis.extM2 = extM2;
+    analysis.intM2 = intM2;
+
+    const coats = (analysis.coats || []).map((coat) => {
+      const m2ForCoat = coat.area === "internal" ? intM2 : extM2;
+      return this.calculateCoatVolume(coat, m2ForCoat);
+    });
+    analysis.coats = coats;
+
+    const stockAssessment = await this.assessStock(coats, companyId);
+    analysis.stockAssessment = stockAssessment;
+
+    return this.analysisRepo.save(analysis);
   }
 
   private sumPaintM2(lineItems: JobCardLineItem[]): number {

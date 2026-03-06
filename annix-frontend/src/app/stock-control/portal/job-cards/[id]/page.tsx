@@ -27,6 +27,72 @@ import {
   type RollAllocation,
 } from "@/app/stock-control/lib/rubberCuttingCalculator";
 
+function EditableM2Field({
+  label,
+  value,
+  onSave,
+}: {
+  label: string;
+  value: number;
+  onSave: (val: number) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [inputVal, setInputVal] = useState(String(value || 0));
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const parsed = parseFloat(inputVal);
+    if (Number.isNaN(parsed) || parsed < 0) return;
+    try {
+      setSaving(true);
+      await onSave(parsed);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div>
+        <span className="font-medium text-gray-500">{label}: </span>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          className="w-20 px-1 py-0.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSave();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          onBlur={handleSave}
+          disabled={saving}
+          autoFocus
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <span className="font-medium text-gray-500">{label}: </span>
+      <button
+        type="button"
+        className="text-gray-900 hover:text-teal-600 hover:underline cursor-pointer"
+        onClick={() => {
+          setInputVal(String(value || 0));
+          setEditing(true);
+        }}
+        title="Click to edit"
+      >
+        {value > 0 ? Number(value).toFixed(2) : "0.00"}
+      </button>
+    </div>
+  );
+}
+
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
     draft: "bg-gray-100 text-gray-800",
@@ -1169,22 +1235,30 @@ export default function JobCardDetailPage() {
                       </span>
                     </div>
                   )}
-                  {coatingAnalysis.extM2 > 0 && (
-                    <div>
-                      <span className="font-medium text-gray-500">Ext m&#178;: </span>
-                      <span className="text-gray-900">
-                        {Number(coatingAnalysis.extM2).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-                  {coatingAnalysis.intM2 > 0 && (
-                    <div>
-                      <span className="font-medium text-gray-500">Int m&#178;: </span>
-                      <span className="text-gray-900">
-                        {Number(coatingAnalysis.intM2).toFixed(2)}
-                      </span>
-                    </div>
-                  )}
+                  <EditableM2Field
+                    label="Ext m²"
+                    value={coatingAnalysis.extM2}
+                    onSave={async (val) => {
+                      const updated = await stockControlApiClient.updateCoatingSurfaceArea(
+                        jobId,
+                        val,
+                        coatingAnalysis.intM2,
+                      );
+                      setCoatingAnalysis(updated);
+                    }}
+                  />
+                  <EditableM2Field
+                    label="Int m²"
+                    value={coatingAnalysis.intM2}
+                    onSave={async (val) => {
+                      const updated = await stockControlApiClient.updateCoatingSurfaceArea(
+                        jobId,
+                        coatingAnalysis.extM2,
+                        val,
+                      );
+                      setCoatingAnalysis(updated);
+                    }}
+                  />
                 </div>
                 <table className="min-w-full text-sm">
                   <thead>

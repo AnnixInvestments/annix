@@ -13,6 +13,7 @@ import {
   WorkflowStep,
 } from "../entities/job-card-approval.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { calculateCuttingPlan, type RollAllocation } from "../lib/rubberCuttingCalculator";
 
 @Injectable()
 export class JobCardPdfService {
@@ -327,18 +328,24 @@ export class JobCardPdfService {
 
     if (!isRubberJob) return startY;
 
+    const { filteredItems } = this.partitionLineItems(jobCard.lineItems);
+    const plan = calculateCuttingPlan(
+      filteredItems.map((li) => ({
+        id: li.id,
+        itemCode: li.itemCode,
+        itemDescription: li.itemDescription,
+        itemNo: li.itemNo,
+        quantity: li.quantity,
+        m2: li.m2,
+      })),
+    );
+
     const totalM2 = (jobCard.lineItems || []).reduce(
       (sum, li) => sum + (li.m2 ? Number(li.m2) : 0),
       0,
     );
 
-    if (totalM2 <= 0) return startY;
-
-    const rollAreaM2 = 15.0;
-    const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
-    const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;
-    const lastRollPercent = Math.round((lastRollUsage / rollAreaM2) * 100);
-    const leftover = rollsNeeded * rollAreaM2 - totalM2;
+    if (totalM2 <= 0 && !plan.hasPipeItems) return startY;
 
     doc
       .moveTo(50, startY - 10)
@@ -348,36 +355,193 @@ export class JobCardPdfService {
     doc.fontSize(12).font("Helvetica-Bold").text("Rubber Allocation", 50, startY);
 
     let y = startY + 15;
-    doc
-      .fontSize(8)
-      .font("Helvetica")
-      .text("Standard tank work rolls: 1200mm x 12.5m = 15.00 m² per roll", 50, y);
 
-    y += 15;
-    doc.fontSize(9).font("Helvetica-Bold");
-    doc.text(`Total Required: ${totalM2.toFixed(2)} m²`, 50, y);
-    doc.text(`Rolls Required: ${rollsNeeded}`, 200, y);
-    doc.text(`Last Roll Usage: ${lastRollPercent}%`, 320, y);
-    doc.text(`Leftover: ${leftover.toFixed(2)} m²`, 450, y);
+    if (plan.hasPipeItems) {
+      doc.fontSize(9).font("Helvetica-Bold");
+      doc.text(`Rolls Required: ${plan.totalRollsNeeded}`, 50, y);
+      doc.text(`Used: ${plan.totalUsedSqM.toFixed(2)} m²`, 200, y);
+      doc.text(`Waste: ${plan.totalWasteSqM.toFixed(2)} m² (${plan.wastePercentage.toFixed(1)}%)`, 340, y);
+      y += 15;
 
-    y += 15;
-    const itemsWithM2 = (jobCard.lineItems || []).filter(
-      (li) => li.m2 !== null && Number(li.m2) > 0,
-    );
-    if (itemsWithM2.length > 0) {
-      doc.fontSize(8).font("Helvetica");
-      itemsWithM2.forEach((li) => {
-        const label = li.itemDescription
-          ? `${li.itemCode || ""} - ${li.itemDescription}`
-          : li.itemCode || "-";
-        const qty = li.quantity ? `× ${li.quantity}` : "";
-        doc.text(`${label} ${qty}`.trim(), 60, y, { width: 380 });
-        doc.text(`${Number(li.m2).toFixed(2)} m²`, 450, y);
+      if (plan.genericM2Total > 0) {
+        doc.fontSize(8).font("Helvetica");
+        doc.text(`Plus generic m² items: ${plan.genericM2Total.toFixed(2)} m²`, 50, y);
         y += 12;
+      }
+
+      y += 5;
+
+      plan.rolls.forEach((roll) => {
+        const diagramHeight = this.cuttingDiagramHeight(roll);
+        const pageHeight = doc.page.height;
+        if (y + diagramHeight > pageHeight - 165) {
+          doc.addPage();
+          y = 50;
+        }
+        y = this.drawCuttingDiagramForRoll(doc, roll, y);
       });
+    } else {
+      const rollAreaM2 = 15.0;
+      const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
+      const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;
+      const lastRollPercent = Math.round((lastRollUsage / rollAreaM2) * 100);
+      const leftover = rollsNeeded * rollAreaM2 - totalM2;
+
+      doc
+        .fontSize(8)
+        .font("Helvetica")
+        .text("Standard tank work rolls: 1200mm x 12.5m = 15.00 m² per roll", 50, y);
+
+      y += 15;
+      doc.fontSize(9).font("Helvetica-Bold");
+      doc.text(`Total Required: ${totalM2.toFixed(2)} m²`, 50, y);
+      doc.text(`Rolls Required: ${rollsNeeded}`, 200, y);
+      doc.text(`Last Roll Usage: ${lastRollPercent}%`, 320, y);
+      doc.text(`Leftover: ${leftover.toFixed(2)} m²`, 450, y);
+
+      y += 15;
+      const itemsWithM2 = (jobCard.lineItems || []).filter(
+        (li) => li.m2 !== null && Number(li.m2) > 0,
+      );
+      if (itemsWithM2.length > 0) {
+        doc.fontSize(8).font("Helvetica");
+        itemsWithM2.forEach((li) => {
+          const label = li.itemDescription
+            ? `${li.itemCode || ""} - ${li.itemDescription}`
+            : li.itemCode || "-";
+          const qty = li.quantity ? `× ${li.quantity}` : "";
+          doc.text(`${label} ${qty}`.trim(), 60, y, { width: 380 });
+          doc.text(`${Number(li.m2).toFixed(2)} m²`, 450, y);
+          y += 12;
+        });
+      }
     }
 
     return y + 10;
+  }
+
+  private cuttingDiagramHeight(roll: RollAllocation): number {
+    const rollRectHeight = 60;
+    const headerHeight = 15;
+    const cutListHeight = roll.cuts.length * 10 + 5;
+    return headerHeight + rollRectHeight + cutListHeight + 15;
+  }
+
+  private drawCuttingDiagramForRoll(
+    doc: typeof PDFDocument,
+    roll: RollAllocation,
+    startY: number,
+  ): number {
+    const COLORS = [
+      "#3B82F6", "#14B8A6", "#8B5CF6", "#F97316",
+      "#EC4899", "#6366F1", "#06B6D4", "#10B981",
+    ];
+    const leftMargin = 50;
+    const diagramWidth = 495;
+    const rollRectHeight = 60;
+    const rollLengthMm = roll.rollSpec.lengthM * 1000;
+    const lanes = roll.rollSpec.lanes;
+    const laneHeight = rollRectHeight / lanes;
+    const scale = diagramWidth / rollLengthMm;
+
+    let y = startY;
+
+    doc.fontSize(8).font("Helvetica-Bold");
+    doc.text(
+      `Roll ${roll.rollIndex}: ${roll.rollSpec.widthMm}mm × ${roll.rollSpec.lengthM}m` +
+        (roll.hasLengthwiseCut ? ` (${lanes} lanes)` : "") +
+        ` — Waste: ${roll.wastePercentage.toFixed(1)}%`,
+      leftMargin,
+      y,
+    );
+    y += 14;
+
+    doc.save();
+    doc.rect(leftMargin, y, diagramWidth, rollRectHeight).lineWidth(0.5).stroke();
+
+    if (roll.hasLengthwiseCut) {
+      Array.from({ length: lanes - 1 }, (_, i) => i + 1).forEach((i) => {
+        const laneY = y + i * laneHeight;
+        doc
+          .save()
+          .dash(3, { space: 2 })
+          .moveTo(leftMargin, laneY)
+          .lineTo(leftMargin + diagramWidth, laneY)
+          .stroke()
+          .restore();
+      });
+    }
+
+    const colorMap = new Map<string, string>();
+    let colorIdx = 0;
+
+    roll.cuts.forEach((cut) => {
+      if (!colorMap.has(cut.itemId)) {
+        colorMap.set(cut.itemId, COLORS[colorIdx % COLORS.length]);
+        colorIdx++;
+      }
+
+      const color = colorMap.get(cut.itemId) || COLORS[0];
+      const cx = leftMargin + cut.positionMm * scale;
+      const cy = y + cut.lane * laneHeight;
+      const cw = cut.lengthMm * scale;
+      const ch = laneHeight;
+
+      doc.save();
+      doc.rect(cx + 0.5, cy + 0.5, Math.max(cw - 1, 1), Math.max(ch - 1, 1));
+      doc.fillColor(color).fillOpacity(0.6).fill();
+      doc.restore();
+
+      if (cw > 20) {
+        const label = cut.itemNo || cut.itemId;
+        doc
+          .save()
+          .fontSize(5)
+          .font("Helvetica-Bold")
+          .fillColor("#000000")
+          .fillOpacity(1)
+          .text(label, cx + 2, cy + ch / 2 - 3, {
+            width: cw - 4,
+            height: ch,
+            ellipsis: true,
+          })
+          .restore();
+      }
+    });
+
+    const maxUsed = Math.max(...roll.usedLengthMm);
+    if (maxUsed < rollLengthMm) {
+      const wasteX = leftMargin + maxUsed * scale;
+      const wasteW = (rollLengthMm - maxUsed) * scale;
+      doc.save();
+      doc.rect(wasteX, y, wasteW, rollRectHeight);
+      doc.fillColor("#D1D5DB").fillOpacity(0.4).fill();
+      doc.restore();
+    }
+
+    doc.restore();
+    y += rollRectHeight + 5;
+
+    doc.fontSize(6).font("Helvetica").fillColor("#000000").fillOpacity(1);
+    roll.cuts.forEach((cut) => {
+      const color = colorMap.get(cut.itemId) || COLORS[0];
+      doc.save();
+      doc.rect(leftMargin, y, 6, 6).fillColor(color).fillOpacity(0.6).fill();
+      doc.restore();
+
+      const label = cut.itemNo || cut.itemId;
+      const desc =
+        cut.description.length > 50 ? `${cut.description.substring(0, 50)}...` : cut.description;
+      doc
+        .fillColor("#000000")
+        .fillOpacity(1)
+        .text(`${label}: ${desc} — ${cut.lengthMm}mm × ${cut.widthMm}mm`, leftMargin + 10, y, {
+          width: diagramWidth - 10,
+        });
+      y += 10;
+    });
+
+    return y + 5;
   }
 
   private drawAllocations(doc: typeof PDFDocument, jobCard: JobCard, startY: number): number {
@@ -560,6 +724,7 @@ export class JobCardPdfService {
         width: 495,
       });
 
-    doc.text("Page 1 of 1", 50, pageHeight - 35, { align: "center", width: 495 });
+    const totalPages = doc.bufferedPageRange().count;
+    doc.text(`Page ${totalPages} of ${totalPages}`, 50, pageHeight - 35, { align: "center", width: 495 });
   }
 }
