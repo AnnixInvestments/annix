@@ -555,13 +555,13 @@ export class JobCardPdfService {
           );
           y += 14;
 
-          ply.rolls.forEach((roll) => {
-            const diagramHeight = this.cuttingDiagramHeight(roll);
+          this.groupIdenticalRolls(ply.rolls).forEach((group) => {
+            const diagramHeight = this.cuttingDiagramHeight(group.roll);
             if (y + diagramHeight > pageHeight - 165) {
               doc.addPage();
               y = 50;
             }
-            y = this.drawCuttingDiagramForRoll(doc, roll, y);
+            y = this.drawCuttingDiagramForRoll(doc, group.roll, y, group.count);
           });
         });
       } else {
@@ -580,14 +580,14 @@ export class JobCardPdfService {
           y += 12;
         }
 
-        plan.rolls.forEach((roll) => {
-          const diagramHeight = this.cuttingDiagramHeight(roll);
+        this.groupIdenticalRolls(plan.rolls).forEach((group) => {
+          const diagramHeight = this.cuttingDiagramHeight(group.roll);
           const pageHeight = doc.page.height;
           if (y + diagramHeight > pageHeight - 165) {
             doc.addPage();
             y = 50;
           }
-          y = this.drawCuttingDiagramForRoll(doc, roll, y);
+          y = this.drawCuttingDiagramForRoll(doc, group.roll, y, group.count);
         });
       }
     } else {
@@ -637,10 +637,35 @@ export class JobCardPdfService {
     return headerHeight + rollRectHeight + cutListHeight + 15;
   }
 
+  private groupIdenticalRolls(rolls: RollAllocation[]): { roll: RollAllocation; count: number }[] {
+    const groups: { roll: RollAllocation; count: number }[] = [];
+    const seen = new Map<string, number>();
+
+    rolls.forEach((roll) => {
+      const specKey = `${roll.rollSpec.widthMm}-${roll.rollSpec.lengthM}-${roll.rollSpec.lanes}`;
+      const cutsKey = roll.cuts
+        .map((c) => `${c.widthMm}:${c.lengthMm}:${c.lane}`)
+        .sort()
+        .join("|");
+      const key = `${specKey}/${cutsKey}`;
+      const existingIdx = seen.get(key);
+
+      if (existingIdx !== undefined) {
+        groups[existingIdx] = { ...groups[existingIdx], count: groups[existingIdx].count + 1 };
+      } else {
+        seen.set(key, groups.length);
+        groups.push({ roll, count: 1 });
+      }
+    });
+
+    return groups;
+  }
+
   private drawCuttingDiagramForRoll(
     doc: typeof PDFDocument,
     roll: RollAllocation,
     startY: number,
+    groupCount?: number,
   ): number {
     const COLORS = [
       "#3B82F6",
@@ -663,8 +688,12 @@ export class JobCardPdfService {
     let y = startY;
 
     doc.fontSize(8).font("Helvetica-Bold");
+    const rollLabel =
+      groupCount && groupCount > 1
+        ? `${roll.rollSpec.widthMm}mm × ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
+        : `Roll ${roll.rollIndex}: ${roll.rollSpec.widthMm}mm × ${roll.rollSpec.lengthM}m`;
     doc.text(
-      `Roll ${roll.rollIndex}: ${roll.rollSpec.widthMm}mm × ${roll.rollSpec.lengthM}m` +
+      rollLabel +
         (roll.hasLengthwiseCut ? ` (${lanes} lanes)` : "") +
         ` — Waste: ${roll.wastePercentage.toFixed(1)}%`,
       leftMargin,

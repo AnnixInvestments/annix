@@ -13,6 +13,7 @@ import {
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
+import { M2CalculationService } from "./m2-calculation.service";
 
 interface AiCoatResult {
   product: string;
@@ -79,6 +80,7 @@ export class CoatingAnalysisService {
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
     private readonly aiChatService: AiChatService,
+    private readonly m2CalculationService: M2CalculationService,
   ) {}
 
   async analyseJobCards(jobCardIds: number[], companyId: number): Promise<void> {
@@ -123,6 +125,17 @@ export class CoatingAnalysisService {
       });
 
       const paintM2 = this.sumPaintM2(lineItems);
+      let calculatedExtM2 = 0;
+      let calculatedIntM2 = 0;
+
+      if (paintM2 === 0) {
+        const calculated = await this.calculatePipeM2(lineItems);
+        calculatedExtM2 = calculated.extM2;
+        calculatedIntM2 = calculated.intM2;
+        this.logger.log(
+          `No paint line items for JC ${jobCardId}, calculated from pipe dims: ext=${calculatedExtM2.toFixed(2)}, int=${calculatedIntM2.toFixed(2)}`,
+        );
+      }
 
       const noteLineItems = lineItems
         .filter((li) => {
@@ -155,8 +168,14 @@ export class CoatingAnalysisService {
 
       const hasExt = aiResult.coats.some((c) => c.area === "external");
       const hasInt = aiResult.coats.some((c) => c.area === "internal");
-      analysis.extM2 = hasExt ? paintM2 : 0;
-      analysis.intM2 = hasInt ? paintM2 : 0;
+
+      if (paintM2 > 0) {
+        analysis.extM2 = hasExt ? paintM2 : 0;
+        analysis.intM2 = hasInt ? paintM2 : 0;
+      } else {
+        analysis.extM2 = hasExt ? calculatedExtM2 : 0;
+        analysis.intM2 = hasInt ? calculatedIntM2 : 0;
+      }
 
       const coats = aiResult.coats.map((coat) => {
         const m2ForCoat = coat.area === "internal" ? analysis.intM2 : analysis.extM2;
@@ -224,6 +243,33 @@ export class CoatingAnalysisService {
     return lineItems
       .filter((li) => li.itemCode && /paint/i.test(li.itemCode))
       .reduce((sum, li) => sum + (Number(li.m2) || 0), 0);
+  }
+
+  private async calculatePipeM2(
+    lineItems: JobCardLineItem[],
+  ): Promise<{ extM2: number; intM2: number }> {
+    const pipeItems = lineItems.filter((li) => {
+      const desc = li.itemDescription || li.itemCode || "";
+      return /\d+\s*NB/i.test(desc) && /\d+\s*LG/i.test(desc);
+    });
+
+    if (pipeItems.length === 0) {
+      return { extM2: 0, intM2: 0 };
+    }
+
+    const descriptions = pipeItems.map((li) => li.itemDescription || li.itemCode || "");
+    const results = await this.m2CalculationService.calculateM2ForItems(descriptions);
+
+    return pipeItems.reduce(
+      (totals, li, idx) => {
+        const result = results[idx];
+        const qty = Number(li.quantity) || 1;
+        const ext = (result.externalM2 || 0) * qty;
+        const int = (result.internalM2 || 0) * qty;
+        return { extM2: totals.extM2 + ext, intM2: totals.intM2 + int };
+      },
+      { extM2: 0, intM2: 0 },
+    );
   }
 
   private async extractCoatingSpec(notes: string): Promise<AiExtractionResult> {

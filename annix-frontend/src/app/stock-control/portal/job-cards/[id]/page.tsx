@@ -204,12 +204,47 @@ interface RubberAllocationProps {
   rubberPlanOverride: RubberPlanOverride | null;
 }
 
+function rollPatternKey(roll: RollAllocation): string {
+  const specKey = `${roll.rollSpec.widthMm}-${roll.rollSpec.lengthM}-${roll.rollSpec.lanes}`;
+  const cutsKey = roll.cuts
+    .map((c) => `${c.widthMm}:${c.lengthMm}:${c.lane}`)
+    .sort()
+    .join("|");
+  return `${specKey}/${cutsKey}`;
+}
+
+interface RollGroup {
+  representativeRoll: RollAllocation;
+  count: number;
+}
+
+function groupIdenticalRolls(rolls: RollAllocation[]): RollGroup[] {
+  const groups: RollGroup[] = [];
+  const seen = new Map<string, number>();
+
+  rolls.forEach((roll) => {
+    const key = rollPatternKey(roll);
+    const existingIdx = seen.get(key);
+
+    if (existingIdx !== undefined) {
+      groups[existingIdx] = { ...groups[existingIdx], count: groups[existingIdx].count + 1 };
+    } else {
+      seen.set(key, groups.length);
+      groups.push({ representativeRoll: roll, count: 1 });
+    }
+  });
+
+  return groups;
+}
+
 function CuttingDiagram({
   roll,
   colorMap,
+  groupCount,
 }: {
   roll: RollAllocation;
   colorMap: Map<string, string>;
+  groupCount?: number;
 }) {
   const rollLengthMm = roll.rollSpec.lengthM * 1000;
   const lanes = roll.rollSpec.lanes;
@@ -225,12 +260,17 @@ function CuttingDiagram({
     cutsByLane.set(cut.lane, laneCuts);
   }
 
+  const isFullRoll = lanes === 1;
+  const pieceLabel = isFullRoll ? "rolls" : "strips";
+
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-3 mb-3">
       <div className="flex items-center justify-between mb-2">
         <div>
           <span className="text-sm font-semibold text-gray-900">
-            Roll {roll.rollIndex}: {roll.rollSpec.widthMm}mm x {roll.rollSpec.lengthM}m
+            {groupCount && groupCount > 1
+              ? `${roll.rollSpec.widthMm}mm x ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
+              : `Roll ${roll.rollIndex}: ${roll.rollSpec.widthMm}mm x ${roll.rollSpec.lengthM}m`}
           </span>
           {roll.hasLengthwiseCut && (
             <span className="ml-2 text-xs text-amber-600 font-medium">
@@ -293,7 +333,7 @@ function CuttingDiagram({
                       top: `${laneTop}%`,
                       height: `${laneHeight}%`,
                     }}
-                    title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m${strips > 1 ? ` (${strips} strips)` : ""}`}
+                    title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m${strips > 1 ? ` (${strips} ${pieceLabel})` : ""}`}
                   >
                     <span className="text-[10px] text-white font-bold truncate px-1">
                       {displayLabel}
@@ -355,7 +395,7 @@ function CuttingDiagram({
                   <>
                     <span className="text-gray-400 flex-shrink-0">|</span>
                     <span className="text-orange-600 font-medium flex-shrink-0">
-                      {(cut as { stripsPerPiece?: number }).stripsPerPiece} strips
+                      {(cut as { stripsPerPiece?: number }).stripsPerPiece} {pieceLabel}
                     </span>
                   </>
                 )}
@@ -413,8 +453,13 @@ function PipeCuttingView({ plan }: { plan: CuttingPlan }) {
         <p className="text-xs text-gray-500 mb-3">
           Each colored section represents a pipe piece. Cut marks show where to cut the roll.
         </p>
-        {plan.rolls.map((roll) => (
-          <CuttingDiagram key={roll.rollIndex} roll={roll} colorMap={colorMap} />
+        {groupIdenticalRolls(plan.rolls).map((group) => (
+          <CuttingDiagram
+            key={group.representativeRoll.rollIndex}
+            roll={group.representativeRoll}
+            colorMap={colorMap}
+            groupCount={group.count}
+          />
         ))}
       </div>
     </div>
