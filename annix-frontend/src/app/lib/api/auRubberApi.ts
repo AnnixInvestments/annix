@@ -105,6 +105,7 @@ export interface RubberTaxInvoiceDto {
   extractedData: ExtractedTaxInvoiceData | null;
   totalAmount: number | null;
   vatAmount: number | null;
+  exportedToSageAt: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -2830,6 +2831,40 @@ class AuRubberApiClient {
       invoiceNumber: data.invoiceNumber,
       invoiceDate: data.invoiceDate,
     });
+  }
+
+  async sageExportPreview(params: {
+    dateFrom?: string;
+    dateTo?: string;
+    excludeExported?: boolean;
+  }): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
+    const query = new URLSearchParams();
+    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params.dateTo) query.set("dateTo", params.dateTo);
+    if (params.excludeExported !== undefined) {
+      query.set("excludeExported", String(params.excludeExported));
+    }
+    return this.request(`/rubber-lining/portal/tax-invoices/export/sage-preview?${query.toString()}`);
+  }
+
+  async sageExportCsv(params: {
+    dateFrom?: string;
+    dateTo?: string;
+    excludeExported?: boolean;
+  }): Promise<Blob> {
+    const query = new URLSearchParams();
+    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params.dateTo) query.set("dateTo", params.dateTo);
+    if (params.excludeExported !== undefined) {
+      query.set("excludeExported", String(params.excludeExported));
+    }
+    const url = `${this.baseURL}/rubber-lining/portal/tax-invoices/export/sage-csv?${query.toString()}`;
+    const headers = this.authHeaders();
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      throw new Error(`Failed to download CSV: ${response.statusText}`);
+    }
+    return response.blob();
   }
 }
 
