@@ -26,6 +26,7 @@ import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
 import {
   type CuttingPlan,
+  type Offcut,
   calculateCuttingPlan,
   type RollAllocation,
 } from "@/app/stock-control/lib/rubberCuttingCalculator";
@@ -205,12 +206,15 @@ interface RubberAllocationProps {
 }
 
 function rollPatternKey(roll: RollAllocation): string {
-  const specKey = `${roll.rollSpec.widthMm}-${roll.rollSpec.lengthM}-${roll.rollSpec.lanes}`;
+  const specKey = `${roll.rollSpec.widthMm}-${roll.rollSpec.lengthM}`;
+  const bandsKey = roll.bands
+    .map((b) => `${b.lanes}:${b.laneWidthMm}:${b.heightMm}`)
+    .join("|");
   const cutsKey = roll.cuts
-    .map((c) => `${c.widthMm}:${c.lengthMm}:${c.lane}`)
+    .map((c) => `${c.widthMm}:${c.lengthMm}:${c.band}:${c.lane}`)
     .sort()
     .join("|");
-  return `${specKey}/${cutsKey}`;
+  return `${specKey}/${bandsKey}/${cutsKey}`;
 }
 
 interface RollGroup {
@@ -237,6 +241,26 @@ function groupIdenticalRolls(rolls: RollAllocation[]): RollGroup[] {
   return groups;
 }
 
+function OffcutList({ offcuts }: { offcuts: Offcut[] }) {
+  if (offcuts.length === 0) return null;
+
+  return (
+    <div className="mt-2">
+      <div className="text-xs text-gray-500 mb-1">Offcuts:</div>
+      <div className="flex flex-wrap gap-1">
+        {offcuts.map((offcut, idx) => (
+          <span
+            key={`offcut-${idx}`}
+            className="text-xs bg-gray-100 border border-dashed border-gray-400 rounded px-2 py-0.5 text-gray-600"
+          >
+            {offcut.widthMm}mm x {offcut.lengthMm}mm ({offcut.areaSqM.toFixed(3)} m&#178;)
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CuttingDiagram({
   roll,
   colorMap,
@@ -247,21 +271,15 @@ function CuttingDiagram({
   groupCount?: number;
 }) {
   const rollLengthMm = roll.rollSpec.lengthM * 1000;
-  const lanes = roll.rollSpec.lanes;
-  const laneHeight = 100 / lanes;
+  const rollWidthMm = roll.rollSpec.widthMm;
+  const bands = roll.bands;
+  const totalBandHeight = bands.reduce((sum, b) => sum + b.heightMm, 0);
+  const diagramHeight = Math.max(
+    48,
+    bands.reduce((sum, b) => sum + Math.max(16, b.lanes * 16), 0),
+  );
 
-  const cutsByLane: Map<number, typeof roll.cuts> = new Map();
-  for (let i = 0; i < lanes; i++) {
-    cutsByLane.set(i, []);
-  }
-  for (const cut of roll.cuts) {
-    const laneCuts = cutsByLane.get(cut.lane) || [];
-    laneCuts.push(cut);
-    cutsByLane.set(cut.lane, laneCuts);
-  }
-
-  const isFullRoll = lanes === 1;
-  const pieceLabel = isFullRoll ? "rolls" : "strips";
+  const cutsByBand = bands.map((band) => roll.cuts.filter((c) => c.band === band.bandIndex));
 
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-3 mb-3">
@@ -269,12 +287,12 @@ function CuttingDiagram({
         <div>
           <span className="text-sm font-semibold text-gray-900">
             {groupCount && groupCount > 1
-              ? `${roll.rollSpec.widthMm}mm x ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
-              : `Roll ${roll.rollIndex}: ${roll.rollSpec.widthMm}mm x ${roll.rollSpec.lengthM}m`}
+              ? `${rollWidthMm}mm x ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
+              : `Roll ${roll.rollIndex}: ${rollWidthMm}mm x ${roll.rollSpec.lengthM}m`}
           </span>
-          {roll.hasLengthwiseCut && (
-            <span className="ml-2 text-xs text-amber-600 font-medium">
-              (Cut lengthwise into {lanes} strips of {roll.rollSpec.laneWidthMm}mm each)
+          {bands.length > 1 && (
+            <span className="ml-2 text-xs text-purple-600 font-medium">
+              ({bands.length} bands)
             </span>
           )}
         </div>
@@ -293,35 +311,47 @@ function CuttingDiagram({
 
       <div
         className="relative bg-gray-100 rounded border border-gray-300 overflow-hidden"
-        style={{ height: `${Math.max(48, lanes * 32)}px` }}
+        style={{ height: `${diagramHeight}px` }}
       >
-        {roll.hasLengthwiseCut &&
-          Array.from({ length: lanes - 1 }, (_, i) => (
-            <div
-              key={`divider-${i}`}
-              className="absolute left-0 right-0 border-t-2 border-dashed border-red-400 z-10"
-              style={{ top: `${((i + 1) * 100) / lanes}%` }}
-            />
-          ))}
-
-        {Array.from(cutsByLane.entries()).map(([lane, cuts]) => {
-          const laneTop = (lane * 100) / lanes;
-          let usedLength = 0;
-          for (const c of cuts) {
-            usedLength = Math.max(usedLength, c.positionMm + c.lengthMm);
-          }
-          const wasteStart = (usedLength / rollLengthMm) * 100;
-          const wasteWidth = 100 - wasteStart;
+        {bands.map((band, bandIdx) => {
+          const bandLeftPct = (band.startMm / rollLengthMm) * 100;
+          const bandWidthPct = (band.heightMm / rollLengthMm) * 100;
+          const bandHeightPx = Math.max(16, band.lanes * 16);
+          const bandTopPx = bands
+            .slice(0, bandIdx)
+            .reduce((sum, b) => sum + Math.max(16, b.lanes * 16), 0);
+          const laneHeightPx = bandHeightPx / band.lanes;
+          const bandCuts = cutsByBand[bandIdx];
 
           return (
-            <div key={lane}>
-              {cuts.map((cut, idx) => {
+            <div key={`band-${bandIdx}`}>
+              {bandIdx > 0 && (
+                <div
+                  className="absolute left-0 right-0 border-t-2 border-dashed border-purple-400 z-10"
+                  style={{ top: `${bandTopPx}px` }}
+                />
+              )}
+
+              {band.lanes > 1 &&
+                Array.from({ length: band.lanes - 1 }, (_, i) => (
+                  <div
+                    key={`lane-${bandIdx}-${i}`}
+                    className="absolute border-t border-dashed border-red-300 z-10"
+                    style={{
+                      top: `${bandTopPx + (i + 1) * laneHeightPx}px`,
+                      left: `${bandLeftPct}%`,
+                      width: `${bandWidthPct}%`,
+                    }}
+                  />
+                ))}
+
+              {bandCuts.map((cut, idx) => {
                 const left = (cut.positionMm / rollLengthMm) * 100;
                 const width = (cut.lengthMm / rollLengthMm) * 100;
                 const colorClass =
                   colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
                 const displayLabel = cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
-                const strips = (cut as { stripsPerPiece?: number }).stripsPerPiece ?? 1;
+                const strips = cut.stripsPerPiece ?? 1;
 
                 return (
                   <div
@@ -330,10 +360,10 @@ function CuttingDiagram({
                     style={{
                       left: `${left}%`,
                       width: `${width}%`,
-                      top: `${laneTop}%`,
-                      height: `${laneHeight}%`,
+                      top: `${bandTopPx + cut.lane * laneHeightPx}px`,
+                      height: `${laneHeightPx}px`,
                     }}
-                    title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m${strips > 1 ? ` (${strips} ${pieceLabel})` : ""}`}
+                    title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m x ${cut.widthMm}mm${strips > 1 ? ` (${strips} strips)` : ""}`}
                   >
                     <span className="text-[10px] text-white font-bold truncate px-1">
                       {displayLabel}
@@ -346,24 +376,25 @@ function CuttingDiagram({
                   </div>
                 );
               })}
-              {wasteWidth > 1 && (
-                <div
-                  className="absolute bg-gray-300 flex items-center justify-center"
-                  style={{
-                    left: `${wasteStart}%`,
-                    width: `${wasteWidth}%`,
-                    top: `${laneTop}%`,
-                    height: `${laneHeight}%`,
-                  }}
-                >
-                  <span className="text-[9px] text-gray-600 font-medium">
-                    {((rollLengthMm - usedLength) / 1000).toFixed(1)}m
-                  </span>
-                </div>
-              )}
             </div>
           );
         })}
+
+        {totalBandHeight < rollLengthMm && (
+          <div
+            className="absolute bg-gray-300 flex items-center justify-center"
+            style={{
+              left: `${(totalBandHeight / rollLengthMm) * 100}%`,
+              width: `${((rollLengthMm - totalBandHeight) / rollLengthMm) * 100}%`,
+              top: 0,
+              height: "100%",
+            }}
+          >
+            <span className="text-[9px] text-gray-600 font-medium">
+              {((rollLengthMm - totalBandHeight) / 1000).toFixed(1)}m
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="mt-2">
@@ -372,6 +403,7 @@ function CuttingDiagram({
           {roll.cuts.map((cut, idx) => {
             const colorClass =
               colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
+            const band = bands.find((b) => b.bandIndex === cut.band);
             return (
               <div
                 key={cut.itemId}
@@ -383,19 +415,19 @@ function CuttingDiagram({
                 </span>
                 <span className="text-gray-400 flex-shrink-0">|</span>
                 <span className="text-gray-600 flex-shrink-0">
-                  {(cut.lengthMm / 1000).toFixed(2)}m
+                  {(cut.lengthMm / 1000).toFixed(2)}m x {cut.widthMm}mm
                 </span>
-                {lanes > 1 && (
+                {band && band.lanes > 1 && (
                   <>
                     <span className="text-gray-400 flex-shrink-0">|</span>
                     <span className="text-gray-500 flex-shrink-0">Lane {cut.lane + 1}</span>
                   </>
                 )}
-                {((cut as { stripsPerPiece?: number }).stripsPerPiece ?? 1) > 1 && (
+                {(cut.stripsPerPiece ?? 1) > 1 && (
                   <>
                     <span className="text-gray-400 flex-shrink-0">|</span>
                     <span className="text-orange-600 font-medium flex-shrink-0">
-                      {(cut as { stripsPerPiece?: number }).stripsPerPiece} {pieceLabel}
+                      {cut.stripsPerPiece} strips
                     </span>
                   </>
                 )}
@@ -404,6 +436,8 @@ function CuttingDiagram({
           })}
         </div>
       </div>
+
+      <OffcutList offcuts={roll.offcuts} />
     </div>
   );
 }
@@ -728,12 +762,16 @@ function RubberSOHPanel({
   existingOverride,
   jobCardId,
   onOverrideSaved,
+  selectedPly,
+  onPlyChange,
 }: {
   stockOptions: RubberStockOptionsResponse;
   plan: CuttingPlan;
   existingOverride: RubberPlanOverride | null;
   jobCardId: number;
   onOverrideSaved: (override: RubberPlanOverride) => void;
+  selectedPly: number[] | null;
+  onPlyChange: (ply: number[] | null) => void;
 }) {
   const [planDecision, setPlanDecision] = useState<"pending" | "accepted" | "rejected">(
     existingOverride?.status === "accepted"
@@ -741,9 +779,6 @@ function RubberSOHPanel({
       : existingOverride?.status === "manual"
         ? "rejected"
         : "pending",
-  );
-  const [selectedPly, setSelectedPly] = useState<number[] | null>(
-    existingOverride?.selectedPlyCombination || null,
   );
   const [manualRolls, setManualRolls] = useState<RubberPlanManualRoll[]>(
     existingOverride?.manualRolls || [],
@@ -794,7 +829,7 @@ function RubberSOHPanel({
 
   const handleReset = async () => {
     setPlanDecision("pending");
-    setSelectedPly(null);
+    onPlyChange(null);
     setManualRolls([]);
   };
 
@@ -824,60 +859,6 @@ function RubberSOHPanel({
           {stockOptions.rubberSpec.color ? ` / ${stockOptions.rubberSpec.color}` : ""}
           {stockOptions.rubberSpec.compound ? ` / ${stockOptions.rubberSpec.compound}` : ""}
           {stockOptions.rubberSpec.pattern ? ` / ${stockOptions.rubberSpec.pattern}` : ""}
-        </div>
-      )}
-
-      {stockOptions.plyCombinations.length > 0 && (
-        <div className="space-y-2 mb-4">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            Ply Combinations
-          </p>
-          {stockOptions.plyCombinations.map((combo, idx) => {
-            const isSelected =
-              selectedPly !== null &&
-              combo.thicknesses.length === selectedPly.length &&
-              combo.thicknesses.every((t, i) => t === selectedPly[i]);
-
-            return (
-              <div
-                key={idx}
-                className={`flex items-center gap-3 p-2 border rounded ${isSelected ? "border-green-500 bg-green-50" : "bg-white"}`}
-              >
-                <div className="flex items-center gap-1">
-                  {combo.thicknesses.map((t, i) => (
-                    <span
-                      key={i}
-                      className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium"
-                    >
-                      {t}mm
-                    </span>
-                  ))}
-                </div>
-                <StockAvailabilityBadge
-                  status={
-                    combo.allInStock
-                      ? "in_stock"
-                      : combo.partiallyInStock
-                        ? "partial"
-                        : "out_of_stock"
-                  }
-                />
-                {idx === 0 && !isSelected && (
-                  <span className="text-xs text-gray-400 italic">recommended</span>
-                )}
-                {isSelected && <span className="text-xs text-green-700 font-medium">Selected</span>}
-                {planDecision !== "rejected" && !isSelected && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPly(combo.thicknesses)}
-                    className="ml-auto text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
-                  >
-                    Select
-                  </button>
-                )}
-              </div>
-            );
-          })}
         </div>
       )}
 
@@ -1001,6 +982,9 @@ function RubberAllocationSection({
 }: RubberAllocationProps) {
   const [stockOptions, setStockOptions] = useState<RubberStockOptionsResponse | null>(null);
   const [override, setOverride] = useState<RubberPlanOverride | null>(rubberPlanOverride);
+  const [selectedPly, setSelectedPly] = useState<number[] | null>(
+    rubberPlanOverride?.selectedPlyCombination || null,
+  );
 
   useEffect(() => {
     stockControlApiClient
@@ -1009,37 +993,67 @@ function RubberAllocationSection({
       .catch(() => null);
   }, [jobCardId]);
 
+  const stockQuery = stockOptions
+    ? {
+        availableThicknesses: stockOptions.availableThicknesses,
+        rolls: stockOptions.stockItems
+          .filter((s) => s.thicknessMm !== null)
+          .map((s) => ({
+            stockItemId: s.stockItemId,
+            thicknessMm: s.thicknessMm as number,
+            widthMm: s.widthMm || 0,
+            lengthM: s.lengthM || 0,
+            color: s.color,
+            compoundCode: s.compoundCode,
+            quantityAvailable: s.quantityAvailable,
+          })),
+      }
+    : null;
+
   const plan = calculateCuttingPlan(
     lineItems.map((li, idx) => ({
       id: li.id || idx,
       itemCode: li.itemCode,
       itemDescription: li.itemDescription,
+      itemNo: li.itemNo,
       quantity: li.quantity,
       m2: li.m2,
     })),
-    stockOptions
-      ? {
-          availableThicknesses: stockOptions.availableThicknesses,
-          rolls: stockOptions.stockItems
-            .filter((s) => s.thicknessMm !== null)
-            .map((s) => ({
-              stockItemId: s.stockItemId,
-              thicknessMm: s.thicknessMm as number,
-              widthMm: s.widthMm || 0,
-              lengthM: s.lengthM || 0,
-              color: s.color,
-              compoundCode: s.compoundCode,
-              quantityAvailable: s.quantityAvailable,
-            })),
-        }
-      : null,
+    stockQuery,
+    selectedPly,
   );
 
   const totalM2Required = lineItems.reduce((sum, li) => sum + (li.m2 ? Number(li.m2) : 0), 0);
 
+  const lineItemsForPlan = lineItems.map((li, idx) => ({
+    id: li.id || idx,
+    itemCode: li.itemCode,
+    itemDescription: li.itemDescription,
+    itemNo: li.itemNo,
+    quantity: li.quantity,
+    m2: li.m2,
+  }));
+
+  const plyCombos = stockOptions?.plyCombinations || [];
+  const comboSummaries = plyCombos.map((combo) => {
+    const comboPlan = calculateCuttingPlan(lineItemsForPlan, stockQuery, combo.thicknesses);
+    return {
+      thicknesses: combo.thicknesses,
+      allInStock: combo.allInStock,
+      partiallyInStock: combo.partiallyInStock,
+      totalRolls: comboPlan.plies.reduce((sum, ply) => sum + ply.totalRollsNeeded, 0),
+      totalM2: comboPlan.totalUsedSqM + comboPlan.totalWasteSqM,
+    };
+  });
+
   if (totalM2Required === 0 && !plan.hasPipeItems) {
     return null;
   }
+
+  const isPlySelected = (thicknesses: number[]) =>
+    selectedPly !== null &&
+    thicknesses.length === selectedPly.length &&
+    thicknesses.every((t, i) => t === selectedPly[i]);
 
   return (
     <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -1053,6 +1067,64 @@ function RubberAllocationSection({
         )}
       </div>
       <div className="px-4 py-5 sm:px-6">
+        {comboSummaries.length > 0 && plan.hasPipeItems && (
+          <div className="mb-6">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              Ply Combinations
+            </p>
+            <div className="space-y-2">
+              {comboSummaries.map((combo, idx) => {
+                const selected = isPlySelected(combo.thicknesses);
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-3 p-2 border rounded ${selected ? "border-green-500 bg-green-50" : "bg-white"}`}
+                  >
+                    <div className="flex items-center gap-1">
+                      {combo.thicknesses.map((t, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium"
+                        >
+                          {t}mm
+                        </span>
+                      ))}
+                    </div>
+                    <StockAvailabilityBadge
+                      status={
+                        combo.allInStock
+                          ? "in_stock"
+                          : combo.partiallyInStock
+                            ? "partial"
+                            : "out_of_stock"
+                      }
+                    />
+                    <span className="text-xs text-gray-500">
+                      {combo.totalRolls} roll{combo.totalRolls !== 1 ? "s" : ""} &middot;{" "}
+                      {combo.totalM2.toFixed(1)} m&sup2;
+                    </span>
+                    {idx === 0 && !selected && (
+                      <span className="text-xs text-gray-400 italic">recommended</span>
+                    )}
+                    {selected && (
+                      <span className="text-xs text-green-700 font-medium">Selected</span>
+                    )}
+                    {!selected && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPly(combo.thicknesses)}
+                        className="ml-auto text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                      >
+                        Select
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {plan.hasPipeItems ? (
           <PipeCuttingView plan={plan} />
         ) : (
@@ -1075,6 +1147,8 @@ function RubberAllocationSection({
             existingOverride={override}
             jobCardId={jobCardId}
             onOverrideSaved={setOverride}
+            selectedPly={selectedPly}
+            onPlyChange={setSelectedPly}
           />
         )}
       </div>

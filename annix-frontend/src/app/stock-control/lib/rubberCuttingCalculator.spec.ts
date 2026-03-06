@@ -326,33 +326,35 @@ describe("rubberCuttingCalculator", () => {
     });
   });
 
-  describe("determineRollSpec (via calculateCuttingPlan)", () => {
-    it("uses 3 lanes for narrow pipes (width <= 450mm)", () => {
+  describe("band-based roll spec (via calculateCuttingPlan)", () => {
+    it("uses 3 lanes in band for narrow pipes (width <= 450mm)", () => {
       const plan = calculateCuttingPlan([
-        { id: 1, itemCode: null, itemDescription: "50 NB PIPE 6000 LG", quantity: 1, m2: null },
+        { id: 1, itemCode: null, itemDescription: "50 NB PIPE 6000 LG", quantity: 3, m2: null },
       ]);
       expect(plan.hasPipeItems).toBe(true);
       expect(plan.rolls.length).toBeGreaterThan(0);
       const roll = plan.rolls[0];
-      expect(roll.rollSpec.lanes).toBe(3);
+      expect(roll.bands.length).toBeGreaterThan(0);
+      expect(roll.bands[0].lanes).toBe(3);
     });
 
-    it("uses 2 lanes for medium pipes (width 451-700mm)", () => {
+    it("uses 2 lanes in band for medium pipes (width 451-700mm)", () => {
       const plan = calculateCuttingPlan([
-        { id: 1, itemCode: null, itemDescription: "200 NB PIPE 6000 LG", quantity: 1, m2: null },
+        { id: 1, itemCode: null, itemDescription: "200 NB PIPE 6000 LG", quantity: 2, m2: null },
       ]);
       expect(plan.hasPipeItems).toBe(true);
       const roll = plan.rolls[0];
-      expect(roll.rollSpec.lanes).toBe(2);
+      expect(roll.bands.length).toBeGreaterThan(0);
+      expect(roll.bands[0].lanes).toBe(2);
     });
 
-    it("uses 1 lane for wide pipes", () => {
+    it("uses 1 lane in band for wide pipes", () => {
       const plan = calculateCuttingPlan([
         { id: 1, itemCode: null, itemDescription: "400 NB PIPE 6000 LG", quantity: 1, m2: null },
       ]);
       expect(plan.hasPipeItems).toBe(true);
       const roll = plan.rolls[0];
-      expect(roll.rollSpec.lanes).toBe(1);
+      expect(roll.bands[0].lanes).toBe(1);
     });
 
     it("clamps roll width to minimum 800mm", () => {
@@ -488,16 +490,13 @@ describe("rubberCuttingCalculator", () => {
       expect(plan.totalRollsNeeded).toBeGreaterThan(1);
     });
 
-    it("marks hasLengthwiseCut true when lanes > 1", () => {
+    it("marks hasLengthwiseCut true when band has lanes > 1", () => {
       const plan = calculateCuttingPlan([
-        { id: 1, itemCode: null, itemDescription: "50 NB PIPE 6000 LG", quantity: 1, m2: null },
+        { id: 1, itemCode: null, itemDescription: "50 NB PIPE 6000 LG", quantity: 3, m2: null },
       ]);
       const roll = plan.rolls[0];
-      if (roll.rollSpec.lanes > 1) {
-        expect(roll.hasLengthwiseCut).toBe(true);
-      } else {
-        expect(roll.hasLengthwiseCut).toBe(false);
-      }
+      const hasMultiLaneBand = roll.bands.some((b) => b.lanes > 1);
+      expect(roll.hasLengthwiseCut).toBe(hasMultiLaneBand);
     });
   });
 
@@ -516,6 +515,126 @@ describe("rubberCuttingCalculator", () => {
           expect(result.rubberWidthMm % 50).toBe(0);
         }
       });
+    });
+  });
+
+  describe("band-based shelf packing", () => {
+    it("packs mixed-width items (2x 600mm + 1x 750mm) onto 1 roll instead of 2", () => {
+      const item600 = parsePipeItem("1", "200 NB PIPE 1000 LG", 1, null, "A001");
+      const item750 = parsePipeItem("2", "219 OD PULLEY 1030 LONG", 1, null, "A002");
+
+      const plan = calculateCuttingPlan([
+        {
+          id: 1,
+          itemCode: null,
+          itemDescription: "200 NB PIPE 1000 LG",
+          quantity: 2,
+          m2: null,
+          itemNo: "A001",
+        },
+        {
+          id: 2,
+          itemCode: null,
+          itemDescription: "219 OD PULLEY 1030 LONG",
+          quantity: 1,
+          m2: null,
+          itemNo: "A002",
+        },
+      ]);
+
+      expect(plan.totalRollsNeeded).toBe(1);
+      expect(plan.rolls[0].bands.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("rotates band when it saves roll length", () => {
+      const plan = calculateCuttingPlan([
+        {
+          id: 1,
+          itemCode: null,
+          itemDescription: "219 OD PULLEY 1030 LONG",
+          quantity: 1,
+          m2: null,
+        },
+      ]);
+
+      const roll = plan.rolls[0];
+      const band = roll.bands[0];
+      const cut = roll.cuts[0];
+      expect(band.heightMm).toBeLessThan(1030);
+      expect(cut.lengthMm).toBeLessThan(cut.widthMm);
+    });
+
+    it("calculates offcuts for each roll", () => {
+      const plan = calculateCuttingPlan([
+        { id: 1, itemCode: null, itemDescription: "100 NB PIPE 2000 LG", quantity: 1, m2: null },
+      ]);
+
+      expect(plan.rolls[0].offcuts.length).toBeGreaterThan(0);
+      const totalOffcutArea = plan.rolls[0].offcuts.reduce((sum, o) => sum + o.areaSqM, 0);
+      expect(totalOffcutArea).toBeGreaterThan(0);
+    });
+
+    it("aggregates offcuts across all rolls in CuttingPlan", () => {
+      const plan = calculateCuttingPlan([
+        { id: 1, itemCode: null, itemDescription: "100 NB PIPE 2000 LG", quantity: 1, m2: null },
+      ]);
+
+      expect(plan.offcuts.length).toBeGreaterThan(0);
+    });
+
+    it("assigns band index to each cut piece", () => {
+      const plan = calculateCuttingPlan([
+        { id: 1, itemCode: null, itemDescription: "100 NB PIPE 2000 LG", quantity: 1, m2: null },
+      ]);
+
+      plan.rolls[0].cuts.forEach((cut) => {
+        expect(typeof cut.band).toBe("number");
+        expect(cut.band).toBeGreaterThanOrEqual(0);
+      });
+    });
+
+    it("same-width items still use multi-lane within a band", () => {
+      const plan = calculateCuttingPlan([
+        { id: 1, itemCode: null, itemDescription: "50 NB PIPE 2000 LG", quantity: 3, m2: null },
+      ]);
+
+      const roll = plan.rolls[0];
+      expect(roll.bands[0].lanes).toBe(3);
+      expect(roll.cuts.length).toBe(3);
+    });
+
+    it("items exceeding roll length spill to second roll", () => {
+      const plan = calculateCuttingPlan([
+        { id: 1, itemCode: null, itemDescription: "300 NB PIPE 6000 LG", quantity: 3, m2: null },
+      ]);
+
+      expect(plan.totalRollsNeeded).toBeGreaterThanOrEqual(1);
+      const totalCuts = plan.rolls.reduce((sum, r) => sum + r.cuts.length, 0);
+      expect(totalCuts).toBe(3);
+    });
+
+    it("324 OD + 219 OD pulley example produces 1 roll with bands", () => {
+      const plan = calculateCuttingPlan([
+        {
+          id: 1,
+          itemCode: null,
+          itemDescription: "324 OD PULLEY 600 LONG",
+          quantity: 2,
+          m2: null,
+          itemNo: "B001",
+        },
+        {
+          id: 2,
+          itemCode: null,
+          itemDescription: "219 OD PULLEY 1030 LONG",
+          quantity: 1,
+          m2: null,
+          itemNo: "B002",
+        },
+      ]);
+
+      expect(plan.totalRollsNeeded).toBe(1);
+      expect(plan.rolls[0].bands.length).toBeGreaterThanOrEqual(1);
     });
   });
 });

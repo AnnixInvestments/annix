@@ -228,7 +228,23 @@ export interface CutPiece {
   lengthMm: number;
   positionMm: number;
   lane: number;
+  band: number;
   stripsPerPiece: number;
+}
+
+export interface BandSpec {
+  bandIndex: number;
+  lanes: number;
+  laneWidthMm: number;
+  startMm: number;
+  heightMm: number;
+  widthUsedMm: number;
+}
+
+export interface Offcut {
+  widthMm: number;
+  lengthMm: number;
+  areaSqM: number;
 }
 
 export interface RollAllocation {
@@ -238,6 +254,8 @@ export interface RollAllocation {
   usedLengthMm: number[];
   wastePercentage: number;
   hasLengthwiseCut: boolean;
+  bands: BandSpec[];
+  offcuts: Offcut[];
 }
 
 export interface RubberSpec {
@@ -282,6 +300,7 @@ export interface CuttingPlan {
   plies: PlyLayer[];
   totalThicknessMm: number;
   isMultiPly: boolean;
+  offcuts: Offcut[];
 }
 
 function parseNb(description: string): number | null {
@@ -533,7 +552,7 @@ function rotateIfNeeded(item: ParsedPipeItem): ParsedPipeItem {
   return w <= l ? item : { ...item, rubberWidthMm: l, rubberLengthMm: w };
 }
 
-function expandAndRotateItems(parsedItems: ParsedPipeItem[]): ParsedPipeItem[] {
+export function expandAndRotateItems(parsedItems: ParsedPipeItem[]): ParsedPipeItem[] {
   return parsedItems
     .filter((item) => item.isValidPipe)
     .flatMap((item) => {
@@ -548,24 +567,152 @@ function expandAndRotateItems(parsedItems: ParsedPipeItem[]): ParsedPipeItem[] {
     });
 }
 
-function determineRollSpec(itemWidthMm: number): RollSpecification {
-  let lanes = 1;
-  if (itemWidthMm <= 450) {
-    lanes = 3;
-  } else if (itemWidthMm <= 700) {
-    lanes = 2;
+interface BandBuild {
+  items: ParsedPipeItem[];
+  lanes: number;
+  laneWidthMm: number;
+  heightMm: number;
+  widthUsedMm: number;
+  rotated: boolean;
+}
+
+function lanesForWidth(widthMm: number): number {
+  const maxPossible = Math.floor(ROLL_WIDTH_MAX_MM / widthMm) || 1;
+  if (widthMm <= 450) return Math.min(3, maxPossible);
+  if (widthMm <= 700) return Math.min(2, maxPossible);
+  return 1;
+}
+
+function buildBands(items: ParsedPipeItem[]): BandBuild[] {
+  const widthGroups = new Map<number, ParsedPipeItem[]>();
+  items.forEach((item) => {
+    const group = widthGroups.get(item.rubberWidthMm) || [];
+    widthGroups.set(item.rubberWidthMm, [...group, item]);
+  });
+
+  return Array.from(widthGroups.entries()).flatMap(([widthMm, groupItems]) => {
+    const lanes = lanesForWidth(widthMm);
+    const sorted = [...groupItems].sort((a, b) => b.rubberLengthMm - a.rubberLengthMm);
+
+    const bands: BandBuild[] = [];
+    for (let i = 0; i < sorted.length; i += lanes) {
+      const batch = sorted.slice(i, i + lanes);
+      const batchLanes = batch.length;
+
+      const normalHeight = Math.max(...batch.map((it) => it.rubberLengthMm));
+      const normalWidthUsed = batchLanes * widthMm;
+
+      const rotatedLaneWidth = Math.max(...batch.map((it) => it.rubberLengthMm));
+      const rotatedHeight = widthMm;
+      const rotatedWidthUsed = batchLanes * rotatedLaneWidth;
+      const rotatedFitsOnRoll = rotatedWidthUsed <= ROLL_WIDTH_MAX_MM;
+
+      if (rotatedFitsOnRoll && rotatedHeight < normalHeight) {
+        bands.push({
+          items: batch,
+          lanes: batchLanes,
+          laneWidthMm: rotatedLaneWidth,
+          heightMm: rotatedHeight,
+          widthUsedMm: rotatedWidthUsed,
+          rotated: true,
+        });
+      } else {
+        bands.push({
+          items: batch,
+          lanes: batchLanes,
+          laneWidthMm: widthMm,
+          heightMm: normalHeight,
+          widthUsedMm: normalWidthUsed,
+          rotated: false,
+        });
+      }
+    }
+    return bands;
+  });
+}
+
+function finalizeRoll(
+  rollIndex: number,
+  placedBands: { band: BandBuild; startMm: number }[],
+  totalBandHeight: number,
+  rollWidthMm: number,
+): RollAllocation {
+  const rollLengthMm = ROLL_LENGTH_MAX_M * 1000;
+
+  const bands: BandSpec[] = [];
+  const cuts: CutPiece[] = [];
+  const offcuts: Offcut[] = [];
+
+  placedBands.forEach(({ band, startMm }, bandIdx) => {
+    bands.push({
+      bandIndex: bandIdx,
+      lanes: band.lanes,
+      laneWidthMm: band.laneWidthMm,
+      startMm,
+      heightMm: band.heightMm,
+      widthUsedMm: band.widthUsedMm,
+    });
+
+    band.items.forEach((item, laneIdx) => {
+      const cutWidth = band.rotated ? item.rubberLengthMm : item.rubberWidthMm;
+      const cutLength = band.rotated ? item.rubberWidthMm : item.rubberLengthMm;
+
+      cuts.push({
+        itemId: item.id,
+        itemNo: item.itemNo,
+        description: item.description,
+        widthMm: cutWidth,
+        lengthMm: cutLength,
+        positionMm: startMm,
+        lane: laneIdx,
+        band: bandIdx,
+        stripsPerPiece: item.stripsPerPiece,
+      });
+    });
+
+    const widthWaste = rollWidthMm - band.widthUsedMm;
+    if (widthWaste > 0) {
+      offcuts.push({
+        widthMm: widthWaste,
+        lengthMm: band.heightMm,
+        areaSqM: (widthWaste / 1000) * (band.heightMm / 1000),
+      });
+    }
+  });
+
+  const rollTail = rollLengthMm - totalBandHeight;
+  if (rollTail > 0) {
+    offcuts.push({
+      widthMm: rollWidthMm,
+      lengthMm: rollTail,
+      areaSqM: (rollWidthMm / 1000) * (rollTail / 1000),
+    });
   }
 
-  const rawWidth = itemWidthMm * lanes;
-  const rollWidthMm = Math.max(ROLL_WIDTH_MIN_MM, Math.min(ROLL_WIDTH_MAX_MM, rawWidth));
-  const effectiveLanes = Math.floor(rollWidthMm / itemWidthMm) || 1;
-
-  return {
+  const rollSpec: RollSpecification = {
     widthMm: rollWidthMm,
     lengthM: ROLL_LENGTH_MAX_M,
     areaSqM: (rollWidthMm / 1000) * ROLL_LENGTH_MAX_M,
-    lanes: effectiveLanes,
-    laneWidthMm: itemWidthMm,
+    lanes: 1,
+    laneWidthMm: rollWidthMm,
+  };
+
+  const totalUsedSqM = cuts.reduce(
+    (sum, cut) => sum + (cut.widthMm / 1000) * (cut.lengthMm / 1000),
+    0,
+  );
+  const wastePercentage =
+    rollSpec.areaSqM > 0 ? ((rollSpec.areaSqM - totalUsedSqM) / rollSpec.areaSqM) * 100 : 0;
+
+  return {
+    rollIndex,
+    rollSpec,
+    cuts,
+    usedLengthMm: [totalBandHeight],
+    wastePercentage,
+    hasLengthwiseCut: bands.some((b) => b.lanes > 1),
+    bands,
+    offcuts,
   };
 }
 
@@ -573,59 +720,36 @@ function buildRollsForItems(parsedItems: ParsedPipeItem[]): RollAllocation[] {
   const items = expandAndRotateItems(parsedItems);
   if (items.length === 0) return [];
 
-  const widthGroups = new Map<number, ParsedPipeItem[]>();
-  items.forEach((item) => {
-    const group = widthGroups.get(item.rubberWidthMm) || [];
-    group.push(item);
-    widthGroups.set(item.rubberWidthMm, [...group]);
-  });
+  const allBands = buildBands(items);
+
+  const maxBandWidth = Math.max(...allBands.map((b) => b.widthUsedMm));
+  const rollWidthMm = roundUpToNearest(
+    Math.max(ROLL_WIDTH_MIN_MM, Math.min(ROLL_WIDTH_MAX_MM, maxBandWidth)),
+    ROLL_WIDTH_INCREMENT_MM,
+  );
+
+  const sortedBands = [...allBands].sort((a, b) => b.heightMm - a.heightMm);
 
   const rollLengthMm = ROLL_LENGTH_MAX_M * 1000;
   const rolls: RollAllocation[] = [];
 
-  Array.from(widthGroups.entries()).forEach(([widthMm, groupItems]) => {
-    const rollSpec = determineRollSpec(widthMm);
-    const sortedItems = [...groupItems].sort((a, b) => b.rubberLengthMm - a.rubberLengthMm);
-    const placed = new Set<string>();
+  let currentBands: { band: BandBuild; startMm: number }[] = [];
+  let currentHeight = 0;
 
-    while (placed.size < sortedItems.length) {
-      const laneLengths = Array.from({ length: rollSpec.lanes }, () => 0);
-      const cuts: CutPiece[] = [];
-
-      for (const item of sortedItems) {
-        if (placed.has(item.id)) continue;
-
-        const laneIdx = laneLengths.findIndex((used) => used + item.rubberLengthMm <= rollLengthMm);
-        if (laneIdx >= 0) {
-          cuts.push({
-            itemId: item.id,
-            itemNo: item.itemNo,
-            description: item.description,
-            widthMm: item.rubberWidthMm,
-            lengthMm: item.rubberLengthMm,
-            positionMm: laneLengths[laneIdx],
-            lane: laneIdx,
-            stripsPerPiece: item.stripsPerPiece,
-          });
-          laneLengths[laneIdx] += item.rubberLengthMm;
-          placed.add(item.id);
-        }
-      }
-
-      const totalUsed = laneLengths.reduce((sum, l) => sum + l, 0);
-      const totalCapacity = rollLengthMm * rollSpec.lanes;
-      const wastePercentage = ((totalCapacity - totalUsed) / totalCapacity) * 100;
-
-      rolls.push({
-        rollIndex: rolls.length + 1,
-        rollSpec,
-        cuts,
-        usedLengthMm: [...laneLengths],
-        wastePercentage,
-        hasLengthwiseCut: rollSpec.lanes > 1,
-      });
+  sortedBands.forEach((band) => {
+    if (currentHeight + band.heightMm > rollLengthMm && currentBands.length > 0) {
+      rolls.push(finalizeRoll(rolls.length + 1, currentBands, currentHeight, rollWidthMm));
+      currentBands = [];
+      currentHeight = 0;
     }
+
+    currentBands = [...currentBands, { band, startMm: currentHeight }];
+    currentHeight += band.heightMm;
   });
+
+  if (currentBands.length > 0) {
+    rolls.push(finalizeRoll(rolls.length + 1, currentBands, currentHeight, rollWidthMm));
+  }
 
   return rolls;
 }
@@ -694,6 +818,7 @@ export function calculateCuttingPlan(
     m2: number | null;
   }>,
   stockQuery?: StockQuery | null,
+  selectedPlyCombination?: number[] | null,
 ): CuttingPlan {
   const parsedItems: ParsedPipeItem[] = [];
   const genericM2Items: { description: string; m2: number }[] = [];
@@ -735,6 +860,7 @@ export function calculateCuttingPlan(
     plies: [],
     totalThicknessMm: rubberSpec?.thicknessMm || 0,
     isMultiPly: false,
+    offcuts: [],
   };
 
   if (!hasPipeItems) {
@@ -748,7 +874,11 @@ export function calculateCuttingPlan(
   let plies: PlyLayer[] = [];
   let isMultiPly = false;
 
-  if (rubberSpec && hasMultiPlyEligibleItems && stockQuery) {
+  if (selectedPlyCombination && selectedPlyCombination.length > 0) {
+    const scored = scorePlyCombination(selectedPlyCombination, parsedItems, stockQuery || null);
+    plies = scored.plies;
+    isMultiPly = plies.length > 1;
+  } else if (rubberSpec && hasMultiPlyEligibleItems && stockQuery) {
     const combos = suggestPlyCombinations(rubberSpec.thicknessMm);
     const viableCombos = combos.filter((combo) =>
       combo.every((t) => stockQuery.availableThicknesses.includes(t)),
@@ -775,6 +905,8 @@ export function calculateCuttingPlan(
     ];
   }
 
+  const allOffcuts = allRolls.flatMap((roll) => roll.offcuts);
+
   return {
     rolls: allRolls,
     totalRollsNeeded: allRolls.length,
@@ -788,5 +920,6 @@ export function calculateCuttingPlan(
     plies,
     totalThicknessMm: rubberSpec?.thicknessMm || 0,
     isMultiPly,
+    offcuts: allOffcuts,
   };
 }

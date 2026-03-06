@@ -631,10 +631,11 @@ export class JobCardPdfService {
   }
 
   private cuttingDiagramHeight(roll: RollAllocation): number {
-    const rollRectHeight = 60;
+    const rollRectHeight = Math.max(60, roll.bands.reduce((sum, b) => sum + Math.max(12, b.lanes * 12), 0));
     const headerHeight = 15;
     const cutListHeight = roll.cuts.length * 10 + 5;
-    return headerHeight + rollRectHeight + cutListHeight + 15;
+    const offcutHeight = roll.offcuts.length > 0 ? roll.offcuts.length * 8 + 10 : 0;
+    return headerHeight + rollRectHeight + cutListHeight + offcutHeight + 15;
   }
 
   private groupIdenticalRolls(rolls: RollAllocation[]): { roll: RollAllocation; count: number }[] {
@@ -642,12 +643,15 @@ export class JobCardPdfService {
     const seen = new Map<string, number>();
 
     rolls.forEach((roll) => {
-      const specKey = `${roll.rollSpec.widthMm}-${roll.rollSpec.lengthM}-${roll.rollSpec.lanes}`;
+      const specKey = `${roll.rollSpec.widthMm}-${roll.rollSpec.lengthM}`;
+      const bandsKey = roll.bands
+        .map((b) => `${b.lanes}:${b.laneWidthMm}:${b.heightMm}`)
+        .join("|");
       const cutsKey = roll.cuts
-        .map((c) => `${c.widthMm}:${c.lengthMm}:${c.lane}`)
+        .map((c) => `${c.widthMm}:${c.lengthMm}:${c.band}:${c.lane}`)
         .sort()
         .join("|");
-      const key = `${specKey}/${cutsKey}`;
+      const key = `${specKey}/${bandsKey}/${cutsKey}`;
       const existingIdx = seen.get(key);
 
       if (existingIdx !== undefined) {
@@ -679,11 +683,11 @@ export class JobCardPdfService {
     ];
     const leftMargin = 50;
     const diagramWidth = 495;
-    const rollRectHeight = 60;
+    const bands = roll.bands;
+    const rollRectHeight = Math.max(60, bands.reduce((sum, b) => sum + Math.max(12, b.lanes * 12), 0));
     const rollLengthMm = roll.rollSpec.lengthM * 1000;
-    const lanes = roll.rollSpec.lanes;
-    const laneHeight = rollRectHeight / lanes;
     const scale = diagramWidth / rollLengthMm;
+    const totalBandHeight = bands.reduce((sum, b) => sum + b.heightMm, 0);
 
     let y = startY;
 
@@ -694,7 +698,7 @@ export class JobCardPdfService {
         : `Roll ${roll.rollIndex}: ${roll.rollSpec.widthMm}mm × ${roll.rollSpec.lengthM}m`;
     doc.text(
       rollLabel +
-        (roll.hasLengthwiseCut ? ` (${lanes} lanes)` : "") +
+        (bands.length > 1 ? ` (${bands.length} bands)` : "") +
         ` — Waste: ${roll.wastePercentage.toFixed(1)}%`,
       leftMargin,
       y,
@@ -704,60 +708,84 @@ export class JobCardPdfService {
     doc.save();
     doc.rect(leftMargin, y, diagramWidth, rollRectHeight).lineWidth(0.5).stroke();
 
-    if (roll.hasLengthwiseCut) {
-      Array.from({ length: lanes - 1 }, (_, i) => i + 1).forEach((i) => {
-        const laneY = y + i * laneHeight;
-        doc
-          .save()
-          .dash(3, { space: 2 })
-          .moveTo(leftMargin, laneY)
-          .lineTo(leftMargin + diagramWidth, laneY)
-          .stroke()
-          .restore();
-      });
-    }
-
     const colorMap = new Map<string, string>();
     let colorIdx = 0;
 
-    roll.cuts.forEach((cut) => {
-      if (!colorMap.has(cut.itemId)) {
-        colorMap.set(cut.itemId, COLORS[colorIdx % COLORS.length]);
-        colorIdx++;
-      }
+    let bandTopPx = 0;
+    bands.forEach((band, bandIdx) => {
+      const bandHeightPx = Math.max(12, band.lanes * 12);
+      const laneHeightPx = bandHeightPx / band.lanes;
+      const bandLeftX = leftMargin + band.startMm * scale;
+      const bandWidthPx = band.heightMm * scale;
 
-      const color = colorMap.get(cut.itemId) || COLORS[0];
-      const cx = leftMargin + cut.positionMm * scale;
-      const cy = y + cut.lane * laneHeight;
-      const cw = cut.lengthMm * scale;
-      const ch = laneHeight;
-
-      doc.save();
-      doc.rect(cx + 0.5, cy + 0.5, Math.max(cw - 1, 1), Math.max(ch - 1, 1));
-      doc.fillColor(color).fillOpacity(0.6).fill();
-      doc.restore();
-
-      if (cw > 20) {
-        const label = cut.itemNo || cut.itemId;
+      if (bandIdx > 0) {
         doc
           .save()
-          .fontSize(5)
-          .font("Helvetica-Bold")
-          .fillColor("#000000")
-          .fillOpacity(1)
-          .text(label, cx + 2, cy + ch / 2 - 3, {
-            width: cw - 4,
-            height: ch,
-            ellipsis: true,
-          })
+          .dash(4, { space: 2 })
+          .strokeColor("#8B5CF6")
+          .lineWidth(0.8)
+          .moveTo(leftMargin, y + bandTopPx)
+          .lineTo(leftMargin + diagramWidth, y + bandTopPx)
+          .stroke()
           .restore();
       }
+
+      if (band.lanes > 1) {
+        Array.from({ length: band.lanes - 1 }, (_, i) => i + 1).forEach((i) => {
+          const laneY = y + bandTopPx + i * laneHeightPx;
+          doc
+            .save()
+            .dash(2, { space: 2 })
+            .strokeColor("#F87171")
+            .lineWidth(0.5)
+            .moveTo(bandLeftX, laneY)
+            .lineTo(bandLeftX + bandWidthPx, laneY)
+            .stroke()
+            .restore();
+        });
+      }
+
+      const bandCuts = roll.cuts.filter((c) => c.band === band.bandIndex);
+      bandCuts.forEach((cut) => {
+        if (!colorMap.has(cut.itemId)) {
+          colorMap.set(cut.itemId, COLORS[colorIdx % COLORS.length]);
+          colorIdx++;
+        }
+
+        const color = colorMap.get(cut.itemId) || COLORS[0];
+        const cx = leftMargin + cut.positionMm * scale;
+        const cy = y + bandTopPx + cut.lane * laneHeightPx;
+        const cw = cut.lengthMm * scale;
+        const ch = laneHeightPx;
+
+        doc.save();
+        doc.rect(cx + 0.5, cy + 0.5, Math.max(cw - 1, 1), Math.max(ch - 1, 1));
+        doc.fillColor(color).fillOpacity(0.6).fill();
+        doc.restore();
+
+        if (cw > 20) {
+          const label = cut.itemNo || cut.itemId;
+          doc
+            .save()
+            .fontSize(5)
+            .font("Helvetica-Bold")
+            .fillColor("#000000")
+            .fillOpacity(1)
+            .text(label, cx + 2, cy + ch / 2 - 3, {
+              width: cw - 4,
+              height: ch,
+              ellipsis: true,
+            })
+            .restore();
+        }
+      });
+
+      bandTopPx += bandHeightPx;
     });
 
-    const maxUsed = Math.max(...roll.usedLengthMm);
-    if (maxUsed < rollLengthMm) {
-      const wasteX = leftMargin + maxUsed * scale;
-      const wasteW = (rollLengthMm - maxUsed) * scale;
+    if (totalBandHeight < rollLengthMm) {
+      const wasteX = leftMargin + totalBandHeight * scale;
+      const wasteW = (rollLengthMm - totalBandHeight) * scale;
       doc.save();
       doc.rect(wasteX, y, wasteW, rollRectHeight);
       doc.fillColor("#D1D5DB").fillOpacity(0.4).fill();
@@ -785,6 +813,22 @@ export class JobCardPdfService {
         });
       y += 10;
     });
+
+    if (roll.offcuts.length > 0) {
+      y += 3;
+      doc.fontSize(6).font("Helvetica-Bold").fillColor("#666666");
+      doc.text("Offcuts:", leftMargin, y);
+      y += 8;
+      doc.font("Helvetica").fontSize(5).fillColor("#888888");
+      roll.offcuts.forEach((offcut) => {
+        doc.text(
+          `${offcut.widthMm}mm × ${offcut.lengthMm}mm (${offcut.areaSqM.toFixed(3)} m²)`,
+          leftMargin + 10,
+          y,
+        );
+        y += 8;
+      });
+    }
 
     return y + 5;
   }
