@@ -321,7 +321,7 @@ export class QrCodeService {
           align: "right",
         });
         xPos += coatColWidths[2];
-        doc.text(coat.litersRequired.toFixed(2), xPos, y + 4, {
+        doc.text(coat.litersRequired === 0 ? "—" : coat.litersRequired.toFixed(2), xPos, y + 4, {
           width: coatColWidths[3] - 6,
           align: "right",
         });
@@ -334,8 +334,13 @@ export class QrCodeService {
           .stroke();
         y += 3;
       });
+
+      doc.fillColor("#9ca3af").fontSize(7).font("Helvetica");
+      doc.text("Coverage includes 55% piping loss factor", margin + 3, y + 2);
       y += mmToPt(8);
     }
+
+    y = this.drawRubberAllocation(doc, jobCard, y, margin, contentWidth, mmToPt);
 
     const noteTexts = noteItems.map((item) => (item.itemCode || "").trim()).filter(Boolean);
     const combinedNotes = [jobCard.notes, ...noteTexts].filter(Boolean).join("\n\n");
@@ -448,6 +453,94 @@ export class QrCodeService {
         doc.fillColor("#111827");
       }
     });
+  }
+
+  private drawRubberAllocation(
+    doc: typeof PDFDocument,
+    jobCard: JobCard,
+    startY: number,
+    margin: number,
+    contentWidth: number,
+    mmToPt: (mm: number) => number,
+  ): number {
+    const allText = [
+      jobCard.notes || "",
+      ...(jobCard.lineItems || []).map((li) => `${li.itemCode || ""} ${li.itemDescription || ""}`),
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    const isRubberJob =
+      allText.includes("rubber") ||
+      allText.includes("r/l") ||
+      allText.includes("lining") ||
+      allText.includes("liner") ||
+      allText.includes("lagging");
+
+    if (!isRubberJob) return startY;
+
+    const totalM2 = (jobCard.lineItems || []).reduce(
+      (sum, li) => sum + (li.m2 ? Number(li.m2) : 0),
+      0,
+    );
+
+    if (totalM2 <= 0) return startY;
+
+    const rollAreaM2 = 15.0;
+    const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
+    const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;
+    const lastRollPercent = Math.round((lastRollUsage / rollAreaM2) * 100);
+    const leftover = rollsNeeded * rollAreaM2 - totalM2;
+
+    let y = startY;
+
+    if (y + mmToPt(40) > 780) {
+      doc.addPage();
+      y = margin;
+    }
+
+    doc.fillColor("#111827").fontSize(11).font("Helvetica-Bold");
+    doc.text("Rubber Allocation", margin, y);
+    y += mmToPt(4);
+
+    doc.fillColor("#6b7280").fontSize(7).font("Helvetica");
+    doc.text("Standard tank work rolls: 1200mm × 12.5m = 15.00 m² per roll", margin + 3, y);
+    y += mmToPt(4);
+
+    doc.fillColor("#111827").fontSize(8).font("Helvetica-Bold");
+    const statsY = y;
+    doc.text(`Total: ${totalM2.toFixed(2)} m²`, margin + 3, statsY);
+    doc.text(`Rolls: ${rollsNeeded}`, margin + mmToPt(40), statsY);
+    doc.text(`Last Roll: ${lastRollPercent}%`, margin + mmToPt(70), statsY);
+    doc.text(`Leftover: ${leftover.toFixed(2)} m²`, margin + mmToPt(105), statsY);
+    y += mmToPt(5);
+
+    const itemsWithM2 = (jobCard.lineItems || []).filter(
+      (li) => li.m2 !== null && Number(li.m2) > 0,
+    );
+
+    if (itemsWithM2.length > 0) {
+      doc.fontSize(7).font("Helvetica").fillColor("#374151");
+      itemsWithM2.forEach((li) => {
+        if (y + 12 > 780) {
+          doc.addPage();
+          y = margin;
+        }
+        const label = li.itemDescription
+          ? `${li.itemCode || ""} - ${li.itemDescription}`
+          : li.itemCode || "-";
+        const qty = li.quantity ? `× ${li.quantity}` : "";
+        doc.text(`${label} ${qty}`.trim(), margin + 6, y, { width: contentWidth - mmToPt(40) });
+        doc.text(`${Number(li.m2).toFixed(2)} m²`, margin + contentWidth - mmToPt(25), y, {
+          width: mmToPt(25),
+          align: "right",
+        });
+        y += 10;
+      });
+    }
+
+    y += mmToPt(5);
+    return y;
   }
 
   private partitionLineItems(lineItems: JobCard["lineItems"]): {

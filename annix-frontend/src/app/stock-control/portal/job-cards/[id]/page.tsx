@@ -1214,12 +1214,15 @@ export default function JobCardDetailPage() {
                           {coat.coverageM2PerLiter}
                         </td>
                         <td className="py-2 text-right font-semibold text-gray-900">
-                          {coat.litersRequired}
+                          {coat.litersRequired === 0 ? "—" : coat.litersRequired}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                <p className="mt-2 text-xs text-gray-400 italic">
+                  Coverage includes 55% piping loss factor
+                </p>
                 {coatingAnalysis.stockAssessment.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-gray-100">
                     <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">

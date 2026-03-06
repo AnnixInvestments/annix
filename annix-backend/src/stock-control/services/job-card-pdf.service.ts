@@ -299,9 +299,13 @@ export class JobCardPdfService {
       doc.text(coat.product, 50, y, { width: 220 });
       doc.text(dftRange, 280, y);
       doc.text(String(coat.coverageM2PerLiter.toFixed(2)), 350, y);
-      doc.text(String(coat.litersRequired.toFixed(1)), 460, y);
+      doc.text(coat.litersRequired === 0 ? "—" : String(coat.litersRequired.toFixed(1)), 460, y);
       y += 15;
     });
+
+    doc.fillColor("#999999").fontSize(7).font("Helvetica");
+    doc.text("Coverage includes 55% piping loss factor", 50, y);
+    y += 12;
 
     return y + 10;
   }
