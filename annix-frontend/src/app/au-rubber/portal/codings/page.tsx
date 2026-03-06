@@ -14,15 +14,19 @@ import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 const SANS_1198_TAB = "SANS_1198" as const;
 type TabType = CodingType | typeof SANS_1198_TAB;
 
-function SpecificationsTable({ specs, isLoading }: { specs: RubberSpecificationDto[]; isLoading: boolean }) {
+function SpecificationsTable({
+  specs,
+  isLoading,
+}: {
+  specs: RubberSpecificationDto[];
+  isLoading: boolean;
+}) {
   if (isLoading) {
     return <TableLoadingState message="Loading SANS 1198 specifications..." />;
   }
 
   if (specs.length === 0) {
-    return (
-      <div className="text-center py-12 text-gray-500">No specifications found</div>
-    );
+    return <div className="text-center py-12 text-gray-500">No specifications found</div>;
   }
 
   const groupedByType = specs.reduce<Record<string, RubberSpecificationDto[]>>((acc, spec) => {
@@ -35,8 +39,19 @@ function SpecificationsTable({ specs, isLoading }: { specs: RubberSpecificationD
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            {["Grade", "Hardness (IRHD)", "Tensile Min (MPa)", "Elongation Min (%)", "Ageing Tensile (%)", "Ageing Elongation (%)", "Hardness Change Max"].map((header) => (
-              <th key={header} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            {[
+              "Grade",
+              "Hardness (IRHD)",
+              "Tensile Min (MPa)",
+              "Elongation Min (%)",
+              "Ageing Tensile (%)",
+              "Ageing Elongation (%)",
+              "Hardness Change Max",
+            ].map((header) => (
+              <th
+                key={header}
+                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
                 {header}
               </th>
             ))}
@@ -59,16 +74,25 @@ function SpecificationsTable({ specs, isLoading }: { specs: RubberSpecificationD
                       {spec.grade}
                     </span>
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{spec.hardnessClassIrhd}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{spec.tensileStrengthMpaMin}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{spec.elongationAtBreakMin}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {spec.hardnessClassIrhd}
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {spec.tensileStrengthMpaMin}
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {spec.elongationAtBreakMin}
+                  </td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
                     {spec.tensileAfterAgeingMinPercent}&ndash;{spec.tensileAfterAgeingMaxPercent}
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
-                    {spec.elongationAfterAgeingMinPercent}&ndash;{spec.elongationAfterAgeingMaxPercent}
+                    {spec.elongationAfterAgeingMinPercent}&ndash;
+                    {spec.elongationAfterAgeingMaxPercent}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{spec.hardnessChangeAfterAgeingMax}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {spec.hardnessChangeAfterAgeingMax}
+                  </td>
                 </tr>
               )),
             ];
@@ -211,7 +235,9 @@ export default function AuRubberCodingsPage() {
             <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Codings</div>
             <p className="text-gray-600">{error.message}</p>
             <button
-              onClick={() => isSansTab ? fetchSpecifications() : selectedType && fetchCodings(selectedType)}
+              onClick={() =>
+                isSansTab ? fetchSpecifications() : selectedType && fetchCodings(selectedType)
+              }
               className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
             >
               Retry
@@ -230,7 +256,9 @@ export default function AuRubberCodingsPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Product Codings</h1>
             <p className="mt-1 text-sm text-gray-600">
-              {isSansTab ? "SANS 1198:2013 rubber specification reference data" : "Manage product attribute codes"}
+              {isSansTab
+                ? "SANS 1198:2013 rubber specification reference data"
+                : "Manage product attribute codes"}
             </p>
           </div>
           {!isSansTab && (
@@ -286,110 +314,115 @@ export default function AuRubberCodingsPage() {
             <SpecificationsTable specs={specifications} isLoading={isLoading} />
           </div>
         ) : (
-        <>
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          {isLoading ? (
-            <TableLoadingState message={`Loading ${currentTypeInfo?.label.toLowerCase()}...`} />
-          ) : codings.length === 0 ? (
-            <div className="text-center py-12">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
-                No {currentTypeInfo?.label.toLowerCase()} found
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Get started by adding your first {currentTypeInfo?.label.slice(0, -1).toLowerCase()}
-                .
-              </p>
-              <button
-                onClick={openNewModal}
-                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                Add {currentTypeInfo?.label.slice(0, -1) || "Coding"}
-              </button>
+          <>
+            <div className="bg-white shadow rounded-lg overflow-hidden">
+              {isLoading ? (
+                <TableLoadingState message={`Loading ${currentTypeInfo?.label.toLowerCase()}...`} />
+              ) : codings.length === 0 ? (
+                <div className="text-center py-12">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                    />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    No {currentTypeInfo?.label.toLowerCase()} found
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Get started by adding your first{" "}
+                    {currentTypeInfo?.label.slice(0, -1).toLowerCase()}.
+                  </p>
+                  <button
+                    onClick={openNewModal}
+                    className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    Add {currentTypeInfo?.label.slice(0, -1) || "Coding"}
+                  </button>
+                </div>
+              ) : (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Code
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Name
+                      </th>
+                      <th scope="col" className="relative px-6 py-3">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedCodings.map((coding) => (
+                      <tr key={coding.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                            {coding.code}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{coding.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => openEditModal(coding)}
+                            className="text-yellow-600 hover:text-yellow-900"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setDeleteCodingId(coding.id)}
+                            className="text-red-600 hover:text-red-900 ml-4"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Code
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Name
-                  </th>
-                  <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedCodings.map((coding) => (
-                  <tr key={coding.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                        {coding.code}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{coding.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => openEditModal(coding)}
-                        className="text-yellow-600 hover:text-yellow-900"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => setDeleteCodingId(coding.id)}
-                        className="text-red-600 hover:text-red-900 ml-4"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
 
-        <div className="bg-white rounded-lg shadow">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={codings.length}
-            itemsPerPage={ITEMS_PER_PAGE}
-            itemName={currentTypeInfo ? currentTypeInfo.label.toLowerCase() : "codings"}
-            onPageChange={setCurrentPage}
-          />
-        </div>
-        </>
+            <div className="bg-white rounded-lg shadow">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={codings.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+                itemName={currentTypeInfo ? currentTypeInfo.label.toLowerCase() : "codings"}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          </>
         )}
 
         {showModal && (

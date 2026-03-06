@@ -508,7 +508,7 @@ export default function PurchaseRequisitionsPage() {
                     >
                       <option value="">Select supplier</option>
                       {companies
-                        .filter((c) => c.isCompoundOwner)
+                        .filter((c) => c.companyType === "SUPPLIER")
                         .map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name}

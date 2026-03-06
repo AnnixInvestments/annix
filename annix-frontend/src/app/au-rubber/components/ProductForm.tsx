@@ -70,14 +70,21 @@ export function formDataToDto(formData: ProductFormData): CreateRubberProductDto
     specificGravity: formData.specificGravity ? parseFloat(formData.specificGravity) : undefined,
     compoundOwnerFirebaseUid: formData.compoundOwnerFirebaseUid || undefined,
     compoundFirebaseUid: formData.compoundFirebaseUid || undefined,
-    typeFirebaseUid: formData.typeFirebaseUid && formData.typeFirebaseUid !== "NONE" ? formData.typeFirebaseUid : undefined,
+    typeFirebaseUid:
+      formData.typeFirebaseUid && formData.typeFirebaseUid !== "NONE"
+        ? formData.typeFirebaseUid
+        : undefined,
     costPerKg: formData.costPerKg ? parseFloat(formData.costPerKg) : undefined,
     colourFirebaseUid: formData.colourFirebaseUid || undefined,
     hardnessFirebaseUid: formData.hardnessFirebaseUid || undefined,
     curingMethodFirebaseUid: formData.curingMethodFirebaseUid || undefined,
     gradeFirebaseUid: formData.gradeFirebaseUid || undefined,
-    tensileStrengthMpa: formData.tensileStrengthMpa ? parseFloat(formData.tensileStrengthMpa) : undefined,
-    elongationAtBreak: formData.elongationAtBreak ? parseInt(formData.elongationAtBreak, 10) : undefined,
+    tensileStrengthMpa: formData.tensileStrengthMpa
+      ? parseFloat(formData.tensileStrengthMpa)
+      : undefined,
+    elongationAtBreak: formData.elongationAtBreak
+      ? parseInt(formData.elongationAtBreak, 10)
+      : undefined,
     markup: formData.markup ? parseFloat(formData.markup) : undefined,
   };
 }
@@ -160,7 +167,12 @@ export function ProductForm({
   const autoGradeResult = useMemo(() => {
     const tensile = parseFloat(formData.tensileStrengthMpa);
     const elongation = parseInt(formData.elongationAtBreak, 10);
-    if (!formData.compoundFirebaseUid || !formData.hardnessFirebaseUid || isNaN(tensile) || isNaN(elongation)) {
+    if (
+      !formData.compoundFirebaseUid ||
+      !formData.hardnessFirebaseUid ||
+      Number.isNaN(tensile) ||
+      Number.isNaN(elongation)
+    ) {
       return null;
     }
 
@@ -178,7 +190,7 @@ export function ProductForm({
     );
     if (!hardnessCoding) return null;
     const hardnessIrhd = parseInt(hardnessCoding.code, 10);
-    if (isNaN(hardnessIrhd)) return null;
+    if (Number.isNaN(hardnessIrhd)) return null;
 
     const matchingSpecs = specifications.filter(
       (s) => s.typeNumber === typeNumber && s.hardnessClassIrhd === hardnessIrhd,
@@ -194,21 +206,38 @@ export function ProductForm({
     );
 
     const matchedSpec = sortedSpecs.find(
-      (s) => tensile >= Number(s.tensileStrengthMpaMin) && elongation >= Number(s.elongationAtBreakMin),
+      (s) =>
+        tensile >= Number(s.tensileStrengthMpaMin) && elongation >= Number(s.elongationAtBreakMin),
     );
 
     if (matchedSpec) {
       const gradeCoding = codings.find(
         (c) => c.codingType === "GRADE" && c.code === matchedSpec.grade,
       );
-      return { gradeFirebaseUid: gradeCoding?.firebaseUid ?? null, gradeName: matchedSpec.grade, belowMinimum: false };
+      return {
+        gradeFirebaseUid: gradeCoding?.firebaseUid ?? null,
+        gradeName: matchedSpec.grade,
+        belowMinimum: false,
+      };
     }
 
     return { gradeFirebaseUid: null, gradeName: null, belowMinimum: true };
-  }, [formData.compoundFirebaseUid, formData.hardnessFirebaseUid, formData.tensileStrengthMpa, formData.elongationAtBreak, codings, specifications]);
+  }, [
+    formData.compoundFirebaseUid,
+    formData.hardnessFirebaseUid,
+    formData.tensileStrengthMpa,
+    formData.elongationAtBreak,
+    codings,
+    specifications,
+  ]);
 
-  const isGradeAutoSet = autoGradeResult !== null && !autoGradeResult.belowMinimum && autoGradeResult.gradeFirebaseUid !== null;
-  const effectiveGradeUid = isGradeAutoSet ? autoGradeResult.gradeFirebaseUid! : formData.gradeFirebaseUid;
+  const isGradeAutoSet =
+    autoGradeResult !== null &&
+    !autoGradeResult.belowMinimum &&
+    autoGradeResult.gradeFirebaseUid !== null;
+  const effectiveGradeUid = isGradeAutoSet
+    ? autoGradeResult.gradeFirebaseUid!
+    : formData.gradeFirebaseUid;
 
   const handleChange = (field: keyof ProductFormData, value: string) => {
     if (field === "compoundFirebaseUid") {
@@ -216,7 +245,7 @@ export function ProductForm({
       setFormData((prev) => ({
         ...prev,
         [field]: value,
-        typeFirebaseUid: value ? (matchedType || "NONE") : prev.typeFirebaseUid,
+        typeFirebaseUid: value ? matchedType || "NONE" : prev.typeFirebaseUid,
       }));
     } else {
       setFormData((prev) => ({ ...prev, [field]: value }));
@@ -310,9 +339,7 @@ export function ProductForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Type (SANS 1198)
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Type (SANS 1198)</label>
           <select
             value={formData.typeFirebaseUid}
             onChange={(e) => handleChange("typeFirebaseUid", e.target.value)}
@@ -365,7 +392,9 @@ export function ProductForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tensile Strength (MPa)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Tensile Strength (MPa)
+          </label>
           <input
             type="number"
             step="0.1"
@@ -377,7 +406,9 @@ export function ProductForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Elongation at Break (%)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Elongation at Break (%)
+          </label>
           <input
             type="number"
             step="1"

@@ -725,8 +725,10 @@ export class RubberLiningService {
     if (dto.curingMethodFirebaseUid !== undefined)
       product.curingMethodFirebaseUid = dto.curingMethodFirebaseUid || null;
     if (dto.gradeFirebaseUid !== undefined) product.gradeFirebaseUid = dto.gradeFirebaseUid || null;
-    if (dto.tensileStrengthMpa !== undefined) product.tensileStrengthMpa = dto.tensileStrengthMpa ?? null;
-    if (dto.elongationAtBreak !== undefined) product.elongationAtBreak = dto.elongationAtBreak ?? null;
+    if (dto.tensileStrengthMpa !== undefined)
+      product.tensileStrengthMpa = dto.tensileStrengthMpa ?? null;
+    if (dto.elongationAtBreak !== undefined)
+      product.elongationAtBreak = dto.elongationAtBreak ?? null;
     if (dto.markup !== undefined) product.markup = dto.markup || null;
 
     const saved = await this.productRepository.save(product);
