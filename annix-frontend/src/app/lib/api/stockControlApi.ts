@@ -314,7 +314,7 @@ export interface RubberPlanManualRoll {
 }
 
 export interface RubberPlanOverride {
-  status: "accepted" | "manual";
+  status: "pending" | "accepted" | "manual";
   selectedPlyCombination: number[] | null;
   manualRolls: RubberPlanManualRoll[] | null;
   reviewedBy: string | null;

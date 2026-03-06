@@ -24,10 +24,14 @@ import { formatDateZA } from "@/app/lib/datetime";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
+import { JigsawEditor } from "@/app/stock-control/components/jigsaw/JigsawEditor";
 import {
   type CuttingPlan,
   type Offcut,
+  type ParsedPipeItem,
   calculateCuttingPlan,
+  expandAndRotateItems,
+  parsePipeItem,
   type RollAllocation,
 } from "@/app/stock-control/lib/rubberCuttingCalculator";
 
@@ -764,6 +768,7 @@ function RubberSOHPanel({
   onOverrideSaved,
   selectedPly,
   onPlyChange,
+  lineItems,
 }: {
   stockOptions: RubberStockOptionsResponse;
   plan: CuttingPlan;
@@ -772,6 +777,14 @@ function RubberSOHPanel({
   onOverrideSaved: (override: RubberPlanOverride) => void;
   selectedPly: number[] | null;
   onPlyChange: (ply: number[] | null) => void;
+  lineItems: Array<{
+    id?: number;
+    itemCode: string | null;
+    itemDescription: string | null;
+    itemNo?: string | null;
+    quantity: number | null;
+    m2: number | null;
+  }>;
 }) {
   const [planDecision, setPlanDecision] = useState<"pending" | "accepted" | "rejected">(
     existingOverride?.status === "accepted"
@@ -810,24 +823,26 @@ function RubberSOHPanel({
     }
   };
 
-  const handleSaveManual = async () => {
+  const handleSaveManual = async (rollsToSave?: RubberPlanManualRoll[]) => {
+    const rolls = rollsToSave ?? manualRolls;
     setSaving(true);
     try {
       const override: RubberPlanOverride = {
         status: "manual",
         selectedPlyCombination: null,
-        manualRolls,
+        manualRolls: rolls,
         reviewedBy: null,
         reviewedAt: null,
       };
       await stockControlApiClient.updateRubberPlan(jobCardId, override);
+      setManualRolls(rolls);
       onOverrideSaved(override);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleReset = async () => {
+  const handleReset = () => {
     setPlanDecision("pending");
     onPlyChange(null);
     setManualRolls([]);
@@ -934,19 +949,25 @@ function RubberSOHPanel({
         <div className="border-2 border-amber-300 rounded-lg p-4 bg-amber-50">
           <h5 className="text-sm font-semibold text-amber-900 mb-3">Manual Roll Specification</h5>
           <p className="text-xs text-amber-700 mb-4">
-            Specify your own roll sizes and cutting instructions below.
+            Drag and drop panels onto rolls to arrange your cutting layout.
           </p>
-          <ManualRollInput rolls={manualRolls} onChange={setManualRolls} />
-          <div className="mt-4 flex justify-end">
-            <button
-              type="button"
-              onClick={handleSaveManual}
-              disabled={saving || manualRolls.length === 0}
-              className="px-4 py-2 rounded text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
-            >
-              {saving ? "Saving..." : "Save Manual Plan"}
-            </button>
-          </div>
+          <JigsawEditor
+            parsedItems={expandAndRotateItems(
+              lineItems.map((li, idx) =>
+                parsePipeItem(
+                  String(li.id || idx),
+                  li.itemDescription || li.itemCode || "",
+                  Number(li.quantity || 1),
+                  li.m2 ? Number(li.m2) : null,
+                  li.itemNo || null,
+                ),
+              ),
+            )}
+            rubberSpec={stockOptions?.rubberSpec}
+            existingManualRolls={manualRolls}
+            onSave={(rolls) => handleSaveManual(rolls)}
+            saving={saving}
+          />
         </div>
       )}
 
@@ -1149,6 +1170,7 @@ function RubberAllocationSection({
             onOverrideSaved={setOverride}
             selectedPly={selectedPly}
             onPlyChange={setSelectedPly}
+            lineItems={lineItemsForPlan}
           />
         )}
       </div>
