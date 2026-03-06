@@ -6,6 +6,7 @@ import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { DeliveryService } from "./delivery.service";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
@@ -57,6 +58,13 @@ describe("DeliveryService", () => {
     extractDeliveryNoteFromImage: jest.fn(),
   };
 
+  const mockInvoiceRepo = {
+    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    findOne: jest.fn(),
+    find: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -65,6 +73,7 @@ describe("DeliveryService", () => {
         { provide: getRepositoryToken(DeliveryNoteItem), useValue: mockDeliveryNoteItemRepo },
         { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
         { provide: getRepositoryToken(StockMovement), useValue: mockMovementRepo },
+        { provide: getRepositoryToken(SupplierInvoice), useValue: mockInvoiceRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: InvoiceExtractionService, useValue: mockExtractionService },
       ],
