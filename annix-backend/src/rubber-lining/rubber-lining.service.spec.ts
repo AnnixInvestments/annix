@@ -427,4 +427,73 @@ describe("RubberLiningService", () => {
       expect(result!.items[0].totalKg).toBe(50);
     });
   });
+
+  describe("generateLineCallout", () => {
+    it("should generate basic callout without special properties", () => {
+      const result = service.generateLineCallout(1, "A", 60);
+
+      expect(result.type).toBe(1);
+      expect(result.grade).toBe("A");
+      expect(result.hardnessClass).toBe(60);
+      expect(result.fullCallout).toBe("1 A 60");
+      expect(result.specialProperties).toHaveLength(0);
+    });
+
+    it("should include special properties in callout", () => {
+      const result = service.generateLineCallout(2, "B", 50, [1, 3]);
+
+      expect(result.fullCallout).toBe("2 B 50 (I) (III)");
+      expect(result.specialProperties).toEqual([
+        "I (Heat Resistance)",
+        "III (Chemical Resistance)",
+      ]);
+    });
+
+    it("should include all 7 special properties", () => {
+      const result = service.generateLineCallout(1, "A", 60, [1, 2, 3, 4, 5, 6, 7]);
+
+      expect(result.fullCallout).toBe("1 A 60 (I) (II) (III) (IV) (V) (VI) (VII)");
+      expect(result.specialProperties).toHaveLength(7);
+    });
+
+    it("should describe grade A correctly", () => {
+      const result = service.generateLineCallout(1, "A", 60);
+
+      expect(result.description).toContain("Grade A");
+      expect(result.description).toContain("18 MPa");
+    });
+
+    it("should describe grade B correctly", () => {
+      const result = service.generateLineCallout(1, "B", 50);
+
+      expect(result.description).toContain("14 MPa");
+    });
+
+    it("should describe grade C correctly", () => {
+      const result = service.generateLineCallout(1, "C", 40);
+
+      expect(result.description).toContain("7 MPa");
+    });
+
+    it("should describe grade D as Ebonite", () => {
+      const result = service.generateLineCallout(1, "D", 80);
+
+      expect(result.description).toContain("Ebonite");
+    });
+
+    it("should handle unknown grade", () => {
+      const result = service.generateLineCallout(1, "Z", 60);
+
+      expect(result.description).toContain("Unknown grade");
+    });
+
+    it("should include SANS 1198 reference in description", () => {
+      const result = service.generateLineCallout(3, "A", 70, [4]);
+
+      expect(result.description).toContain("SANS 1198:2013");
+      expect(result.description).toContain("Type 3");
+      expect(result.description).toContain("70 IRHD");
+      expect(result.description).toContain("Abrasion Resistance");
+    });
+  });
 });
