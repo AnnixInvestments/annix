@@ -386,8 +386,8 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
               href={item.href}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                 isActive(item.href)
-                  ? "bg-white bg-opacity-20 text-white"
-                  : "text-white text-opacity-70 hover:bg-white hover:bg-opacity-10 hover:text-opacity-100"
+                  ? "bg-black/20 text-white"
+                  : "text-white/70 hover:bg-black/10 hover:text-white"
               }`}
             >
               <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
@@ -405,8 +405,8 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
               <button
                 className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                   isSectionActive(section) || hoveredSection === section.label
-                    ? "bg-white bg-opacity-20 text-white"
-                    : "text-white text-opacity-70 hover:bg-white hover:bg-opacity-10 hover:text-opacity-100"
+                    ? "bg-black/20 text-white"
+                    : "text-white/70 hover:bg-black/10 hover:text-white"
                 }`}
               >
                 {section.label}
