@@ -361,10 +361,10 @@ export class JobCardPdfService {
       doc.text(`Rolls Required: ${plan.totalRollsNeeded}`, 50, y);
       doc.text(`Used: ${plan.totalUsedSqM.toFixed(2)} m²`, 200, y);
       doc.text(
-          `Waste: ${plan.totalWasteSqM.toFixed(2)} m² (${plan.wastePercentage.toFixed(1)}%)`,
-          340,
-          y,
-        );
+        `Waste: ${plan.totalWasteSqM.toFixed(2)} m² (${plan.wastePercentage.toFixed(1)}%)`,
+        340,
+        y,
+      );
       y += 15;
 
       if (plan.genericM2Total > 0) {

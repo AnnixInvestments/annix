@@ -7,7 +7,6 @@ import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
-import type { ParsedCompoundCode } from "./rubber-inbound-email.service";
 import { RubberInboundEmailService } from "./rubber-inbound-email.service";
 
 describe("RubberInboundEmailService", () => {
@@ -131,8 +130,7 @@ describe("RubberInboundEmailService", () => {
   });
 
   describe("parseFilenameForCocInfo", () => {
-    const parse = (filename: string) =>
-      (service as any).parseFilenameForCocInfo(filename);
+    const parse = (filename: string) => (service as any).parseFilenameForCocInfo(filename);
 
     it("should extract batch numbers with B prefix", () => {
       const result = parse("AUA60BSC01-B123.pdf");
@@ -292,8 +290,7 @@ describe("RubberInboundEmailService", () => {
   });
 
   describe("determineDocumentType", () => {
-    const determine = (subject: string) =>
-      (service as any).determineDocumentType(subject);
+    const determine = (subject: string) => (service as any).determineDocumentType(subject);
 
     it("should detect delivery note from subject with 'delivery'", () => {
       expect(determine("Delivery Note DN-001")).toBe("delivery_note");
