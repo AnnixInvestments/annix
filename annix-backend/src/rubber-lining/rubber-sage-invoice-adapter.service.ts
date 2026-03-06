@@ -56,7 +56,12 @@ export class RubberSageInvoiceAdapterService {
       return;
     }
 
-    await this.invoiceRepo.update({ id: In(invoiceIds) }, { exportedToSageAt: now().toJSDate() });
+    await this.invoiceRepo
+      .createQueryBuilder()
+      .update(RubberTaxInvoice)
+      .set({ exportedToSageAt: now().toJSDate() } as unknown as RubberTaxInvoice)
+      .where({ id: In(invoiceIds) })
+      .execute();
   }
 
   async previewCount(filters: SageExportFilterDto): Promise<{

@@ -31,6 +31,7 @@ import {
 import { Response } from "express";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
+import { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
 import { SageExportService } from "../sage-export/sage-export.service";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import {
@@ -2692,9 +2693,9 @@ Formula: totalPrice = totalKg × salePricePerKg
     @Query("excludeExported") excludeExported?: string,
     @Res() res?: Response,
   ): Promise<void> {
-    const filters = {
-      dateFrom: dateFrom || null,
-      dateTo: dateTo || null,
+    const filters: SageExportFilterDto = {
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
       excludeExported: excludeExported !== "false",
     };
 
