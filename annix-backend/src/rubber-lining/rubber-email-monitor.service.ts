@@ -78,6 +78,9 @@ export class RubberEmailMonitorService implements OnModuleInit {
         port: imapPort,
         tls: true,
         authTimeout: 10000,
+        tlsOptions: {
+          servername: "da01.ondedicatedhosting.co.za",
+        },
       },
     };
 
