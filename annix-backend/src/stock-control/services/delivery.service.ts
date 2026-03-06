@@ -6,6 +6,7 @@ import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
 @Injectable()
@@ -21,6 +22,8 @@ export class DeliveryService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockMovement)
     private readonly movementRepo: Repository<StockMovement>,
+    @InjectRepository(SupplierInvoice)
+    private readonly invoiceRepo: Repository<SupplierInvoice>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly extractionService: InvoiceExtractionService,
@@ -621,5 +624,48 @@ export class DeliveryService {
       .slice(0, 4)
       .join("-");
     return descWords || `ITEM-${Date.now()}`;
+  }
+
+  async createInvoiceFromAnalyzedData(
+    companyId: number,
+    file: Express.Multer.File,
+    analyzedData: {
+      invoiceNumber?: string;
+      deliveryNoteNumber?: string;
+      deliveryDate?: string;
+      fromCompany?: { name?: string };
+      totals?: {
+        subtotalExclVat?: number;
+        vatTotal?: number;
+        grandTotalInclVat?: number;
+      };
+    },
+  ): Promise<SupplierInvoice> {
+    const uploadResult = await this.storageService.upload(
+      file,
+      `${StorageArea.STOCK_CONTROL}/invoices`,
+    );
+
+    const invoiceNumber =
+      analyzedData.invoiceNumber || analyzedData.deliveryNoteNumber || `INV-${Date.now()}`;
+
+    const invoiceDate = analyzedData.deliveryDate ? new Date(analyzedData.deliveryDate) : null;
+
+    const invoice = this.invoiceRepo.create({
+      companyId,
+      invoiceNumber,
+      supplierName: analyzedData.fromCompany?.name || "Unknown Supplier",
+      invoiceDate,
+      totalAmount: analyzedData.totals?.grandTotalInclVat ?? null,
+      vatAmount: analyzedData.totals?.vatTotal ?? null,
+      scanUrl: uploadResult.path,
+      extractionStatus: InvoiceExtractionStatus.PENDING,
+      extractedData: analyzedData,
+    });
+
+    const saved = await this.invoiceRepo.save(invoice);
+    this.logger.log(`Created invoice ${saved.id} (${invoiceNumber}) from scan`);
+
+    return saved;
   }
 }

@@ -5,10 +5,14 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import {
+  type AnalyzedDeliveryNoteData,
   type AnalyzedDeliveryNoteLineItem,
   type AnalyzedDeliveryNoteResult,
   stockControlApiClient,
 } from "@/app/lib/api/stockControlApi";
+
+const isInvoiceDocument = (docType: AnalyzedDeliveryNoteData["documentType"]): boolean =>
+  docType === "SUPPLIER_INVOICE" || docType === "TAX_INVOICE";
 
 export default function ScanDeliveryNotePage() {
   const router = useRouter();
@@ -68,14 +72,24 @@ export default function ScanDeliveryNotePage() {
 
     try {
       setIsAccepting(true);
-      const deliveryNote = await stockControlApiClient.acceptAnalyzedDeliveryNote(
-        selectedFile,
-        result.data,
-      );
-      showToast("Delivery note created successfully", "success");
-      router.push(`/stock-control/portal/deliveries/${deliveryNote.id}`);
+
+      if (isInvoiceDocument(result.data.documentType)) {
+        const invoice = await stockControlApiClient.acceptAnalyzedInvoice(
+          selectedFile,
+          result.data,
+        );
+        showToast("Invoice created successfully", "success");
+        router.push(`/stock-control/portal/invoices/${invoice.id}`);
+      } else {
+        const deliveryNote = await stockControlApiClient.acceptAnalyzedDeliveryNote(
+          selectedFile,
+          result.data,
+        );
+        showToast("Delivery note created successfully", "success");
+        router.push(`/stock-control/portal/deliveries/${deliveryNote.id}`);
+      }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create delivery note", "error");
+      showToast(err instanceof Error ? err.message : "Failed to create record", "error");
     } finally {
       setIsAccepting(false);
     }
@@ -285,19 +299,29 @@ export default function ScanDeliveryNotePage() {
               <h2 className="text-lg font-medium text-gray-900">Extracted Data</h2>
               <span
                 className={`px-3 py-1 text-sm font-medium rounded-full ${
-                  result.data.documentType === "SUPPLIER_DELIVERY"
-                    ? "bg-teal-100 text-teal-800"
-                    : "bg-green-100 text-green-800"
+                  isInvoiceDocument(result.data.documentType)
+                    ? "bg-amber-100 text-amber-800"
+                    : result.data.documentType === "SUPPLIER_DELIVERY"
+                      ? "bg-teal-100 text-teal-800"
+                      : "bg-green-100 text-green-800"
                 }`}
               >
-                {result.data.documentType === "SUPPLIER_DELIVERY"
-                  ? "Supplier Delivery"
-                  : "Customer Delivery"}
+                {isInvoiceDocument(result.data.documentType)
+                  ? "Supplier Invoice"
+                  : result.data.documentType === "SUPPLIER_DELIVERY"
+                    ? "Supplier Delivery"
+                    : "Customer Delivery"}
               </span>
             </div>
 
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
+                {result.data.invoiceNumber && (
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Invoice Number</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{result.data.invoiceNumber}</dd>
+                  </div>
+                )}
                 {result.data.deliveryNoteNumber && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">DN Number</dt>
@@ -324,6 +348,18 @@ export default function ScanDeliveryNotePage() {
                     <dd className="mt-1 text-sm text-gray-900">{result.data.customerReference}</dd>
                   </div>
                 )}
+                {result.data.totals.grandTotalInclVat !== null &&
+                  result.data.totals.grandTotalInclVat !== undefined && (
+                    <div>
+                      <dt className="text-sm font-medium text-gray-500">Total (Incl. VAT)</dt>
+                      <dd className="mt-1 text-sm text-gray-900">
+                        R
+                        {result.data.totals.grandTotalInclVat.toLocaleString("en-ZA", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </dd>
+                    </div>
+                  )}
               </div>
 
               {result.data.fromCompany.name && (
@@ -469,7 +505,9 @@ export default function ScanDeliveryNotePage() {
                           d="M5 13l4 4L19 7"
                         />
                       </svg>
-                      Accept & Create Delivery Note
+                      {result && isInvoiceDocument(result.data.documentType)
+                        ? "Accept & Create Invoice"
+                        : "Accept & Create Delivery Note"}
                     </>
                   )}
                 </button>

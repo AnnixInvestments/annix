@@ -144,6 +144,7 @@ export class DeliveriesController {
     @Req() req: any,
     @UploadedFile() file: Express.Multer.File,
     @Body("analyzedData") analyzedDataJson: string,
+    @Body("documentType") documentType?: string,
   ) {
     if (!file) {
       throw new BadRequestException("No file provided");
@@ -156,9 +157,15 @@ export class DeliveriesController {
     try {
       const analyzedData = JSON.parse(analyzedDataJson) as {
         deliveryNoteNumber?: string;
+        invoiceNumber?: string;
         deliveryDate?: string;
         fromCompany?: { name?: string };
         toCompany?: { name?: string };
+        totals?: {
+          subtotalExclVat?: number;
+          vatTotal?: number;
+          grandTotalInclVat?: number;
+        };
         lineItems?: Array<{
           description?: string;
           itemCode?: string;
@@ -176,6 +183,18 @@ export class DeliveriesController {
         }>;
       };
 
+      if (documentType === "SUPPLIER_INVOICE") {
+        this.logger.log(`Creating invoice for company ${req.user.companyId} from analyzed data`);
+
+        const invoice = await this.deliveryService.createInvoiceFromAnalyzedData(
+          req.user.companyId,
+          file,
+          analyzedData,
+        );
+
+        return invoice;
+      }
+
       this.logger.log(
         `Creating delivery note for company ${req.user.companyId} from analyzed data`,
       );
@@ -190,14 +209,14 @@ export class DeliveriesController {
       return deliveryNote;
     } catch (error) {
       this.logger.error(
-        `Failed to create delivery note: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to create record: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error.stack : undefined,
       );
       if (error instanceof BadRequestException) {
         throw error;
       }
       throw new InternalServerErrorException(
-        `Failed to create delivery note: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to create record: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }

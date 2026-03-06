@@ -901,8 +901,9 @@ export interface AnalyzedDeliveryNoteLineItem {
 }
 
 export interface AnalyzedDeliveryNoteData {
-  documentType: "SUPPLIER_DELIVERY" | "CUSTOMER_DELIVERY";
+  documentType: "SUPPLIER_DELIVERY" | "CUSTOMER_DELIVERY" | "SUPPLIER_INVOICE" | "TAX_INVOICE";
   deliveryNoteNumber: string | null;
+  invoiceNumber: string | null;
   deliveryDate: string | null;
   purchaseOrderNumber: string | null;
   customerReference: string | null;
@@ -913,6 +914,9 @@ export interface AnalyzedDeliveryNoteData {
     totalQuantity: number | null;
     totalWeightKg: number | null;
     numberOfRolls: number | null;
+    subtotalExclVat: number | null;
+    vatTotal: number | null;
+    grandTotalInclVat: number | null;
   };
   notes: string | null;
   receivedBySignature: boolean;
@@ -1494,6 +1498,18 @@ class StockControlApiClient {
       `/stock-control/job-cards/${jobCardId}/coating-analysis`,
     );
     return result && "id" in result ? (result as CoatingAnalysis) : null;
+  }
+
+  async updateCoatingSurfaceArea(
+    jobCardId: number,
+    extM2: number,
+    intM2: number,
+  ): Promise<CoatingAnalysis> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/surface-area`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ extM2, intM2 }),
+    });
   }
 
   async triggerCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis> {
@@ -2498,6 +2514,32 @@ class StockControlApiClient {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to create delivery note: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async acceptAnalyzedInvoice(
+    file: File,
+    analyzedData: AnalyzedDeliveryNoteData,
+  ): Promise<SupplierInvoice> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("analyzedData", JSON.stringify(analyzedData));
+    formData.append("documentType", "SUPPLIER_INVOICE");
+
+    const url = `${this.baseURL}/stock-control/deliveries/accept-analyzed`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create invoice: ${errorText}`);
     }
 
     return response.json();
