@@ -388,7 +388,7 @@ export class JobCardPdfService {
 
     this.logger.log(
       `Rubber PDF for JC ${jobCard.id}: ${calcItems.length} filtered items, ` +
-        `descriptions: [${calcItems.map((i) => `"${i.itemDescription || i.itemCode}"`).join(", ")}]`,
+        `raw: ${JSON.stringify(calcItems.map((i) => ({ id: i.id, code: i.itemCode, desc: i.itemDescription, qty: i.quantity, m2: i.m2 })))}`,
     );
 
     const plan = calculateCuttingPlan(calcItems, stockRolls.length > 0 ? stockQuery : null);
@@ -425,6 +425,16 @@ export class JobCardPdfService {
     doc.fontSize(12).font("Helvetica-Bold").text("Rubber Allocation", 50, startY);
 
     let y = startY + 15;
+
+    doc.fontSize(6).font("Helvetica").fillColor("#999999");
+    doc.text(
+      `[debug] hasPipeItems=${plan.hasPipeItems}, rolls=${plan.rolls.length}, ` +
+        `genericM2=${plan.genericM2Total.toFixed(2)}, items=${plan.rolls.flatMap((r) => r.cuts).length}`,
+      50,
+      y,
+    );
+    y += 8;
+    doc.fillColor("#000000");
 
     if (plan.rubberSpec) {
       doc.fontSize(8).font("Helvetica");
