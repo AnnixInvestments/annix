@@ -288,6 +288,30 @@ export class JobCardWorkflowService {
     return user.role === requiredRole || user.role === StockControlRole.ADMIN;
   }
 
+  async initializeWorkflow(
+    companyId: number,
+    jobCardId: number,
+    user: { id: number; name: string },
+  ): Promise<void> {
+    const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
+
+    if (jobCard.workflowStatus !== JobCardWorkflowStatus.DRAFT) {
+      return;
+    }
+
+    jobCard.workflowStatus = JobCardWorkflowStatus.DOCUMENT_UPLOADED;
+    await this.jobCardRepo.save(jobCard);
+
+    await this.createApprovalRecord(
+      companyId,
+      jobCardId,
+      WorkflowStep.DOCUMENT_UPLOAD,
+      { id: user.id, name: user.name, companyId, role: StockControlRole.ACCOUNTS },
+    );
+
+    this.logger.log(`Workflow initialized for job card ${jobCardId} by ${user.name}`);
+  }
+
   async documents(companyId: number, jobCardId: number): Promise<JobCardDocument[]> {
     return this.documentRepo.find({
       where: { jobCardId, companyId },

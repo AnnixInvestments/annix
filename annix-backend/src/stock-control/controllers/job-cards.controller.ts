@@ -25,6 +25,7 @@ import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
 import { JobCardService } from "../services/job-card.service";
 import { JobCardVersionService } from "../services/job-card-version.service";
+import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { RequisitionService } from "../services/requisition.service";
 
 @ApiTags("Stock Control - Job Cards")
@@ -39,6 +40,7 @@ export class JobCardsController {
     private readonly requisitionService: RequisitionService,
     private readonly versionService: JobCardVersionService,
     private readonly drawingExtractionService: DrawingExtractionService,
+    private readonly workflowService: JobCardWorkflowService,
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
   ) {}
@@ -69,6 +71,16 @@ export class JobCardsController {
     const result = await this.jobCardService.update(req.user.companyId, id, body);
 
     if (body.status === "active") {
+      try {
+        await this.workflowService.initializeWorkflow(req.user.companyId, id, {
+          id: req.user.id,
+          name: req.user.name,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        this.logger.error(`Failed to initialize workflow for job card ${id}: ${message}`);
+      }
+
       try {
         await this.requisitionService.createFromJobCard(req.user.companyId, id, req.user.name);
       } catch (err) {

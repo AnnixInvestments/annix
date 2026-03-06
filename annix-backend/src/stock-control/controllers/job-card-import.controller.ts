@@ -17,6 +17,7 @@ import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-contro
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { JobCardImportRow, JobCardImportService } from "../services/job-card-import.service";
 import { M2CalculationService } from "../services/m2-calculation.service";
+import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { WorkflowNotificationService } from "../services/workflow-notification.service";
 
 @ApiTags("Stock Control - Job Card Import")
@@ -31,6 +32,7 @@ export class JobCardImportController {
     private readonly m2CalculationService: M2CalculationService,
     private readonly coatingAnalysisService: CoatingAnalysisService,
     private readonly notificationService: WorkflowNotificationService,
+    private readonly workflowService: JobCardWorkflowService,
   ) {}
 
   @Post("upload")
@@ -94,6 +96,16 @@ export class JobCardImportController {
           const message = err instanceof Error ? err.message : "Unknown error";
           this.logger.error(`Job card import notification failed: ${message}`);
         });
+
+      const user = { id: req.user.id, name: req.user.name };
+      Promise.all(
+        result.createdJobCardIds.map((jobCardId) =>
+          this.workflowService.initializeWorkflow(req.user.companyId, jobCardId, user),
+        ),
+      ).catch((err) => {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        this.logger.error(`Workflow initialization failed: ${message}`);
+      });
     }
 
     return result;
