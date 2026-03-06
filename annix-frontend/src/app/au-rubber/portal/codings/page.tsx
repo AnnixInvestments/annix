@@ -3,7 +3,7 @@
 import { CODING_TYPES, CodingType } from "@annix/product-data/rubber/codingTypes";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { auRubberApiClient, type RubberSpecificationDto } from "@/app/lib/api/auRubberApi";
 import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
@@ -11,11 +11,82 @@ import { RequirePermission } from "../../components/RequirePermission";
 import { ITEMS_PER_PAGE, Pagination, TableLoadingState } from "../../components/TableComponents";
 import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 
+const SANS_1198_TAB = "SANS_1198" as const;
+type TabType = CodingType | typeof SANS_1198_TAB;
+
+function SpecificationsTable({ specs, isLoading }: { specs: RubberSpecificationDto[]; isLoading: boolean }) {
+  if (isLoading) {
+    return <TableLoadingState message="Loading SANS 1198 specifications..." />;
+  }
+
+  if (specs.length === 0) {
+    return (
+      <div className="text-center py-12 text-gray-500">No specifications found</div>
+    );
+  }
+
+  const groupedByType = specs.reduce<Record<string, RubberSpecificationDto[]>>((acc, spec) => {
+    const key = `${spec.typeNumber}-${spec.rubberTypeName ?? "Unknown"}`;
+    return { ...acc, [key]: [...(acc[key] ?? []), spec] };
+  }, {});
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            {["Grade", "Hardness (IRHD)", "Tensile Min (MPa)", "Elongation Min (%)", "Ageing Tensile (%)", "Ageing Elongation (%)", "Hardness Change Max"].map((header) => (
+              <th key={header} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {Object.entries(groupedByType).map(([key, typeSpecs]) => {
+            const typeName = key.split("-").slice(1).join("-");
+            const typeNumber = key.split("-")[0];
+            return [
+              <tr key={`header-${key}`} className="bg-yellow-50">
+                <td colSpan={7} className="px-4 py-2 text-sm font-semibold text-yellow-800">
+                  Type {typeNumber} &mdash; {typeName}
+                </td>
+              </tr>,
+              ...typeSpecs.map((spec) => (
+                <tr key={spec.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                      {spec.grade}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{spec.hardnessClassIrhd}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{spec.tensileStrengthMpaMin}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{spec.elongationAtBreakMin}</td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {spec.tensileAfterAgeingMinPercent}&ndash;{spec.tensileAfterAgeingMaxPercent}
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">
+                    {spec.elongationAfterAgeingMinPercent}&ndash;{spec.elongationAfterAgeingMaxPercent}
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{spec.hardnessChangeAfterAgeingMax}</td>
+                </tr>
+              )),
+            ];
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function AuRubberCodingsPage() {
   const { showToast } = useToast();
-  const [selectedType, setSelectedType] = useState<CodingType>("COMPOUND");
+  const [selectedTab, setSelectedTab] = useState<TabType>("COMPOUND");
+  const isSansTab = selectedTab === SANS_1198_TAB;
+  const selectedType = isSansTab ? null : (selectedTab as CodingType);
 
   const [codings, setCodings] = useState<RubberProductCodingDto[]>([]);
+  const [specifications, setSpecifications] = useState<RubberSpecificationDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -43,9 +114,26 @@ export default function AuRubberCodingsPage() {
     }
   };
 
+  const fetchSpecifications = async () => {
+    try {
+      setIsLoading(true);
+      const data = await auRubberApiClient.rubberSpecifications();
+      setSpecifications(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load specifications"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchCodings(selectedType);
-  }, [selectedType]);
+    if (isSansTab) {
+      fetchSpecifications();
+    } else if (selectedType) {
+      fetchCodings(selectedType);
+    }
+  }, [selectedTab]);
 
   const paginatedCodings = codings.slice(
     currentPage * ITEMS_PER_PAGE,
@@ -55,7 +143,7 @@ export default function AuRubberCodingsPage() {
   const openNewModal = () => {
     setEditingCoding(null);
     setFormData({
-      codingType: selectedType,
+      codingType: selectedType ?? "COMPOUND",
       code: "",
       name: "",
     });
@@ -87,7 +175,7 @@ export default function AuRubberCodingsPage() {
       }
       showToast(editingCoding ? "Coding updated" : "Coding created", "success");
       setShowModal(false);
-      fetchCodings(selectedType);
+      if (selectedType) fetchCodings(selectedType);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to save coding";
       showToast(errorMessage, "error");
@@ -101,19 +189,19 @@ export default function AuRubberCodingsPage() {
       await auRubberApiClient.deleteProductCoding(id);
       showToast("Coding deleted", "success");
       setDeleteCodingId(null);
-      fetchCodings(selectedType);
+      if (selectedType) fetchCodings(selectedType);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to delete coding";
       showToast(errorMessage, "error");
     }
   };
 
-  const handleTypeChange = (type: CodingType) => {
-    setSelectedType(type);
+  const handleTabChange = (tab: TabType) => {
+    setSelectedTab(tab);
     setCurrentPage(0);
   };
 
-  const currentTypeInfo = CODING_TYPES.find((t) => t.value === selectedType);
+  const currentTypeInfo = selectedType ? CODING_TYPES.find((t) => t.value === selectedType) : null;
 
   if (error) {
     return (
@@ -123,7 +211,7 @@ export default function AuRubberCodingsPage() {
             <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Codings</div>
             <p className="text-gray-600">{error.message}</p>
             <button
-              onClick={() => fetchCodings(selectedType)}
+              onClick={() => isSansTab ? fetchSpecifications() : selectedType && fetchCodings(selectedType)}
               className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
             >
               Retry
@@ -141,22 +229,26 @@ export default function AuRubberCodingsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Product Codings</h1>
-            <p className="mt-1 text-sm text-gray-600">Manage product attribute codes</p>
+            <p className="mt-1 text-sm text-gray-600">
+              {isSansTab ? "SANS 1198:2013 rubber specification reference data" : "Manage product attribute codes"}
+            </p>
           </div>
-          <button
-            onClick={openNewModal}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Add {currentTypeInfo?.label.slice(0, -1) || "Coding"}
-          </button>
+          {!isSansTab && (
+            <button
+              onClick={openNewModal}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              Add {currentTypeInfo?.label.slice(0, -1) || "Coding"}
+            </button>
+          )}
         </div>
 
         <div className="border-b border-gray-200">
@@ -164,9 +256,9 @@ export default function AuRubberCodingsPage() {
             {CODING_TYPES.map((type) => (
               <button
                 key={type.value}
-                onClick={() => handleTypeChange(type.value)}
+                onClick={() => handleTabChange(type.value)}
                 className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                  selectedType === type.value
+                  selectedTab === type.value
                     ? "border-yellow-500 text-yellow-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
@@ -174,11 +266,27 @@ export default function AuRubberCodingsPage() {
                 {type.label}
               </button>
             ))}
+            <button
+              onClick={() => handleTabChange(SANS_1198_TAB)}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                isSansTab
+                  ? "border-yellow-500 text-yellow-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              SANS 1198 Specs
+            </button>
           </nav>
         </div>
 
         {currentTypeInfo && <p className="text-sm text-gray-500">{currentTypeInfo.description}</p>}
 
+        {isSansTab ? (
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <SpecificationsTable specs={specifications} isLoading={isLoading} />
+          </div>
+        ) : (
+        <>
         <div className="bg-white shadow rounded-lg overflow-hidden">
           {isLoading ? (
             <TableLoadingState message={`Loading ${currentTypeInfo?.label.toLowerCase()}...`} />
@@ -281,6 +389,8 @@ export default function AuRubberCodingsPage() {
             onPageChange={setCurrentPage}
           />
         </div>
+        </>
+        )}
 
         {showModal && (
           <div className="fixed inset-0 z-50 overflow-y-auto">

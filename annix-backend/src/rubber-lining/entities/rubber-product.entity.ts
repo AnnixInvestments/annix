@@ -95,6 +95,22 @@ export class RubberProduct {
   gradeFirebaseUid: string | null;
 
   @Column({
+    name: "tensile_strength_mpa",
+    type: "decimal",
+    precision: 5,
+    scale: 1,
+    nullable: true,
+  })
+  tensileStrengthMpa: number | null;
+
+  @Column({
+    name: "elongation_at_break",
+    type: "int",
+    nullable: true,
+  })
+  elongationAtBreak: number | null;
+
+  @Column({
     name: "markup",
     type: "decimal",
     precision: 10,

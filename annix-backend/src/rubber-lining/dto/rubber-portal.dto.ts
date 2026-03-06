@@ -204,6 +204,8 @@ export class RubberProductDto {
   curingMethodFirebaseUid: string | null;
   gradeName: string | null;
   gradeFirebaseUid: string | null;
+  tensileStrengthMpa: number | null;
+  elongationAtBreak: number | null;
   markup: number | null;
   pricePerKg: number | null;
 }
@@ -255,6 +257,14 @@ export class CreateRubberProductDto {
 
   @IsOptional()
   @IsNumber()
+  tensileStrengthMpa?: number;
+
+  @IsOptional()
+  @IsNumber()
+  elongationAtBreak?: number;
+
+  @IsOptional()
+  @IsNumber()
   markup?: number;
 }
 
@@ -302,6 +312,14 @@ export class UpdateRubberProductDto {
   @IsOptional()
   @IsString()
   gradeFirebaseUid?: string;
+
+  @IsOptional()
+  @IsNumber()
+  tensileStrengthMpa?: number;
+
+  @IsOptional()
+  @IsNumber()
+  elongationAtBreak?: number;
 
   @IsOptional()
   @IsNumber()

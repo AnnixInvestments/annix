@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import React, { useEffect, useMemo, useState } from "react";
+import { auRubberApiClient, type RubberSpecificationDto } from "@/app/lib/api/auRubberApi";
 import type {
   CreateRubberProductDto,
   RubberCompanyDto,
@@ -22,6 +22,8 @@ export interface ProductFormData {
   hardnessFirebaseUid: string;
   curingMethodFirebaseUid: string;
   gradeFirebaseUid: string;
+  tensileStrengthMpa: string;
+  elongationAtBreak: string;
   markup: string;
 }
 
@@ -37,6 +39,8 @@ export const INITIAL_FORM_DATA: ProductFormData = {
   hardnessFirebaseUid: "",
   curingMethodFirebaseUid: "",
   gradeFirebaseUid: "",
+  tensileStrengthMpa: "",
+  elongationAtBreak: "",
   markup: "",
 };
 
@@ -53,6 +57,8 @@ export function formDataFromProduct(product: RubberProductDto): ProductFormData 
     hardnessFirebaseUid: product.hardnessFirebaseUid || "",
     curingMethodFirebaseUid: product.curingMethodFirebaseUid || "",
     gradeFirebaseUid: product.gradeFirebaseUid || "",
+    tensileStrengthMpa: product.tensileStrengthMpa?.toString() || "",
+    elongationAtBreak: product.elongationAtBreak?.toString() || "",
     markup: product.markup?.toString() || "",
   };
 }
@@ -64,12 +70,14 @@ export function formDataToDto(formData: ProductFormData): CreateRubberProductDto
     specificGravity: formData.specificGravity ? parseFloat(formData.specificGravity) : undefined,
     compoundOwnerFirebaseUid: formData.compoundOwnerFirebaseUid || undefined,
     compoundFirebaseUid: formData.compoundFirebaseUid || undefined,
-    typeFirebaseUid: formData.typeFirebaseUid || undefined,
+    typeFirebaseUid: formData.typeFirebaseUid && formData.typeFirebaseUid !== "NONE" ? formData.typeFirebaseUid : undefined,
     costPerKg: formData.costPerKg ? parseFloat(formData.costPerKg) : undefined,
     colourFirebaseUid: formData.colourFirebaseUid || undefined,
     hardnessFirebaseUid: formData.hardnessFirebaseUid || undefined,
     curingMethodFirebaseUid: formData.curingMethodFirebaseUid || undefined,
     gradeFirebaseUid: formData.gradeFirebaseUid || undefined,
+    tensileStrengthMpa: formData.tensileStrengthMpa ? parseFloat(formData.tensileStrengthMpa) : undefined,
+    elongationAtBreak: formData.elongationAtBreak ? parseInt(formData.elongationAtBreak, 10) : undefined,
     markup: formData.markup ? parseFloat(formData.markup) : undefined,
   };
 }
@@ -93,6 +101,7 @@ export function ProductForm({
   const [error, setError] = useState<string | null>(null);
   const [codings, setCodings] = useState<RubberProductCodingDto[]>([]);
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
+  const [specifications, setSpecifications] = useState<RubberSpecificationDto[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
@@ -106,12 +115,14 @@ export function ProductForm({
   const loadReferenceData = async () => {
     try {
       setIsLoadingData(true);
-      const [codingsData, companiesData] = await Promise.all([
+      const [codingsData, companiesData, specsData] = await Promise.all([
         auRubberApiClient.productCodings(),
         auRubberApiClient.companies(),
+        auRubberApiClient.rubberSpecifications(),
       ]);
       setCodings(codingsData);
       setCompanies(companiesData.filter((c) => c.isCompoundOwner));
+      setSpecifications(specsData);
     } catch (err) {
       log.error("Failed to load reference data:", err);
       setError("Failed to load form data");
@@ -122,8 +133,94 @@ export function ProductForm({
 
   const codingsByType = (type: string) => codings.filter((c) => c.codingType === type);
 
+  const COMPOUND_TO_TYPE_CODE: Record<string, string> = {
+    NR: "1",
+    SBR: "1",
+    BR: "1",
+    IR: "1",
+    IIR: "2",
+    BIIR: "2",
+    CIIR: "2",
+    NBR: "3",
+    CR: "4",
+    CSM: "5",
+  };
+
+  const typeForCompound = (compoundFirebaseUid: string): string => {
+    const compound = codings.find(
+      (c) => c.codingType === "COMPOUND" && c.firebaseUid === compoundFirebaseUid,
+    );
+    if (!compound) return "";
+    const typeCode = COMPOUND_TO_TYPE_CODE[compound.code];
+    if (!typeCode) return "";
+    const typeCoding = codings.find((c) => c.codingType === "TYPE" && c.code === typeCode);
+    return typeCoding?.firebaseUid ?? "";
+  };
+
+  const autoGradeResult = useMemo(() => {
+    const tensile = parseFloat(formData.tensileStrengthMpa);
+    const elongation = parseInt(formData.elongationAtBreak, 10);
+    if (!formData.compoundFirebaseUid || !formData.hardnessFirebaseUid || isNaN(tensile) || isNaN(elongation)) {
+      return null;
+    }
+
+    const compound = codings.find(
+      (c) => c.codingType === "COMPOUND" && c.firebaseUid === formData.compoundFirebaseUid,
+    );
+    if (!compound) return null;
+
+    const typeCode = COMPOUND_TO_TYPE_CODE[compound.code];
+    if (!typeCode) return null;
+    const typeNumber = parseInt(typeCode, 10);
+
+    const hardnessCoding = codings.find(
+      (c) => c.codingType === "HARDNESS" && c.firebaseUid === formData.hardnessFirebaseUid,
+    );
+    if (!hardnessCoding) return null;
+    const hardnessIrhd = parseInt(hardnessCoding.code, 10);
+    if (isNaN(hardnessIrhd)) return null;
+
+    const matchingSpecs = specifications.filter(
+      (s) => s.typeNumber === typeNumber && s.hardnessClassIrhd === hardnessIrhd,
+    );
+
+    if (matchingSpecs.length === 0) {
+      return null;
+    }
+
+    const gradeOrder = ["A", "B", "C", "D"];
+    const sortedSpecs = [...matchingSpecs].sort(
+      (a, b) => gradeOrder.indexOf(a.grade) - gradeOrder.indexOf(b.grade),
+    );
+
+    const matchedSpec = sortedSpecs.find(
+      (s) => tensile >= Number(s.tensileStrengthMpaMin) && elongation >= Number(s.elongationAtBreakMin),
+    );
+
+    if (matchedSpec) {
+      const gradeCoding = codings.find(
+        (c) => c.codingType === "GRADE" && c.code === matchedSpec.grade,
+      );
+      return { gradeFirebaseUid: gradeCoding?.firebaseUid ?? null, gradeName: matchedSpec.grade, belowMinimum: false };
+    }
+
+    return { gradeFirebaseUid: null, gradeName: null, belowMinimum: true };
+  }, [formData.compoundFirebaseUid, formData.hardnessFirebaseUid, formData.tensileStrengthMpa, formData.elongationAtBreak, codings, specifications]);
+
+  const isGradeAutoSet = autoGradeResult !== null && !autoGradeResult.belowMinimum && autoGradeResult.gradeFirebaseUid !== null;
+  const effectiveGradeUid = isGradeAutoSet ? autoGradeResult.gradeFirebaseUid! : formData.gradeFirebaseUid;
+
   const handleChange = (field: keyof ProductFormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "compoundFirebaseUid") {
+      const matchedType = value ? typeForCompound(value) : "";
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value,
+        typeFirebaseUid: value ? (matchedType || "NONE") : prev.typeFirebaseUid,
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
     setError(null);
   };
 
@@ -137,7 +234,10 @@ export function ProductForm({
 
     try {
       setError(null);
-      const dto = formDataToDto(formData);
+      const effectiveFormData = isGradeAutoSet
+        ? { ...formData, gradeFirebaseUid: autoGradeResult.gradeFirebaseUid! }
+        : formData;
+      const dto = formDataToDto(effectiveFormData);
       await onSubmit(dto);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to save product";
@@ -194,22 +294,6 @@ export function ProductForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-          <select
-            value={formData.typeFirebaseUid}
-            onChange={(e) => handleChange("typeFirebaseUid", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
-          >
-            <option value="">Select type...</option>
-            {codingsByType("TYPE").map((c) => (
-              <option key={c.id} value={c.firebaseUid}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Compound</label>
           <select
             value={formData.compoundFirebaseUid}
@@ -223,6 +307,29 @@ export function ProductForm({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Type (SANS 1198)
+          </label>
+          <select
+            value={formData.typeFirebaseUid}
+            onChange={(e) => handleChange("typeFirebaseUid", e.target.value)}
+            disabled={formData.compoundFirebaseUid !== ""}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500 disabled:bg-gray-100 disabled:text-gray-600"
+          >
+            <option value="">Select type...</option>
+            <option value="NONE">None</option>
+            {codingsByType("TYPE").map((c) => (
+              <option key={c.id} value={c.firebaseUid}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {formData.compoundFirebaseUid && (
+            <p className="mt-1 text-xs text-gray-500">Auto-set from compound per SANS 1198:2013</p>
+          )}
         </div>
 
         <div>
@@ -258,11 +365,36 @@ export function ProductForm({
         </div>
 
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tensile Strength (MPa)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={formData.tensileStrengthMpa}
+            onChange={(e) => handleChange("tensileStrengthMpa", e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
+            placeholder="e.g. 18.0"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Elongation at Break (%)</label>
+          <input
+            type="number"
+            step="1"
+            value={formData.elongationAtBreak}
+            onChange={(e) => handleChange("elongationAtBreak", e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
+            placeholder="e.g. 500"
+          />
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
           <select
-            value={formData.gradeFirebaseUid}
+            value={effectiveGradeUid}
             onChange={(e) => handleChange("gradeFirebaseUid", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500"
+            disabled={isGradeAutoSet}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-yellow-500 focus:border-yellow-500 disabled:bg-gray-100 disabled:text-gray-600"
           >
             <option value="">Select grade...</option>
             {codingsByType("GRADE").map((c) => (
@@ -271,6 +403,16 @@ export function ProductForm({
               </option>
             ))}
           </select>
+          {isGradeAutoSet && (
+            <p className="mt-1 text-xs text-gray-500">
+              Auto-set to Grade {autoGradeResult.gradeName} from SANS 1198:2013 specifications
+            </p>
+          )}
+          {autoGradeResult?.belowMinimum && (
+            <p className="mt-1 text-xs text-amber-600 font-medium">
+              Below minimum Grade C requirements for this type/hardness combination
+            </p>
+          )}
         </div>
 
         <div>

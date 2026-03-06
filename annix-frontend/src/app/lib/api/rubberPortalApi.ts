@@ -56,6 +56,8 @@ export interface RubberProductDto {
   curingMethodFirebaseUid: string | null;
   gradeName: string | null;
   gradeFirebaseUid: string | null;
+  tensileStrengthMpa: number | null;
+  elongationAtBreak: number | null;
   markup: number | null;
   pricePerKg: number | null;
 }
@@ -72,6 +74,8 @@ export interface CreateRubberProductDto {
   hardnessFirebaseUid?: string;
   curingMethodFirebaseUid?: string;
   gradeFirebaseUid?: string;
+  tensileStrengthMpa?: number;
+  elongationAtBreak?: number;
   markup?: number;
 }
 

@@ -18,6 +18,7 @@ export class RubberSpecificationDto {
   id: number;
   rubberTypeId: number;
   rubberTypeName: string | null;
+  typeNumber: number;
   grade: string;
   hardnessClassIrhd: number;
   tensileStrengthMpaMin: number;

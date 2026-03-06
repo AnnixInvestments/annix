@@ -371,6 +371,7 @@ export class RubberLiningService {
       id: spec.id,
       rubberTypeId: spec.rubberTypeId,
       rubberTypeName: spec.rubberType?.typeName || null,
+      typeNumber: spec.rubberType?.typeNumber ?? 0,
       grade: spec.grade,
       hardnessClassIrhd: spec.hardnessClassIrhd,
       tensileStrengthMpaMin: Number(spec.tensileStrengthMpaMin),
@@ -692,6 +693,8 @@ export class RubberLiningService {
       hardnessFirebaseUid: dto.hardnessFirebaseUid || null,
       curingMethodFirebaseUid: dto.curingMethodFirebaseUid || null,
       gradeFirebaseUid: dto.gradeFirebaseUid || null,
+      tensileStrengthMpa: dto.tensileStrengthMpa ?? null,
+      elongationAtBreak: dto.elongationAtBreak ?? null,
       markup: dto.markup || null,
     });
     const saved = await this.productRepository.save(product);
@@ -722,6 +725,8 @@ export class RubberLiningService {
     if (dto.curingMethodFirebaseUid !== undefined)
       product.curingMethodFirebaseUid = dto.curingMethodFirebaseUid || null;
     if (dto.gradeFirebaseUid !== undefined) product.gradeFirebaseUid = dto.gradeFirebaseUid || null;
+    if (dto.tensileStrengthMpa !== undefined) product.tensileStrengthMpa = dto.tensileStrengthMpa ?? null;
+    if (dto.elongationAtBreak !== undefined) product.elongationAtBreak = dto.elongationAtBreak ?? null;
     if (dto.markup !== undefined) product.markup = dto.markup || null;
 
     const saved = await this.productRepository.save(product);
@@ -1155,6 +1160,8 @@ export class RubberLiningService {
       curingMethodFirebaseUid: product.curingMethodFirebaseUid,
       gradeName: codingName(product.gradeFirebaseUid),
       gradeFirebaseUid: product.gradeFirebaseUid,
+      tensileStrengthMpa: product.tensileStrengthMpa ? Number(product.tensileStrengthMpa) : null,
+      elongationAtBreak: product.elongationAtBreak ? Number(product.elongationAtBreak) : null,
       markup: markup !== 100 ? markup : null,
       pricePerKg: pricePerKg || null,
     };

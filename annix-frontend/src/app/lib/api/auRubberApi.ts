@@ -12,6 +12,30 @@ import type {
   RubberProductDto,
 } from "./rubberPortalApi";
 
+export interface RubberSpecificationDto {
+  id: number;
+  rubberTypeId: number;
+  rubberTypeName: string | null;
+  typeNumber: number;
+  grade: string;
+  hardnessClassIrhd: number;
+  tensileStrengthMpaMin: number;
+  elongationAtBreakMin: number;
+  tensileAfterAgeingMinPercent: number;
+  tensileAfterAgeingMaxPercent: number;
+  elongationAfterAgeingMinPercent: number;
+  elongationAfterAgeingMaxPercent: number;
+  hardnessChangeAfterAgeingMax: number;
+  heatResistance80cHardnessChangeMax: number | null;
+  heatResistance100cHardnessChangeMax: number | null;
+  ozoneResistance: string | null;
+  chemicalResistanceHardnessChangeMax: number | null;
+  waterResistanceMaxPercent: number | null;
+  oilResistanceMaxPercent: number | null;
+  contaminantReleaseMaxPercent: number | null;
+  sansStandard: string;
+}
+
 export type CompoundMovementType = "IN" | "OUT" | "ADJUSTMENT";
 export type CompoundMovementReferenceType =
   | "PURCHASE"
@@ -2673,6 +2697,10 @@ class AuRubberApiClient {
       method: "POST",
       body: JSON.stringify(rows),
     });
+  }
+
+  async rubberSpecifications(): Promise<RubberSpecificationDto[]> {
+    return this.request("/rubber-lining/specifications");
   }
 }
 
