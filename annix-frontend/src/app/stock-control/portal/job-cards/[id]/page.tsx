@@ -1481,12 +1481,20 @@ export default function JobCardDetailPage() {
       )}
 
       {(() => {
-        const notes = (jobCard.notes || "").toLowerCase();
+        const allText = [
+          jobCard.notes || "",
+          ...(jobCard.lineItems || []).map(
+            (li) => `${li.itemCode || ""} ${li.itemDescription || ""}`,
+          ),
+        ]
+          .join(" ")
+          .toLowerCase();
         const isRubberJob =
-          notes.includes("rubber") ||
-          notes.includes("r/l") ||
-          notes.includes("lining") ||
-          notes.includes("liner");
+          allText.includes("rubber") ||
+          allText.includes("r/l") ||
+          allText.includes("lining") ||
+          allText.includes("liner") ||
+          allText.includes("lagging");
         if (!isRubberJob) return null;
 
         const validItems = jobCard.lineItems ? jobCard.lineItems.filter(isValidLineItem) : [];
