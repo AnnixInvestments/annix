@@ -280,6 +280,78 @@ export class WorkflowNotificationService {
     await this.notificationRepo.save(notifications);
   }
 
+  async notifyJobCardsImported(
+    companyId: number,
+    jobCardIds: number[],
+    sender?: SenderInfo,
+  ): Promise<void> {
+    if (jobCardIds.length === 0) {
+      return;
+    }
+
+    const jobCards = await this.jobCardRepo.find({
+      where: jobCardIds.map((id) => ({ id, companyId })),
+    });
+
+    if (jobCards.length === 0) {
+      return;
+    }
+
+    const admins = await this.userRepo.find({
+      where: { companyId, role: StockControlRole.ADMIN },
+    });
+
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const actionUrl = `${frontendUrl}/stock-control/portal/job-cards`;
+
+    const senderContext = sender ? ` by ${sender.name}` : "";
+    const jobNumbers = jobCards.map((jc) => jc.jobNumber).join(", ");
+    const title =
+      jobCards.length === 1
+        ? `New Job Card Imported: ${jobCards[0].jobNumber}`
+        : `${jobCards.length} New Job Cards Imported`;
+    const message =
+      jobCards.length === 1
+        ? `Job card ${jobCards[0].jobNumber} (${jobCards[0].jobName}) was imported${senderContext} and needs activation.`
+        : `${jobCards.length} job cards were imported${senderContext} and need activation: ${jobNumbers}`;
+
+    const notifications = admins.map((user) =>
+      this.notificationRepo.create({
+        companyId,
+        userId: user.id,
+        jobCardId: jobCards.length === 1 ? jobCards[0].id : null,
+        title,
+        message,
+        actionType: NotificationActionType.JOB_CARDS_IMPORTED,
+        actionUrl:
+          jobCards.length === 1
+            ? `${frontendUrl}/stock-control/portal/job-cards/${jobCards[0].id}`
+            : actionUrl,
+        senderId: sender?.id ?? null,
+        senderName: sender?.name ?? null,
+      }),
+    );
+
+    await this.notificationRepo.save(notifications);
+    this.logger.log(
+      `Created ${notifications.length} import notifications for ${jobCards.length} job cards`,
+    );
+
+    await Promise.all(
+      admins.map((user) =>
+        this.sendJobCardsImportedEmail(
+          user.email,
+          user.name,
+          jobCards,
+          jobCards.length === 1
+            ? `${frontendUrl}/stock-control/portal/job-cards/${jobCards[0].id}`
+            : actionUrl,
+          sender?.name,
+        ),
+      ),
+    );
+  }
+
   async unreadNotifications(userId: number): Promise<WorkflowNotification[]> {
     return this.notificationRepo.find({
       where: { userId, readAt: IsNull() },
@@ -521,5 +593,70 @@ export class WorkflowNotificationService {
       subject: `Over-Allocation Approval Required: ${jobNumber} - ${productName}`,
       html,
     });
+  }
+
+  private async sendJobCardsImportedEmail(
+    email: string,
+    recipientName: string,
+    jobCards: JobCard[],
+    actionUrl: string,
+    senderName?: string,
+  ): Promise<boolean> {
+    const senderLine = senderName ? `<p><strong>Imported By:</strong> ${senderName}</p>` : "";
+    const jobCardRows = jobCards
+      .map(
+        (jc) =>
+          `<tr><td style="padding: 8px; border-bottom: 1px solid #eee;">${jc.jobNumber}</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${jc.jobName}</td></tr>`,
+      )
+      .join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>New Job Cards Imported - Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #0d9488;">New Job Cards Imported</h1>
+          <p>Hello ${recipientName},</p>
+          <p>${jobCards.length === 1 ? "A new job card has" : `${jobCards.length} new job cards have`} been imported and ${jobCards.length === 1 ? "needs" : "need"} activation.</p>
+          ${senderLine}
+
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+              <tr style="background-color: #f0fdfa;">
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #0d9488;">Job Number</th>
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #0d9488;">Job Name</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${jobCardRows}
+            </tbody>
+          </table>
+
+          <p style="margin: 30px 0;">
+            <a href="${actionUrl}"
+               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              ${jobCards.length === 1 ? "Review Job Card" : "Review Job Cards"}
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated notification from Stock Control.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const subject =
+      jobCards.length === 1
+        ? `New Job Card Imported: ${jobCards[0].jobNumber} - ${jobCards[0].jobName}`
+        : `${jobCards.length} New Job Cards Imported`;
+
+    return this.emailService.sendEmail({ to: email, subject, html });
   }
 }

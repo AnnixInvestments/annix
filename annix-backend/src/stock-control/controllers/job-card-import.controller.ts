@@ -17,6 +17,7 @@ import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-contro
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { JobCardImportRow, JobCardImportService } from "../services/job-card-import.service";
 import { M2CalculationService } from "../services/m2-calculation.service";
+import { WorkflowNotificationService } from "../services/workflow-notification.service";
 
 @ApiTags("Stock Control - Job Card Import")
 @Controller("stock-control/job-card-import")
@@ -29,6 +30,7 @@ export class JobCardImportController {
     private readonly jobCardImportService: JobCardImportService,
     private readonly m2CalculationService: M2CalculationService,
     private readonly coatingAnalysisService: CoatingAnalysisService,
+    private readonly notificationService: WorkflowNotificationService,
   ) {}
 
   @Post("upload")
@@ -81,6 +83,16 @@ export class JobCardImportController {
         .catch((err) => {
           const message = err instanceof Error ? err.message : "Unknown error";
           this.logger.error(`Background coating analysis failed: ${message}`);
+        });
+
+      this.notificationService
+        .notifyJobCardsImported(req.user.companyId, result.createdJobCardIds, {
+          id: req.user.id,
+          name: req.user.name,
+        })
+        .catch((err) => {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          this.logger.error(`Job card import notification failed: ${message}`);
         });
     }
 
