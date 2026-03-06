@@ -22,15 +22,14 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
+import { JigsawEditor } from "@/app/stock-control/components/jigsaw/JigsawEditor";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
-import { JigsawEditor } from "@/app/stock-control/components/jigsaw/JigsawEditor";
 import {
   type CuttingPlan,
-  type Offcut,
-  type ParsedPipeItem,
   calculateCuttingPlan,
   expandAndRotateItems,
+  type Offcut,
   parsePipeItem,
   type RollAllocation,
 } from "@/app/stock-control/lib/rubberCuttingCalculator";
@@ -211,9 +210,7 @@ interface RubberAllocationProps {
 
 function rollPatternKey(roll: RollAllocation): string {
   const specKey = `${roll.rollSpec.widthMm}-${roll.rollSpec.lengthM}`;
-  const bandsKey = roll.bands
-    .map((b) => `${b.lanes}:${b.laneWidthMm}:${b.heightMm}`)
-    .join("|");
+  const bandsKey = roll.bands.map((b) => `${b.lanes}:${b.laneWidthMm}:${b.heightMm}`).join("|");
   const cutsKey = roll.cuts
     .map((c) => `${c.widthMm}:${c.lengthMm}:${c.band}:${c.lane}`)
     .sort()
@@ -295,9 +292,7 @@ function CuttingDiagram({
               : `Roll ${roll.rollIndex}: ${rollWidthMm}mm x ${roll.rollSpec.lengthM}m`}
           </span>
           {bands.length > 1 && (
-            <span className="ml-2 text-xs text-purple-600 font-medium">
-              ({bands.length} bands)
-            </span>
+            <span className="ml-2 text-xs text-purple-600 font-medium">({bands.length} bands)</span>
           )}
         </div>
         <span
