@@ -192,6 +192,11 @@ describe("rubberCuttingCalculator", () => {
       expect(result.odMm).toBeCloseTo(219.1, 1);
     });
 
+    it("maps 550 NB to 558.8 OD", () => {
+      const result = parsePipeItem("1", "550 NB PIPE 6000 LG", 1, null, null);
+      expect(result.odMm).toBeCloseTo(558.8, 1);
+    });
+
     it("uses NB*1.1 fallback for unknown NB", () => {
       const result = parsePipeItem("1", "175 NB PIPE 6000 LG", 1, null, null);
       expect(result.odMm).toBeCloseTo(175 * 1.1, 1);
@@ -226,23 +231,23 @@ describe("rubberCuttingCalculator", () => {
       const result = parsePipeItem("1", "100 NB PIPE SCH 40 6000 LG", 1, null, null);
       const id = 114.3 - 2 * 6.02;
       const circumference = Math.PI * id;
-      const expectedWidth = Math.ceil(circumference / 50) * 50;
+      const expectedWidth = Math.ceil((circumference + 50) / 50) * 50;
       expect(result.rubberWidthMm).toBe(expectedWidth);
     });
 
-    it("adds open end allowance to rubber length", () => {
+    it("always adds +200mm end allowance plus bevel for internal lining", () => {
       const result = parsePipeItem("1", "100 NB PIPE PE 6000 LG", 1, null, null);
-      expect(result.rubberLengthMm).toBe(6000 + 2 * 100);
+      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 50);
     });
 
-    it("adds single open end allowance for FOE", () => {
+    it("always adds +200mm end allowance for FOE (same as PE)", () => {
       const result = parsePipeItem("1", "100 NB PIPE FOE 6000 LG", 1, null, null);
-      expect(result.rubberLengthMm).toBe(6000 + 1 * 100);
+      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 50);
     });
 
-    it("no allowance for FBE (both flanged)", () => {
+    it("always adds +200mm end allowance for FBE (covers flanges)", () => {
       const result = parsePipeItem("1", "100 NB PIPE FBE 6000 LG", 1, null, null);
-      expect(result.rubberLengthMm).toBe(6000);
+      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 50);
     });
 
     it("sets isValidPipe true when NB and length present", () => {
@@ -262,6 +267,62 @@ describe("rubberCuttingCalculator", () => {
       expect(result.m2).toBe(5.5);
       expect(result.itemNo).toBe("A001");
       expect(result.quantity).toBe(2);
+    });
+
+    it("defaults stripsPerPiece to 1 for small pipes", () => {
+      const result = parsePipeItem("1", "100 NB PIPE 6000 LG", 1, null, null);
+      expect(result.stripsPerPiece).toBe(1);
+    });
+  });
+
+  describe("550NB pipe parsing", () => {
+    it("parses 550NB with correct OD", () => {
+      const result = parsePipeItem("1", "550 NB PIPE 6000 LG", 1, null, null);
+      expect(result.nbMm).toBe(550);
+      expect(result.odMm).toBeCloseTo(558.8, 1);
+      expect(result.isValidPipe).toBe(true);
+    });
+
+    it("uses Sch Std wall thickness for 550NB", () => {
+      const result = parsePipeItem("1", "550 NB PIPE 6000 LG", 1, null, null);
+      const expectedId = 558.8 - 2 * 9.53;
+      expect(result.idMm).toBeCloseTo(expectedId, 1);
+    });
+  });
+
+  describe("split-roll for large pipes", () => {
+    it("splits 550NB into 2 strips", () => {
+      const result = parsePipeItem("1", "550 NB PIPE 6000 LG", 1, null, null);
+      expect(result.stripsPerPiece).toBe(2);
+    });
+
+    it("calculates correct strip width for 550NB", () => {
+      const result = parsePipeItem("1", "550 NB PIPE 6000 LG", 1, null, null);
+      const id = 558.8 - 2 * 9.53;
+      const circumference = Math.PI * id;
+      const expectedWidth = Math.ceil(circumference / 2 / 50) * 50;
+      expect(result.rubberWidthMm).toBe(expectedWidth);
+    });
+
+    it("expands 550NB qty=1 into 2 cut pieces", () => {
+      const plan = calculateCuttingPlan([
+        { id: 1, itemCode: null, itemDescription: "550 NB PIPE 6000 LG", quantity: 1, m2: null },
+      ]);
+      const totalCuts = plan.rolls.reduce((sum, roll) => sum + roll.cuts.length, 0);
+      expect(totalCuts).toBe(2);
+    });
+
+    it("expands 550NB qty=2 into 4 cut pieces", () => {
+      const plan = calculateCuttingPlan([
+        { id: 1, itemCode: null, itemDescription: "550 NB PIPE 6000 LG", quantity: 2, m2: null },
+      ]);
+      const totalCuts = plan.rolls.reduce((sum, roll) => sum + roll.cuts.length, 0);
+      expect(totalCuts).toBe(4);
+    });
+
+    it("does not split small pipes", () => {
+      const result = parsePipeItem("1", "400 NB PIPE 6000 LG", 1, null, null);
+      expect(result.stripsPerPiece).toBe(1);
     });
   });
 

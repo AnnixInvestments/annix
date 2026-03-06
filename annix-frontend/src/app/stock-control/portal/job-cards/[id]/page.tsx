@@ -281,6 +281,7 @@ function CuttingDiagram({
                 const colorClass =
                   colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
                 const displayLabel = cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
+                const strips = (cut as { stripsPerPiece?: number }).stripsPerPiece ?? 1;
 
                 return (
                   <div
@@ -292,11 +293,16 @@ function CuttingDiagram({
                       top: `${laneTop}%`,
                       height: `${laneHeight}%`,
                     }}
-                    title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m`}
+                    title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m${strips > 1 ? ` (${strips} strips)` : ""}`}
                   >
                     <span className="text-[10px] text-white font-bold truncate px-1">
                       {displayLabel}
                     </span>
+                    {strips > 1 && (
+                      <span className="absolute top-0 right-0 bg-white text-gray-800 text-[8px] font-bold rounded-bl px-0.5">
+                        {strips}
+                      </span>
+                    )}
                   </div>
                 );
               })}
@@ -343,6 +349,14 @@ function CuttingDiagram({
                   <>
                     <span className="text-gray-400 flex-shrink-0">|</span>
                     <span className="text-gray-500 flex-shrink-0">Lane {cut.lane + 1}</span>
+                  </>
+                )}
+                {((cut as { stripsPerPiece?: number }).stripsPerPiece ?? 1) > 1 && (
+                  <>
+                    <span className="text-gray-400 flex-shrink-0">|</span>
+                    <span className="text-orange-600 font-medium flex-shrink-0">
+                      {(cut as { stripsPerPiece?: number }).stripsPerPiece} strips
+                    </span>
                   </>
                 )}
               </div>

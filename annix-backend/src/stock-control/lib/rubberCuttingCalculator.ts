@@ -17,6 +17,7 @@ const NB_TO_OD_MM: Record<number, number> = {
   400: 406.4,
   450: 457.2,
   500: 508.0,
+  550: 558.8,
   600: 610.0,
   750: 762.0,
   900: 914.4,
@@ -45,6 +46,7 @@ const SCHEDULE_WALL_THICKNESS: Record<string, Record<number, number>> = {
     400: 6.35,
     450: 6.35,
     500: 6.35,
+    550: 6.35,
     600: 6.35,
     750: 7.92,
     900: 9.53,
@@ -60,6 +62,7 @@ const SCHEDULE_WALL_THICKNESS: Record<string, Record<number, number>> = {
     400: 7.92,
     450: 7.92,
     500: 9.53,
+    550: 9.53,
     600: 9.53,
     750: 9.53,
     900: 9.53,
@@ -75,6 +78,7 @@ const SCHEDULE_WALL_THICKNESS: Record<string, Record<number, number>> = {
     400: 9.53,
     450: 11.13,
     500: 12.7,
+    550: 12.7,
     600: 14.27,
     750: 15.88,
     900: 15.88,
@@ -101,6 +105,7 @@ const SCHEDULE_WALL_THICKNESS: Record<string, Record<number, number>> = {
     400: 9.53,
     450: 9.53,
     500: 9.53,
+    550: 9.53,
     600: 9.53,
     750: 9.53,
     900: 9.53,
@@ -127,6 +132,7 @@ const SCHEDULE_WALL_THICKNESS: Record<string, Record<number, number>> = {
     400: 9.53,
     450: 9.53,
     500: 9.53,
+    550: 9.53,
     600: 9.53,
     750: 9.53,
     900: 9.53,
@@ -142,6 +148,7 @@ const SCHEDULE_WALL_THICKNESS: Record<string, Record<number, number>> = {
     400: 16.66,
     450: 17.48,
     500: 20.62,
+    550: 20.62,
     600: 22.23,
     750: 25.4,
     900: 28.58,
@@ -168,6 +175,7 @@ const SCHEDULE_WALL_THICKNESS: Record<string, Record<number, number>> = {
     400: 21.44,
     450: 23.83,
     500: 26.19,
+    550: 26.19,
     600: 28.58,
     750: 31.75,
     900: 34.93,
@@ -198,6 +206,7 @@ export interface ParsedPipeItem {
   itemType: string | null;
   rubberWidthMm: number;
   rubberLengthMm: number;
+  stripsPerPiece: number;
   quantity: number;
   isValidPipe: boolean;
   m2: number | null;
@@ -219,6 +228,7 @@ export interface CutPiece {
   lengthMm: number;
   positionMm: number;
   lane: number;
+  stripsPerPiece: number;
 }
 
 export interface RollAllocation {
@@ -455,6 +465,7 @@ export function parsePipeItem(
   let idMm: number | null = null;
   let rubberWidthMm = 0;
   let rubberLengthMm = 0;
+  let stripsPerPiece = 1;
 
   if (hasDimensions) {
     if (isOdBased) {
@@ -473,8 +484,18 @@ export function parsePipeItem(
       idMm = odMm - 2 * wt;
 
       const circumference = Math.PI * idMm;
-      rubberWidthMm = roundUpToNearest(circumference + BEVEL_ALLOWANCE_MM, ROLL_WIDTH_INCREMENT_MM);
-      rubberLengthMm = lengthMm + openEnds * OPEN_END_ALLOWANCE_MM + BEVEL_ALLOWANCE_MM;
+      const singleStripWidth = circumference + BEVEL_ALLOWANCE_MM;
+      if (singleStripWidth <= ROLL_WIDTH_MAX_MM) {
+        rubberWidthMm = roundUpToNearest(singleStripWidth, ROLL_WIDTH_INCREMENT_MM);
+        stripsPerPiece = 1;
+      } else {
+        stripsPerPiece = Math.ceil(circumference / ROLL_WIDTH_MAX_MM);
+        rubberWidthMm = roundUpToNearest(
+          circumference / stripsPerPiece,
+          ROLL_WIDTH_INCREMENT_MM,
+        );
+      }
+      rubberLengthMm = lengthMm + 2 * OPEN_END_ALLOWANCE_MM + BEVEL_ALLOWANCE_MM;
     }
   }
 
@@ -492,6 +513,7 @@ export function parsePipeItem(
     itemType,
     rubberWidthMm,
     rubberLengthMm,
+    stripsPerPiece,
     quantity,
     isValidPipe: hasDimensions && rubberWidthMm > 0,
     m2,
@@ -520,68 +542,95 @@ function expandAndRotateItems(parsedItems: ParsedPipeItem[]): ParsedPipeItem[] {
     .flatMap((item) => {
       const rotated = rotateIfNeeded(item);
       const count = Number(item.quantity) || 1;
-      return Array.from({ length: count }, (_, i) => ({
+      const strips = item.stripsPerPiece || 1;
+      const totalPieces = count * strips;
+      return Array.from({ length: totalPieces }, (_, i) => ({
         ...rotated,
-        id: count > 1 ? `${item.id}-${i + 1}` : item.id,
+        id: totalPieces > 1 ? `${item.id}-${i + 1}` : item.id,
       }));
     });
+}
+
+function determineRollSpec(itemWidthMm: number): RollSpecification {
+  let lanes = 1;
+  if (itemWidthMm <= 450) {
+    lanes = 3;
+  } else if (itemWidthMm <= 700) {
+    lanes = 2;
+  }
+
+  const rawWidth = itemWidthMm * lanes;
+  const rollWidthMm = Math.max(ROLL_WIDTH_MIN_MM, Math.min(ROLL_WIDTH_MAX_MM, rawWidth));
+  const effectiveLanes = Math.floor(rollWidthMm / itemWidthMm) || 1;
+
+  return {
+    widthMm: rollWidthMm,
+    lengthM: ROLL_LENGTH_MAX_M,
+    areaSqM: (rollWidthMm / 1000) * ROLL_LENGTH_MAX_M,
+    lanes: effectiveLanes,
+    laneWidthMm: itemWidthMm,
+  };
 }
 
 function buildRollsForItems(parsedItems: ParsedPipeItem[]): RollAllocation[] {
   const items = expandAndRotateItems(parsedItems);
   if (items.length === 0) return [];
 
-  const maxWidthNeeded = Math.max(...items.map((i) => i.rubberWidthMm));
-  const rollWidthMm = Math.max(
-    ROLL_WIDTH_MIN_MM,
-    Math.min(ROLL_WIDTH_MAX_MM, roundUpToNearest(maxWidthNeeded, ROLL_WIDTH_INCREMENT_MM)),
-  );
-  const rollSpec: RollSpecification = {
-    widthMm: rollWidthMm,
-    lengthM: ROLL_LENGTH_MAX_M,
-    areaSqM: (rollWidthMm / 1000) * ROLL_LENGTH_MAX_M,
-    lanes: 1,
-    laneWidthMm: rollWidthMm,
-  };
+  const widthGroups = new Map<number, ParsedPipeItem[]>();
+  items.forEach((item) => {
+    const group = widthGroups.get(item.rubberWidthMm) || [];
+    group.push(item);
+    widthGroups.set(item.rubberWidthMm, [...group]);
+  });
 
   const rollLengthMm = ROLL_LENGTH_MAX_M * 1000;
-  const sortedItems = [...items].sort((a, b) => b.rubberLengthMm - a.rubberLengthMm);
-  const placed = new Set<string>();
   const rolls: RollAllocation[] = [];
 
-  while (placed.size < sortedItems.length) {
-    let position = 0;
-    const cuts: CutPiece[] = [];
+  Array.from(widthGroups.entries()).forEach(([widthMm, groupItems]) => {
+    const rollSpec = determineRollSpec(widthMm);
+    const sortedItems = [...groupItems].sort((a, b) => b.rubberLengthMm - a.rubberLengthMm);
+    const placed = new Set<string>();
 
-    for (const item of sortedItems) {
-      if (placed.has(item.id)) continue;
+    while (placed.size < sortedItems.length) {
+      const laneLengths = Array.from({ length: rollSpec.lanes }, () => 0);
+      const cuts: CutPiece[] = [];
 
-      if (position + item.rubberLengthMm <= rollLengthMm) {
-        cuts.push({
-          itemId: item.id,
-          itemNo: item.itemNo,
-          description: item.description,
-          widthMm: item.rubberWidthMm,
-          lengthMm: item.rubberLengthMm,
-          positionMm: position,
-          lane: 0,
-        });
-        position += item.rubberLengthMm;
-        placed.add(item.id);
+      for (const item of sortedItems) {
+        if (placed.has(item.id)) continue;
+
+        const laneIdx = laneLengths.findIndex(
+          (used) => used + item.rubberLengthMm <= rollLengthMm,
+        );
+        if (laneIdx >= 0) {
+          cuts.push({
+            itemId: item.id,
+            itemNo: item.itemNo,
+            description: item.description,
+            widthMm: item.rubberWidthMm,
+            lengthMm: item.rubberLengthMm,
+            positionMm: laneLengths[laneIdx],
+            lane: laneIdx,
+            stripsPerPiece: item.stripsPerPiece,
+          });
+          laneLengths[laneIdx] += item.rubberLengthMm;
+          placed.add(item.id);
+        }
       }
+
+      const totalUsed = laneLengths.reduce((sum, l) => sum + l, 0);
+      const totalCapacity = rollLengthMm * rollSpec.lanes;
+      const wastePercentage = ((totalCapacity - totalUsed) / totalCapacity) * 100;
+
+      rolls.push({
+        rollIndex: rolls.length + 1,
+        rollSpec,
+        cuts,
+        usedLengthMm: [...laneLengths],
+        wastePercentage,
+        hasLengthwiseCut: rollSpec.lanes > 1,
+      });
     }
-
-    const wastePercentage = ((rollLengthMm - position) / rollLengthMm) * 100;
-
-    rolls.push({
-      rollIndex: rolls.length + 1,
-      rollSpec,
-      cuts,
-      usedLengthMm: [position],
-      wastePercentage,
-      hasLengthwiseCut: false,
-    });
-  }
+  });
 
   return rolls;
 }
