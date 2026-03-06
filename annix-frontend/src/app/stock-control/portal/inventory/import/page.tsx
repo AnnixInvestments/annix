@@ -302,8 +302,8 @@ export default function ImportPage() {
                       className="block w-48 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
                     />
                     <p className="text-xs text-amber-600 mt-1">
-                      If set, deliveries and issuances after this date will be replayed on top of the
-                      counted quantities.
+                      If set, deliveries and issuances after this date will be replayed on top of
+                      the counted quantities.
                     </p>
                   </div>
                 )}
