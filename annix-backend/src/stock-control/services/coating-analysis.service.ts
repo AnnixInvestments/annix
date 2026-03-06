@@ -123,9 +123,22 @@ export class CoatingAnalysisService {
       });
 
       const paintM2 = this.sumPaintM2(lineItems);
-      analysis.rawNotes = jobCard.notes;
 
-      if (!jobCard.notes || !jobCard.notes.trim()) {
+      const noteLineItems = lineItems
+        .filter((li) => {
+          const code = (li.itemCode || "").trim();
+          const hasNoData =
+            !li.itemDescription &&
+            !li.itemNo &&
+            !li.jtNo &&
+            (li.quantity === null || Number.isNaN(li.quantity));
+          return hasNoData && code.length > 60;
+        })
+        .map((li) => (li.itemCode || "").trim());
+      const combinedNotes = [jobCard.notes || "", ...noteLineItems].filter(Boolean).join("\n");
+      analysis.rawNotes = combinedNotes || jobCard.notes;
+
+      if (!combinedNotes.trim()) {
         analysis.extM2 = 0;
         analysis.intM2 = 0;
         analysis.status = CoatingAnalysisStatus.ANALYSED;
@@ -135,7 +148,7 @@ export class CoatingAnalysisService {
         return this.analysisRepo.save(analysis);
       }
 
-      const aiResult = await this.extractCoatingSpec(jobCard.notes);
+      const aiResult = await this.extractCoatingSpec(combinedNotes);
 
       analysis.applicationType = aiResult.applicationType;
       analysis.surfacePrep = aiResult.surfacePrep;
