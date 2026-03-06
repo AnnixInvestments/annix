@@ -17,6 +17,9 @@ export interface AnalyzedOrderData {
   fileType: "pdf" | "excel" | "email";
   companyName: string | null;
   companyId: number | null;
+  companyVatNumber: string | null;
+  companyAddress: string | null;
+  companyRegistrationNumber: string | null;
   poNumber: string | null;
   orderDate: string | null;
   deliveryDate: string | null;
@@ -46,11 +49,19 @@ export interface CreateOrderLineFromAnalysisDto {
   quantity?: number;
 }
 
+export interface NewCompanyFromAnalysis {
+  name: string;
+  vatNumber?: string;
+  address?: string;
+  registrationNumber?: string;
+}
+
 export interface CreateOrderFromAnalysisDto {
   analysis: AnalyzedOrderData;
   overrides?: {
     companyId?: number;
     poNumber?: string;
     lines?: CreateOrderLineFromAnalysisDto[];
+    newCompany?: NewCompanyFromAnalysis;
   };
 }

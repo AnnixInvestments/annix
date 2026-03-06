@@ -6,6 +6,7 @@ import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
@@ -24,6 +25,8 @@ export class DeliveryService {
     private readonly movementRepo: Repository<StockMovement>,
     @InjectRepository(SupplierInvoice)
     private readonly invoiceRepo: Repository<SupplierInvoice>,
+    @InjectRepository(StockControlSupplier)
+    private readonly supplierRepo: Repository<StockControlSupplier>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly extractionService: InvoiceExtractionService,
@@ -262,13 +265,56 @@ export class DeliveryService {
     return this.findById(companyId, id);
   }
 
+  async resolveOrCreateSupplier(
+    companyId: number,
+    supplierName: string,
+    details?: {
+      vatNumber?: string;
+      address?: string;
+      contactPerson?: string;
+      phone?: string;
+      email?: string;
+    },
+  ): Promise<StockControlSupplier> {
+    const existing = await this.supplierRepo
+      .createQueryBuilder("supplier")
+      .where("supplier.companyId = :companyId", { companyId })
+      .andWhere("LOWER(supplier.name) = LOWER(:name)", { name: supplierName })
+      .getOne();
+
+    if (existing) {
+      return existing;
+    }
+
+    const supplier = this.supplierRepo.create({
+      companyId,
+      name: supplierName,
+      vatNumber: details?.vatNumber || null,
+      address: details?.address || null,
+      contactPerson: details?.contactPerson || null,
+      phone: details?.phone || null,
+      email: details?.email || null,
+    });
+
+    const saved = await this.supplierRepo.save(supplier);
+    this.logger.log(`Auto-created supplier "${supplierName}" (id=${saved.id}) for company ${companyId}`);
+    return saved;
+  }
+
   async createFromAnalyzedData(
     companyId: number,
     file: Express.Multer.File,
     analyzedData: {
       deliveryNoteNumber?: string;
       deliveryDate?: string;
-      fromCompany?: { name?: string };
+      fromCompany?: {
+        name?: string;
+        vatNumber?: string;
+        address?: string;
+        contactPerson?: string;
+        phone?: string;
+        email?: string;
+      };
       toCompany?: { name?: string };
       lineItems?: Array<{
         description?: string;
@@ -312,13 +358,28 @@ export class DeliveryService {
       );
     }
 
+    const supplierName = analyzedData.fromCompany?.name || "Unknown Supplier";
+
     this.logger.log(
-      `Creating delivery note: ${deliveryNumber}, supplier: ${analyzedData.fromCompany?.name}, date: ${receivedDate.toISOString()}`,
+      `Creating delivery note: ${deliveryNumber}, supplier: ${supplierName}, date: ${receivedDate.toISOString()}`,
     );
+
+    let supplierId: number | null = null;
+    if (analyzedData.fromCompany?.name) {
+      const supplier = await this.resolveOrCreateSupplier(companyId, analyzedData.fromCompany.name, {
+        vatNumber: analyzedData.fromCompany.vatNumber,
+        address: analyzedData.fromCompany.address,
+        contactPerson: analyzedData.fromCompany.contactPerson,
+        phone: analyzedData.fromCompany.phone,
+        email: analyzedData.fromCompany.email,
+      });
+      supplierId = supplier.id;
+    }
 
     const deliveryNote = this.deliveryNoteRepo.create({
       deliveryNumber,
-      supplierName: analyzedData.fromCompany?.name || "Unknown Supplier",
+      supplierName,
+      supplierId,
       receivedDate,
       notes: null,
       photoUrl: uploadResult.path,
@@ -633,7 +694,14 @@ export class DeliveryService {
       invoiceNumber?: string;
       deliveryNoteNumber?: string;
       deliveryDate?: string;
-      fromCompany?: { name?: string };
+      fromCompany?: {
+        name?: string;
+        vatNumber?: string;
+        address?: string;
+        contactPerson?: string;
+        phone?: string;
+        email?: string;
+      };
       totals?: {
         subtotalExclVat?: number;
         vatTotal?: number;
@@ -651,10 +719,25 @@ export class DeliveryService {
 
     const invoiceDate = analyzedData.deliveryDate ? new Date(analyzedData.deliveryDate) : null;
 
+    const invoiceSupplierName = analyzedData.fromCompany?.name || "Unknown Supplier";
+
+    let invoiceSupplierId: number | null = null;
+    if (analyzedData.fromCompany?.name) {
+      const supplier = await this.resolveOrCreateSupplier(companyId, analyzedData.fromCompany.name, {
+        vatNumber: analyzedData.fromCompany.vatNumber,
+        address: analyzedData.fromCompany.address,
+        contactPerson: analyzedData.fromCompany.contactPerson,
+        phone: analyzedData.fromCompany.phone,
+        email: analyzedData.fromCompany.email,
+      });
+      invoiceSupplierId = supplier.id;
+    }
+
     const invoice = this.invoiceRepo.create({
       companyId,
       invoiceNumber,
-      supplierName: analyzedData.fromCompany?.name || "Unknown Supplier",
+      supplierName: invoiceSupplierName,
+      supplierId: invoiceSupplierId,
       invoiceDate,
       totalAmount: analyzedData.totals?.grandTotalInclVat ?? null,
       vatAmount: analyzedData.totals?.vatTotal ?? null,

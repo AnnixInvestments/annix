@@ -9,8 +9,9 @@ import type {
   AnalyzeOrderFilesResult,
   CreateOrderFromAnalysisDto,
   ExtractionMethod,
+  NewCompanyFromAnalysis,
 } from "./dto/rubber-order-import.dto";
-import { RubberCompany } from "./entities/rubber-company.entity";
+import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberPoTemplateService } from "./rubber-po-template.service";
@@ -76,6 +77,9 @@ export class RubberOrderImportService {
       fileType: "pdf",
       companyName: null,
       companyId: null,
+      companyVatNumber: null,
+      companyAddress: null,
+      companyRegistrationNumber: null,
       poNumber: null,
       orderDate: null,
       deliveryDate: null,
@@ -97,6 +101,9 @@ export class RubberOrderImportService {
       fileType: "pdf",
       companyName: null,
       companyId: null,
+      companyVatNumber: null,
+      companyAddress: null,
+      companyRegistrationNumber: null,
       poNumber: null,
       orderDate: null,
       deliveryDate: null,
@@ -290,6 +297,9 @@ Respond ONLY with JSON: { "lines": [...] }`;
       fileType: "excel",
       companyName: null,
       companyId: null,
+      companyVatNumber: null,
+      companyAddress: null,
+      companyRegistrationNumber: null,
       poNumber: null,
       orderDate: null,
       deliveryDate: null,
@@ -331,6 +341,9 @@ Respond ONLY with JSON: { "lines": [...] }`;
       fileType: "email",
       companyName: null,
       companyId: null,
+      companyVatNumber: null,
+      companyAddress: null,
+      companyRegistrationNumber: null,
       poNumber: null,
       orderDate: null,
       deliveryDate: null,
@@ -437,6 +450,9 @@ IMPORTANT: Extract ALL line items you can find. Look for tables, lists, or repea
 Respond ONLY with a JSON object:
 {
   "companyName": "string or null",
+  "companyVatNumber": "string or null - VAT/tax registration number if visible",
+  "companyAddress": "string or null - full address if visible",
+  "companyRegistrationNumber": "string or null - company registration number if visible",
   "poNumber": "string or null",
   "orderDate": "ISO date string or null",
   "deliveryDate": "ISO date string or null",
@@ -490,6 +506,9 @@ ${truncatedText}`;
 
         return {
           companyName: parsed.companyName || null,
+          companyVatNumber: parsed.companyVatNumber || null,
+          companyAddress: parsed.companyAddress || null,
+          companyRegistrationNumber: parsed.companyRegistrationNumber || null,
           poNumber: parsed.poNumber || null,
           orderDate: parsed.orderDate || null,
           deliveryDate: parsed.deliveryDate || null,
@@ -569,11 +588,53 @@ ${truncatedText}`;
     });
   }
 
+  async resolveOrCreateCompany(
+    companyName: string,
+    details?: NewCompanyFromAnalysis,
+  ): Promise<RubberCompany> {
+    const companies = await this.companyRepository.find();
+    const nameLower = companyName.toLowerCase();
+
+    const exactMatch = companies.find((c) => c.name.toLowerCase() === nameLower);
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    const partialMatch = companies.find(
+      (c) =>
+        c.name.toLowerCase().includes(nameLower) || nameLower.includes(c.name.toLowerCase()),
+    );
+    if (partialMatch) {
+      return partialMatch;
+    }
+
+    const addressObj = details?.address ? { street: details.address } : undefined;
+
+    const created = await this.rubberLiningService.createCompany({
+      name: companyName,
+      companyType: CompanyType.CUSTOMER,
+      vatNumber: details?.vatNumber || undefined,
+      registrationNumber: details?.registrationNumber || undefined,
+      address: addressObj,
+    });
+
+    this.logger.log(`Auto-created customer company: ${companyName} (id=${created.id})`);
+    return this.companyRepository.findOneByOrFail({ id: created.id });
+  }
+
   async createOrderFromAnalysis(dto: CreateOrderFromAnalysisDto): Promise<{ orderId: number }> {
     const { analysis, overrides } = dto;
 
-    const companyId = overrides?.companyId ?? analysis.companyId ?? undefined;
+    let companyId = overrides?.companyId ?? analysis.companyId ?? undefined;
     const poNumber = overrides?.poNumber ?? analysis.poNumber ?? undefined;
+
+    if (!companyId && overrides?.newCompany) {
+      const company = await this.resolveOrCreateCompany(
+        overrides.newCompany.name,
+        overrides.newCompany,
+      );
+      companyId = company.id;
+    }
 
     const items = (overrides?.lines || analysis.lines).map((line, idx) => {
       const analysisLine = analysis.lines[idx] || {};

@@ -11,6 +11,7 @@ import {
 import { DeliveryNote } from "./delivery-note.entity";
 import { InvoiceClarification } from "./invoice-clarification.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
+import { StockControlSupplier } from "./stock-control-supplier.entity";
 import { StockControlUser } from "./stock-control-user.entity";
 import { SupplierInvoiceItem } from "./supplier-invoice-item.entity";
 
@@ -67,6 +68,13 @@ export class SupplierInvoice {
 
   @Column({ name: "supplier_name", type: "varchar", length: 255 })
   supplierName: string;
+
+  @ManyToOne(() => StockControlSupplier, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "supplier_id" })
+  supplier: StockControlSupplier | null;
+
+  @Column({ name: "supplier_id", nullable: true })
+  supplierId: number | null;
 
   @Column({ name: "invoice_date", type: "date", nullable: true })
   invoiceDate: Date | null;

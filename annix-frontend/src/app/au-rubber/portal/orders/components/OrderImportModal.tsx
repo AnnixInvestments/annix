@@ -5,11 +5,12 @@ import { useEffect, useState } from "react";
 import {
   type AnalyzedOrderData,
   type AnalyzeOrderFilesResult,
+  type NewCompanyFromAnalysis,
   auRubberApiClient,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { FileDropZone } from "../../../components/FileDropZone";
-import { OrderAnalysisReview } from "./OrderAnalysisReview";
+import { type NewCompanyDetails, OrderAnalysisReview } from "./OrderAnalysisReview";
 import { PoTrainingModal } from "./PoTrainingModal";
 
 type ImportStep = "upload" | "review" | "train";
@@ -43,6 +44,7 @@ export function OrderImportModal({
   const [error, setError] = useState<string | null>(null);
   const [showTrainingModal, setShowTrainingModal] = useState(false);
   const [trainingFile, setTrainingFile] = useState<File | null>(null);
+  const [newCompanyDetails, setNewCompanyDetails] = useState<NewCompanyDetails | null>(null);
 
   useEffect(() => {
     if (isOpen && initialAnalysis) {
@@ -104,6 +106,16 @@ export function OrderImportModal({
     setError(null);
 
     try {
+      const newCompany: NewCompanyFromAnalysis | undefined =
+        !analysis.companyId && newCompanyDetails?.name
+          ? {
+              name: newCompanyDetails.name,
+              vatNumber: newCompanyDetails.vatNumber,
+              address: newCompanyDetails.address,
+              registrationNumber: newCompanyDetails.registrationNumber,
+            }
+          : undefined;
+
       const result = await auRubberApiClient.createOrderFromAnalysis({
         analysis,
         overrides: {
@@ -116,6 +128,7 @@ export function OrderImportModal({
             length: line.length || undefined,
             quantity: line.quantity || undefined,
           })),
+          newCompany,
         },
       });
 
@@ -137,6 +150,7 @@ export function OrderImportModal({
     setError(null);
     setShowTrainingModal(false);
     setTrainingFile(null);
+    setNewCompanyDetails(null);
     onClose();
   };
 
@@ -322,6 +336,7 @@ export function OrderImportModal({
                   companies={companies}
                   products={products}
                   onUpdate={(updated) => handleUpdateAnalysis(selectedFileIndex, updated)}
+                  onNewCompanyChange={setNewCompanyDetails}
                 />
               </div>
             )}
@@ -364,7 +379,12 @@ export function OrderImportModal({
               {step === "review" && (
                 <button
                   onClick={handleCreateOrder}
-                  disabled={isCreating || !currentAnalysis || currentAnalysis.lines.length === 0}
+                  disabled={
+                    isCreating ||
+                    !currentAnalysis ||
+                    currentAnalysis.lines.length === 0 ||
+                    (!currentAnalysis.companyId && !newCompanyDetails?.name)
+                  }
                   className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isCreating ? (

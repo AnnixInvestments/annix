@@ -1,15 +1,23 @@
 "use client";
 
-import { AlertCircle, CheckCircle, Edit2, Save, X } from "lucide-react";
+import { AlertCircle, CheckCircle, Edit2, Plus, Save, X } from "lucide-react";
 import { useState } from "react";
 import type { AnalyzedOrderData, AnalyzedOrderLine } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
+
+export interface NewCompanyDetails {
+  name: string;
+  vatNumber?: string;
+  address?: string;
+  registrationNumber?: string;
+}
 
 interface OrderAnalysisReviewProps {
   analysis: AnalyzedOrderData;
   companies: RubberCompanyDto[];
   products: RubberProductDto[];
   onUpdate: (updated: AnalyzedOrderData) => void;
+  onNewCompanyChange?: (details: NewCompanyDetails | null) => void;
 }
 
 export function OrderAnalysisReview({
@@ -17,17 +25,60 @@ export function OrderAnalysisReview({
   companies,
   products,
   onUpdate,
+  onNewCompanyChange,
 }: OrderAnalysisReviewProps) {
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const [editedLine, setEditedLine] = useState<AnalyzedOrderLine | null>(null);
+  const [isCreatingNewCompany, setIsCreatingNewCompany] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState(analysis.companyName || "");
+  const [newCompanyVat, setNewCompanyVat] = useState(analysis.companyVatNumber || "");
+  const [newCompanyAddress, setNewCompanyAddress] = useState(analysis.companyAddress || "");
+  const [newCompanyRegNumber, setNewCompanyRegNumber] = useState(
+    analysis.companyRegistrationNumber || "",
+  );
 
-  const handleCompanyChange = (companyId: number | null) => {
-    const company = companyId ? companies.find((c) => c.id === companyId) : null;
-    onUpdate({
-      ...analysis,
-      companyId: companyId,
-      companyName: company?.name || null,
+  const notifyNewCompany = (
+    name: string,
+    vat: string,
+    regNum: string,
+    addr: string,
+  ) => {
+    onNewCompanyChange?.({
+      name,
+      vatNumber: vat || undefined,
+      registrationNumber: regNum || undefined,
+      address: addr || undefined,
     });
+  };
+
+  const handleCompanyChange = (value: string) => {
+    if (value === "new") {
+      setIsCreatingNewCompany(true);
+      const name = analysis.companyName || "";
+      const vat = analysis.companyVatNumber || "";
+      const addr = analysis.companyAddress || "";
+      const regNum = analysis.companyRegistrationNumber || "";
+      setNewCompanyName(name);
+      setNewCompanyVat(vat);
+      setNewCompanyAddress(addr);
+      setNewCompanyRegNumber(regNum);
+      onUpdate({
+        ...analysis,
+        companyId: null,
+        companyName: null,
+      });
+      notifyNewCompany(name, vat, regNum, addr);
+    } else {
+      setIsCreatingNewCompany(false);
+      onNewCompanyChange?.(null);
+      const companyId = value ? Number(value) : null;
+      const company = companyId ? companies.find((c) => c.id === companyId) : null;
+      onUpdate({
+        ...analysis,
+        companyId,
+        companyName: company?.name || null,
+      });
+    }
   };
 
   const handlePoNumberChange = (poNumber: string) => {
@@ -146,20 +197,24 @@ export function OrderAnalysisReview({
         <div>
           <label className="block text-sm font-medium text-gray-700">Company</label>
           <select
-            value={analysis.companyId || ""}
-            onChange={(e) => handleCompanyChange(e.target.value ? Number(e.target.value) : null)}
+            value={isCreatingNewCompany ? "new" : (analysis.companyId || "")}
+            onChange={(e) => handleCompanyChange(e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
           >
             <option value="">Select a company</option>
+            <option value="new" className="font-medium text-yellow-700">
+              + Create New Customer
+            </option>
             {companies.map((company) => (
               <option key={company.id} value={company.id}>
                 {company.name}
               </option>
             ))}
           </select>
-          {analysis.companyName && !analysis.companyId && (
+          {!isCreatingNewCompany && analysis.companyName && !analysis.companyId && (
             <p className="mt-1 text-xs text-yellow-600">
-              Detected: &quot;{analysis.companyName}&quot; - Please select matching company
+              Detected: &quot;{analysis.companyName}&quot; - Please select matching company or
+              create new
             </p>
           )}
         </div>
@@ -175,6 +230,69 @@ export function OrderAnalysisReview({
           />
         </div>
       </div>
+
+      {isCreatingNewCompany && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Plus className="w-4 h-4 text-yellow-600" />
+            <h4 className="text-sm font-medium text-yellow-800">New Customer Details</h4>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600">Company Name *</label>
+              <input
+                type="text"
+                value={newCompanyName}
+                onChange={(e) => {
+                  setNewCompanyName(e.target.value);
+                  notifyNewCompany(e.target.value, newCompanyVat, newCompanyRegNumber, newCompanyAddress);
+                }}
+                placeholder="Company name"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600">VAT Number</label>
+              <input
+                type="text"
+                value={newCompanyVat}
+                onChange={(e) => {
+                  setNewCompanyVat(e.target.value);
+                  notifyNewCompany(newCompanyName, e.target.value, newCompanyRegNumber, newCompanyAddress);
+                }}
+                placeholder="VAT number"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600">Registration Number</label>
+              <input
+                type="text"
+                value={newCompanyRegNumber}
+                onChange={(e) => {
+                  setNewCompanyRegNumber(e.target.value);
+                  notifyNewCompany(newCompanyName, newCompanyVat, e.target.value, newCompanyAddress);
+                }}
+                placeholder="Registration number"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600">Address</label>
+              <input
+                type="text"
+                value={newCompanyAddress}
+                onChange={(e) => {
+                  setNewCompanyAddress(e.target.value);
+                  notifyNewCompany(newCompanyName, newCompanyVat, newCompanyRegNumber, e.target.value);
+                }}
+                placeholder="Company address"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div>
         <h4 className="text-sm font-medium text-gray-700 mb-2">

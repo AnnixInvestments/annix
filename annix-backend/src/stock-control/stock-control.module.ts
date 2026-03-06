@@ -28,6 +28,7 @@ import { ReportsController } from "./controllers/reports.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
 import { SignatureController } from "./controllers/signature.controller";
 import { StaffController } from "./controllers/staff.controller";
+import { SupplierController } from "./controllers/supplier.controller";
 import { WorkflowController } from "./controllers/workflow.controller";
 import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
 import { DeliveryNote } from "./entities/delivery-note.entity";
@@ -51,6 +52,7 @@ import { StockControlDepartment } from "./entities/stock-control-department.enti
 import { StockControlInvitation } from "./entities/stock-control-invitation.entity";
 import { StockControlLocation } from "./entities/stock-control-location.entity";
 import { StockControlRbacConfig } from "./entities/stock-control-rbac-config.entity";
+import { StockControlSupplier } from "./entities/stock-control-supplier.entity";
 import { StockControlUser } from "./entities/stock-control-user.entity";
 import { StockIssuance } from "./entities/stock-issuance.entity";
 import { StockItem } from "./entities/stock-item.entity";
@@ -130,6 +132,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       InvoiceClarification,
       StockPriceHistory,
       StockControlRbacConfig,
+      StockControlSupplier,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -172,6 +175,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     WorkflowController,
     SignatureController,
     InvoicesController,
+    SupplierController,
   ],
   providers: [
     StockControlAuthGuard,

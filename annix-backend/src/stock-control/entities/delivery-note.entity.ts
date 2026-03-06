@@ -9,6 +9,7 @@ import {
 } from "typeorm";
 import { DeliveryNoteItem } from "./delivery-note-item.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
+import { StockControlSupplier } from "./stock-control-supplier.entity";
 import { SupplierInvoice } from "./supplier-invoice.entity";
 
 export interface ExtractedDeliveryData {
@@ -29,6 +30,13 @@ export class DeliveryNote {
 
   @Column({ name: "supplier_name", type: "varchar", length: 255 })
   supplierName: string;
+
+  @ManyToOne(() => StockControlSupplier, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "supplier_id" })
+  supplier: StockControlSupplier | null;
+
+  @Column({ name: "supplier_id", nullable: true })
+  supplierId: number | null;
 
   @Column({ name: "received_date", type: "timestamp", nullable: true })
   receivedDate: Date | null;
