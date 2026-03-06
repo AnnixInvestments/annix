@@ -25,6 +25,7 @@ export default function ImportPage() {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isStockTake, setIsStockTake] = useState(false);
+  const [stockTakeDate, setStockTakeDate] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (selectedFile: File) => {
@@ -119,7 +120,11 @@ export default function ImportPage() {
             })
           : parsedRows;
 
-      const importResult = await stockControlApiClient.confirmImport(rowsToImport, isStockTake);
+      const importResult = await stockControlApiClient.confirmImport(
+        rowsToImport,
+        isStockTake,
+        isStockTake ? stockTakeDate : null,
+      );
       setResult(importResult);
       setStep("result");
     } catch (err) {
@@ -140,6 +145,7 @@ export default function ImportPage() {
     setResult(null);
     setError(null);
     setIsStockTake(false);
+    setStockTakeDate(null);
   };
 
   const previewRowCount = importFormat === "excel" ? importRawRows.length : parsedRows.length;
@@ -284,6 +290,23 @@ export default function ImportPage() {
                     </p>
                   </div>
                 </label>
+                {isStockTake && (
+                  <div className="mt-3 pl-7">
+                    <label className="block text-sm font-medium text-amber-800 mb-1">
+                      Stock Take Date (optional)
+                    </label>
+                    <input
+                      type="date"
+                      value={stockTakeDate ?? ""}
+                      onChange={(e) => setStockTakeDate(e.target.value || null)}
+                      className="block w-48 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
+                    />
+                    <p className="text-xs text-amber-600 mt-1">
+                      If set, deliveries and issuances after this date will be replayed on top of the
+                      counted quantities.
+                    </p>
+                  </div>
+                )}
               </div>
               {importMapping && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">

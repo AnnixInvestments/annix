@@ -1651,10 +1651,14 @@ class StockControlApiClient {
     return response.json();
   }
 
-  async confirmImport(rows: unknown[], isStockTake: boolean = false): Promise<ImportResult> {
+  async confirmImport(
+    rows: unknown[],
+    isStockTake: boolean = false,
+    stockTakeDate: string | null = null,
+  ): Promise<ImportResult> {
     return this.request("/stock-control/import/confirm", {
       method: "POST",
-      body: JSON.stringify({ rows, isStockTake }),
+      body: JSON.stringify({ rows, isStockTake, stockTakeDate }),
     });
   }
 

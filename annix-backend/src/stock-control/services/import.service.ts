@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { fromISO } from "../../lib/datetime";
 
 export interface ImportRow {
   sku?: string;
@@ -179,6 +180,7 @@ export class ImportService {
     rows: ImportRow[],
     createdBy?: string,
     isStockTake: boolean = false,
+    stockTakeDate: string | null = null,
   ): Promise<ImportResult> {
     const result: ImportResult = {
       totalRows: rows.length,
@@ -243,20 +245,49 @@ export class ImportService {
             });
           }
 
-          if (row.quantity !== undefined && row.quantity !== existing.quantity) {
-            const delta = row.quantity - existing.quantity;
-            existing.quantity = row.quantity;
+          if (row.quantity !== undefined) {
+            const importedQty = row.quantity;
+            let finalSoh = importedQty;
+            let movementNotes = isStockTake ? "Stock take adjustment" : "Updated via import";
 
-            const movement = this.movementRepo.create({
-              stockItem: existing,
-              movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
-              quantity: Math.abs(delta),
-              referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
-              notes: isStockTake ? "Stock take adjustment" : "Updated via import",
-              createdBy: createdBy || null,
-              companyId,
-            });
-            await this.movementRepo.save(movement);
+            if (isStockTake && stockTakeDate) {
+              const cutoff = fromISO(stockTakeDate).endOf("day").toJSDate();
+              const postMovements = await this.movementRepo
+                .createQueryBuilder("m")
+                .where("m.stock_item_id = :itemId", { itemId: existing.id })
+                .andWhere("m.company_id = :companyId", { companyId })
+                .andWhere("m.created_at > :cutoff", { cutoff })
+                .andWhere("m.reference_type != :stockTake", { stockTake: ReferenceType.STOCK_TAKE })
+                .getMany();
+
+              const netDelta = postMovements.reduce((acc, m) => {
+                if (m.movementType === MovementType.IN) {
+                  return acc + m.quantity;
+                } else if (m.movementType === MovementType.OUT) {
+                  return acc - m.quantity;
+                }
+                return acc;
+              }, 0);
+
+              finalSoh = importedQty + netDelta;
+              movementNotes = `Stock take (${stockTakeDate}): counted ${importedQty}, +${postMovements.filter((m) => m.movementType === MovementType.IN).reduce((s, m) => s + m.quantity, 0)} in / -${postMovements.filter((m) => m.movementType === MovementType.OUT).reduce((s, m) => s + m.quantity, 0)} out since count = ${finalSoh}`;
+            }
+
+            if (finalSoh !== existing.quantity) {
+              const delta = finalSoh - existing.quantity;
+              existing.quantity = finalSoh;
+
+              const movement = this.movementRepo.create({
+                stockItem: existing,
+                movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
+                quantity: Math.abs(delta),
+                referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
+                notes: movementNotes,
+                createdBy: createdBy || null,
+                companyId,
+              });
+              await this.movementRepo.save(movement);
+            }
           }
 
           await this.stockItemRepo.save(existing);
