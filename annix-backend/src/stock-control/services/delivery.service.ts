@@ -4,9 +4,9 @@ import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
+import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
-import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
@@ -297,7 +297,9 @@ export class DeliveryService {
     });
 
     const saved = await this.supplierRepo.save(supplier);
-    this.logger.log(`Auto-created supplier "${supplierName}" (id=${saved.id}) for company ${companyId}`);
+    this.logger.log(
+      `Auto-created supplier "${supplierName}" (id=${saved.id}) for company ${companyId}`,
+    );
     return saved;
   }
 
@@ -366,13 +368,17 @@ export class DeliveryService {
 
     let supplierId: number | null = null;
     if (analyzedData.fromCompany?.name) {
-      const supplier = await this.resolveOrCreateSupplier(companyId, analyzedData.fromCompany.name, {
-        vatNumber: analyzedData.fromCompany.vatNumber,
-        address: analyzedData.fromCompany.address,
-        contactPerson: analyzedData.fromCompany.contactPerson,
-        phone: analyzedData.fromCompany.phone,
-        email: analyzedData.fromCompany.email,
-      });
+      const supplier = await this.resolveOrCreateSupplier(
+        companyId,
+        analyzedData.fromCompany.name,
+        {
+          vatNumber: analyzedData.fromCompany.vatNumber,
+          address: analyzedData.fromCompany.address,
+          contactPerson: analyzedData.fromCompany.contactPerson,
+          phone: analyzedData.fromCompany.phone,
+          email: analyzedData.fromCompany.email,
+        },
+      );
       supplierId = supplier.id;
     }
 
@@ -723,13 +729,17 @@ export class DeliveryService {
 
     let invoiceSupplierId: number | null = null;
     if (analyzedData.fromCompany?.name) {
-      const supplier = await this.resolveOrCreateSupplier(companyId, analyzedData.fromCompany.name, {
-        vatNumber: analyzedData.fromCompany.vatNumber,
-        address: analyzedData.fromCompany.address,
-        contactPerson: analyzedData.fromCompany.contactPerson,
-        phone: analyzedData.fromCompany.phone,
-        email: analyzedData.fromCompany.email,
-      });
+      const supplier = await this.resolveOrCreateSupplier(
+        companyId,
+        analyzedData.fromCompany.name,
+        {
+          vatNumber: analyzedData.fromCompany.vatNumber,
+          address: analyzedData.fromCompany.address,
+          contactPerson: analyzedData.fromCompany.contactPerson,
+          phone: analyzedData.fromCompany.phone,
+          email: analyzedData.fromCompany.email,
+        },
+      );
       invoiceSupplierId = supplier.id;
     }
 

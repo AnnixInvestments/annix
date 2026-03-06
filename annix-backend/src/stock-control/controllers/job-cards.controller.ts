@@ -121,7 +121,9 @@ export class JobCardsController {
 
     const allText = [
       jobCard.notes || "",
-      ...(jobCard.lineItems || []).map((li: any) => `${li.itemCode || ""} ${li.itemDescription || ""}`),
+      ...(jobCard.lineItems || []).map(
+        (li: any) => `${li.itemCode || ""} ${li.itemDescription || ""}`,
+      ),
     ].join(" ");
 
     const rubberSpec = parseRubberSpecNote(allText);
@@ -147,7 +149,9 @@ export class JobCardsController {
     }));
 
     const availableThicknesses = [
-      ...new Set(stockItems.filter((s) => s.thicknessMm !== null).map((s) => s.thicknessMm as number)),
+      ...new Set(
+        stockItems.filter((s) => s.thicknessMm !== null).map((s) => s.thicknessMm as number),
+      ),
     ];
 
     const plyCombinations = rubberSpec

@@ -496,13 +496,21 @@ function StockAvailabilityBadge({ status }: { status: "in_stock" | "partial" | "
     out_of_stock: "To Order",
   };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}
+    >
       {labels[status]}
     </span>
   );
 }
 
-function RubberSOHPanel({ stockOptions, plan }: { stockOptions: RubberStockOptionsResponse; plan: CuttingPlan }) {
+function RubberSOHPanel({
+  stockOptions,
+  plan,
+}: {
+  stockOptions: RubberStockOptionsResponse;
+  plan: CuttingPlan;
+}) {
   if (!stockOptions.rubberSpec && stockOptions.plyCombinations.length === 0) {
     return null;
   }
@@ -513,8 +521,7 @@ function RubberSOHPanel({ stockOptions, plan }: { stockOptions: RubberStockOptio
 
       {stockOptions.rubberSpec && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
-          <span className="font-medium">Spec:</span>{" "}
-          {stockOptions.rubberSpec.thicknessMm}mm
+          <span className="font-medium">Spec:</span> {stockOptions.rubberSpec.thicknessMm}mm
           {stockOptions.rubberSpec.shore ? ` / ${stockOptions.rubberSpec.shore} Shore` : ""}
           {stockOptions.rubberSpec.color ? ` / ${stockOptions.rubberSpec.color}` : ""}
           {stockOptions.rubberSpec.compound ? ` / ${stockOptions.rubberSpec.compound}` : ""}
@@ -524,22 +531,31 @@ function RubberSOHPanel({ stockOptions, plan }: { stockOptions: RubberStockOptio
 
       {stockOptions.plyCombinations.length > 0 && (
         <div className="space-y-2 mb-4">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Ply Combinations</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            Ply Combinations
+          </p>
           {stockOptions.plyCombinations.map((combo, idx) => (
             <div key={idx} className="flex items-center gap-3 p-2 bg-white border rounded">
               <div className="flex items-center gap-1">
                 {combo.thicknesses.map((t, i) => (
-                  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium">
+                  <span
+                    key={i}
+                    className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-medium"
+                  >
                     {t}mm
                   </span>
                 ))}
               </div>
               <StockAvailabilityBadge
-                status={combo.allInStock ? "in_stock" : combo.partiallyInStock ? "partial" : "out_of_stock"}
+                status={
+                  combo.allInStock
+                    ? "in_stock"
+                    : combo.partiallyInStock
+                      ? "partial"
+                      : "out_of_stock"
+                }
               />
-              {idx === 0 && (
-                <span className="text-xs text-gray-400 italic">recommended</span>
-              )}
+              {idx === 0 && <span className="text-xs text-gray-400 italic">recommended</span>}
             </div>
           ))}
         </div>
@@ -547,21 +563,29 @@ function RubberSOHPanel({ stockOptions, plan }: { stockOptions: RubberStockOptio
 
       {plan.isMultiPly && plan.plies.length > 1 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Per Ply Breakdown</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            Per Ply Breakdown
+          </p>
           {plan.plies.map((ply, idx) => {
             const matchingStock = stockOptions.stockItems.filter(
               (s) => s.thicknessMm === ply.thicknessMm,
             );
             const totalAvailable = matchingStock.reduce((sum, s) => sum + s.quantityAvailable, 0);
-            const status = totalAvailable >= ply.totalRollsNeeded
-              ? "in_stock" as const
-              : totalAvailable > 0
-                ? "partial" as const
-                : "out_of_stock" as const;
+            const status =
+              totalAvailable >= ply.totalRollsNeeded
+                ? ("in_stock" as const)
+                : totalAvailable > 0
+                  ? ("partial" as const)
+                  : ("out_of_stock" as const);
 
             return (
-              <div key={idx} className="flex items-center justify-between p-2 bg-white border rounded text-sm">
-                <span className="font-medium">Ply {idx + 1}: {ply.thicknessMm}mm</span>
+              <div
+                key={idx}
+                className="flex items-center justify-between p-2 bg-white border rounded text-sm"
+              >
+                <span className="font-medium">
+                  Ply {idx + 1}: {ply.thicknessMm}mm
+                </span>
                 <span>{ply.totalRollsNeeded} rolls needed</span>
                 <span>{totalAvailable} available</span>
                 <StockAvailabilityBadge status={status} />
@@ -578,7 +602,10 @@ function RubberSOHPanel({ stockOptions, plan }: { stockOptions: RubberStockOptio
           </summary>
           <div className="mt-2 space-y-1">
             {stockOptions.stockItems.map((item) => (
-              <div key={item.stockItemId} className="flex items-center justify-between text-xs p-1.5 bg-gray-50 rounded">
+              <div
+                key={item.stockItemId}
+                className="flex items-center justify-between text-xs p-1.5 bg-gray-50 rounded"
+              >
                 <span className="truncate max-w-[60%]">{item.name}</span>
                 <span className="text-gray-500">
                   {item.thicknessMm}mm x {item.widthMm}mm x {item.lengthM}m
@@ -641,8 +668,8 @@ function RubberAllocationSection({ lineItems, jobCardId }: RubberAllocationProps
         <h3 className="text-lg leading-6 font-medium text-gray-900">Rubber Allocation</h3>
         {plan.hasPipeItems && (
           <p className="mt-1 text-sm text-gray-500">
-            Pipe dimensions detected. Rubber width calculated from pipe ID (circumference) +50mm bevel.
-            Roll widths: 800-1450mm (50mm increments). Lengths: 8-12.5m (0.5m increments).
+            Pipe dimensions detected. Rubber width calculated from pipe ID (circumference) +50mm
+            bevel. Roll widths: 800-1450mm (50mm increments). Lengths: 8-12.5m (0.5m increments).
           </p>
         )}
       </div>
@@ -1729,7 +1756,9 @@ export default function JobCardDetailPage() {
 
         const validItems = jobCard.lineItems ? jobCard.lineItems.filter(isValidLineItem) : [];
         const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
-        return hasM2Items ? <RubberAllocationSection lineItems={validItems} jobCardId={jobCard.id} /> : null;
+        return hasM2Items ? (
+          <RubberAllocationSection lineItems={validItems} jobCardId={jobCard.id} />
+        ) : null;
       })()}
 
       {versions.length > 0 && (

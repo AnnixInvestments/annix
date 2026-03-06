@@ -15,11 +15,8 @@ import {
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import {
-  calculateCuttingPlan,
-  parseRubberSpecNote,
-  suggestPlyCombinations,
   type CuttingPlan,
-  type PlyLayer,
+  calculateCuttingPlan,
   type RollAllocation,
 } from "../lib/rubberCuttingCalculator";
 
@@ -398,7 +395,12 @@ export class JobCardPdfService {
   private drawRubberAllocationSync(
     doc: typeof PDFDocument,
     jobCard: JobCard,
-    rubberData: { plan: CuttingPlan; stockRolls: { thicknessMm: number; quantityAvailable: number }[]; isRubberJob: boolean; totalM2: number },
+    rubberData: {
+      plan: CuttingPlan;
+      stockRolls: { thicknessMm: number; quantityAvailable: number }[];
+      isRubberJob: boolean;
+      totalM2: number;
+    },
     startY: number,
   ): number {
     const { plan, stockRolls, isRubberJob, totalM2 } = rubberData;
@@ -451,11 +453,12 @@ export class JobCardPdfService {
         plan.plies.forEach((ply, plyIdx) => {
           const plyStock = stockRolls.filter((r) => r.thicknessMm === ply.thicknessMm);
           const totalAvailable = plyStock.reduce((s, r) => s + r.quantityAvailable, 0);
-          const sohLabel = totalAvailable >= ply.totalRollsNeeded
-            ? "IN STOCK"
-            : totalAvailable > 0
-              ? "PARTIAL"
-              : "TO ORDER";
+          const sohLabel =
+            totalAvailable >= ply.totalRollsNeeded
+              ? "IN STOCK"
+              : totalAvailable > 0
+                ? "PARTIAL"
+                : "TO ORDER";
 
           const pageHeight = doc.page.height;
           if (y + 20 > pageHeight - 165) {
@@ -485,11 +488,12 @@ export class JobCardPdfService {
         if (singlePly && singlePly.thicknessMm > 0) {
           const plyStock = stockRolls.filter((r) => r.thicknessMm === singlePly.thicknessMm);
           const totalAvailable = plyStock.reduce((s, r) => s + r.quantityAvailable, 0);
-          const sohLabel = totalAvailable >= singlePly.totalRollsNeeded
-            ? "IN STOCK"
-            : totalAvailable > 0
-              ? "PARTIAL"
-              : "TO ORDER";
+          const sohLabel =
+            totalAvailable >= singlePly.totalRollsNeeded
+              ? "IN STOCK"
+              : totalAvailable > 0
+                ? "PARTIAL"
+                : "TO ORDER";
           doc.fontSize(8).font("Helvetica");
           doc.text(`${singlePly.thicknessMm}mm — ${sohLabel} (${totalAvailable} available)`, 50, y);
           y += 12;

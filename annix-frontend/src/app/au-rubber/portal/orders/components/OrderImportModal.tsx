@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import {
   type AnalyzedOrderData,
   type AnalyzeOrderFilesResult,
-  type NewCompanyFromAnalysis,
   auRubberApiClient,
+  type NewCompanyFromAnalysis,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { FileDropZone } from "../../../components/FileDropZone";

@@ -21,12 +21,12 @@ export class AddRubberFieldsToStockItems1801200000000 implements MigrationInterf
       FROM (
         SELECT
           id,
-          (regexp_matches("name", '^(\d+(?:\.\d+)?)MM\s*X\s*(\d+(?:\.\d+)?)MM\s*X\s*(\d+(?:\.\d+)?)M(?:\s*\((\w+)\))?', 'i'))[1]::decimal AS thickness,
-          (regexp_matches("name", '^(\d+(?:\.\d+)?)MM\s*X\s*(\d+(?:\.\d+)?)MM\s*X\s*(\d+(?:\.\d+)?)M(?:\s*\((\w+)\))?', 'i'))[2]::decimal AS width,
-          (regexp_matches("name", '^(\d+(?:\.\d+)?)MM\s*X\s*(\d+(?:\.\d+)?)MM\s*X\s*(\d+(?:\.\d+)?)M(?:\s*\((\w+)\))?', 'i'))[3]::decimal AS length,
-          (regexp_matches("name", '^(\d+(?:\.\d+)?)MM\s*X\s*(\d+(?:\.\d+)?)MM\s*X\s*(\d+(?:\.\d+)?)M(?:\s*\((\w+)\))?', 'i'))[4] AS color
+          (regexp_matches("name", '^(d+(?:.d+)?)MMs*Xs*(d+(?:.d+)?)MMs*Xs*(d+(?:.d+)?)M(?:s*((w+)))?', 'i'))[1]::decimal AS thickness,
+          (regexp_matches("name", '^(d+(?:.d+)?)MMs*Xs*(d+(?:.d+)?)MMs*Xs*(d+(?:.d+)?)M(?:s*((w+)))?', 'i'))[2]::decimal AS width,
+          (regexp_matches("name", '^(d+(?:.d+)?)MMs*Xs*(d+(?:.d+)?)MMs*Xs*(d+(?:.d+)?)M(?:s*((w+)))?', 'i'))[3]::decimal AS length,
+          (regexp_matches("name", '^(d+(?:.d+)?)MMs*Xs*(d+(?:.d+)?)MMs*Xs*(d+(?:.d+)?)M(?:s*((w+)))?', 'i'))[4] AS color
         FROM "stock_items"
-        WHERE "name" ~ '^\d+(?:\.\d+)?MM\s*X\s*\d+(?:\.\d+)?MM\s*X\s*\d+(?:\.\d+)?M'
+        WHERE "name" ~ '^d+(?:.d+)?MMs*Xs*d+(?:.d+)?MMs*Xs*d+(?:.d+)?M'
           AND "thickness_mm" IS NULL
       ) AS sub
       WHERE "stock_items"."id" = sub.id

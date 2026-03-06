@@ -601,8 +601,7 @@ ${truncatedText}`;
     }
 
     const partialMatch = companies.find(
-      (c) =>
-        c.name.toLowerCase().includes(nameLower) || nameLower.includes(c.name.toLowerCase()),
+      (c) => c.name.toLowerCase().includes(nameLower) || nameLower.includes(c.name.toLowerCase()),
     );
     if (partialMatch) {
       return partialMatch;

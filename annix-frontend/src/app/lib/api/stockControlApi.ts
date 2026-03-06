@@ -288,7 +288,13 @@ export interface RubberPlyCombination {
 }
 
 export interface RubberStockOptionsResponse {
-  rubberSpec: { thicknessMm: number; shore: number | null; color: string | null; pattern: string | null; compound: string | null } | null;
+  rubberSpec: {
+    thicknessMm: number;
+    shore: number | null;
+    color: string | null;
+    pattern: string | null;
+    compound: string | null;
+  } | null;
   stockItems: RubberStockOption[];
   availableThicknesses: number[];
   plyCombinations: RubberPlyCombination[];

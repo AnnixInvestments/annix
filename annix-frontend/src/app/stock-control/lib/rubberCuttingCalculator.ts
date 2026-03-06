@@ -418,7 +418,11 @@ export function suggestPlyCombinations(thicknessMm: number): number[][] {
 }
 
 function isMultiPlyEligible(item: ParsedPipeItem): boolean {
-  const isInternalLining = item.nbMm !== null && item.itemType !== "pulley" && item.itemType !== "drum" && item.itemType !== "roller";
+  const isInternalLining =
+    item.nbMm !== null &&
+    item.itemType !== "pulley" &&
+    item.itemType !== "drum" &&
+    item.itemType !== "roller";
   if (!isInternalLining) return false;
   if (item.nbMm !== null && item.nbMm < 300) return false;
   if (item.rubberLengthMm > 2500) return false;
@@ -604,7 +608,11 @@ function buildRollsForItems(parsedItems: ParsedPipeItem[]): RollAllocation[] {
   return allRolls;
 }
 
-function rollStats(rolls: RollAllocation[]): { totalUsedSqM: number; totalWasteSqM: number; wastePercentage: number } {
+function rollStats(rolls: RollAllocation[]): {
+  totalUsedSqM: number;
+  totalWasteSqM: number;
+  wastePercentage: number;
+} {
   let totalUsedSqM = 0;
   let totalRollAreaSqM = 0;
 
@@ -736,11 +744,13 @@ export function calculateCuttingPlan(
   }
 
   if (plies.length === 0) {
-    plies = [{
-      thicknessMm: rubberSpec?.thicknessMm || 0,
-      rolls: allRolls,
-      totalRollsNeeded: allRolls.length,
-    }];
+    plies = [
+      {
+        thicknessMm: rubberSpec?.thicknessMm || 0,
+        rolls: allRolls,
+        totalRollsNeeded: allRolls.length,
+      },
+    ];
   }
 
   return {

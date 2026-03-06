@@ -37,12 +37,7 @@ export function OrderAnalysisReview({
     analysis.companyRegistrationNumber || "",
   );
 
-  const notifyNewCompany = (
-    name: string,
-    vat: string,
-    regNum: string,
-    addr: string,
-  ) => {
+  const notifyNewCompany = (name: string, vat: string, regNum: string, addr: string) => {
     onNewCompanyChange?.({
       name,
       vatNumber: vat || undefined,
@@ -197,7 +192,7 @@ export function OrderAnalysisReview({
         <div>
           <label className="block text-sm font-medium text-gray-700">Company</label>
           <select
-            value={isCreatingNewCompany ? "new" : (analysis.companyId || "")}
+            value={isCreatingNewCompany ? "new" : analysis.companyId || ""}
             onChange={(e) => handleCompanyChange(e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
           >
@@ -245,7 +240,12 @@ export function OrderAnalysisReview({
                 value={newCompanyName}
                 onChange={(e) => {
                   setNewCompanyName(e.target.value);
-                  notifyNewCompany(e.target.value, newCompanyVat, newCompanyRegNumber, newCompanyAddress);
+                  notifyNewCompany(
+                    e.target.value,
+                    newCompanyVat,
+                    newCompanyRegNumber,
+                    newCompanyAddress,
+                  );
                 }}
                 placeholder="Company name"
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
@@ -258,7 +258,12 @@ export function OrderAnalysisReview({
                 value={newCompanyVat}
                 onChange={(e) => {
                   setNewCompanyVat(e.target.value);
-                  notifyNewCompany(newCompanyName, e.target.value, newCompanyRegNumber, newCompanyAddress);
+                  notifyNewCompany(
+                    newCompanyName,
+                    e.target.value,
+                    newCompanyRegNumber,
+                    newCompanyAddress,
+                  );
                 }}
                 placeholder="VAT number"
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
@@ -271,7 +276,12 @@ export function OrderAnalysisReview({
                 value={newCompanyRegNumber}
                 onChange={(e) => {
                   setNewCompanyRegNumber(e.target.value);
-                  notifyNewCompany(newCompanyName, newCompanyVat, e.target.value, newCompanyAddress);
+                  notifyNewCompany(
+                    newCompanyName,
+                    newCompanyVat,
+                    e.target.value,
+                    newCompanyAddress,
+                  );
                 }}
                 placeholder="Registration number"
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
@@ -284,7 +294,12 @@ export function OrderAnalysisReview({
                 value={newCompanyAddress}
                 onChange={(e) => {
                   setNewCompanyAddress(e.target.value);
-                  notifyNewCompany(newCompanyName, newCompanyVat, newCompanyRegNumber, e.target.value);
+                  notifyNewCompany(
+                    newCompanyName,
+                    newCompanyVat,
+                    newCompanyRegNumber,
+                    e.target.value,
+                  );
                 }}
                 placeholder="Company address"
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
