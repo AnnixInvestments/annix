@@ -67,9 +67,10 @@ export function ProductPreviewTable({
     const updates: Partial<EditableProductLine> = { [field]: value };
 
     if (field === "baseCostPerKg" || field === "compound") {
-      const product = products[index];
-      const newBaseCost = field === "baseCostPerKg" ? (value as number) : product.baseCostPerKg;
-      const newCompound = field === "compound" ? (value as string) : product.compound;
+      const currentProduct = products[index];
+      const newBaseCost =
+        field === "baseCostPerKg" ? (value as number) : currentProduct.baseCostPerKg;
+      const newCompound = field === "compound" ? (value as string) : currentProduct.compound;
       updates.calculatedPrice = calculateFinalPrice(newBaseCost, newCompound, costSettings);
     }
 
@@ -261,8 +262,9 @@ export function recalculatePrices(
   products: EditableProductLine[],
   costSettings: CostSettings,
 ): EditableProductLine[] {
-  return products.map((product) => ({
-    ...product,
-    calculatedPrice: calculateFinalPrice(product.baseCostPerKg, product.compound, costSettings),
-  }));
+  return products.map((line) => {
+    const cost = line.baseCostPerKg;
+    const compound = line.compound;
+    return { ...line, calculatedPrice: calculateFinalPrice(cost, compound, costSettings) };
+  });
 }
