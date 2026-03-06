@@ -1276,20 +1276,30 @@ export default function JobCardDetailPage() {
               </div>
             </div>
           )}
-          {!coatingAnalysis && jobCard.notes && (
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">No coating analysis available</span>
-                <button
-                  onClick={handleRunAnalysis}
-                  disabled={isAnalysing}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100 disabled:bg-gray-100 disabled:text-gray-400"
-                >
-                  {isAnalysing ? "Analysing..." : "Run Coating Analysis"}
-                </button>
+          {!coatingAnalysis &&
+            (jobCard.notes ||
+              (jobCard.lineItems || []).some((li) => {
+                const code = (li.itemCode || "").trim();
+                const hasNoData =
+                  !li.itemDescription &&
+                  !li.itemNo &&
+                  !li.jtNo &&
+                  (li.quantity === null || Number.isNaN(li.quantity));
+                return hasNoData && code.length > 60;
+              })) && (
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">No coating analysis available</span>
+                  <button
+                    onClick={handleRunAnalysis}
+                    disabled={isAnalysing}
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100 disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    {isAnalysing ? "Analysing..." : "Run Coating Analysis"}
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
           {requisition && (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
