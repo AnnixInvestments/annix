@@ -752,6 +752,7 @@ export interface SupplierInvoice {
   deliveryNote?: DeliveryNote | null;
   approvedBy: number | null;
   approvedAt: string | null;
+  exportedToSageAt: string | null;
   createdAt: string;
   updatedAt: string;
   items?: SupplierInvoiceItem[];
@@ -2405,6 +2406,36 @@ class StockControlApiClient {
       method: "POST",
       body: JSON.stringify({ deliveryNoteId }),
     });
+  }
+
+  async sageExportPreview(params: {
+    dateFrom?: string;
+    dateTo?: string;
+    excludeExported?: boolean;
+  }): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
+    const query = new URLSearchParams();
+    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params.dateTo) query.set("dateTo", params.dateTo);
+    if (params.excludeExported !== undefined) query.set("excludeExported", String(params.excludeExported));
+    return this.request(`/stock-control/invoices/export/sage-preview?${query.toString()}`);
+  }
+
+  async sageExportCsv(params: {
+    dateFrom?: string;
+    dateTo?: string;
+    excludeExported?: boolean;
+  }): Promise<Blob> {
+    const query = new URLSearchParams();
+    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params.dateTo) query.set("dateTo", params.dateTo);
+    if (params.excludeExported !== undefined) query.set("excludeExported", String(params.excludeExported));
+    const url = `${this.baseURL}/stock-control/invoices/export/sage-csv?${query.toString()}`;
+    const response = await fetch(url, { headers: this.headers() });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Export failed: ${errorText}`);
+    }
+    return response.blob();
   }
 
   async stockItemPriceHistory(stockItemId: number, limit?: number): Promise<StockPriceHistory[]> {

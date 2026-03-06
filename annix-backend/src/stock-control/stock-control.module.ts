@@ -8,6 +8,7 @@ import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
 import { RubberLiningModule } from "../rubber-lining/rubber-lining.module";
+import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
 import { StockControlAuthController } from "./controllers/auth.controller";
@@ -87,6 +88,7 @@ import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { RbacConfigService } from "./services/rbac-config.service";
+import { SageInvoiceAdapterService } from "./services/sage-invoice-adapter.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
 import { SignatureService } from "./services/signature.service";
@@ -147,6 +149,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     NbOdLookupModule,
     PipeScheduleModule,
     RubberLiningModule,
+    SageExportModule,
     SharedModule,
     StorageModule,
   ],
@@ -205,6 +208,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     InvoiceService,
     PriceHistoryService,
     RbacConfigService,
+    SageInvoiceAdapterService,
   ],
 })
 export class StockControlModule {}

@@ -5,13 +5,18 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import type { Response } from "express";
+import { SageExportFilterDto } from "../../sage-export/dto/sage-export.dto";
+import { SageExportService } from "../../sage-export/sage-export.service";
 import { LinkInvoiceToDeliveryNoteDto } from "../dto/create-invoice.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
@@ -20,12 +25,17 @@ import {
   InvoiceService,
   SuggestedDeliveryNote,
 } from "../services/invoice.service";
+import { SageInvoiceAdapterService } from "../services/sage-invoice-adapter.service";
 
 @ApiTags("Stock Control - Invoices")
 @Controller("stock-control/invoices")
 @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
 export class InvoicesController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(
+    private readonly invoiceService: InvoiceService,
+    private readonly sageAdapter: SageInvoiceAdapterService,
+    private readonly sageExportService: SageExportService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: "List all supplier invoices" })
@@ -37,6 +47,26 @@ export class InvoicesController {
   @ApiOperation({ summary: "List invoices not linked to a delivery note" })
   async listUnlinked(@Req() req: any) {
     return this.invoiceService.findUnlinked(req.user.companyId);
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Get("export/sage-preview")
+  @ApiOperation({ summary: "Preview Sage export: count and totals" })
+  async sageExportPreview(@Req() req: any, @Query() filters: SageExportFilterDto) {
+    return this.sageAdapter.previewCount(req.user.companyId, filters);
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Get("export/sage-csv")
+  @ApiOperation({ summary: "Download approved invoices as Sage CSV" })
+  async sageExportCsv(@Req() req: any, @Query() filters: SageExportFilterDto, @Res() res: Response) {
+    const { invoices, invoiceIds } = await this.sageAdapter.exportableInvoices(req.user.companyId, filters);
+    const csv = this.sageExportService.generateCsv(invoices);
+    await this.sageAdapter.markExported(req.user.companyId, invoiceIds);
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", 'attachment; filename="sage-export.csv"');
+    res.send(csv);
   }
 
   @Get(":id")

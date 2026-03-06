@@ -6,6 +6,7 @@ import type { DeliveryNote, SupplierInvoice } from "@/app/lib/api/stockControlAp
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import InvoiceUploadModal from "./InvoiceUploadModal";
+import SageExportModal from "./SageExportModal";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-gray-100 text-gray-800",
@@ -31,6 +32,7 @@ export default function InvoicesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -95,20 +97,36 @@ export default function InvoicesPage() {
             Upload and process supplier invoices with AI extraction
           </p>
         </div>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-            />
-          </svg>
-          Upload Invoice
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Export to Sage
+          </button>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            Upload Invoice
+          </button>
+        </div>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -209,6 +227,11 @@ export default function InvoicesPage() {
                     >
                       {STATUS_LABELS[invoice.extractionStatus] || invoice.extractionStatus}
                     </span>
+                    {invoice.exportedToSageAt && (
+                      <span className="ml-1 inline-flex px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">
+                        Exported
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -222,6 +245,13 @@ export default function InvoicesPage() {
           deliveryNotes={deliveryNotes}
           onClose={() => setShowUploadModal(false)}
           onSuccess={handleInvoiceCreated}
+        />
+      )}
+
+      {showExportModal && (
+        <SageExportModal
+          onClose={() => setShowExportModal(false)}
+          onSuccess={() => fetchInvoices()}
         />
       )}
     </div>

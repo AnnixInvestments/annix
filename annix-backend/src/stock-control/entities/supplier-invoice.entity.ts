@@ -101,6 +101,9 @@ export class SupplierInvoice {
   @Column({ name: "approved_at", type: "timestamp", nullable: true })
   approvedAt: Date | null;
 
+  @Column({ name: "exported_to_sage_at", type: "timestamp", nullable: true })
+  exportedToSageAt: Date | null;
+
   @OneToMany(
     () => SupplierInvoiceItem,
     (item) => item.invoice,
