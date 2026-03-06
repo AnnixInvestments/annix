@@ -162,7 +162,6 @@ export default function StockControlSettingsPage() {
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("storeman");
-  const [inviteLiteMode, setInviteLiteMode] = useState(false);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
@@ -502,7 +501,6 @@ export default function StockControlSettingsPage() {
       await stockControlApiClient.createInvitation(inviteEmail.trim(), inviteRole);
       setInviteEmail("");
       setInviteRole("storeman");
-      setInviteLiteMode(false);
       setShowInviteForm(false);
       await loadTeamData();
     } catch (e) {
@@ -1154,18 +1152,6 @@ export default function StockControlSettingsPage() {
                 {inviteSending ? "Sending..." : "Send"}
               </button>
             </div>
-            <label className="mt-3 flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={inviteLiteMode}
-                onChange={(e) => setInviteLiteMode(e.target.checked)}
-                className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
-              />
-              <span className="text-sm text-gray-700">
-                Lite Mode{" "}
-                <span className="text-gray-500">(for older devices without camera/QR support)</span>
-              </span>
-            </label>
             {inviteError && <p className="mt-2 text-sm text-red-600">{inviteError}</p>}
           </div>
         )}
