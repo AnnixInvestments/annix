@@ -1,10 +1,7 @@
 import type { MigrationInterface, QueryRunner } from "typeorm";
-import { nowISO } from "../lib/datetime";
 
 export class AddSans1198TypeCodings1800500000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const timestamp = nowISO();
-
     const typeCodes = [
       { code: "3", name: "Type 3" },
       { code: "4", name: "Type 4" },
@@ -19,8 +16,8 @@ export class AddSans1198TypeCodings1800500000000 implements MigrationInterface {
       if (existing.length === 0) {
         await queryRunner.query(
           `INSERT INTO rubber_product_coding (firebase_uid, coding_type, code, name, created_at, updated_at)
-           VALUES ($1, 'TYPE', $2, $3, $4, $4)`,
-          [`sans1198-type${code}`, code, name, timestamp],
+           VALUES ($1, 'TYPE', $2, $3, NOW(), NOW())`,
+          [`sans1198-type${code}`, code, name],
         );
       }
     }
