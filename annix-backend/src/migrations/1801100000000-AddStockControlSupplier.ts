@@ -2,6 +2,17 @@ import type { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddStockControlSupplier1801100000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    const tableExists = await queryRunner.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'stock_control_company'
+      ) AS "exists"
+    `);
+
+    if (!tableExists[0]?.exists) {
+      return;
+    }
+
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "stock_control_supplier" (
         "id" SERIAL PRIMARY KEY,
@@ -25,33 +36,51 @@ export class AddStockControlSupplier1801100000000 implements MigrationInterface 
         ON "stock_control_supplier" ("company_id", LOWER("name"))
     `);
 
-    await queryRunner.query(`
-      ALTER TABLE "delivery_notes"
-        ADD COLUMN IF NOT EXISTS "supplier_id" integer
+    const deliveryNotesExists = await queryRunner.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'delivery_notes'
+      ) AS "exists"
     `);
 
-    await queryRunner.query(`
-      DO $$ BEGIN
+    if (deliveryNotesExists[0]?.exists) {
+      await queryRunner.query(`
         ALTER TABLE "delivery_notes"
-          ADD CONSTRAINT "fk_delivery_notes_supplier"
-          FOREIGN KEY ("supplier_id") REFERENCES "stock_control_supplier"("id") ON DELETE SET NULL;
-      EXCEPTION WHEN duplicate_object THEN NULL;
-      END $$
+          ADD COLUMN IF NOT EXISTS "supplier_id" integer
+      `);
+
+      await queryRunner.query(`
+        DO $$ BEGIN
+          ALTER TABLE "delivery_notes"
+            ADD CONSTRAINT "fk_delivery_notes_supplier"
+            FOREIGN KEY ("supplier_id") REFERENCES "stock_control_supplier"("id") ON DELETE SET NULL;
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$
+      `);
+    }
+
+    const supplierInvoicesExists = await queryRunner.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'supplier_invoices'
+      ) AS "exists"
     `);
 
-    await queryRunner.query(`
-      ALTER TABLE "supplier_invoices"
-        ADD COLUMN IF NOT EXISTS "supplier_id" integer
-    `);
-
-    await queryRunner.query(`
-      DO $$ BEGIN
+    if (supplierInvoicesExists[0]?.exists) {
+      await queryRunner.query(`
         ALTER TABLE "supplier_invoices"
-          ADD CONSTRAINT "fk_supplier_invoices_supplier"
-          FOREIGN KEY ("supplier_id") REFERENCES "stock_control_supplier"("id") ON DELETE SET NULL;
-      EXCEPTION WHEN duplicate_object THEN NULL;
-      END $$
-    `);
+          ADD COLUMN IF NOT EXISTS "supplier_id" integer
+      `);
+
+      await queryRunner.query(`
+        DO $$ BEGIN
+          ALTER TABLE "supplier_invoices"
+            ADD CONSTRAINT "fk_supplier_invoices_supplier"
+            FOREIGN KEY ("supplier_id") REFERENCES "stock_control_supplier"("id") ON DELETE SET NULL;
+        EXCEPTION WHEN duplicate_object THEN NULL;
+        END $$
+      `);
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
