@@ -182,6 +182,7 @@ const ROLL_WIDTH_MAX_MM = 1450;
 const ROLL_WIDTH_INCREMENT_MM = 50;
 const ROLL_LENGTH_MAX_M = 12.5;
 const OPEN_END_ALLOWANCE_MM = 100;
+const BEVEL_ALLOWANCE_MM = 50;
 
 export interface ParsedPipeItem {
   id: string;
@@ -229,6 +230,35 @@ export interface RollAllocation {
   hasLengthwiseCut: boolean;
 }
 
+export interface RubberSpec {
+  thicknessMm: number;
+  shore: number | null;
+  color: string | null;
+  pattern: string | null;
+  compound: string | null;
+}
+
+export interface PlyLayer {
+  thicknessMm: number;
+  rolls: RollAllocation[];
+  totalRollsNeeded: number;
+}
+
+export interface StockRollInfo {
+  stockItemId: number;
+  thicknessMm: number;
+  widthMm: number;
+  lengthM: number;
+  color: string | null;
+  compoundCode: string | null;
+  quantityAvailable: number;
+}
+
+export interface StockQuery {
+  availableThicknesses: number[];
+  rolls: StockRollInfo[];
+}
+
 export interface CuttingPlan {
   rolls: RollAllocation[];
   totalRollsNeeded: number;
@@ -238,6 +268,10 @@ export interface CuttingPlan {
   hasPipeItems: boolean;
   genericM2Items: { description: string; m2: number }[];
   genericM2Total: number;
+  rubberSpec: RubberSpec | null;
+  plies: PlyLayer[];
+  totalThicknessMm: number;
+  isMultiPly: boolean;
 }
 
 function parseNb(description: string): number | null {
@@ -333,6 +367,64 @@ function roundUpToNearest(value: number, increment: number): number {
   return Math.ceil(value / increment) * increment;
 }
 
+const COMMON_STOCK_THICKNESSES = [3, 4, 5, 6, 8, 10, 12];
+
+export function parseRubberSpecNote(notes: string): RubberSpec | null {
+  const match = notes.match(
+    /R\/L\s+(\w+)?\s*(\d+)\s*SHORE\s+(\w+)\s*[-–]?\s*(\d+(?:\.\d+)?)\s*mm\s*(\w+)?/i,
+  );
+  if (match) {
+    return {
+      compound: match[1] || null,
+      shore: parseInt(match[2], 10),
+      color: match[3] || null,
+      thicknessMm: parseFloat(match[4]),
+      pattern: match[5] || null,
+    };
+  }
+
+  const altMatch = notes.match(
+    /(\d+(?:\.\d+)?)\s*mm\s+(\w+)?\s*(\w+)?\s*(?:rubber|lining|lagging)/i,
+  );
+  if (altMatch) {
+    return {
+      thicknessMm: parseFloat(altMatch[1]),
+      compound: null,
+      shore: null,
+      color: altMatch[2] || null,
+      pattern: altMatch[3] || null,
+    };
+  }
+
+  return null;
+}
+
+export function suggestPlyCombinations(thicknessMm: number): number[][] {
+  const combos: number[][] = [[thicknessMm]];
+
+  COMMON_STOCK_THICKNESSES.forEach((a) => {
+    const b = thicknessMm - a;
+    if (b >= 3 && a <= b && COMMON_STOCK_THICKNESSES.includes(b)) {
+      combos.push(a === b ? [a, b] : [a, b]);
+    }
+  });
+
+  return combos.sort((x, y) => {
+    if (x.length !== y.length) return x.length - y.length;
+    const spreadX = Math.abs(x[0] - (x[1] || x[0]));
+    const spreadY = Math.abs(y[0] - (y[1] || y[0]));
+    return spreadX - spreadY;
+  });
+}
+
+function isMultiPlyEligible(item: ParsedPipeItem): boolean {
+  const isInternalLining = item.nbMm !== null && item.itemType !== "pulley" && item.itemType !== "drum" && item.itemType !== "roller";
+  if (!isInternalLining) return false;
+  if (item.nbMm !== null && item.nbMm < 300) return false;
+  if (item.rubberLengthMm > 2500) return false;
+  return true;
+}
+
 export function parsePipeItem(
   id: string,
   description: string,
@@ -360,16 +452,16 @@ export function parsePipeItem(
     if (isOdBased && directOd) {
       odMm = directOd;
       const circumference = Math.PI * directOd;
-      rubberWidthMm = roundUpToNearest(circumference, ROLL_WIDTH_INCREMENT_MM);
-      rubberLengthMm = lengthMm;
+      rubberWidthMm = roundUpToNearest(circumference + BEVEL_ALLOWANCE_MM, ROLL_WIDTH_INCREMENT_MM);
+      rubberLengthMm = lengthMm + BEVEL_ALLOWANCE_MM;
     } else if (nbMm) {
       odMm = nbToOd(nbMm);
       const wt = wallThickness(nbMm, schedule);
       idMm = odMm - 2 * wt;
 
       const circumference = Math.PI * idMm;
-      rubberWidthMm = roundUpToNearest(circumference, ROLL_WIDTH_INCREMENT_MM);
-      rubberLengthMm = lengthMm + openEnds * OPEN_END_ALLOWANCE_MM;
+      rubberWidthMm = roundUpToNearest(circumference + BEVEL_ALLOWANCE_MM, ROLL_WIDTH_INCREMENT_MM);
+      rubberLengthMm = lengthMm + openEnds * OPEN_END_ALLOWANCE_MM + BEVEL_ALLOWANCE_MM;
     }
   }
 
@@ -499,50 +591,7 @@ function groupItemsByRequiredWidth(items: ParsedPipeItem[]): Map<number, ParsedP
   return groups;
 }
 
-export function calculateCuttingPlan(
-  lineItems: Array<{
-    id?: number;
-    itemCode: string | null;
-    itemDescription: string | null;
-    itemNo?: string | null;
-    quantity: number | null;
-    m2: number | null;
-  }>,
-): CuttingPlan {
-  const parsedItems: ParsedPipeItem[] = [];
-  const genericM2Items: { description: string; m2: number }[] = [];
-
-  for (const item of lineItems) {
-    const desc = item.itemDescription || item.itemCode || "";
-    const qty = item.quantity || 1;
-    const m2 = item.m2 ? Number(item.m2) : null;
-    const itemNo = item.itemNo || null;
-
-    const parsed = parsePipeItem(String(item.id || Math.random()), desc, qty, m2, itemNo);
-
-    if (parsed.isValidPipe) {
-      parsedItems.push(parsed);
-    } else if (m2 && m2 > 0) {
-      genericM2Items.push({ description: desc, m2 });
-    }
-  }
-
-  const hasPipeItems = parsedItems.length > 0;
-  const genericM2Total = genericM2Items.reduce((sum, item) => sum + item.m2, 0);
-
-  if (!hasPipeItems) {
-    return {
-      rolls: [],
-      totalRollsNeeded: 0,
-      totalWasteSqM: 0,
-      totalUsedSqM: 0,
-      wastePercentage: 0,
-      hasPipeItems: false,
-      genericM2Items,
-      genericM2Total,
-    };
-  }
-
+function buildRollsForItems(parsedItems: ParsedPipeItem[]): RollAllocation[] {
   const widthGroups = groupItemsByRequiredWidth(parsedItems);
   const allRolls: RollAllocation[] = [];
 
@@ -552,10 +601,14 @@ export function calculateCuttingPlan(
     allRolls.push(...rolls);
   }
 
+  return allRolls;
+}
+
+function rollStats(rolls: RollAllocation[]): { totalUsedSqM: number; totalWasteSqM: number; wastePercentage: number } {
   let totalUsedSqM = 0;
   let totalRollAreaSqM = 0;
 
-  for (const roll of allRolls) {
+  for (const roll of rolls) {
     const usedAreaSqM = roll.cuts.reduce(
       (sum, cut) => sum + (cut.widthMm / 1000) * (cut.lengthMm / 1000),
       0,
@@ -567,14 +620,141 @@ export function calculateCuttingPlan(
   const totalWasteSqM = totalRollAreaSqM - totalUsedSqM;
   const wastePercentage = totalRollAreaSqM > 0 ? (totalWasteSqM / totalRollAreaSqM) * 100 : 0;
 
+  return { totalUsedSqM, totalWasteSqM, wastePercentage };
+}
+
+function scorePlyCombination(
+  combo: number[],
+  parsedItems: ParsedPipeItem[],
+  stockQuery: StockQuery | null,
+): { plies: PlyLayer[]; score: number } {
+  const plies: PlyLayer[] = combo.map((thickness) => {
+    const rolls = buildRollsForItems(parsedItems);
+    return {
+      thicknessMm: thickness,
+      rolls,
+      totalRollsNeeded: rolls.length,
+    };
+  });
+
+  const totalRolls = plies.reduce((sum, ply) => sum + ply.totalRollsNeeded, 0);
+  const totalWaste = plies.reduce((sum, ply) => sum + rollStats(ply.rolls).totalWasteSqM, 0);
+
+  let stockScore = 0;
+  if (stockQuery) {
+    stockScore = combo.reduce((score, thickness) => {
+      const available = stockQuery.rolls.filter((r) => r.thicknessMm === thickness);
+      const totalAvailable = available.reduce((s, r) => s + r.quantityAvailable, 0);
+      const needed = plies.find((p) => p.thicknessMm === thickness)?.totalRollsNeeded || 0;
+      return score + (totalAvailable >= needed ? 1000 : totalAvailable > 0 ? 500 : 0);
+    }, 0);
+  }
+
+  const score = stockScore - totalRolls * 10 - totalWaste;
+  return { plies, score };
+}
+
+export function calculateCuttingPlan(
+  lineItems: Array<{
+    id?: number;
+    itemCode: string | null;
+    itemDescription: string | null;
+    itemNo?: string | null;
+    quantity: number | null;
+    m2: number | null;
+  }>,
+  stockQuery?: StockQuery | null,
+): CuttingPlan {
+  const parsedItems: ParsedPipeItem[] = [];
+  const genericM2Items: { description: string; m2: number }[] = [];
+  let rubberSpec: RubberSpec | null = null;
+
+  for (const item of lineItems) {
+    const desc = item.itemDescription || item.itemCode || "";
+    const qty = item.quantity || 1;
+    const m2 = item.m2 ? Number(item.m2) : null;
+    const itemNo = item.itemNo || null;
+
+    const parsed = parsePipeItem(String(item.id || Math.random()), desc, qty, m2, itemNo);
+
+    if (parsed.isValidPipe) {
+      parsedItems.push(parsed);
+    } else if (/R\/L|rubber|lining|lagging/i.test(desc) && !rubberSpec) {
+      rubberSpec = parseRubberSpecNote(desc);
+      if (!rubberSpec && m2 && m2 > 0) {
+        genericM2Items.push({ description: desc, m2 });
+      }
+    } else if (m2 && m2 > 0) {
+      genericM2Items.push({ description: desc, m2 });
+    }
+  }
+
+  const hasPipeItems = parsedItems.length > 0;
+  const genericM2Total = genericM2Items.reduce((sum, item) => sum + item.m2, 0);
+
+  const emptyPlan: CuttingPlan = {
+    rolls: [],
+    totalRollsNeeded: 0,
+    totalWasteSqM: 0,
+    totalUsedSqM: 0,
+    wastePercentage: 0,
+    hasPipeItems: false,
+    genericM2Items,
+    genericM2Total,
+    rubberSpec,
+    plies: [],
+    totalThicknessMm: rubberSpec?.thicknessMm || 0,
+    isMultiPly: false,
+  };
+
+  if (!hasPipeItems) {
+    return emptyPlan;
+  }
+
+  const allRolls = buildRollsForItems(parsedItems);
+  const stats = rollStats(allRolls);
+
+  const hasMultiPlyEligibleItems = parsedItems.some(isMultiPlyEligible);
+  let plies: PlyLayer[] = [];
+  let isMultiPly = false;
+
+  if (rubberSpec && hasMultiPlyEligibleItems && stockQuery) {
+    const combos = suggestPlyCombinations(rubberSpec.thicknessMm);
+    const viableCombos = combos.filter((combo) =>
+      combo.every((t) => stockQuery.availableThicknesses.includes(t)),
+    );
+
+    const candidates = (viableCombos.length > 0 ? viableCombos : combos).map((combo) =>
+      scorePlyCombination(combo, parsedItems, stockQuery),
+    );
+
+    const best = candidates.sort((a, b) => b.score - a.score)[0];
+    if (best) {
+      plies = best.plies;
+      isMultiPly = plies.length > 1;
+    }
+  }
+
+  if (plies.length === 0) {
+    plies = [{
+      thicknessMm: rubberSpec?.thicknessMm || 0,
+      rolls: allRolls,
+      totalRollsNeeded: allRolls.length,
+    }];
+  }
+
   return {
     rolls: allRolls,
     totalRollsNeeded: allRolls.length,
-    totalWasteSqM,
-    totalUsedSqM,
-    wastePercentage,
+    totalWasteSqM: stats.totalWasteSqM,
+    totalUsedSqM: stats.totalUsedSqM,
+    wastePercentage: stats.wastePercentage,
     hasPipeItems: true,
     genericM2Items,
     genericM2Total,
+    rubberSpec,
+    plies,
+    totalThicknessMm: rubberSpec?.thicknessMm || 0,
+    isMultiPly,
   };
 }

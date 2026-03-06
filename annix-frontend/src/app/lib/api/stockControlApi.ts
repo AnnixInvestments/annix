@@ -270,10 +270,49 @@ export interface CoatingAnalysis {
   updatedAt: string;
 }
 
+export interface RubberStockOption {
+  stockItemId: number;
+  thicknessMm: number | null;
+  widthMm: number | null;
+  lengthM: number | null;
+  color: string | null;
+  compoundCode: string | null;
+  quantityAvailable: number;
+  name: string;
+}
+
+export interface RubberPlyCombination {
+  thicknesses: number[];
+  allInStock: boolean;
+  partiallyInStock: boolean;
+}
+
+export interface RubberStockOptionsResponse {
+  rubberSpec: { thicknessMm: number; shore: number | null; color: string | null; pattern: string | null; compound: string | null } | null;
+  stockItems: RubberStockOption[];
+  availableThicknesses: number[];
+  plyCombinations: RubberPlyCombination[];
+}
+
+export interface StockControlSupplierDto {
+  id: number;
+  companyId: number;
+  name: string;
+  vatNumber: string | null;
+  registrationNumber: string | null;
+  address: string | null;
+  contactPerson: string | null;
+  phone: string | null;
+  email: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DeliveryNote {
   id: number;
   deliveryNumber: string;
   supplierName: string;
+  supplierId: number | null;
   receivedDate: string;
   notes: string | null;
   photoUrl: string | null;
@@ -736,6 +775,7 @@ export interface SupplierInvoice {
   id: number;
   invoiceNumber: string;
   supplierName: string;
+  supplierId: number | null;
   invoiceDate: string | null;
   totalAmount: number | null;
   vatAmount: number | null;
@@ -1516,6 +1556,10 @@ class StockControlApiClient {
     return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis`, {
       method: "POST",
     });
+  }
+
+  async rubberStockOptions(jobCardId: number): Promise<RubberStockOptionsResponse> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/rubber-stock-options`);
   }
 
   async uploadAllocationPhoto(
@@ -2543,6 +2587,25 @@ class StockControlApiClient {
     }
 
     return response.json();
+  }
+
+  async suppliers(): Promise<StockControlSupplierDto[]> {
+    return this.request("/stock-control/suppliers");
+  }
+
+  async createSupplier(data: {
+    name: string;
+    vatNumber?: string;
+    registrationNumber?: string;
+    address?: string;
+    contactPerson?: string;
+    phone?: string;
+    email?: string;
+  }): Promise<StockControlSupplierDto> {
+    return this.request("/stock-control/suppliers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 
   async navRbacConfig(): Promise<Record<string, string[]>> {

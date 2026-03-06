@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
-import { Repository } from "typeorm";
+import { ILike, MoreThan, Repository } from "typeorm";
 import { formatDateTime } from "../../lib/datetime";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -13,7 +13,15 @@ import {
   WorkflowStep,
 } from "../entities/job-card-approval.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
-import { calculateCuttingPlan, type RollAllocation } from "../lib/rubberCuttingCalculator";
+import { StockItem } from "../entities/stock-item.entity";
+import {
+  calculateCuttingPlan,
+  parseRubberSpecNote,
+  suggestPlyCombinations,
+  type CuttingPlan,
+  type PlyLayer,
+  type RollAllocation,
+} from "../lib/rubberCuttingCalculator";
 
 @Injectable()
 export class JobCardPdfService {
@@ -28,6 +36,8 @@ export class JobCardPdfService {
     private readonly companyRepo: Repository<StockControlCompany>,
     @InjectRepository(JobCardCoatingAnalysis)
     private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
+    @InjectRepository(StockItem)
+    private readonly stockItemRepo: Repository<StockItem>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -81,6 +91,8 @@ export class JobCardPdfService {
     coatingAnalysis: JobCardCoatingAnalysis | null,
     qrDataUrl: string,
   ): Promise<Buffer> {
+    const rubberAllocationResult = await this.prepareRubberAllocation(jobCard);
+
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: "A4", margin: 50 });
       const chunks: Buffer[] = [];
@@ -97,7 +109,7 @@ export class JobCardPdfService {
 
       let currentY = 280;
       currentY = this.drawLineItems(doc, jobCard, currentY);
-      currentY = this.drawRubberAllocation(doc, jobCard, currentY);
+      currentY = this.drawRubberAllocationSync(doc, jobCard, rubberAllocationResult, currentY);
       currentY = this.drawCoatingSpecification(doc, coatingAnalysis, currentY);
       currentY = this.drawAllocations(doc, jobCard, currentY);
       this.drawSignatureBoxes(doc, approvals);
@@ -311,7 +323,12 @@ export class JobCardPdfService {
     return y + 10;
   }
 
-  private drawRubberAllocation(doc: typeof PDFDocument, jobCard: JobCard, startY: number): number {
+  private async prepareRubberAllocation(jobCard: JobCard): Promise<{
+    plan: CuttingPlan;
+    stockRolls: { thicknessMm: number; quantityAvailable: number }[];
+    isRubberJob: boolean;
+    totalM2: number;
+  }> {
     const allText = [
       jobCard.notes || "",
       ...(jobCard.lineItems || []).map((li) => `${li.itemCode || ""} ${li.itemDescription || ""}`),
@@ -326,9 +343,43 @@ export class JobCardPdfService {
       allText.includes("liner") ||
       allText.includes("lagging");
 
-    if (!isRubberJob) return startY;
+    const totalM2 = (jobCard.lineItems || []).reduce(
+      (sum, li) => sum + (li.m2 ? Number(li.m2) : 0),
+      0,
+    );
+
+    if (!isRubberJob) {
+      const emptyPlan = calculateCuttingPlan([]);
+      return { plan: emptyPlan, stockRolls: [], isRubberJob: false, totalM2 };
+    }
 
     const { filteredItems } = this.partitionLineItems(jobCard.lineItems);
+
+    const rubberStock = await this.stockItemRepo.find({
+      where: {
+        companyId: jobCard.companyId,
+        category: ILike("%rubber%"),
+        quantity: MoreThan(0),
+      },
+    });
+
+    const stockRolls = rubberStock
+      .filter((s) => s.thicknessMm !== null)
+      .map((s) => ({
+        stockItemId: s.id,
+        thicknessMm: Number(s.thicknessMm),
+        widthMm: s.widthMm ? Number(s.widthMm) : 0,
+        lengthM: s.lengthM ? Number(s.lengthM) : 0,
+        color: s.color,
+        compoundCode: s.compoundCode,
+        quantityAvailable: s.quantity,
+      }));
+
+    const stockQuery = {
+      availableThicknesses: [...new Set(stockRolls.map((s) => s.thicknessMm))],
+      rolls: stockRolls,
+    };
+
     const plan = calculateCuttingPlan(
       filteredItems.map((li) => ({
         id: li.id,
@@ -338,13 +389,21 @@ export class JobCardPdfService {
         quantity: li.quantity,
         m2: li.m2,
       })),
+      stockRolls.length > 0 ? stockQuery : null,
     );
 
-    const totalM2 = (jobCard.lineItems || []).reduce(
-      (sum, li) => sum + (li.m2 ? Number(li.m2) : 0),
-      0,
-    );
+    return { plan, stockRolls, isRubberJob: true, totalM2 };
+  }
 
+  private drawRubberAllocationSync(
+    doc: typeof PDFDocument,
+    jobCard: JobCard,
+    rubberData: { plan: CuttingPlan; stockRolls: { thicknessMm: number; quantityAvailable: number }[]; isRubberJob: boolean; totalM2: number },
+    startY: number,
+  ): number {
+    const { plan, stockRolls, isRubberJob, totalM2 } = rubberData;
+
+    if (!isRubberJob) return startY;
     if (totalM2 <= 0 && !plan.hasPipeItems) return startY;
 
     doc
@@ -355,6 +414,19 @@ export class JobCardPdfService {
     doc.fontSize(12).font("Helvetica-Bold").text("Rubber Allocation", 50, startY);
 
     let y = startY + 15;
+
+    if (plan.rubberSpec) {
+      doc.fontSize(8).font("Helvetica");
+      const specParts = [
+        `${plan.rubberSpec.thicknessMm}mm`,
+        plan.rubberSpec.shore ? `${plan.rubberSpec.shore} Shore` : null,
+        plan.rubberSpec.color,
+        plan.rubberSpec.compound,
+        plan.rubberSpec.pattern,
+      ].filter(Boolean);
+      doc.text(`Spec: ${specParts.join(" / ")}`, 50, y);
+      y += 12;
+    }
 
     if (plan.hasPipeItems) {
       doc.fontSize(9).font("Helvetica-Bold");
@@ -375,15 +447,64 @@ export class JobCardPdfService {
 
       y += 5;
 
-      plan.rolls.forEach((roll) => {
-        const diagramHeight = this.cuttingDiagramHeight(roll);
-        const pageHeight = doc.page.height;
-        if (y + diagramHeight > pageHeight - 165) {
-          doc.addPage();
-          y = 50;
+      if (plan.isMultiPly && plan.plies.length > 1) {
+        plan.plies.forEach((ply, plyIdx) => {
+          const plyStock = stockRolls.filter((r) => r.thicknessMm === ply.thicknessMm);
+          const totalAvailable = plyStock.reduce((s, r) => s + r.quantityAvailable, 0);
+          const sohLabel = totalAvailable >= ply.totalRollsNeeded
+            ? "IN STOCK"
+            : totalAvailable > 0
+              ? "PARTIAL"
+              : "TO ORDER";
+
+          const pageHeight = doc.page.height;
+          if (y + 20 > pageHeight - 165) {
+            doc.addPage();
+            y = 50;
+          }
+
+          doc.fontSize(9).font("Helvetica-Bold");
+          doc.text(
+            `Ply ${plyIdx + 1}: ${ply.thicknessMm}mm (${ply.totalRollsNeeded} rolls) — ${sohLabel}`,
+            50,
+            y,
+          );
+          y += 14;
+
+          ply.rolls.forEach((roll) => {
+            const diagramHeight = this.cuttingDiagramHeight(roll);
+            if (y + diagramHeight > pageHeight - 165) {
+              doc.addPage();
+              y = 50;
+            }
+            y = this.drawCuttingDiagramForRoll(doc, roll, y);
+          });
+        });
+      } else {
+        const singlePly = plan.plies[0];
+        if (singlePly && singlePly.thicknessMm > 0) {
+          const plyStock = stockRolls.filter((r) => r.thicknessMm === singlePly.thicknessMm);
+          const totalAvailable = plyStock.reduce((s, r) => s + r.quantityAvailable, 0);
+          const sohLabel = totalAvailable >= singlePly.totalRollsNeeded
+            ? "IN STOCK"
+            : totalAvailable > 0
+              ? "PARTIAL"
+              : "TO ORDER";
+          doc.fontSize(8).font("Helvetica");
+          doc.text(`${singlePly.thicknessMm}mm — ${sohLabel} (${totalAvailable} available)`, 50, y);
+          y += 12;
         }
-        y = this.drawCuttingDiagramForRoll(doc, roll, y);
-      });
+
+        plan.rolls.forEach((roll) => {
+          const diagramHeight = this.cuttingDiagramHeight(roll);
+          const pageHeight = doc.page.height;
+          if (y + diagramHeight > pageHeight - 165) {
+            doc.addPage();
+            y = 50;
+          }
+          y = this.drawCuttingDiagramForRoll(doc, roll, y);
+        });
+      }
     } else {
       const rollAreaM2 = 15.0;
       const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);

@@ -84,6 +84,21 @@ export class StockItem {
   )
   deliveryNoteItems: DeliveryNoteItem[];
 
+  @Column({ name: "thickness_mm", type: "decimal", precision: 6, scale: 2, nullable: true })
+  thicknessMm: number | null;
+
+  @Column({ name: "width_mm", type: "decimal", precision: 8, scale: 2, nullable: true })
+  widthMm: number | null;
+
+  @Column({ name: "length_m", type: "decimal", precision: 10, scale: 2, nullable: true })
+  lengthM: number | null;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  color: string | null;
+
+  @Column({ name: "compound_code", type: "varchar", length: 50, nullable: true })
+  compoundCode: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

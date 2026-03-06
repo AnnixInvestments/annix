@@ -15,8 +15,12 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ILike, MoreThan, Repository } from "typeorm";
+import { StockItem } from "../entities/stock-item.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
 import { JobCardService } from "../services/job-card.service";
@@ -35,6 +39,8 @@ export class JobCardsController {
     private readonly requisitionService: RequisitionService,
     private readonly versionService: JobCardVersionService,
     private readonly drawingExtractionService: DrawingExtractionService,
+    @InjectRepository(StockItem)
+    private readonly stockItemRepo: Repository<StockItem>,
   ) {}
 
   @Get()
@@ -106,6 +112,58 @@ export class JobCardsController {
       body.extM2,
       body.intM2,
     );
+  }
+
+  @Get(":id/rubber-stock-options")
+  @ApiOperation({ summary: "Rubber stock options and ply suggestions for a job card" })
+  async rubberStockOptions(@Req() req: any, @Param("id") id: number) {
+    const jobCard = await this.jobCardService.findById(req.user.companyId, id);
+
+    const allText = [
+      jobCard.notes || "",
+      ...(jobCard.lineItems || []).map((li: any) => `${li.itemCode || ""} ${li.itemDescription || ""}`),
+    ].join(" ");
+
+    const rubberSpec = parseRubberSpecNote(allText);
+
+    const rubberStock = await this.stockItemRepo.find({
+      where: {
+        companyId: req.user.companyId,
+        category: ILike("%rubber%"),
+        quantity: MoreThan(0),
+      },
+      order: { thicknessMm: "ASC", widthMm: "ASC" },
+    });
+
+    const stockItems = rubberStock.map((item) => ({
+      stockItemId: item.id,
+      thicknessMm: item.thicknessMm ? Number(item.thicknessMm) : null,
+      widthMm: item.widthMm ? Number(item.widthMm) : null,
+      lengthM: item.lengthM ? Number(item.lengthM) : null,
+      color: item.color,
+      compoundCode: item.compoundCode,
+      quantityAvailable: item.quantity,
+      name: item.name,
+    }));
+
+    const availableThicknesses = [
+      ...new Set(stockItems.filter((s) => s.thicknessMm !== null).map((s) => s.thicknessMm as number)),
+    ];
+
+    const plyCombinations = rubberSpec
+      ? suggestPlyCombinations(rubberSpec.thicknessMm).map((combo) => ({
+          thicknesses: combo,
+          allInStock: combo.every((t) => availableThicknesses.includes(t)),
+          partiallyInStock: combo.some((t) => availableThicknesses.includes(t)),
+        }))
+      : [];
+
+    return {
+      rubberSpec,
+      stockItems,
+      availableThicknesses,
+      plyCombinations,
+    };
   }
 
   @Post(":id/allocate")
