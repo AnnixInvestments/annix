@@ -360,7 +360,11 @@ export class JobCardPdfService {
       doc.fontSize(9).font("Helvetica-Bold");
       doc.text(`Rolls Required: ${plan.totalRollsNeeded}`, 50, y);
       doc.text(`Used: ${plan.totalUsedSqM.toFixed(2)} m²`, 200, y);
-      doc.text(`Waste: ${plan.totalWasteSqM.toFixed(2)} m² (${plan.wastePercentage.toFixed(1)}%)`, 340, y);
+      doc.text(
+          `Waste: ${plan.totalWasteSqM.toFixed(2)} m² (${plan.wastePercentage.toFixed(1)}%)`,
+          340,
+          y,
+        );
       y += 15;
 
       if (plan.genericM2Total > 0) {
@@ -433,8 +437,14 @@ export class JobCardPdfService {
     startY: number,
   ): number {
     const COLORS = [
-      "#3B82F6", "#14B8A6", "#8B5CF6", "#F97316",
-      "#EC4899", "#6366F1", "#06B6D4", "#10B981",
+      "#3B82F6",
+      "#14B8A6",
+      "#8B5CF6",
+      "#F97316",
+      "#EC4899",
+      "#6366F1",
+      "#06B6D4",
+      "#10B981",
     ];
     const leftMargin = 50;
     const diagramWidth = 495;
@@ -725,6 +735,9 @@ export class JobCardPdfService {
       });
 
     const totalPages = doc.bufferedPageRange().count;
-    doc.text(`Page ${totalPages} of ${totalPages}`, 50, pageHeight - 35, { align: "center", width: 495 });
+    doc.text(`Page ${totalPages} of ${totalPages}`, 50, pageHeight - 35, {
+      align: "center",
+      width: 495,
+    });
   }
 }
