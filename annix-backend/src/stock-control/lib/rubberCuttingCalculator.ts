@@ -490,10 +490,7 @@ export function parsePipeItem(
         stripsPerPiece = 1;
       } else {
         stripsPerPiece = Math.ceil(circumference / ROLL_WIDTH_MAX_MM);
-        rubberWidthMm = roundUpToNearest(
-          circumference / stripsPerPiece,
-          ROLL_WIDTH_INCREMENT_MM,
-        );
+        rubberWidthMm = roundUpToNearest(circumference / stripsPerPiece, ROLL_WIDTH_INCREMENT_MM);
       }
       rubberLengthMm = lengthMm + 2 * OPEN_END_ALLOWANCE_MM + BEVEL_ALLOWANCE_MM;
     }
@@ -598,9 +595,7 @@ function buildRollsForItems(parsedItems: ParsedPipeItem[]): RollAllocation[] {
       for (const item of sortedItems) {
         if (placed.has(item.id)) continue;
 
-        const laneIdx = laneLengths.findIndex(
-          (used) => used + item.rubberLengthMm <= rollLengthMm,
-        );
+        const laneIdx = laneLengths.findIndex((used) => used + item.rubberLengthMm <= rollLengthMm);
         if (laneIdx >= 0) {
           cuts.push({
             itemId: item.id,

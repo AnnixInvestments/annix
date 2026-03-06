@@ -16,8 +16,8 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { JobCardImportRow, JobCardImportService } from "../services/job-card-import.service";
-import { M2CalculationService } from "../services/m2-calculation.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
+import { M2CalculationService } from "../services/m2-calculation.service";
 import { WorkflowNotificationService } from "../services/workflow-notification.service";
 
 @ApiTags("Stock Control - Job Card Import")

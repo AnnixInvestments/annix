@@ -302,12 +302,12 @@ export class JobCardWorkflowService {
     jobCard.workflowStatus = JobCardWorkflowStatus.DOCUMENT_UPLOADED;
     await this.jobCardRepo.save(jobCard);
 
-    await this.createApprovalRecord(
+    await this.createApprovalRecord(companyId, jobCardId, WorkflowStep.DOCUMENT_UPLOAD, {
+      id: user.id,
+      name: user.name,
       companyId,
-      jobCardId,
-      WorkflowStep.DOCUMENT_UPLOAD,
-      { id: user.id, name: user.name, companyId, role: StockControlRole.ACCOUNTS },
-    );
+      role: StockControlRole.ACCOUNTS,
+    });
 
     this.logger.log(`Workflow initialized for job card ${jobCardId} by ${user.name}`);
   }
