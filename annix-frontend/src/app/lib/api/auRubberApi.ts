@@ -70,6 +70,45 @@ export type QualityAlertType = "DRIFT" | "DROP" | "CV_HIGH";
 export type QualityAlertSeverity = "WARNING" | "CRITICAL";
 export type TrendDirection = "up" | "down" | "stable";
 export type QualityStatus = "normal" | "warning" | "critical";
+export type TaxInvoiceType = "SUPPLIER" | "CUSTOMER";
+export type TaxInvoiceStatus = "PENDING" | "EXTRACTED" | "APPROVED";
+
+export interface ExtractedTaxInvoiceLineItem {
+  description: string;
+  quantity: number | null;
+  unitPrice: number | null;
+  amount: number | null;
+}
+
+export interface ExtractedTaxInvoiceData {
+  invoiceNumber: string | null;
+  invoiceDate: string | null;
+  companyName: string | null;
+  lineItems: ExtractedTaxInvoiceLineItem[];
+  subtotal: number | null;
+  vatAmount: number | null;
+  totalAmount: number | null;
+}
+
+export interface RubberTaxInvoiceDto {
+  id: number;
+  firebaseUid: string;
+  invoiceNumber: string;
+  invoiceDate: string | null;
+  invoiceType: TaxInvoiceType;
+  invoiceTypeLabel: string;
+  companyId: number;
+  companyName: string | null;
+  documentPath: string | null;
+  status: TaxInvoiceStatus;
+  statusLabel: string;
+  extractedData: ExtractedTaxInvoiceData | null;
+  totalAmount: number | null;
+  vatAmount: number | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface MetricStats {
   mean: number;
@@ -2701,6 +2740,85 @@ class AuRubberApiClient {
 
   async rubberSpecifications(): Promise<RubberSpecificationDto[]> {
     return this.request("/rubber-lining/specifications");
+  }
+
+  async taxInvoices(filters?: {
+    invoiceType?: TaxInvoiceType;
+    status?: TaxInvoiceStatus;
+    companyId?: number;
+  }): Promise<RubberTaxInvoiceDto[]> {
+    const params = new URLSearchParams();
+    if (filters?.invoiceType) params.set("invoiceType", filters.invoiceType);
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.companyId) params.set("companyId", String(filters.companyId));
+    const qs = params.toString();
+    return this.request(`/rubber-lining/portal/tax-invoices${qs ? `?${qs}` : ""}`);
+  }
+
+  async taxInvoiceById(id: number): Promise<RubberTaxInvoiceDto> {
+    return this.request(`/rubber-lining/portal/tax-invoices/${id}`);
+  }
+
+  async createTaxInvoice(data: {
+    invoiceNumber: string;
+    invoiceDate?: string;
+    invoiceType: TaxInvoiceType;
+    companyId: number;
+    totalAmount?: number;
+    vatAmount?: number;
+  }): Promise<RubberTaxInvoiceDto> {
+    return this.request("/rubber-lining/portal/tax-invoices", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTaxInvoice(
+    id: number,
+    data: {
+      invoiceNumber?: string;
+      invoiceDate?: string;
+      status?: TaxInvoiceStatus;
+      totalAmount?: number;
+      vatAmount?: number;
+    },
+  ): Promise<RubberTaxInvoiceDto> {
+    return this.request(`/rubber-lining/portal/tax-invoices/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTaxInvoice(id: number): Promise<void> {
+    return this.request(`/rubber-lining/portal/tax-invoices/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async uploadTaxInvoiceDocument(id: number, file: File): Promise<RubberTaxInvoiceDto> {
+    return this.requestWithFiles(
+      `/rubber-lining/portal/tax-invoices/${id}/document`,
+      [file],
+      {},
+      "file",
+    );
+  }
+
+  async uploadTaxInvoiceWithFiles(
+    files: File[],
+    data: {
+      invoiceType: TaxInvoiceType;
+      companyId: number;
+      invoiceNumber?: string;
+      invoiceDate?: string;
+    },
+  ): Promise<{ taxInvoiceIds: number[] }> {
+    return this.requestWithFiles("/rubber-lining/portal/tax-invoices/upload", files, {
+      invoiceType: data.invoiceType,
+      companyId: data.companyId,
+      invoiceNumber: data.invoiceNumber,
+      invoiceDate: data.invoiceDate,
+    });
   }
 }
 

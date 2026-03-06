@@ -40,6 +40,7 @@ import { RubberRollStock } from "./entities/rubber-roll-stock.entity";
 import { RubberSpecification } from "./entities/rubber-specification.entity";
 import { RubberStockLocation } from "./entities/rubber-stock-location.entity";
 import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { RubberTaxInvoice } from "./entities/rubber-tax-invoice.entity";
 import { RubberType } from "./entities/rubber-type.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberAdminController } from "./rubber-admin.controller";
@@ -62,6 +63,7 @@ import { RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService } from "./rubber-stock-location.service";
+import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 
 @Module({
   imports: [
@@ -103,6 +105,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
       RubberPoExtractionTemplate,
       RubberPoExtractionRegion,
       RubberOtherStock,
+      RubberTaxInvoice,
     ]),
   ],
   controllers: [RubberLiningController, RubberAdminController, RubberInboundEmailController],
@@ -124,6 +127,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     RubberPoTemplateService,
     RubberProductImportService,
     RubberOtherStockService,
+    RubberTaxInvoiceService,
     AuRubberAccessGuard,
   ],
   exports: [
@@ -139,6 +143,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
     RubberStockLocationService,
     RubberQualityTrackingService,
     RubberOtherStockService,
+    RubberTaxInvoiceService,
   ],
 })
 export class RubberLiningModule {}

@@ -27,6 +27,7 @@ import type { AnalyzeProductFilesResult } from "./dto/rubber-product-import.dto"
 import { DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
 import { RegionCoordinates } from "./entities/rubber-po-extraction-region.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
+import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberEmailMonitorService } from "./rubber-email-monitor.service";
 import {
@@ -43,6 +44,7 @@ import {
   RubberPoTemplateService,
 } from "./rubber-po-template.service";
 import { RubberProductImportService } from "./rubber-product-import.service";
+import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 
 @ApiTags("Rubber Lining - Inbound Email")
 @Controller("rubber-lining")
@@ -55,6 +57,7 @@ export class RubberInboundEmailController {
     private readonly orderImportService: RubberOrderImportService,
     private readonly templateService: RubberPoTemplateService,
     private readonly productImportService: RubberProductImportService,
+    private readonly taxInvoiceService: RubberTaxInvoiceService,
   ) {}
 
   @Post("portal/email-monitor/test")
@@ -676,5 +679,114 @@ export class RubberInboundEmailController {
       throw new BadRequestException("No files provided");
     }
     return this.productImportService.analyzeFiles(files);
+  }
+
+  @Post("webhook/inbound-email/tax-invoice")
+  @ApiOperation({
+    summary: "Receive inbound tax invoice email webhook",
+    description: "Receives forwarded emails with PDF attachments and creates tax invoice records",
+  })
+  @UseInterceptors(FilesInterceptor("attachments", 20))
+  @ApiConsumes("multipart/form-data")
+  async receiveInboundTaxInvoiceEmail(
+    @Req() req: Request,
+    @Body() body: Record<string, string>,
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<{ success: boolean; taxInvoiceIds: number[]; errors: string[] }> {
+    this.logger.log("Received inbound tax invoice email webhook");
+
+    try {
+      const emailData = await this.parseEmailWebhook(body, files);
+
+      const pdfAttachments = emailData.attachments.filter(
+        (att) =>
+          att.contentType === "application/pdf" || att.filename?.toLowerCase().endsWith(".pdf"),
+      );
+
+      if (pdfAttachments.length === 0) {
+        return { success: false, taxInvoiceIds: [], errors: ["No PDF attachments found"] };
+      }
+
+      const invoiceType =
+        body.invoiceType === "CUSTOMER" ? TaxInvoiceType.CUSTOMER : TaxInvoiceType.SUPPLIER;
+
+      const taxInvoiceIds: number[] = [];
+
+      for (const att of pdfAttachments) {
+        const invoice = await this.taxInvoiceService.createTaxInvoice(
+          {
+            invoiceNumber: att.filename.replace(/\.pdf$/i, ""),
+            invoiceType,
+            companyId: body.companyId ? Number(body.companyId) : 0,
+          },
+          emailData.from,
+        );
+        taxInvoiceIds.push(invoice.id);
+      }
+
+      return { success: true, taxInvoiceIds, errors: [] };
+    } catch (error) {
+      this.logger.error(`Failed to process tax invoice email: ${error.message}`);
+      return { success: false, taxInvoiceIds: [], errors: [error.message] };
+    }
+  }
+
+  @Post("portal/tax-invoices/upload")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @UseInterceptors(FilesInterceptor("files", 20))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Upload tax invoice PDF files" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        files: {
+          type: "array",
+          items: { type: "string", format: "binary" },
+        },
+        invoiceType: { type: "string", enum: ["SUPPLIER", "CUSTOMER"] },
+        companyId: { type: "number" },
+        invoiceNumber: { type: "string" },
+        invoiceDate: { type: "string", format: "date" },
+      },
+    },
+  })
+  async uploadTaxInvoices(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: Record<string, string>,
+    @Req() req: AdminRequest,
+  ): Promise<{ taxInvoiceIds: number[] }> {
+    if (!files || files.length === 0) {
+      throw new BadRequestException("No files uploaded");
+    }
+
+    const companyId = parseInt(body.companyId, 10);
+    if (Number.isNaN(companyId)) {
+      throw new BadRequestException("Invalid companyId");
+    }
+
+    const invoiceType = (body.invoiceType as TaxInvoiceType) || TaxInvoiceType.SUPPLIER;
+    const user = req.user;
+    const createdBy = user?.email || "upload";
+
+    this.logger.log(`Uploading ${files.length} tax invoice files for company ${companyId}`);
+
+    const taxInvoiceIds: number[] = [];
+
+    for (const file of files) {
+      const invoice = await this.taxInvoiceService.createTaxInvoice(
+        {
+          invoiceNumber: body.invoiceNumber || file.originalname.replace(/\.pdf$/i, ""),
+          invoiceDate: body.invoiceDate || undefined,
+          invoiceType,
+          companyId,
+        },
+        createdBy,
+      );
+      taxInvoiceIds.push(invoice.id);
+    }
+
+    return { taxInvoiceIds };
   }
 }

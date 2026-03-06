@@ -1,0 +1,96 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
+import { RubberCompany } from "./rubber-company.entity";
+
+export enum TaxInvoiceType {
+  SUPPLIER = "SUPPLIER",
+  CUSTOMER = "CUSTOMER",
+}
+
+export enum TaxInvoiceStatus {
+  PENDING = "PENDING",
+  EXTRACTED = "EXTRACTED",
+  APPROVED = "APPROVED",
+}
+
+export interface ExtractedTaxInvoiceLineItem {
+  description: string;
+  quantity: number | null;
+  unitPrice: number | null;
+  amount: number | null;
+}
+
+export interface ExtractedTaxInvoiceData {
+  invoiceNumber: string | null;
+  invoiceDate: string | null;
+  companyName: string | null;
+  lineItems: ExtractedTaxInvoiceLineItem[];
+  subtotal: number | null;
+  vatAmount: number | null;
+  totalAmount: number | null;
+}
+
+@Entity("rubber_tax_invoices")
+export class RubberTaxInvoice {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ name: "firebase_uid", type: "varchar", length: 100, unique: true })
+  firebaseUid: string;
+
+  @Column({ name: "invoice_number", type: "varchar", length: 100 })
+  invoiceNumber: string;
+
+  @Column({ name: "invoice_date", type: "date", nullable: true })
+  invoiceDate: Date | null;
+
+  @Column({
+    name: "invoice_type",
+    type: "varchar",
+    length: 20,
+  })
+  invoiceType: TaxInvoiceType;
+
+  @Column({ name: "company_id", type: "int" })
+  companyId: number;
+
+  @ManyToOne(() => RubberCompany)
+  @JoinColumn({ name: "company_id" })
+  company: RubberCompany;
+
+  @Column({ name: "document_path", type: "varchar", length: 500, nullable: true })
+  documentPath: string | null;
+
+  @Column({
+    name: "status",
+    type: "varchar",
+    length: 20,
+    default: TaxInvoiceStatus.PENDING,
+  })
+  status: TaxInvoiceStatus;
+
+  @Column({ name: "extracted_data", type: "jsonb", nullable: true })
+  extractedData: ExtractedTaxInvoiceData | null;
+
+  @Column({ name: "total_amount", type: "decimal", precision: 12, scale: 2, nullable: true })
+  totalAmount: string | null;
+
+  @Column({ name: "vat_amount", type: "decimal", precision: 12, scale: 2, nullable: true })
+  vatAmount: string | null;
+
+  @Column({ name: "created_by", type: "varchar", length: 100, nullable: true })
+  createdBy: string | null;
+
+  @CreateDateColumn({ name: "created_at" })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: "updated_at" })
+  updatedAt: Date;
+}

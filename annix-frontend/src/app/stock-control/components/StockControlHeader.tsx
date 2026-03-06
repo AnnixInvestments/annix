@@ -103,7 +103,9 @@ export function StockControlHeader({
               ASCA
             </div>
           )}
-          <span className="ml-2 text-white text-lg font-medium hidden sm:inline">Stock Control</span>
+          <span className="ml-2 text-white text-lg font-medium hidden sm:inline">
+            Stock Control
+          </span>
         </div>
 
         <div className="hidden sm:block flex-1 max-w-xl mx-4 lg:mx-8">

@@ -134,6 +134,7 @@ import {
 } from "./entities/rubber-purchase-requisition.entity";
 import { RollStockStatus } from "./entities/rubber-roll-stock.entity";
 import { CocProcessingStatus, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
+import { TaxInvoiceStatus, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberAuCocService } from "./rubber-au-coc.service";
 import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-branding.service";
@@ -147,6 +148,12 @@ import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.s
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService, StockLocationDto } from "./rubber-stock-location.service";
+import {
+  CreateTaxInvoiceDto,
+  RubberTaxInvoiceDto,
+  RubberTaxInvoiceService,
+  UpdateTaxInvoiceDto,
+} from "./rubber-tax-invoice.service";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParseModule = require("pdf-parse");
@@ -168,6 +175,7 @@ export class RubberLiningController {
     private readonly rubberQualityTrackingService: RubberQualityTrackingService,
     private readonly rubberOtherStockService: RubberOtherStockService,
     private readonly rubberCocExtractionService: RubberCocExtractionService,
+    private readonly rubberTaxInvoiceService: RubberTaxInvoiceService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -2627,5 +2635,105 @@ Formula: totalPrice = totalKg × salePricePerKg
     @Body() rows: ImportOtherStockRowDto[],
   ): Promise<ImportOtherStockResultDto> {
     return this.rubberOtherStockService.importOtherStock(rows);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/tax-invoices")
+  @ApiOperation({ summary: "List tax invoices" })
+  @ApiQuery({ name: "invoiceType", required: false })
+  @ApiQuery({ name: "status", required: false })
+  @ApiQuery({ name: "companyId", required: false })
+  async taxInvoices(
+    @Query("invoiceType") invoiceType?: TaxInvoiceType,
+    @Query("status") status?: TaxInvoiceStatus,
+    @Query("companyId") companyId?: string,
+  ): Promise<RubberTaxInvoiceDto[]> {
+    return this.rubberTaxInvoiceService.allTaxInvoices({
+      invoiceType,
+      status,
+      companyId: companyId ? Number(companyId) : undefined,
+    });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/tax-invoices/:id")
+  @ApiOperation({ summary: "Get tax invoice by ID" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async taxInvoiceById(@Param("id") id: string): Promise<RubberTaxInvoiceDto> {
+    const invoice = await this.rubberTaxInvoiceService.taxInvoiceById(Number(id));
+    if (!invoice) throw new NotFoundException("Tax invoice not found");
+    return invoice;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/tax-invoices")
+  @ApiOperation({ summary: "Create tax invoice" })
+  async createTaxInvoice(
+    @Body() dto: CreateTaxInvoiceDto,
+    @Req() req: AdminRequest,
+  ): Promise<RubberTaxInvoiceDto> {
+    const user = req.user;
+    return this.rubberTaxInvoiceService.createTaxInvoice(dto, user?.email);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/tax-invoices/:id")
+  @ApiOperation({ summary: "Update tax invoice" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async updateTaxInvoice(
+    @Param("id") id: string,
+    @Body() dto: UpdateTaxInvoiceDto,
+  ): Promise<RubberTaxInvoiceDto> {
+    const invoice = await this.rubberTaxInvoiceService.updateTaxInvoice(Number(id), dto);
+    if (!invoice) throw new NotFoundException("Tax invoice not found");
+    return invoice;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/tax-invoices/:id")
+  @ApiOperation({ summary: "Delete tax invoice" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async deleteTaxInvoice(@Param("id") id: string): Promise<void> {
+    const deleted = await this.rubberTaxInvoiceService.deleteTaxInvoice(Number(id));
+    if (!deleted) throw new NotFoundException("Tax invoice not found");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/tax-invoices/:id/document")
+  @ApiOperation({ summary: "Upload tax invoice document" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  @ApiConsumes("multipart/form-data")
+  @UseInterceptors(FileInterceptor("file"))
+  async uploadTaxInvoiceDocument(
+    @Param("id") id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<RubberTaxInvoiceDto> {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+
+    const invoice = await this.rubberTaxInvoiceService.taxInvoiceById(Number(id));
+    if (!invoice) throw new NotFoundException("Tax invoice not found");
+
+    const filePath = `au-rubber/tax-invoices/${invoice.id}/${file.originalname}`;
+    await this.storageService.upload(
+      {
+        buffer: file.buffer,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+      } as Express.Multer.File,
+      filePath,
+    );
+
+    const updated = await this.rubberTaxInvoiceService.updateDocumentPath(Number(id), filePath);
+    if (!updated) throw new NotFoundException("Failed to update tax invoice");
+
+    return updated;
   }
 }
