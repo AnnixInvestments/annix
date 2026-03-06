@@ -1276,16 +1276,26 @@ export default function JobCardDetailPage() {
               </div>
             </div>
           )}
-          {!coatingAnalysis && (
+          {(!coatingAnalysis ||
+            (coatingAnalysis.status === "analysed" &&
+              coatingAnalysis.coats.length === 0)) && (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">No coating analysis available</span>
+                <span className="text-sm text-gray-500">
+                  {coatingAnalysis
+                    ? "No coating specification found"
+                    : "No coating analysis available"}
+                </span>
                 <button
                   onClick={handleRunAnalysis}
                   disabled={isAnalysing}
                   className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-300 disabled:text-gray-500"
                 >
-                  {isAnalysing ? "Analysing..." : "Run Coating Analysis"}
+                  {isAnalysing
+                    ? "Analysing..."
+                    : coatingAnalysis
+                      ? "Re-analyse"
+                      : "Run Coating Analysis"}
                 </button>
               </div>
             </div>
