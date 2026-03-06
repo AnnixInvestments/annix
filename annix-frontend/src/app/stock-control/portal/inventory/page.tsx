@@ -49,8 +49,9 @@ const ITEMS_PER_PAGE = 20;
 
 type ViewMode = "list" | "grouped";
 
-interface CategoryGroup {
-  category: string;
+interface LocationGroup {
+  locationId: number | null;
+  locationName: string;
   items: StockItem[];
   expanded: boolean;
 }
@@ -63,7 +64,7 @@ export default function InventoryPage() {
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
   const [locations, setLocations] = useState<StockControlLocation[]>([]);
-  const [groupedData, setGroupedData] = useState<CategoryGroup[]>([]);
+  const [groupedData, setGroupedData] = useState<LocationGroup[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("grouped");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -226,11 +227,36 @@ export default function InventoryPage() {
           stockControlApiClient.categories(),
           stockControlApiClient.locations(),
         ]);
-        const withExpanded = grouped.map((g) => ({ ...g, expanded: true }));
-        setGroupedData(withExpanded);
+        const allFlatItems = grouped.flatMap((g) => g.items);
+        const filteredItems = categoryFilter
+          ? allFlatItems.filter((item) => item.category === categoryFilter)
+          : allFlatItems;
+        const locMap = new Map(locs.map((l) => [l.id, l.name]));
+        const byLocation = filteredItems.reduce<Record<string, StockItem[]>>((acc, item) => {
+          const key = item.locationId != null ? String(item.locationId) : "null";
+          const existing = acc[key] || [];
+          return { ...acc, [key]: [...existing, item] };
+        }, {});
+        const locationGroups: LocationGroup[] = Object.entries(byLocation)
+          .map(([key, items]) => {
+            const locationId = key === "null" ? null : Number(key);
+            const locationName = locationId != null ? (locMap.get(locationId) || "Unknown") : "No Location Assigned";
+            const sortedItems = [...items].sort((a, b) => {
+              const catCmp = (a.category || "").localeCompare(b.category || "");
+              if (catCmp !== 0) return catCmp;
+              return a.name.localeCompare(b.name);
+            });
+            return { locationId, locationName, items: sortedItems, expanded: true };
+          })
+          .sort((a, b) => {
+            if (a.locationId === null) return -1;
+            if (b.locationId === null) return 1;
+            return a.locationName.localeCompare(b.locationName);
+          });
+        setGroupedData(locationGroups);
         setCategories(Array.isArray(cats) ? cats : []);
         setLocations(locs);
-        const totalItems = grouped.reduce((sum, g) => sum + g.items.length, 0);
+        const totalItems = filteredItems.length;
         setTotal(totalItems);
         setItems([]);
       } else {
@@ -282,17 +308,17 @@ export default function InventoryPage() {
     setCurrentPage(0);
   };
 
-  const toggleCategoryExpanded = (category: string) => {
+  const toggleGroupExpanded = (locationId: number | null) => {
     setGroupedData((prev) =>
-      prev.map((g) => (g.category === category ? { ...g, expanded: !g.expanded } : g)),
+      prev.map((g) => (g.locationId === locationId ? { ...g, expanded: !g.expanded } : g)),
     );
   };
 
-  const expandAllCategories = () => {
+  const expandAllGroups = () => {
     setGroupedData((prev) => prev.map((g) => ({ ...g, expanded: true })));
   };
 
-  const collapseAllCategories = () => {
+  const collapseAllGroups = () => {
     setGroupedData((prev) => prev.map((g) => ({ ...g, expanded: false })));
   };
 
@@ -1087,20 +1113,18 @@ export default function InventoryPage() {
               </option>
             ))}
           </select>
-          {viewMode === "list" && (
-            <select
-              value={categoryFilter}
-              onChange={(e) => handleCategoryChange(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-            >
-              <option value="">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          )}
+          <select
+            value={categoryFilter}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
           <div className="flex rounded-md shadow-sm">
             <button
               onClick={() => setViewMode("grouped")}
@@ -1269,18 +1293,18 @@ export default function InventoryPage() {
       {viewMode === "grouped" && groupedData.length > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">
-            {groupedData.length} categories, {total} items total
+            {groupedData.length} location{groupedData.length !== 1 ? "s" : ""}, {total} items total
           </span>
           <div className="flex items-center space-x-2">
             <button
-              onClick={expandAllCategories}
+              onClick={expandAllGroups}
               className="text-sm text-teal-600 hover:text-teal-800"
             >
               Expand All
             </button>
             <span className="text-gray-400">|</span>
             <button
-              onClick={collapseAllCategories}
+              onClick={collapseAllGroups}
               className="text-sm text-teal-600 hover:text-teal-800"
             >
               Collapse All
@@ -1311,14 +1335,18 @@ export default function InventoryPage() {
             </div>
           ) : (
             groupedData.map((group) => (
-              <div key={group.category} className="bg-white shadow rounded-lg overflow-x-auto">
+              <div key={group.locationId ?? "no-location"} className="bg-white shadow rounded-lg overflow-x-auto">
                 <button
-                  onClick={() => toggleCategoryExpanded(group.category)}
-                  className="w-full px-6 py-4 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                  onClick={() => toggleGroupExpanded(group.locationId)}
+                  className={`w-full px-6 py-4 flex items-center justify-between transition-colors ${
+                    group.locationId === null
+                      ? "bg-amber-50 hover:bg-amber-100 border-l-4 border-amber-400"
+                      : "bg-gray-50 hover:bg-gray-100"
+                  }`}
                 >
                   <div className="flex items-center space-x-3">
                     <svg
-                      className={`w-5 h-5 text-gray-500 transition-transform ${group.expanded ? "rotate-90" : ""}`}
+                      className={`w-5 h-5 transition-transform ${group.locationId === null ? "text-amber-500" : "text-gray-500"} ${group.expanded ? "rotate-90" : ""}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -1330,10 +1358,14 @@ export default function InventoryPage() {
                         d="M9 5l7 7-7 7"
                       />
                     </svg>
-                    <span className="font-semibold text-gray-900">{group.category}</span>
-                    <span className="text-sm text-gray-500">({group.items.length} items)</span>
+                    <span className={`font-semibold ${group.locationId === null ? "text-amber-800" : "text-gray-900"}`}>
+                      {group.locationName}
+                    </span>
+                    <span className={`text-sm ${group.locationId === null ? "text-amber-600" : "text-gray-500"}`}>
+                      ({group.items.length} item{group.items.length !== 1 ? "s" : ""})
+                    </span>
                   </div>
-                  <span className="text-sm text-gray-600">
+                  <span className={`text-sm ${group.locationId === null ? "text-amber-700" : "text-gray-600"}`}>
                     {formatZAR(group.items.reduce((sum, i) => sum + i.costPerUnit * i.quantity, 0))}
                   </span>
                 </button>
@@ -1385,6 +1417,9 @@ export default function InventoryPage() {
                             Cost
                           </th>
                           <th className="hidden lg:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Category
+                          </th>
+                          <th className="hidden xl:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Location
                           </th>
                           <th className="px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1493,7 +1528,10 @@ export default function InventoryPage() {
                                   </span>
                                 )}
                               </td>
-                              <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
+                              <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {item.category || "-"}
+                              </td>
+                              <td className="hidden xl:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
                                 <select
                                   value={locationForItem(item) || ""}
                                   onChange={(e) =>
