@@ -25,6 +25,7 @@ import { RfqDraft } from "./entities/rfq-draft.entity";
 import { RfqItem } from "./entities/rfq-item.entity";
 import { RfqSequence } from "./entities/rfq-sequence.entity";
 import { StraightPipeRfq } from "./entities/straight-pipe-rfq.entity";
+import { TankChuteRfq } from "./entities/tank-chute-rfq.entity";
 import { ValveRfq } from "./entities/valve-rfq.entity";
 import { RfqService } from "./rfq.service";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
@@ -251,6 +252,16 @@ describe("RfqService", () => {
           },
         },
         {
+          provide: getRepositoryToken(TankChuteRfq),
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+            find: jest.fn(),
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
           provide: getRepositoryToken(RfqDocument),
           useValue: mockRfqDocumentRepo,
         },
@@ -361,6 +372,7 @@ describe("RfqService", () => {
           "items.valveDetails",
           "items.instrumentDetails",
           "items.pumpDetails",
+          "items.tankChuteDetails",
           "drawings",
           "boqs",
         ],
