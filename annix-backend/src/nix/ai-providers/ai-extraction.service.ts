@@ -71,6 +71,7 @@ export class AiExtractionService implements OnModuleInit {
     text: string,
     documentName?: string,
     providerOverride?: AiProviderType,
+    productTypes?: string[],
   ): Promise<{
     items: ExtractedItem[];
     specificationCells: SpecificationCellData[];
@@ -94,11 +95,13 @@ export class AiExtractionService implements OnModuleInit {
 
     this.logger.log(`Using AI provider: ${provider.name} for document: ${documentName}`);
 
+    const expectedItemTypes = this.expectedItemTypesFromProducts(productTypes);
+
     const request: AiExtractionRequest = {
       text: this.truncateText(text, 100000),
       documentName,
       hints: {
-        expectedItemTypes: ["pipe", "bend", "reducer", "tee", "flange"],
+        expectedItemTypes,
       },
     };
 
@@ -180,19 +183,71 @@ export class AiExtractionService implements OnModuleInit {
       quantity: item.quantity || 1,
       unit: item.unit || "ea",
       confidence: item.confidence || 0.8,
-      needsClarification: item.confidence < 0.7 || !item.diameter || !item.material,
-      clarificationReason: this.getClarificationReason(item),
+      needsClarification: this.itemNeedsClarification(item),
+      clarificationReason: this.clarificationReason(item),
       rawData: { source: "ai", rawText: item.rawText },
+      ...(item.itemType === "tank_chute"
+        ? {
+            assemblyType: item.assemblyType,
+            drawingReference: item.drawingReference,
+            overallLengthMm: item.overallLengthMm,
+            overallWidthMm: item.overallWidthMm,
+            overallHeightMm: item.overallHeightMm,
+            totalSteelWeightKg: item.totalSteelWeightKg,
+            liningType: item.liningType,
+            liningThicknessMm: item.liningThicknessMm,
+            liningAreaM2: item.liningAreaM2,
+            coatingSystem: item.coatingSystem,
+            coatingAreaM2: item.coatingAreaM2,
+            surfacePrepStandard: item.surfacePrepStandard,
+            plateBom: item.plateBom,
+          }
+        : {}),
     }));
   }
 
-  private getClarificationReason(item: AiExtractedItem): string | null {
+  private itemNeedsClarification(item: AiExtractedItem): boolean {
+    if (item.confidence < 0.7) return true;
+    if (item.itemType === "tank_chute") {
+      return !item.description;
+    }
+    return !item.diameter || !item.material;
+  }
+
+  private clarificationReason(item: AiExtractedItem): string | null {
     const missing: string[] = [];
-    if (!item.diameter) missing.push("diameter");
-    if (!item.material) missing.push("material");
+    if (item.itemType === "tank_chute") {
+      if (!item.description) missing.push("description");
+      if (!item.assemblyType) missing.push("assembly type");
+    } else {
+      if (!item.diameter) missing.push("diameter");
+      if (!item.material) missing.push("material");
+    }
     if (item.confidence < 0.7) missing.push("low confidence");
 
     return missing.length > 0 ? `Missing or uncertain: ${missing.join(", ")}` : null;
+  }
+
+  private expectedItemTypesFromProducts(productTypes?: string[]): string[] {
+    const defaultTypes = ["pipe", "bend", "reducer", "tee", "flange", "expansion_joint"];
+
+    if (!productTypes || productTypes.length === 0) {
+      return [...defaultTypes, "tank_chute"];
+    }
+
+    const types = [...defaultTypes];
+    const hasTanks = productTypes.some(
+      (p) =>
+        p.includes("tank") ||
+        p.includes("chute") ||
+        p.includes("fabricated") ||
+        p === "tanks_chutes",
+    );
+    if (hasTanks) {
+      types.push("tank_chute");
+    }
+
+    return types;
   }
 
   private convertToSpecificationCells(specs?: Record<string, any>): SpecificationCellData[] {

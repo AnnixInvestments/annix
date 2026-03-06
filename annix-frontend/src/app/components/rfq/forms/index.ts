@@ -5,4 +5,5 @@ export { default as InstrumentForm, type InstrumentFormProps } from "./Instrumen
 export { default as PipeSteelWorkForm, type PipeSteelWorkFormProps } from "./PipeSteelWorkForm";
 export { default as PumpForm, type PumpFormProps } from "./PumpForm";
 export { default as StraightPipeForm, type StraightPipeFormProps } from "./StraightPipeForm";
+export { default as TankChuteForm, type TankChuteFormProps } from "./TankChuteForm";
 export { default as ValveForm, type ValveFormProps } from "./ValveForm";

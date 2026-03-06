@@ -103,6 +103,14 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     flagKey: "RFQ_PRODUCT_PIPE_STEEL_WORK",
     comingSoon: true,
   },
+  {
+    value: "tanks_chutes",
+    label: "Tanks & Chutes",
+    description: "Welded steel tanks, chutes, hoppers, and underpans",
+    icon: "🏗️",
+    category: "product",
+    flagKey: "RFQ_PRODUCT_TANKS_CHUTES",
+  },
 ];
 
 export interface ProjectType {

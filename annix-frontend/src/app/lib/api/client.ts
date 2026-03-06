@@ -118,8 +118,40 @@ export interface CreateBendRfqWithItemDto {
   itemNotes?: string;
 }
 
+export interface UnifiedTankChuteDto {
+  assemblyType: string;
+  drawingReference?: string;
+  materialGrade?: string;
+  overallLengthMm?: number;
+  overallWidthMm?: number;
+  overallHeightMm?: number;
+  totalSteelWeightKg?: number;
+  weightSource?: string;
+  quantityValue?: number;
+  liningRequired?: boolean;
+  liningType?: string;
+  liningThicknessMm?: number;
+  liningAreaM2?: number;
+  liningWastagePercent?: number;
+  rubberGrade?: string;
+  rubberHardnessShore?: number;
+  coatingRequired?: boolean;
+  coatingSystem?: string;
+  coatingAreaM2?: number;
+  coatingWastagePercent?: number;
+  surfacePrepStandard?: string;
+  plateBom?: Array<Record<string, unknown>>;
+  bomTotalWeightKg?: number;
+  bomTotalAreaM2?: number;
+  steelPricePerKg?: number;
+  liningPricePerM2?: number;
+  coatingPricePerM2?: number;
+  fabricationCost?: number;
+  totalCost?: number;
+}
+
 export interface UnifiedRfqItemDto {
-  itemType: "straight_pipe" | "bend" | "fitting";
+  itemType: "straight_pipe" | "bend" | "fitting" | "tank_chute";
   description: string;
   notes?: string;
   totalWeightKg?: number;
@@ -177,6 +209,7 @@ export interface UnifiedRfqItemDto {
     maxHardnessHrc?: number;
     sscTested?: boolean;
   };
+  tankChute?: UnifiedTankChuteDto;
 }
 
 export interface CreateUnifiedRfqDto {

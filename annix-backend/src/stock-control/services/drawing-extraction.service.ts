@@ -22,18 +22,47 @@ interface ExtractedDimension {
   internalSurfaceM2: number | null;
 }
 
+interface TankExtractionData {
+  assemblyType: "tank" | "chute" | "hopper" | "underpan" | "custom";
+  drawingReference: string | null;
+  overallLengthMm: number | null;
+  overallWidthMm: number | null;
+  overallHeightMm: number | null;
+  liningType: string | null;
+  liningThicknessMm: number | null;
+  liningAreaM2: number | null;
+  coatingAreaM2: number | null;
+  coatingSystem: string | null;
+  surfacePrepStandard: string | null;
+  plateParts: Array<{
+    mark: string;
+    description: string;
+    thicknessMm: number;
+    quantity: number;
+  }>;
+}
+
 interface DrawingExtractionResult {
+  drawingType: "pipe" | "tank_chute";
   dimensions: ExtractedDimension[];
+  tankData: TankExtractionData | null;
   totalExternalM2: number;
   totalInternalM2: number;
+  totalLiningM2: number;
+  totalCoatingM2: number;
   rawText: string;
   confidence: number;
 }
 
-const DRAWING_EXTRACTION_PROMPT = `You are a pipe fabrication drawing dimension extractor. Extract pipe dimensions from the provided drawing text.
+const DRAWING_EXTRACTION_PROMPT = `You are an expert at extracting dimensions from industrial fabrication drawings. You can handle both pipe drawings and welded steel plate structure drawings (tanks, chutes, hoppers, underpans).
 
-Return JSON only with this structure:
+First, determine the drawing type:
+- "pipe" — pipe spools, piping isometrics, pipe fabrication drawings
+- "tank_chute" — welded steel plate assemblies: tanks, chutes, hoppers, underpans, bins
+
+For PIPE drawings, return:
 {
+  "drawingType": "pipe",
   "dimensions": [
     {
       "description": "300NB x 6m Straight Pipe",
@@ -46,13 +75,36 @@ Return JSON only with this structure:
   "confidence": 0.85
 }
 
+For TANK/CHUTE drawings, return:
+{
+  "drawingType": "tank_chute",
+  "tankData": {
+    "assemblyType": "tank" | "chute" | "hopper" | "underpan" | "custom",
+    "drawingReference": "GPW-017",
+    "overallLengthMm": 7238,
+    "overallWidthMm": 5241,
+    "overallHeightMm": 2852,
+    "liningType": "rubber" | "ceramic" | "hdpe" | "pu" | "glass_flake" | null,
+    "liningThicknessMm": 6,
+    "liningAreaM2": 75.00,
+    "coatingAreaM2": 82.50,
+    "coatingSystem": "Epoxy primer + polyurethane topcoat",
+    "surfacePrepStandard": "Sa 2.5",
+    "plateParts": [
+      { "mark": "P1", "description": "Side plate", "thicknessMm": 10, "quantity": 2 }
+    ]
+  },
+  "dimensions": [],
+  "confidence": 0.90
+}
+
 Rules:
-- Extract ALL pipe items mentioned with their dimensions
-- Parse diameters in NB (Nominal Bore) or mm format
-- Parse lengths in metres (m) or millimetres (mm) - convert mm to m
-- Identify item types: pipe, bend, tee, reducer, flange, other
+- Determine drawing type from title block, BOM content, and drawing conventions
+- Tank drawings typically show: plate BOM tables, rubber lining specs (m² area, thickness), overall assembly dimensions, drawing numbers like "GPW-xxx"
+- For tanks: liningAreaM2 is the internal rubber/ceramic lining surface area from the drawing
+- For tanks: coatingAreaM2 is the external paint/coating surface area from the drawing
+- For pipes: extract diameters in NB or mm, lengths in m or mm (convert to m)
 - Set confidence based on clarity of extracted data (0.0 to 1.0)
-- If diameter or length cannot be determined, set to null
 - Default quantity to 1 if not specified
 - Return valid JSON only, no additional text`;
 
@@ -206,9 +258,13 @@ export class DrawingExtractionService {
 
     if (!isPdf) {
       return {
+        drawingType: "pipe",
         dimensions: [],
+        tankData: null,
         totalExternalM2: 0,
         totalInternalM2: 0,
+        totalLiningM2: 0,
+        totalCoatingM2: 0,
         rawText: "",
         confidence: 0,
       };
@@ -216,6 +272,24 @@ export class DrawingExtractionService {
 
     const pdfText = await this.extractPdfText(attachment.filePath);
     const aiResult = await this.extractDimensionsWithAi(pdfText);
+
+    if (aiResult.drawingType === "tank_chute" && aiResult.tankData) {
+      const liningM2 = aiResult.tankData.liningAreaM2 ?? 0;
+      const coatingM2 = aiResult.tankData.coatingAreaM2 ?? 0;
+
+      return {
+        drawingType: "tank_chute",
+        dimensions: [],
+        tankData: aiResult.tankData,
+        totalExternalM2: coatingM2,
+        totalInternalM2: liningM2,
+        totalLiningM2: Math.round(liningM2 * 100) / 100,
+        totalCoatingM2: Math.round(coatingM2 * 100) / 100,
+        rawText: pdfText.substring(0, 5000),
+        confidence: aiResult.confidence,
+      };
+    }
+
     const dimensionsWithSurface = aiResult.dimensions.map((dim) => this.calculateSurfaceArea(dim));
 
     const totalExternalM2 = dimensionsWithSurface.reduce(
@@ -228,9 +302,13 @@ export class DrawingExtractionService {
     );
 
     return {
+      drawingType: "pipe",
       dimensions: dimensionsWithSurface,
+      tankData: null,
       totalExternalM2: Math.round(totalExternalM2 * 100) / 100,
       totalInternalM2: Math.round(totalInternalM2 * 100) / 100,
+      totalLiningM2: 0,
+      totalCoatingM2: 0,
       rawText: pdfText.substring(0, 5000),
       confidence: aiResult.confidence,
     };
@@ -253,11 +331,13 @@ export class DrawingExtractionService {
   }
 
   private async extractDimensionsWithAi(pdfText: string): Promise<{
+    drawingType: "pipe" | "tank_chute";
     dimensions: ExtractedDimension[];
+    tankData: TankExtractionData | null;
     confidence: number;
   }> {
     if (!pdfText.trim()) {
-      return { dimensions: [], confidence: 0 };
+      return { drawingType: "pipe", dimensions: [], tankData: null, confidence: 0 };
     }
 
     const truncatedText = pdfText.substring(0, 15000);
@@ -265,7 +345,7 @@ export class DrawingExtractionService {
     const messages: ChatMessage[] = [
       {
         role: "user",
-        content: `Extract pipe dimensions from this drawing text:\n\n"${truncatedText}"\n\nRespond with JSON only.`,
+        content: `Extract dimensions from this fabrication drawing text:\n\n"${truncatedText}"\n\nRespond with JSON only.`,
       },
     ];
 
@@ -277,10 +357,43 @@ export class DrawingExtractionService {
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       this.logger.warn("AI response did not contain valid JSON for drawing extraction");
-      return { dimensions: [], confidence: 0 };
+      return { drawingType: "pipe", dimensions: [], tankData: null, confidence: 0 };
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
+    const drawingType = parsed.drawingType === "tank_chute" ? "tank_chute" : "pipe";
+
+    if (drawingType === "tank_chute" && parsed.tankData) {
+      const td = parsed.tankData;
+      const tankData: TankExtractionData = {
+        assemblyType: td.assemblyType || "custom",
+        drawingReference: td.drawingReference || null,
+        overallLengthMm: td.overallLengthMm ?? null,
+        overallWidthMm: td.overallWidthMm ?? null,
+        overallHeightMm: td.overallHeightMm ?? null,
+        liningType: td.liningType || null,
+        liningThicknessMm: td.liningThicknessMm ?? null,
+        liningAreaM2: td.liningAreaM2 ?? null,
+        coatingAreaM2: td.coatingAreaM2 ?? null,
+        coatingSystem: td.coatingSystem || null,
+        surfacePrepStandard: td.surfacePrepStandard || null,
+        plateParts: Array.isArray(td.plateParts)
+          ? td.plateParts.map((p: any) => ({
+              mark: p.mark || "",
+              description: p.description || "",
+              thicknessMm: p.thicknessMm ?? 0,
+              quantity: p.quantity ?? 1,
+            }))
+          : [],
+      };
+
+      return {
+        drawingType: "tank_chute",
+        dimensions: [],
+        tankData,
+        confidence: parsed.confidence || 0.5,
+      };
+    }
 
     const dimensions: ExtractedDimension[] = (parsed.dimensions || []).map((dim: any) => ({
       description: dim.description || "Unknown item",
@@ -293,7 +406,9 @@ export class DrawingExtractionService {
     }));
 
     return {
+      drawingType: "pipe",
       dimensions,
+      tankData: null,
       confidence: parsed.confidence || 0.5,
     };
   }
@@ -333,6 +448,11 @@ export class DrawingExtractionService {
     jobCardId: number,
     result: DrawingExtractionResult,
   ): Promise<void> {
+    if (result.drawingType === "tank_chute" && result.tankData) {
+      await this.createTankLineItems(companyId, jobCardId, result);
+      return;
+    }
+
     if (result.dimensions.length === 0) {
       return;
     }
@@ -363,6 +483,78 @@ export class DrawingExtractionService {
       await this.lineItemRepo.save(updatedItems);
       this.logger.log(
         `Updated ${updatedItems.length} line items with m² from extraction for job card ${jobCardId}`,
+      );
+    }
+  }
+
+  private async createTankLineItems(
+    companyId: number,
+    jobCardId: number,
+    result: DrawingExtractionResult,
+  ): Promise<void> {
+    const tankData = result.tankData;
+    if (!tankData) return;
+
+    const existingItems = await this.lineItemRepo.find({
+      where: { jobCardId, companyId },
+      order: { sortOrder: "ASC" },
+    });
+
+    const maxSortOrder = existingItems.reduce((max, item) => Math.max(max, item.sortOrder), 0);
+    const newItems: Partial<JobCardLineItem>[] = [];
+    let sortOrder = maxSortOrder;
+
+    const assemblyLabel =
+      tankData.assemblyType.charAt(0).toUpperCase() + tankData.assemblyType.slice(1);
+    const drawingRef = tankData.drawingReference ? ` (${tankData.drawingReference})` : "";
+
+    if (tankData.liningAreaM2 && tankData.liningAreaM2 > 0) {
+      sortOrder += 1;
+      const liningDesc = [
+        `${assemblyLabel} Internal Lining${drawingRef}`,
+        tankData.liningType ? `Type: ${tankData.liningType}` : null,
+        tankData.liningThicknessMm ? `${tankData.liningThicknessMm}mm thick` : null,
+      ]
+        .filter(Boolean)
+        .join(" - ");
+
+      newItems.push({
+        jobCardId,
+        companyId,
+        itemDescription: liningDesc,
+        itemCode: tankData.drawingReference || null,
+        quantity: 1,
+        m2: Math.round(tankData.liningAreaM2 * 100) / 100,
+        sortOrder,
+      });
+    }
+
+    if (tankData.coatingAreaM2 && tankData.coatingAreaM2 > 0) {
+      sortOrder += 1;
+      const coatingDesc = [
+        `${assemblyLabel} External Coating${drawingRef}`,
+        tankData.coatingSystem || null,
+        tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
+      ]
+        .filter(Boolean)
+        .join(" - ");
+
+      newItems.push({
+        jobCardId,
+        companyId,
+        itemDescription: coatingDesc,
+        itemCode: tankData.drawingReference || null,
+        quantity: 1,
+        m2: Math.round(tankData.coatingAreaM2 * 100) / 100,
+        sortOrder,
+      });
+    }
+
+    if (newItems.length > 0) {
+      const created = this.lineItemRepo.create(newItems);
+      await this.lineItemRepo.save(created);
+      this.logger.log(
+        `Created ${newItems.length} tank line items for job card ${jobCardId} (lining: ${tankData.liningAreaM2 ?? 0} m², coating: ${tankData.coatingAreaM2 ?? 0} m²)`,
       );
     }
   }

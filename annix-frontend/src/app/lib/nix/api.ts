@@ -3,11 +3,30 @@
 import { log } from "@/app/lib/logger";
 import { browserBaseUrl } from "@/lib/api-config";
 
+export interface NixExtractedPlateBomRow {
+  mark?: string;
+  description?: string;
+  thicknessMm?: number;
+  lengthMm?: number;
+  widthMm?: number;
+  quantity?: number;
+  weightKg?: number;
+  areaM2?: number;
+}
+
 export interface NixExtractedItem {
   rowNumber: number;
   itemNumber: string;
   description: string;
-  itemType: "pipe" | "bend" | "reducer" | "tee" | "flange" | "expansion_joint" | "unknown";
+  itemType:
+    | "pipe"
+    | "bend"
+    | "reducer"
+    | "tee"
+    | "flange"
+    | "expansion_joint"
+    | "tank_chute"
+    | "unknown";
   material: string | null;
   materialGrade: string | null;
   diameter: number | null;
@@ -23,6 +42,19 @@ export interface NixExtractedItem {
   confidence: number;
   needsClarification: boolean;
   clarificationReason: string | null;
+  assemblyType?: "tank" | "chute" | "hopper" | "underpan" | "custom";
+  drawingReference?: string;
+  overallLengthMm?: number;
+  overallWidthMm?: number;
+  overallHeightMm?: number;
+  totalSteelWeightKg?: number;
+  liningType?: "rubber" | "ceramic" | "hdpe" | "pu" | "glass_flake";
+  liningThicknessMm?: number;
+  liningAreaM2?: number;
+  coatingSystem?: string;
+  coatingAreaM2?: number;
+  surfacePrepStandard?: string;
+  plateBom?: NixExtractedPlateBomRow[];
 }
 
 export interface NixClarificationContext {
@@ -181,6 +213,7 @@ export const nixApi = {
     file: File,
     userId?: number,
     rfqId?: number,
+    productTypes?: string[],
   ): Promise<NixProcessResponse> => {
     if (!file || !(file instanceof File)) {
       throw new Error("Invalid file object provided to Nix upload");
@@ -204,6 +237,9 @@ export const nixApi = {
     formData.append("file", blob, file.name);
     if (userId) formData.append("userId", userId.toString());
     if (rfqId) formData.append("rfqId", rfqId.toString());
+    if (productTypes && productTypes.length > 0) {
+      formData.append("productTypes", JSON.stringify(productTypes));
+    }
 
     const uploadUrl = "/api/nix/upload";
     log.debug("[Nix] Uploading via API route:", uploadUrl, "File:", file.name, "Size:", file.size);

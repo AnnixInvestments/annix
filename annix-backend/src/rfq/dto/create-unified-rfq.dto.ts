@@ -1267,6 +1267,156 @@ export class UnifiedInstrumentDto {
   calculationData?: Record<string, any>;
 }
 
+export class UnifiedTankChuteDto {
+  @ApiProperty({ description: "Assembly type", example: "tank" })
+  @IsString()
+  assemblyType: string;
+
+  @ApiProperty({ description: "Drawing reference", required: false })
+  @IsOptional()
+  @IsString()
+  drawingReference?: string;
+
+  @ApiProperty({ description: "Material grade", required: false })
+  @IsOptional()
+  @IsString()
+  materialGrade?: string;
+
+  @ApiProperty({ description: "Overall length in mm", required: false })
+  @IsOptional()
+  @IsNumber()
+  overallLengthMm?: number;
+
+  @ApiProperty({ description: "Overall width in mm", required: false })
+  @IsOptional()
+  @IsNumber()
+  overallWidthMm?: number;
+
+  @ApiProperty({ description: "Overall height in mm", required: false })
+  @IsOptional()
+  @IsNumber()
+  overallHeightMm?: number;
+
+  @ApiProperty({ description: "Total steel weight in kg", required: false })
+  @IsOptional()
+  @IsNumber()
+  totalSteelWeightKg?: number;
+
+  @ApiProperty({ description: "Weight source: manual or calculated", required: false })
+  @IsOptional()
+  @IsString()
+  weightSource?: string;
+
+  @ApiProperty({ description: "Number of identical assemblies", example: 1 })
+  @IsOptional()
+  @IsNumber()
+  quantityValue?: number;
+
+  @ApiProperty({ description: "Whether internal lining is required", required: false })
+  @IsOptional()
+  @IsBoolean()
+  liningRequired?: boolean;
+
+  @ApiProperty({ description: "Lining type", required: false })
+  @IsOptional()
+  @IsString()
+  liningType?: string;
+
+  @ApiProperty({ description: "Lining thickness in mm", required: false })
+  @IsOptional()
+  @IsNumber()
+  liningThicknessMm?: number;
+
+  @ApiProperty({ description: "Internal lining area in m²", required: false })
+  @IsOptional()
+  @IsNumber()
+  liningAreaM2?: number;
+
+  @ApiProperty({ description: "Lining wastage percentage", required: false })
+  @IsOptional()
+  @IsNumber()
+  liningWastagePercent?: number;
+
+  @ApiProperty({ description: "Rubber grade", required: false })
+  @IsOptional()
+  @IsString()
+  rubberGrade?: string;
+
+  @ApiProperty({ description: "Rubber hardness Shore A", required: false })
+  @IsOptional()
+  @IsNumber()
+  rubberHardnessShore?: number;
+
+  @ApiProperty({ description: "Whether external coating is required", required: false })
+  @IsOptional()
+  @IsBoolean()
+  coatingRequired?: boolean;
+
+  @ApiProperty({ description: "Coating system description", required: false })
+  @IsOptional()
+  @IsString()
+  coatingSystem?: string;
+
+  @ApiProperty({ description: "External coating area in m²", required: false })
+  @IsOptional()
+  @IsNumber()
+  coatingAreaM2?: number;
+
+  @ApiProperty({ description: "Coating wastage percentage", required: false })
+  @IsOptional()
+  @IsNumber()
+  coatingWastagePercent?: number;
+
+  @ApiProperty({ description: "Surface preparation standard", required: false })
+  @IsOptional()
+  @IsString()
+  surfacePrepStandard?: string;
+
+  @ApiProperty({ description: "Plate BOM as JSON array", required: false })
+  @IsOptional()
+  @IsArray()
+  plateBom?: Array<Record<string, unknown>>;
+
+  @ApiProperty({ description: "BOM total weight in kg", required: false })
+  @IsOptional()
+  @IsNumber()
+  bomTotalWeightKg?: number;
+
+  @ApiProperty({ description: "BOM total area in m²", required: false })
+  @IsOptional()
+  @IsNumber()
+  bomTotalAreaM2?: number;
+
+  @ApiProperty({ description: "Steel price per kg", required: false })
+  @IsOptional()
+  @IsNumber()
+  steelPricePerKg?: number;
+
+  @ApiProperty({ description: "Lining price per m²", required: false })
+  @IsOptional()
+  @IsNumber()
+  liningPricePerM2?: number;
+
+  @ApiProperty({ description: "Coating price per m²", required: false })
+  @IsOptional()
+  @IsNumber()
+  coatingPricePerM2?: number;
+
+  @ApiProperty({ description: "Fabrication cost", required: false })
+  @IsOptional()
+  @IsNumber()
+  fabricationCost?: number;
+
+  @ApiProperty({ description: "Total cost", required: false })
+  @IsOptional()
+  @IsNumber()
+  totalCost?: number;
+
+  @ApiProperty({ description: "Calculation data", required: false })
+  @IsOptional()
+  calculationData?: Record<string, unknown>;
+}
+
 export class UnifiedRfqItemDto {
   @ApiProperty({ description: "Item type", example: "straight_pipe" })
   @IsString()
@@ -1277,7 +1427,8 @@ export class UnifiedRfqItemDto {
     | "expansion_joint"
     | "pump"
     | "valve"
-    | "instrument";
+    | "instrument"
+    | "tank_chute";
 
   @ApiProperty({ description: "Item description" })
   @IsString()
@@ -1358,6 +1509,15 @@ export class UnifiedRfqItemDto {
   @ValidateNested()
   @Type(() => UnifiedInstrumentDto)
   instrument?: UnifiedInstrumentDto;
+
+  @ApiProperty({
+    description: "Tank/chute specs (if itemType is tank_chute)",
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UnifiedTankChuteDto)
+  tankChute?: UnifiedTankChuteDto;
 }
 
 export class CreateUnifiedRfqDto {

@@ -58,6 +58,7 @@ import { Rfq, RfqStatus } from "./entities/rfq.entity";
 import { RfqDocument } from "./entities/rfq-document.entity";
 import { RfqDraft } from "./entities/rfq-draft.entity";
 import { RfqItem, RfqItemType } from "./entities/rfq-item.entity";
+import { AssemblyType, LiningType, TankChuteRfq } from "./entities/tank-chute-rfq.entity";
 import { RfqSequence } from "./entities/rfq-sequence.entity";
 import {
   LengthUnit,
@@ -101,6 +102,8 @@ export class RfqService {
     private instrumentRfqRepository: Repository<InstrumentRfq>,
     @InjectRepository(PumpRfq)
     private pumpRfqRepository: Repository<PumpRfq>,
+    @InjectRepository(TankChuteRfq)
+    private tankChuteRfqRepository: Repository<TankChuteRfq>,
     @InjectRepository(RfqDocument)
     private rfqDocumentRepository: Repository<RfqDocument>,
     @InjectRepository(RfqDraft)
@@ -824,6 +827,55 @@ export class RfqService {
 
         await this.pumpRfqRepository.save(pumpRfq);
         this.logger.log(`Created pump item #${lineNumber}: ${item.description}`);
+      } else if (item.itemType === "tank_chute" && item.tankChute) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.TANK_CHUTE,
+          quantity: item.tankChute.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const tankChuteRfq = this.tankChuteRfqRepository.create({
+          assemblyType: item.tankChute.assemblyType as AssemblyType,
+          drawingReference: item.tankChute.drawingReference,
+          materialGrade: item.tankChute.materialGrade,
+          overallLengthMm: item.tankChute.overallLengthMm,
+          overallWidthMm: item.tankChute.overallWidthMm,
+          overallHeightMm: item.tankChute.overallHeightMm,
+          totalSteelWeightKg: item.tankChute.totalSteelWeightKg,
+          weightSource: item.tankChute.weightSource,
+          quantityValue: item.tankChute.quantityValue || 1,
+          liningRequired: item.tankChute.liningRequired || false,
+          liningType: item.tankChute.liningType as LiningType,
+          liningThicknessMm: item.tankChute.liningThicknessMm,
+          liningAreaM2: item.tankChute.liningAreaM2,
+          liningWastagePercent: item.tankChute.liningWastagePercent,
+          rubberGrade: item.tankChute.rubberGrade,
+          rubberHardnessShore: item.tankChute.rubberHardnessShore,
+          coatingRequired: item.tankChute.coatingRequired || false,
+          coatingSystem: item.tankChute.coatingSystem,
+          coatingAreaM2: item.tankChute.coatingAreaM2,
+          coatingWastagePercent: item.tankChute.coatingWastagePercent,
+          surfacePrepStandard: item.tankChute.surfacePrepStandard,
+          plateBom: item.tankChute.plateBom as any,
+          bomTotalWeightKg: item.tankChute.bomTotalWeightKg,
+          bomTotalAreaM2: item.tankChute.bomTotalAreaM2,
+          steelPricePerKg: item.tankChute.steelPricePerKg,
+          liningPricePerM2: item.tankChute.liningPricePerM2,
+          coatingPricePerM2: item.tankChute.coatingPricePerM2,
+          fabricationCost: item.tankChute.fabricationCost,
+          totalCost: item.tankChute.totalCost,
+          calculationData: item.tankChute.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.tankChuteRfqRepository.save(tankChuteRfq);
+        this.logger.log(`Created tank/chute item #${lineNumber}: ${item.description}`);
       }
     }
 
@@ -838,6 +890,7 @@ export class RfqService {
         "items.valveDetails",
         "items.instrumentDetails",
         "items.pumpDetails",
+        "items.tankChuteDetails",
       ],
     });
 
@@ -1212,6 +1265,54 @@ export class RfqService {
         });
 
         await this.pumpRfqRepository.save(pumpRfq);
+      } else if (item.itemType === "tank_chute" && item.tankChute) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.TANK_CHUTE,
+          quantity: item.tankChute.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const tankChuteRfq = this.tankChuteRfqRepository.create({
+          assemblyType: item.tankChute.assemblyType as AssemblyType,
+          drawingReference: item.tankChute.drawingReference,
+          materialGrade: item.tankChute.materialGrade,
+          overallLengthMm: item.tankChute.overallLengthMm,
+          overallWidthMm: item.tankChute.overallWidthMm,
+          overallHeightMm: item.tankChute.overallHeightMm,
+          totalSteelWeightKg: item.tankChute.totalSteelWeightKg,
+          weightSource: item.tankChute.weightSource,
+          quantityValue: item.tankChute.quantityValue || 1,
+          liningRequired: item.tankChute.liningRequired || false,
+          liningType: item.tankChute.liningType as LiningType,
+          liningThicknessMm: item.tankChute.liningThicknessMm,
+          liningAreaM2: item.tankChute.liningAreaM2,
+          liningWastagePercent: item.tankChute.liningWastagePercent,
+          rubberGrade: item.tankChute.rubberGrade,
+          rubberHardnessShore: item.tankChute.rubberHardnessShore,
+          coatingRequired: item.tankChute.coatingRequired || false,
+          coatingSystem: item.tankChute.coatingSystem,
+          coatingAreaM2: item.tankChute.coatingAreaM2,
+          coatingWastagePercent: item.tankChute.coatingWastagePercent,
+          surfacePrepStandard: item.tankChute.surfacePrepStandard,
+          plateBom: item.tankChute.plateBom as any,
+          bomTotalWeightKg: item.tankChute.bomTotalWeightKg,
+          bomTotalAreaM2: item.tankChute.bomTotalAreaM2,
+          steelPricePerKg: item.tankChute.steelPricePerKg,
+          liningPricePerM2: item.tankChute.liningPricePerM2,
+          coatingPricePerM2: item.tankChute.coatingPricePerM2,
+          fabricationCost: item.tankChute.fabricationCost,
+          totalCost: item.tankChute.totalCost,
+          calculationData: item.tankChute.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.tankChuteRfqRepository.save(tankChuteRfq);
       }
     }
 
@@ -1226,6 +1327,7 @@ export class RfqService {
         "items.valveDetails",
         "items.instrumentDetails",
         "items.pumpDetails",
+        "items.tankChuteDetails",
       ],
     });
 
@@ -1347,6 +1449,7 @@ export class RfqService {
         "items.valveDetails",
         "items.instrumentDetails",
         "items.pumpDetails",
+        "items.tankChuteDetails",
         "drawings",
         "boqs",
       ],

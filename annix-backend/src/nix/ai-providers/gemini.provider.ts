@@ -130,6 +130,36 @@ export class GeminiProvider implements AiProvider {
           unit: item.unit || "ea",
           confidence: item.confidence ? Number(item.confidence) : 0.8,
           rawText: item.rawText || null,
+          ...(this.normalizeItemType(item.itemType) === "tank_chute"
+            ? {
+                assemblyType: this.normalizeAssemblyType(item.assemblyType),
+                drawingReference: item.drawingReference || null,
+                overallLengthMm: item.overallLengthMm ? Number(item.overallLengthMm) : null,
+                overallWidthMm: item.overallWidthMm ? Number(item.overallWidthMm) : null,
+                overallHeightMm: item.overallHeightMm ? Number(item.overallHeightMm) : null,
+                totalSteelWeightKg: item.totalSteelWeightKg
+                  ? Number(item.totalSteelWeightKg)
+                  : null,
+                liningType: item.liningType || null,
+                liningThicknessMm: item.liningThicknessMm ? Number(item.liningThicknessMm) : null,
+                liningAreaM2: item.liningAreaM2 ? Number(item.liningAreaM2) : null,
+                coatingSystem: item.coatingSystem || null,
+                coatingAreaM2: item.coatingAreaM2 ? Number(item.coatingAreaM2) : null,
+                surfacePrepStandard: item.surfacePrepStandard || null,
+                plateBom: Array.isArray(item.plateBom)
+                  ? item.plateBom.map((row: any) => ({
+                      mark: row.mark || null,
+                      description: row.description || null,
+                      thicknessMm: row.thicknessMm ? Number(row.thicknessMm) : null,
+                      lengthMm: row.lengthMm ? Number(row.lengthMm) : null,
+                      widthMm: row.widthMm ? Number(row.widthMm) : null,
+                      quantity: row.quantity ? Number(row.quantity) : 1,
+                      weightKg: row.weightKg ? Number(row.weightKg) : null,
+                      areaM2: row.areaM2 ? Number(row.areaM2) : null,
+                    }))
+                  : null,
+              }
+            : {}),
         })),
         specifications: parsed.specifications || {},
         metadata: parsed.metadata || {},
@@ -143,13 +173,40 @@ export class GeminiProvider implements AiProvider {
 
   private normalizeItemType(type: string): AiExtractionResponse["items"][0]["itemType"] {
     const normalized = (type || "").toLowerCase();
-    const validTypes = ["pipe", "bend", "reducer", "tee", "flange", "expansion_joint"];
+    const validTypes = [
+      "pipe",
+      "bend",
+      "reducer",
+      "tee",
+      "flange",
+      "expansion_joint",
+      "tank_chute",
+    ];
     if (validTypes.includes(normalized)) {
       return normalized as any;
     }
     if (normalized.includes("elbow")) return "bend";
     if (normalized.includes("reducing")) return "reducer";
+    if (
+      normalized.includes("tank") ||
+      normalized.includes("chute") ||
+      normalized.includes("hopper") ||
+      normalized.includes("underpan")
+    ) {
+      return "tank_chute";
+    }
     return "unknown";
+  }
+
+  private normalizeAssemblyType(
+    type: string,
+  ): "tank" | "chute" | "hopper" | "underpan" | "custom" | undefined {
+    const normalized = (type || "").toLowerCase();
+    const validTypes = ["tank", "chute", "hopper", "underpan", "custom"];
+    if (validTypes.includes(normalized)) {
+      return normalized as any;
+    }
+    return undefined;
   }
 
   private normalizeFlangeConfig(config: string): AiExtractionResponse["items"][0]["flangeConfig"] {

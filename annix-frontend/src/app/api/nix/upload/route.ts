@@ -18,10 +18,19 @@ export async function POST(request: NextRequest) {
       file ? (file as File).size : 0,
     );
 
+    const backendFormData = new FormData();
+    if (file) backendFormData.append("file", file);
+    const userId = formData.get("userId");
+    if (userId) backendFormData.append("userId", userId as string);
+    const rfqId = formData.get("rfqId");
+    if (rfqId) backendFormData.append("rfqId", rfqId as string);
+    const productTypes = formData.get("productTypes");
+    if (productTypes) backendFormData.append("productTypes", productTypes as string);
+
     log.info("[API Route] Forwarding to backend:", `${BACKEND_URL}/nix/upload`);
     const response = await fetch(`${BACKEND_URL}/nix/upload`, {
       method: "POST",
-      body: formData,
+      body: backendFormData,
     });
 
     log.info("[API Route] Backend response status:", response.status);

@@ -2390,7 +2390,8 @@ export default function JobCardDetailPage() {
                   </label>
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Nix can extract pipe dimensions from PDF drawings
+                  Nix can extract pipe dimensions and tank/chute lining &amp; coating m² from PDF
+                  drawings
                 </p>
               </>
             )}
@@ -2427,27 +2428,78 @@ export default function JobCardDetailPage() {
                     </p>
                     {attachment.extractionStatus === "analysed" && attachment.extractedData && (
                       <div className="mt-2 text-xs text-gray-600">
-                        {(attachment.extractedData as { totalExternalM2?: number })
-                          .totalExternalM2 !== undefined && (
-                          <span className="mr-3">
-                            Ext:{" "}
-                            {
-                              (attachment.extractedData as { totalExternalM2: number })
-                                .totalExternalM2
-                            }{" "}
-                            m²
-                          </span>
-                        )}
-                        {(attachment.extractedData as { totalInternalM2?: number })
-                          .totalInternalM2 !== undefined && (
-                          <span>
-                            Int:{" "}
-                            {
-                              (attachment.extractedData as { totalInternalM2: number })
-                                .totalInternalM2
-                            }{" "}
-                            m²
-                          </span>
+                        {(attachment.extractedData as { drawingType?: string }).drawingType ===
+                        "tank_chute" ? (
+                          <>
+                            {(attachment.extractedData as { tankData?: { assemblyType?: string } })
+                              .tankData?.assemblyType && (
+                              <span className="mr-3 font-medium text-amber-700">
+                                {(
+                                  attachment.extractedData as {
+                                    tankData: { assemblyType: string };
+                                  }
+                                ).tankData.assemblyType
+                                  .charAt(0)
+                                  .toUpperCase() +
+                                  (
+                                    attachment.extractedData as {
+                                      tankData: { assemblyType: string };
+                                    }
+                                  ).tankData.assemblyType.slice(1)}
+                              </span>
+                            )}
+                            {(attachment.extractedData as { totalLiningM2?: number })
+                              .totalLiningM2 !== undefined &&
+                              (attachment.extractedData as { totalLiningM2: number })
+                                .totalLiningM2 > 0 && (
+                                <span className="mr-3">
+                                  Lining:{" "}
+                                  {
+                                    (attachment.extractedData as { totalLiningM2: number })
+                                      .totalLiningM2
+                                  }{" "}
+                                  m²
+                                </span>
+                              )}
+                            {(attachment.extractedData as { totalCoatingM2?: number })
+                              .totalCoatingM2 !== undefined &&
+                              (attachment.extractedData as { totalCoatingM2: number })
+                                .totalCoatingM2 > 0 && (
+                                <span>
+                                  Coating:{" "}
+                                  {
+                                    (attachment.extractedData as { totalCoatingM2: number })
+                                      .totalCoatingM2
+                                  }{" "}
+                                  m²
+                                </span>
+                              )}
+                          </>
+                        ) : (
+                          <>
+                            {(attachment.extractedData as { totalExternalM2?: number })
+                              .totalExternalM2 !== undefined && (
+                              <span className="mr-3">
+                                Ext:{" "}
+                                {
+                                  (attachment.extractedData as { totalExternalM2: number })
+                                    .totalExternalM2
+                                }{" "}
+                                m²
+                              </span>
+                            )}
+                            {(attachment.extractedData as { totalInternalM2?: number })
+                              .totalInternalM2 !== undefined && (
+                              <span>
+                                Int:{" "}
+                                {
+                                  (attachment.extractedData as { totalInternalM2: number })
+                                    .totalInternalM2
+                                }{" "}
+                                m²
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     )}

@@ -5,7 +5,15 @@ export interface ExtractedItem {
   rowNumber: number;
   itemNumber: string;
   description: string;
-  itemType: "pipe" | "bend" | "reducer" | "tee" | "flange" | "expansion_joint" | "unknown";
+  itemType:
+    | "pipe"
+    | "bend"
+    | "reducer"
+    | "tee"
+    | "flange"
+    | "expansion_joint"
+    | "tank_chute"
+    | "unknown";
   material: string | null;
   materialGrade: string | null;
   diameter: number | null;
@@ -22,6 +30,28 @@ export interface ExtractedItem {
   needsClarification: boolean;
   clarificationReason: string | null;
   rawData: Record<string, any>;
+  assemblyType?: "tank" | "chute" | "hopper" | "underpan" | "custom";
+  drawingReference?: string;
+  overallLengthMm?: number;
+  overallWidthMm?: number;
+  overallHeightMm?: number;
+  totalSteelWeightKg?: number;
+  liningType?: "rubber" | "ceramic" | "hdpe" | "pu" | "glass_flake";
+  liningThicknessMm?: number;
+  liningAreaM2?: number;
+  coatingSystem?: string;
+  coatingAreaM2?: number;
+  surfacePrepStandard?: string;
+  plateBom?: Array<{
+    mark?: string;
+    description?: string;
+    thicknessMm?: number;
+    lengthMm?: number;
+    widthMm?: number;
+    quantity?: number;
+    weightKg?: number;
+    areaM2?: number;
+  }>;
 }
 
 export interface SpecificationCellData {
@@ -102,6 +132,10 @@ export class ExcelExtractorService {
     { pattern: /\btee\b/i, type: "tee" as const },
     { pattern: /\bflange\b(?!.*gasket)/i, type: "flange" as const },
     { pattern: /\bexpansion\s*joint\b/i, type: "expansion_joint" as const },
+    { pattern: /\btank\b/i, type: "tank_chute" as const },
+    { pattern: /\bchute\b/i, type: "tank_chute" as const },
+    { pattern: /\bhopper\b/i, type: "tank_chute" as const },
+    { pattern: /\bunderpan\b|\bunder[-\s]?pan\b/i, type: "tank_chute" as const },
     { pattern: /\b\d+\s*NB\s+PIPE\b/i, type: "pipe" as const },
     { pattern: /\bpipe\b|\bdia\s*pipe\b/i, type: "pipe" as const },
     { pattern: /\d+\s*mm\s*(steel|stainless)/i, type: "pipe" as const },

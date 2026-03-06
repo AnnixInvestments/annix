@@ -283,6 +283,59 @@ export interface PumpEntry {
   notes?: string;
 }
 
+export interface PlateBomItem {
+  mark: string;
+  description: string;
+  thicknessMm: number;
+  lengthMm: number;
+  widthMm: number;
+  quantity: number;
+  weightKg: number;
+  areaM2: number;
+}
+
+export interface TankChuteEntry {
+  id: string;
+  itemType: "tank_chute";
+  description: string;
+  clientItemNumber?: string;
+  useSequentialNumbering?: boolean;
+  specs: {
+    assemblyType?: "tank" | "chute" | "hopper" | "underpan" | "custom";
+    drawingReference?: string;
+    materialGrade?: string;
+    overallLengthMm?: number;
+    overallWidthMm?: number;
+    overallHeightMm?: number;
+    totalSteelWeightKg?: number;
+    weightSource?: "manual" | "calculated";
+    quantityValue: number;
+    liningRequired?: boolean;
+    liningType?: "rubber" | "ceramic" | "hdpe" | "pu" | "glass_flake" | "none";
+    liningThicknessMm?: number;
+    liningAreaM2?: number;
+    liningWastagePercent?: number;
+    rubberGrade?: string;
+    rubberHardnessShore?: number;
+    coatingRequired?: boolean;
+    coatingSystem?: string;
+    coatingAreaM2?: number;
+    coatingWastagePercent?: number;
+    surfacePrepStandard?: string;
+    plateBom?: PlateBomItem[];
+    bomTotalWeightKg?: number;
+    bomTotalAreaM2?: number;
+    steelPricePerKg?: number;
+    liningPricePerM2?: number;
+    coatingPricePerM2?: number;
+    fabricationCost?: number;
+    totalCost?: number;
+  };
+  calculation?: Record<string, unknown>;
+  calculationError?: string | null;
+  notes?: string;
+}
+
 export type PipeItem =
   | StraightPipeEntry
   | BendEntry
@@ -291,7 +344,8 @@ export type PipeItem =
   | ExpansionJointEntry
   | ValveEntry
   | InstrumentEntry
-  | PumpEntry;
+  | PumpEntry
+  | TankChuteEntry;
 
 export interface GlobalSpecs {
   workingPressureBar?: number;
@@ -523,7 +577,8 @@ export const useRfqForm = () => {
         | "expansion_joint"
         | "valve"
         | "instrument"
-        | "pump",
+        | "pump"
+        | "tank_chute",
       description?: string,
       insertAtStart?: boolean,
     ) => {
@@ -536,6 +591,7 @@ export const useRfqForm = () => {
         valve: store.addValveEntry,
         instrument: store.addInstrumentEntry,
         pump: store.addPumpEntry,
+        tank_chute: store.addTankChuteEntry,
       };
       return addFns[itemType](description, insertAtStart);
     },
@@ -546,6 +602,7 @@ export const useRfqForm = () => {
     addValveEntry: store.addValveEntry,
     addInstrumentEntry: store.addInstrumentEntry,
     addPumpEntry: store.addPumpEntry,
+    addTankChuteEntry: store.addTankChuteEntry,
     updateItem: store.updateItem,
     removeItem: store.removeStraightPipeEntry,
     duplicateItem: store.duplicateItem,

@@ -76,6 +76,7 @@ export class NixService {
           ({ extractedData, extractedItems, specificationCells } = await this.extractFromPdf(
             dto.documentPath,
             dto.documentName,
+            dto.productTypes,
           ));
           break;
         case DocumentType.EXCEL:
@@ -236,6 +237,7 @@ export class NixService {
   private async extractFromPdf(
     documentPath: string,
     documentName?: string,
+    productTypes?: string[],
   ): Promise<{
     extractedData: Record<string, any>;
     extractedItems: Array<any>;
@@ -262,6 +264,8 @@ export class NixService {
         const aiResult = await this.aiExtractor.extractWithAi(
           pdfText,
           documentName || documentPath.split("/").pop(),
+          undefined,
+          productTypes,
         );
 
         this.logger.log(

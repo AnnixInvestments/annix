@@ -18,6 +18,7 @@ import { PumpRfq } from "./pump-rfq.entity";
 import { Rfq } from "./rfq.entity";
 import { StraightPipeRfq } from "./straight-pipe-rfq.entity";
 import { SurfaceProtectionRfq } from "./surface-protection-rfq.entity";
+import { TankChuteRfq } from "./tank-chute-rfq.entity";
 import { ValveRfq } from "./valve-rfq.entity";
 
 export enum RfqItemType {
@@ -32,6 +33,7 @@ export enum RfqItemType {
   INSTRUMENT = "instrument",
   PUMP = "pump",
   SURFACE_PROTECTION = "surface_protection",
+  TANK_CHUTE = "tank_chute",
 }
 
 export enum MaterialType {
@@ -267,6 +269,21 @@ export class RfqItem {
     },
   )
   surfaceProtectionDetails?: SurfaceProtectionRfq;
+
+  @ApiProperty({
+    description: "Tank/chute details (if item type is tank_chute)",
+    required: false,
+    type: () => TankChuteRfq,
+  })
+  @OneToOne(
+    () => TankChuteRfq,
+    (tankChute) => tankChute.rfqItem,
+    {
+      cascade: true,
+      nullable: true,
+    },
+  )
+  tankChuteDetails?: TankChuteRfq;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

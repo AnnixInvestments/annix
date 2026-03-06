@@ -29,6 +29,7 @@ import { RfqDraft } from "./entities/rfq-draft.entity";
 import { RfqItem } from "./entities/rfq-item.entity";
 import { RfqSequence } from "./entities/rfq-sequence.entity";
 import { StraightPipeRfq } from "./entities/straight-pipe-rfq.entity";
+import { TankChuteRfq } from "./entities/tank-chute-rfq.entity";
 import { ValveRfq } from "./entities/valve-rfq.entity";
 import { RfqController } from "./rfq.controller";
 import { RfqService } from "./rfq.service";
@@ -48,6 +49,7 @@ import { ReferenceDataCacheService } from "./services/reference-data-cache.servi
       ValveRfq,
       InstrumentRfq,
       PumpRfq,
+      TankChuteRfq,
       RfqDocument,
       RfqDraft,
       AnonymousDraft,

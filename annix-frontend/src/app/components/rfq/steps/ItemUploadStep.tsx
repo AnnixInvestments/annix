@@ -66,6 +66,7 @@ import {
   PipeSteelWorkForm,
   PumpForm,
   StraightPipeForm,
+  TankChuteForm,
   ValveForm,
 } from "@/app/components/rfq/forms";
 import {
@@ -196,7 +197,9 @@ const ItemWrapper = memo(function ItemWrapper({
                       ? "bg-cyan-100 text-cyan-800"
                       : entry.itemType === "pump"
                         ? "bg-indigo-100 text-indigo-800"
-                        : "bg-blue-100 text-blue-800"
+                        : entry.itemType === "tank_chute"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-blue-100 text-blue-800"
             } text-xs font-semibold rounded-full`}
           >
             {entry.itemType === "bend"
@@ -209,7 +212,9 @@ const ItemWrapper = memo(function ItemWrapper({
                     ? "Instrument"
                     : entry.itemType === "pump"
                       ? "Pump"
-                      : "Straight Pipe"}
+                      : entry.itemType === "tank_chute"
+                        ? "Tank/Chute"
+                        : "Straight Pipe"}
           </span>
           {entry.specs?.quantityValue > 1 && (
             <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer ml-2">
@@ -327,6 +332,18 @@ const ItemWrapper = memo(function ItemWrapper({
           onRemoveEntry={onRemoveEntry}
           generateItemDescription={generateItemDescription}
         />
+      ) : entry.itemType === "tank_chute" ? (
+        <TankChuteForm
+          entry={entry}
+          index={index}
+          entriesCount={entriesCount}
+          globalSpecs={globalSpecs}
+          masterData={masterData}
+          onUpdateEntry={onUpdateEntry}
+          onRemoveEntry={onRemoveEntry}
+          generateItemDescription={generateItemDescription}
+          requiredProducts={requiredProducts}
+        />
       ) : (
         <StraightPipeForm
           entry={entry}
@@ -397,6 +414,7 @@ export default function ItemUploadStep({
   const onAddValveEntry = useRfqWizardStore((s) => s.addValveEntry);
   const onAddInstrumentEntry = useRfqWizardStore((s) => s.addInstrumentEntry);
   const onAddPumpEntry = useRfqWizardStore((s) => s.addPumpEntry);
+  const onAddTankChuteEntry = useRfqWizardStore((s) => s.addTankChuteEntry);
   const onRemoveEntry = useRfqWizardStore((s) => s.removeStraightPipeEntry);
   const onDuplicateEntry = useRfqWizardStore((s) => s.duplicateItem);
   const entries = rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries;
@@ -1203,6 +1221,22 @@ export default function ItemUploadStep({
         return pumpDesc;
       }
 
+      if (entry.itemType === "tank_chute") {
+        const assemblyType = entry.specs?.assemblyType || "Assembly";
+        const typeLabel = assemblyType.charAt(0).toUpperCase() + assemblyType.slice(1);
+        const grade = entry.specs?.materialGrade || "";
+        const drawing = entry.specs?.drawingReference || "";
+        const weight = entry.specs?.totalSteelWeightKg;
+        const qty = entry.specs?.quantityValue || 1;
+
+        const parts = [typeLabel];
+        if (drawing) parts.push(drawing);
+        if (grade) parts.push(grade);
+        if (weight) parts.push(`${weight}kg`);
+        if (qty > 1) parts.push(`x${qty}`);
+        return parts.join(" - ");
+      }
+
       // Handle straight pipe items
       const nb = entry.specs.nominalBoreMm || "XX";
       let schedule =
@@ -1592,6 +1626,27 @@ export default function ItemUploadStep({
             </span>
           </button>
         )}
+        {requiredProducts.includes("tanks_chutes") && onAddTankChuteEntry && (
+          <button
+            onClick={() => onAddTankChuteEntry(undefined, insertAtStart)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 rounded-md border border-amber-300 transition-colors"
+          >
+            <svg
+              className="w-4 h-4 text-amber-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span className="text-xs font-semibold text-amber-700">Tank/Chute</span>
+          </button>
+        )}
       </div>
     );
   };
@@ -1687,6 +1742,28 @@ export default function ItemUploadStep({
                 </svg>
                 <span className="text-lg font-semibold">Pump</span>
                 <span className="text-xs text-indigo-200 mt-1">Industrial pumps</span>
+              </button>
+            )}
+            {requiredProducts.includes("tanks_chutes") && (
+              <button
+                onClick={() => onAddTankChuteEntry()}
+                className="flex flex-col items-center justify-center w-48 h-40 bg-amber-600 text-white rounded-xl hover:bg-amber-700 focus:outline-none focus:ring-4 focus:ring-amber-300 transition-all shadow-lg hover:shadow-xl"
+              >
+                <svg
+                  className="w-12 h-12 mb-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                  />
+                </svg>
+                <span className="text-lg font-semibold">Tank/Chute</span>
+                <span className="text-xs text-amber-200 mt-1">Tanks, chutes, hoppers</span>
               </button>
             )}
           </div>
@@ -2076,6 +2153,27 @@ export default function ItemUploadStep({
                     >
                       Pump
                     </span>
+                  </button>
+                )}
+                {requiredProducts.includes("tanks_chutes") && onAddTankChuteEntry && (
+                  <button
+                    onClick={() => onAddTankChuteEntry()}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all bg-amber-50 hover:bg-amber-100 border-amber-400 hover:border-amber-500 hover:shadow-md"
+                  >
+                    <svg
+                      className="w-5 h-5 text-amber-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    <span className="text-sm font-semibold text-amber-700">Tank/Chute</span>
                   </button>
                 )}
               </div>

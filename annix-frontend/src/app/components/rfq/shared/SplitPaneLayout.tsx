@@ -17,7 +17,8 @@ interface SplitPaneLayoutProps {
     | "expansion_joint"
     | "valve"
     | "instrument"
-    | "pump";
+    | "pump"
+    | "tank_chute";
 }
 
 export default function SplitPaneLayout({
@@ -205,6 +206,13 @@ export default function SplitPaneLayout({
       hoverFrom: "hover:from-indigo-600",
       hoverTo: "hover:to-indigo-700",
       divider: "hover:bg-indigo-500",
+    },
+    tank_chute: {
+      from: "from-amber-500",
+      to: "to-amber-600",
+      hoverFrom: "hover:from-amber-600",
+      hoverTo: "hover:to-amber-700",
+      divider: "hover:bg-amber-500",
     },
   }[itemType];
 

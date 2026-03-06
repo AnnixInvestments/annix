@@ -18,6 +18,7 @@ import type {
   PumpEntry,
   RfqFormData,
   StraightPipeEntry,
+  TankChuteEntry,
   ValveEntry,
 } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
@@ -199,6 +200,7 @@ interface RfqWizardActions {
   addValveEntry: (description?: string, insertAtStart?: boolean) => string;
   addInstrumentEntry: (description?: string, insertAtStart?: boolean) => string;
   addPumpEntry: (description?: string, insertAtStart?: boolean) => string;
+  addTankChuteEntry: (description?: string, insertAtStart?: boolean) => string;
 
   updateStraightPipeEntry: (id: string, updates: Partial<Omit<StraightPipeEntry, "id">>) => void;
   updateItem: (id: string, updates: Partial<Omit<PipeItem, "id" | "itemType">>) => void;
@@ -338,7 +340,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         };
 
         const allItems = nixItems.flatMap((item, idx): PipeItem[] => {
-          if (!item.diameter) return [];
+          if (!item.diameter && item.itemType !== "tank_chute") return [];
 
           const itemIndex = idx + 1;
           const unitLower = (item.unit || "").toLowerCase().trim();
@@ -360,6 +362,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           );
 
           if (item.itemType === "pipe" || item.itemType === "flange") {
+            const diameterMm = item.diameter ?? 0;
             const pipeEntry: StraightPipeEntry = {
               id: generateUniqueId(),
               itemType: "straight_pipe" as const,
@@ -367,7 +370,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 item.itemNumber || generateClientItemNumber(customerName, itemIndex),
               description: item.description,
               specs: {
-                nominalBoreMm: item.diameter,
+                nominalBoreMm: diameterMm,
                 scheduleType: item.schedule
                   ? "schedule"
                   : item.wallThickness
@@ -397,7 +400,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 item.itemNumber || generateClientItemNumber(customerName, itemIndex),
               description: item.description,
               specs: {
-                nominalBoreMm: item.diameter,
+                nominalBoreMm: item.diameter ?? 0,
                 scheduleNumber: item.schedule || undefined,
                 wallThicknessMm: item.wallThickness || undefined,
                 bendType: "1.5D",
@@ -434,7 +437,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               specs: {
                 fittingStandard: "SABS719",
                 fittingType: fittingType,
-                nominalDiameterMm: item.diameter,
+                nominalDiameterMm: item.diameter ?? 0,
                 scheduleNumber: item.schedule || undefined,
                 quantityValue: item.quantity || 1,
                 quantityType: "number_of_items" as const,
@@ -445,6 +448,47 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               notes: nixNote,
             };
             return [fittingEntry];
+          } else if (item.itemType === "tank_chute") {
+            const tankChuteEntry: TankChuteEntry = {
+              id: generateUniqueId(),
+              itemType: "tank_chute" as const,
+              clientItemNumber:
+                item.itemNumber || generateClientItemNumber(customerName, itemIndex),
+              description: item.description,
+              specs: {
+                assemblyType: item.assemblyType || "custom",
+                drawingReference: item.drawingReference || undefined,
+                materialGrade: item.materialGrade || item.material || undefined,
+                overallLengthMm: item.overallLengthMm || undefined,
+                overallWidthMm: item.overallWidthMm || undefined,
+                overallHeightMm: item.overallHeightMm || undefined,
+                totalSteelWeightKg: item.totalSteelWeightKg || undefined,
+                weightSource: item.totalSteelWeightKg ? "manual" : undefined,
+                quantityValue: item.quantity || 1,
+                liningRequired: !!item.liningType,
+                liningType: item.liningType || undefined,
+                liningThicknessMm: item.liningThicknessMm || undefined,
+                liningAreaM2: item.liningAreaM2 || undefined,
+                coatingRequired: !!item.coatingSystem || !!item.coatingAreaM2,
+                coatingSystem: item.coatingSystem || undefined,
+                coatingAreaM2: item.coatingAreaM2 || undefined,
+                surfacePrepStandard: item.surfacePrepStandard || undefined,
+                plateBom: item.plateBom
+                  ? item.plateBom.map((row) => ({
+                      mark: row.mark || "",
+                      description: row.description || "",
+                      thicknessMm: row.thicknessMm || 0,
+                      lengthMm: row.lengthMm || 0,
+                      widthMm: row.widthMm || 0,
+                      quantity: row.quantity || 1,
+                      weightKg: row.weightKg || 0,
+                      areaM2: row.areaM2 || 0,
+                    }))
+                  : undefined,
+              },
+              notes: nixNote,
+            };
+            return [tankChuteEntry];
           }
           return [];
         });
@@ -829,6 +873,37 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             }),
             false,
             "addPumpEntry",
+          );
+
+          return newEntry.id;
+        },
+
+        addTankChuteEntry: (description, insertAtStart) => {
+          const newEntry: TankChuteEntry = {
+            id: generateUniqueId(),
+            itemType: "tank_chute",
+            description: description || "New Tank/Chute",
+            specs: {
+              assemblyType: undefined,
+              quantityValue: 1,
+              liningRequired: false,
+              coatingRequired: false,
+              weightSource: "manual",
+            },
+            notes: "",
+          };
+
+          set(
+            (state) => ({
+              rfqData: {
+                ...state.rfqData,
+                items: insertAtStart
+                  ? [newEntry, ...state.rfqData.items]
+                  : [...state.rfqData.items, newEntry],
+              },
+            }),
+            false,
+            "addTankChuteEntry",
           );
 
           return newEntry.id;
@@ -1401,12 +1476,17 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 "nixProcessDocuments/reading",
               );
 
-              const result = await nixApi.uploadAndProcess(doc.file);
+              const result = await nixApi.uploadAndProcess(
+                doc.file,
+                undefined,
+                undefined,
+                rfqData.requiredProducts,
+              );
 
               set(
                 {
                   nixProcessingProgress: docProgress + 40,
-                  nixProcessingStatus: "Extracting pipe specifications...",
+                  nixProcessingStatus: "Extracting specifications...",
                   nixProcessingTimeRemaining: 7,
                 },
                 false,
