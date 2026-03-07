@@ -171,6 +171,18 @@ export class RubberCocExtractionService {
     return `${orderNumber}-${rollRange}`;
   }
 
+  private generateCompounderCocNumber(batchNumbers: string[] | null): string | null {
+    if (!batchNumbers || batchNumbers.length === 0) return null;
+
+    const batchRange = this.formatRollRange(batchNumbers);
+    return `B${batchRange}`;
+  }
+
+  private cleanCompounderCompoundCode(compoundCode: string): string {
+    const match = compoundCode.match(/^([A-Z]+\d+[A-Z]*)/i);
+    return match ? match[1] : compoundCode;
+  }
+
   async extractCompounderCoc(pdfText: string): Promise<{
     data: ExtractedCocData;
     tokensUsed?: number;
@@ -192,8 +204,21 @@ export class RubberCocExtractionService {
     const processingTimeMs = Date.now() - startTime;
     this.logger.log(`Compounder CoC extracted in ${processingTimeMs}ms`);
 
+    const extractedData = response.data as ExtractedCocData;
+
+    const cocNumber = this.generateCompounderCocNumber(extractedData.batchNumbers ?? null);
+    if (cocNumber) {
+      extractedData.cocNumber = cocNumber;
+      this.logger.log(`Generated Compounder CoC number from batches: ${cocNumber}`);
+    }
+
+    if (extractedData.compoundCode) {
+      extractedData.compoundCode = this.cleanCompounderCompoundCode(extractedData.compoundCode);
+      this.logger.log(`Cleaned compound code: ${extractedData.compoundCode}`);
+    }
+
     return {
-      data: response.data as ExtractedCocData,
+      data: extractedData,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };

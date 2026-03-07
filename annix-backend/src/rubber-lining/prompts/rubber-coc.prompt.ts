@@ -32,7 +32,7 @@ Return a JSON object with this structure:
   "cocNumber": string or null,
   "productionDate": string or null (ISO date format YYYY-MM-DD),
   "customerName": string or null,
-  "compoundCode": string or null (e.g., "AU-NR-60", "AUA40RSCA"),
+  "compoundCode": string or null - extract the compound ID but REMOVE the compounder's trailing code after the compound name (e.g., "AUA40RSCA22-MDR" → extract "AUA40RSCA", "AU-NR-60-15X" → extract "AU-NR-60"),
   "compoundDescription": string or null (e.g., "Natural Rubber 40 Shore A"),
   "batchNumbers": string[] (array of batch numbers mentioned),
   "approverNames": string[] (names of people who approved/signed),
