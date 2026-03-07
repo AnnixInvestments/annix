@@ -17,6 +17,7 @@ import type {
   StaffMember,
   StockAllocation,
   StockItem,
+  UnverifiedProduct,
   WorkflowStatus as WorkflowStatusData,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -1204,6 +1205,10 @@ export default function JobCardDetailPage() {
   const [isExtractingAll, setIsExtractingAll] = useState(false);
   const [isDraggingAmendment, setIsDraggingAmendment] = useState(false);
   const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
+  const [showTdsModal, setShowTdsModal] = useState(false);
+  const [unverifiedProducts, setUnverifiedProducts] = useState<UnverifiedProduct[]>([]);
+  const [tdsFile, setTdsFile] = useState<File | null>(null);
+  const [isUploadingTds, setIsUploadingTds] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -1353,6 +1358,19 @@ export default function JobCardDetailPage() {
   };
 
   const handleStatusUpdate = async (newStatus: string) => {
+    if (newStatus === "active") {
+      try {
+        const products = await stockControlApiClient.unverifiedCoatingProducts(jobId);
+        if (products.length > 0) {
+          setUnverifiedProducts(products);
+          setShowTdsModal(true);
+          return;
+        }
+      } catch {
+        // If check fails, proceed with activation attempt and let backend validate
+      }
+    }
+
     try {
       setIsUpdatingStatus(true);
       await stockControlApiClient.updateJobCard(jobId, { status: newStatus });
@@ -1361,6 +1379,33 @@ export default function JobCardDetailPage() {
       setError(err instanceof Error ? err : new Error("Failed to update status"));
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleTdsUpload = async () => {
+    if (!tdsFile) return;
+    try {
+      setIsUploadingTds(true);
+      const updated = await stockControlApiClient.uploadCoatingTds(jobId, tdsFile);
+      setCoatingAnalysis(updated);
+      setTdsFile(null);
+      const remaining = (updated.coats || []).filter((c) => !c.verified);
+      if (remaining.length === 0) {
+        setShowTdsModal(false);
+        setUnverifiedProducts([]);
+      } else {
+        setUnverifiedProducts(
+          remaining.map((c) => ({
+            product: c.product,
+            genericType: c.genericType,
+            estimatedVolumeSolids: c.solidsByVolumePercent,
+          })),
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to process TDS"));
+    } finally {
+      setIsUploadingTds(false);
     }
   };
 
@@ -1942,7 +1987,25 @@ export default function JobCardDetailPage() {
                         <td className="py-2 pr-4 text-gray-600 capitalize">
                           {coat.area === "external" ? "Ext" : "Int"}
                         </td>
-                        <td className="py-2 pr-4 text-gray-900 font-medium">{coat.product}</td>
+                        <td className="py-2 pr-4 text-gray-900 font-medium">
+                          {coat.product}
+                          {coat.verified === false && (
+                            <span
+                              className="ml-1.5 inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700"
+                              title="Volume solids estimated - upload TDS to verify"
+                            >
+                              unverified
+                            </span>
+                          )}
+                          {coat.verified === true && (
+                            <span
+                              className="ml-1.5 inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700"
+                              title="Volume solids verified"
+                            >
+                              verified
+                            </span>
+                          )}
+                        </td>
                         <td className="py-2 pr-4 text-right text-gray-900">
                           {coat.minDftUm}-{coat.maxDftUm}
                         </td>
@@ -2846,6 +2909,121 @@ export default function JobCardDetailPage() {
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isAllocating ? "Allocating..." : "Allocate"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTdsModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => {
+                setShowTdsModal(false);
+                setTdsFile(null);
+              }}
+            ></div>
+            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Unverified Coating Products
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                The following coating products could not be verified from the known products
+                database. Upload the Technical Data Sheet (TDS) for each product to verify volume
+                solids before activating this job card.
+              </p>
+              <div className="space-y-2 mb-4">
+                {unverifiedProducts.map((product, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg"
+                  >
+                    <div>
+                      <span className="text-sm font-medium text-gray-900">{product.product}</span>
+                      {product.genericType && (
+                        <span className="ml-2 text-xs text-gray-500 capitalize">
+                          ({product.genericType.replace(/_/g, " ")})
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-amber-700">
+                      Est. {product.estimatedVolumeSolids}% vol. solids
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
+                {tdsFile ? (
+                  <div className="space-y-1">
+                    <svg
+                      className="mx-auto h-8 w-8 text-teal-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <p className="text-sm text-gray-700">{tdsFile.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => setTdsFile(null)}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer">
+                    <svg
+                      className="mx-auto h-10 w-10 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
+                    </svg>
+                    <p className="mt-1 text-sm text-gray-600">Upload Technical Data Sheet (PDF)</p>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        setTdsFile(file);
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+              <div className="mt-4 flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowTdsModal(false);
+                    setTdsFile(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleTdsUpload}
+                  disabled={!tdsFile || isUploadingTds}
+                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {isUploadingTds ? "Processing..." : "Upload & Verify"}
                 </button>
               </div>
             </div>

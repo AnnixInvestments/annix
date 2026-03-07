@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
+import { lookupCoatingProduct } from "../config/coating-products";
 import {
   CoatDetail,
   CoatingAnalysisStatus,
@@ -265,6 +266,122 @@ export class CoatingAnalysisService {
     return this.analysisRepo.save(analysis);
   }
 
+  async unverifiedProducts(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<{ product: string; genericType: string | null; estimatedVolumeSolids: number }[]> {
+    const analysis = await this.analysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
+    if (!analysis) {
+      return [];
+    }
+
+    return (analysis.coats || [])
+      .filter((coat) => !coat.verified)
+      .map((coat) => ({
+        product: coat.product,
+        genericType: coat.genericType,
+        estimatedVolumeSolids: coat.solidsByVolumePercent,
+      }));
+  }
+
+  async verifyFromTds(
+    companyId: number,
+    jobCardId: number,
+    fileBuffer: Buffer,
+  ): Promise<JobCardCoatingAnalysis> {
+    const analysis = await this.analysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
+    if (!analysis) {
+      throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
+    }
+
+    const unverified = (analysis.coats || []).filter((coat) => !coat.verified);
+    if (unverified.length === 0) {
+      return analysis;
+    }
+
+    const productNames = unverified.map((c) => c.product).join(", ");
+    const tdsBase64 = fileBuffer.toString("base64");
+
+    const messages: ChatMessage[] = [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: { type: "base64", media_type: "application/pdf", data: tdsBase64 },
+          },
+          {
+            type: "text",
+            text: `Extract the volume solids percentage from this Technical Data Sheet (TDS) PDF. I need the volume solids for: ${productNames}.\n\nReturn JSON only:\n{ "products": [{ "product": "Product Name", "volumeSolidsPercent": 85 }] }\n\nRules:\n- Look for "Volume Solids", "Solids by Volume", or similar in the datasheet\n- The value is typically a percentage (e.g., 85%, 72%)\n- Match each product name to the closest product found in the TDS\n- Return valid JSON only, no additional text`,
+          },
+        ] as any,
+      },
+    ];
+
+    const { content: response } = await this.aiChatService.chat(
+      messages,
+      "You are a technical data sheet parser. Extract volume solids data accurately.",
+    );
+
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("Could not extract volume solids from the uploaded TDS");
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const tdsProducts: { product: string; volumeSolidsPercent: number }[] = parsed.products || [];
+
+    const updatedCoats = analysis.coats.map((coat) => {
+      if (coat.verified) {
+        return coat;
+      }
+
+      const tdsMatch = tdsProducts.find((tp) => {
+        const tpNorm = tp.product.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const coatNorm = coat.product.toLowerCase().replace(/[^a-z0-9]/g, "");
+        return tpNorm.includes(coatNorm) || coatNorm.includes(tpNorm);
+      });
+
+      if (!tdsMatch) {
+        return coat;
+      }
+
+      const midDftUm = (coat.minDftUm + coat.maxDftUm) / 2;
+      const volumeSolids = tdsMatch.volumeSolidsPercent;
+      const pipingLossFactor = 0.55;
+      const coverageM2PerLiter =
+        midDftUm > 0 ? ((volumeSolids * 10) / midDftUm) * pipingLossFactor : 0;
+      const m2ForCoat = coat.area === "internal" ? analysis.intM2 : analysis.extM2;
+      const litersRequired =
+        coverageM2PerLiter > 0 ? Math.ceil((m2ForCoat / coverageM2PerLiter) * 10) / 10 : 0;
+
+      this.logger.log(
+        `TDS verified "${coat.product}" — vol solids: ${volumeSolids}% (was ${coat.solidsByVolumePercent}%)`,
+      );
+
+      return {
+        ...coat,
+        solidsByVolumePercent: volumeSolids,
+        coverageM2PerLiter: Math.round(coverageM2PerLiter * 100) / 100,
+        litersRequired,
+        verified: true,
+      };
+    });
+
+    analysis.coats = updatedCoats;
+
+    const stockAssessment = await this.assessStock(updatedCoats, companyId);
+    analysis.stockAssessment = stockAssessment;
+
+    return this.analysisRepo.save(analysis);
+  }
+
   async acceptRecommendation(
     companyId: number,
     jobCardId: number,
@@ -359,7 +476,22 @@ export class CoatingAnalysisService {
 
   private calculateCoatVolume(coat: AiCoatResult, totalM2: number): CoatDetail {
     const midDftUm = (coat.minDftUm + coat.maxDftUm) / 2;
-    const volumeSolids = coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME;
+    const knownProduct = lookupCoatingProduct(coat.product);
+    const volumeSolids = knownProduct
+      ? knownProduct.volumeSolidsPercent
+      : coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME;
+    const verified = knownProduct !== null;
+
+    if (knownProduct) {
+      this.logger.log(
+        `Coating "${coat.product}" matched to "${knownProduct.name}" — vol solids: ${knownProduct.volumeSolidsPercent}%`,
+      );
+    } else {
+      this.logger.warn(
+        `Coating "${coat.product}" not found in lookup table — using AI estimate: ${volumeSolids}%`,
+      );
+    }
+
     const pipingLossFactor = 0.55;
     const coverageM2PerLiter =
       midDftUm > 0 ? ((volumeSolids * 10) / midDftUm) * pipingLossFactor : 0;
@@ -372,9 +504,10 @@ export class CoatingAnalysisService {
       area: coat.area,
       minDftUm: coat.minDftUm,
       maxDftUm: coat.maxDftUm,
-      solidsByVolumePercent: coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME,
+      solidsByVolumePercent: volumeSolids,
       coverageM2PerLiter: Math.round(coverageM2PerLiter * 100) / 100,
       litersRequired,
+      verified,
     };
   }
 
