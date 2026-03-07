@@ -67,6 +67,7 @@ import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { StockControlAuthService } from "./services/auth.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
+import { CompanyEmailService } from "./services/company-email.service";
 import { CoatingAnalysisService } from "./services/coating-analysis.service";
 import { DashboardService } from "./services/dashboard.service";
 import { DeliveryService } from "./services/delivery.service";
@@ -196,6 +197,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     JobCardImportService,
     M2CalculationService,
     CoatingAnalysisService,
+    CompanyEmailService,
     DashboardService,
     QrCodeService,
     ReportsService,

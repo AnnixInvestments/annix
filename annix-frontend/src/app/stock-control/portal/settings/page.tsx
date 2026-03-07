@@ -6,6 +6,7 @@ import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import {
   CandidateImage,
   EligibleUser,
+  SmtpConfigResponse,
   StockControlDepartment,
   StockControlInvitation,
   StockControlLocation,
@@ -183,6 +184,19 @@ export default function StockControlSettingsPage() {
   const [editingLocationDescription, setEditingLocationDescription] = useState("");
   const [locationError, setLocationError] = useState("");
 
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("");
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPass, setSmtpPass] = useState("");
+  const [smtpFromName, setSmtpFromName] = useState("");
+  const [smtpFromEmail, setSmtpFromEmail] = useState("");
+  const [smtpPassSet, setSmtpPassSet] = useState(false);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const [smtpError, setSmtpError] = useState("");
+  const [smtpSuccess, setSmtpSuccess] = useState("");
+  const [smtpExpanded, setSmtpExpanded] = useState(false);
+
   const loadTeamData = useCallback(async () => {
     setTeamLoading(true);
     try {
@@ -220,6 +234,24 @@ export default function StockControlSettingsPage() {
       // Silent fail
     } finally {
       setLocationsLoading(false);
+    }
+  }, []);
+
+  const loadSmtpConfig = useCallback(async () => {
+    try {
+      const config: SmtpConfigResponse = await stockControlApiClient.smtpConfig();
+      setSmtpHost(config.smtpHost ?? "");
+      setSmtpPort(config.smtpPort !== null ? String(config.smtpPort) : "");
+      setSmtpUser(config.smtpUser ?? "");
+      setSmtpFromName(config.smtpFromName ?? "");
+      setSmtpFromEmail(config.smtpFromEmail ?? "");
+      setSmtpPassSet(config.smtpPassSet);
+      setSmtpPass("");
+      if (config.smtpHost) {
+        setSmtpExpanded(true);
+      }
+    } catch {
+      // Silent fail
     }
   }, []);
 
@@ -282,7 +314,8 @@ export default function StockControlSettingsPage() {
     loadTeamData();
     loadDepartments();
     loadLocations();
-  }, [user, profile, router, loadTeamData, loadDepartments, loadLocations]);
+    loadSmtpConfig();
+  }, [user, profile, router, loadTeamData, loadDepartments, loadLocations, loadSmtpConfig]);
 
   const isValidUrl = (url: string): boolean => {
     try {
@@ -538,6 +571,73 @@ export default function StockControlSettingsPage() {
       storeman: "Storeman",
     };
     return labels[role] || role;
+  };
+
+  const handleSaveSmtpConfig = async () => {
+    setSmtpSaving(true);
+    setSmtpError("");
+    setSmtpSuccess("");
+    try {
+      await stockControlApiClient.updateSmtpConfig({
+        smtpHost: smtpHost.trim() || null,
+        smtpPort: smtpPort ? Number(smtpPort) : null,
+        smtpUser: smtpUser.trim() || null,
+        smtpPass: smtpPass || null,
+        smtpFromName: smtpFromName.trim() || null,
+        smtpFromEmail: smtpFromEmail.trim() || null,
+      });
+      setSmtpSuccess("SMTP configuration saved.");
+      if (smtpPass) {
+        setSmtpPassSet(true);
+        setSmtpPass("");
+      }
+    } catch (e) {
+      setSmtpError(e instanceof Error ? e.message : "Failed to save SMTP configuration");
+    } finally {
+      setSmtpSaving(false);
+    }
+  };
+
+  const handleTestSmtpConfig = async () => {
+    setSmtpTesting(true);
+    setSmtpError("");
+    setSmtpSuccess("");
+    try {
+      const result = await stockControlApiClient.testSmtpConfig();
+      setSmtpSuccess(result.message);
+    } catch (e) {
+      setSmtpError(e instanceof Error ? e.message : "Test email failed");
+    } finally {
+      setSmtpTesting(false);
+    }
+  };
+
+  const handleClearSmtpConfig = async () => {
+    setSmtpSaving(true);
+    setSmtpError("");
+    setSmtpSuccess("");
+    try {
+      await stockControlApiClient.updateSmtpConfig({
+        smtpHost: null,
+        smtpPort: null,
+        smtpUser: null,
+        smtpPass: null,
+        smtpFromName: null,
+        smtpFromEmail: null,
+      });
+      setSmtpHost("");
+      setSmtpPort("");
+      setSmtpUser("");
+      setSmtpPass("");
+      setSmtpFromName("");
+      setSmtpFromEmail("");
+      setSmtpPassSet(false);
+      setSmtpSuccess("SMTP configuration cleared. Emails will use the global sender.");
+    } catch (e) {
+      setSmtpError(e instanceof Error ? e.message : "Failed to clear SMTP configuration");
+    } finally {
+      setSmtpSaving(false);
+    }
   };
 
   const handleAddDepartment = async () => {
@@ -819,6 +919,163 @@ export default function StockControlSettingsPage() {
         >
           {detailsSaving ? "Saving..." : "Save Company Details"}
         </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <button
+          type="button"
+          onClick={() => setSmtpExpanded(!smtpExpanded)}
+          className="flex items-center justify-between w-full"
+        >
+          <h2 className="text-lg font-semibold text-gray-900">Email Configuration</h2>
+          <svg
+            className={`w-5 h-5 text-gray-500 transition-transform ${smtpExpanded ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {!smtpExpanded && (
+          <p className="mt-1 text-sm text-gray-500">
+            {smtpHost ? `Sending via ${smtpHost}` : "Using default Annix email sender"}
+          </p>
+        )}
+        {smtpExpanded && (
+          <div className="mt-4">
+            <p className="text-sm text-gray-500 mb-4">
+              Configure your own SMTP server to send workflow emails from your company address.
+              Leave blank to use the default Annix email sender.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="smtpHost" className="block text-sm font-medium text-gray-700">
+                  SMTP Host
+                </label>
+                <input
+                  id="smtpHost"
+                  type="text"
+                  value={smtpHost}
+                  onChange={(e) => {
+                    setSmtpHost(e.target.value);
+                    setSmtpSuccess("");
+                  }}
+                  placeholder="smtp.example.com"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="smtpPort" className="block text-sm font-medium text-gray-700">
+                  SMTP Port
+                </label>
+                <input
+                  id="smtpPort"
+                  type="number"
+                  value={smtpPort}
+                  onChange={(e) => {
+                    setSmtpPort(e.target.value);
+                    setSmtpSuccess("");
+                  }}
+                  placeholder="587"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="smtpUser" className="block text-sm font-medium text-gray-700">
+                  Username
+                </label>
+                <input
+                  id="smtpUser"
+                  type="text"
+                  value={smtpUser}
+                  onChange={(e) => {
+                    setSmtpUser(e.target.value);
+                    setSmtpSuccess("");
+                  }}
+                  placeholder="user@example.com"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="smtpPass" className="block text-sm font-medium text-gray-700">
+                  Password {smtpPassSet && <span className="text-gray-400">(set, enter new to change)</span>}
+                </label>
+                <input
+                  id="smtpPass"
+                  type="password"
+                  value={smtpPass}
+                  onChange={(e) => {
+                    setSmtpPass(e.target.value);
+                    setSmtpSuccess("");
+                  }}
+                  placeholder={smtpPassSet ? "********" : "Enter password"}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="smtpFromName" className="block text-sm font-medium text-gray-700">
+                  From Name
+                </label>
+                <input
+                  id="smtpFromName"
+                  type="text"
+                  value={smtpFromName}
+                  onChange={(e) => {
+                    setSmtpFromName(e.target.value);
+                    setSmtpSuccess("");
+                  }}
+                  placeholder="Company Name"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="smtpFromEmail" className="block text-sm font-medium text-gray-700">
+                  From Email
+                </label>
+                <input
+                  id="smtpFromEmail"
+                  type="email"
+                  value={smtpFromEmail}
+                  onChange={(e) => {
+                    setSmtpFromEmail(e.target.value);
+                    setSmtpSuccess("");
+                  }}
+                  placeholder="noreply@company.co.za"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                />
+              </div>
+            </div>
+            {smtpError && <p className="mt-4 text-sm text-red-600">{smtpError}</p>}
+            {smtpSuccess && <p className="mt-4 text-sm text-green-600">{smtpSuccess}</p>}
+            <div className="mt-4 flex gap-3">
+              <button
+                type="button"
+                onClick={handleSaveSmtpConfig}
+                disabled={smtpSaving}
+                className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {smtpSaving ? "Saving..." : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={handleTestSmtpConfig}
+                disabled={smtpTesting || !smtpHost}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {smtpTesting ? "Sending..." : "Send Test Email"}
+              </button>
+              <button
+                type="button"
+                onClick={handleClearSmtpConfig}
+                disabled={smtpSaving || !smtpHost}
+                className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">

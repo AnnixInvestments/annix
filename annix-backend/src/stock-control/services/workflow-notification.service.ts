@@ -2,8 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
-import { EmailService } from "../../email/email.service";
 import { JobCard } from "../entities/job-card.entity";
+import { CompanyEmailService } from "./company-email.service";
 import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import {
@@ -29,7 +29,7 @@ export class WorkflowNotificationService {
     private readonly userRepo: Repository<StockControlUser>,
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
-    private readonly emailService: EmailService,
+    private readonly companyEmailService: CompanyEmailService,
     private readonly configService: ConfigService,
     private readonly assignmentService: WorkflowAssignmentService,
     private readonly webPushService: WebPushService,
@@ -89,6 +89,7 @@ export class WorkflowNotificationService {
     await Promise.all(
       users.map((user) =>
         this.sendApprovalRequiredEmail(
+          companyId,
           user.email,
           user.name,
           jobCard.jobNumber,
@@ -207,6 +208,7 @@ export class WorkflowNotificationService {
     await Promise.all(
       users.map((user) =>
         this.sendRejectionEmail(
+          companyId,
           user.email,
           user.name,
           jobCard.jobNumber,
@@ -281,6 +283,7 @@ export class WorkflowNotificationService {
     await Promise.all(
       managers.map((user) =>
         this.sendOverAllocationEmail(
+          companyId,
           user.email,
           user.name,
           jobCard.jobNumber,
@@ -413,6 +416,7 @@ export class WorkflowNotificationService {
     await Promise.all(
       admins.map((user) =>
         this.sendJobCardsImportedEmail(
+          companyId,
           user.email,
           user.name,
           jobCards,
@@ -487,6 +491,7 @@ export class WorkflowNotificationService {
   }
 
   private async sendApprovalRequiredEmail(
+    companyId: number,
     email: string,
     recipientName: string,
     jobNumber: string,
@@ -533,7 +538,7 @@ export class WorkflowNotificationService {
       </html>
     `;
 
-    return this.emailService.sendEmail({
+    return this.companyEmailService.sendEmail(companyId, {
       to: email,
       subject: `Approval Required: ${jobNumber} - ${jobName}`,
       html,
@@ -541,6 +546,7 @@ export class WorkflowNotificationService {
   }
 
   private async sendRejectionEmail(
+    companyId: number,
     email: string,
     recipientName: string,
     jobNumber: string,
@@ -592,7 +598,7 @@ export class WorkflowNotificationService {
       </html>
     `;
 
-    return this.emailService.sendEmail({
+    return this.companyEmailService.sendEmail(companyId, {
       to: email,
       subject: `Job Card Rejected: ${jobNumber} - ${jobName}`,
       html,
@@ -600,6 +606,7 @@ export class WorkflowNotificationService {
   }
 
   private async sendOverAllocationEmail(
+    companyId: number,
     email: string,
     recipientName: string,
     jobNumber: string,
@@ -661,7 +668,7 @@ export class WorkflowNotificationService {
       </html>
     `;
 
-    return this.emailService.sendEmail({
+    return this.companyEmailService.sendEmail(companyId, {
       to: email,
       subject: `Over-Allocation Approval Required: ${jobNumber} - ${productName}`,
       html,
@@ -669,6 +676,7 @@ export class WorkflowNotificationService {
   }
 
   private async sendJobCardsImportedEmail(
+    companyId: number,
     email: string,
     recipientName: string,
     jobCards: JobCard[],
@@ -730,6 +738,6 @@ export class WorkflowNotificationService {
         ? `New Job Card Imported: ${jobCards[0].jobNumber} - ${jobCards[0].jobName}`
         : `${jobCards.length} New Job Cards Imported`;
 
-    return this.emailService.sendEmail({ to: email, subject, html });
+    return this.companyEmailService.sendEmail(companyId, { to: email, subject, html });
   }
 }

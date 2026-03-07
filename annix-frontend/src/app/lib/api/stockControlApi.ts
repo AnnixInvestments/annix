@@ -56,6 +56,24 @@ export interface CompanyDetailsUpdate {
   websiteUrl?: string;
 }
 
+export interface SmtpConfigResponse {
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpUser: string | null;
+  smtpPassSet: boolean;
+  smtpFromName: string | null;
+  smtpFromEmail: string | null;
+}
+
+export interface SmtpConfigUpdate {
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpUser: string | null;
+  smtpPass: string | null;
+  smtpFromName: string | null;
+  smtpFromEmail: string | null;
+}
+
 export interface StockControlCompany {
   id: number;
   name: string;
@@ -2669,6 +2687,23 @@ class StockControlApiClient {
     return this.request("/stock-control/workflow/push/unsubscribe", {
       method: "POST",
       body: JSON.stringify({ endpoint }),
+    });
+  }
+
+  async smtpConfig(): Promise<SmtpConfigResponse> {
+    return this.request("/stock-control/auth/smtp-config");
+  }
+
+  async updateSmtpConfig(dto: SmtpConfigUpdate): Promise<{ message: string }> {
+    return this.request("/stock-control/auth/smtp-config", {
+      method: "PATCH",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async testSmtpConfig(): Promise<{ message: string }> {
+    return this.request("/stock-control/auth/smtp-config/test", {
+      method: "POST",
     });
   }
 

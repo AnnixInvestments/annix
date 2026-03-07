@@ -64,6 +64,24 @@ export class StockControlCompany {
   @Column({ type: "varchar", length: 255, nullable: true })
   email: string | null;
 
+  @Column({ name: "smtp_host", type: "varchar", length: 255, nullable: true })
+  smtpHost: string | null;
+
+  @Column({ name: "smtp_port", type: "int", nullable: true })
+  smtpPort: number | null;
+
+  @Column({ name: "smtp_user", type: "varchar", length: 255, nullable: true })
+  smtpUser: string | null;
+
+  @Column({ name: "smtp_pass_encrypted", type: "bytea", nullable: true })
+  smtpPassEncrypted: Buffer | null;
+
+  @Column({ name: "smtp_from_name", type: "varchar", length: 255, nullable: true })
+  smtpFromName: string | null;
+
+  @Column({ name: "smtp_from_email", type: "varchar", length: 255, nullable: true })
+  smtpFromEmail: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -22,6 +22,7 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { StockControlAuthService } from "../services/auth.service";
 import { BrandingScraperService } from "../services/branding-scraper.service";
+import { CompanyEmailService, SmtpConfigDto } from "../services/company-email.service";
 import { LookupService } from "../services/lookup.service";
 import { RbacConfigService } from "../services/rbac-config.service";
 
@@ -31,6 +32,7 @@ export class StockControlAuthController {
   constructor(
     private readonly authService: StockControlAuthService,
     private readonly brandingScraperService: BrandingScraperService,
+    private readonly companyEmailService: CompanyEmailService,
     private readonly lookupService: LookupService,
     private readonly rbacConfigService: RbacConfigService,
   ) {}
@@ -287,6 +289,30 @@ export class StockControlAuthController {
   @ApiOperation({ summary: "Soft delete a location" })
   async deleteLocation(@Req() req: any, @Param("id") id: number) {
     return this.lookupService.deleteLocation(req.user.companyId, id);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Get("smtp-config")
+  @ApiOperation({ summary: "SMTP configuration for company" })
+  async smtpConfig(@Req() req: any) {
+    return this.companyEmailService.smtpConfig(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Patch("smtp-config")
+  @ApiOperation({ summary: "Update SMTP configuration" })
+  async updateSmtpConfig(@Req() req: any, @Body() body: SmtpConfigDto) {
+    return this.companyEmailService.updateSmtpConfig(req.user.companyId, body);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Post("smtp-config/test")
+  @ApiOperation({ summary: "Send test email using company SMTP" })
+  async testSmtpConfig(@Req() req: any) {
+    return this.companyEmailService.testSmtpConfig(req.user.companyId, req.user.email);
   }
 
   @UseGuards(StockControlAuthGuard)
