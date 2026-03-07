@@ -3,10 +3,14 @@ import { RequestMethod, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { json, urlencoded } from "express";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  app.use(json({ limit: "10mb" }));
+  app.use(urlencoded({ limit: "10mb", extended: true }));
 
   const isProduction = process.env.NODE_ENV === "production";
 
