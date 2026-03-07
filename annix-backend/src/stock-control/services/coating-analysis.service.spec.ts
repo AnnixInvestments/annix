@@ -4,6 +4,7 @@ import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { CoatingAnalysisStatus, JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { CoatingAnalysisService } from "./coating-analysis.service";
 import { M2CalculationService } from "./m2-calculation.service";
@@ -29,6 +30,10 @@ describe("CoatingAnalysisService", () => {
     find: jest.fn(),
   };
 
+  const mockCompanyRepo = {
+    findOne: jest.fn().mockResolvedValue({ pipingLossFactorPct: 45 }),
+  };
+
   const mockAiChatService = {
     chat: jest.fn(),
   };
@@ -45,6 +50,7 @@ describe("CoatingAnalysisService", () => {
         { provide: getRepositoryToken(JobCard), useValue: mockJobCardRepo },
         { provide: getRepositoryToken(JobCardLineItem), useValue: mockLineItemRepo },
         { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
+        { provide: getRepositoryToken(StockControlCompany), useValue: mockCompanyRepo },
         { provide: AiChatService, useValue: mockAiChatService },
         { provide: M2CalculationService, useValue: mockM2CalculationService },
       ],
