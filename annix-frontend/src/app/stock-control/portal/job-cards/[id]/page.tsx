@@ -803,7 +803,10 @@ function RubberSOHPanel({
       const item = stockOptions.stockItems.find((s) => s.stockItemId === allocatingRollId);
       setPlyAllocations((prev) => ({
         ...prev,
-        [plyIdx]: { stockItemId: allocatingRollId, name: item?.name ?? `Roll #${allocatingRollId}` },
+        [plyIdx]: {
+          stockItemId: allocatingRollId,
+          name: item?.name ?? `Roll #${allocatingRollId}`,
+        },
       }));
       setAllocatingPly(null);
       setAllocatingRollId(0);
