@@ -788,6 +788,7 @@ export interface JobCardImportUploadResponse {
   grid: string[][];
   savedMapping: JobCardImportMapping | null;
   documentNumber: string | null;
+  drawingRows?: JobCardImportRow[];
 }
 
 export interface InvitationValidation {
@@ -1818,6 +1819,38 @@ class StockControlApiClient {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Import failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async uploadDrawingFiles(files: File[]): Promise<JobCardImportUploadResponse> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+
+    const url = `${this.baseURL}/stock-control/job-card-import/upload-drawings`;
+    const { Authorization } = this.headers();
+    let response = await fetch(url, {
+      method: "POST",
+      headers: { ...(Authorization ? { Authorization } : {}) },
+      body: formData,
+    });
+
+    if (response.status === 401 && this.refreshToken) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        const { Authorization: newAuth } = this.headers();
+        response = await fetch(url, {
+          method: "POST",
+          headers: { ...(newAuth ? { Authorization: newAuth } : {}) },
+          body: formData,
+        });
+      }
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Drawing import failed: ${errorText}`);
     }
 
     return response.json();

@@ -564,7 +564,10 @@ export default function JobCardImportPage() {
   const [manualM2, setManualM2] = useState<Record<string, number>>({});
   const [documentNumber, setDocumentNumber] = useState<string | null>(null);
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
+  const [isDrawingImport, setIsDrawingImport] = useState(false);
+  const [drawingFiles, setDrawingFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const drawingInputRef = useRef<HTMLInputElement>(null);
   const hasCheckedPending = useRef(false);
 
   const handleAutoDetect = async () => {
@@ -635,6 +638,14 @@ export default function JobCardImportPage() {
       setGrid(response.grid);
       setDocumentNumber(response.documentNumber);
 
+      if (response.drawingRows && response.drawingRows.length > 0) {
+        setIsDrawingImport(true);
+        setMappedRows(response.drawingRows);
+        setExpandedJobs(new Set(response.drawingRows.map((r) => r.jobNumber ?? "")));
+        setStep("preview");
+        return;
+      }
+
       if (response.savedMapping?.mappingConfig && response.grid.length > 1) {
         const {
           regions: savedRegions,
@@ -662,6 +673,32 @@ export default function JobCardImportPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse file");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrawingFilesUpload = async (files: File[]) => {
+    setError(null);
+    setDrawingFiles(files);
+
+    try {
+      setIsUploading(true);
+      const response = await stockControlApiClient.uploadDrawingFiles(files);
+      setDocumentNumber(response.documentNumber);
+
+      if (response.drawingRows && response.drawingRows.length > 0) {
+        setIsDrawingImport(true);
+        setMappedRows(response.drawingRows);
+        setExpandedJobs(new Set(response.drawingRows.map((r) => r.jobNumber ?? "")));
+        setStep("preview");
+      } else {
+        setError(
+          "Could not extract job card data from the drawing PDFs. Try uploading tabular job card files instead.",
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to process drawing files");
     } finally {
       setIsUploading(false);
     }
@@ -874,6 +911,8 @@ export default function JobCardImportPage() {
     setIsCalculatingM2(false);
     setManualM2({});
     setDocumentNumber(null);
+    setIsDrawingImport(false);
+    setDrawingFiles([]);
   };
 
   const maxCols = grid.reduce((max, row) => Math.max(max, row.length), 0);
@@ -892,7 +931,8 @@ export default function JobCardImportPage() {
     return regions[f.key] !== null;
   }).length;
   const requiredMapped = regions.jobNumber && regions.jobName;
-  const hasLineItemMapped = Array.from(LINE_ITEM_KEYS).some((k) => regions[k] !== null);
+  const hasLineItemMapped =
+    isDrawingImport || Array.from(LINE_ITEM_KEYS).some((k) => regions[k] !== null);
   const hasAnyLineItems = mappedRows.some((r) => r.lineItems && r.lineItems.length > 0);
 
   const toggleJobExpanded = (jobNumber: string) => {
@@ -973,7 +1013,11 @@ export default function JobCardImportPage() {
               {isUploading ? (
                 <div>
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
-                  <p className="mt-4 text-gray-600">Parsing file...</p>
+                  <p className="mt-4 text-gray-600">
+                    {drawingFiles.length > 0
+                      ? "Nix is analysing engineering drawings..."
+                      : "Parsing file..."}
+                  </p>
                 </div>
               ) : (
                 <>
@@ -998,6 +1042,38 @@ export default function JobCardImportPage() {
                   </p>
                 </>
               )}
+            </div>
+
+            <div className="mt-6 border-t border-gray-200 pt-6">
+              <p className="text-sm font-medium text-gray-700 mb-3">
+                Or import from engineering drawings (tanks, chutes, underpans):
+              </p>
+              <div className="flex items-center gap-3">
+                <input
+                  ref={drawingInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleDrawingFilesUpload(Array.from(e.target.files));
+                    }
+                  }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => drawingInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="px-4 py-2 text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  Select Drawing PDFs
+                </button>
+                <span className="text-xs text-gray-500">
+                  Upload multiple GA/detail/lining drawing PDFs — Nix will extract line items with
+                  m² values
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -1497,17 +1573,22 @@ export default function JobCardImportPage() {
                   )}
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  {file?.name} - {mappedRows.length} job card{mappedRows.length !== 1 ? "s" : ""}
+                  {isDrawingImport
+                    ? `Extracted from ${drawingFiles.length > 0 ? `${drawingFiles.length} drawing${drawingFiles.length !== 1 ? "s" : ""}` : file?.name || "drawing"}`
+                    : file?.name}{" "}
+                  - {mappedRows.length} job card{mappedRows.length !== 1 ? "s" : ""}
                   {hasAnyLineItems ? " (with line items)" : ""}
                 </p>
               </div>
               <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => setStep("mapping")}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Re-map Columns
-                </button>
+                {!isDrawingImport && (
+                  <button
+                    onClick={() => setStep("mapping")}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Re-map Columns
+                  </button>
+                )}
                 <button
                   onClick={resetImport}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"

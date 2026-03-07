@@ -196,7 +196,7 @@ export class JobCardImportService {
   private async parsePdfFile(
     buffer: Buffer,
     filename?: string,
-  ): Promise<{ grid: string[][]; documentNumber?: string }> {
+  ): Promise<{ grid: string[][]; documentNumber?: string; drawingRows?: JobCardImportRow[] }> {
     const pdfParse = require("pdf-parse");
     const data = await pdfParse(buffer);
     const text = data.text;
@@ -204,7 +204,208 @@ export class JobCardImportService {
     const extractedDocNumber = this.extractDocumentNumber(filename, text);
 
     const grid = this.buildGridFromPdfText(text);
+
+    if (this.isLikelyDrawingPdf(grid, text)) {
+      this.logger.log(
+        `PDF "${filename}" appears to be an engineering drawing, using vision extraction`,
+      );
+      const drawingRows = await this.extractDrawingAsImportRows(
+        [{ buffer, filename: filename || "drawing.pdf" }],
+        text,
+        filename,
+      );
+      if (drawingRows.length > 0) {
+        return { grid: [], documentNumber: extractedDocNumber, drawingRows };
+      }
+    }
+
     return { grid, documentNumber: extractedDocNumber };
+  }
+
+  async parseDrawingPdfs(
+    pdfBuffers: { buffer: Buffer; filename: string }[],
+  ): Promise<{ drawingRows: JobCardImportRow[]; documentNumber?: string }> {
+    const allText = await Promise.all(
+      pdfBuffers.map(async ({ buffer }) => {
+        const pdfParse = require("pdf-parse");
+        const data = await pdfParse(buffer);
+        return data.text as string;
+      }),
+    );
+    const combinedText = allText.join("\n");
+    const documentNumber = this.extractDocumentNumber(pdfBuffers[0]?.filename, combinedText);
+
+    const drawingRows = await this.extractDrawingAsImportRows(pdfBuffers, combinedText);
+    return { drawingRows, documentNumber };
+  }
+
+  private isLikelyDrawingPdf(grid: string[][], text: string): boolean {
+    const nonEmptyCells = grid.reduce(
+      (sum, row) => sum + row.filter((cell) => cell.trim().length > 0).length,
+      0,
+    );
+    const hasDrawingKeywords =
+      /drawing\s*no|drawn\s*by|checked\s*by|isometric|elevation|section|plan\s*view|tekla|general\s*arrangement|rubber\s*lin/i.test(
+        text,
+      );
+    const hasJobCardKeywords =
+      /job\s*card|work\s*order|item\s*code|item\s*description|qty|quantity/i.test(text);
+
+    return hasDrawingKeywords && !hasJobCardKeywords && nonEmptyCells < 50;
+  }
+
+  private async extractDrawingAsImportRows(
+    pdfBuffers: { buffer: Buffer; filename: string }[],
+    rawText: string,
+    filename?: string,
+  ): Promise<JobCardImportRow[]> {
+    try {
+      const result = await this.drawingExtractionService.extractFromPdfBuffers(pdfBuffers);
+      return this.drawingResultToImportRows(result, rawText, filename);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.error(`Drawing extraction failed for import: ${message}`);
+      return [];
+    }
+  }
+
+  private drawingResultToImportRows(
+    result: { drawingType: string; dimensions: any[]; tankData: any; confidence: number },
+    rawText: string,
+    filename?: string,
+  ): JobCardImportRow[] {
+    if (result.drawingType === "tank_chute" && result.tankData) {
+      return this.tankResultToImportRows(result.tankData, rawText, filename);
+    }
+
+    if (result.dimensions.length === 0) {
+      return [];
+    }
+
+    const refMatch = rawText.match(/(?:drawing\s*(?:no\.?|number)[:\s]*)([\w-]+)/i);
+    const drawingRef = refMatch ? refMatch[1] : null;
+    const jobNumber =
+      drawingRef ||
+      this.extractDocumentNumber(filename, rawText) ||
+      filename?.replace(/\.pdf$/i, "") ||
+      "DRAWING";
+
+    const lineItems: LineItemImportRow[] = result.dimensions.map((dim: any) => ({
+      itemCode: dim.itemType || null,
+      itemDescription: dim.description,
+      quantity: String(dim.quantity),
+      m2: dim.externalSurfaceM2 ?? undefined,
+    }));
+
+    return [
+      {
+        jobNumber,
+        jobName: jobNumber,
+        description: `Extracted from drawing: ${filename || "PDF"}`,
+        lineItems,
+      },
+    ];
+  }
+
+  private tankResultToImportRows(
+    tankData: any,
+    rawText: string,
+    filename?: string,
+  ): JobCardImportRow[] {
+    const assemblyLabel =
+      tankData.assemblyType.charAt(0).toUpperCase() + tankData.assemblyType.slice(1);
+    const drawingRef = tankData.drawingReference;
+    const jobNumber =
+      drawingRef ||
+      this.extractDocumentNumber(filename, rawText) ||
+      filename?.replace(/\.pdf$/i, "") ||
+      "DRAWING";
+    const jobName = tankData.jobName || `${assemblyLabel} (${drawingRef || "Drawing"})`;
+
+    const liningSpec = [
+      tankData.liningType || null,
+      tankData.liningThicknessMm ? `${tankData.liningThicknessMm}mm` : null,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const lineItems: LineItemImportRow[] = [];
+    const sections = Array.isArray(tankData.sections) ? tankData.sections : [];
+
+    if (sections.length > 0) {
+      sections.forEach((section: any) => {
+        const sectionLabel = `Section ${section.mark}${section.description ? ` - ${section.description}` : ""}`;
+
+        if (section.liningAreaM2 && section.liningAreaM2 > 0) {
+          const desc = [`${assemblyLabel} ${sectionLabel} - R/L`, liningSpec || null]
+            .filter(Boolean)
+            .join(" - ");
+
+          lineItems.push({
+            itemCode: `R/L ${section.mark}`,
+            itemDescription: desc,
+            quantity: "1",
+            m2: Math.round(section.liningAreaM2 * 100) / 100,
+          });
+        }
+
+        if (section.coatingAreaM2 && section.coatingAreaM2 > 0) {
+          const desc = [
+            `${assemblyLabel} ${sectionLabel} - External Coating`,
+            tankData.coatingSystem || null,
+            tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
+          ]
+            .filter(Boolean)
+            .join(" - ");
+
+          lineItems.push({
+            itemCode: `COAT ${section.mark}`,
+            itemDescription: desc,
+            quantity: "1",
+            m2: Math.round(section.coatingAreaM2 * 100) / 100,
+          });
+        }
+      });
+    } else {
+      if (tankData.liningAreaM2 && tankData.liningAreaM2 > 0) {
+        lineItems.push({
+          itemCode: drawingRef || "R/L",
+          itemDescription: `${assemblyLabel} Internal Lining - ${liningSpec}`,
+          quantity: "1",
+          m2: Math.round(tankData.liningAreaM2 * 100) / 100,
+        });
+      }
+
+      if (tankData.coatingAreaM2 && tankData.coatingAreaM2 > 0) {
+        lineItems.push({
+          itemCode: drawingRef || "COAT",
+          itemDescription: `${assemblyLabel} External Coating`,
+          quantity: "1",
+          m2: Math.round(tankData.coatingAreaM2 * 100) / 100,
+        });
+      }
+    }
+
+    const notes = [
+      tankData.overallLengthMm ? `L: ${tankData.overallLengthMm}mm` : null,
+      tankData.overallWidthMm ? `W: ${tankData.overallWidthMm}mm` : null,
+      tankData.overallHeightMm ? `H: ${tankData.overallHeightMm}mm` : null,
+      tankData.liningType ? `Lining: ${tankData.liningType}` : null,
+      tankData.liningThicknessMm ? `Thickness: ${tankData.liningThicknessMm}mm` : null,
+      tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    return [
+      {
+        jobNumber,
+        jobName,
+        description: `${assemblyLabel}${drawingRef ? ` (${drawingRef})` : ""}`,
+        notes: notes || undefined,
+        lineItems,
+      },
+    ];
   }
 
   private buildGridFromPdfText(text: string): string[][] {

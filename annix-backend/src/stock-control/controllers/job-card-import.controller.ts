@@ -6,10 +6,11 @@ import {
   Post,
   Req,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
+import { AnyFilesInterceptor, FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { ImportMappingConfig } from "../entities/job-card-import-mapping.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
@@ -39,15 +40,38 @@ export class JobCardImportController {
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload and parse a file for job card import" })
   async upload(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
-    const { grid, documentNumber: pdfDocNumber } = await this.jobCardImportService.parseFile(
-      file.buffer,
-      file.mimetype,
-      file.originalname,
-    );
+    const {
+      grid,
+      documentNumber: pdfDocNumber,
+      drawingRows,
+    } = await this.jobCardImportService.parseFile(file.buffer, file.mimetype, file.originalname);
     const savedMapping = await this.jobCardImportService.mapping(req.user.companyId);
     const docMatch = file.originalname?.match(/^([A-Z]{1,5}\d{4,})/i);
     const documentNumber = pdfDocNumber || (docMatch ? docMatch[1].toUpperCase() : null);
-    return { grid, savedMapping, documentNumber };
+    return { grid, savedMapping, documentNumber, drawingRows };
+  }
+
+  @Post("upload-drawings")
+  @UseInterceptors(AnyFilesInterceptor())
+  @ApiOperation({ summary: "Upload multiple drawing PDFs for vision-based job card import" })
+  async uploadDrawings(@UploadedFiles() files: Express.Multer.File[]) {
+    const pdfFiles = files.filter(
+      (f) => f.mimetype === "application/pdf" || f.originalname.toLowerCase().endsWith(".pdf"),
+    );
+
+    if (pdfFiles.length === 0) {
+      return { drawingRows: [], documentNumber: null };
+    }
+
+    const pdfBuffers = pdfFiles.map((f) => ({
+      buffer: f.buffer,
+      filename: f.originalname,
+    }));
+
+    const { drawingRows, documentNumber } =
+      await this.jobCardImportService.parseDrawingPdfs(pdfBuffers);
+
+    return { grid: [] as string[][], savedMapping: null, documentNumber, drawingRows };
   }
 
   @Get("mapping")
