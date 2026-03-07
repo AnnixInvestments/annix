@@ -10,6 +10,7 @@ import {
   NotificationActionType,
   WorkflowNotification,
 } from "../entities/workflow-notification.entity";
+import { WebPushService } from "./web-push.service";
 import { WorkflowAssignmentService } from "./workflow-assignment.service";
 
 interface SenderInfo {
@@ -31,6 +32,7 @@ export class WorkflowNotificationService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly assignmentService: WorkflowAssignmentService,
+    private readonly webPushService: WebPushService,
   ) {}
 
   async notifyApprovalRequired(
@@ -69,6 +71,17 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        users.map((u) => u.id),
+        {
+          title: `Approval Required: ${jobCard.jobName}`,
+          body: `Job card ${jobCard.jobNumber} requires your approval for ${this.stepDisplayName(step)}.`,
+          tag: `approval-${jobCardId}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
     this.logger.log(
       `Created ${notifications.length} approval notifications for job card ${jobCardId}`,
     );
@@ -127,6 +140,17 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        users.map((u) => u.id),
+        {
+          title: `Approved: ${jobCard.jobName}`,
+          body: `${sender.name} approved ${this.stepDisplayName(step)} for job card ${jobCard.jobNumber}.`,
+          tag: `approved-${jobCardId}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
   }
 
   async notifyRejection(
@@ -168,6 +192,17 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        users.map((u) => u.id),
+        {
+          title: `Rejected: ${jobCard.jobName}`,
+          body: `${sender.name} rejected job card ${jobCard.jobNumber}. Reason: ${reason}`,
+          tag: `rejected-${jobCardId}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
 
     await Promise.all(
       users.map((user) =>
@@ -228,6 +263,17 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        managers.map((u) => u.id),
+        {
+          title: `Over-Allocation Approval: ${jobCard.jobName}`,
+          body: `Stock allocation for ${productName} exceeds limit by ${overBy}L.`,
+          tag: `over-allocation-${jobCardId}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
     this.logger.log(
       `Created ${notifications.length} over-allocation notifications for job card ${jobCardId}`,
     );
@@ -278,6 +324,17 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        storemen.map((u) => u.id),
+        {
+          title: `Ready for Dispatch: ${jobCard.jobName}`,
+          body: `Job card ${jobCard.jobNumber} is ready for physical dispatch.`,
+          tag: `dispatch-${jobCardId}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
   }
 
   async notifyJobCardsImported(
@@ -333,6 +390,22 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        admins.map((u) => u.id),
+        {
+          title,
+          body: message,
+          tag: `import-${jobCardIds[0]}`,
+          data: {
+            url:
+              jobCards.length === 1
+                ? `${frontendUrl}/stock-control/portal/job-cards/${jobCards[0].id}`
+                : actionUrl,
+          },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
     this.logger.log(
       `Created ${notifications.length} import notifications for ${jobCards.length} job cards`,
     );

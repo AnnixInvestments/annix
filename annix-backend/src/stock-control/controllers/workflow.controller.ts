@@ -23,6 +23,7 @@ import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-contro
 import { DispatchService } from "../services/dispatch.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
+import { WebPushService } from "../services/web-push.service";
 import { WorkflowAssignmentService } from "../services/workflow-assignment.service";
 import { WorkflowNotificationService } from "../services/workflow-notification.service";
 
@@ -38,6 +39,7 @@ export class WorkflowController {
     private readonly notificationService: WorkflowNotificationService,
     private readonly pdfService: JobCardPdfService,
     private readonly assignmentService: WorkflowAssignmentService,
+    private readonly webPushService: WebPushService,
   ) {}
 
   @Post("job-cards/:id/documents")
@@ -235,5 +237,28 @@ export class WorkflowController {
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
     res.send(buffer);
+  }
+
+  @Get("push/vapid-key")
+  @ApiOperation({ summary: "Get VAPID public key for push subscription" })
+  vapidKey() {
+    return { vapidPublicKey: this.webPushService.vapidPublicKey() };
+  }
+
+  @Post("push/subscribe")
+  @ApiOperation({ summary: "Subscribe to push notifications" })
+  async pushSubscribe(
+    @Req() req: any,
+    @Body() body: { endpoint: string; keys: { p256dh: string; auth: string } },
+  ) {
+    await this.webPushService.subscribe(req.user.id, req.user.companyId, body);
+    return { success: true };
+  }
+
+  @Post("push/unsubscribe")
+  @ApiOperation({ summary: "Unsubscribe from push notifications" })
+  async pushUnsubscribe(@Req() req: any, @Body() body: { endpoint: string }) {
+    await this.webPushService.unsubscribe(req.user.id, body.endpoint);
+    return { success: true };
   }
 }

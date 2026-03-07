@@ -60,6 +60,7 @@ import { StockMovement } from "./entities/stock-movement.entity";
 import { StockPriceHistory } from "./entities/stock-price-history.entity";
 import { SupplierInvoice } from "./entities/supplier-invoice.entity";
 import { SupplierInvoiceItem } from "./entities/supplier-invoice-item.entity";
+import { PushSubscription } from "./entities/push-subscription.entity";
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
 import { WorkflowStepAssignment } from "./entities/workflow-step-assignment.entity";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
@@ -95,6 +96,7 @@ import { RequisitionService } from "./services/requisition.service";
 import { SageInvoiceAdapterService } from "./services/sage-invoice-adapter.service";
 import { SignatureService } from "./services/signature.service";
 import { StaffService } from "./services/staff.service";
+import { WebPushService } from "./services/web-push.service";
 import { WorkflowAssignmentService } from "./services/workflow-assignment.service";
 import { WorkflowNotificationService } from "./services/workflow-notification.service";
 
@@ -133,6 +135,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       StockPriceHistory,
       StockControlRbacConfig,
       StockControlSupplier,
+      PushSubscription,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -201,6 +204,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     ItemIdentificationService,
     LookupService,
     SignatureService,
+    WebPushService,
     WorkflowAssignmentService,
     WorkflowNotificationService,
     JobCardWorkflowService,
