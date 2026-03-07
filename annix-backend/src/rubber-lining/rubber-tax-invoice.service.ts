@@ -36,6 +36,7 @@ export interface RubberTaxInvoiceDto {
   extractedData: ExtractedTaxInvoiceData | null;
   totalAmount: number | null;
   vatAmount: number | null;
+  exportedToSageAt: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -225,6 +226,7 @@ export class RubberTaxInvoiceService {
       extractedData: invoice.extractedData,
       totalAmount: invoice.totalAmount ? Number(invoice.totalAmount) : null,
       vatAmount: invoice.vatAmount ? Number(invoice.vatAmount) : null,
+      exportedToSageAt: invoice.exportedToSageAt ? invoice.exportedToSageAt.toISOString() : null,
       createdBy: invoice.createdBy,
       createdAt: invoice.createdAt.toISOString(),
       updatedAt: invoice.updatedAt.toISOString(),

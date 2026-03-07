@@ -88,6 +88,9 @@ export class RubberTaxInvoice {
   @Column({ name: "created_by", type: "varchar", length: 100, nullable: true })
   createdBy: string | null;
 
+  @Column({ name: "exported_to_sage_at", type: "timestamp", nullable: true })
+  exportedToSageAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
