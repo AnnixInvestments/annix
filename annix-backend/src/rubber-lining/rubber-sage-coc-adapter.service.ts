@@ -4,10 +4,7 @@ import { In, Repository } from "typeorm";
 import { now } from "../lib/datetime";
 import type { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
 import type { SageExportInvoice, SageExportLineItem } from "../sage-export/interfaces/sage-invoice";
-import {
-  CocProcessingStatus,
-  RubberSupplierCoc,
-} from "./entities/rubber-supplier-coc.entity";
+import { CocProcessingStatus, RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
 
 const DEFAULT_VAT_RATE = 15;
 const DEFAULT_ACCOUNT_CODE = "5000";
@@ -83,7 +80,7 @@ export class RubberSageCocAdapterService {
 
 function toSageInvoice(entity: RubberSupplierCoc): SageExportInvoice {
   const batchNumbers: string[] =
-    (entity.extractedData as Record<string, unknown> | null)?.batchNumbers as string[] ?? [];
+    ((entity.extractedData as Record<string, unknown> | null)?.batchNumbers as string[]) ?? [];
 
   const lineItems: SageExportLineItem[] =
     batchNumbers.length > 0

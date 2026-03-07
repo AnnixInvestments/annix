@@ -110,9 +110,7 @@ export default function SageExportModal({ onClose, onSuccess }: SageExportModalP
               <p className="text-sm font-medium text-green-800">
                 Successfully exported {exportedCount} CoC{exportedCount !== 1 ? "s" : ""}
               </p>
-              <p className="mt-1 text-xs text-green-600">
-                These CoCs are now marked as exported
-              </p>
+              <p className="mt-1 text-xs text-green-600">These CoCs are now marked as exported</p>
             </div>
           ) : (
             <>

@@ -1399,8 +1399,7 @@ Formula: totalPrice = totalKg × salePricePerKg
       excludeExported: excludeExported !== "false",
     };
 
-    const { invoices, cocIds } =
-      await this.rubberSageCocAdapterService.exportableCocs(filters);
+    const { invoices, cocIds } = await this.rubberSageCocAdapterService.exportableCocs(filters);
     const csvBuffer = this.sageExportService.generateCsv(invoices);
 
     await this.rubberSageCocAdapterService.markExported(cocIds);
