@@ -47,6 +47,8 @@ const CURING_MAP: Record<string, string> = {
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParseModule = require("pdf-parse");
 const pdfParse = pdfParseModule.default ?? pdfParseModule;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const XLSX = require("xlsx");
 
 export interface InboundEmailAttachment {
   filename: string;
@@ -172,14 +174,23 @@ export class RubberInboundEmailService {
       `Processing inbound email from: ${emailData.from}, subject: ${emailData.subject}`,
     );
 
-    const pdfAttachments = emailData.attachments.filter(
-      (att) =>
-        att.contentType === "application/pdf" || att.filename?.toLowerCase().endsWith(".pdf"),
+    const excelAttachments = emailData.attachments.filter((att) =>
+      this.isExcelFile(att.filename, att.contentType),
     );
 
+    const convertedExcelAttachments = await this.convertExcelAttachmentsToPdfLike(excelAttachments);
+
+    const pdfAttachments = [
+      ...emailData.attachments.filter(
+        (att) =>
+          att.contentType === "application/pdf" || att.filename?.toLowerCase().endsWith(".pdf"),
+      ),
+      ...convertedExcelAttachments,
+    ];
+
     if (pdfAttachments.length === 0) {
-      result.errors.push("No PDF attachments found in email");
-      this.logger.warn("No PDF attachments found in email");
+      result.errors.push("No PDF or Excel attachments found in email");
+      this.logger.warn("No PDF or Excel attachments found in email");
       return result;
     }
 
@@ -430,6 +441,52 @@ export class RubberInboundEmailService {
     }
   }
 
+  private isExcelFile(filename: string | undefined, contentType: string): boolean {
+    const excelMimeTypes = [
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-excel",
+      "application/x-excel",
+    ];
+    const filenameLower = filename?.toLowerCase() ?? "";
+    return (
+      excelMimeTypes.includes(contentType) ||
+      filenameLower.endsWith(".xlsx") ||
+      filenameLower.endsWith(".xls")
+    );
+  }
+
+  private extractTextFromExcel(buffer: Buffer): string {
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheets = workbook.SheetNames.map((name: string) => {
+      const sheet = workbook.Sheets[name];
+      const csv = XLSX.utils.sheet_to_csv(sheet, { FS: "\t", blankrows: false });
+      return `--- SHEET: ${name} ---\n${csv}`;
+    });
+    return sheets.join("\n\n");
+  }
+
+  private async convertExcelAttachmentsToPdfLike(
+    attachments: InboundEmailAttachment[],
+  ): Promise<InboundEmailAttachment[]> {
+    return attachments
+      .map((att) => {
+        try {
+          this.extractTextFromExcel(att.content);
+          this.logger.log(`Validated Excel attachment ${att.filename} for processing`);
+          return {
+            filename: att.filename,
+            content: att.content,
+            contentType: att.contentType,
+            size: att.size,
+          };
+        } catch (error) {
+          this.logger.error(`Failed to read Excel ${att.filename}: ${error.message}`);
+          return null;
+        }
+      })
+      .filter((att): att is InboundEmailAttachment => att !== null);
+  }
+
   private async extractTextFromPdf(buffer: Buffer): Promise<string> {
     try {
       const pdfData = await pdfParse(buffer);
@@ -442,9 +499,15 @@ export class RubberInboundEmailService {
       }
 
       return text;
-    } catch (error) {
-      this.logger.error(`Failed to extract text from PDF: ${error.message}`);
-      return "";
+    } catch {
+      try {
+        const text = this.extractTextFromExcel(buffer);
+        this.logger.log(`Extracted text from Excel file (${text.length} chars)`);
+        return text;
+      } catch {
+        this.logger.error("Failed to extract text from attachment (not a valid PDF or Excel)");
+        return "";
+      }
     }
   }
 
