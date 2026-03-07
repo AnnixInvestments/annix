@@ -267,11 +267,13 @@ function CuttingDiagram({
   colorMap,
   groupCount,
   thicknessMm,
+  itemIndex,
 }: {
   roll: RollAllocation;
   colorMap: Map<string, string>;
   groupCount?: number;
   thicknessMm?: number;
+  itemIndex?: number;
 }) {
   const rollLengthMm = roll.rollSpec.lengthM * 1000;
   const rollWidthMm = roll.rollSpec.widthMm;
@@ -287,9 +289,7 @@ function CuttingDiagram({
       <div className="flex items-center justify-between mb-2">
         <div>
           <span className="text-sm font-semibold text-gray-900">
-            {groupCount && groupCount > 1
-              ? `${thicknessMm ? `${thicknessMm}mm x ` : ""}${rollWidthMm}mm x ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
-              : `Roll ${roll.rollIndex}: ${thicknessMm ? `${thicknessMm}mm x ` : ""}${rollWidthMm}mm x ${roll.rollSpec.lengthM}m`}
+            {`Item ${itemIndex ?? roll.rollIndex}: ${groupCount ?? 1} Roll${(groupCount ?? 1) > 1 ? "s" : ""} x ${thicknessMm ? `${thicknessMm}mm x ` : ""}${rollWidthMm}mm x ${roll.rollSpec.lengthM}m`}
           </span>
           {bands.length > 1 && (
             <span className="ml-2 text-xs text-purple-600 font-medium">({bands.length} bands)</span>
@@ -462,6 +462,20 @@ function PipeCuttingView({
     }
   }
 
+  const specGroups = plan.rolls.reduce<
+    Record<string, { rolls: RollAllocation[]; thickness: number }>
+  >((acc, roll) => {
+    const thickness = roll.plyThicknessMm || plan.totalThicknessMm || fallbackThicknessMm || 0;
+    const key = `${thickness}-${roll.rollSpec.widthMm}-${roll.rollSpec.lengthM}`;
+    if (!acc[key]) {
+      acc[key] = { rolls: [], thickness };
+    }
+    acc[key].rolls.push(roll);
+    return acc;
+  }, {});
+
+  const specEntries = Object.entries(specGroups);
+
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -493,14 +507,14 @@ function PipeCuttingView({
         <p className="text-xs text-gray-500 mb-3">
           Each colored section represents a pipe piece. Cut marks show where to cut the roll.
         </p>
-        {plan.rolls.map((roll) => (
+        {specEntries.map(([specKey, group], idx) => (
           <CuttingDiagram
-            key={roll.rollIndex}
-            roll={roll}
+            key={specKey}
+            roll={group.rolls[0]}
             colorMap={colorMap}
-            thicknessMm={
-              roll.plyThicknessMm || plan.totalThicknessMm || fallbackThicknessMm || undefined
-            }
+            groupCount={group.rolls.length}
+            thicknessMm={group.thickness || undefined}
+            itemIndex={idx + 1}
           />
         ))}
       </div>

@@ -10,6 +10,7 @@ import {
   JobCardImportMapping,
 } from "../entities/job-card-import-mapping.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { DrawingExtractionService } from "./drawing-extraction.service";
 
 export interface LineItemImportRow {
   itemCode?: string;
@@ -162,13 +163,14 @@ export class JobCardImportService {
     @InjectRepository(JobCardImportMapping)
     private readonly mappingRepo: Repository<JobCardImportMapping>,
     private readonly aiChatService: AiChatService,
+    private readonly drawingExtractionService: DrawingExtractionService,
   ) {}
 
   async parseFile(
     buffer: Buffer,
     mimetype: string,
     filename?: string,
-  ): Promise<{ grid: string[][]; documentNumber?: string }> {
+  ): Promise<{ grid: string[][]; documentNumber?: string; drawingRows?: JobCardImportRow[] }> {
     const isExcel =
       mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
       mimetype === "application/vnd.ms-excel" ||

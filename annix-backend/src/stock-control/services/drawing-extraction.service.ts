@@ -24,9 +24,17 @@ interface ExtractedDimension {
   internalSurfaceM2: number | null;
 }
 
+interface TankSection {
+  mark: string;
+  description: string;
+  liningAreaM2: number | null;
+  coatingAreaM2: number | null;
+}
+
 interface TankExtractionData {
   assemblyType: "tank" | "chute" | "hopper" | "underpan" | "custom";
   drawingReference: string | null;
+  jobName: string | null;
   overallLengthMm: number | null;
   overallWidthMm: number | null;
   overallHeightMm: number | null;
@@ -36,6 +44,7 @@ interface TankExtractionData {
   coatingAreaM2: number | null;
   coatingSystem: string | null;
   surfacePrepStandard: string | null;
+  sections: TankSection[];
   plateParts: Array<{
     mark: string;
     description: string;
@@ -85,6 +94,7 @@ For TANK/CHUTE drawings, return:
   "tankData": {
     "assemblyType": "tank" | "chute" | "hopper" | "underpan" | "custom",
     "drawingReference": "GPW-017",
+    "jobName": "Screen 2 Underpan",
     "overallLengthMm": 7238,
     "overallWidthMm": 5241,
     "overallHeightMm": 2852,
@@ -94,6 +104,10 @@ For TANK/CHUTE drawings, return:
     "coatingAreaM2": 82.50,
     "coatingSystem": "Epoxy primer + polyurethane topcoat",
     "surfacePrepStandard": "Sa 2.5",
+    "sections": [
+      { "mark": "A-A", "description": "Side Panel Left", "liningAreaM2": 12.50, "coatingAreaM2": 13.75 },
+      { "mark": "B-B", "description": "End Panel", "liningAreaM2": 8.30, "coatingAreaM2": 9.15 }
+    ],
     "plateParts": [
       { "mark": "P1", "description": "Side plate", "thicknessMm": 10, "quantity": 2 }
     ]
@@ -105,8 +119,12 @@ For TANK/CHUTE drawings, return:
 Rules:
 - Determine drawing type from title block, BOM content, and drawing conventions
 - Tank drawings typically show: plate BOM tables, rubber lining specs (m² area, thickness), overall assembly dimensions, drawing numbers like "GPW-xxx"
-- For tanks: liningAreaM2 is the internal rubber/ceramic lining surface area from the drawing
-- For tanks: coatingAreaM2 is the external paint/coating surface area from the drawing
+- For tanks: liningAreaM2 is the TOTAL internal rubber/ceramic lining surface area
+- For tanks: coatingAreaM2 is the TOTAL external paint/coating surface area
+- For tanks: "sections" MUST list each cross-section view (A-A, B-B, C-C, etc.) or identifiable panel/face as its own entry with per-section liningAreaM2 and coatingAreaM2
+- Calculate per-section m2 from visible dimensions in each section view. If exact per-section areas are unclear, estimate proportional splits from total area and section dimensions
+- The sum of all section liningAreaM2 values should equal the total liningAreaM2
+- "jobName" should be extracted from the drawing title block (e.g. "Screen 2 Underpan")
 - For pipes: extract diameters in NB or mm, lengths in m or mm (convert to m)
 - Set confidence based on clarity of extracted data (0.0 to 1.0)
 - Default quantity to 1 if not specified
@@ -145,6 +163,7 @@ For TANK/CHUTE drawings, return:
   "tankData": {
     "assemblyType": "tank" | "chute" | "hopper" | "underpan" | "custom",
     "drawingReference": "GPW-017",
+    "jobName": "Screen 2 Underpan",
     "overallLengthMm": 7238,
     "overallWidthMm": 5241,
     "overallHeightMm": 2852,
@@ -154,6 +173,10 @@ For TANK/CHUTE drawings, return:
     "coatingAreaM2": 82.50,
     "coatingSystem": "Epoxy primer + polyurethane topcoat",
     "surfacePrepStandard": "Sa 2.5",
+    "sections": [
+      { "mark": "A-A", "description": "Side Panel Left", "liningAreaM2": 12.50, "coatingAreaM2": 13.75 },
+      { "mark": "B-B", "description": "End Panel", "liningAreaM2": 8.30, "coatingAreaM2": 9.15 }
+    ],
     "plateParts": [
       { "mark": "P1", "description": "Side plate", "thicknessMm": 10, "quantity": 2 }
     ]
@@ -165,8 +188,12 @@ For TANK/CHUTE drawings, return:
 Rules:
 - Determine drawing type from title block, BOM content, and drawing conventions
 - Tank drawings typically show: plate BOM tables, rubber lining specs (m² area, thickness), overall assembly dimensions, drawing numbers like "GPW-xxx"
-- For tanks: liningAreaM2 is the internal rubber/ceramic lining surface area from the drawing
-- For tanks: coatingAreaM2 is the external paint/coating surface area from the drawing
+- For tanks: liningAreaM2 is the TOTAL internal rubber/ceramic lining surface area
+- For tanks: coatingAreaM2 is the TOTAL external paint/coating surface area
+- For tanks: "sections" MUST list each cross-section view (A-A, B-B, C-C, etc.) or identifiable panel/face as its own entry with per-section liningAreaM2 and coatingAreaM2
+- Calculate per-section m2 from visible dimensions in each section view. If exact per-section areas are unclear, estimate proportional splits from total area and section dimensions
+- The sum of all section liningAreaM2 values should equal the total liningAreaM2
+- "jobName" should be extracted from the drawing title block (e.g. "Screen 2 Underpan")
 - For pipes: extract diameters in NB or mm, lengths in m or mm (convert to m)
 - Set confidence based on clarity of extracted data (0.0 to 1.0)
 - Default quantity to 1 if not specified
@@ -187,6 +214,48 @@ export class DrawingExtractionService {
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
   ) {}
+
+  async extractFromPdfBuffers(
+    pdfBuffers: { buffer: Buffer; filename: string }[],
+  ): Promise<DrawingExtractionResult> {
+    const contentParts: (TextContent | ImageContent)[] = [];
+
+    for (const { buffer, filename } of pdfBuffers) {
+      contentParts.push({
+        type: "text",
+        text: `--- Pages from: ${filename} ---`,
+      });
+      const images = await this.convertPdfToImages(buffer);
+      const imageContents = images.map(
+        (img): ImageContent => ({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: "image/png",
+            data: img.toString("base64"),
+          },
+        }),
+      );
+      contentParts.push(...imageContents);
+    }
+
+    if (contentParts.length === 0) {
+      return this.emptyResult();
+    }
+
+    contentParts.push({
+      type: "text",
+      text: "Analyse all the above engineering drawing pages. Cross-reference information across documents. Respond with JSON only.",
+    });
+
+    const isMultiDoc = pdfBuffers.length > 1;
+    const prompt = isMultiDoc ? MULTI_DOC_EXTRACTION_PROMPT : DRAWING_EXTRACTION_PROMPT;
+
+    const messages: ChatMessage[] = [{ role: "user", content: contentParts }];
+    const { content: response } = await this.aiChatService.chat(messages, prompt, "claude");
+    const aiResult = this.parseAiResponse(response);
+    return this.buildExtractionResult(aiResult);
+  }
 
   async uploadAttachment(
     companyId: number,
@@ -585,6 +654,7 @@ export class DrawingExtractionService {
       const tankData: TankExtractionData = {
         assemblyType: td.assemblyType || "custom",
         drawingReference: td.drawingReference || null,
+        jobName: td.jobName || null,
         overallLengthMm: td.overallLengthMm ?? null,
         overallWidthMm: td.overallWidthMm ?? null,
         overallHeightMm: td.overallHeightMm ?? null,
@@ -594,6 +664,14 @@ export class DrawingExtractionService {
         coatingAreaM2: td.coatingAreaM2 ?? null,
         coatingSystem: td.coatingSystem || null,
         surfacePrepStandard: td.surfacePrepStandard || null,
+        sections: Array.isArray(td.sections)
+          ? td.sections.map((s: any) => ({
+              mark: s.mark || "",
+              description: s.description || "",
+              liningAreaM2: s.liningAreaM2 ?? null,
+              coatingAreaM2: s.coatingAreaM2 ?? null,
+            }))
+          : [],
         plateParts: Array.isArray(td.plateParts)
           ? td.plateParts.map((p: any) => ({
               mark: p.mark || "",
@@ -808,47 +886,97 @@ export class DrawingExtractionService {
     const assemblyLabel =
       tankData.assemblyType.charAt(0).toUpperCase() + tankData.assemblyType.slice(1);
     const drawingRef = tankData.drawingReference ? ` (${tankData.drawingReference})` : "";
+    const liningSpec = [
+      tankData.liningType || null,
+      tankData.liningThicknessMm ? `${tankData.liningThicknessMm}mm` : null,
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-    if (tankData.liningAreaM2 && tankData.liningAreaM2 > 0) {
-      sortOrder += 1;
-      const liningDesc = [
-        `${assemblyLabel} Internal Lining${drawingRef}`,
-        tankData.liningType ? `Type: ${tankData.liningType}` : null,
-        tankData.liningThicknessMm ? `${tankData.liningThicknessMm}mm thick` : null,
-      ]
-        .filter(Boolean)
-        .join(" - ");
+    if (tankData.sections.length > 0) {
+      tankData.sections.forEach((section) => {
+        const sectionLabel = `Section ${section.mark}${section.description ? ` - ${section.description}` : ""}`;
 
-      newItems.push({
-        jobCardId,
-        companyId,
-        itemDescription: liningDesc,
-        itemCode: tankData.drawingReference || null,
-        quantity: 1,
-        m2: Math.round(tankData.liningAreaM2 * 100) / 100,
-        sortOrder,
+        if (section.liningAreaM2 && section.liningAreaM2 > 0) {
+          sortOrder += 1;
+          const desc = [`${assemblyLabel} ${sectionLabel} - R/L${drawingRef}`, liningSpec || null]
+            .filter(Boolean)
+            .join(" - ");
+
+          newItems.push({
+            jobCardId,
+            companyId,
+            itemDescription: desc,
+            itemCode: `R/L ${section.mark}`,
+            quantity: 1,
+            m2: Math.round(section.liningAreaM2 * 100) / 100,
+            sortOrder,
+          });
+        }
+
+        if (section.coatingAreaM2 && section.coatingAreaM2 > 0) {
+          sortOrder += 1;
+          const desc = [
+            `${assemblyLabel} ${sectionLabel} - External Coating${drawingRef}`,
+            tankData.coatingSystem || null,
+            tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
+          ]
+            .filter(Boolean)
+            .join(" - ");
+
+          newItems.push({
+            jobCardId,
+            companyId,
+            itemDescription: desc,
+            itemCode: `COAT ${section.mark}`,
+            quantity: 1,
+            m2: Math.round(section.coatingAreaM2 * 100) / 100,
+            sortOrder,
+          });
+        }
       });
-    }
+    } else {
+      if (tankData.liningAreaM2 && tankData.liningAreaM2 > 0) {
+        sortOrder += 1;
+        const liningDesc = [
+          `${assemblyLabel} Internal Lining${drawingRef}`,
+          tankData.liningType ? `Type: ${tankData.liningType}` : null,
+          tankData.liningThicknessMm ? `${tankData.liningThicknessMm}mm thick` : null,
+        ]
+          .filter(Boolean)
+          .join(" - ");
 
-    if (tankData.coatingAreaM2 && tankData.coatingAreaM2 > 0) {
-      sortOrder += 1;
-      const coatingDesc = [
-        `${assemblyLabel} External Coating${drawingRef}`,
-        tankData.coatingSystem || null,
-        tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
-      ]
-        .filter(Boolean)
-        .join(" - ");
+        newItems.push({
+          jobCardId,
+          companyId,
+          itemDescription: liningDesc,
+          itemCode: tankData.drawingReference || null,
+          quantity: 1,
+          m2: Math.round(tankData.liningAreaM2 * 100) / 100,
+          sortOrder,
+        });
+      }
 
-      newItems.push({
-        jobCardId,
-        companyId,
-        itemDescription: coatingDesc,
-        itemCode: tankData.drawingReference || null,
-        quantity: 1,
-        m2: Math.round(tankData.coatingAreaM2 * 100) / 100,
-        sortOrder,
-      });
+      if (tankData.coatingAreaM2 && tankData.coatingAreaM2 > 0) {
+        sortOrder += 1;
+        const coatingDesc = [
+          `${assemblyLabel} External Coating${drawingRef}`,
+          tankData.coatingSystem || null,
+          tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
+        ]
+          .filter(Boolean)
+          .join(" - ");
+
+        newItems.push({
+          jobCardId,
+          companyId,
+          itemDescription: coatingDesc,
+          itemCode: tankData.drawingReference || null,
+          quantity: 1,
+          m2: Math.round(tankData.coatingAreaM2 * 100) / 100,
+          sortOrder,
+        });
+      }
     }
 
     if (newItems.length > 0) {

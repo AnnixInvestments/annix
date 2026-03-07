@@ -138,13 +138,10 @@ export class CoatingAnalysisService {
         );
       }
 
-      const fallbackM2 =
-        paintM2 === 0 && calculatedExtM2 === 0 && calculatedIntM2 === 0
-          ? this.sumAllLineItemM2(lineItems)
-          : 0;
-      if (fallbackM2 > 0) {
+      const lineItemTotalM2 = this.sumLineItemM2WithQuantity(lineItems);
+      if (calculatedExtM2 === 0 && calculatedIntM2 === 0 && lineItemTotalM2 > 0) {
         this.logger.log(
-          `Using fallback total line item m² for JC ${jobCardId}: ${fallbackM2.toFixed(2)}`,
+          `Using line item m² × qty fallback for JC ${jobCardId}: ${lineItemTotalM2.toFixed(2)}`,
         );
       }
 
@@ -180,16 +177,30 @@ export class CoatingAnalysisService {
 
       const hasExt = aiResult.coats.some((c) => c.area === "external");
       const hasInt = aiResult.coats.some((c) => c.area === "internal");
+      const needsIntM2 = hasInt || hasInternalRubberLining;
 
       if (paintM2 > 0) {
         analysis.extM2 = hasExt ? paintM2 : 0;
-        analysis.intM2 = hasInt ? paintM2 : 0;
+        analysis.intM2 = needsIntM2 ? paintM2 : 0;
       } else if (calculatedExtM2 > 0 || calculatedIntM2 > 0) {
         analysis.extM2 = hasExt ? calculatedExtM2 : 0;
-        analysis.intM2 = hasInt ? calculatedIntM2 : 0;
+        analysis.intM2 = needsIntM2 ? calculatedIntM2 : 0;
       } else {
-        analysis.extM2 = hasExt ? fallbackM2 : 0;
-        analysis.intM2 = hasInt ? fallbackM2 : 0;
+        analysis.extM2 = hasExt ? lineItemTotalM2 : 0;
+        analysis.intM2 = needsIntM2 ? lineItemTotalM2 : 0;
+      }
+
+      if (analysis.extM2 === 0 && hasExt && lineItemTotalM2 > 0) {
+        this.logger.log(
+          `Ext m² was 0 despite external coat detected for JC ${jobCardId}, using line item total: ${lineItemTotalM2.toFixed(2)}`,
+        );
+        analysis.extM2 = lineItemTotalM2;
+      }
+      if (analysis.intM2 === 0 && needsIntM2 && lineItemTotalM2 > 0) {
+        this.logger.log(
+          `Int m² was 0 despite internal coat/lining detected for JC ${jobCardId}, using line item total: ${lineItemTotalM2.toFixed(2)}`,
+        );
+        analysis.intM2 = lineItemTotalM2;
       }
 
       const coats = aiResult.coats.map((coat) => {
@@ -280,8 +291,12 @@ export class CoatingAnalysisService {
       .reduce((sum, li) => sum + (Number(li.m2) || 0), 0);
   }
 
-  private sumAllLineItemM2(lineItems: JobCardLineItem[]): number {
-    return lineItems.reduce((sum, li) => sum + (Number(li.m2) || 0), 0);
+  private sumLineItemM2WithQuantity(lineItems: JobCardLineItem[]): number {
+    return lineItems.reduce((sum, li) => {
+      const m2 = Number(li.m2) || 0;
+      const qty = Number(li.quantity) || 1;
+      return sum + m2 * qty;
+    }, 0);
   }
 
   private async calculatePipeM2(
