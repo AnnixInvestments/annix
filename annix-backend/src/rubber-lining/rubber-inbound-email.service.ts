@@ -185,7 +185,172 @@ export class RubberInboundEmailService {
 
     const documentType = this.determineDocumentType(emailData.subject);
 
-    for (const attachment of pdfAttachments) {
+    if (documentType === "coc") {
+      await this.processCocAttachments(pdfAttachments, emailData, result);
+    } else {
+      await this.processNonCocAttachments(pdfAttachments, emailData, documentType, result);
+    }
+
+    result.success =
+      result.cocIds.length > 0 ||
+      result.deliveryNoteIds.length > 0 ||
+      result.taxInvoiceIds.length > 0;
+    return result;
+  }
+
+  private async processCocAttachments(
+    attachments: InboundEmailAttachment[],
+    emailData: InboundEmailData,
+    result: ProcessedEmailResult,
+  ): Promise<void> {
+    const classified: Array<{
+      attachment: InboundEmailAttachment;
+      pdfText: string;
+      isGraph: boolean;
+      batchNumbers: string[];
+      supplierMapping: SupplierMapping | null;
+    }> = [];
+
+    for (const attachment of attachments) {
+      try {
+        const pdfText = await this.extractTextFromPdf(attachment.content);
+        const graphResult = this.detectIfGraph(pdfText, attachment.filename);
+
+        const supplierMapping = graphResult.isGraph
+          ? null
+          : await this.identifySupplierFromDocument(
+              pdfText,
+              attachment.filename,
+              emailData.from,
+              emailData.subject,
+            );
+
+        classified.push({
+          attachment,
+          pdfText,
+          isGraph: graphResult.isGraph,
+          batchNumbers: graphResult.isGraph
+            ? graphResult.batchNumbers
+            : this.extractBatchNumbersFromText(pdfText),
+          supplierMapping,
+        });
+      } catch (error) {
+        const errorMsg = `Failed to classify attachment ${attachment.filename}: ${error.message}`;
+        result.errors.push(errorMsg);
+        this.logger.error(errorMsg);
+      }
+    }
+
+    const certs = classified.filter((c) => !c.isGraph);
+    const graphs = classified.filter((c) => c.isGraph);
+
+    const certRecords: Array<{ cocId: number; batchNumbers: string[]; companyId: number }> = [];
+
+    for (const cert of certs) {
+      try {
+        if (!cert.supplierMapping) {
+          const errorMsg = `Could not identify supplier for attachment: ${cert.attachment.filename}`;
+          result.errors.push(errorMsg);
+          this.logger.warn(errorMsg);
+          continue;
+        }
+
+        this.logger.log(
+          `Identified supplier from document: ${cert.supplierMapping.company.name} (${cert.supplierMapping.cocType})`,
+        );
+
+        const storageResult = await this.saveAttachment(
+          cert.attachment,
+          cert.supplierMapping.company.id,
+          "coc",
+        );
+
+        const coc = await this.cocService.createSupplierCoc(
+          {
+            cocType: cert.supplierMapping.cocType,
+            supplierCompanyId: cert.supplierMapping.company.id,
+            documentPath: storageResult.path,
+          },
+          `inbound-email:${emailData.from}`,
+        );
+        result.cocIds.push(coc.id);
+        certRecords.push({
+          cocId: coc.id,
+          batchNumbers: cert.batchNumbers,
+          companyId: cert.supplierMapping.company.id,
+        });
+        this.logger.log(`Created Supplier CoC ${coc.id} from email attachment`);
+
+        this.autoExtractCoc(coc.id, cert.supplierMapping.cocType, cert.pdfText);
+      } catch (error) {
+        const errorMsg = `Failed to process cert attachment ${cert.attachment.filename}: ${error.message}`;
+        result.errors.push(errorMsg);
+        this.logger.error(errorMsg);
+      }
+    }
+
+    for (const graph of graphs) {
+      try {
+        const normalizedGraphBatches = graph.batchNumbers.map((b) => b.replace(/^[Bb]/, ""));
+
+        const matchingCert = certRecords.find((cert) =>
+          normalizedGraphBatches.some((gb) => cert.batchNumbers.includes(gb)),
+        );
+
+        const multerFile: Express.Multer.File = {
+          fieldname: "file",
+          originalname: graph.attachment.filename,
+          encoding: "7bit",
+          mimetype: graph.attachment.contentType,
+          size: graph.attachment.size,
+          buffer: graph.attachment.content,
+          stream: null as never,
+          destination: "",
+          filename: "",
+          path: "",
+        };
+
+        if (matchingCert) {
+          const subPath = `au-rubber/graphs/${matchingCert.companyId}`;
+          const storageResult = await this.storageService.upload(multerFile, subPath);
+          await this.cocService.updateSupplierCoc(matchingCert.cocId, {
+            graphPdfPath: storageResult.path,
+          });
+          this.logger.log(
+            `Linked graph PDF to CoC ${matchingCert.cocId} via batch number match`,
+          );
+        } else {
+          const linkedCocId = await this.linkGraphToExistingCoc(
+            multerFile,
+            graph.pdfText,
+            normalizedGraphBatches,
+          );
+
+          if (linkedCocId) {
+            this.logger.log(
+              `Linked graph PDF to existing CoC ${linkedCocId} via batch number fallback`,
+            );
+          } else {
+            this.logger.warn(
+              `Graph PDF ${graph.attachment.filename} could not be matched to any CoC - skipping (batches: ${normalizedGraphBatches.join(", ")})`,
+            );
+          }
+        }
+      } catch (error) {
+        const errorMsg = `Failed to process graph attachment ${graph.attachment.filename}: ${error.message}`;
+        result.errors.push(errorMsg);
+        this.logger.error(errorMsg);
+      }
+    }
+  }
+
+  private async processNonCocAttachments(
+    attachments: InboundEmailAttachment[],
+    emailData: InboundEmailData,
+    documentType: "delivery_note" | "tax_invoice",
+    result: ProcessedEmailResult,
+  ): Promise<void> {
+    for (const attachment of attachments) {
       try {
         const pdfText = await this.extractTextFromPdf(attachment.content);
 
@@ -213,18 +378,7 @@ export class RubberInboundEmailService {
           documentType,
         );
 
-        if (documentType === "coc") {
-          const coc = await this.cocService.createSupplierCoc(
-            {
-              cocType: supplierMapping.cocType,
-              supplierCompanyId: supplierMapping.company.id,
-              documentPath: storageResult.path,
-            },
-            `inbound-email:${emailData.from}`,
-          );
-          result.cocIds.push(coc.id);
-          this.logger.log(`Created Supplier CoC ${coc.id} from email attachment`);
-        } else if (documentType === "tax_invoice") {
+        if (documentType === "tax_invoice") {
           const invoiceNumber = `INV-${Date.now()}`;
           const invoice = await this.taxInvoiceService.createTaxInvoice(
             {
@@ -257,12 +411,6 @@ export class RubberInboundEmailService {
         this.logger.error(errorMsg);
       }
     }
-
-    result.success =
-      result.cocIds.length > 0 ||
-      result.deliveryNoteIds.length > 0 ||
-      result.taxInvoiceIds.length > 0;
-    return result;
   }
 
   private async extractTextFromPdf(buffer: Buffer): Promise<string> {
@@ -967,6 +1115,23 @@ ${truncatedText}`;
     ranges.push(rangeStart === rangeEnd ? `B${rangeStart}` : `B${rangeStart}-${rangeEnd}`);
 
     return ranges.join(", ");
+  }
+
+  private extractBatchNumbersFromText(pdfText: string): string[] {
+    const matches = pdfText.match(/\b[Bb]?(\d{3,4})\b/g);
+    if (!matches) {
+      return [];
+    }
+    return [
+      ...new Set(
+        matches
+          .map((m) => m.replace(/^[Bb]/, ""))
+          .filter((n) => {
+            const num = parseInt(n, 10);
+            return num >= 100 && num <= 9999;
+          }),
+      ),
+    ];
   }
 
   private detectIfGraph(
