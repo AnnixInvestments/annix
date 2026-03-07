@@ -3,6 +3,7 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { StockControlAuthService } from "../services/auth.service";
 import { BrandingScraperService } from "../services/branding-scraper.service";
+import { CompanyEmailService } from "../services/company-email.service";
 import { LookupService } from "../services/lookup.service";
 import { RbacConfigService } from "../services/rbac-config.service";
 import { StockControlAuthController } from "./auth.controller";
@@ -30,6 +31,10 @@ describe("StockControlAuthController - RBAC endpoints", () => {
         },
         {
           provide: BrandingScraperService,
+          useValue: {},
+        },
+        {
+          provide: CompanyEmailService,
           useValue: {},
         },
         {
