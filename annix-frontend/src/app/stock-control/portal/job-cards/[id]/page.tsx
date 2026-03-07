@@ -784,6 +784,33 @@ function RubberSOHPanel({
     existingOverride?.manualRolls || [],
   );
   const [saving, setSaving] = useState(false);
+  const [allocatingPly, setAllocatingPly] = useState<number | null>(null);
+  const [allocatingRollId, setAllocatingRollId] = useState<number>(0);
+  const [allocatingSaving, setAllocatingSaving] = useState(false);
+  const [plyAllocations, setPlyAllocations] = useState<
+    Record<number, { stockItemId: number; name: string }>
+  >({});
+
+  const handleAllocateRoll = async (plyIdx: number) => {
+    if (!allocatingRollId) return;
+    setAllocatingSaving(true);
+    try {
+      await stockControlApiClient.allocateStock(jobCardId, {
+        stockItemId: allocatingRollId,
+        quantityUsed: 1,
+        notes: `Rubber ply ${plyIdx + 1} allocation`,
+      });
+      const item = stockOptions.stockItems.find((s) => s.stockItemId === allocatingRollId);
+      setPlyAllocations((prev) => ({
+        ...prev,
+        [plyIdx]: { stockItemId: allocatingRollId, name: item?.name ?? `Roll #${allocatingRollId}` },
+      }));
+      setAllocatingPly(null);
+      setAllocatingRollId(0);
+    } finally {
+      setAllocatingSaving(false);
+    }
+  };
 
   const handleAcceptPlan = async () => {
     setSaving(true);
@@ -880,18 +907,70 @@ function RubberSOHPanel({
                 : totalAvailable > 0
                   ? ("partial" as const)
                   : ("out_of_stock" as const);
+            const allocated = plyAllocations[idx];
 
             return (
-              <div
-                key={idx}
-                className="flex items-center justify-between p-2 bg-white border rounded text-sm"
-              >
-                <span className="font-medium">
-                  Ply {idx + 1}: {ply.thicknessMm}mm
-                </span>
-                <span>{ply.totalRollsNeeded} rolls needed</span>
-                <span>{totalAvailable} available</span>
-                <StockAvailabilityBadge status={status} />
+              <div key={idx} className="border rounded bg-white">
+                <div className="flex items-center justify-between p-2 text-sm">
+                  <span className="font-medium">
+                    Ply {idx + 1}: {ply.thicknessMm}mm
+                  </span>
+                  <span>{ply.totalRollsNeeded} rolls needed</span>
+                  <span>{totalAvailable} available</span>
+                  <StockAvailabilityBadge status={status} />
+                  {allocated ? (
+                    <span className="text-xs text-green-700 font-medium truncate max-w-[160px]">
+                      {allocated.name}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAllocatingPly(allocatingPly === idx ? null : idx);
+                        setAllocatingRollId(0);
+                      }}
+                      className="text-xs px-2 py-1 rounded bg-teal-600 text-white hover:bg-teal-700"
+                    >
+                      Allocate Roll
+                    </button>
+                  )}
+                </div>
+                {allocatingPly === idx && (
+                  <div className="px-2 pb-2 pt-1 border-t border-gray-100 flex items-center gap-2">
+                    <select
+                      value={allocatingRollId}
+                      onChange={(e) => setAllocatingRollId(parseInt(e.target.value, 10) || 0)}
+                      className="flex-1 text-xs rounded border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                    >
+                      <option value={0}>Select a roll...</option>
+                      {matchingStock
+                        .filter((s) => s.quantityAvailable > 0)
+                        .map((s) => (
+                          <option key={s.stockItemId} value={s.stockItemId}>
+                            {s.name} ({s.widthMm}mm x {s.lengthM}m) — Qty: {s.quantityAvailable}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleAllocateRoll(idx)}
+                      disabled={allocatingSaving || !allocatingRollId}
+                      className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+                    >
+                      {allocatingSaving ? "..." : "Confirm"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAllocatingPly(null);
+                        setAllocatingRollId(0);
+                      }}
+                      className="text-xs px-2 py-1.5 rounded text-gray-500 hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
