@@ -411,6 +411,38 @@ export class RubberCocExtractionService {
     };
   }
 
+  async extractTaxInvoiceFromImages(pdfBuffer: Buffer): Promise<{
+    data: ExtractedTaxInvoiceData;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = Date.now();
+    this.logger.log("Extracting tax invoice data using OCR...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const images = await this.convertPdfToImages(pdfBuffer);
+    this.logger.log(`Converted tax invoice PDF to ${images.length} image(s) for OCR extraction`);
+
+    const response = await this.callGeminiWithImages(
+      TAX_INVOICE_SYSTEM_PROMPT,
+      "Please extract structured data from this tax invoice image. Return ONLY a valid JSON object with the extracted data.",
+      images,
+      "tax-invoice-ocr-extraction",
+    );
+
+    const processingTimeMs = Date.now() - startTime;
+    this.logger.log(`Tax invoice extracted via OCR in ${processingTimeMs}ms`);
+
+    return {
+      data: response.data as unknown as ExtractedTaxInvoiceData,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
   async extractByType(
     cocType: SupplierCocType,
     pdfText: string,

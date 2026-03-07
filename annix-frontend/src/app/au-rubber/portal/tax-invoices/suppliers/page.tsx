@@ -281,6 +281,7 @@ export default function SupplierTaxInvoicesPage() {
 
       <FileDropZone
         onFilesSelected={handleFilesSelected}
+        accept=".pdf,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         className="bg-orange-50 border-2 border-dashed border-orange-300 rounded-lg hover:bg-orange-100 hover:border-orange-400 transition-colors"
       >
         <div className="flex items-center justify-center py-6 px-4">
@@ -298,7 +299,7 @@ export default function SupplierTaxInvoicesPage() {
             />
           </svg>
           <span className="text-orange-700 font-medium">
-            Drag and drop tax invoice files here, or click to browse
+            Drag and drop tax invoice files here, or click to browse (PDF, Word, Excel)
           </span>
         </div>
       </FileDropZone>
@@ -452,10 +453,11 @@ export default function SupplierTaxInvoicesPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    PDF Documents
+                    Documents (PDF, Word, Excel)
                   </label>
                   <FileDropZone
                     onFilesSelected={(files) => setUploadFiles((prev) => [...prev, ...files])}
+                    accept=".pdf,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     className="border-2 border-dashed rounded-lg"
                     disabled={isUploading}
                   />

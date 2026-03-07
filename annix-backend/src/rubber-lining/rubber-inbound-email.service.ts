@@ -410,8 +410,15 @@ export class RubberInboundEmailService {
                 `Auto-extracted Tax Invoice ${invoice.id} in ${extractionResult.processingTimeMs}ms`,
               );
             } else {
-              this.logger.warn(
-                `Tax Invoice ${invoice.id} PDF text too short for extraction (${pdfText.length} chars)`,
+              this.logger.log(
+                `Tax Invoice ${invoice.id} PDF text too short (${pdfText.length} chars), falling back to OCR`,
+              );
+              const extractionResult = await this.cocExtractionService.extractTaxInvoiceFromImages(
+                attachment.content,
+              );
+              await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
+              this.logger.log(
+                `Auto-extracted Tax Invoice ${invoice.id} via OCR in ${extractionResult.processingTimeMs}ms`,
               );
             }
           } catch (extractionError) {

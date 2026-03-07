@@ -162,6 +162,10 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParseModule = require("pdf-parse");
 const pdfParse = pdfParseModule.default ?? pdfParseModule;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mammoth = require("mammoth");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const XLSX = require("xlsx");
 
 @ApiTags("Rubber Lining")
 @Controller("rubber-lining")
@@ -2769,7 +2773,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
   @Post("portal/tax-invoices/:id/extract")
-  @ApiOperation({ summary: "Extract data from tax invoice PDF using AI" })
+  @ApiOperation({ summary: "Extract data from tax invoice document using AI" })
   @ApiParam({ name: "id", description: "Tax invoice ID" })
   async extractTaxInvoice(@Param("id") id: string): Promise<RubberTaxInvoiceDto> {
     const invoice = await this.rubberTaxInvoiceService.taxInvoiceById(Number(id));
@@ -2786,22 +2790,49 @@ Formula: totalPrice = totalKg × salePricePerKg
       );
     }
 
-    const pdfBuffer = await this.storageService.download(invoice.documentPath);
-    let pdfText = "";
-    try {
-      const pdfData = await pdfParse(pdfBuffer);
-      pdfText = pdfData.text || "";
-    } catch {
-      pdfText = "";
-    }
+    const docBuffer = await this.storageService.download(invoice.documentPath);
+    const ext = invoice.documentPath.split(".").pop()?.toLowerCase() || "";
 
-    if (pdfText.length < 50) {
-      throw new NotFoundException(
-        "PDF appears to be scanned/image-based. Extraction requires text-based PDFs.",
-      );
-    }
+    let extractionResult: {
+      data: import("./entities/rubber-tax-invoice.entity").ExtractedTaxInvoiceData;
+      tokensUsed?: number;
+      processingTimeMs: number;
+    };
 
-    const extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(pdfText);
+    if (ext === "docx" || ext === "doc") {
+      const textResult = await mammoth.extractRawText({ buffer: docBuffer });
+      const docText = textResult.value || "";
+      if (docText.length < 20) {
+        throw new BadRequestException("Word document appears to be empty or unreadable");
+      }
+      extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(docText);
+    } else if (ext === "xlsx" || ext === "xls") {
+      const workbook = XLSX.read(docBuffer, { type: "buffer" });
+      const sheetTexts = workbook.SheetNames.map((name: string) => {
+        const sheet = workbook.Sheets[name];
+        return XLSX.utils.sheet_to_csv(sheet);
+      });
+      const excelText = sheetTexts.join("\n\n");
+      if (excelText.length < 20) {
+        throw new BadRequestException("Excel document appears to be empty or unreadable");
+      }
+      extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(excelText);
+    } else {
+      let pdfText = "";
+      try {
+        const pdfData = await pdfParse(docBuffer);
+        pdfText = pdfData.text || "";
+      } catch {
+        pdfText = "";
+      }
+
+      if (pdfText.length >= 50) {
+        extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(pdfText);
+      } else {
+        extractionResult =
+          await this.rubberCocExtractionService.extractTaxInvoiceFromImages(docBuffer);
+      }
+    }
 
     const updated = await this.rubberTaxInvoiceService.setExtractedData(
       Number(id),

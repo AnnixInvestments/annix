@@ -187,7 +187,7 @@ export default function TaxInvoiceDetailPage() {
               className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-orange-600 hover:text-orange-800"
             >
               <Download className="w-4 h-4 mr-1" />
-              View PDF
+              View Document
             </a>
           )}
         </div>
