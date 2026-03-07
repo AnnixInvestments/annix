@@ -396,7 +396,20 @@ export default function SupplierTaxInvoicesPage() {
               {paginatedInvoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-orange-600 font-medium">{inv.invoiceNumber}</span>
+                    <button
+                      type="button"
+                      className="text-orange-600 font-medium hover:text-orange-800 hover:underline"
+                      onClick={async () => {
+                        if (inv.documentPath) {
+                          const url = await auRubberApiClient.documentUrl(inv.documentPath);
+                          window.open(url, "_blank");
+                        } else {
+                          showToast("No document attached to this invoice", "error");
+                        }
+                      }}
+                    >
+                      {inv.invoiceNumber}
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {inv.companyName || "-"}
