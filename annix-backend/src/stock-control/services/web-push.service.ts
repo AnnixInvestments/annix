@@ -1,8 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
-import * as webpush from "web-push";
 import { Repository } from "typeorm";
+import * as webpush from "web-push";
 import { PushSubscription } from "../entities/push-subscription.entity";
 
 interface PushPayload {
@@ -48,7 +48,11 @@ export class WebPushService {
     return this.configService.get<string>("VAPID_PUBLIC_KEY") ?? null;
   }
 
-  async subscribe(userId: number, companyId: number, subscription: SubscriptionInput): Promise<void> {
+  async subscribe(
+    userId: number,
+    companyId: number,
+    subscription: SubscriptionInput,
+  ): Promise<void> {
     const existing = await this.subscriptionRepo.findOne({
       where: { endpoint: subscription.endpoint },
     });

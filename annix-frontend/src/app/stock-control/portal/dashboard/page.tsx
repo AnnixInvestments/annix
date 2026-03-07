@@ -58,7 +58,12 @@ function PushNotificationBanner() {
     <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0 w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
-          <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-5 h-5 text-teal-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
