@@ -58,7 +58,6 @@ import { Rfq, RfqStatus } from "./entities/rfq.entity";
 import { RfqDocument } from "./entities/rfq-document.entity";
 import { RfqDraft } from "./entities/rfq-draft.entity";
 import { RfqItem, RfqItemType } from "./entities/rfq-item.entity";
-import { AssemblyType, LiningType, TankChuteRfq } from "./entities/tank-chute-rfq.entity";
 import { RfqSequence } from "./entities/rfq-sequence.entity";
 import {
   LengthUnit,
@@ -66,6 +65,7 @@ import {
   ScheduleType,
   StraightPipeRfq,
 } from "./entities/straight-pipe-rfq.entity";
+import { AssemblyType, LiningType, TankChuteRfq } from "./entities/tank-chute-rfq.entity";
 import {
   ValveActuatorType,
   ValveCategory,
