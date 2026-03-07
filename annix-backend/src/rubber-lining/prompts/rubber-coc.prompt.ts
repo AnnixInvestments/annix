@@ -9,6 +9,30 @@ CRITICAL - BLANK/EMPTY CELLS:
 - Only batches that were fully tested will have all physical property values
 - Most batches typically only have Shore A and rheometer data - physical properties are often blank
 
+S&N RUBBER / SCARABAEUS TABLE STRUCTURE:
+S&N Rubber CoCs use a Scarabaeus (TA Instruments) report format with tightly packed columns.
+The columns are IN THIS EXACT ORDER - do NOT shift or merge columns:
+1. Batch No. (latch No.) - batch number (e.g., 209, 210, 211)
+2. Shore A last testpoint [Shore A] - hardness (35-45 range)
+3. Specific gravity [g/cm³] - density (1.03-1.08 range, ONLY some batches)
+4. Bound Resilience [%] - rebound (74-96 range, ONLY some batches)
+5. Tear strength Die [N/mm²] - tear (10-20 range, ONLY some batches)
+6. Tensile strength [MPa] - tensile (20-30 range, ONLY some batches)
+7. Elongation break [%] - elongation (600-980 range, ONLY some batches)
+8. S' min [dNm] - rheometer min torque (0.5-2.0 range)
+9. S' max [dNm] - rheometer max torque (5-10 range)
+10. TS 2 [min] - scorch time (3-5 range)
+11. TC 90 [min] - cure time (4.7-6.7 range)
+12. State - Pass/Fail
+
+CRITICAL COLUMN ALIGNMENT WARNING FOR S&N/SCARABAEUS FORMAT:
+- The PDF text extraction often MERGES adjacent column values because columns are tightly packed
+- Elongation (col 7) is a 3-digit number (600-980) and S'min (col 8) is a small decimal (0.5-2.0)
+- NEVER read these as a single number! "681" followed by "1.12" means Elongation=681, S'min=1.12
+- If you see elongation < 100, you have MISREAD the columns - go back and re-parse
+- If you see S'min > 10, you have MERGED elongation into S'min - split them correctly
+- Similarly, Rebound (74-96) must not be confused with Tear strength (10-20)
+
 IMPILO INDUSTRIES TABLE STRUCTURE (Page 2):
 The batch table has these columns in order:
 1. Batch No. - batch number (e.g., 228, 229, 230)
@@ -80,11 +104,15 @@ Guidelines:
 - Look for test result tables with batch numbers and properties
 - Shore A Hardness is typically a 2-digit number (35-90 range)
 - Specific gravity is typically between 1.0 and 1.5 (when present)
+- Rebound Resilience is typically 74-96% (when present) - do NOT confuse with Tear strength
+- Tear strength is typically 10-20 N/mm² (when present) - do NOT confuse with Tensile
 - Tensile strength is typically 20-30 MPa (when present)
-- Elongation is typically 600-700% (when present) - NOT 1%!
-- Rheometer values: S'min (1-2 dNm), S'max (6-8 dNm), Ts2 (4-6 min), Tc90 (5-7 min)
-- If elongation shows "1" or very low values, it's likely blank - use null
+- Elongation is typically 600-980% (when present) - NEVER less than 100! If you get a single digit, the columns are misaligned
+- Rheometer values: S'min (0.5-2.0 dNm), S'max (5-10 dNm), Ts2 (3-6 min), Tc90 (4-7 min)
+- S'min is ALWAYS a small decimal (0.5-2.0) - if you get S'min > 10, you merged elongation into it
+- If elongation shows a single digit or value < 100, you have MISREAD the table columns - re-examine the column boundaries
 - PASS/FAIL status may be in the last column labeled "State"
+- SELF-CHECK: After extraction, verify each value falls within its expected range. If not, re-parse the table
 - Return ONLY the JSON object, no additional text`;
 
 export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from Impilo Industries rubber Batch Certificates.

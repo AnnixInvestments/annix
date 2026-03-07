@@ -220,6 +220,8 @@ export class RubberCocExtractionService {
       this.logger.log(`Cleaned compound code: ${extractedData.compoundCode}`);
     }
 
+    this.validateBatchData(extractedData);
+
     return {
       data: extractedData,
       tokensUsed: response.tokensUsed,
@@ -260,6 +262,8 @@ export class RubberCocExtractionService {
       extractedData.cocNumber = cocNumber;
       this.logger.log(`Generated Calenderer CoC number: ${cocNumber}`);
     }
+
+    this.validateBatchData(extractedData);
 
     return {
       data: extractedData,
@@ -493,6 +497,57 @@ export class RubberCocExtractionService {
       }
       throw error;
     }
+  }
+
+  private validateBatchData(data: ExtractedCocData): void {
+    if (!data.batches) return;
+
+    data.batches = data.batches.map((batch) => {
+      const corrected = { ...batch };
+
+      if (
+        corrected.elongationPercent !== null &&
+        corrected.elongationPercent !== undefined &&
+        corrected.elongationPercent < 100 &&
+        corrected.rheometerSMin !== null &&
+        corrected.rheometerSMin !== undefined &&
+        corrected.rheometerSMin > 10
+      ) {
+        const combinedStr = `${corrected.elongationPercent}${corrected.rheometerSMin}`;
+        const decimalMatch = combinedStr.match(/^(\d{3,4})(\d\.\d+)$/);
+        if (decimalMatch) {
+          corrected.elongationPercent = Number.parseFloat(decimalMatch[1]);
+          corrected.rheometerSMin = Number.parseFloat(decimalMatch[2]);
+          this.logger.warn(
+            `Batch ${batch.batchNumber}: Fixed merged elongation/S'min columns: elongation=${corrected.elongationPercent}, S'min=${corrected.rheometerSMin}`,
+          );
+        }
+      }
+
+      if (
+        corrected.elongationPercent !== null &&
+        corrected.elongationPercent !== undefined &&
+        corrected.elongationPercent < 100
+      ) {
+        this.logger.warn(
+          `Batch ${batch.batchNumber}: Suspicious elongation value ${corrected.elongationPercent} (expected 600-980), setting to undefined`,
+        );
+        corrected.elongationPercent = undefined;
+      }
+
+      if (
+        corrected.rheometerSMin !== null &&
+        corrected.rheometerSMin !== undefined &&
+        corrected.rheometerSMin > 10
+      ) {
+        this.logger.warn(
+          `Batch ${batch.batchNumber}: Suspicious S'min value ${corrected.rheometerSMin} (expected 0.5-2.0), setting to undefined`,
+        );
+        corrected.rheometerSMin = undefined;
+      }
+
+      return corrected;
+    });
   }
 
   private parseJsonResponse(content: string): Record<string, unknown> {
