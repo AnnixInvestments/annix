@@ -13,8 +13,8 @@ import {
 } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
-import { StockItem } from "../entities/stock-item.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { StockItem } from "../entities/stock-item.entity";
 import { M2CalculationService } from "./m2-calculation.service";
 
 interface AiCoatResult {
@@ -486,7 +486,11 @@ export class CoatingAnalysisService {
     return (100 - lossPct) / 100;
   }
 
-  private calculateCoatVolume(coat: AiCoatResult, totalM2: number, retentionFactor: number): CoatDetail {
+  private calculateCoatVolume(
+    coat: AiCoatResult,
+    totalM2: number,
+    retentionFactor: number,
+  ): CoatDetail {
     const midDftUm = (coat.minDftUm + coat.maxDftUm) / 2;
     const knownProduct = lookupCoatingProduct(coat.product);
     const volumeSolids = knownProduct

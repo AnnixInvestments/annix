@@ -940,8 +940,9 @@ export default function StockControlSettingsPage() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Coating Loss Factors</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Paint loss factors account for material lost during application due to surface geometry, overspray, and
-          wastage. Higher loss means more paint is needed per m². These values are used in coating analysis calculations.
+          Paint loss factors account for material lost during application due to surface geometry,
+          overspray, and wastage. Higher loss means more paint is needed per m². These values are
+          used in coating analysis calculations.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
@@ -987,7 +988,10 @@ export default function StockControlSettingsPage() {
             </div>
           </div>
           <div>
-            <label htmlFor="structuralSteelLoss" className="block text-sm font-medium text-gray-700">
+            <label
+              htmlFor="structuralSteelLoss"
+              className="block text-sm font-medium text-gray-700"
+            >
               Structural Steel Loss Factor
             </label>
             <p className="text-xs text-gray-400 mb-1">Typical range: 20 &ndash; 40%</p>

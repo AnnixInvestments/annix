@@ -392,7 +392,8 @@ export class StockControlAuthService {
     if (dto.phone !== undefined) company.phone = dto.phone;
     if (dto.email !== undefined) company.email = dto.email;
     if (dto.websiteUrl !== undefined) company.websiteUrl = dto.websiteUrl;
-    if (dto.pipingLossFactorPct !== undefined) company.pipingLossFactorPct = dto.pipingLossFactorPct;
+    if (dto.pipingLossFactorPct !== undefined)
+      company.pipingLossFactorPct = dto.pipingLossFactorPct;
     if (dto.flatPlateLossFactorPct !== undefined)
       company.flatPlateLossFactorPct = dto.flatPlateLossFactorPct;
     if (dto.structuralSteelLossFactorPct !== undefined)
