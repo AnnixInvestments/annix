@@ -229,7 +229,8 @@ export class RubberEmailMonitorService implements OnModuleInit {
             await this.extractAndLinkCoc(coc.id, supplierInfo.cocType, pdfText);
           }
         } else if (documentType === "tax_invoice") {
-          const invoiceNumber = this.extractInvoiceNumber(pdfText, subject) || `INV-EMAIL-${Date.now()}`;
+          const invoiceNumber =
+            this.extractInvoiceNumber(pdfText, subject) || `INV-EMAIL-${Date.now()}`;
           const invoice = await this.taxInvoiceService.createTaxInvoice(
             {
               invoiceNumber,
@@ -348,14 +349,17 @@ export class RubberEmailMonitorService implements OnModuleInit {
         }
       }
 
-      if (
-        aiResult.documentType === "INVOICE" ||
-        aiResult.documentType === "DELIVERY_NOTE"
-      ) {
+      if (aiResult.documentType === "INVOICE" || aiResult.documentType === "DELIVERY_NOTE") {
         this.logger.log(
           `AI classified as ${aiResult.documentType} - attempting supplier fallback matching`,
         );
-        const fallback = this.identifySupplierFallback(pdfText, filename, fromEmail, subject, companies);
+        const fallback = this.identifySupplierFallback(
+          pdfText,
+          filename,
+          fromEmail,
+          subject,
+          companies,
+        );
         if (fallback) {
           return { ...fallback, documentType: aiResult.documentType };
         }
@@ -694,7 +698,9 @@ ${truncatedText}`;
       return `IN${inPattern[1]}`;
     }
 
-    const invoiceNoPattern = pdfText.match(/(?:Invoice|Document)\s*(?:No|Number|#)[:\s]*([A-Za-z0-9-]+)/i);
+    const invoiceNoPattern = pdfText.match(
+      /(?:Invoice|Document)\s*(?:No|Number|#)[:\s]*([A-Za-z0-9-]+)/i,
+    );
     if (invoiceNoPattern) {
       return invoiceNoPattern[1];
     }

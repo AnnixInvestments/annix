@@ -258,7 +258,10 @@ export class RubberInboundEmailService {
       }
     }
 
-    result.success = result.cocIds.length > 0 || result.deliveryNoteIds.length > 0 || result.taxInvoiceIds.length > 0;
+    result.success =
+      result.cocIds.length > 0 ||
+      result.deliveryNoteIds.length > 0 ||
+      result.taxInvoiceIds.length > 0;
     return result;
   }
 
