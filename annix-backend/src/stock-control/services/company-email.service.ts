@@ -39,7 +39,12 @@ export class CompanyEmailService {
   async sendEmail(companyId: number, options: EmailOptions): Promise<boolean> {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
 
-    if (!company?.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPassEncrypted) {
+    if (
+      !company?.smtpHost ||
+      !company.smtpPort ||
+      !company.smtpUser ||
+      !company.smtpPassEncrypted
+    ) {
       return this.emailService.sendEmail(options);
     }
 
@@ -128,7 +133,12 @@ export class CompanyEmailService {
   async testSmtpConfig(companyId: number, recipientEmail: string): Promise<{ message: string }> {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
 
-    if (!company?.smtpHost || !company.smtpPort || !company.smtpUser || !company.smtpPassEncrypted) {
+    if (
+      !company?.smtpHost ||
+      !company.smtpPort ||
+      !company.smtpUser ||
+      !company.smtpPassEncrypted
+    ) {
       throw new Error("SMTP not configured for this company");
     }
 

@@ -3,13 +3,13 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { JobCard } from "../entities/job-card.entity";
-import { CompanyEmailService } from "./company-email.service";
 import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import {
   NotificationActionType,
   WorkflowNotification,
 } from "../entities/workflow-notification.entity";
+import { CompanyEmailService } from "./company-email.service";
 import { WebPushService } from "./web-push.service";
 import { WorkflowAssignmentService } from "./workflow-assignment.service";
 

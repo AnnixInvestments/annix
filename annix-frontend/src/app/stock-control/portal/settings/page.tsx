@@ -999,7 +999,8 @@ export default function StockControlSettingsPage() {
               </div>
               <div>
                 <label htmlFor="smtpPass" className="block text-sm font-medium text-gray-700">
-                  Password {smtpPassSet && <span className="text-gray-400">(set, enter new to change)</span>}
+                  Password{" "}
+                  {smtpPassSet && <span className="text-gray-400">(set, enter new to change)</span>}
                 </label>
                 <input
                   id="smtpPass"
