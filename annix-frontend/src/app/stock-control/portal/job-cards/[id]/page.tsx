@@ -326,9 +326,7 @@ function CuttingDiagram({
             colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
           const rolls = cut.stripsPerPiece ?? 1;
           const displayLabel =
-            rolls > 1
-              ? `${rolls} rolls`
-              : cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
+            rolls > 1 ? `${rolls} rolls` : cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
 
           const band = bands.find((b) => b.bandIndex === cut.band);
           const totalLanes = band ? band.lanes : 1;
@@ -347,9 +345,7 @@ function CuttingDiagram({
               }}
               title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m x ${cut.widthMm}mm${rolls > 1 ? ` (${rolls} rolls)` : ""}`}
             >
-              <span className="text-[10px] text-white font-bold truncate px-1">
-                {displayLabel}
-              </span>
+              <span className="text-[10px] text-white font-bold truncate px-1">{displayLabel}</span>
             </div>
           );
         })}
