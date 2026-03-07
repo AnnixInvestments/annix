@@ -185,6 +185,11 @@ const STANDARD_ROLL_WIDTH_MM = 1200;
 const STANDARD_ROLL_LENGTH_M = 12.5;
 const STANDARD_ROLL_AREA_M2 = (STANDARD_ROLL_WIDTH_MM / 1000) * STANDARD_ROLL_LENGTH_M;
 
+const ROLL_WIDTH_OPTIONS_MM = [
+  800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450,
+];
+const ROLL_LENGTH_OPTIONS_M = [5, 10, 12.5];
+
 const CUT_COLORS = [
   "bg-blue-500",
   "bg-teal-500",
@@ -785,31 +790,42 @@ function RubberSOHPanel({
   );
   const [saving, setSaving] = useState(false);
   const [allocatingPly, setAllocatingPly] = useState<number | null>(null);
-  const [allocatingRollId, setAllocatingRollId] = useState<number>(0);
+  const [allocatingWidthMm, setAllocatingWidthMm] = useState<number>(STANDARD_ROLL_WIDTH_MM);
+  const [allocatingLengthM, setAllocatingLengthM] = useState<number>(STANDARD_ROLL_LENGTH_M);
   const [allocatingSaving, setAllocatingSaving] = useState(false);
   const [plyAllocations, setPlyAllocations] = useState<
-    Record<number, { stockItemId: number; name: string }>
+    Record<number, { widthMm: number; lengthM: number; inStock: boolean }>
   >({});
 
   const handleAllocateRoll = async (plyIdx: number) => {
-    if (!allocatingRollId) return;
+    if (!allocatingWidthMm || !allocatingLengthM) return;
     setAllocatingSaving(true);
     try {
-      await stockControlApiClient.allocateStock(jobCardId, {
-        stockItemId: allocatingRollId,
-        quantityUsed: 1,
-        notes: `Rubber ply ${plyIdx + 1} allocation`,
-      });
-      const item = stockOptions.stockItems.find((s) => s.stockItemId === allocatingRollId);
+      const matchingStock = stockOptions.stockItems.find(
+        (s) =>
+          s.thicknessMm === plan.plies[plyIdx].thicknessMm &&
+          s.widthMm === allocatingWidthMm &&
+          s.lengthM === allocatingLengthM &&
+          s.quantityAvailable > 0,
+      );
+      if (matchingStock) {
+        await stockControlApiClient.allocateStock(jobCardId, {
+          stockItemId: matchingStock.stockItemId,
+          quantityUsed: 1,
+          notes: `Rubber ply ${plyIdx + 1} allocation (${allocatingWidthMm}mm x ${allocatingLengthM}m)`,
+        });
+      }
       setPlyAllocations((prev) => ({
         ...prev,
         [plyIdx]: {
-          stockItemId: allocatingRollId,
-          name: item?.name ?? `Roll #${allocatingRollId}`,
+          widthMm: allocatingWidthMm,
+          lengthM: allocatingLengthM,
+          inStock: !!matchingStock,
         },
       }));
       setAllocatingPly(null);
-      setAllocatingRollId(0);
+      setAllocatingWidthMm(STANDARD_ROLL_WIDTH_MM);
+      setAllocatingLengthM(STANDARD_ROLL_LENGTH_M);
     } finally {
       setAllocatingSaving(false);
     }
@@ -922,15 +938,17 @@ function RubberSOHPanel({
                   <span>{totalAvailable} available</span>
                   <StockAvailabilityBadge status={status} />
                   {allocated ? (
-                    <span className="text-xs text-green-700 font-medium truncate max-w-[160px]">
-                      {allocated.name}
+                    <span className="text-xs text-green-700 font-medium truncate max-w-[200px]">
+                      {allocated.widthMm}mm x {allocated.lengthM}m
+                      {allocated.inStock ? " (in stock)" : " (to order)"}
                     </span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => {
                         setAllocatingPly(allocatingPly === idx ? null : idx);
-                        setAllocatingRollId(0);
+                        setAllocatingWidthMm(STANDARD_ROLL_WIDTH_MM);
+                        setAllocatingLengthM(STANDARD_ROLL_LENGTH_M);
                       }}
                       className="text-xs px-2 py-1 rounded bg-teal-600 text-white hover:bg-teal-700"
                     >
@@ -940,24 +958,54 @@ function RubberSOHPanel({
                 </div>
                 {allocatingPly === idx && (
                   <div className="px-2 pb-2 pt-1 border-t border-gray-100 flex items-center gap-2">
+                    <label className="text-xs text-gray-500">Width:</label>
                     <select
-                      value={allocatingRollId}
-                      onChange={(e) => setAllocatingRollId(parseInt(e.target.value, 10) || 0)}
-                      className="flex-1 text-xs rounded border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                      value={allocatingWidthMm}
+                      onChange={(e) => setAllocatingWidthMm(Number(e.target.value))}
+                      className="text-xs rounded border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
                     >
-                      <option value={0}>Select a roll...</option>
-                      {matchingStock
-                        .filter((s) => s.quantityAvailable > 0)
-                        .map((s) => (
-                          <option key={s.stockItemId} value={s.stockItemId}>
-                            {s.name} ({s.widthMm}mm x {s.lengthM}m) — Qty: {s.quantityAvailable}
+                      {ROLL_WIDTH_OPTIONS_MM.map((w) => {
+                        const inStock = matchingStock.some(
+                          (s) => s.widthMm === w && s.quantityAvailable > 0,
+                        );
+                        return (
+                          <option key={w} value={w}>
+                            {w}mm{inStock ? " *" : ""}
                           </option>
-                        ))}
+                        );
+                      })}
                     </select>
+                    <label className="text-xs text-gray-500">Length:</label>
+                    <select
+                      value={allocatingLengthM}
+                      onChange={(e) => setAllocatingLengthM(Number(e.target.value))}
+                      className="text-xs rounded border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                    >
+                      {ROLL_LENGTH_OPTIONS_M.map((l) => {
+                        const inStock = matchingStock.some(
+                          (s) => s.lengthM === l && s.quantityAvailable > 0,
+                        );
+                        return (
+                          <option key={l} value={l}>
+                            {l}m{inStock ? " *" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {matchingStock.some(
+                      (s) =>
+                        s.widthMm === allocatingWidthMm &&
+                        s.lengthM === allocatingLengthM &&
+                        s.quantityAvailable > 0,
+                    ) ? (
+                      <span className="text-xs text-green-600 font-medium">In Stock</span>
+                    ) : (
+                      <span className="text-xs text-orange-600 font-medium">To Order</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleAllocateRoll(idx)}
-                      disabled={allocatingSaving || !allocatingRollId}
+                      disabled={allocatingSaving}
                       className="text-xs px-3 py-1.5 rounded bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
                     >
                       {allocatingSaving ? "..." : "Confirm"}
@@ -966,7 +1014,8 @@ function RubberSOHPanel({
                       type="button"
                       onClick={() => {
                         setAllocatingPly(null);
-                        setAllocatingRollId(0);
+                        setAllocatingWidthMm(STANDARD_ROLL_WIDTH_MM);
+                        setAllocatingLengthM(STANDARD_ROLL_LENGTH_M);
                       }}
                       className="text-xs px-2 py-1.5 rounded text-gray-500 hover:text-gray-700"
                     >

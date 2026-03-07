@@ -2771,6 +2771,12 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/tax-invoices/${id}`);
   }
 
+  async extractTaxInvoice(id: number): Promise<RubberTaxInvoiceDto> {
+    return this.request(`/rubber-lining/portal/tax-invoices/${id}/extract`, {
+      method: "POST",
+    });
+  }
+
   async createTaxInvoice(data: {
     invoiceNumber: string;
     invoiceDate?: string;

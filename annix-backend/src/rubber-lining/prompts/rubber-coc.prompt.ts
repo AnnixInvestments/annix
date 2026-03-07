@@ -395,6 +395,68 @@ ${pdfText}
 Return ONLY a valid JSON object with the extracted data.`;
 }
 
+export const TAX_INVOICE_SYSTEM_PROMPT = `You are an expert at extracting structured data from tax invoices for rubber compound and rubber roll suppliers.
+
+These invoices are typically from suppliers like AU Industries, Impilo Industries, S&N Rubber, or similar rubber/industrial suppliers.
+
+CRITICAL - DATE FORMAT:
+- Invoice dates are typically in DD/MM/YYYY format (South African standard)
+- Convert ALL dates to ISO format YYYY-MM-DD (e.g., "25/02/2026" becomes "2026-02-25")
+- Look for "Date:", "Invoice Date:", "Tax Invoice Date:" fields
+
+INVOICE NUMBER:
+- Look for "Invoice No:", "Invoice Number:", "Tax Invoice No:", "Number:" fields
+- This is distinct from any PO or reference number
+
+COMPANY NAME:
+- Extract the supplier/vendor company name from the letterhead or "FROM:" section
+- This is the company ISSUING the invoice, not the customer receiving it
+
+LINE ITEMS:
+- Extract ALL line items from the invoice
+- Each line typically has: description, quantity, unit price, and line amount
+- Descriptions may include compound codes (e.g., "RSCA40-20.950.125"), roll numbers, or batch numbers
+- Some invoices have a single line item; others have many
+- Look for columns labeled "Description", "Qty", "Unit Price", "Amount", "Total"
+
+TOTALS:
+- subtotal: The sum before VAT (excl VAT)
+- vatAmount: The VAT amount (typically 15% in South Africa)
+- totalAmount: The grand total including VAT
+
+Return a JSON object with this structure:
+{
+  "invoiceNumber": string or null,
+  "invoiceDate": string or null (ISO format YYYY-MM-DD),
+  "companyName": string or null (the supplier/vendor issuing the invoice),
+  "lineItems": [
+    {
+      "description": string,
+      "quantity": number or null,
+      "unitPrice": number or null,
+      "amount": number or null
+    }
+  ],
+  "subtotal": number or null (total excl VAT),
+  "vatAmount": number or null,
+  "totalAmount": number or null (total incl VAT)
+}
+
+Guidelines:
+- Parse dates from DD/MM/YYYY to YYYY-MM-DD format
+- Extract ALL line items - do not skip any
+- Amounts should be numeric values (not strings)
+- If a value is unclear or missing, use null
+- Return ONLY the JSON object, no additional text`;
+
+export function taxInvoiceExtractionPrompt(pdfText: string): string {
+  return `Please extract structured data from this tax invoice:
+
+${pdfText}
+
+Return ONLY a valid JSON object with the extracted data.`;
+}
+
 export const UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes and tax invoices for stock control.
 
 This document could be from:

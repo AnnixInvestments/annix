@@ -389,6 +389,26 @@ export class RubberInboundEmailService {
           );
           result.taxInvoiceIds.push(invoice.id);
           this.logger.log(`Created Tax Invoice ${invoice.id} from email attachment`);
+
+          try {
+            const pdfText = await this.extractTextFromPdf(attachment.content);
+            if (pdfText.length >= 50) {
+              const extractionResult =
+                await this.cocExtractionService.extractTaxInvoice(pdfText);
+              await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
+              this.logger.log(
+                `Auto-extracted Tax Invoice ${invoice.id} in ${extractionResult.processingTimeMs}ms`,
+              );
+            } else {
+              this.logger.warn(
+                `Tax Invoice ${invoice.id} PDF text too short for extraction (${pdfText.length} chars)`,
+              );
+            }
+          } catch (extractionError) {
+            this.logger.error(
+              `Failed to auto-extract Tax Invoice ${invoice.id}: ${extractionError.message}`,
+            );
+          }
         } else {
           const generatedDnNumber = `DN-${Date.now()}`;
           const dn = await this.deliveryNoteService.createDeliveryNote(

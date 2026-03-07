@@ -2768,6 +2768,52 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/tax-invoices/:id/extract")
+  @ApiOperation({ summary: "Extract data from tax invoice PDF using AI" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async extractTaxInvoice(@Param("id") id: string): Promise<RubberTaxInvoiceDto> {
+    const invoice = await this.rubberTaxInvoiceService.taxInvoiceById(Number(id));
+    if (!invoice) throw new NotFoundException("Tax invoice not found");
+
+    if (!invoice.documentPath) {
+      throw new NotFoundException("Tax invoice has no document attached");
+    }
+
+    const isAvailable = await this.rubberCocExtractionService.isAvailable();
+    if (!isAvailable) {
+      throw new NotFoundException(
+        "AI extraction service not available - GEMINI_API_KEY not configured",
+      );
+    }
+
+    const pdfBuffer = await this.storageService.download(invoice.documentPath);
+    let pdfText = "";
+    try {
+      const pdfData = await pdfParse(pdfBuffer);
+      pdfText = pdfData.text || "";
+    } catch {
+      pdfText = "";
+    }
+
+    if (pdfText.length < 50) {
+      throw new NotFoundException(
+        "PDF appears to be scanned/image-based. Extraction requires text-based PDFs.",
+      );
+    }
+
+    const extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(pdfText);
+
+    const updated = await this.rubberTaxInvoiceService.setExtractedData(
+      Number(id),
+      extractionResult.data,
+    );
+    if (!updated) throw new NotFoundException("Failed to update tax invoice");
+
+    return updated;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/tax-invoices/:id")
   @ApiOperation({ summary: "Get tax invoice by ID" })
   @ApiParam({ name: "id", description: "Tax invoice ID" })

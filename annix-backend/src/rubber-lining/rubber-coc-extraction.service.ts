@@ -8,16 +8,19 @@ import {
   ExtractedDeliveryNoteData,
 } from "./entities/rubber-delivery-note.entity";
 import { ExtractedCocData, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
+import { ExtractedTaxInvoiceData } from "./entities/rubber-tax-invoice.entity";
 import {
   CALENDARER_COC_SYSTEM_PROMPT,
   COMPOUNDER_COC_SYSTEM_PROMPT,
   CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
   CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
+  TAX_INVOICE_SYSTEM_PROMPT,
   calendererCocExtractionPrompt,
   compounderCocExtractionPrompt,
   customerDeliveryNoteExtractionPrompt,
   DELIVERY_NOTE_SYSTEM_PROMPT,
   deliveryNoteExtractionPrompt,
+  taxInvoiceExtractionPrompt,
   UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT,
 } from "./prompts/rubber-coc.prompt";
 
@@ -371,6 +374,34 @@ export class RubberCocExtractionService {
     return {
       data: firstNote as ExtractedCustomerDeliveryNoteData,
       deliveryNotes,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
+  async extractTaxInvoice(pdfText: string): Promise<{
+    data: ExtractedTaxInvoiceData;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = Date.now();
+    this.logger.log("Extracting tax invoice data...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const response = await this.callGemini(
+      TAX_INVOICE_SYSTEM_PROMPT,
+      taxInvoiceExtractionPrompt(pdfText),
+      "tax-invoice-extraction",
+    );
+
+    const processingTimeMs = Date.now() - startTime;
+    this.logger.log(`Tax invoice extracted in ${processingTimeMs}ms`);
+
+    return {
+      data: response.data as unknown as ExtractedTaxInvoiceData,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };

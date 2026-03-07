@@ -1,9 +1,10 @@
 "use client";
 
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, RefreshCw } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
   type RubberTaxInvoiceDto,
@@ -14,36 +15,53 @@ import {
 export default function TaxInvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { showToast } = useToast();
   const [invoice, setInvoice] = useState<RubberTaxInvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const invoiceId = Number(params.id);
 
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await auRubberApiClient.taxInvoiceById(invoiceId);
+      setInvoice(data);
+
+      if (data.documentPath) {
+        const url = await auRubberApiClient.documentUrl(data.documentPath);
+        setPdfUrl(url);
+      }
+
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load invoice"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (invoiceId) {
-      const loadData = async () => {
-        try {
-          setIsLoading(true);
-          const data = await auRubberApiClient.taxInvoiceById(invoiceId);
-          setInvoice(data);
-
-          if (data.documentPath) {
-            const url = await auRubberApiClient.documentUrl(data.documentPath);
-            setPdfUrl(url);
-          }
-
-          setError(null);
-        } catch (err) {
-          setError(err instanceof Error ? err : new Error("Failed to load invoice"));
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      loadData();
+      fetchData();
     }
   }, [invoiceId]);
+
+  const handleExtract = async () => {
+    try {
+      setIsExtracting(true);
+      const updated = await auRubberApiClient.extractTaxInvoice(invoiceId);
+      setInvoice(updated);
+      showToast("Data extracted successfully", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Extraction failed";
+      showToast(message, "error");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   const statusBadge = (status: TaxInvoiceStatus) => {
     const colors: Record<TaxInvoiceStatus, string> = {
@@ -141,6 +159,18 @@ export default function TaxInvoiceDetailPage() {
             )}
           </div>
         </div>
+        <button
+          onClick={handleExtract}
+          disabled={isExtracting || !invoice.documentPath}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isExtracting ? "animate-spin" : ""}`} />
+          {isExtracting
+            ? "Extracting..."
+            : invoice.status === "PENDING"
+              ? "Extract Data"
+              : "Re-extract"}
+        </button>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
