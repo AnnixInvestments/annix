@@ -1,6 +1,7 @@
 "use client";
 
 import { FileText, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
@@ -379,20 +380,12 @@ export default function CustomerTaxInvoicesPage() {
               {paginatedInvoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      type="button"
+                    <Link
+                      href={`/au-rubber/portal/tax-invoices/${inv.id}`}
                       className="text-orange-600 font-medium hover:text-orange-800 hover:underline"
-                      onClick={async () => {
-                        if (inv.documentPath) {
-                          const url = await auRubberApiClient.documentUrl(inv.documentPath);
-                          window.open(url, "_blank");
-                        } else {
-                          showToast("No document attached to this invoice", "error");
-                        }
-                      }}
                     >
                       {inv.invoiceNumber}
-                    </button>
+                    </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {inv.companyName || "-"}
