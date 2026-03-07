@@ -277,10 +277,8 @@ function CuttingDiagram({
   const rollWidthMm = roll.rollSpec.widthMm;
   const bands = roll.bands;
   const totalBandHeight = bands.reduce((sum, b) => sum + b.heightMm, 0);
-  const diagramHeight = Math.max(
-    48,
-    bands.reduce((sum, b) => sum + Math.max(16, b.lanes * 16), 0),
-  );
+  const contentHeight = bands.reduce((sum, b) => sum + Math.max(16, b.lanes * 16), 0);
+  const diagramHeight = Math.max(48, contentHeight);
 
   const cutsByBand = bands.map((band) => roll.cuts.filter((c) => c.band === band.bandIndex));
 
@@ -317,7 +315,8 @@ function CuttingDiagram({
         {bands.map((band, bandIdx) => {
           const bandLeftPct = (band.startMm / rollLengthMm) * 100;
           const bandWidthPct = (band.heightMm / rollLengthMm) * 100;
-          const bandHeightPx = Math.max(16, band.lanes * 16);
+          const naturalHeight = Math.max(16, band.lanes * 16);
+          const bandHeightPx = bands.length === 1 ? diagramHeight : naturalHeight;
           const bandTopPx = bands
             .slice(0, bandIdx)
             .reduce((sum, b) => sum + Math.max(16, b.lanes * 16), 0);
@@ -443,7 +442,13 @@ function CuttingDiagram({
   );
 }
 
-function PipeCuttingView({ plan }: { plan: CuttingPlan }) {
+function PipeCuttingView({
+  plan,
+  fallbackThicknessMm,
+}: {
+  plan: CuttingPlan;
+  fallbackThicknessMm?: number;
+}) {
   const colorMap = new Map<string, string>();
   let colorIdx = 0;
 
@@ -494,7 +499,7 @@ function PipeCuttingView({ plan }: { plan: CuttingPlan }) {
             roll={group.representativeRoll}
             colorMap={colorMap}
             groupCount={group.count}
-            thicknessMm={plan.totalThicknessMm || undefined}
+            thicknessMm={plan.totalThicknessMm || fallbackThicknessMm || undefined}
           />
         ))}
       </div>
@@ -1145,7 +1150,10 @@ function RubberAllocationSection({
         )}
 
         {plan.hasPipeItems ? (
-          <PipeCuttingView plan={plan} />
+          <PipeCuttingView
+            plan={plan}
+            fallbackThicknessMm={stockOptions?.rubberSpec?.thicknessMm}
+          />
         ) : (
           <GenericM2View totalM2={plan.genericM2Total} items={plan.genericM2Items} />
         )}

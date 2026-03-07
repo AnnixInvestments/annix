@@ -17,6 +17,7 @@ import { StockItem } from "../entities/stock-item.entity";
 import {
   type CuttingPlan,
   calculateCuttingPlan,
+  parseRubberSpecNote,
   type RollAllocation,
 } from "../lib/rubberCuttingCalculator";
 
@@ -393,6 +394,14 @@ export class JobCardPdfService {
 
     const plan = calculateCuttingPlan(calcItems, stockRolls.length > 0 ? stockQuery : null);
 
+    if (!plan.rubberSpec && jobCard.notes) {
+      const specFromNotes = parseRubberSpecNote(jobCard.notes);
+      if (specFromNotes) {
+        plan.rubberSpec = specFromNotes;
+        plan.totalThicknessMm = specFromNotes.thicknessMm;
+      }
+    }
+
     this.logger.log(
       `Rubber PDF for JC ${jobCard.id}: hasPipeItems=${plan.hasPipeItems}, ` +
         `rolls=${plan.rolls.length}, totalUsed=${plan.totalUsedSqM.toFixed(2)}m²`,
@@ -725,7 +734,8 @@ export class JobCardPdfService {
 
     let bandTopPx = 0;
     bands.forEach((band, bandIdx) => {
-      const bandHeightPx = Math.max(12, band.lanes * 12);
+      const naturalHeight = Math.max(12, band.lanes * 12);
+      const bandHeightPx = bands.length === 1 ? rollRectHeight : naturalHeight;
       const laneHeightPx = bandHeightPx / band.lanes;
       const bandLeftX = leftMargin + band.startMm * scale;
       const bandWidthPx = band.heightMm * scale;
