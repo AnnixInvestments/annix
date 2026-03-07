@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Eye, FileText, LineChart, RefreshCw, Trash2, X } from "lucide-react";
+import { CheckCircle, FileText, LineChart, RefreshCw, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
@@ -582,7 +582,7 @@ export default function SupplierCocsPage() {
                       className="text-yellow-600 hover:text-yellow-800 inline-flex items-center"
                       title="View CoC"
                     >
-                      <Eye className="w-4 h-4" />
+                      <FileText className="w-4 h-4" />
                     </Link>
                     <button
                       onClick={() => handleReextract(coc.id)}
