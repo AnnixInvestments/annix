@@ -82,6 +82,15 @@ export class StockControlCompany {
   @Column({ name: "smtp_from_email", type: "varchar", length: 255, nullable: true })
   smtpFromEmail: string | null;
 
+  @Column({ name: "piping_loss_factor_pct", type: "int", default: 45 })
+  pipingLossFactorPct: number;
+
+  @Column({ name: "flat_plate_loss_factor_pct", type: "int", default: 20 })
+  flatPlateLossFactorPct: number;
+
+  @Column({ name: "structural_steel_loss_factor_pct", type: "int", default: 30 })
+  structuralSteelLossFactorPct: number;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

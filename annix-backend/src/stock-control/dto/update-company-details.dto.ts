@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsEmail, IsInt, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 
 export class UpdateCompanyDetailsDto {
   @IsOptional()
@@ -50,4 +50,22 @@ export class UpdateCompanyDetailsDto {
   @IsString()
   @MaxLength(500)
   websiteUrl?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  pipingLossFactorPct?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  flatPlateLossFactorPct?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  structuralSteelLossFactorPct?: number;
 }

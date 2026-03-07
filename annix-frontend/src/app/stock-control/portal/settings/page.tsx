@@ -134,6 +134,9 @@ export default function StockControlSettingsPage() {
   const [phone, setPhone] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
+  const [pipingLossFactorPct, setPipingLossFactorPct] = useState(45);
+  const [flatPlateLossFactorPct, setFlatPlateLossFactorPct] = useState(20);
+  const [structuralSteelLossFactorPct, setStructuralSteelLossFactorPct] = useState(30);
   const [detailsSaving, setDetailsSaving] = useState(false);
   const [detailsSuccess, setDetailsSuccess] = useState(false);
   const [detailsError, setDetailsError] = useState("");
@@ -292,6 +295,16 @@ export default function StockControlSettingsPage() {
       setCompanyWebsite(profile.websiteUrl);
     }
 
+    if (profile?.pipingLossFactorPct !== undefined) {
+      setPipingLossFactorPct(profile.pipingLossFactorPct);
+    }
+    if (profile?.flatPlateLossFactorPct !== undefined) {
+      setFlatPlateLossFactorPct(profile.flatPlateLossFactorPct);
+    }
+    if (profile?.structuralSteelLossFactorPct !== undefined) {
+      setStructuralSteelLossFactorPct(profile.structuralSteelLossFactorPct);
+    }
+
     if (profile?.brandingType) {
       setBrandingSelection(profile.brandingType as BrandingSelection);
     }
@@ -348,6 +361,9 @@ export default function StockControlSettingsPage() {
         phone: phone.trim() || undefined,
         email: companyEmail.trim() || undefined,
         websiteUrl: companyWebsite.trim() || undefined,
+        pipingLossFactorPct,
+        flatPlateLossFactorPct,
+        structuralSteelLossFactorPct,
       });
       setDetailsSuccess(true);
       await refreshProfile();
@@ -919,6 +935,82 @@ export default function StockControlSettingsPage() {
         >
           {detailsSaving ? "Saving..." : "Save Company Details"}
         </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Coating Loss Factors</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Paint loss factors account for material lost during application due to surface geometry, overspray, and
+          wastage. Higher loss means more paint is needed per m². These values are used in coating analysis calculations.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="pipingLoss" className="block text-sm font-medium text-gray-700">
+              Piping Loss Factor
+            </label>
+            <p className="text-xs text-gray-400 mb-1">Typical range: 30 &ndash; 50%</p>
+            <div className="flex items-center">
+              <input
+                id="pipingLoss"
+                type="number"
+                min={0}
+                max={100}
+                value={pipingLossFactorPct}
+                onChange={(e) => {
+                  setPipingLossFactorPct(Number(e.target.value));
+                  setDetailsSuccess(false);
+                }}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              />
+              <span className="ml-2 text-sm text-gray-500">%</span>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="flatPlateLoss" className="block text-sm font-medium text-gray-700">
+              Flat Plate Loss Factor (Tanks &amp; Chutes)
+            </label>
+            <p className="text-xs text-gray-400 mb-1">Typical range: 15 &ndash; 25%</p>
+            <div className="flex items-center">
+              <input
+                id="flatPlateLoss"
+                type="number"
+                min={0}
+                max={100}
+                value={flatPlateLossFactorPct}
+                onChange={(e) => {
+                  setFlatPlateLossFactorPct(Number(e.target.value));
+                  setDetailsSuccess(false);
+                }}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              />
+              <span className="ml-2 text-sm text-gray-500">%</span>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="structuralSteelLoss" className="block text-sm font-medium text-gray-700">
+              Structural Steel Loss Factor
+            </label>
+            <p className="text-xs text-gray-400 mb-1">Typical range: 20 &ndash; 40%</p>
+            <div className="flex items-center">
+              <input
+                id="structuralSteelLoss"
+                type="number"
+                min={0}
+                max={100}
+                value={structuralSteelLossFactorPct}
+                onChange={(e) => {
+                  setStructuralSteelLossFactorPct(Number(e.target.value));
+                  setDetailsSuccess(false);
+                }}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+              />
+              <span className="ml-2 text-sm text-gray-500">%</span>
+            </div>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-gray-400 italic">
+          Changes are saved with the &quot;Save Company Details&quot; button above.
+        </p>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">

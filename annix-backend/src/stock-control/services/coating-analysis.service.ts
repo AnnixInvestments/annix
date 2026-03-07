@@ -14,6 +14,7 @@ import {
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
+import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { M2CalculationService } from "./m2-calculation.service";
 
 interface AiCoatResult {
@@ -81,6 +82,8 @@ export class CoatingAnalysisService {
     private readonly lineItemRepo: Repository<JobCardLineItem>,
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
+    @InjectRepository(StockControlCompany)
+    private readonly companyRepo: Repository<StockControlCompany>,
     private readonly aiChatService: AiChatService,
     private readonly m2CalculationService: M2CalculationService,
   ) {}
@@ -204,9 +207,10 @@ export class CoatingAnalysisService {
         analysis.intM2 = lineItemTotalM2;
       }
 
+      const retentionFactor = await this.lossFactorForCompany(companyId);
       const coats = aiResult.coats.map((coat) => {
         const m2ForCoat = coat.area === "internal" ? analysis.intM2 : analysis.extM2;
-        return this.calculateCoatVolume(coat, m2ForCoat);
+        return this.calculateCoatVolume(coat, m2ForCoat, retentionFactor);
       });
       analysis.coats = coats;
 
@@ -254,9 +258,10 @@ export class CoatingAnalysisService {
     analysis.extM2 = extM2;
     analysis.intM2 = intM2;
 
+    const retentionFactor = await this.lossFactorForCompany(companyId);
     const coats = (analysis.coats || []).map((coat) => {
       const m2ForCoat = coat.area === "internal" ? intM2 : extM2;
-      return this.calculateCoatVolume(coat, m2ForCoat);
+      return this.calculateCoatVolume(coat, m2ForCoat, retentionFactor);
     });
     analysis.coats = coats;
 
@@ -337,6 +342,7 @@ export class CoatingAnalysisService {
     const parsed = JSON.parse(jsonMatch[0]);
     const tdsProducts: { product: string; volumeSolidsPercent: number }[] = parsed.products || [];
 
+    const retentionFactor = await this.lossFactorForCompany(companyId);
     const updatedCoats = analysis.coats.map((coat) => {
       if (coat.verified) {
         return coat;
@@ -354,7 +360,7 @@ export class CoatingAnalysisService {
 
       const midDftUm = (coat.minDftUm + coat.maxDftUm) / 2;
       const volumeSolids = tdsMatch.volumeSolidsPercent;
-      const pipingLossFactor = 0.55;
+      const pipingLossFactor = retentionFactor;
       const coverageM2PerLiter =
         midDftUm > 0 ? ((volumeSolids * 10) / midDftUm) * pipingLossFactor : 0;
       const m2ForCoat = coat.area === "internal" ? analysis.intM2 : analysis.extM2;
@@ -474,7 +480,13 @@ export class CoatingAnalysisService {
     };
   }
 
-  private calculateCoatVolume(coat: AiCoatResult, totalM2: number): CoatDetail {
+  private async lossFactorForCompany(companyId: number): Promise<number> {
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const lossPct = company?.pipingLossFactorPct ?? 45;
+    return (100 - lossPct) / 100;
+  }
+
+  private calculateCoatVolume(coat: AiCoatResult, totalM2: number, retentionFactor: number): CoatDetail {
     const midDftUm = (coat.minDftUm + coat.maxDftUm) / 2;
     const knownProduct = lookupCoatingProduct(coat.product);
     const volumeSolids = knownProduct
@@ -492,7 +504,7 @@ export class CoatingAnalysisService {
       );
     }
 
-    const pipingLossFactor = 0.55;
+    const pipingLossFactor = retentionFactor;
     const coverageM2PerLiter =
       midDftUm > 0 ? ((volumeSolids * 10) / midDftUm) * pipingLossFactor : 0;
     const litersRequired =

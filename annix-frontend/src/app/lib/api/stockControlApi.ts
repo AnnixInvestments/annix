@@ -39,6 +39,9 @@ export interface StockControlUserProfile {
   phone: string | null;
   companyEmail: string | null;
   websiteUrl: string | null;
+  pipingLossFactorPct: number;
+  flatPlateLossFactorPct: number;
+  structuralSteelLossFactorPct: number;
   createdAt: string;
   companyUpdatedAt: string | null;
 }
@@ -54,6 +57,9 @@ export interface CompanyDetailsUpdate {
   phone?: string;
   email?: string;
   websiteUrl?: string;
+  pipingLossFactorPct?: number;
+  flatPlateLossFactorPct?: number;
+  structuralSteelLossFactorPct?: number;
 }
 
 export interface SmtpConfigResponse {

@@ -873,7 +873,7 @@ function RubberSOHPanel({
     setManualRolls([]);
   };
 
-  if (!stockOptions.rubberSpec && stockOptions.plyCombinations.length === 0) {
+  if (!stockOptions.rubberSpec && stockOptions.plyCombinations.length === 0 && !plan.hasPipeItems) {
     return null;
   }
 
@@ -1218,7 +1218,7 @@ function RubberAllocationSection({
 export default function JobCardDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useStockControlAuth();
+  const { user, profile } = useStockControlAuth();
   const jobId = Number(params.id);
 
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
@@ -2075,7 +2075,7 @@ export default function JobCardDetailPage() {
                   </tbody>
                 </table>
                 <p className="mt-2 text-xs text-gray-400 italic">
-                  Coverage includes 55% piping loss factor
+                  Coverage includes {profile?.pipingLossFactorPct ?? 45}% piping loss factor
                 </p>
                 {coatingAnalysis.stockAssessment.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-gray-100">

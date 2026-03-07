@@ -307,6 +307,9 @@ export class StockControlAuthService {
       phone: user.company?.phone ?? null,
       companyEmail: user.company?.email ?? null,
       websiteUrl: user.company?.websiteUrl ?? null,
+      pipingLossFactorPct: user.company?.pipingLossFactorPct ?? 45,
+      flatPlateLossFactorPct: user.company?.flatPlateLossFactorPct ?? 20,
+      structuralSteelLossFactorPct: user.company?.structuralSteelLossFactorPct ?? 30,
       createdAt: user.createdAt,
       companyUpdatedAt: user.company?.updatedAt ?? null,
     };
@@ -389,6 +392,11 @@ export class StockControlAuthService {
     if (dto.phone !== undefined) company.phone = dto.phone;
     if (dto.email !== undefined) company.email = dto.email;
     if (dto.websiteUrl !== undefined) company.websiteUrl = dto.websiteUrl;
+    if (dto.pipingLossFactorPct !== undefined) company.pipingLossFactorPct = dto.pipingLossFactorPct;
+    if (dto.flatPlateLossFactorPct !== undefined)
+      company.flatPlateLossFactorPct = dto.flatPlateLossFactorPct;
+    if (dto.structuralSteelLossFactorPct !== undefined)
+      company.structuralSteelLossFactorPct = dto.structuralSteelLossFactorPct;
 
     await this.companyRepo.save(company);
 
