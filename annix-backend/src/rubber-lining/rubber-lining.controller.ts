@@ -148,6 +148,7 @@ import { RubberOtherStockService } from "./rubber-other-stock.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
+import { RubberSageCocAdapterService } from "./rubber-sage-coc-adapter.service";
 import { RubberSageInvoiceAdapterService } from "./rubber-sage-invoice-adapter.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService, StockLocationDto } from "./rubber-stock-location.service";
@@ -180,6 +181,7 @@ export class RubberLiningController {
     private readonly rubberCocExtractionService: RubberCocExtractionService,
     private readonly rubberTaxInvoiceService: RubberTaxInvoiceService,
     private readonly rubberSageAdapterService: RubberSageInvoiceAdapterService,
+    private readonly rubberSageCocAdapterService: RubberSageCocAdapterService,
     private readonly sageExportService: SageExportService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
@@ -1357,6 +1359,58 @@ Formula: totalPrice = totalKg × salePricePerKg
       processingStatus,
       supplierCompanyId: supplierCompanyId ? Number(supplierCompanyId) : undefined,
     });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/supplier-cocs/export/sage-preview")
+  @ApiOperation({ summary: "Preview CoC Sage CSV export" })
+  @ApiQuery({ name: "dateFrom", required: false })
+  @ApiQuery({ name: "dateTo", required: false })
+  @ApiQuery({ name: "excludeExported", required: false })
+  async cocSageExportPreview(
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string,
+    @Query("excludeExported") excludeExported?: string,
+  ): Promise<{ cocCount: number; batchCount: number; totalBatches: number }> {
+    return this.rubberSageCocAdapterService.previewCount({
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      excludeExported: excludeExported !== "false",
+    });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/supplier-cocs/export/sage-csv")
+  @ApiOperation({ summary: "Download CoC Sage CSV export" })
+  @ApiQuery({ name: "dateFrom", required: false })
+  @ApiQuery({ name: "dateTo", required: false })
+  @ApiQuery({ name: "excludeExported", required: false })
+  async cocSageExportCsv(
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string,
+    @Query("excludeExported") excludeExported?: string,
+    @Res() res?: Response,
+  ): Promise<void> {
+    const filters: SageExportFilterDto = {
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      excludeExported: excludeExported !== "false",
+    };
+
+    const { invoices, cocIds } =
+      await this.rubberSageCocAdapterService.exportableCocs(filters);
+    const csvBuffer = this.sageExportService.generateCsv(invoices);
+
+    await this.rubberSageCocAdapterService.markExported(cocIds);
+
+    res!.set({
+      "Content-Type": "text/csv",
+      "Content-Disposition": "attachment; filename=sage-coc-export.csv",
+      "Content-Length": csvBuffer.length,
+    });
+    res!.send(csvBuffer);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

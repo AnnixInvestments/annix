@@ -138,6 +138,9 @@ export class RubberSupplierCoc {
   @Column({ name: "linked_delivery_note_id", type: "int", nullable: true })
   linkedDeliveryNoteId: number | null;
 
+  @Column({ name: "exported_to_sage_at", type: "timestamp", nullable: true })
+  exportedToSageAt: Date | null;
+
   @Column({ name: "created_by", type: "varchar", length: 100, nullable: true })
   createdBy: string | null;
 

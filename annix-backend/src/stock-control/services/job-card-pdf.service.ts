@@ -600,7 +600,7 @@ export class JobCardPdfService {
             group.roll,
             y,
             group.count,
-            plan.totalThicknessMm || undefined,
+            group.roll.plyThicknessMm || plan.totalThicknessMm || undefined,
           );
         });
       }
@@ -645,10 +645,7 @@ export class JobCardPdfService {
   }
 
   private cuttingDiagramHeight(roll: RollAllocation): number {
-    const rollRectHeight = Math.max(
-      60,
-      roll.bands.reduce((sum, b) => sum + Math.max(12, b.lanes * 12), 0),
-    );
+    const rollRectHeight = 48;
     const headerHeight = 15;
     const cutListHeight = roll.cuts.length * 10 + 5;
     const offcutHeight = roll.offcuts.length > 0 ? roll.offcuts.length * 8 + 10 : 0;
@@ -700,10 +697,7 @@ export class JobCardPdfService {
     const leftMargin = 50;
     const diagramWidth = 495;
     const bands = roll.bands;
-    const rollRectHeight = Math.max(
-      60,
-      bands.reduce((sum, b) => sum + Math.max(12, b.lanes * 12), 0),
-    );
+    const rollRectHeight = 48;
     const rollLengthMm = roll.rollSpec.lengthM * 1000;
     const scale = diagramWidth / rollLengthMm;
     const totalBandHeight = bands.reduce((sum, b) => sum + b.heightMm, 0);
@@ -731,80 +725,45 @@ export class JobCardPdfService {
     const colorMap = new Map<string, string>();
     let colorIdx = 0;
 
-    let bandTopPx = 0;
-    bands.forEach((band, bandIdx) => {
-      const naturalHeight = Math.max(12, band.lanes * 12);
-      const bandHeightPx = bands.length === 1 ? rollRectHeight : naturalHeight;
-      const laneHeightPx = bandHeightPx / band.lanes;
-      const bandLeftX = leftMargin + band.startMm * scale;
-      const bandWidthPx = band.heightMm * scale;
+    roll.cuts.forEach((cut) => {
+      if (!colorMap.has(cut.itemId)) {
+        colorMap.set(cut.itemId, COLORS[colorIdx % COLORS.length]);
+        colorIdx++;
+      }
 
-      if (bandIdx > 0) {
+      const band = bands.find((b) => b.bandIndex === cut.band);
+      const totalLanes = band ? band.lanes : 1;
+      const laneHeightPx = rollRectHeight / totalLanes;
+
+      const color = colorMap.get(cut.itemId) || COLORS[0];
+      const cx = leftMargin + cut.positionMm * scale;
+      const cy = y + cut.lane * laneHeightPx;
+      const isFullRoll = cut.lengthMm / rollLengthMm >= 0.95;
+      const cw = isFullRoll ? diagramWidth - cut.positionMm * scale : cut.lengthMm * scale;
+      const ch = laneHeightPx;
+      const rolls = cut.stripsPerPiece ?? 1;
+
+      doc.save();
+      doc.rect(cx + 0.5, cy + 0.5, Math.max(cw - 1, 1), Math.max(ch - 1, 1));
+      doc.fillColor(color).fillOpacity(0.6).fill();
+      doc.restore();
+
+      if (cw > 20) {
+        const label = rolls > 1 ? `${rolls} rolls` : cut.itemNo || cut.itemId;
         doc
           .save()
-          .dash(4, { space: 2 })
-          .strokeColor("#8B5CF6")
-          .lineWidth(0.8)
-          .moveTo(leftMargin, y + bandTopPx)
-          .lineTo(leftMargin + diagramWidth, y + bandTopPx)
-          .stroke()
+          .fontSize(5)
+          .font("Helvetica-Bold")
+          .fillColor("#000000")
+          .fillOpacity(1)
+          .text(label, cx + 2, cy + ch / 2 - 3, {
+            width: cw - 4,
+            height: ch,
+            ellipsis: true,
+            align: rolls > 1 ? "center" : "left",
+          })
           .restore();
       }
-
-      if (band.lanes > 1) {
-        Array.from({ length: band.lanes - 1 }, (_, i) => i + 1).forEach((i) => {
-          const laneY = y + bandTopPx + i * laneHeightPx;
-          doc
-            .save()
-            .dash(2, { space: 2 })
-            .strokeColor("#F87171")
-            .lineWidth(0.5)
-            .moveTo(bandLeftX, laneY)
-            .lineTo(bandLeftX + bandWidthPx, laneY)
-            .stroke()
-            .restore();
-        });
-      }
-
-      const bandCuts = roll.cuts.filter((c) => c.band === band.bandIndex);
-      bandCuts.forEach((cut) => {
-        if (!colorMap.has(cut.itemId)) {
-          colorMap.set(cut.itemId, COLORS[colorIdx % COLORS.length]);
-          colorIdx++;
-        }
-
-        const color = colorMap.get(cut.itemId) || COLORS[0];
-        const cx = leftMargin + cut.positionMm * scale;
-        const cy = y + bandTopPx + cut.lane * laneHeightPx;
-        const isFullRoll = cut.lengthMm / rollLengthMm >= 0.95;
-        const cw = isFullRoll ? diagramWidth - cut.positionMm * scale : cut.lengthMm * scale;
-        const ch = laneHeightPx;
-        const rolls = cut.stripsPerPiece ?? 1;
-
-        doc.save();
-        doc.rect(cx + 0.5, cy + 0.5, Math.max(cw - 1, 1), Math.max(ch - 1, 1));
-        doc.fillColor(color).fillOpacity(0.6).fill();
-        doc.restore();
-
-        if (cw > 20) {
-          const label = rolls > 1 ? `${rolls} rolls` : cut.itemNo || cut.itemId;
-          doc
-            .save()
-            .fontSize(5)
-            .font("Helvetica-Bold")
-            .fillColor("#000000")
-            .fillOpacity(1)
-            .text(label, cx + 2, cy + ch / 2 - 3, {
-              width: cw - 4,
-              height: ch,
-              ellipsis: true,
-              align: rolls > 1 ? "center" : "left",
-            })
-            .restore();
-        }
-      });
-
-      bandTopPx += bandHeightPx;
     });
 
     if (totalBandHeight < rollLengthMm * 0.95) {

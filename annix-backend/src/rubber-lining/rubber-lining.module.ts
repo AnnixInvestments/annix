@@ -62,6 +62,7 @@ import { RubberProductImportService } from "./rubber-product-import.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
+import { RubberSageCocAdapterService } from "./rubber-sage-coc-adapter.service";
 import { RubberSageInvoiceAdapterService } from "./rubber-sage-invoice-adapter.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService } from "./rubber-stock-location.service";
@@ -131,6 +132,7 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
     RubberProductImportService,
     RubberOtherStockService,
     RubberTaxInvoiceService,
+    RubberSageCocAdapterService,
     RubberSageInvoiceAdapterService,
     AuRubberAccessGuard,
   ],

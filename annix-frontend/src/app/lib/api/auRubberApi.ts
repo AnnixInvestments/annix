@@ -2833,6 +2833,42 @@ class AuRubberApiClient {
     });
   }
 
+  async cocSageExportPreview(params: {
+    dateFrom?: string;
+    dateTo?: string;
+    excludeExported?: boolean;
+  }): Promise<{ cocCount: number; batchCount: number; totalBatches: number }> {
+    const query = new URLSearchParams();
+    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params.dateTo) query.set("dateTo", params.dateTo);
+    if (params.excludeExported !== undefined) {
+      query.set("excludeExported", String(params.excludeExported));
+    }
+    return this.request(
+      `/rubber-lining/portal/supplier-cocs/export/sage-preview?${query.toString()}`,
+    );
+  }
+
+  async cocSageExportCsv(params: {
+    dateFrom?: string;
+    dateTo?: string;
+    excludeExported?: boolean;
+  }): Promise<Blob> {
+    const query = new URLSearchParams();
+    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params.dateTo) query.set("dateTo", params.dateTo);
+    if (params.excludeExported !== undefined) {
+      query.set("excludeExported", String(params.excludeExported));
+    }
+    const url = `${this.baseURL}/rubber-lining/portal/supplier-cocs/export/sage-csv?${query.toString()}`;
+    const headers = this.authHeaders();
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      throw new Error(`Failed to download CSV: ${response.statusText}`);
+    }
+    return response.blob();
+  }
+
   async sageExportPreview(params: {
     dateFrom?: string;
     dateTo?: string;
