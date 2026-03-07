@@ -256,6 +256,7 @@ export interface RollAllocation {
   hasLengthwiseCut: boolean;
   bands: BandSpec[];
   offcuts: Offcut[];
+  plyThicknessMm?: number;
 }
 
 export interface RubberSpec {
@@ -782,8 +783,14 @@ function scorePlyCombination(
   parsedItems: ParsedPipeItem[],
   stockQuery: StockQuery | null,
 ): { plies: PlyLayer[]; score: number } {
+  let rollIdx = 1;
   const plies: PlyLayer[] = combo.map((thickness) => {
-    const rolls = buildRollsForItems(parsedItems);
+    const baseRolls = buildRollsForItems(parsedItems);
+    const rolls = baseRolls.map((roll) => ({
+      ...roll,
+      rollIndex: rollIdx++,
+      plyThicknessMm: thickness,
+    }));
     return {
       thicknessMm: thickness,
       rolls,
@@ -867,8 +874,7 @@ export function calculateCuttingPlan(
     return emptyPlan;
   }
 
-  const allRolls = buildRollsForItems(parsedItems);
-  const stats = rollStats(allRolls);
+  const baseRolls = buildRollsForItems(parsedItems);
 
   const hasMultiPlyEligibleItems = parsedItems.some(isMultiPlyEligible);
   let plies: PlyLayer[] = [];
@@ -899,20 +905,22 @@ export function calculateCuttingPlan(
     plies = [
       {
         thicknessMm: rubberSpec?.thicknessMm || 0,
-        rolls: allRolls,
-        totalRollsNeeded: allRolls.length,
+        rolls: baseRolls,
+        totalRollsNeeded: baseRolls.length,
       },
     ];
   }
 
-  const allOffcuts = allRolls.flatMap((roll) => roll.offcuts);
+  const combinedRolls = plies.flatMap((ply) => ply.rolls);
+  const combinedStats = rollStats(combinedRolls);
+  const allOffcuts = combinedRolls.flatMap((roll) => roll.offcuts);
 
   return {
-    rolls: allRolls,
-    totalRollsNeeded: allRolls.length,
-    totalWasteSqM: stats.totalWasteSqM,
-    totalUsedSqM: stats.totalUsedSqM,
-    wastePercentage: stats.wastePercentage,
+    rolls: combinedRolls,
+    totalRollsNeeded: combinedRolls.length,
+    totalWasteSqM: combinedStats.totalWasteSqM,
+    totalUsedSqM: combinedStats.totalUsedSqM,
+    wastePercentage: combinedStats.wastePercentage,
     hasPipeItems: true,
     genericM2Items,
     genericM2Total,

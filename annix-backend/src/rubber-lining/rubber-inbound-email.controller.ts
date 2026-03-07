@@ -92,6 +92,7 @@ export class RubberInboundEmailController {
         success: false,
         cocIds: [],
         deliveryNoteIds: [],
+        taxInvoiceIds: [],
         errors: [error.message],
       };
     }
@@ -152,6 +153,7 @@ export class RubberInboundEmailController {
         success: false,
         cocIds: [],
         deliveryNoteIds: [],
+        taxInvoiceIds: [],
         errors: [error.message],
       };
     }

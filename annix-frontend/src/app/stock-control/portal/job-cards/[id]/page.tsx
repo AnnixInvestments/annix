@@ -288,8 +288,8 @@ function CuttingDiagram({
         <div>
           <span className="text-sm font-semibold text-gray-900">
             {groupCount && groupCount > 1
-              ? `${thicknessMm ? `${thicknessMm}mm ` : ""}${rollWidthMm}mm x ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
-              : `Roll ${roll.rollIndex}: ${thicknessMm ? `${thicknessMm}mm ` : ""}${rollWidthMm}mm x ${roll.rollSpec.lengthM}m`}
+              ? `${thicknessMm ? `${thicknessMm}mm x ` : ""}${rollWidthMm}mm x ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
+              : `Roll ${roll.rollIndex}: ${thicknessMm ? `${thicknessMm}mm x ` : ""}${rollWidthMm}mm x ${roll.rollSpec.lengthM}m`}
           </span>
           {bands.length > 1 && (
             <span className="ml-2 text-xs text-purple-600 font-medium">({bands.length} bands)</span>
@@ -498,7 +498,9 @@ function PipeCuttingView({
             key={roll.rollIndex}
             roll={roll}
             colorMap={colorMap}
-            thicknessMm={plan.totalThicknessMm || fallbackThicknessMm || undefined}
+            thicknessMm={
+              roll.plyThicknessMm || plan.totalThicknessMm || fallbackThicknessMm || undefined
+            }
           />
         ))}
       </div>

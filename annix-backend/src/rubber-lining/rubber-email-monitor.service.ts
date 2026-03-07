@@ -10,9 +10,11 @@ import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
+import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
+import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParseModule = require("pdf-parse");
@@ -31,6 +33,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
     private readonly cocService: RubberCocService,
     private readonly cocExtractionService: RubberCocExtractionService,
     private readonly deliveryNoteService: RubberDeliveryNoteService,
+    private readonly taxInvoiceService: RubberTaxInvoiceService,
     private readonly configService: ConfigService,
     private readonly aiChatService: AiChatService,
   ) {}
@@ -132,13 +135,20 @@ export class RubberEmailMonitorService implements OnModuleInit {
         return;
       }
 
-      const documentType = this.determineDocumentType(subject);
+      const storageFolder: Record<string, string> = {
+        coc: "cocs",
+        delivery_note: "delivery-notes",
+        tax_invoice: "tax-invoices",
+      };
 
       for (const attachment of pdfAttachments) {
         const messageId = parsed.messageId || `${Date.now()}-${Math.random()}`;
         const filename = attachment.filename || "attachment.pdf";
 
         const pdfText = await this.extractTextFromPdf(attachment.content);
+
+        const subjectType = this.determineDocumentType(subject);
+        const documentType = this.refineDocumentType(subjectType, pdfText);
 
         const supplierInfo = await this.identifySupplierFromDocument(
           pdfText,
@@ -169,7 +179,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
           path: "",
         };
 
-        const subPath = `au-rubber/${documentType}s/${supplierInfo.company.id}`;
+        const subPath = `au-rubber/${storageFolder[documentType]}/${supplierInfo.company.id}`;
         const storageResult = await this.storageService.upload(multerFile, subPath);
 
         if (documentType === "coc") {
@@ -218,6 +228,20 @@ export class RubberEmailMonitorService implements OnModuleInit {
 
             await this.extractAndLinkCoc(coc.id, supplierInfo.cocType, pdfText);
           }
+        } else if (documentType === "tax_invoice") {
+          const invoiceNumber = this.extractInvoiceNumber(pdfText, subject) || `INV-EMAIL-${Date.now()}`;
+          const invoice = await this.taxInvoiceService.createTaxInvoice(
+            {
+              invoiceNumber,
+              invoiceType: TaxInvoiceType.SUPPLIER,
+              companyId: supplierInfo.company.id,
+              documentPath: storageResult.path,
+            },
+            `imap:${messageId}`,
+          );
+          this.logger.log(
+            `Created Tax Invoice ${invoice.id} (${invoice.invoiceNumber}) from email: ${filename}`,
+          );
         } else {
           const dnNumber = `DN-EMAIL-${Date.now()}`;
           const dn = await this.deliveryNoteService.createDeliveryNote(
@@ -321,6 +345,19 @@ export class RubberEmailMonitorService implements OnModuleInit {
             deliveryNoteType: DeliveryNoteType.COMPOUND,
             documentType: aiResult.documentType,
           };
+        }
+      }
+
+      if (
+        aiResult.documentType === "INVOICE" ||
+        aiResult.documentType === "DELIVERY_NOTE"
+      ) {
+        this.logger.log(
+          `AI classified as ${aiResult.documentType} - attempting supplier fallback matching`,
+        );
+        const fallback = this.identifySupplierFallback(pdfText, filename, fromEmail, subject, companies);
+        if (fallback) {
+          return { ...fallback, documentType: aiResult.documentType };
         }
       }
 
@@ -611,8 +648,16 @@ ${truncatedText}`;
     }
   }
 
-  private determineDocumentType(subject: string): "coc" | "delivery_note" {
+  private determineDocumentType(subject: string): "coc" | "delivery_note" | "tax_invoice" {
     const subjectLower = subject.toLowerCase();
+
+    if (subjectLower.includes("invoice") && !subjectLower.includes("proforma")) {
+      return "tax_invoice";
+    }
+
+    if (subjectLower.includes("tax inv")) {
+      return "tax_invoice";
+    }
 
     if (
       subjectLower.includes("delivery") ||
@@ -624,6 +669,42 @@ ${truncatedText}`;
     }
 
     return "coc";
+  }
+
+  private refineDocumentType(
+    subjectType: "coc" | "delivery_note" | "tax_invoice",
+    pdfText: string,
+  ): "coc" | "delivery_note" | "tax_invoice" {
+    const pdfTextUpper = pdfText.toUpperCase();
+
+    if (pdfTextUpper.includes("TAX INVOICE")) {
+      return "tax_invoice";
+    }
+
+    if (pdfTextUpper.includes("DELIVERY NOTE") || pdfTextUpper.includes("DESPATCH NOTE")) {
+      return "delivery_note";
+    }
+
+    return subjectType;
+  }
+
+  private extractInvoiceNumber(pdfText: string, subject: string): string | null {
+    const inPattern = pdfText.match(/\bIN(\d{4,})\b/);
+    if (inPattern) {
+      return `IN${inPattern[1]}`;
+    }
+
+    const invoiceNoPattern = pdfText.match(/(?:Invoice|Document)\s*(?:No|Number|#)[:\s]*([A-Za-z0-9-]+)/i);
+    if (invoiceNoPattern) {
+      return invoiceNoPattern[1];
+    }
+
+    const subjectPattern = subject.match(/(?:Invoice|INV)[:\s#-]*([A-Za-z0-9-]+)/i);
+    if (subjectPattern) {
+      return subjectPattern[1];
+    }
+
+    return null;
   }
 
   async testConnection(): Promise<{ success: boolean; error?: string }> {

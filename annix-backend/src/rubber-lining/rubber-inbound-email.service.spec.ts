@@ -8,6 +8,7 @@ import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberInboundEmailService } from "./rubber-inbound-email.service";
+import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 
 describe("RubberInboundEmailService", () => {
   let service: RubberInboundEmailService;
@@ -28,6 +29,7 @@ describe("RubberInboundEmailService", () => {
         { provide: STORAGE_SERVICE, useValue: {} },
         { provide: RubberCocService, useValue: {} },
         { provide: RubberDeliveryNoteService, useValue: {} },
+        { provide: RubberTaxInvoiceService, useValue: {} },
         { provide: AiChatService, useValue: {} },
         { provide: RubberCocExtractionService, useValue: {} },
       ],
@@ -308,6 +310,23 @@ describe("RubberInboundEmailService", () => {
       expect(determine("Dispatch confirmation")).toBe("delivery_note");
     });
 
+    it("should detect tax invoice from subject with 'invoice'", () => {
+      expect(determine("Tax Invoice attached")).toBe("tax_invoice");
+      expect(determine("Invoice IN177200")).toBe("tax_invoice");
+    });
+
+    it("should detect tax invoice from subject with 'tax inv'", () => {
+      expect(determine("Tax Inv #12345")).toBe("tax_invoice");
+    });
+
+    it("should exclude proforma invoices from tax invoice detection", () => {
+      expect(determine("Proforma Invoice")).toBe("coc");
+    });
+
+    it("should prioritize tax invoice over delivery note", () => {
+      expect(determine("Invoice for delivery")).toBe("tax_invoice");
+    });
+
     it("should default to coc for other subjects", () => {
       expect(determine("Certificate of Conformance")).toBe("coc");
       expect(determine("Test results attached")).toBe("coc");
@@ -317,6 +336,7 @@ describe("RubberInboundEmailService", () => {
     it("should be case insensitive", () => {
       expect(determine("DELIVERY NOTE")).toBe("delivery_note");
       expect(determine("Delivery")).toBe("delivery_note");
+      expect(determine("INVOICE")).toBe("tax_invoice");
     });
   });
 });

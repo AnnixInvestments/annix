@@ -8,9 +8,11 @@ import { RubberCompany } from "./entities/rubber-company.entity";
 import { DeliveryNoteStatus, DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
+import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
+import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 
 export interface ParsedCompoundCode {
   brand: string;
@@ -66,6 +68,7 @@ export interface ProcessedEmailResult {
   success: boolean;
   cocIds: number[];
   deliveryNoteIds: number[];
+  taxInvoiceIds: number[];
   errors: string[];
 }
 
@@ -151,6 +154,7 @@ export class RubberInboundEmailService {
     private storageService: IStorageService,
     private cocService: RubberCocService,
     private deliveryNoteService: RubberDeliveryNoteService,
+    private taxInvoiceService: RubberTaxInvoiceService,
     private aiChatService: AiChatService,
     private cocExtractionService: RubberCocExtractionService,
   ) {}
@@ -160,6 +164,7 @@ export class RubberInboundEmailService {
       success: false,
       cocIds: [],
       deliveryNoteIds: [],
+      taxInvoiceIds: [],
       errors: [],
     };
 
@@ -219,6 +224,19 @@ export class RubberInboundEmailService {
           );
           result.cocIds.push(coc.id);
           this.logger.log(`Created Supplier CoC ${coc.id} from email attachment`);
+        } else if (documentType === "tax_invoice") {
+          const invoiceNumber = `INV-${Date.now()}`;
+          const invoice = await this.taxInvoiceService.createTaxInvoice(
+            {
+              invoiceNumber,
+              invoiceType: TaxInvoiceType.SUPPLIER,
+              companyId: supplierMapping.company.id,
+              documentPath: storageResult.path,
+            },
+            `inbound-email:${emailData.from}`,
+          );
+          result.taxInvoiceIds.push(invoice.id);
+          this.logger.log(`Created Tax Invoice ${invoice.id} from email attachment`);
         } else {
           const generatedDnNumber = `DN-${Date.now()}`;
           const dn = await this.deliveryNoteService.createDeliveryNote(
@@ -240,7 +258,7 @@ export class RubberInboundEmailService {
       }
     }
 
-    result.success = result.cocIds.length > 0 || result.deliveryNoteIds.length > 0;
+    result.success = result.cocIds.length > 0 || result.deliveryNoteIds.length > 0 || result.taxInvoiceIds.length > 0;
     return result;
   }
 
@@ -371,8 +389,16 @@ export class RubberInboundEmailService {
     return null;
   }
 
-  private determineDocumentType(subject: string): "coc" | "delivery_note" {
+  private determineDocumentType(subject: string): "coc" | "delivery_note" | "tax_invoice" {
     const subjectLower = subject.toLowerCase();
+
+    if (subjectLower.includes("invoice") && !subjectLower.includes("proforma")) {
+      return "tax_invoice";
+    }
+
+    if (subjectLower.includes("tax inv")) {
+      return "tax_invoice";
+    }
 
     if (
       subjectLower.includes("delivery") ||
@@ -389,8 +415,14 @@ export class RubberInboundEmailService {
   private async saveAttachment(
     attachment: InboundEmailAttachment,
     companyId: number,
-    documentType: "coc" | "delivery_note",
+    documentType: "coc" | "delivery_note" | "tax_invoice",
   ): Promise<StorageResult> {
+    const storageFolder: Record<string, string> = {
+      coc: "cocs",
+      delivery_note: "delivery-notes",
+      tax_invoice: "tax-invoices",
+    };
+
     const multerFile: Express.Multer.File = {
       fieldname: "file",
       originalname: attachment.filename,
@@ -404,7 +436,7 @@ export class RubberInboundEmailService {
       path: "",
     };
 
-    const subPath = `au-rubber/${documentType}s/${companyId}`;
+    const subPath = `au-rubber/${storageFolder[documentType]}/${companyId}`;
     return this.storageService.upload(multerFile, subPath);
   }
 
