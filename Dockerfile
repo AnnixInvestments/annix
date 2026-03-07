@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---------- deps ----------
-FROM node:24-slim AS deps
+FROM node:22-slim AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/product-data/package.json ./packages/product-data/
@@ -28,7 +28,7 @@ WORKDIR /app/annix-backend
 RUN pnpm run build
 
 # ---------- docs collector ----------
-FROM node:24-slim AS docs-collector
+FROM node:22-slim AS docs-collector
 WORKDIR /usr/src/repo
 COPY . .
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
@@ -37,7 +37,7 @@ RUN mkdir -p /usr/src/docs && \
   git ls-files "*.md" -z | xargs -0 -I{} sh -c 'mkdir -p "/usr/src/docs/$(dirname "$1")"; cp "$1" "/usr/src/docs/$1"' _ {}
 
 # ---------- runner ----------
-FROM node:24-slim AS runner
+FROM node:22-slim AS runner
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates \
