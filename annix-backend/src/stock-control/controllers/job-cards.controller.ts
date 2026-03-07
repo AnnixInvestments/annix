@@ -5,6 +5,7 @@ import {
   Get,
   Logger,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -123,6 +124,16 @@ export class JobCardsController {
       id,
       body.extM2,
       body.intM2,
+    );
+  }
+
+  @Patch(":id/coating-analysis/accept")
+  @ApiOperation({ summary: "Accept coating analysis recommendation" })
+  async acceptCoatingAnalysis(@Req() req: any, @Param("id") id: number) {
+    return this.coatingAnalysisService.acceptRecommendation(
+      req.user.companyId,
+      id,
+      req.user.name || req.user.email || req.user.uid,
     );
   }
 

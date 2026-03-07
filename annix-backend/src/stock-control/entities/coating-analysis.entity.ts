@@ -13,6 +13,7 @@ import { StockControlCompany } from "./stock-control-company.entity";
 export enum CoatingAnalysisStatus {
   PENDING = "pending",
   ANALYSED = "analysed",
+  ACCEPTED = "accepted",
   FAILED = "failed",
 }
 
@@ -78,6 +79,12 @@ export class JobCardCoatingAnalysis {
 
   @Column({ name: "analysed_at", type: "timestamp", nullable: true })
   analysedAt: Date | null;
+
+  @Column({ name: "accepted_by", type: "varchar", length: 200, nullable: true })
+  acceptedBy: string | null;
+
+  @Column({ name: "accepted_at", type: "timestamp", nullable: true })
+  acceptedAt: Date | null;
 
   @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })

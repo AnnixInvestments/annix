@@ -41,7 +41,7 @@ INT : [SIMILAR FORMAT]
 Return JSON only with this structure:
 {
   "applicationType": "external" | "internal" | "both",
-  "surfacePrep": "blast" | "hand_tool" | "power_tool" | null,
+  "surfacePrep": "blast" | "sa3_blast" | "hand_tool" | "power_tool" | null,
   "coats": [
     {
       "product": "PENGUARD EXPRESS MIO BUFF",
@@ -63,7 +63,8 @@ Rules:
   - epoxy_mio: 65, epoxy: 70, polyurethane: 55, zinc_rich: 75, alkyd: 50, inorganic_zinc: 80, acrylic: 45, unknown: 60
 - Tag each coat with "area": "external" for coats under EXT section, "internal" for coats under INT section
 - If notes mention both EXT and INT, set applicationType to "both" and include all coats with their respective area tags
-- Surface prep: look for "BLAST", "HAND TOOL", "POWER TOOL" keywords
+- Surface prep: look for "BLAST", "HAND TOOL", "POWER TOOL" keywords. If internal rubber lining (R/L) is specified, surface prep is "sa3_blast" (SA3 abrasive blast required before rubber lining)
+- "R/L" or "RUBBER LINING" in INT section means internal rubber lining — set applicationType to "both" and include an internal area coat entry
 - Return valid JSON only, no additional text`;
 
 @Injectable()
@@ -137,6 +138,16 @@ export class CoatingAnalysisService {
         );
       }
 
+      const fallbackM2 =
+        paintM2 === 0 && calculatedExtM2 === 0 && calculatedIntM2 === 0
+          ? this.sumAllLineItemM2(lineItems)
+          : 0;
+      if (fallbackM2 > 0) {
+        this.logger.log(
+          `Using fallback total line item m² for JC ${jobCardId}: ${fallbackM2.toFixed(2)}`,
+        );
+      }
+
       const noteLineItems = lineItems
         .filter((li) => {
           const code = (li.itemCode || "").trim();
@@ -163,8 +174,9 @@ export class CoatingAnalysisService {
 
       const aiResult = await this.extractCoatingSpec(combinedNotes);
 
+      const hasInternalRubberLining = /INT\s*:\s*R\/L/i.test(combinedNotes);
       analysis.applicationType = aiResult.applicationType;
-      analysis.surfacePrep = aiResult.surfacePrep;
+      analysis.surfacePrep = hasInternalRubberLining ? "sa3_blast" : aiResult.surfacePrep;
 
       const hasExt = aiResult.coats.some((c) => c.area === "external");
       const hasInt = aiResult.coats.some((c) => c.area === "internal");
@@ -172,9 +184,12 @@ export class CoatingAnalysisService {
       if (paintM2 > 0) {
         analysis.extM2 = hasExt ? paintM2 : 0;
         analysis.intM2 = hasInt ? paintM2 : 0;
-      } else {
+      } else if (calculatedExtM2 > 0 || calculatedIntM2 > 0) {
         analysis.extM2 = hasExt ? calculatedExtM2 : 0;
         analysis.intM2 = hasInt ? calculatedIntM2 : 0;
+      } else {
+        analysis.extM2 = hasExt ? fallbackM2 : 0;
+        analysis.intM2 = hasInt ? fallbackM2 : 0;
       }
 
       const coats = aiResult.coats.map((coat) => {
@@ -239,10 +254,34 @@ export class CoatingAnalysisService {
     return this.analysisRepo.save(analysis);
   }
 
+  async acceptRecommendation(
+    companyId: number,
+    jobCardId: number,
+    acceptedBy: string,
+  ): Promise<JobCardCoatingAnalysis> {
+    const analysis = await this.analysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
+    if (!analysis) {
+      throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
+    }
+
+    analysis.status = CoatingAnalysisStatus.ACCEPTED;
+    analysis.acceptedBy = acceptedBy;
+    analysis.acceptedAt = now().toJSDate();
+
+    return this.analysisRepo.save(analysis);
+  }
+
   private sumPaintM2(lineItems: JobCardLineItem[]): number {
     return lineItems
       .filter((li) => li.itemCode && /paint/i.test(li.itemCode))
       .reduce((sum, li) => sum + (Number(li.m2) || 0), 0);
+  }
+
+  private sumAllLineItemM2(lineItems: JobCardLineItem[]): number {
+    return lineItems.reduce((sum, li) => sum + (Number(li.m2) || 0), 0);
   }
 
   private async calculatePipeM2(

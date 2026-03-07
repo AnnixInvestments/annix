@@ -561,7 +561,7 @@ export class JobCardPdfService {
               doc.addPage();
               y = 50;
             }
-            y = this.drawCuttingDiagramForRoll(doc, group.roll, y, group.count);
+            y = this.drawCuttingDiagramForRoll(doc, group.roll, y, group.count, ply.thicknessMm);
           });
         });
       } else {
@@ -587,7 +587,13 @@ export class JobCardPdfService {
             doc.addPage();
             y = 50;
           }
-          y = this.drawCuttingDiagramForRoll(doc, group.roll, y, group.count);
+          y = this.drawCuttingDiagramForRoll(
+            doc,
+            group.roll,
+            y,
+            group.count,
+            plan.totalThicknessMm || undefined,
+          );
         });
       }
     } else {
@@ -671,6 +677,7 @@ export class JobCardPdfService {
     roll: RollAllocation,
     startY: number,
     groupCount?: number,
+    thicknessMm?: number,
   ): number {
     const COLORS = [
       "#3B82F6",
@@ -696,10 +703,11 @@ export class JobCardPdfService {
     let y = startY;
 
     doc.fontSize(8).font("Helvetica-Bold");
+    const thicknessPrefix = thicknessMm ? `${thicknessMm}mm ` : "";
     const rollLabel =
       groupCount && groupCount > 1
-        ? `${roll.rollSpec.widthMm}mm × ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
-        : `Roll ${roll.rollIndex}: ${roll.rollSpec.widthMm}mm × ${roll.rollSpec.lengthM}m`;
+        ? `${thicknessPrefix}${roll.rollSpec.widthMm}mm × ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
+        : `Roll ${roll.rollIndex}: ${thicknessPrefix}${roll.rollSpec.widthMm}mm × ${roll.rollSpec.lengthM}m`;
     doc.text(
       rollLabel +
         (bands.length > 1 ? ` (${bands.length} bands)` : "") +
@@ -759,8 +767,10 @@ export class JobCardPdfService {
         const color = colorMap.get(cut.itemId) || COLORS[0];
         const cx = leftMargin + cut.positionMm * scale;
         const cy = y + bandTopPx + cut.lane * laneHeightPx;
-        const cw = cut.lengthMm * scale;
+        const isFullRoll = cut.lengthMm / rollLengthMm >= 0.95;
+        const cw = isFullRoll ? diagramWidth - cut.positionMm * scale : cut.lengthMm * scale;
         const ch = laneHeightPx;
+        const rolls = cut.stripsPerPiece ?? 1;
 
         doc.save();
         doc.rect(cx + 0.5, cy + 0.5, Math.max(cw - 1, 1), Math.max(ch - 1, 1));
@@ -768,7 +778,7 @@ export class JobCardPdfService {
         doc.restore();
 
         if (cw > 20) {
-          const label = cut.itemNo || cut.itemId;
+          const label = rolls > 1 ? `${rolls} rolls` : cut.itemNo || cut.itemId;
           doc
             .save()
             .fontSize(5)
@@ -779,6 +789,7 @@ export class JobCardPdfService {
               width: cw - 4,
               height: ch,
               ellipsis: true,
+              align: rolls > 1 ? "center" : "left",
             })
             .restore();
         }
@@ -787,7 +798,7 @@ export class JobCardPdfService {
       bandTopPx += bandHeightPx;
     });
 
-    if (totalBandHeight < rollLengthMm) {
+    if (totalBandHeight < rollLengthMm * 0.95) {
       const wasteX = leftMargin + totalBandHeight * scale;
       const wasteW = (rollLengthMm - totalBandHeight) * scale;
       doc.save();

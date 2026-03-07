@@ -266,10 +266,12 @@ function CuttingDiagram({
   roll,
   colorMap,
   groupCount,
+  thicknessMm,
 }: {
   roll: RollAllocation;
   colorMap: Map<string, string>;
   groupCount?: number;
+  thicknessMm?: number;
 }) {
   const rollLengthMm = roll.rollSpec.lengthM * 1000;
   const rollWidthMm = roll.rollSpec.widthMm;
@@ -288,8 +290,8 @@ function CuttingDiagram({
         <div>
           <span className="text-sm font-semibold text-gray-900">
             {groupCount && groupCount > 1
-              ? `${rollWidthMm}mm x ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
-              : `Roll ${roll.rollIndex}: ${rollWidthMm}mm x ${roll.rollSpec.lengthM}m`}
+              ? `${thicknessMm ? `${thicknessMm}mm ` : ""}${rollWidthMm}mm x ${roll.rollSpec.lengthM}m — ${groupCount} rolls`
+              : `Roll ${roll.rollIndex}: ${thicknessMm ? `${thicknessMm}mm ` : ""}${rollWidthMm}mm x ${roll.rollSpec.lengthM}m`}
           </span>
           {bands.length > 1 && (
             <span className="ml-2 text-xs text-purple-600 font-medium">({bands.length} bands)</span>
@@ -346,11 +348,16 @@ function CuttingDiagram({
 
               {bandCuts.map((cut, idx) => {
                 const left = (cut.positionMm / rollLengthMm) * 100;
-                const width = (cut.lengthMm / rollLengthMm) * 100;
+                const rawWidth = (cut.lengthMm / rollLengthMm) * 100;
+                const isFullRoll = rawWidth >= 95;
+                const width = isFullRoll ? 100 - left : rawWidth;
                 const colorClass =
                   colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
-                const displayLabel = cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
-                const strips = cut.stripsPerPiece ?? 1;
+                const rolls = cut.stripsPerPiece ?? 1;
+                const displayLabel =
+                  rolls > 1
+                    ? `${rolls} rolls`
+                    : cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
 
                 return (
                   <div
@@ -362,16 +369,11 @@ function CuttingDiagram({
                       top: `${bandTopPx + cut.lane * laneHeightPx}px`,
                       height: `${laneHeightPx}px`,
                     }}
-                    title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m x ${cut.widthMm}mm${strips > 1 ? ` (${strips} strips)` : ""}`}
+                    title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m x ${cut.widthMm}mm${rolls > 1 ? ` (${rolls} rolls)` : ""}`}
                   >
                     <span className="text-[10px] text-white font-bold truncate px-1">
                       {displayLabel}
                     </span>
-                    {strips > 1 && (
-                      <span className="absolute top-0 right-0 bg-white text-gray-800 text-[8px] font-bold rounded-bl px-0.5">
-                        {strips}
-                      </span>
-                    )}
                   </div>
                 );
               })}
@@ -379,7 +381,7 @@ function CuttingDiagram({
           );
         })}
 
-        {totalBandHeight < rollLengthMm && (
+        {totalBandHeight < rollLengthMm * 0.95 && (
           <div
             className="absolute bg-gray-300 flex items-center justify-center"
             style={{
@@ -426,7 +428,7 @@ function CuttingDiagram({
                   <>
                     <span className="text-gray-400 flex-shrink-0">|</span>
                     <span className="text-orange-600 font-medium flex-shrink-0">
-                      {cut.stripsPerPiece} strips
+                      {cut.stripsPerPiece} rolls
                     </span>
                   </>
                 )}
@@ -492,6 +494,7 @@ function PipeCuttingView({ plan }: { plan: CuttingPlan }) {
             roll={group.representativeRoll}
             colorMap={colorMap}
             groupCount={group.count}
+            thicknessMm={plan.totalThicknessMm || undefined}
           />
         ))}
       </div>
@@ -1845,21 +1848,39 @@ export default function JobCardDetailPage() {
             })()}
           </dl>
           {coatingAnalysis &&
-            coatingAnalysis.status === "analysed" &&
+            (coatingAnalysis.status === "analysed" || coatingAnalysis.status === "accepted") &&
             coatingAnalysis.coats.length > 0 && (
               <div className="mt-6 pt-4 border-t border-gray-200">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     <h4 className="text-sm font-medium text-gray-900">Coating Specification</h4>
                     <span className="text-xs text-gray-400 italic">extracted by Nix</span>
+                    {coatingAnalysis.status === "accepted" && (
+                      <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                        Accepted
+                      </span>
+                    )}
                   </div>
-                  <button
-                    onClick={handleRunAnalysis}
-                    disabled={isAnalysing}
-                    className="text-xs text-teal-600 hover:text-teal-800 disabled:text-gray-400"
-                  >
-                    {isAnalysing ? "Analysing..." : "Re-analyse"}
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    {coatingAnalysis.status === "analysed" && (
+                      <button
+                        onClick={async () => {
+                          const updated = await stockControlApiClient.acceptCoatingAnalysis(jobId);
+                          setCoatingAnalysis(updated);
+                        }}
+                        className="text-xs px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
+                      >
+                        Accept Recommendation
+                      </button>
+                    )}
+                    <button
+                      onClick={handleRunAnalysis}
+                      disabled={isAnalysing}
+                      className="text-xs text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                    >
+                      {isAnalysing ? "Analysing..." : "Re-analyse"}
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4 text-sm">
                   {coatingAnalysis.applicationType && (
@@ -1873,7 +1894,7 @@ export default function JobCardDetailPage() {
                   {coatingAnalysis.surfacePrep && (
                     <div>
                       <span className="font-medium text-gray-500">Surface Prep: </span>
-                      <span className="text-gray-900 capitalize">
+                      <span className="text-gray-900 uppercase">
                         {coatingAnalysis.surfacePrep.replace(/_/g, " ")}
                       </span>
                     </div>

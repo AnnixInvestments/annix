@@ -267,6 +267,8 @@ export interface CoatingAnalysis {
   status: string;
   error: string | null;
   analysedAt: string | null;
+  acceptedBy: string | null;
+  acceptedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1585,6 +1587,12 @@ class StockControlApiClient {
     });
   }
 
+  async acceptCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/accept`, {
+      method: "PATCH",
+    });
+  }
+
   async rubberStockOptions(jobCardId: number): Promise<RubberStockOptionsResponse> {
     return this.request(`/stock-control/job-cards/${jobCardId}/rubber-stock-options`);
   }
@@ -2640,6 +2648,27 @@ class StockControlApiClient {
     return this.request("/stock-control/suppliers", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  async pushVapidKey(): Promise<{ vapidPublicKey: string | null }> {
+    return this.request("/stock-control/workflow/push/vapid-key");
+  }
+
+  async subscribePush(subscription: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+  }): Promise<{ success: boolean }> {
+    return this.request("/stock-control/workflow/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify(subscription),
+    });
+  }
+
+  async unsubscribePush(endpoint: string): Promise<{ success: boolean }> {
+    return this.request("/stock-control/workflow/push/unsubscribe", {
+      method: "POST",
+      body: JSON.stringify({ endpoint }),
     });
   }
 
