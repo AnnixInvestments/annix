@@ -537,6 +537,22 @@ export class RubberCocExtractionService {
     data.batches = data.batches.map((batch) => {
       const corrected = { ...batch };
 
+      const reboundIsNull =
+        corrected.reboundPercent === null || corrected.reboundPercent === undefined;
+      const tearInReboundRange =
+        corrected.tearStrengthKnM !== null &&
+        corrected.tearStrengthKnM !== undefined &&
+        corrected.tearStrengthKnM >= 50;
+
+      if (reboundIsNull && tearInReboundRange) {
+        this.logger.warn(
+          `Batch ${batch.batchNumber}: Column shift detected - tear=${corrected.tearStrengthKnM} is in rebound range (74-96). Correcting: rebound=${corrected.tearStrengthKnM}, tear=${corrected.tensileStrengthMpa}, tensile=null (lost)`,
+        );
+        corrected.reboundPercent = corrected.tearStrengthKnM;
+        corrected.tearStrengthKnM = corrected.tensileStrengthMpa;
+        corrected.tensileStrengthMpa = undefined;
+      }
+
       if (
         corrected.elongationPercent !== null &&
         corrected.elongationPercent !== undefined &&

@@ -31,7 +31,15 @@ CRITICAL COLUMN ALIGNMENT WARNING FOR S&N/SCARABAEUS FORMAT:
 - NEVER read these as a single number! "681" followed by "1.12" means Elongation=681, S'min=1.12
 - If you see elongation < 100, you have MISREAD the columns - go back and re-parse
 - If you see S'min > 10, you have MERGED elongation into S'min - split them correctly
-- Similarly, Rebound (74-96) must not be confused with Tear strength (10-20)
+
+CRITICAL COLUMN SHIFT WARNING - REBOUND/TEAR/TENSILE:
+- Rebound Resilience (col 4) is 74-96%, Tear strength (col 5) is 10-50 N/mm, Tensile (col 6) is 20-30 MPa
+- Do NOT skip the Rebound column and shift values left!
+- If tear shows a value >= 50, it is actually the REBOUND value shifted into the wrong column
+- Common error: Rebound=null, Tear=75.0, Tensile=44.2 - this is WRONG. Correct: Rebound=75.0, Tear=44.2, Tensile=26.7
+- Only 2-3 batches per order have Rebound/Tear/Tensile values - the rest are blank
+- When a batch HAS these values, ALL THREE columns (Rebound, Tear, Tensile) will have values
+- Count the columns carefully: after SG comes Rebound, then Tear, then Tensile, then Elongation
 
 IMPILO INDUSTRIES TABLE STRUCTURE (Page 2):
 The batch table has these columns in order:
