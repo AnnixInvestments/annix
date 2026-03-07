@@ -316,9 +316,7 @@ export class RubberInboundEmailService {
           await this.cocService.updateSupplierCoc(matchingCert.cocId, {
             graphPdfPath: storageResult.path,
           });
-          this.logger.log(
-            `Linked graph PDF to CoC ${matchingCert.cocId} via batch number match`,
-          );
+          this.logger.log(`Linked graph PDF to CoC ${matchingCert.cocId} via batch number match`);
         } else {
           const linkedCocId = await this.linkGraphToExistingCoc(
             multerFile,
