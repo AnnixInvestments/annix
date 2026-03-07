@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -69,6 +70,19 @@ export class JobCardsController {
   @Put(":id")
   @ApiOperation({ summary: "Update a job card" })
   async update(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    if (body.status === "active") {
+      const unverified = await this.coatingAnalysisService.unverifiedProducts(
+        req.user.companyId,
+        id,
+      );
+      if (unverified.length > 0) {
+        const names = unverified.map((u) => u.product).join(", ");
+        throw new BadRequestException(
+          `Cannot activate: unverified coating products require TDS upload: ${names}`,
+        );
+      }
+    }
+
     const result = await this.jobCardService.update(req.user.companyId, id, body);
 
     if (body.status === "active") {
@@ -125,6 +139,24 @@ export class JobCardsController {
       body.extM2,
       body.intM2,
     );
+  }
+
+  @Get(":id/coating-analysis/unverified")
+  @ApiOperation({ summary: "Unverified coating products for a job card" })
+  async unverifiedCoatingProducts(@Req() req: any, @Param("id") id: number) {
+    return this.coatingAnalysisService.unverifiedProducts(req.user.companyId, id);
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Post(":id/coating-analysis/verify-tds")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload TDS to verify coating product volume solids" })
+  async verifyCoatingTds(
+    @Req() req: any,
+    @Param("id") id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.coatingAnalysisService.verifyFromTds(req.user.companyId, id, file.buffer);
   }
 
   @Patch(":id/coating-analysis/accept")

@@ -26,6 +26,7 @@ export interface CoatDetail {
   solidsByVolumePercent: number;
   coverageM2PerLiter: number;
   litersRequired: number;
+  verified?: boolean;
 }
 
 export interface StockAssessmentItem {

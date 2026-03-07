@@ -260,6 +260,13 @@ export interface CoatDetail {
   solidsByVolumePercent: number;
   coverageM2PerLiter: number;
   litersRequired: number;
+  verified?: boolean;
+}
+
+export interface UnverifiedProduct {
+  product: string;
+  genericType: string | null;
+  estimatedVolumeSolids: number;
 }
 
 export interface StockAssessmentItem {
@@ -1610,6 +1617,29 @@ class StockControlApiClient {
     return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/accept`, {
       method: "PATCH",
     });
+  }
+
+  async unverifiedCoatingProducts(jobCardId: number): Promise<UnverifiedProduct[]> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/unverified`);
+  }
+
+  async uploadCoatingTds(jobCardId: number, file: File): Promise<CoatingAnalysis> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/job-cards/${jobCardId}/coating-analysis/verify-tds`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.accessToken}` },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`TDS upload failed: ${errorText}`);
+    }
+
+    return response.json();
   }
 
   async rubberStockOptions(jobCardId: number): Promise<RubberStockOptionsResponse> {
