@@ -20,7 +20,6 @@ const nextConfig: NextConfig = {
   },
 
   experimental: {
-    turbopackMinify: false,
     optimizePackageImports: [
       "es-toolkit",
       "luxon",
