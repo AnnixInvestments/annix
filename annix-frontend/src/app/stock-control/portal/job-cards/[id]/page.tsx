@@ -424,18 +424,19 @@ function PipeCuttingView({
   plan: CuttingPlan;
   fallbackThicknessMm?: number;
 }) {
-  const colorMap = new Map<string, string>();
-  let colorIdx = 0;
-
-  for (const roll of plan.rolls) {
-    for (const cut of roll.cuts) {
-      const baseId = cut.itemId.split("-")[0];
-      if (!colorMap.has(baseId)) {
-        colorMap.set(baseId, CUT_COLORS[colorIdx % CUT_COLORS.length]);
-        colorIdx++;
-      }
-    }
-  }
+  const colorMap = plan.rolls
+    .flatMap((roll) => roll.cuts)
+    .reduce(
+      (acc, cut) => {
+        const baseId = cut.itemId.split("-")[0];
+        if (!acc.map.has(baseId)) {
+          acc.map.set(baseId, CUT_COLORS[acc.idx % CUT_COLORS.length]);
+          return { map: acc.map, idx: acc.idx + 1 };
+        }
+        return acc;
+      },
+      { map: new Map<string, string>(), idx: 0 },
+    ).map;
 
   const groupableRolls = plan.rolls.filter(isGroupableRoll);
   const individualRolls = plan.rolls.filter((r) => !isGroupableRoll(r));
@@ -1308,6 +1309,34 @@ function RubberAllocationSection({
   );
 }
 
+function RubberAllocationGuard({ jobCard }: { jobCard: JobCard }) {
+  const allText = [
+    jobCard.notes || "",
+    ...(jobCard.lineItems || []).map((li) => `${li.itemCode || ""} ${li.itemDescription || ""}`),
+  ]
+    .join(" ")
+    .toLowerCase();
+  const isRubberJob =
+    allText.includes("rubber") ||
+    allText.includes("r/l") ||
+    allText.includes("lining") ||
+    allText.includes("liner") ||
+    allText.includes("lagging");
+  if (!isRubberJob) return null;
+
+  const validItems = jobCard.lineItems ? jobCard.lineItems.filter(isValidLineItem) : [];
+  const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
+  if (!hasM2Items) return null;
+
+  return (
+    <RubberAllocationSection
+      lineItems={validItems}
+      jobCardId={jobCard.id}
+      rubberPlanOverride={jobCard.rubberPlanOverride ?? null}
+    />
+  );
+}
+
 export default function JobCardDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -1607,9 +1636,13 @@ export default function JobCardDetailPage() {
     if (attachmentFiles.length === 0) return;
     try {
       setIsUploadingAttachment(true);
-      for (const file of attachmentFiles) {
-        await stockControlApiClient.uploadJobCardAttachment(jobId, file);
-      }
+      await attachmentFiles.reduce(
+        (chain, file) =>
+          chain.then(() =>
+            stockControlApiClient.uploadJobCardAttachment(jobId, file).then(() => undefined),
+          ),
+        Promise.resolve() as Promise<void>,
+      );
       setAttachmentFiles([]);
       const updatedAttachments = await stockControlApiClient.jobCardAttachments(jobId);
       setAttachments(updatedAttachments);
@@ -2445,33 +2478,7 @@ export default function JobCardDetailPage() {
         </div>
       )}
 
-      {(() => {
-        const allText = [
-          jobCard.notes || "",
-          ...(jobCard.lineItems || []).map(
-            (li) => `${li.itemCode || ""} ${li.itemDescription || ""}`,
-          ),
-        ]
-          .join(" ")
-          .toLowerCase();
-        const isRubberJob =
-          allText.includes("rubber") ||
-          allText.includes("r/l") ||
-          allText.includes("lining") ||
-          allText.includes("liner") ||
-          allText.includes("lagging");
-        if (!isRubberJob) return null;
-
-        const validItems = jobCard.lineItems ? jobCard.lineItems.filter(isValidLineItem) : [];
-        const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
-        return hasM2Items ? (
-          <RubberAllocationSection
-            lineItems={validItems}
-            jobCardId={jobCard.id}
-            rubberPlanOverride={jobCard.rubberPlanOverride ?? null}
-          />
-        ) : null;
-      })()}
+      <RubberAllocationGuard jobCard={jobCard} />
 
       {versions.length > 0 && (
         <div className="bg-white shadow rounded-lg overflow-hidden">

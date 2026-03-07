@@ -351,10 +351,8 @@ function parseFlangeConfig(description: string): string | null {
     { pattern: /\bFLG[SD]?\s*(?:1|ONE)\s*(?:END|E)/i, config: "one_end" },
   ];
 
-  for (const { pattern, config } of patterns) {
-    if (pattern.test(description)) return config;
-  }
-  return null;
+  const match = patterns.find(({ pattern }) => pattern.test(description));
+  return match ? match.config : null;
 }
 
 function parseItemType(description: string): string | null {
@@ -373,10 +371,8 @@ function parseItemType(description: string): string | null {
     { pattern: /\bROLLER\b/i, type: "roller" },
   ];
 
-  for (const { pattern, type } of patterns) {
-    if (pattern.test(description)) return type;
-  }
-  return null;
+  const match = patterns.find(({ pattern }) => pattern.test(description));
+  return match ? match.type : null;
 }
 
 function openEndsFromConfig(config: string | null): number {
@@ -760,17 +756,19 @@ function rollStats(rolls: RollAllocation[]): {
   totalWasteSqM: number;
   wastePercentage: number;
 } {
-  let totalUsedSqM = 0;
-  let totalRollAreaSqM = 0;
-
-  for (const roll of rolls) {
-    const usedAreaSqM = roll.cuts.reduce(
-      (sum, cut) => sum + (cut.widthMm / 1000) * (cut.lengthMm / 1000),
-      0,
-    );
-    totalUsedSqM += usedAreaSqM;
-    totalRollAreaSqM += roll.rollSpec.areaSqM;
-  }
+  const { totalUsedSqM, totalRollAreaSqM } = rolls.reduce(
+    (acc, roll) => {
+      const usedAreaSqM = roll.cuts.reduce(
+        (sum, cut) => sum + (cut.widthMm / 1000) * (cut.lengthMm / 1000),
+        0,
+      );
+      return {
+        totalUsedSqM: acc.totalUsedSqM + usedAreaSqM,
+        totalRollAreaSqM: acc.totalRollAreaSqM + roll.rollSpec.areaSqM,
+      };
+    },
+    { totalUsedSqM: 0, totalRollAreaSqM: 0 },
+  );
 
   const totalWasteSqM = totalRollAreaSqM - totalUsedSqM;
   const wastePercentage = totalRollAreaSqM > 0 ? (totalWasteSqM / totalRollAreaSqM) * 100 : 0;
@@ -827,29 +825,34 @@ export function calculateCuttingPlan(
   stockQuery?: StockQuery | null,
   selectedPlyCombination?: number[] | null,
 ): CuttingPlan {
-  const parsedItems: ParsedPipeItem[] = [];
-  const genericM2Items: { description: string; m2: number }[] = [];
-  let rubberSpec: RubberSpec | null = null;
+  const { parsedItems, genericM2Items, rubberSpec } = lineItems.reduce(
+    (acc, item) => {
+      const desc = item.itemDescription || item.itemCode || "";
+      const qty = item.quantity || 1;
+      const m2 = item.m2 ? Number(item.m2) : null;
+      const itemNo = item.itemNo || null;
 
-  for (const item of lineItems) {
-    const desc = item.itemDescription || item.itemCode || "";
-    const qty = item.quantity || 1;
-    const m2 = item.m2 ? Number(item.m2) : null;
-    const itemNo = item.itemNo || null;
+      const parsed = parsePipeItem(String(item.id || Math.random()), desc, Number(qty), m2, itemNo);
 
-    const parsed = parsePipeItem(String(item.id || Math.random()), desc, Number(qty), m2, itemNo);
-
-    if (parsed.isValidPipe) {
-      parsedItems.push(parsed);
-    } else if (/R\/L|rubber|lining|lagging/i.test(desc) && !rubberSpec) {
-      rubberSpec = parseRubberSpecNote(desc);
-      if (!rubberSpec && m2 && m2 > 0) {
-        genericM2Items.push({ description: desc, m2 });
+      if (parsed.isValidPipe) {
+        return { ...acc, parsedItems: [...acc.parsedItems, parsed] };
+      } else if (/R\/L|rubber|lining|lagging/i.test(desc) && !acc.rubberSpec) {
+        const spec = parseRubberSpecNote(desc);
+        if (!spec && m2 && m2 > 0) {
+          return { ...acc, genericM2Items: [...acc.genericM2Items, { description: desc, m2 }] };
+        }
+        return { ...acc, rubberSpec: spec };
+      } else if (m2 && m2 > 0) {
+        return { ...acc, genericM2Items: [...acc.genericM2Items, { description: desc, m2 }] };
       }
-    } else if (m2 && m2 > 0) {
-      genericM2Items.push({ description: desc, m2 });
-    }
-  }
+      return acc;
+    },
+    {
+      parsedItems: [] as ParsedPipeItem[],
+      genericM2Items: [] as { description: string; m2: number }[],
+      rubberSpec: null as RubberSpec | null,
+    },
+  );
 
   const hasPipeItems = parsedItems.length > 0;
   const genericM2Total = genericM2Items.reduce((sum, item) => sum + item.m2, 0);
