@@ -256,6 +256,7 @@ export interface RollAllocation {
   hasLengthwiseCut: boolean;
   bands: BandSpec[];
   offcuts: Offcut[];
+  plyThicknessMm?: number;
 }
 
 export interface RubberSpec {
@@ -783,7 +784,10 @@ function scorePlyCombination(
   stockQuery: StockQuery | null,
 ): { plies: PlyLayer[]; score: number } {
   const plies: PlyLayer[] = combo.map((thickness) => {
-    const rolls = buildRollsForItems(parsedItems);
+    const rolls = buildRollsForItems(parsedItems).map((roll) => ({
+      ...roll,
+      plyThicknessMm: thickness,
+    }));
     return {
       thicknessMm: thickness,
       rolls,
