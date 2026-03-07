@@ -1231,10 +1231,10 @@ export default function JobCardDetailPage() {
   const [amendmentNotes, setAmendmentNotes] = useState("");
   const [amendmentFile, setAmendmentFile] = useState<File | null>(null);
   const [isUploadingAmendment, setIsUploadingAmendment] = useState(false);
-  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
-  const [attachmentNotes, setAttachmentNotes] = useState("");
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [isExtracting, setIsExtracting] = useState<number | null>(null);
+  const [isExtractingAll, setIsExtractingAll] = useState(false);
   const [isDraggingAmendment, setIsDraggingAmendment] = useState(false);
   const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
 
@@ -1444,16 +1444,13 @@ export default function JobCardDetailPage() {
   };
 
   const handleAttachmentUpload = async () => {
-    if (!attachmentFile) return;
+    if (attachmentFiles.length === 0) return;
     try {
       setIsUploadingAttachment(true);
-      await stockControlApiClient.uploadJobCardAttachment(
-        jobId,
-        attachmentFile,
-        attachmentNotes || undefined,
-      );
-      setAttachmentFile(null);
-      setAttachmentNotes("");
+      for (const file of attachmentFiles) {
+        await stockControlApiClient.uploadJobCardAttachment(jobId, file);
+      }
+      setAttachmentFiles([]);
       const updatedAttachments = await stockControlApiClient.jobCardAttachments(jobId);
       setAttachments(updatedAttachments);
     } catch (err) {
@@ -1514,13 +1511,31 @@ export default function JobCardDetailPage() {
     }
   };
 
+  const handleExtractAll = async () => {
+    try {
+      setIsExtractingAll(true);
+      await stockControlApiClient.extractAllDrawings(jobId);
+      const updatedAttachments = await stockControlApiClient.jobCardAttachments(jobId);
+      setAttachments(updatedAttachments);
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Extraction failed"));
+    } finally {
+      setIsExtractingAll(false);
+    }
+  };
+
   const handleAttachmentDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDraggingAttachment(false);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      setAttachmentFile(files[0]);
+      const validExtensions = [".pdf", ".dxf"];
+      const newFiles = Array.from(files).filter((f) =>
+        validExtensions.some((ext) => f.name.toLowerCase().endsWith(ext)),
+      );
+      setAttachmentFiles((prev) => [...prev, ...newFiles]);
     }
   };
 
@@ -2352,7 +2367,20 @@ export default function JobCardDetailPage() {
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Drawing Attachments</h3>
-          <span className="text-sm text-gray-500">{attachments.length} attachments</span>
+          <div className="flex items-center space-x-3">
+            <span className="text-sm text-gray-500">{attachments.length} attachments</span>
+            {attachments.some(
+              (a) => a.extractionStatus === "pending" || a.extractionStatus === "failed",
+            ) && (
+              <button
+                onClick={handleExtractAll}
+                disabled={isExtractingAll}
+                className="px-3 py-1 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
+              >
+                {isExtractingAll ? "Nix is analysing all drawings..." : "Extract All Drawings"}
+              </button>
+            )}
+          </div>
         </div>
         <div className="px-4 py-4 sm:px-6">
           <div
@@ -2366,22 +2394,34 @@ export default function JobCardDetailPage() {
                 : "border-gray-300 hover:border-gray-400"
             }`}
           >
-            {attachmentFile ? (
+            {attachmentFiles.length > 0 ? (
               <div className="space-y-3">
-                <p className="text-sm text-gray-900">{attachmentFile.name}</p>
-                <input
-                  type="text"
-                  placeholder="Notes (optional)"
-                  value={attachmentNotes}
-                  onChange={(e) => setAttachmentNotes(e.target.value)}
-                  className="block w-full max-w-xs mx-auto text-sm rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
-                />
+                <p className="text-sm font-medium text-gray-900">
+                  {attachmentFiles.length} file{attachmentFiles.length > 1 ? "s" : ""} ready to
+                  upload
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  {attachmentFiles.map((file, idx) => (
+                    <li
+                      key={`${file.name}-${idx}`}
+                      className="flex items-center justify-center space-x-2"
+                    >
+                      <span>{file.name}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setAttachmentFiles((prev) => prev.filter((_, i) => i !== idx))
+                        }
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  ))}
+                </ul>
                 <div className="flex justify-center space-x-3">
                   <button
-                    onClick={() => {
-                      setAttachmentFile(null);
-                      setAttachmentNotes("");
-                    }}
+                    onClick={() => setAttachmentFiles([])}
                     className="text-sm text-gray-500 hover:text-gray-700"
                   >
                     Cancel
@@ -2391,7 +2431,7 @@ export default function JobCardDetailPage() {
                     disabled={isUploadingAttachment}
                     className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
                   >
-                    {isUploadingAttachment ? "Uploading..." : "Upload"}
+                    {isUploadingAttachment ? "Uploading..." : "Upload All"}
                   </button>
                 </div>
               </div>
@@ -2411,24 +2451,25 @@ export default function JobCardDetailPage() {
                   />
                 </svg>
                 <p className="mt-2 text-sm text-gray-600">
-                  Drop a PDF drawing here or{" "}
+                  Drop PDF or DXF drawings here or{" "}
                   <label className="text-teal-600 hover:text-teal-800 cursor-pointer">
                     browse
                     <input
                       type="file"
-                      accept=".pdf"
+                      multiple
+                      accept=".pdf,.dxf"
                       className="hidden"
                       onChange={(e) => {
-                        if (e.target.files?.[0]) {
-                          setAttachmentFile(e.target.files[0]);
+                        if (e.target.files && e.target.files.length > 0) {
+                          setAttachmentFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
                         }
                       }}
                     />
                   </label>
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Nix can extract pipe dimensions and tank/chute lining &amp; coating m² from PDF
-                  drawings
+                  Upload all drawings for this job, then click Extract for Nix to analyse them
+                  together
                 </p>
               </>
             )}
@@ -2545,16 +2586,6 @@ export default function JobCardDetailPage() {
                     )}
                   </div>
                   <div className="flex items-center space-x-2 ml-4">
-                    {(attachment.extractionStatus === "pending" ||
-                      attachment.extractionStatus === "failed") && (
-                      <button
-                        onClick={() => handleTriggerExtraction(attachment.id)}
-                        disabled={isExtracting === attachment.id}
-                        className="text-sm text-teal-600 hover:text-teal-800 disabled:text-gray-400"
-                      >
-                        {isExtracting === attachment.id ? "Extracting..." : "Extract"}
-                      </button>
-                    )}
                     <a
                       href={attachment.filePath}
                       target="_blank"

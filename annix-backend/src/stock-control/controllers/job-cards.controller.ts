@@ -332,6 +332,12 @@ export class JobCardsController {
     return this.drawingExtractionService.triggerExtraction(req.user.companyId, id, attachmentId);
   }
 
+  @Post(":id/extract-all")
+  @ApiOperation({ summary: "Extract dimensions from all attachments together" })
+  async extractAll(@Req() req: any, @Param("id") id: number) {
+    return this.drawingExtractionService.extractAllFromJobCard(req.user.companyId, id);
+  }
+
   @StockControlRoles("manager", "admin")
   @Delete(":id/attachments/:attachmentId")
   @ApiOperation({ summary: "Delete an attachment" })

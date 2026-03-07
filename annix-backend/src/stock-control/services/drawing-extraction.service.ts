@@ -1,16 +1,18 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { pdfToPng } from "pdf-to-png-converter";
+import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
+import {
+  ChatMessage,
+  ImageContent,
+  TextContent,
+} from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse");
 
 interface ExtractedDimension {
   description: string;
@@ -42,7 +44,7 @@ interface TankExtractionData {
   }>;
 }
 
-interface DrawingExtractionResult {
+export interface DrawingExtractionResult {
   drawingType: "pipe" | "tank_chute";
   dimensions: ExtractedDimension[];
   tankData: TankExtractionData | null;
@@ -54,7 +56,69 @@ interface DrawingExtractionResult {
   confidence: number;
 }
 
-const DRAWING_EXTRACTION_PROMPT = `You are an expert at extracting dimensions from industrial fabrication drawings. You can handle both pipe drawings and welded steel plate structure drawings (tanks, chutes, hoppers, underpans).
+const DRAWING_EXTRACTION_PROMPT = `You are an expert at analysing engineering drawing images. You can handle both pipe drawings and welded steel plate structure drawings (tanks, chutes, hoppers, underpans).
+
+You are viewing high-resolution images of engineering drawing pages. Read all dimension annotations, BOM tables, title blocks, and specification notes visible in the images.
+
+First, determine the drawing type:
+- "pipe" — pipe spools, piping isometrics, pipe fabrication drawings
+- "tank_chute" — welded steel plate assemblies: tanks, chutes, hoppers, underpans, bins
+
+For PIPE drawings, return:
+{
+  "drawingType": "pipe",
+  "dimensions": [
+    {
+      "description": "300NB x 6m Straight Pipe",
+      "diameterMm": 300,
+      "lengthM": 6,
+      "quantity": 2,
+      "itemType": "pipe" | "bend" | "tee" | "reducer" | "flange" | "other"
+    }
+  ],
+  "confidence": 0.85
+}
+
+For TANK/CHUTE drawings, return:
+{
+  "drawingType": "tank_chute",
+  "tankData": {
+    "assemblyType": "tank" | "chute" | "hopper" | "underpan" | "custom",
+    "drawingReference": "GPW-017",
+    "overallLengthMm": 7238,
+    "overallWidthMm": 5241,
+    "overallHeightMm": 2852,
+    "liningType": "rubber" | "ceramic" | "hdpe" | "pu" | "glass_flake" | null,
+    "liningThicknessMm": 6,
+    "liningAreaM2": 75.00,
+    "coatingAreaM2": 82.50,
+    "coatingSystem": "Epoxy primer + polyurethane topcoat",
+    "surfacePrepStandard": "Sa 2.5",
+    "plateParts": [
+      { "mark": "P1", "description": "Side plate", "thicknessMm": 10, "quantity": 2 }
+    ]
+  },
+  "dimensions": [],
+  "confidence": 0.90
+}
+
+Rules:
+- Determine drawing type from title block, BOM content, and drawing conventions
+- Tank drawings typically show: plate BOM tables, rubber lining specs (m² area, thickness), overall assembly dimensions, drawing numbers like "GPW-xxx"
+- For tanks: liningAreaM2 is the internal rubber/ceramic lining surface area from the drawing
+- For tanks: coatingAreaM2 is the external paint/coating surface area from the drawing
+- For pipes: extract diameters in NB or mm, lengths in m or mm (convert to m)
+- Set confidence based on clarity of extracted data (0.0 to 1.0)
+- Default quantity to 1 if not specified
+- Return valid JSON only, no additional text`;
+
+const MULTI_DOC_EXTRACTION_PROMPT = `You are an expert at analysing engineering drawing images. You are viewing pages from multiple engineering documents for the same fabrication job. Cross-reference information across documents.
+
+You are viewing high-resolution images of engineering drawing pages. Read all dimension annotations, BOM tables, title blocks, and specification notes visible in the images.
+
+BOM tables in one document may reference detail dimensions in another. Drawing reference numbers (e.g., GPW-017) may appear across documents — use these to link related sheets. Combine all findings into a single extraction result. Do not duplicate items that appear in multiple documents.
+
+Prioritise BOM tables and schedules for quantities and material specs. Use detail drawings for dimensions that are not clear on GA drawings. Handle drawing number cross-references (e.g., "See Detail A on Sheet 3").
 
 First, determine the drawing type:
 - "pipe" — pipe spools, piping isometrics, pipe fabrication drawings
@@ -249,111 +313,264 @@ export class DrawingExtractionService {
     }
   }
 
+  async extractAllFromJobCard(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<DrawingExtractionResult> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+    });
+
+    if (!jobCard) {
+      throw new NotFoundException("Job card not found");
+    }
+
+    const allAttachments = await this.attachmentRepo.find({
+      where: {
+        jobCardId,
+        companyId,
+        extractionStatus: In([
+          ExtractionStatus.PENDING,
+          ExtractionStatus.ANALYSED,
+          ExtractionStatus.FAILED,
+        ]),
+      },
+    });
+
+    if (allAttachments.length === 0) {
+      this.logger.log(`No extractable attachments for job card ${jobCardId}`);
+      return this.emptyResult();
+    }
+
+    await this.attachmentRepo.update(
+      allAttachments.map((a) => a.id),
+      { extractionStatus: ExtractionStatus.PROCESSING },
+    );
+
+    try {
+      const contentParts: (TextContent | ImageContent)[] = [];
+
+      for (const attachment of allAttachments) {
+        const isDxf = this.isDxfFile(attachment);
+        const isPdf = this.isPdfFile(attachment);
+
+        if (isPdf) {
+          contentParts.push({
+            type: "text",
+            text: `--- Pages from: ${attachment.originalFilename} ---`,
+          });
+          const normalizedPath = this.normalizeStoragePath(attachment.filePath);
+          const pdfBuffer = await this.storageService.download(normalizedPath);
+          const images = await this.convertPdfToImages(pdfBuffer);
+          const imageContents = images.map(
+            (img): ImageContent => ({
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/png",
+                data: img.toString("base64"),
+              },
+            }),
+          );
+          contentParts.push(...imageContents);
+        } else if (isDxf) {
+          const normalizedPath = this.normalizeStoragePath(attachment.filePath);
+          const fileBuffer = await this.storageService.download(normalizedPath);
+          const dxfText = this.parseDxfFile(fileBuffer);
+          contentParts.push({
+            type: "text",
+            text: `--- DXF data from: ${attachment.originalFilename} ---\n${dxfText}`,
+          });
+        }
+      }
+
+      if (contentParts.length === 0) {
+        await this.attachmentRepo.update(
+          allAttachments.map((a) => a.id),
+          { extractionStatus: ExtractionStatus.PENDING },
+        );
+        return this.emptyResult();
+      }
+
+      contentParts.push({
+        type: "text",
+        text: "Analyse all the above engineering drawing pages and DXF data. Cross-reference information across documents. Respond with JSON only.",
+      });
+
+      const isMultiDoc = allAttachments.length > 1;
+      const prompt = isMultiDoc ? MULTI_DOC_EXTRACTION_PROMPT : DRAWING_EXTRACTION_PROMPT;
+
+      const messages: ChatMessage[] = [{ role: "user", content: contentParts }];
+      const { content: response } = await this.aiChatService.chat(messages, prompt, "claude");
+      const aiResult = this.parseAiResponse(response);
+      const result = this.buildExtractionResult(aiResult);
+
+      const updateTime = now().toJSDate();
+      const updatedAttachments = allAttachments.map((a) => ({
+        ...a,
+        extractionStatus: ExtractionStatus.ANALYSED,
+        extractedData: result as unknown as Record<string, unknown>,
+        extractedAt: updateTime,
+        extractionError: null,
+      }));
+      await this.attachmentRepo.save(updatedAttachments);
+
+      await this.updateLineItemsFromExtraction(companyId, jobCardId, result);
+
+      this.logger.log(
+        `Multi-doc extraction complete for job card ${jobCardId}: ${allAttachments.length} attachments processed`,
+      );
+
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      await this.attachmentRepo.update(
+        allAttachments.map((a) => a.id),
+        {
+          extractionStatus: ExtractionStatus.FAILED,
+          extractionError: message,
+        },
+      );
+      this.logger.error(`Multi-doc extraction failed for job card ${jobCardId}: ${message}`);
+      throw err;
+    }
+  }
+
   private async extractFromAttachment(
     attachment: JobCardAttachment,
   ): Promise<DrawingExtractionResult> {
-    const isPdf =
-      attachment.mimeType === "application/pdf" ||
-      attachment.originalFilename.toLowerCase().endsWith(".pdf");
+    const isPdf = this.isPdfFile(attachment);
+    const isDxf = this.isDxfFile(attachment);
 
-    if (!isPdf) {
-      return {
-        drawingType: "pipe",
-        dimensions: [],
-        tankData: null,
-        totalExternalM2: 0,
-        totalInternalM2: 0,
-        totalLiningM2: 0,
-        totalCoatingM2: 0,
-        rawText: "",
-        confidence: 0,
-      };
+    if (!isPdf && !isDxf) {
+      return this.emptyResult();
     }
 
-    const pdfText = await this.extractPdfText(attachment.filePath);
-    const aiResult = await this.extractDimensionsWithAi(pdfText);
+    const normalizedPath = this.normalizeStoragePath(attachment.filePath);
+    const fileBuffer = await this.storageService.download(normalizedPath);
 
-    if (aiResult.drawingType === "tank_chute" && aiResult.tankData) {
-      const liningM2 = aiResult.tankData.liningAreaM2 ?? 0;
-      const coatingM2 = aiResult.tankData.coatingAreaM2 ?? 0;
-
-      return {
-        drawingType: "tank_chute",
-        dimensions: [],
-        tankData: aiResult.tankData,
-        totalExternalM2: coatingM2,
-        totalInternalM2: liningM2,
-        totalLiningM2: Math.round(liningM2 * 100) / 100,
-        totalCoatingM2: Math.round(coatingM2 * 100) / 100,
-        rawText: pdfText.substring(0, 5000),
-        confidence: aiResult.confidence,
-      };
+    if (isDxf) {
+      const dxfText = this.parseDxfFile(fileBuffer);
+      const messages: ChatMessage[] = [
+        {
+          role: "user",
+          content: `Extract dimensions from this DXF drawing data:\n\n${dxfText}\n\nRespond with JSON only.`,
+        },
+      ];
+      const { content: response } = await this.aiChatService.chat(
+        messages,
+        DRAWING_EXTRACTION_PROMPT,
+      );
+      const aiResult = this.parseAiResponse(response);
+      return this.buildExtractionResult(aiResult);
     }
 
-    const dimensionsWithSurface = aiResult.dimensions.map((dim) => this.calculateSurfaceArea(dim));
+    const images = await this.convertPdfToImages(fileBuffer);
+    const aiResult = await this.extractDimensionsWithVision(images);
+    return this.buildExtractionResult(aiResult);
+  }
 
-    const totalExternalM2 = dimensionsWithSurface.reduce(
-      (sum, d) => sum + (d.externalSurfaceM2 ?? 0) * d.quantity,
-      0,
+  private async convertPdfToImages(pdfBuffer: Buffer): Promise<Buffer[]> {
+    this.logger.log("Converting PDF to images for vision extraction...");
+    const pdfInput = pdfBuffer.buffer.slice(
+      pdfBuffer.byteOffset,
+      pdfBuffer.byteOffset + pdfBuffer.byteLength,
     );
-    const totalInternalM2 = dimensionsWithSurface.reduce(
-      (sum, d) => sum + (d.internalSurfaceM2 ?? 0) * d.quantity,
-      0,
-    );
+    const pages = await pdfToPng(pdfInput, {
+      disableFontFace: true,
+      useSystemFonts: true,
+      viewportScale: 2.0,
+    });
+    this.logger.log(`Converted PDF to ${pages.length} image(s)`);
 
-    return {
-      drawingType: "pipe",
-      dimensions: dimensionsWithSurface,
-      tankData: null,
-      totalExternalM2: Math.round(totalExternalM2 * 100) / 100,
-      totalInternalM2: Math.round(totalInternalM2 * 100) / 100,
-      totalLiningM2: 0,
-      totalCoatingM2: 0,
-      rawText: pdfText.substring(0, 5000),
-      confidence: aiResult.confidence,
-    };
-  }
+    const allImages = pages
+      .filter((page) => page.content !== undefined)
+      .map((page) => page.content as Buffer);
 
-  private async extractPdfText(storagePath: string): Promise<string> {
-    const normalizedPath = this.normalizeStoragePath(storagePath);
-    const dataBuffer = await this.storageService.download(normalizedPath);
-
-    const pdfData = await pdfParse(dataBuffer);
-    return pdfData.text || "";
-  }
-
-  private normalizeStoragePath(pathOrUrl: string): string {
-    if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
-      const urlWithoutQuery = pathOrUrl.split("?")[0];
-      return urlWithoutQuery.replace(/^https?:\/\/[^/]+\//, "");
+    if (allImages.length <= 20) {
+      return allImages;
     }
-    return pathOrUrl;
+
+    this.logger.warn(`PDF has ${allImages.length} pages, capping at 20 (first 10 + last 10)`);
+    return [...allImages.slice(0, 10), ...allImages.slice(-10)];
   }
 
-  private async extractDimensionsWithAi(pdfText: string): Promise<{
+  private async extractDimensionsWithVision(images: Buffer[]): Promise<{
     drawingType: "pipe" | "tank_chute";
     dimensions: ExtractedDimension[];
     tankData: TankExtractionData | null;
     confidence: number;
   }> {
-    if (!pdfText.trim()) {
+    if (images.length === 0) {
       return { drawingType: "pipe", dimensions: [], tankData: null, confidence: 0 };
     }
 
-    const truncatedText = pdfText.substring(0, 15000);
+    const contentParts: (TextContent | ImageContent)[] = images.map(
+      (img): ImageContent => ({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/png",
+          data: img.toString("base64"),
+        },
+      }),
+    );
 
-    const messages: ChatMessage[] = [
-      {
-        role: "user",
-        content: `Extract dimensions from this fabrication drawing text:\n\n"${truncatedText}"\n\nRespond with JSON only.`,
-      },
-    ];
+    contentParts.push({
+      type: "text",
+      text: "Analyse these engineering drawing pages. Extract all dimensions, BOM data, and specifications. Respond with JSON only.",
+    });
 
+    const messages: ChatMessage[] = [{ role: "user", content: contentParts }];
     const { content: response } = await this.aiChatService.chat(
       messages,
       DRAWING_EXTRACTION_PROMPT,
+      "claude",
     );
 
+    return this.parseAiResponse(response);
+  }
+
+  private parseDxfFile(fileBuffer: Buffer): string {
+    try {
+      const DxfParser = require("dxf-parser");
+      const dxfString = fileBuffer.toString("utf-8");
+      const parser = new DxfParser();
+      const dxf = parser.parseSync(dxfString);
+
+      if (!dxf || !dxf.entities) {
+        return dxfString.substring(0, 15000);
+      }
+
+      const textEntries: string[] = dxf.entities
+        .filter((entity: any) => ["TEXT", "MTEXT", "DIMENSION"].includes(entity.type))
+        .map((entity: any) => {
+          const layer = entity.layer ? `[Layer: ${entity.layer}]` : "";
+          const text = entity.text || entity.string || entity.value || "";
+          return `${layer} ${text}`.trim();
+        })
+        .filter((text: string) => text.length > 0);
+
+      const blockRefs: string[] = dxf.entities
+        .filter((entity: any) => entity.type === "INSERT")
+        .map((entity: any) => `[Block: ${entity.name || "unnamed"}]`);
+
+      const combined = [...textEntries, ...blockRefs].join("\n");
+      return combined || dxfString.substring(0, 15000);
+    } catch (err) {
+      this.logger.warn(
+        `DXF parsing failed, using raw text: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
+      return fileBuffer.toString("utf-8").substring(0, 15000);
+    }
+  }
+
+  private parseAiResponse(response: string): {
+    drawingType: "pipe" | "tank_chute";
+    dimensions: ExtractedDimension[];
+    tankData: TankExtractionData | null;
+    confidence: number;
+  } {
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       this.logger.warn("AI response did not contain valid JSON for drawing extraction");
@@ -410,6 +627,90 @@ export class DrawingExtractionService {
       dimensions,
       tankData: null,
       confidence: parsed.confidence || 0.5,
+    };
+  }
+
+  private buildExtractionResult(aiResult: {
+    drawingType: "pipe" | "tank_chute";
+    dimensions: ExtractedDimension[];
+    tankData: TankExtractionData | null;
+    confidence: number;
+  }): DrawingExtractionResult {
+    if (aiResult.drawingType === "tank_chute" && aiResult.tankData) {
+      const liningM2 = aiResult.tankData.liningAreaM2 ?? 0;
+      const coatingM2 = aiResult.tankData.coatingAreaM2 ?? 0;
+
+      return {
+        drawingType: "tank_chute",
+        dimensions: [],
+        tankData: aiResult.tankData,
+        totalExternalM2: coatingM2,
+        totalInternalM2: liningM2,
+        totalLiningM2: Math.round(liningM2 * 100) / 100,
+        totalCoatingM2: Math.round(coatingM2 * 100) / 100,
+        rawText: "",
+        confidence: aiResult.confidence,
+      };
+    }
+
+    const dimensionsWithSurface = aiResult.dimensions.map((dim) => this.calculateSurfaceArea(dim));
+
+    const totalExternalM2 = dimensionsWithSurface.reduce(
+      (sum, d) => sum + (d.externalSurfaceM2 ?? 0) * d.quantity,
+      0,
+    );
+    const totalInternalM2 = dimensionsWithSurface.reduce(
+      (sum, d) => sum + (d.internalSurfaceM2 ?? 0) * d.quantity,
+      0,
+    );
+
+    return {
+      drawingType: "pipe",
+      dimensions: dimensionsWithSurface,
+      tankData: null,
+      totalExternalM2: Math.round(totalExternalM2 * 100) / 100,
+      totalInternalM2: Math.round(totalInternalM2 * 100) / 100,
+      totalLiningM2: 0,
+      totalCoatingM2: 0,
+      rawText: "",
+      confidence: aiResult.confidence,
+    };
+  }
+
+  private normalizeStoragePath(pathOrUrl: string): string {
+    if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+      const urlWithoutQuery = pathOrUrl.split("?")[0];
+      return urlWithoutQuery.replace(/^https?:\/\/[^/]+\//, "");
+    }
+    return pathOrUrl;
+  }
+
+  private isPdfFile(attachment: JobCardAttachment): boolean {
+    return (
+      attachment.mimeType === "application/pdf" ||
+      attachment.originalFilename.toLowerCase().endsWith(".pdf")
+    );
+  }
+
+  private isDxfFile(attachment: JobCardAttachment): boolean {
+    return (
+      attachment.mimeType === "application/dxf" ||
+      attachment.mimeType === "application/x-dxf" ||
+      attachment.originalFilename.toLowerCase().endsWith(".dxf")
+    );
+  }
+
+  private emptyResult(): DrawingExtractionResult {
+    return {
+      drawingType: "pipe",
+      dimensions: [],
+      tankData: null,
+      totalExternalM2: 0,
+      totalInternalM2: 0,
+      totalLiningM2: 0,
+      totalCoatingM2: 0,
+      rawText: "",
+      confidence: 0,
     };
   }
 

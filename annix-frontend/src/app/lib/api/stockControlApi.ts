@@ -2362,6 +2362,12 @@ class StockControlApiClient {
     );
   }
 
+  async extractAllDrawings(jobCardId: number): Promise<Record<string, unknown>> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/extract-all`, {
+      method: "POST",
+    });
+  }
+
   async deleteJobCardAttachment(jobCardId: number, attachmentId: number): Promise<void> {
     return this.request(`/stock-control/job-cards/${jobCardId}/attachments/${attachmentId}`, {
       method: "DELETE",
