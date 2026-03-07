@@ -356,7 +356,7 @@ start_services() {
   BACKEND_PID=$!
 
   info "Clearing frontend cache..."
-  rm -rf "$FRONTEND_DIR/.next" "$FRONTEND_DIR/node_modules/.cache"
+  node -e "const fs = require('fs'); fs.rmSync('$FRONTEND_DIR/.next', { recursive: true, force: true, maxRetries: 10, retryDelay: 500 }); fs.rmSync('$FRONTEND_DIR/node_modules/.cache', { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });" 2>/dev/null || true
 
   info "Starting frontend with Turbopack (logs: $FRONTEND_LOG)..."
   (

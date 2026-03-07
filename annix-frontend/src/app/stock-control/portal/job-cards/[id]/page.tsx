@@ -285,10 +285,7 @@ function CuttingDiagram({
   const rollWidthMm = roll.rollSpec.widthMm;
   const bands = roll.bands;
   const totalBandHeight = bands.reduce((sum, b) => sum + b.heightMm, 0);
-  const contentHeight = bands.reduce((sum, b) => sum + Math.max(16, b.lanes * 16), 0);
-  const diagramHeight = Math.max(48, contentHeight);
-
-  const cutsByBand = bands.map((band) => roll.cuts.filter((c) => c.band === band.bandIndex));
+  const diagramHeight = 48;
 
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-3 mb-3">
@@ -320,70 +317,39 @@ function CuttingDiagram({
         className="relative bg-gray-100 rounded border border-gray-300 overflow-hidden"
         style={{ height: `${diagramHeight}px` }}
       >
-        {bands.map((band, bandIdx) => {
-          const bandLeftPct = (band.startMm / rollLengthMm) * 100;
-          const bandWidthPct = (band.heightMm / rollLengthMm) * 100;
-          const naturalHeight = Math.max(16, band.lanes * 16);
-          const bandHeightPx = bands.length === 1 ? diagramHeight : naturalHeight;
-          const bandTopPx = bands
-            .slice(0, bandIdx)
-            .reduce((sum, b) => sum + Math.max(16, b.lanes * 16), 0);
-          const laneHeightPx = bandHeightPx / band.lanes;
-          const bandCuts = cutsByBand[bandIdx];
+        {roll.cuts.map((cut, idx) => {
+          const left = (cut.positionMm / rollLengthMm) * 100;
+          const rawWidth = (cut.lengthMm / rollLengthMm) * 100;
+          const isFullRoll = rawWidth >= 95;
+          const width = isFullRoll ? 100 - left : rawWidth;
+          const colorClass =
+            colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
+          const rolls = cut.stripsPerPiece ?? 1;
+          const displayLabel =
+            rolls > 1
+              ? `${rolls} rolls`
+              : cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
+
+          const band = bands.find((b) => b.bandIndex === cut.band);
+          const totalLanes = band ? band.lanes : 1;
+          const laneHeightPct = 100 / totalLanes;
+          const topPct = cut.lane * laneHeightPct;
 
           return (
-            <div key={`band-${bandIdx}`}>
-              {bandIdx > 0 && (
-                <div
-                  className="absolute left-0 right-0 border-t-2 border-dashed border-purple-400 z-10"
-                  style={{ top: `${bandTopPx}px` }}
-                />
-              )}
-
-              {band.lanes > 1 &&
-                Array.from({ length: band.lanes - 1 }, (_, i) => (
-                  <div
-                    key={`lane-${bandIdx}-${i}`}
-                    className="absolute border-t border-dashed border-red-300 z-10"
-                    style={{
-                      top: `${bandTopPx + (i + 1) * laneHeightPx}px`,
-                      left: `${bandLeftPct}%`,
-                      width: `${bandWidthPct}%`,
-                    }}
-                  />
-                ))}
-
-              {bandCuts.map((cut, idx) => {
-                const left = (cut.positionMm / rollLengthMm) * 100;
-                const rawWidth = (cut.lengthMm / rollLengthMm) * 100;
-                const isFullRoll = rawWidth >= 95;
-                const width = isFullRoll ? 100 - left : rawWidth;
-                const colorClass =
-                  colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
-                const rolls = cut.stripsPerPiece ?? 1;
-                const displayLabel =
-                  rolls > 1
-                    ? `${rolls} rolls`
-                    : cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
-
-                return (
-                  <div
-                    key={cut.itemId}
-                    className={`absolute ${colorClass} border-r border-b border-white flex items-center justify-center`}
-                    style={{
-                      left: `${left}%`,
-                      width: `${width}%`,
-                      top: `${bandTopPx + cut.lane * laneHeightPx}px`,
-                      height: `${laneHeightPx}px`,
-                    }}
-                    title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m x ${cut.widthMm}mm${rolls > 1 ? ` (${rolls} rolls)` : ""}`}
-                  >
-                    <span className="text-[10px] text-white font-bold truncate px-1">
-                      {displayLabel}
-                    </span>
-                  </div>
-                );
-              })}
+            <div
+              key={cut.itemId}
+              className={`absolute ${colorClass} border-r border-b border-white flex items-center justify-center`}
+              style={{
+                left: `${left}%`,
+                width: `${width}%`,
+                top: `${topPct}%`,
+                height: `${laneHeightPct}%`,
+              }}
+              title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m x ${cut.widthMm}mm${rolls > 1 ? ` (${rolls} rolls)` : ""}`}
+            >
+              <span className="text-[10px] text-white font-bold truncate px-1">
+                {displayLabel}
+              </span>
             </div>
           );
         })}
@@ -474,7 +440,7 @@ function PipeCuttingView({
   const individualRolls = plan.rolls.filter((r) => !isGroupableRoll(r));
 
   const grouped = groupIdenticalRolls(groupableRolls);
-  const thicknessMm = plan.totalThicknessMm || fallbackThicknessMm || undefined;
+  const fallbackThickness = plan.totalThicknessMm || fallbackThicknessMm || undefined;
 
   return (
     <div>
@@ -513,7 +479,7 @@ function PipeCuttingView({
             roll={group.representativeRoll}
             colorMap={colorMap}
             groupCount={group.count}
-            thicknessMm={thicknessMm}
+            thicknessMm={group.representativeRoll.plyThicknessMm || fallbackThickness}
           />
         ))}
         {individualRolls.map((roll) => (
@@ -521,7 +487,7 @@ function PipeCuttingView({
             key={roll.rollIndex}
             roll={roll}
             colorMap={colorMap}
-            thicknessMm={thicknessMm}
+            thicknessMm={roll.plyThicknessMm || fallbackThickness}
           />
         ))}
       </div>
