@@ -570,6 +570,39 @@ export class RubberAuCocService {
           qualityConfig = await this.qualityConfigRepository.findOne({
             where: { compoundCode },
           });
+
+          if (!qualityConfig) {
+            const sourceCoc = compounderCoc || supplierCoc;
+            const specs = sourceCoc.extractedData?.specifications;
+            if (specs) {
+              this.logger.log(
+                `No quality config found for ${compoundCode}, falling back to extractedData specifications`,
+              );
+              qualityConfig = {
+                compoundCode,
+                compoundDescription: sourceCoc.extractedData?.compoundDescription ?? null,
+                shoreANominal: specs.shoreANominal ?? null,
+                shoreAMin: specs.shoreAMin ?? null,
+                shoreAMax: specs.shoreAMax ?? null,
+                densityNominal: specs.specificGravityNominal ?? null,
+                densityMin: specs.specificGravityMin ?? null,
+                densityMax: specs.specificGravityMax ?? null,
+                reboundNominal: specs.reboundNominal ?? null,
+                reboundMin: specs.reboundMin ?? null,
+                reboundMax: specs.reboundMax ?? null,
+                tearStrengthNominal: specs.tearStrengthNominal ?? null,
+                tearStrengthMin: specs.tearStrengthMin ?? null,
+                tearStrengthMax: specs.tearStrengthMax ?? null,
+                tensileNominal: specs.tensileNominal ?? null,
+                tensileMin: specs.tensileMin ?? null,
+                tensileMax: specs.tensileMax ?? null,
+                elongationNominal: specs.elongationNominal ?? null,
+                elongationMin: specs.elongationMin ?? null,
+                elongationMax: specs.elongationMax ?? null,
+              } as RubberCompoundQualityConfig;
+            }
+          }
+
           const colourMap: Record<string, string> = {
             R: "Red",
             W: "White",
@@ -589,15 +622,34 @@ export class RubberAuCocService {
           order: { batchNumber: "ASC" },
         });
 
-        batchTestData = batches.map((batch) => ({
-          batchNumber: batch.batchNumber,
-          shoreA: batch.shoreAHardness ? Number(batch.shoreAHardness) : null,
-          density: batch.specificGravity ? Number(batch.specificGravity) : null,
-          rebound: batch.reboundPercent ? Number(batch.reboundPercent) : null,
-          tearStrength: batch.tearStrengthKnM ? Number(batch.tearStrengthKnM) : null,
-          tensile: batch.tensileStrengthMpa ? Number(batch.tensileStrengthMpa) : null,
-          elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
-        }));
+        if (batches.length > 0) {
+          batchTestData = batches.map((batch) => ({
+            batchNumber: batch.batchNumber,
+            shoreA: batch.shoreAHardness ? Number(batch.shoreAHardness) : null,
+            density: batch.specificGravity ? Number(batch.specificGravity) : null,
+            rebound: batch.reboundPercent ? Number(batch.reboundPercent) : null,
+            tearStrength: batch.tearStrengthKnM ? Number(batch.tearStrengthKnM) : null,
+            tensile: batch.tensileStrengthMpa ? Number(batch.tensileStrengthMpa) : null,
+            elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
+          }));
+        } else {
+          const sourceCoc = compounderCoc || supplierCoc;
+          const extractedBatches = sourceCoc.extractedData?.batches || [];
+          if (extractedBatches.length > 0) {
+            this.logger.log(
+              `No approved batches found for CoC ${batchSourceCocId}, falling back to extractedData (${extractedBatches.length} batches)`,
+            );
+            batchTestData = extractedBatches.map((batch) => ({
+              batchNumber: batch.batchNumber,
+              shoreA: batch.shoreA ?? null,
+              density: batch.specificGravity ?? null,
+              rebound: batch.reboundPercent ?? null,
+              tearStrength: batch.tearStrengthKnM ?? null,
+              tensile: batch.tensileStrengthMpa ?? null,
+              elongation: batch.elongationPercent ?? null,
+            }));
+          }
+        }
       }
     }
 
