@@ -262,6 +262,13 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
   const [logoObjectUrl, setLogoObjectUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!hoveredSection) return;
+    const handleClickOutside = () => setHoveredSection(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [hoveredSection]);
+
+  useEffect(() => {
     let revoked = false;
     if (branding.logoUrl) {
       const proxyUrl = auRubberApiClient.proxyImageUrl(branding.logoUrl);
@@ -413,25 +420,24 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
             </button>
 
             {hoveredSection === section.label && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setHoveredSection(null)} />
-                <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
-                  {section.items.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`block px-4 py-2 text-sm transition-colors ${
-                        isActive(item.href)
-                          ? "bg-yellow-50 text-yellow-800 font-medium"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                      onClick={() => setHoveredSection(null)}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              </>
+              <div className="absolute left-0 top-full pt-1 w-52 z-50">
+              <div className="bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                {section.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`block px-4 py-2 text-sm transition-colors ${
+                      isActive(item.href)
+                        ? "bg-yellow-50 text-yellow-800 font-medium"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                    onClick={() => setHoveredSection(null)}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+              </div>
             )}
           </div>
         ))}
