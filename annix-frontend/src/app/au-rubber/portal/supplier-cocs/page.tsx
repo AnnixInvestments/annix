@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, FileText, LineChart, Trash2, X } from "lucide-react";
+import { CheckCircle, Eye, FileText, LineChart, RefreshCw, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
@@ -80,6 +80,7 @@ export default function SupplierCocsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [reextractingId, setReextractingId] = useState<number | null>(null);
 
   useEffect(() => {
     let revoked = false;
@@ -359,6 +360,19 @@ export default function SupplierCocsPage() {
     }
   };
 
+  const handleReextract = async (id: number) => {
+    try {
+      setReextractingId(id);
+      await auRubberApiClient.extractSupplierCoc(id);
+      showToast("Data re-extracted successfully", "success");
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to re-extract data", "error");
+    } finally {
+      setReextractingId(null);
+    }
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -565,10 +579,21 @@ export default function SupplierCocsPage() {
                     )}
                     <Link
                       href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
-                      className="text-yellow-600 hover:text-yellow-800"
+                      className="text-yellow-600 hover:text-yellow-800 inline-flex items-center"
+                      title="View CoC"
                     >
-                      View
+                      <Eye className="w-4 h-4" />
                     </Link>
+                    <button
+                      onClick={() => handleReextract(coc.id)}
+                      disabled={reextractingId === coc.id}
+                      className="text-green-600 hover:text-green-800 inline-flex items-center disabled:opacity-50"
+                      title="Re-extract data"
+                    >
+                      <RefreshCw
+                        className={`w-4 h-4 ${reextractingId === coc.id ? "animate-spin" : ""}`}
+                      />
+                    </button>
                     {isAdmin && (
                       <button
                         onClick={() => {
