@@ -392,7 +392,12 @@ export class JobCardPdfService {
         `raw: ${JSON.stringify(calcItems.map((i) => ({ id: i.id, code: i.itemCode, desc: i.itemDescription, qty: i.quantity, m2: i.m2 })))}`,
     );
 
-    const plan = calculateCuttingPlan(calcItems, stockRolls.length > 0 ? stockQuery : null);
+    const selectedPly = jobCard.rubberPlanOverride?.selectedPlyCombination || null;
+    const plan = calculateCuttingPlan(
+      calcItems,
+      stockRolls.length > 0 ? stockQuery : null,
+      selectedPly,
+    );
 
     if (!plan.rubberSpec && jobCard.notes) {
       const specFromNotes = parseRubberSpecNote(jobCard.notes);
@@ -426,6 +431,11 @@ export class JobCardPdfService {
     if (!isRubberJob) return startY;
     if (totalM2 <= 0 && !plan.hasPipeItems) return startY;
 
+    const manualOverride = jobCard.rubberPlanOverride;
+    const hasAcceptedPlan =
+      manualOverride?.status === "accepted" || manualOverride?.status === "manual";
+    if (!hasAcceptedPlan) return startY;
+
     doc
       .moveTo(50, startY - 10)
       .lineTo(545, startY - 10)
@@ -434,16 +444,6 @@ export class JobCardPdfService {
     doc.fontSize(12).font("Helvetica-Bold").text("Rubber Allocation", 50, startY);
 
     let y = startY + 15;
-
-    doc.fontSize(6).font("Helvetica").fillColor("#999999");
-    doc.text(
-      `[debug] hasPipeItems=${plan.hasPipeItems}, rolls=${plan.rolls.length}, ` +
-        `genericM2=${plan.genericM2Total.toFixed(2)}, items=${plan.rolls.flatMap((r) => r.cuts).length}`,
-      50,
-      y,
-    );
-    y += 8;
-    doc.fillColor("#000000");
 
     if (plan.rubberSpec) {
       doc.fontSize(8).font("Helvetica");
@@ -458,7 +458,6 @@ export class JobCardPdfService {
       y += 12;
     }
 
-    const manualOverride = jobCard.rubberPlanOverride;
     if (
       manualOverride?.status === "manual" &&
       manualOverride.manualRolls &&
