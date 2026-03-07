@@ -493,12 +493,11 @@ function PipeCuttingView({
         <p className="text-xs text-gray-500 mb-3">
           Each colored section represents a pipe piece. Cut marks show where to cut the roll.
         </p>
-        {groupIdenticalRolls(plan.rolls).map((group) => (
+        {plan.rolls.map((roll) => (
           <CuttingDiagram
-            key={group.representativeRoll.rollIndex}
-            roll={group.representativeRoll}
+            key={roll.rollIndex}
+            roll={roll}
             colorMap={colorMap}
-            groupCount={group.count}
             thicknessMm={plan.totalThicknessMm || fallbackThicknessMm || undefined}
           />
         ))}
@@ -918,9 +917,18 @@ function RubberSOHPanel({
         <span className="text-sm font-medium text-gray-700">Auto-generated cutting plan:</span>
         <div className="flex items-center gap-2 ml-auto">
           {planDecision === "accepted" ? (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              Accepted
-            </span>
+            <>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Accepted
+              </span>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                Edit
+              </button>
+            </>
           ) : planDecision === "rejected" ? (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
               Overridden

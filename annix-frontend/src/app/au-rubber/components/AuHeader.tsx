@@ -335,6 +335,10 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
     }, 150);
   };
 
+  const handleSectionClick = (label: string) => {
+    setHoveredSection(hoveredSection === label ? null : label);
+  };
+
   const handleLogout = async () => {
     setShowUserMenu(false);
     await logout();
@@ -389,6 +393,7 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
             onMouseLeave={handleSectionLeave}
           >
             <button
+              onClick={() => handleSectionClick(section.label)}
               className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                 isSectionActive(section) || hoveredSection === section.label
                   ? "bg-black/20 text-white"
@@ -408,22 +413,25 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
             </button>
 
             {hoveredSection === section.label && (
-              <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
-                {section.items.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`block px-4 py-2 text-sm transition-colors ${
-                      isActive(item.href)
-                        ? "bg-yellow-50 text-yellow-800 font-medium"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setHoveredSection(null)}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setHoveredSection(null)} />
+                <div className="absolute left-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                  {section.items.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`block px-4 py-2 text-sm transition-colors ${
+                        isActive(item.href)
+                          ? "bg-yellow-50 text-yellow-800 font-medium"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                      onClick={() => setHoveredSection(null)}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         ))}
