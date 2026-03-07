@@ -236,9 +236,7 @@ export default function TaxInvoiceDetailPage() {
                   {invoice.extractedData.lineItems.map((item, idx) => (
                     <tr key={idx}>
                       <td className="px-3 py-2 text-gray-900">{item.description}</td>
-                      <td className="px-3 py-2 text-gray-500 text-right">
-                        {item.quantity ?? "-"}
-                      </td>
+                      <td className="px-3 py-2 text-gray-500 text-right">{item.quantity ?? "-"}</td>
                       <td className="px-3 py-2 text-gray-500 text-right">
                         {formatCurrency(item.unitPrice)}
                       </td>
