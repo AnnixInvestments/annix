@@ -14,12 +14,12 @@ import {
   COMPOUNDER_COC_SYSTEM_PROMPT,
   CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
   CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
-  TAX_INVOICE_SYSTEM_PROMPT,
   calendererCocExtractionPrompt,
   compounderCocExtractionPrompt,
   customerDeliveryNoteExtractionPrompt,
   DELIVERY_NOTE_SYSTEM_PROMPT,
   deliveryNoteExtractionPrompt,
+  TAX_INVOICE_SYSTEM_PROMPT,
   taxInvoiceExtractionPrompt,
   UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT,
 } from "./prompts/rubber-coc.prompt";

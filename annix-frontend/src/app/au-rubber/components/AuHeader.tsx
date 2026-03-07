@@ -421,22 +421,22 @@ export function AuHeader({ onSearch }: AuHeaderProps) {
 
             {hoveredSection === section.label && (
               <div className="absolute left-0 top-full pt-1 w-52 z-50">
-              <div className="bg-white rounded-lg shadow-lg border border-gray-200 py-1">
-                {section.items.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`block px-4 py-2 text-sm transition-colors ${
-                      isActive(item.href)
-                        ? "bg-yellow-50 text-yellow-800 font-medium"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setHoveredSection(null)}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
+                <div className="bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+                  {section.items.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`block px-4 py-2 text-sm transition-colors ${
+                        isActive(item.href)
+                          ? "bg-yellow-50 text-yellow-800 font-medium"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                      onClick={() => setHoveredSection(null)}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
           </div>

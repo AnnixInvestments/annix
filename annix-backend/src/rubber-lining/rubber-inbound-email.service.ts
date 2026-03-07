@@ -393,8 +393,7 @@ export class RubberInboundEmailService {
           try {
             const pdfText = await this.extractTextFromPdf(attachment.content);
             if (pdfText.length >= 50) {
-              const extractionResult =
-                await this.cocExtractionService.extractTaxInvoice(pdfText);
+              const extractionResult = await this.cocExtractionService.extractTaxInvoice(pdfText);
               await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
               this.logger.log(
                 `Auto-extracted Tax Invoice ${invoice.id} in ${extractionResult.processingTimeMs}ms`,
