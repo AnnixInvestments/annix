@@ -11,6 +11,7 @@ import {
   type RubberCompoundStockDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
+import { formatDateZA, fromISO } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import {
@@ -116,7 +117,7 @@ export default function PurchaseRequisitionsPage() {
         return direction * (a.totalQuantityKg - b.totalQuantityKg);
       }
       if (sortColumn === "createdAt") {
-        return direction * new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return direction * (fromISO(a.createdAt).toMillis() - fromISO(b.createdAt).toMillis());
       }
       return 0;
     });
@@ -234,11 +235,7 @@ export default function PurchaseRequisitionsPage() {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString("en-ZA", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return formatDateZA(dateStr);
   };
 
   if (error) {

@@ -10,6 +10,7 @@ import {
   type RequisitionDto,
   type RequisitionStatus,
 } from "@/app/lib/api/auRubberApi";
+import { formatDateTimeZA } from "@/app/lib/datetime";
 
 const statusColors: Record<RequisitionStatus, string> = {
   PENDING: "bg-yellow-100 text-yellow-800",
@@ -61,13 +62,7 @@ export default function PurchaseRequisitionDetailPage() {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString("en-ZA", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatDateTimeZA(dateStr);
   };
 
   const handleApprove = async () => {

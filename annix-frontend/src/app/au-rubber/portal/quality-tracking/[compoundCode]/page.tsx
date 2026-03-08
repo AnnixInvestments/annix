@@ -13,6 +13,7 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { formatDateZA } from "@/app/lib/datetime";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -416,7 +417,7 @@ export default function QualityTrackingDetailPage() {
                       {batch.batchNumber}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(batch.createdAt).toLocaleDateString()}
+                      {formatDateZA(batch.createdAt)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                       {batch.shoreA != null ? batch.shoreA.toFixed(1) : "-"}

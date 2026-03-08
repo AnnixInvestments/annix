@@ -13,6 +13,7 @@ import {
   type SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
+import { formatDateZA } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { FileDropZone } from "../../components/FileDropZone";
 import {
@@ -671,7 +672,7 @@ export default function SupplierCocsPage() {
                         )}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {coc.productionDate
-                            ? new Date(coc.productionDate).toLocaleDateString()
+                            ? formatDateZA(coc.productionDate)
                             : "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -689,7 +690,7 @@ export default function SupplierCocsPage() {
                           {statusBadge(coc.processingStatus)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(coc.createdAt).toLocaleDateString()}
+                          {formatDateZA(coc.createdAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                           {coc.graphPdfPath && (

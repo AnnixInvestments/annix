@@ -11,6 +11,7 @@ import {
   type TaxInvoiceStatus,
   type TaxInvoiceType,
 } from "@/app/lib/api/auRubberApi";
+import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 
 export default function TaxInvoiceDetailPage() {
   const params = useParams();
@@ -227,7 +228,7 @@ export default function TaxInvoiceDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Invoice Date</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString() : "-"}
+                {invoice.invoiceDate ? formatDateZA(invoice.invoiceDate) : "-"}
               </dd>
             </div>
             <div>
@@ -241,14 +242,14 @@ export default function TaxInvoiceDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {new Date(invoice.createdAt).toLocaleString()}
+                {formatDateTimeZA(invoice.createdAt)}
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Exported to Sage</dt>
               <dd className="mt-1 text-sm text-gray-900">
                 {invoice.exportedToSageAt
-                  ? new Date(invoice.exportedToSageAt).toLocaleString()
+                  ? formatDateTimeZA(invoice.exportedToSageAt)
                   : "Not exported"}
               </dd>
             </div>

@@ -20,6 +20,7 @@ import {
   type TaxInvoiceStatus,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
+import { formatDateZA } from "@/app/lib/datetime";
 
 const SageExportModal = lazy(() => import("../SageExportModal"));
 
@@ -428,7 +429,7 @@ export default function SupplierTaxInvoicesPage() {
                     {inv.companyName || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString() : "-"}
+                    {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="flex items-center gap-1.5">

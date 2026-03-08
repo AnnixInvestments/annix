@@ -15,6 +15,7 @@ import {
   type RubberDeliveryNoteItemDto,
   type RubberSupplierCocDto,
 } from "@/app/lib/api/auRubberApi";
+import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 
 interface EditableRoll extends ExtractedDeliveryNoteRoll {
   isEdited?: boolean;
@@ -511,7 +512,7 @@ export default function DeliveryNoteDetailPage() {
           <div>
             <dt className="text-sm font-medium text-gray-500">Delivery Date</dt>
             <dd className="mt-1 text-sm text-gray-900">
-              {note.deliveryDate ? new Date(note.deliveryDate).toLocaleDateString() : "-"}
+              {note.deliveryDate ? formatDateZA(note.deliveryDate) : "-"}
             </dd>
           </div>
           <div>
@@ -521,7 +522,7 @@ export default function DeliveryNoteDetailPage() {
           <div>
             <dt className="text-sm font-medium text-gray-500">Created</dt>
             <dd className="mt-1 text-sm text-gray-900">
-              {new Date(note.createdAt).toLocaleString()}
+              {formatDateTimeZA(note.createdAt)}
             </dd>
           </div>
         </dl>

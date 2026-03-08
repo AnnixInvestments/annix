@@ -11,6 +11,7 @@ import {
   type QualityStatus,
   type TrendDirection,
 } from "@/app/lib/api/auRubberApi";
+import { formatDateZA } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import {
   ITEMS_PER_PAGE,
@@ -338,7 +339,7 @@ export default function QualityTrackingPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {summary.lastBatchDate
-                      ? new Date(summary.lastBatchDate).toLocaleDateString()
+                      ? formatDateZA(summary.lastBatchDate)
                       : "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

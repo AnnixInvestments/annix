@@ -9,6 +9,7 @@ import {
   auRubberApiClient,
   type RubberAuCocDto,
 } from "@/app/lib/api/auRubberApi";
+import { formatDateZA } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import {
   ITEMS_PER_PAGE,
@@ -370,7 +371,7 @@ export default function AuCocsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{statusBadge(coc.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(coc.createdAt).toLocaleDateString()}
+                    {formatDateZA(coc.createdAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                     <Link

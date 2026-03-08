@@ -20,6 +20,7 @@ import {
   type TaxInvoiceStatus,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
+import { formatDateZA } from "@/app/lib/datetime";
 
 type SortColumn = "invoiceNumber" | "companyName" | "status" | "invoiceDate" | "totalAmount";
 
@@ -411,7 +412,7 @@ export default function CustomerTaxInvoicesPage() {
                     {inv.companyName || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString() : "-"}
+                    {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{statusBadge(inv.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">

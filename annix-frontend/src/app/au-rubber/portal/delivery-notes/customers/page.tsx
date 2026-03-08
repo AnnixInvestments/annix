@@ -25,6 +25,7 @@ import {
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
+import { formatDateZA } from "@/app/lib/datetime";
 
 type SortColumn =
   | "deliveryNoteNumber"
@@ -547,7 +548,7 @@ export default function CustomerDeliveryNotesPage() {
                     {typeBadge(note.deliveryNoteType)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {note.deliveryDate ? new Date(note.deliveryDate).toLocaleDateString() : "-"}
+                    {note.deliveryDate ? formatDateZA(note.deliveryDate) : "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{statusBadge(note.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

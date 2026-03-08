@@ -10,6 +10,7 @@ import {
   auRubberApiClient,
   type RubberAuCocDto,
 } from "@/app/lib/api/auRubberApi";
+import { formatDateTimeZA } from "@/app/lib/datetime";
 
 export default function AuCocDetailPage() {
   const params = useParams();
@@ -242,7 +243,7 @@ export default function AuCocDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {new Date(coc.createdAt).toLocaleString()}
+                {formatDateTimeZA(coc.createdAt)}
                 {coc.createdBy && <span className="text-gray-500 ml-1">by {coc.createdBy}</span>}
               </dd>
             </div>
@@ -250,7 +251,7 @@ export default function AuCocDetailPage() {
               <div>
                 <dt className="text-sm font-medium text-gray-500">Sent</dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  {new Date(coc.sentAt).toLocaleString()}
+                  {formatDateTimeZA(coc.sentAt)}
                   {coc.sentToEmail && (
                     <span className="text-gray-500 ml-1">to {coc.sentToEmail}</span>
                   )}

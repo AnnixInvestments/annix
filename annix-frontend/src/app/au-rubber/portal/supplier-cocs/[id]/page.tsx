@@ -13,6 +13,7 @@ import {
   type RubberSupplierCocDto,
   type SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
+import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 
 export default function SupplierCocDetailPage() {
   const params = useParams();
@@ -249,7 +250,7 @@ export default function SupplierCocDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Production Date</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {coc.productionDate ? new Date(coc.productionDate).toLocaleDateString() : "-"}
+                {coc.productionDate ? formatDateZA(coc.productionDate) : "-"}
               </dd>
             </div>
             {coc.cocType === "CALENDARER" && (
@@ -267,14 +268,14 @@ export default function SupplierCocDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {new Date(coc.createdAt).toLocaleString()}
+                {formatDateTimeZA(coc.createdAt)}
               </dd>
             </div>
             {coc.approvedAt && (
               <div>
                 <dt className="text-sm font-medium text-gray-500">Approved</dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  {new Date(coc.approvedAt).toLocaleString()}
+                  {formatDateTimeZA(coc.approvedAt)}
                   {coc.approvedBy && (
                     <span className="text-gray-500 ml-1">by {coc.approvedBy}</span>
                   )}

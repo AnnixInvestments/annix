@@ -11,6 +11,7 @@ import {
   type RollTraceabilityDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
+import { formatDateTimeZA } from "@/app/lib/datetime";
 
 export default function RollStockDetailPage() {
   const params = useParams();
@@ -220,7 +221,7 @@ export default function RollStockDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {new Date(roll.createdAt).toLocaleString()}
+                {formatDateTimeZA(roll.createdAt)}
               </dd>
             </div>
             {roll.notes && (
