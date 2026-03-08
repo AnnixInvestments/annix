@@ -11,8 +11,8 @@ interface SageExportModalProps {
 
 export default function SageExportModal(props: SageExportModalProps) {
   const { onClose, onSuccess } = props;
-  const defaultDateTo = now().toISODate() ?? "";
-  const defaultDateFrom = now().minus({ days: 30 }).toISODate() ?? "";
+  const defaultDateTo = now().toISODate() || "";
+  const defaultDateFrom = now().minus({ days: 30 }).toISODate() || "";
 
   const [dateFrom, setDateFrom] = useState(defaultDateFrom);
   const [dateTo, setDateTo] = useState(defaultDateTo);
@@ -67,7 +67,7 @@ export default function SageExportModal(props: SageExportModalProps) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      setExportedCount(preview?.invoiceCount ?? 0);
+      setExportedCount(preview?.invoiceCount || 0);
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Export failed");
@@ -194,7 +194,7 @@ export default function SageExportModal(props: SageExportModalProps) {
           {exportedCount === null && (
             <button
               onClick={handleExport}
-              disabled={isExporting || isLoadingPreview || (preview?.invoiceCount ?? 0) === 0}
+              disabled={isExporting || isLoadingPreview || (preview?.invoiceCount || 0) === 0}
               className="px-4 py-2 text-sm font-medium text-white bg-orange-600 border border-transparent rounded-md hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isExporting ? "Exporting..." : "Download CSV"}
