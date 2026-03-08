@@ -778,6 +778,9 @@ export interface RubberAuCocDto {
   generatedPdfPath: string | null;
   sentAt: string | null;
   sentToEmail: string | null;
+  approvedAt: string | null;
+  approvedByName: string | null;
+  notes: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
