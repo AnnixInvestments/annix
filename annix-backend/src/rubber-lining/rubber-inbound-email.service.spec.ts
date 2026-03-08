@@ -4,6 +4,7 @@ import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { STORAGE_SERVICE } from "../storage/storage.interface";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
+import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
@@ -32,6 +33,7 @@ describe("RubberInboundEmailService", () => {
         { provide: RubberTaxInvoiceService, useValue: {} },
         { provide: AiChatService, useValue: {} },
         { provide: RubberCocExtractionService, useValue: {} },
+        { provide: RubberAuCocReadinessService, useValue: {} },
       ],
     }).compile();
 

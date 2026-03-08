@@ -1424,13 +1424,11 @@ ${truncatedText}`;
   }
 
   private triggerReadinessCheckForGraphLink(cocId: number): void {
-    this.auCocReadinessService
-      .checkAndAutoGenerateForCoc(cocId)
-      .catch((error) => {
-        this.logger.error(
-          `Readiness check after graph link to CoC ${cocId} failed: ${error.message}`,
-        );
-      });
+    this.auCocReadinessService.checkAndAutoGenerateForCoc(cocId).catch((error) => {
+      this.logger.error(
+        `Readiness check after graph link to CoC ${cocId} failed: ${error.message}`,
+      );
+    });
   }
 
   private triggerReadinessCheckForDeliveryNote(deliveryNoteId: number): void {

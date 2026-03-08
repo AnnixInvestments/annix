@@ -121,7 +121,8 @@
     ],
     "rootDir": "src",
     "moduleNameMapper": {
-      "^src/(.*)$": "<rootDir>/$1"
+      "^src/(.*)$": "<rootDir>/$1",
+      "^pdf-merger-js$": "<rootDir>/../test/__mocks__/pdf-merger-js.ts"
     },
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
@@ -137,9 +138,6 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
-    "transformIgnorePatterns": [
-      "node_modules/(?!(pdf-merger-js)/)"
-    ],
     "maxWorkers": "50%",
     "cache": true,
     "cacheDirectory": "../node_modules/.cache/jest"
