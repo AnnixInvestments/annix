@@ -25,16 +25,16 @@ ASCA Stock Control is a multi-tenant supply chain and inventory management syste
 This is the primary flow that drives everything else.
 
 ```mermaid
-flowchart TD
-    A[Create / Import Job Card] --> B[DRAFT]
-    B -->|Upload supporting documents| C[DOCUMENT_UPLOADED]
-    C -->|Admin reviews documents| D[ADMIN_APPROVED]
-    D -->|Manager confirms job viability| E[MANAGER_APPROVED]
-    E -->|AI coating analysis + auto-generate requisition| F[REQUISITION_SENT]
-    F -->|Storeman allocates stock to the job| G[STOCK_ALLOCATED]
-    G -->|Manager gives final sign-off| H[MANAGER_FINAL]
-    H -->|Job marked ready for dispatch| I[READY_FOR_DISPATCH]
-    I -->|QR scanning confirms items leave warehouse| J[DISPATCHED]
+flowchart LR
+    A[Create / Import] --> B[DRAFT]
+    B -->|Upload docs| C[DOC_UPLOADED]
+    C -->|Admin review| D[ADMIN_APPROVED]
+    D -->|Manager OK| E[MGR_APPROVED]
+    E -->|AI analysis| F[REQUISITION_SENT]
+    F -->|Allocate stock| G[STOCK_ALLOCATED]
+    G -->|Final sign-off| H[MGR_FINAL]
+    H -->|Ready| I[FOR_DISPATCH]
+    I -->|QR scan| J[DISPATCHED]
 
     style B fill:#fef3c7,stroke:#d97706
     style C fill:#dbeafe,stroke:#2563eb
@@ -56,13 +56,13 @@ flowchart TD
 ### 2. Inbound Delivery (Receiving Stock)
 
 ```mermaid
-flowchart TD
-    A[Receive goods at warehouse] --> B[Photograph / scan supplier delivery note]
-    B --> C[AI extracts supplier, items, quantities]
-    C --> D[Link extracted items to stock inventory]
-    D -->|System suggests matches, user clarifies unknowns| E[Create delivery note record]
-    E --> F[Stock quantities increase automatically]
-    F --> G[StockMovement records created - type: IN]
+flowchart LR
+    A[Receive goods] --> B[Scan delivery note]
+    B --> C[AI extracts items]
+    C --> D[Link to inventory]
+    D -->|Clarify unknowns| E[Create delivery note]
+    E --> F[Stock qty updated]
+    F --> G[Movement: IN]
 
     style A fill:#dbeafe,stroke:#2563eb
     style C fill:#e0e7ff,stroke:#4f46e5
@@ -73,16 +73,16 @@ flowchart TD
 ### 3. Invoice Processing (Accounts Payable)
 
 ```mermaid
-flowchart TD
-    A[Upload supplier invoice - PDF / image] --> B[AI extracts invoice #, supplier, date, items, prices]
-    B --> C[System matches items to stock inventory]
-    C --> D{All items matched?}
-    D -->|Yes| F[Review price changes vs. history]
-    D -->|No| E[User clarifies unmatched items]
-    E -->|Pick from suggestions / create new / link Part A+B| F
-    F --> G{Large price changes?}
+flowchart LR
+    A[Upload invoice] --> B[AI extracts data]
+    B --> C[Match to inventory]
+    C --> D{All matched?}
+    D -->|Yes| F[Review prices]
+    D -->|No| E[Clarify items]
+    E --> F
+    F --> G{Price changes?}
     G -->|Yes| H[Manager approves]
-    G -->|No| I[Batch export to Sage as CSV]
+    G -->|No| I[Export to Sage]
     H --> I
 
     style A fill:#dbeafe,stroke:#2563eb
@@ -95,13 +95,13 @@ flowchart TD
 ### 4. Stock Issuance (Day-to-Day Warehouse Operations)
 
 ```mermaid
-flowchart TD
-    A[Storeman initiates issuance] --> B["Step 1: Scan issuer's staff QR badge"]
-    B --> C["Step 2: Scan recipient's staff QR badge"]
-    C --> D["Step 3: Scan stock item QR codes + enter quantities"]
-    D --> E["Step 4: Optionally link to a job card"]
-    E --> F["Step 5: Review and confirm"]
-    F --> G[StockIssuance + StockMovement created - type: OUT]
+flowchart LR
+    A[Start issuance] --> B[Scan issuer QR]
+    B --> C[Scan recipient QR]
+    C --> D[Scan items + qty]
+    D --> E[Link job card]
+    E --> F[Review + confirm]
+    F --> G[Movement: OUT]
 
     style A fill:#dbeafe,stroke:#2563eb
     style D fill:#fef3c7,stroke:#d97706
