@@ -311,7 +311,7 @@ export default function TaxInvoiceDetailPage() {
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Number of Rolls</dt>
                   <dd className="mt-1 text-lg font-semibold text-gray-900">
-                    {invoice.numberOfRolls ?? "-"}
+                    {invoice.numberOfRolls != null ? invoice.numberOfRolls : "-"}
                   </dd>
                 </div>
                 <div>

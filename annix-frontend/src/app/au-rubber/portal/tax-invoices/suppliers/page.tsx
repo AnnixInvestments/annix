@@ -573,7 +573,7 @@ export default function SupplierTaxInvoicesPage() {
                       {inv.productDescription || "-"}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                      {inv.numberOfRolls ?? "-"}
+                      {inv.numberOfRolls != null ? inv.numberOfRolls : "-"}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                       {formatCurrency(inv.costPerUnit)}
