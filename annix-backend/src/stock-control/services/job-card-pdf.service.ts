@@ -99,7 +99,11 @@ export class JobCardPdfService {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
-      const { noteItems } = this.partitionLineItems(jobCard.lineItems);
+      const { filteredItems: pipeItems, noteItems } = this.partitionLineItems(jobCard.lineItems);
+      const totalPipeQty = pipeItems.reduce(
+        (sum, li) => sum + (li.quantity ? Number(li.quantity) : 0),
+        0,
+      );
 
       this.drawHeader(doc, company, jobCard);
       this.drawJobCardDetails(doc, jobCard, noteItems);
@@ -108,7 +112,7 @@ export class JobCardPdfService {
       let currentY = 280;
       currentY = this.drawLineItems(doc, jobCard, currentY);
       currentY = this.drawRubberAllocationSync(doc, jobCard, rubberAllocationResult, currentY);
-      currentY = this.drawCoatingSpecification(doc, coatingAnalysis, currentY);
+      currentY = this.drawCoatingSpecification(doc, coatingAnalysis, currentY, company, totalPipeQty);
       currentY = this.drawAllocations(doc, jobCard, currentY);
       this.drawSignatureBoxes(doc, approvals);
       this.drawFooter(doc);
@@ -263,6 +267,8 @@ export class JobCardPdfService {
     doc: typeof PDFDocument,
     coatingAnalysis: JobCardCoatingAnalysis | null,
     startY: number,
+    company: StockControlCompany | null = null,
+    totalPipeQty: number = 0,
   ): number {
     if (!coatingAnalysis || !coatingAnalysis.coats || coatingAnalysis.coats.length === 0) {
       return startY;
@@ -292,9 +298,10 @@ export class JobCardPdfService {
     y += 5;
     doc.fontSize(9).font("Helvetica-Bold");
     doc.text("Product", 50, y);
-    doc.text("DFT (µm)", 280, y);
-    doc.text("Coverage (m²/L)", 350, y);
-    doc.text("Allowed Litres", 460, y);
+    doc.text("DFT (µm)", 260, y);
+    doc.text("Coverage (m²/L)", 330, y);
+    doc.text("Allowed Litres", 420, y);
+    doc.text("L/Pipe", 500, y);
 
     y += 15;
     doc.moveTo(50, y).lineTo(545, y).stroke();
@@ -307,15 +314,22 @@ export class JobCardPdfService {
           ? String(coat.minDftUm)
           : `${coat.minDftUm}-${coat.maxDftUm}`;
 
-      doc.text(coat.product, 50, y, { width: 220 });
-      doc.text(dftRange, 280, y);
-      doc.text(String(coat.coverageM2PerLiter.toFixed(2)), 350, y);
-      doc.text(coat.litersRequired === 0 ? "—" : String(coat.litersRequired.toFixed(1)), 460, y);
+      const litresPerPipe =
+        totalPipeQty > 0 && coat.litersRequired > 0
+          ? coat.litersRequired / totalPipeQty
+          : 0;
+
+      doc.text(coat.product, 50, y, { width: 200 });
+      doc.text(dftRange, 260, y);
+      doc.text(String(coat.coverageM2PerLiter.toFixed(2)), 330, y);
+      doc.text(coat.litersRequired === 0 ? "—" : String(coat.litersRequired.toFixed(1)), 420, y);
+      doc.text(litresPerPipe === 0 ? "—" : litresPerPipe.toFixed(2), 500, y);
       y += 15;
     });
 
+    const lossPct = company?.pipingLossFactorPct ?? 45;
     doc.fillColor("#999999").fontSize(7).font("Helvetica");
-    doc.text("Coverage includes 55% piping loss factor", 50, y);
+    doc.text(`Coverage includes ${lossPct}% piping loss factor`, 50, y);
     y += 12;
 
     return y + 10;
@@ -605,7 +619,12 @@ export class JobCardPdfService {
         });
       }
     } else {
-      const rollAreaM2 = 15.0;
+      const manualRolls = jobCard.rubberPlanOverride?.manualRolls;
+      const rollWidthMm =
+        manualRolls && manualRolls.length > 0 ? manualRolls[0].widthMm : 1200;
+      const rollLengthM =
+        manualRolls && manualRolls.length > 0 ? manualRolls[0].lengthM : 12.5;
+      const rollAreaM2 = (rollWidthMm / 1000) * rollLengthM;
       const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
       const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;
       const lastRollPercent = Math.round((lastRollUsage / rollAreaM2) * 100);
@@ -614,7 +633,7 @@ export class JobCardPdfService {
       doc
         .fontSize(8)
         .font("Helvetica")
-        .text("Standard tank work rolls: 1200mm x 12.5m = 15.00 m² per roll", 50, y);
+        .text(`Standard work rolls: ${rollWidthMm}mm x ${rollLengthM}m = ${rollAreaM2.toFixed(2)} m² per roll`, 50, y);
 
       y += 15;
       doc.fontSize(9).font("Helvetica-Bold");

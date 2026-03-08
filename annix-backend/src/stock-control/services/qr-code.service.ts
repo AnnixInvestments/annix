@@ -13,6 +13,7 @@ import {
   WorkflowStep,
 } from "../entities/job-card-approval.entity";
 import { StaffMember } from "../entities/staff-member.entity";
+import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
 
 @Injectable()
@@ -30,6 +31,8 @@ export class QrCodeService {
     private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
     @InjectRepository(JobCardApproval)
     private readonly approvalRepo: Repository<JobCardApproval>,
+    @InjectRepository(StockControlCompany)
+    private readonly companyRepo: Repository<StockControlCompany>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -98,6 +101,8 @@ export class QrCodeService {
   async jobCardPdf(jobId: number, companyId: number): Promise<Buffer> {
     const jobCard = await this.findJobCard(jobId, companyId);
     const qrBuffer = await QRCode.toBuffer(`job:${jobId}`, { width: 200, margin: 2 });
+
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
 
     const coatingAnalysis = await this.coatingAnalysisRepo.findOne({
       where: { jobCardId: jobId, companyId },
@@ -265,12 +270,17 @@ export class QrCodeService {
     }
 
     if (coatingAnalysis?.coats && coatingAnalysis.coats.length > 0) {
+      const totalPipeQty = lineItems.reduce(
+        (sum, li) => sum + (li.quantity ? Number(li.quantity) : 0),
+        0,
+      );
+
       doc.fillColor("#111827").fontSize(11).font("Helvetica-Bold");
       doc.text("Coating Specification", margin, y);
       y += mmToPt(5);
 
-      const coatColWidths = [260, 65, 75, 70];
-      const coatHeaders = ["Product", "DFT (μm)", "Coverage (m²/L)", "Allowed Litres"];
+      const coatColWidths = [210, 60, 70, 55, 55];
+      const coatHeaders = ["Product", "DFT (μm)", "Coverage (m²/L)", "Allowed Litres", "L/Pipe"];
       const coatMinRowHeight = mmToPt(6);
       const coatLineHeight = 10;
 
@@ -307,6 +317,11 @@ export class QrCodeService {
           doc.fontSize(8).font("Helvetica");
         }
 
+        const litresPerPipe =
+          totalPipeQty > 0 && coat.litersRequired > 0
+            ? coat.litersRequired / totalPipeQty
+            : 0;
+
         let xPos = margin + 3;
         doc.fillColor("#111827");
         doc.text(coat.product, xPos, y + 4, { width: coatColWidths[0] - 6 });
@@ -325,6 +340,11 @@ export class QrCodeService {
           width: coatColWidths[3] - 6,
           align: "right",
         });
+        xPos += coatColWidths[3];
+        doc.text(litresPerPipe === 0 ? "—" : litresPerPipe.toFixed(2), xPos, y + 4, {
+          width: coatColWidths[4] - 6,
+          align: "right",
+        });
 
         y += rowHeight;
         doc
@@ -335,8 +355,9 @@ export class QrCodeService {
         y += 3;
       });
 
+      const lossPct = company?.pipingLossFactorPct ?? 45;
       doc.fillColor("#9ca3af").fontSize(7).font("Helvetica");
-      doc.text("Coverage includes 55% piping loss factor", margin + 3, y + 2);
+      doc.text(`Coverage includes ${lossPct}% piping loss factor`, margin + 3, y + 2);
       y += mmToPt(8);
     }
 
@@ -486,7 +507,12 @@ export class QrCodeService {
 
     if (totalM2 <= 0) return startY;
 
-    const rollAreaM2 = 15.0;
+    const manualRolls = jobCard.rubberPlanOverride?.manualRolls;
+    const rollWidthMm =
+      manualRolls && manualRolls.length > 0 ? manualRolls[0].widthMm : 1200;
+    const rollLengthM =
+      manualRolls && manualRolls.length > 0 ? manualRolls[0].lengthM : 12.5;
+    const rollAreaM2 = (rollWidthMm / 1000) * rollLengthM;
     const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
     const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;
     const lastRollPercent = Math.round((lastRollUsage / rollAreaM2) * 100);
@@ -504,7 +530,11 @@ export class QrCodeService {
     y += mmToPt(4);
 
     doc.fillColor("#6b7280").fontSize(7).font("Helvetica");
-    doc.text("Standard tank work rolls: 1200mm × 12.5m = 15.00 m² per roll", margin + 3, y);
+    doc.text(
+      `Standard work rolls: ${rollWidthMm}mm × ${rollLengthM}m = ${rollAreaM2.toFixed(2)} m² per roll`,
+      margin + 3,
+      y,
+    );
     y += mmToPt(4);
 
     doc.fillColor("#111827").fontSize(8).font("Helvetica-Bold");
