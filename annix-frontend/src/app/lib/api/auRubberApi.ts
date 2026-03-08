@@ -2349,10 +2349,10 @@ class AuRubberApiClient {
     });
   }
 
-  async sendAuCoc(id: number, recipientEmail: string): Promise<RubberAuCocDto> {
+  async sendAuCoc(id: number, email: string): Promise<RubberAuCocDto> {
     return this.request(`/rubber-lining/portal/au-cocs/${id}/send`, {
       method: "POST",
-      body: JSON.stringify({ recipientEmail }),
+      body: JSON.stringify({ email }),
     });
   }
 
@@ -2367,6 +2367,17 @@ class AuRubberApiClient {
 
   auCocPdfUrl(id: number): string {
     return `${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`;
+  }
+
+  async auCocPdfBlobUrl(id: number): Promise<string> {
+    const response = await fetch(`${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`, {
+      headers: this.authHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to load PDF: ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
   }
 
   async downloadAuCocPdf(id: number, cocNumber: string): Promise<void> {

@@ -46,6 +46,7 @@ import { RubberType } from "./entities/rubber-type.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberAdminController } from "./rubber-admin.controller";
 import { RubberAuCocService } from "./rubber-au-coc.service";
+import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberBrandingService } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
@@ -122,6 +123,7 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
     RubberDeliveryNoteService,
     RubberRollStockService,
     RubberAuCocService,
+    RubberAuCocReadinessService,
     RubberRequisitionService,
     RubberStockLocationService,
     RubberInboundEmailService,
@@ -145,6 +147,7 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
     RubberDeliveryNoteService,
     RubberRollStockService,
     RubberAuCocService,
+    RubberAuCocReadinessService,
     RubberRequisitionService,
     RubberStockLocationService,
     RubberQualityTrackingService,

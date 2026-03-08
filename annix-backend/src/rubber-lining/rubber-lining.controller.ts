@@ -139,6 +139,7 @@ import { CocProcessingStatus, SupplierCocType } from "./entities/rubber-supplier
 import { TaxInvoiceStatus, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberAuCocService } from "./rubber-au-coc.service";
+import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
@@ -178,6 +179,7 @@ export class RubberLiningController {
     private readonly rubberDeliveryNoteService: RubberDeliveryNoteService,
     private readonly rubberRollStockService: RubberRollStockService,
     private readonly rubberAuCocService: RubberAuCocService,
+    private readonly rubberAuCocReadinessService: RubberAuCocReadinessService,
     private readonly rubberRequisitionService: RubberRequisitionService,
     private readonly rubberStockLocationService: RubberStockLocationService,
     private readonly rubberQualityTrackingService: RubberQualityTrackingService,
@@ -2272,6 +2274,23 @@ Formula: totalPrice = totalKg × salePricePerKg
       "Content-Length": buffer.length.toString(),
     });
     res.send(buffer);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/au-cocs/:id/readiness")
+  @ApiOperation({ summary: "Check AU CoC readiness for auto-generation" })
+  @ApiParam({ name: "id", description: "AU CoC ID" })
+  async auCocReadiness(@Param("id") id: string) {
+    const result = await this.rubberAuCocReadinessService.checkReadiness(Number(id));
+    return {
+      ready: result.ready,
+      readinessStatus: result.readinessStatus,
+      calendererCocId: result.calendererCoc?.id ?? null,
+      compounderCocId: result.compounderCoc?.id ?? null,
+      graphPdfPath: result.graphPdfPath,
+      missingDocuments: result.missingDocuments,
+    };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

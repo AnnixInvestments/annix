@@ -24,6 +24,7 @@ export default function AuCocDetailPage() {
   const [sendEmail, setSendEmail] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
 
   const cocId = Number(params.id);
 
@@ -33,6 +34,14 @@ export default function AuCocDetailPage() {
       const cocData = await auRubberApiClient.auCocById(cocId);
       setCoc(cocData);
       setError(null);
+
+      if (cocData.generatedPdfPath) {
+        const blobUrl = await auRubberApiClient.auCocPdfBlobUrl(cocId);
+        if (pdfBlobUrl) {
+          URL.revokeObjectURL(pdfBlobUrl);
+        }
+        setPdfBlobUrl(blobUrl);
+      }
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));
     } finally {
@@ -44,6 +53,11 @@ export default function AuCocDetailPage() {
     if (cocId) {
       fetchData();
     }
+    return () => {
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+    };
   }, [cocId]);
 
   const handleGeneratePdf = async () => {
@@ -211,6 +225,34 @@ export default function AuCocDetailPage() {
           )}
         </div>
       </div>
+
+      {pdfBlobUrl && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <span className="font-medium text-gray-900">Certificate Preview</span>
+            <button
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-yellow-600 hover:text-yellow-800"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              {isDownloading ? "Downloading..." : "Download PDF"}
+            </button>
+          </div>
+          <iframe
+            src={pdfBlobUrl}
+            className="w-full h-[700px]"
+            title="Certificate of Conformance"
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white shadow rounded-lg p-6">

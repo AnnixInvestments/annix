@@ -9,6 +9,7 @@ import { DeliveryNoteStatus, DeliveryNoteType } from "./entities/rubber-delivery
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
+import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
@@ -161,6 +162,7 @@ export class RubberInboundEmailService {
     private taxInvoiceService: RubberTaxInvoiceService,
     private aiChatService: AiChatService,
     private cocExtractionService: RubberCocExtractionService,
+    private auCocReadinessService: RubberAuCocReadinessService,
   ) {}
 
   async processInboundEmail(emailData: InboundEmailData): Promise<ProcessedEmailResult> {
@@ -342,6 +344,7 @@ export class RubberInboundEmailService {
             graphPdfPath: storageResult.path,
           });
           this.logger.log(`Linked graph PDF to CoC ${matchingCert.cocId} via batch number match`);
+          this.triggerReadinessCheckForGraphLink(matchingCert.cocId);
         } else {
           const linkedCocId = await this.linkGraphToExistingCoc(
             multerFile,
@@ -353,6 +356,7 @@ export class RubberInboundEmailService {
             this.logger.log(
               `Linked graph PDF to existing CoC ${linkedCocId} via batch number fallback`,
             );
+            this.triggerReadinessCheckForGraphLink(linkedCocId);
           } else {
             this.logger.warn(
               `Graph PDF ${graph.attachment.filename} could not be matched to any CoC - skipping (batches: ${normalizedGraphBatches.join(", ")})`,
@@ -1419,6 +1423,42 @@ ${truncatedText}`;
     return null;
   }
 
+  private triggerReadinessCheckForGraphLink(cocId: number): void {
+    this.auCocReadinessService
+      .checkReadinessForCoc(cocId)
+      .then((results) =>
+        Promise.all(
+          results
+            .filter((r) => r.ready)
+            .map((r) => this.auCocReadinessService.autoGenerateIfReady(r.details.calendererCocId!)),
+        ),
+      )
+      .catch((error) => {
+        this.logger.error(
+          `Readiness check after graph link to CoC ${cocId} failed: ${error.message}`,
+        );
+      });
+  }
+
+  private triggerReadinessCheckForDeliveryNote(deliveryNoteId: number): void {
+    this.auCocReadinessService
+      .checkReadinessForDeliveryNote(deliveryNoteId)
+      .then((result) => {
+        if (result?.ready) {
+          const auCocId = result.details.calendererCocId;
+          if (auCocId) {
+            return this.auCocReadinessService.autoGenerateIfReady(auCocId);
+          }
+        }
+        return undefined;
+      })
+      .catch((error) => {
+        this.logger.error(
+          `Readiness check after DN ${deliveryNoteId} creation failed: ${error.message}`,
+        );
+      });
+  }
+
   private autoExtractCoc(cocId: number, cocType: SupplierCocType, pdfText: string): void {
     this.cocExtractionService
       .extractByType(cocType, pdfText)
@@ -1858,6 +1898,8 @@ ${truncatedText}`;
         this.logger.log(
           `${existingDn ? "Overwrote" : "Created"} customer DN ${dnId} (${deliveryNoteNumber}) with ${group.allLineItems.length} line items`,
         );
+
+        this.triggerReadinessCheckForDeliveryNote(dnId);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         this.logger.error(

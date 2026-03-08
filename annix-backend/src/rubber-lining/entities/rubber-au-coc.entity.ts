@@ -25,6 +25,26 @@ export enum AuCocStatus {
   SENT = "SENT",
 }
 
+export enum AuCocReadinessStatus {
+  NOT_TRACKED = "NOT_TRACKED",
+  WAITING_FOR_CALENDERER_COC = "WAITING_FOR_CALENDERER_COC",
+  WAITING_FOR_COMPOUNDER_COC = "WAITING_FOR_COMPOUNDER_COC",
+  WAITING_FOR_GRAPH = "WAITING_FOR_GRAPH",
+  WAITING_FOR_APPROVAL = "WAITING_FOR_APPROVAL",
+  READY_FOR_GENERATION = "READY_FOR_GENERATION",
+  AUTO_GENERATED = "AUTO_GENERATED",
+}
+
+export interface ReadinessDetails {
+  calendererCocId: number | null;
+  compounderCocId: number | null;
+  graphPdfPath: string | null;
+  calendererApproved: boolean;
+  compounderApproved: boolean;
+  missingDocuments: string[];
+  lastCheckedAt: string;
+}
+
 @Entity("rubber_au_cocs")
 export class RubberAuCoc {
   @PrimaryGeneratedColumn()
@@ -87,6 +107,17 @@ export class RubberAuCoc {
 
   @Column({ name: "approved_at", type: "timestamp", nullable: true })
   approvedAt: Date | null;
+
+  @Column({
+    name: "readiness_status",
+    type: "enum",
+    enum: AuCocReadinessStatus,
+    default: AuCocReadinessStatus.NOT_TRACKED,
+  })
+  readinessStatus: AuCocReadinessStatus;
+
+  @Column({ name: "readiness_details", type: "jsonb", nullable: true })
+  readinessDetails: ReadinessDetails | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

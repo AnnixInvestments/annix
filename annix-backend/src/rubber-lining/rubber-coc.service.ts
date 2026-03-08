@@ -19,6 +19,7 @@ import {
   RubberSupplierCoc,
   SupplierCocType,
 } from "./entities/rubber-supplier-coc.entity";
+import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { DEFAULT_SUPPLIER_NAMES } from "./rubber-lining.constants";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 
@@ -54,6 +55,7 @@ export class RubberCocService {
     private compoundStockRepository: Repository<RubberCompoundStock>,
     @Inject(forwardRef(() => RubberQualityTrackingService))
     private qualityTrackingService: RubberQualityTrackingService,
+    private auCocReadinessService: RubberAuCocReadinessService,
   ) {}
 
   private normalizeCocNumber(cocNumber: string): string {
@@ -234,6 +236,8 @@ export class RubberCocService {
       this.triggerQualityCheck(coc.compoundCode);
     }
 
+    this.triggerReadinessCheckForApprovedCoc(coc);
+
     return this.mapSupplierCocToDto(coc);
   }
 
@@ -328,6 +332,43 @@ export class RubberCocService {
       })
       .catch((error) => {
         this.logger.error(`Quality check failed for ${compoundCode}:`, error);
+      });
+  }
+
+  private triggerReadinessCheckForApprovedCoc(coc: RubberSupplierCoc): void {
+    const orderNumber = coc.orderNumber || coc.extractedData?.orderNumber || null;
+
+    if (!orderNumber) return;
+
+    this.auCocReadinessService
+      .findPendingAuCocsByOrderNumber(orderNumber)
+      .then((pendingAuCocs) =>
+        Promise.all(
+          pendingAuCocs.map((auCoc) => this.auCocReadinessService.autoGenerateIfReady(auCoc.id)),
+        ),
+      )
+      .catch((error) => {
+        this.logger.error(`Readiness check after CoC ${coc.id} approval failed: ${error.message}`);
+      });
+  }
+
+  private triggerReadinessCheckForLinkedCalenderer(calendererCoc: RubberSupplierCoc): void {
+    const orderNumber =
+      calendererCoc.orderNumber || calendererCoc.extractedData?.orderNumber || null;
+
+    if (!orderNumber) return;
+
+    this.auCocReadinessService
+      .findPendingAuCocsByOrderNumber(orderNumber)
+      .then((pendingAuCocs) =>
+        Promise.all(
+          pendingAuCocs.map((auCoc) => this.auCocReadinessService.autoGenerateIfReady(auCoc.id)),
+        ),
+      )
+      .catch((error) => {
+        this.logger.error(
+          `Readiness check after calenderer ${calendererCoc.id} linking failed: ${error.message}`,
+        );
       });
   }
 
@@ -674,6 +715,8 @@ export class RubberCocService {
       };
       calendererCoc.extractedData = updatedExtractedData;
       await this.supplierCocRepository.save(calendererCoc);
+
+      this.triggerReadinessCheckForLinkedCalenderer(calendererCoc);
     }
 
     return {
