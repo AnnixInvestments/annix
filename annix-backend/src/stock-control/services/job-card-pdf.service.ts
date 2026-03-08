@@ -17,6 +17,7 @@ import { StockItem } from "../entities/stock-item.entity";
 import {
   type CuttingPlan,
   calculateCuttingPlan,
+  parsePipeItem,
   parseRubberSpecNote,
   type RollAllocation,
 } from "../lib/rubberCuttingCalculator";
@@ -405,12 +406,27 @@ export class JobCardPdfService {
       m2: li.m2,
     }));
 
-    this.logger.log(
-      `Rubber PDF for JC ${jobCard.id}: ${calcItems.length} filtered items, ` +
-        `raw: ${JSON.stringify(calcItems.map((i) => ({ id: i.id, code: i.itemCode, desc: i.itemDescription, qty: i.quantity, m2: i.m2 })))}`,
-    );
+    calcItems.forEach((item, idx) => {
+      const desc = item.itemDescription || item.itemCode || "";
+      const parsed = parsePipeItem(
+        String(item.id),
+        desc,
+        Number(item.quantity || 1),
+        item.m2 ? Number(item.m2) : null,
+        item.itemNo || null,
+      );
+      this.logger.log(
+        `Rubber PDF JC ${jobCard.id} item[${idx}]: desc="${desc}" qty=${item.quantity} m2=${item.m2} ` +
+          `→ nb=${parsed.nbMm} len=${parsed.lengthMm} w=${parsed.rubberWidthMm} l=${parsed.rubberLengthMm} valid=${parsed.isValidPipe}`,
+      );
+    });
 
     const selectedPly = jobCard.rubberPlanOverride?.selectedPlyCombination || null;
+    this.logger.log(
+      `Rubber PDF JC ${jobCard.id}: override=${JSON.stringify(jobCard.rubberPlanOverride?.status)}, ` +
+        `selectedPly=${JSON.stringify(selectedPly)}, stockRolls=${stockRolls.length}`,
+    );
+
     const plan = calculateCuttingPlan(
       calcItems,
       stockRolls.length > 0 ? stockQuery : null,
@@ -426,8 +442,9 @@ export class JobCardPdfService {
     }
 
     this.logger.log(
-      `Rubber PDF for JC ${jobCard.id}: hasPipeItems=${plan.hasPipeItems}, ` +
-        `rolls=${plan.rolls.length}, totalUsed=${plan.totalUsedSqM.toFixed(2)}m²`,
+      `Rubber PDF JC ${jobCard.id}: hasPipeItems=${plan.hasPipeItems}, ` +
+        `rolls=${plan.rolls.length}, totalUsed=${plan.totalUsedSqM.toFixed(2)}m², ` +
+        `genericM2=${plan.genericM2Total.toFixed(2)}, rubberSpec=${JSON.stringify(plan.rubberSpec)}`,
     );
 
     return { plan, stockRolls, isRubberJob: true, totalM2 };
@@ -623,46 +640,95 @@ export class JobCardPdfService {
         });
       }
     } else {
-      const manualRolls = jobCard.rubberPlanOverride?.manualRolls;
-      const rollWidthMm = manualRolls && manualRolls.length > 0 ? manualRolls[0].widthMm : 1200;
-      const rollLengthM = manualRolls && manualRolls.length > 0 ? manualRolls[0].lengthM : 12.5;
-      const rollAreaM2 = (rollWidthMm / 1000) * rollLengthM;
-      const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
-      const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;
-      const lastRollPercent = Math.round((lastRollUsage / rollAreaM2) * 100);
-      const leftover = rollsNeeded * rollAreaM2 - totalM2;
+      const retryPlan = calculateCuttingPlan(
+        (jobCard.lineItems || []).map((li) => ({
+          id: li.id,
+          itemCode: li.itemCode,
+          itemDescription: li.itemDescription,
+          itemNo: li.itemNo,
+          quantity: li.quantity,
+          m2: li.m2,
+        })),
+      );
 
-      doc
-        .fontSize(8)
-        .font("Helvetica")
-        .text(
-          `Standard work rolls: ${rollWidthMm}mm x ${rollLengthM}m = ${rollAreaM2.toFixed(2)} m² per roll`,
-          50,
-          y,
+      if (retryPlan.hasPipeItems) {
+        this.logger.log(
+          `Rubber PDF fallback recalc succeeded: rolls=${retryPlan.totalRollsNeeded}, used=${retryPlan.totalUsedSqM.toFixed(2)}m²`,
         );
 
-      y += 15;
-      doc.fontSize(9).font("Helvetica-Bold");
-      doc.text(`Total Required: ${totalM2.toFixed(2)} m²`, 50, y);
-      doc.text(`Rolls Required: ${rollsNeeded}`, 200, y);
-      doc.text(`Last Roll Usage: ${lastRollPercent}%`, 320, y);
-      doc.text(`Leftover: ${leftover.toFixed(2)} m²`, 450, y);
+        doc.fontSize(9).font("Helvetica-Bold");
+        doc.text(`Rolls Required: ${retryPlan.totalRollsNeeded}`, 50, y);
+        doc.text(`Used: ${retryPlan.totalUsedSqM.toFixed(2)} m²`, 200, y);
+        doc.text(
+          `Waste: ${retryPlan.totalWasteSqM.toFixed(2)} m² (${retryPlan.wastePercentage.toFixed(1)}%)`,
+          340,
+          y,
+        );
+        y += 15;
 
-      y += 15;
-      const itemsWithM2 = (jobCard.lineItems || []).filter(
-        (li) => li.m2 !== null && Number(li.m2) > 0,
-      );
-      if (itemsWithM2.length > 0) {
-        doc.fontSize(8).font("Helvetica");
-        itemsWithM2.forEach((li) => {
-          const label = li.itemDescription
-            ? `${li.itemCode || ""} - ${li.itemDescription}`
-            : li.itemCode || "-";
-          const qty = li.quantity ? `× ${li.quantity}` : "";
-          doc.text(`${label} ${qty}`.trim(), 60, y, { width: 380 });
-          doc.text(`${Number(li.m2).toFixed(2)} m²`, 450, y);
+        if (retryPlan.genericM2Total > 0) {
+          doc.fontSize(8).font("Helvetica");
+          doc.text(`Plus generic m² items: ${retryPlan.genericM2Total.toFixed(2)} m²`, 50, y);
           y += 12;
+        }
+
+        this.groupIdenticalRolls(retryPlan.rolls).forEach((group) => {
+          const diagramHeight = this.cuttingDiagramHeight(group.roll);
+          const pageHeight = doc.page.height;
+          if (y + diagramHeight > pageHeight - 165) {
+            doc.addPage();
+            y = 50;
+          }
+          y = this.drawCuttingDiagramForRoll(
+            doc,
+            group.roll,
+            y,
+            group.count,
+            group.roll.plyThicknessMm || retryPlan.totalThicknessMm || undefined,
+          );
         });
+      } else {
+        const manualRolls = jobCard.rubberPlanOverride?.manualRolls;
+        const rollWidthMm = manualRolls && manualRolls.length > 0 ? manualRolls[0].widthMm : 1200;
+        const rollLengthM = manualRolls && manualRolls.length > 0 ? manualRolls[0].lengthM : 12.5;
+        const rollAreaM2 = (rollWidthMm / 1000) * rollLengthM;
+        const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
+        const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;
+        const lastRollPercent = Math.round((lastRollUsage / rollAreaM2) * 100);
+        const leftover = rollsNeeded * rollAreaM2 - totalM2;
+
+        doc
+          .fontSize(8)
+          .font("Helvetica")
+          .text(
+            `Standard work rolls: ${rollWidthMm}mm x ${rollLengthM}m = ${rollAreaM2.toFixed(2)} m² per roll`,
+            50,
+            y,
+          );
+
+        y += 15;
+        doc.fontSize(9).font("Helvetica-Bold");
+        doc.text(`Total Required: ${totalM2.toFixed(2)} m²`, 50, y);
+        doc.text(`Rolls Required: ${rollsNeeded}`, 200, y);
+        doc.text(`Last Roll Usage: ${lastRollPercent}%`, 320, y);
+        doc.text(`Leftover: ${leftover.toFixed(2)} m²`, 450, y);
+
+        y += 15;
+        const itemsWithM2 = (jobCard.lineItems || []).filter(
+          (li) => li.m2 !== null && Number(li.m2) > 0,
+        );
+        if (itemsWithM2.length > 0) {
+          doc.fontSize(8).font("Helvetica");
+          itemsWithM2.forEach((li) => {
+            const label = li.itemDescription
+              ? `${li.itemCode || ""} - ${li.itemDescription}`
+              : li.itemCode || "-";
+            const qty = li.quantity ? `× ${li.quantity}` : "";
+            doc.text(`${label} ${qty}`.trim(), 60, y, { width: 380 });
+            doc.text(`${Number(li.m2).toFixed(2)} m²`, 450, y);
+            y += 12;
+          });
+        }
       }
     }
 
