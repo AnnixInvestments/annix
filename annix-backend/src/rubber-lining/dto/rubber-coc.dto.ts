@@ -1,4 +1,5 @@
 import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import type { TestDataSummary } from "../entities/rubber-au-coc-item.entity";
 import { AuCocStatus } from "../entities/rubber-au-coc.entity";
 import { BatchPassFailStatus } from "../entities/rubber-compound-batch.entity";
 import {
@@ -539,6 +540,7 @@ export class RubberAuCocItemDto {
   auCocId: number;
   rollStockId: number;
   rollNumber: string | null;
+  testDataSummary: TestDataSummary | null;
   createdAt: string;
 }
 

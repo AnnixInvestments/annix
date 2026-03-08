@@ -777,7 +777,7 @@ export interface RubberAuCocDto {
   statusLabel: string;
   generatedPdfPath: string | null;
   sentAt: string | null;
-  sentTo: string | null;
+  sentToEmail: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;

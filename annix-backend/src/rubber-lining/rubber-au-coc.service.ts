@@ -459,7 +459,10 @@ export class RubberAuCocService {
     }));
 
     const compoundDescription =
-      qualityConfig?.compoundDescription || compoundCoding?.name || "Rubber Compound";
+      this.descriptionFromCompoundCode(compoundCode) ||
+      qualityConfig?.compoundDescription ||
+      compoundCoding?.name ||
+      "Rubber Compound";
 
     const productionDate = firstRoll?.productionDate
       ? formatDateZA(firstRoll.productionDate)
@@ -602,7 +605,10 @@ export class RubberAuCocService {
             }
           }
 
-          compoundDescription = qualityConfig?.compoundDescription || compoundDescription;
+          compoundDescription =
+            this.descriptionFromCompoundCode(compoundCode) ||
+            qualityConfig?.compoundDescription ||
+            compoundDescription;
         }
 
         const batchSourceCocId = compounderCoc?.id || supplierCoc.id;
@@ -679,6 +685,36 @@ export class RubberAuCocService {
 
     const withGraph = compounderCocs.find((c) => c.graphPdfPath);
     return withGraph || compounderCocs[0];
+  }
+
+  private descriptionFromCompoundCode(code: string): string | null {
+    const match = code.match(/^([A-Za-z])([A-Za-z]{2})([A-Za-z])(\d+)$/);
+    if (!match) return null;
+
+    const [, colourCode, curingCode, gradeCode, hardness] = match;
+
+    const colours: Record<string, string> = {
+      R: "Red",
+      B: "Black",
+      P: "Pink",
+      Y: "Yellow",
+      G: "Green",
+      W: "White",
+    };
+
+    const curingMethods: Record<string, string> = {
+      SC: "Steam Cured",
+      PC: "Pre-cured",
+      CC: "Chemically Cured",
+    };
+
+    const colour = colours[colourCode.toUpperCase()];
+    const curing = curingMethods[curingCode.toUpperCase()];
+    const grade = gradeCode.toUpperCase();
+
+    if (!colour || !curing) return null;
+
+    return `${colour} ${grade}${hardness} ${curingCode.toUpperCase()}`;
   }
 
   private async createPdf(data: CocPdfData): Promise<Buffer> {
@@ -1003,6 +1039,7 @@ export class RubberAuCocService {
       auCocId: item.auCocId,
       rollStockId: item.rollStockId,
       rollNumber: item.rollStock?.rollNumber ?? null,
+      testDataSummary: item.testDataSummary ?? null,
       createdAt: item.createdAt.toISOString(),
     };
   }
