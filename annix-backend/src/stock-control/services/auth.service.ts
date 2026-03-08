@@ -51,7 +51,7 @@ export class StockControlAuthService {
       return path;
     }
     if (this.storageType === "s3") {
-      return this.s3StorageService.getPresignedUrl(path, 86400);
+      return await this.s3StorageService.getPresignedUrl(path, 86400);
     }
     return path;
   }
