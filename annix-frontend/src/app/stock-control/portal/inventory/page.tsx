@@ -1001,6 +1001,18 @@ export default function InventoryPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
           <p className="mt-1 text-sm text-gray-600">Manage stock items and quantities</p>
+          <p className="mt-1 text-lg font-semibold text-gray-800">
+            Total SOH Value:{" "}
+            {formatZAR(
+              viewMode === "grouped"
+                ? groupedData.reduce(
+                    (total, group) =>
+                      total + group.items.reduce((sum, i) => sum + i.costPerUnit * i.quantity, 0),
+                    0,
+                  )
+                : allItems().reduce((sum, i) => sum + i.costPerUnit * i.quantity, 0),
+            )}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
