@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, X } from "lucide-react";
+import { FileText, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -40,6 +40,21 @@ export default function CustomerTaxInvoicesPage() {
   const [uploadInvoiceDate, setUploadInvoiceDate] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const handleDelete = async (id: number, invoiceNumber: string) => {
+    if (!window.confirm(`Delete tax invoice ${invoiceNumber}? This cannot be undone.`)) return;
+    try {
+      setDeletingId(id);
+      await auRubberApiClient.deleteTaxInvoice(id);
+      showToast(`Tax invoice ${invoiceNumber} deleted`, "success");
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to delete tax invoice", "error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -375,6 +390,10 @@ export default function CustomerTaxInvoicesPage() {
                 >
                   VAT
                 </th>
+                <th
+                  scope="col"
+                  className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-12"
+                />
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -400,6 +419,20 @@ export default function CustomerTaxInvoicesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                     {formatCurrency(inv.vatAmount)}
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-right">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(inv.id, inv.invoiceNumber);
+                      }}
+                      disabled={deletingId === inv.id}
+                      className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                      title="Delete invoice"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
