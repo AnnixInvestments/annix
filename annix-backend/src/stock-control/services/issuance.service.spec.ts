@@ -23,6 +23,7 @@ describe("IssuanceService", () => {
   };
 
   const mockStockItemRepo = {
+    find: jest.fn(),
     findOne: jest.fn(),
     save: jest.fn(),
   };
@@ -371,9 +372,7 @@ describe("IssuanceService", () => {
         .mockResolvedValueOnce({ id: 1, name: "Issuer" })
         .mockResolvedValueOnce({ id: 2, name: "Recipient" });
       mockJobCardRepo.findOne.mockResolvedValue(null);
-      mockStockItemRepo.findOne
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: 2, name: "Item 2", quantity: 100 });
+      mockStockItemRepo.find.mockResolvedValue([{ id: 2, name: "Item 2", quantity: 100 }]);
       mockStockItemRepo.save.mockResolvedValue(true);
       mockIssuanceRepo.findOne.mockResolvedValue({ id: 1 });
 
@@ -400,7 +399,7 @@ describe("IssuanceService", () => {
         .mockResolvedValueOnce({ id: 1, name: "Issuer" })
         .mockResolvedValueOnce({ id: 2, name: "Recipient" });
       mockJobCardRepo.findOne.mockResolvedValue(null);
-      mockStockItemRepo.findOne.mockResolvedValue({ id: 1, name: "Item", quantity: 100 });
+      mockStockItemRepo.find.mockResolvedValue([{ id: 1, name: "Item", quantity: 100 }]);
 
       const result = await service.createBatchIssuance(
         1,

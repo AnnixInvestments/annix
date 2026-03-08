@@ -7,7 +7,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
+import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -210,7 +211,7 @@ export class JobCardService {
         stockItem: { id: stockItem.id },
         companyId,
         pendingApproval: false,
-        rejectedAt: null as unknown as Date,
+        rejectedAt: IsNull(),
       },
     });
 
@@ -273,7 +274,7 @@ export class JobCardService {
 
     allocation.pendingApproval = false;
     allocation.approvedByManagerId = managerId;
-    allocation.approvedAt = new Date();
+    allocation.approvedAt = now().toJSDate();
     const saved = await this.allocationRepo.save(allocation);
 
     const movement = this.movementRepo.create({
@@ -312,7 +313,7 @@ export class JobCardService {
     }
 
     allocation.pendingApproval = false;
-    allocation.rejectedAt = new Date();
+    allocation.rejectedAt = now().toJSDate();
     allocation.rejectionReason = reason;
 
     this.logger.log(`Over-allocation ${allocationId} rejected: ${reason}`);

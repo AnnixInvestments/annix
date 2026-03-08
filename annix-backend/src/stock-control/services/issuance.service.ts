@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { JobCard } from "../entities/job-card.entity";
 import { StaffMember } from "../entities/staff-member.entity";
@@ -332,10 +332,16 @@ export class IssuanceService {
       `Stock issuance created: ${dto.quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
     );
 
-    return this.issuanceRepo.findOne({
+    const fullIssuance = await this.issuanceRepo.findOne({
       where: { id: savedIssuance.id },
       relations: ["stockItem", "issuerStaff", "recipientStaff", "jobCard", "issuedByUser"],
-    }) as Promise<StockIssuance>;
+    });
+
+    if (!fullIssuance) {
+      throw new NotFoundException(`Issuance ${savedIssuance.id} not found after creation`);
+    }
+
+    return fullIssuance;
   }
 
   async createBatchIssuance(
@@ -375,10 +381,14 @@ export class IssuanceService {
 
     const issuedAt = now().toJSDate();
 
+    const stockItemIds = dto.items.map((item) => item.stockItemId);
+    const stockItems = await this.stockItemRepo.find({
+      where: { id: In(stockItemIds), companyId },
+    });
+    const stockItemMap = new Map(stockItems.map((si) => [si.id, si]));
+
     for (const item of dto.items) {
-      const stockItem = await this.stockItemRepo.findOne({
-        where: { id: item.stockItemId, companyId },
-      });
+      const stockItem = stockItemMap.get(item.stockItemId) ?? null;
 
       if (!stockItem) {
         result.errors.push({ stockItemId: item.stockItemId, message: "Stock item not found" });
