@@ -3,6 +3,12 @@ import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
 import { Transporter } from "nodemailer";
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+}
+
 export interface EmailOptions {
   to: string;
   subject: string;
@@ -11,6 +17,7 @@ export interface EmailOptions {
   replyTo?: string;
   fromName?: string;
   isTransactional?: boolean;
+  attachments?: EmailAttachment[];
 }
 
 @Injectable()
@@ -94,6 +101,11 @@ export class EmailService {
         text: options.text,
         messageId,
         headers,
+        attachments: options.attachments?.map((a) => ({
+          filename: a.filename,
+          content: a.content,
+          contentType: a.contentType,
+        })),
       });
       this.logger.log(`Email sent successfully to ${options.to}`);
       return true;

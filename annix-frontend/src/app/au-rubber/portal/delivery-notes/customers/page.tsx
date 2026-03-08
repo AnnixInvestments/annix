@@ -250,7 +250,8 @@ export default function CustomerDeliveryNotesPage() {
     try {
       setGeneratingCocForId(noteId);
       const coc = await auRubberApiClient.createAuCocFromDeliveryNote(noteId);
-      showToast(`AU Certificate ${coc.cocNumber} created`, "success");
+      showToast(`AU Certificate ${coc.cocNumber} created — generating PDF...`, "success");
+      await auRubberApiClient.generateAuCocPdf(coc.id);
       router.push(`/au-rubber/portal/au-cocs/${coc.id}`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create certificate", "error");

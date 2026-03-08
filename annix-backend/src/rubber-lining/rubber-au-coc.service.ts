@@ -8,6 +8,7 @@ import { pdfToPng } from "pdf-to-png-converter";
 import PDFDocument from "pdfkit";
 import sharp from "sharp";
 import { In, Repository } from "typeorm";
+import { EmailService } from "../email/email.service";
 import { formatDateZA, generateUniqueId, now } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
@@ -84,6 +85,7 @@ export class RubberAuCocService {
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
   ) {}
 
   async allAuCocs(filters?: {
@@ -380,13 +382,39 @@ export class RubberAuCocService {
     if (!coc) {
       throw new BadRequestException("AU CoC not found");
     }
+    if (!coc.generatedPdfPath) {
+      throw new BadRequestException("PDF must be generated before sending");
+    }
+
+    const pdfBuffer = await this.storageService.download(coc.generatedPdfPath);
+    const customerName = coc.customerCompany?.name || "Customer";
+
+    await this.emailService.sendEmail({
+      to: dto.email,
+      subject: `Certificate of Conformance - ${coc.cocNumber}`,
+      fromName: "AU Industries",
+      html: [
+        `<p>Dear ${customerName},</p>`,
+        `<p>Please find attached the Certificate of Conformance <strong>${coc.cocNumber}</strong>.</p>`,
+        coc.poNumber ? `<p>PO Reference: ${coc.poNumber}</p>` : "",
+        coc.deliveryNoteRef ? `<p>Delivery Note: ${coc.deliveryNoteRef}</p>` : "",
+        "<p>Kind regards,<br/>AU Industries</p>",
+      ].join("\n"),
+      attachments: [
+        {
+          filename: `${coc.cocNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
+    });
 
     coc.sentToEmail = dto.email;
     coc.sentAt = now().toJSDate();
     coc.status = AuCocStatus.SENT;
     await this.auCocRepository.save(coc);
 
-    this.logger.log(`AU CoC ${coc.cocNumber} marked as sent to ${dto.email}`);
+    this.logger.log(`AU CoC ${coc.cocNumber} sent to ${dto.email}`);
 
     return this.mapAuCocToDto(coc);
   }
@@ -450,12 +478,12 @@ export class RubberAuCocService {
 
     const batchTestData: BatchTestData[] = batches.map((batch) => ({
       batchNumber: batch.batchNumber,
-      shoreA: batch.shoreAHardness ? Number(batch.shoreAHardness) : null,
-      density: batch.specificGravity ? Number(batch.specificGravity) : null,
-      rebound: batch.reboundPercent ? Number(batch.reboundPercent) : null,
-      tearStrength: batch.tearStrengthKnM ? Number(batch.tearStrengthKnM) : null,
-      tensile: batch.tensileStrengthMpa ? Number(batch.tensileStrengthMpa) : null,
-      elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
+      shoreA: batch.shoreAHardness != null ? Number(batch.shoreAHardness) : null,
+      density: batch.specificGravity != null ? Number(batch.specificGravity) : null,
+      rebound: batch.reboundPercent != null ? Number(batch.reboundPercent) : null,
+      tearStrength: batch.tearStrengthKnM != null ? Number(batch.tearStrengthKnM) : null,
+      tensile: batch.tensileStrengthMpa != null ? Number(batch.tensileStrengthMpa) : null,
+      elongation: batch.elongationPercent != null ? Number(batch.elongationPercent) : null,
     }));
 
     const compoundDescription =
@@ -620,12 +648,12 @@ export class RubberAuCocService {
         if (batches.length > 0) {
           batchTestData = batches.map((batch) => ({
             batchNumber: batch.batchNumber,
-            shoreA: batch.shoreAHardness ? Number(batch.shoreAHardness) : null,
-            density: batch.specificGravity ? Number(batch.specificGravity) : null,
-            rebound: batch.reboundPercent ? Number(batch.reboundPercent) : null,
-            tearStrength: batch.tearStrengthKnM ? Number(batch.tearStrengthKnM) : null,
-            tensile: batch.tensileStrengthMpa ? Number(batch.tensileStrengthMpa) : null,
-            elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
+            shoreA: batch.shoreAHardness != null ? Number(batch.shoreAHardness) : null,
+            density: batch.specificGravity != null ? Number(batch.specificGravity) : null,
+            rebound: batch.reboundPercent != null ? Number(batch.reboundPercent) : null,
+            tearStrength: batch.tearStrengthKnM != null ? Number(batch.tearStrengthKnM) : null,
+            tensile: batch.tensileStrengthMpa != null ? Number(batch.tensileStrengthMpa) : null,
+            elongation: batch.elongationPercent != null ? Number(batch.elongationPercent) : null,
           }));
         } else {
           const sourceCoc = compounderCoc || supplierCoc;
