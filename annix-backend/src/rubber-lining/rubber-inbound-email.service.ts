@@ -262,6 +262,26 @@ export class RubberInboundEmailService {
           continue;
         }
 
+        try {
+          const actualType = await this.classifyDocumentType(cert.pdfText, cert.attachment.filename);
+          if (actualType !== "coc") {
+            this.logger.log(
+              `Rerouting ${cert.attachment.filename} from CoC to ${actualType} (supplier: ${cert.supplierMapping.company.name})`,
+            );
+            await this.processNonCocAttachments(
+              [cert.attachment],
+              emailData,
+              actualType,
+              result,
+            );
+            continue;
+          }
+        } catch (error) {
+          this.logger.warn(
+            `Classification failed for ${cert.attachment.filename}, treating as CoC: ${error.message}`,
+          );
+        }
+
         this.logger.log(
           `Identified supplier from document: ${cert.supplierMapping.company.name} (${cert.supplierMapping.cocType})`,
         );
@@ -659,6 +679,67 @@ export class RubberInboundEmailService {
       subjectLower.includes("dispatch")
     ) {
       return "delivery_note";
+    }
+
+    return "coc";
+  }
+
+  private async classifyDocumentType(
+    pdfText: string,
+    filename: string,
+  ): Promise<"coc" | "delivery_note" | "tax_invoice"> {
+    const textLower = pdfText.toLowerCase();
+
+    const taxInvoiceKeywords = ["tax invoice", "invoice number", "invoice date", "payment terms", "amount due"];
+    const deliveryNoteKeywords = ["delivery note", "goods received", "dispatch note", "packing slip"];
+
+    if (taxInvoiceKeywords.some((kw) => textLower.includes(kw))) {
+      this.logger.log(`Rule-based classification: tax_invoice (file: ${filename})`);
+      return "tax_invoice";
+    }
+
+    if (deliveryNoteKeywords.some((kw) => textLower.includes(kw))) {
+      this.logger.log(`Rule-based classification: delivery_note (file: ${filename})`);
+      return "delivery_note";
+    }
+
+    const isAvailable = await this.aiChatService.isAvailable();
+    if (!isAvailable) {
+      return "coc";
+    }
+
+    const truncatedText = pdfText.length > 3000 ? pdfText.substring(0, 3000) : pdfText;
+
+    const systemPrompt = `You classify documents for AU Industries' rubber lining operations. Determine if the document is a Certificate of Conformance (CoC), a delivery note, or a tax invoice.
+
+Respond ONLY with a JSON object: {"documentType": "coc"|"delivery_note"|"tax_invoice", "reason": "brief explanation"}`;
+
+    const userMessage = `Classify this document.
+
+Filename: ${filename}
+
+Content:
+${truncatedText}`;
+
+    try {
+      const response = await this.aiChatService.chat(
+        [{ role: "user", content: userMessage }],
+        systemPrompt,
+      );
+
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        const validTypes = ["coc", "delivery_note", "tax_invoice"];
+        if (parsed.documentType && validTypes.includes(parsed.documentType)) {
+          this.logger.log(
+            `AI classification: ${parsed.documentType} (file: ${filename}, reason: ${parsed.reason})`,
+          );
+          return parsed.documentType;
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`AI classification failed for ${filename}: ${error.message}`);
     }
 
     return "coc";

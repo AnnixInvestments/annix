@@ -1,9 +1,8 @@
 "use client";
 
 import { CheckCircle, Eye, FileText, LineChart, RefreshCw, Trash2, X } from "lucide-react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
@@ -82,11 +81,8 @@ export default function SupplierCocsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [reextractingId, setReextractingId] = useState<number | null>(null);
-  const [showSageExportModal, setShowSageExportModal] = useState(false);
   const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
   const [isBulkApproving, setIsBulkApproving] = useState(false);
-
-  const LazySageExportModal = dynamic(() => import("./SageExportModal"), { ssr: false });
 
   useEffect(() => {
     let revoked = false;
@@ -484,20 +480,6 @@ export default function SupplierCocsPage() {
                 : `Approve ${selectedForApproval.size} CoC${selectedForApproval.size > 1 ? "s" : ""}`}
             </button>
           )}
-          <button
-            onClick={() => setShowSageExportModal(true)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            Export to Sage
-          </button>
         </div>
       </div>
 
@@ -1092,15 +1074,6 @@ export default function SupplierCocsPage() {
             }
           `}</style>
         </div>
-      )}
-
-      {showSageExportModal && (
-        <Suspense fallback={null}>
-          <LazySageExportModal
-            onClose={() => setShowSageExportModal(false)}
-            onSuccess={() => fetchData()}
-          />
-        </Suspense>
       )}
 
       {showDeleteModal && (
