@@ -59,15 +59,9 @@ const NAV_TOOLTIPS: Record<string, string> = {
 
 const getNavTooltip = (label: string): string => NAV_TOOLTIPS[label] || label;
 
-export default function PortalToolbar({
-  portalType,
-  navItems,
-  user,
-  onLogout,
-  additionalActions,
-  statusBadge,
-  featureFlags,
-}: PortalToolbarProps) {
+export default function PortalToolbar(props: PortalToolbarProps) {
+  const { portalType, navItems, user, onLogout, additionalActions, statusBadge, featureFlags } =
+    props;
   const pathname = usePathname();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);

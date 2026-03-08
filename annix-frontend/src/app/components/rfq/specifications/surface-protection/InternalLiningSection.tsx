@@ -8,12 +8,9 @@ import {
 } from "@/app/lib/utils/coatingLiningRecommendations";
 import type { InternalLiningSectionProps } from "./types";
 
-export function InternalLiningSection({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-  isUnregisteredCustomer,
-  showFeatureRestrictionPopup,
-}: InternalLiningSectionProps) {
+export function InternalLiningSection(props: InternalLiningSectionProps) {
+  const { globalSpecs, onUpdateGlobalSpecs, isUnregisteredCustomer, showFeatureRestrictionPopup } =
+    props;
   const buildMaterialProfile = (): MaterialTransferProfile => ({
     material: {
       particleSize: globalSpecs?.mtpParticleSize as any,

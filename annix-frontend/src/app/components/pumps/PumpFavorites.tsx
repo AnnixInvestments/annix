@@ -13,12 +13,8 @@ interface PumpFavoritesProps {
 
 type TabType = "favorites" | "recent";
 
-export function PumpFavorites({
-  allProducts,
-  onProductSelect,
-  onRequestQuote,
-  onCompare,
-}: PumpFavoritesProps) {
+export function PumpFavorites(props: PumpFavoritesProps) {
+  const { allProducts, onProductSelect, onRequestQuote, onCompare } = props;
   const {
     favorites,
     recentlyViewed,

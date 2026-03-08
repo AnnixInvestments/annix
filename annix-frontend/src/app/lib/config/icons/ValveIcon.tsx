@@ -6,7 +6,8 @@ interface ValveIconProps {
 }
 
 // Industrial knife gate valve - blue with handwheel
-export function IndustrialValveIcon({ className = "", size = 24 }: ValveIconProps) {
+export function IndustrialValveIcon(props: ValveIconProps) {
+  const { className = "", size = 24 } = props;
   const width = size * 1.2;
   const height = size * 1.4;
 

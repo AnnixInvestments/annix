@@ -24,13 +24,14 @@ export interface FastenersGasketsSectionProps {
   currentPressureClass?: { designation: string };
 }
 
-export function FastenersGasketsSection({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-  boltRecommendation,
-  gasketRecommendation,
-  currentPressureClass,
-}: FastenersGasketsSectionProps) {
+export function FastenersGasketsSection(props: FastenersGasketsSectionProps) {
+  const {
+    globalSpecs,
+    onUpdateGlobalSpecs,
+    boltRecommendation,
+    gasketRecommendation,
+    currentPressureClass,
+  } = props;
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 pb-2 border-b border-gray-200">

@@ -26,11 +26,8 @@ function formatDate(dateString: string): string {
   });
 }
 
-export function PumpQuoteComparison({
-  quotes,
-  onSelectQuote,
-  selectedQuoteId,
-}: PumpQuoteComparisonProps) {
+export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
+  const { quotes, onSelectQuote, selectedQuoteId } = props;
   const [sortBy, setSortBy] = useState<"price" | "score" | "date">("price");
 
   const comparison = useMemo<PumpComparisonResult>(() => {

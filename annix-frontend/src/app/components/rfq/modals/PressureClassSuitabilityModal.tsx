@@ -15,18 +15,19 @@ interface PressureClassSuitabilityModalProps {
   itemDescription?: string;
 }
 
-export function PressureClassSuitabilityModal({
-  isOpen,
-  onClose,
-  onConfirmOverride,
-  onRevertToRecommended,
-  selectedClassName,
-  recommendedClassName,
-  workingPressure,
-  workingTemperature,
-  warningMessage,
-  itemDescription,
-}: PressureClassSuitabilityModalProps) {
+export function PressureClassSuitabilityModal(props: PressureClassSuitabilityModalProps) {
+  const {
+    isOpen,
+    onClose,
+    onConfirmOverride,
+    onRevertToRecommended,
+    selectedClassName,
+    recommendedClassName,
+    workingPressure,
+    workingTemperature,
+    warningMessage,
+    itemDescription,
+  } = props;
   const [overrideReason, setOverrideReason] = React.useState("");
   const [showReasonInput, setShowReasonInput] = React.useState(false);
 

@@ -11,13 +11,11 @@ import {
 import { bnwSetInfo, useAllBnwSetWeights, useNbToOdMap } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 
-export default function ReviewSubmitStep({
-  onNextStep,
-  onPrevStep,
-}: {
+export default function ReviewSubmitStep(props: {
   onNextStep: () => void;
   onPrevStep: () => void;
 }) {
+  const { onNextStep, onPrevStep } = props;
   const rfqData = useRfqWizardStore((s) => s.rfqData) as any;
   const errors = useRfqWizardStore((s) => s.validationErrors);
   const loading = useRfqWizardStore((s) => s.isSubmitting);

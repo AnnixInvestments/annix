@@ -17,14 +17,8 @@ interface UserRowProps {
   onRevokeAccess: (access: RbacAppAccessSummary) => void;
 }
 
-export function UserRow({
-  user,
-  apps,
-  isExpanded,
-  onToggle,
-  onEditAccess,
-  onRevokeAccess,
-}: UserRowProps) {
+export function UserRow(props: UserRowProps) {
+  const { user, apps, isExpanded, onToggle, onEditAccess, onRevokeAccess } = props;
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
   const displayName = fullName || user.email;
 

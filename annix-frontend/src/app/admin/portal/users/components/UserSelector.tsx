@@ -27,7 +27,8 @@ function userInitial(user: RbacUserWithAccessSummary): string {
   return (user.firstName?.[0] ?? user.email[0]).toUpperCase();
 }
 
-export function UserSelector({ users, selectedUserId, onSelectUser, disabled }: UserSelectorProps) {
+export function UserSelector(props: UserSelectorProps) {
+  const { users, selectedUserId, onSelectUser, disabled } = props;
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);

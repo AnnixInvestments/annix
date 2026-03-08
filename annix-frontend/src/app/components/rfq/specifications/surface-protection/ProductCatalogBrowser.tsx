@@ -14,11 +14,8 @@ interface ProductCatalogBrowserProps {
   showPricing?: boolean;
 }
 
-export function ProductCatalogBrowser({
-  onSelectProduct,
-  filterType = "all",
-  showPricing = false,
-}: ProductCatalogBrowserProps) {
+export function ProductCatalogBrowser(props: ProductCatalogBrowserProps) {
+  const { onSelectProduct, filterType = "all", showPricing = false } = props;
   const [selectedType, setSelectedType] = useState<ProductType>(filterType);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSupplier, setSelectedSupplier] = useState<string>("all");

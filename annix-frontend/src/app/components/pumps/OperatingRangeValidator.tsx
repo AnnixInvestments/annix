@@ -32,13 +32,9 @@ interface ValidationResult {
   };
 }
 
-export function OperatingRangeValidator({
-  pumpCurve,
-  operatingFlowM3h,
-  operatingHeadM,
-  npshAvailable,
-  onValidationComplete,
-}: OperatingRangeValidatorProps) {
+export function OperatingRangeValidator(props: OperatingRangeValidatorProps) {
+  const { pumpCurve, operatingFlowM3h, operatingHeadM, npshAvailable, onValidationComplete } =
+    props;
   const validation = useMemo((): ValidationResult => {
     const issues: ValidationIssue[] = [];
     const bep = pumpCurve.bestEfficiencyPoint;

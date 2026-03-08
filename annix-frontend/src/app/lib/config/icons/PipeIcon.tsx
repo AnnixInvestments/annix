@@ -6,7 +6,8 @@ interface PipeIconProps {
 }
 
 // Horizontal steel pipe with realistic chrome/metallic finish
-export function SteelPipeIcon({ className = "", size = 24 }: PipeIconProps) {
+export function SteelPipeIcon(props: PipeIconProps) {
+  const { className = "", size = 24 } = props;
   const width = size * 2.5;
   const height = size;
 
@@ -75,7 +76,8 @@ export function SteelPipeIcon({ className = "", size = 24 }: PipeIconProps) {
 }
 
 // Keep old options for reference
-export function PipeIconA({ className = "", size = 24 }: PipeIconProps) {
+export function PipeIconA(props: PipeIconProps) {
+  const { className = "", size = 24 } = props;
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <ellipse cx="12" cy="4" rx="8" ry="2.5" fill="#9CA3AF" stroke="#6B7280" strokeWidth="1" />
@@ -92,7 +94,8 @@ export function PipeIconA({ className = "", size = 24 }: PipeIconProps) {
   );
 }
 
-export function PipeIconB({ className = "", size = 24 }: PipeIconProps) {
+export function PipeIconB(props: PipeIconProps) {
+  const { className = "", size = 24 } = props;
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <path
@@ -108,7 +111,8 @@ export function PipeIconB({ className = "", size = 24 }: PipeIconProps) {
   );
 }
 
-export function PipeIconC({ className = "", size = 24 }: PipeIconProps) {
+export function PipeIconC(props: PipeIconProps) {
+  const { className = "", size = 24 } = props;
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <ellipse cx="12" cy="6" rx="10" ry="3" fill="#9CA3AF" stroke="#6B7280" strokeWidth="1" />
@@ -123,7 +127,8 @@ export function PipeIconC({ className = "", size = 24 }: PipeIconProps) {
 }
 
 // PVC Pipe - Blue plastic pipe (like Image 6)
-export function PvcPipeIcon({ className = "", size = 24 }: PipeIconProps) {
+export function PvcPipeIcon(props: PipeIconProps) {
+  const { className = "", size = 24 } = props;
   const width = size * 2.5;
   const height = size;
 
@@ -192,7 +197,8 @@ export function PvcPipeIcon({ className = "", size = 24 }: PipeIconProps) {
 }
 
 // HDPE Pipe - Black with blue stripe (like Image 7)
-export function HdpePipeIcon({ className = "", size = 24 }: PipeIconProps) {
+export function HdpePipeIcon(props: PipeIconProps) {
+  const { className = "", size = 24 } = props;
   const width = size * 2.5;
   const height = size;
 
@@ -264,7 +270,8 @@ export function HdpePipeIcon({ className = "", size = 24 }: PipeIconProps) {
   );
 }
 
-export function PipeIcon({ className = "", size = 24 }: PipeIconProps) {
+export function PipeIcon(props: PipeIconProps) {
+  const { className = "", size = 24 } = props;
   return <SteelPipeIcon className={className} size={size} />;
 }
 

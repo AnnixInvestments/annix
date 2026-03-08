@@ -2,13 +2,11 @@
 
 import { useEffect } from "react";
 
-export default function DeliveryNoteDetailError({
-  error,
-  reset,
-}: {
+export default function DeliveryNoteDetailError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { error, reset } = props;
   useEffect(() => {
     console.error("DeliveryNote detail error:", error);
   }, [error]);

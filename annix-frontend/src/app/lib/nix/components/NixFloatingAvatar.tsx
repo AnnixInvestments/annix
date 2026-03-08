@@ -13,7 +13,8 @@ interface Position {
   y: number;
 }
 
-export default function NixFloatingAvatar({ isVisible, onOpenChat }: NixFloatingAvatarProps) {
+export default function NixFloatingAvatar(props: NixFloatingAvatarProps) {
+  const { isVisible, onOpenChat } = props;
   const [position, setPosition] = useState<Position | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [hasDragged, setHasDragged] = useState(false);

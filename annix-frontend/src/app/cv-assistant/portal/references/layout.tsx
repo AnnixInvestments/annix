@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "References",
 };
 
-export default function ReferencesLayout({ children }: { children: React.ReactNode }) {
+export default function ReferencesLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return children;
 }

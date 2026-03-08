@@ -280,9 +280,8 @@ const evaluateMaterialCompatibility = (
   };
 };
 
-export function MaterialCompatibilityChecker({
-  onCompatibilityResult,
-}: MaterialCompatibilityCheckerProps) {
+export function MaterialCompatibilityChecker(props: MaterialCompatibilityCheckerProps) {
+  const { onCompatibilityResult } = props;
   const [selectedPreset, setSelectedPreset] = useState<string>("");
   const [fluid, setFluid] = useState<FluidCharacteristics>({
     fluidName: "",

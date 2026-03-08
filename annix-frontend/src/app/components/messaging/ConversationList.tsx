@@ -30,13 +30,8 @@ function relatedEntityLabel(type: RelatedEntityType, id: number | null): string 
   return `${type} #${id}`;
 }
 
-export function ConversationList({
-  conversations,
-  selectedId,
-  onSelect,
-  onArchive,
-  isLoading,
-}: ConversationListProps) {
+export function ConversationList(props: ConversationListProps) {
+  const { conversations, selectedId, onSelect, onArchive, isLoading } = props;
   const [showArchived, setShowArchived] = useState(false);
 
   const filteredConversations = useMemo(

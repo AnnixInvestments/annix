@@ -17,14 +17,15 @@ export interface Api5lGradeSelectorProps {
   showDetails?: boolean;
 }
 
-export function Api5lGradeSelector({
-  selectedGrade,
-  selectedPsl,
-  onGradeChange,
-  onPslChange,
-  disabled,
-  showDetails = true,
-}: Api5lGradeSelectorProps) {
+export function Api5lGradeSelector(props: Api5lGradeSelectorProps) {
+  const {
+    selectedGrade,
+    selectedPsl,
+    onGradeChange,
+    onPslChange,
+    disabled,
+    showDetails = true,
+  } = props;
   const gradeSpec = useMemo(() => {
     return selectedGrade ? API_5L_GRADES[selectedGrade] : null;
   }, [selectedGrade]);
@@ -158,7 +159,8 @@ export interface Api5lGradeBadgeProps {
   compact?: boolean;
 }
 
-export function Api5lGradeBadge({ grade, pslLevel, compact = false }: Api5lGradeBadgeProps) {
+export function Api5lGradeBadge(props: Api5lGradeBadgeProps) {
+  const { grade, pslLevel, compact = false } = props;
   const spec = API_5L_GRADES[grade];
   if (!spec) return null;
 

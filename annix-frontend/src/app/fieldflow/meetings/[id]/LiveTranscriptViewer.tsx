@@ -49,11 +49,8 @@ interface LiveTranscriptViewerProps {
   meetingTitle: string;
 }
 
-export function LiveTranscriptViewer({
-  meetingId,
-  sessionId,
-  meetingTitle,
-}: LiveTranscriptViewerProps) {
+export function LiveTranscriptViewer(props: LiveTranscriptViewerProps) {
+  const { meetingId, sessionId, meetingTitle } = props;
   const [entries, setEntries] = useState<TeamsBotTranscriptEntry[]>([]);
   const [connected, setConnected] = useState(false);
   const [participantCount, setParticipantCount] = useState(0);

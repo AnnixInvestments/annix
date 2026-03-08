@@ -25,7 +25,8 @@ interface DeliveryNoteModalProps {
 
 const emptyLineItem: DeliveryLineItem = { stockItemId: null, quantity: "1" };
 
-export function DeliveryNoteModal({ isOpen, onClose, onSave, stockItems }: DeliveryNoteModalProps) {
+export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
+  const { isOpen, onClose, onSave, stockItems } = props;
   const [form, setForm] = useState<DeliveryNoteFormData>({
     deliveryNumber: "",
     supplierName: "",

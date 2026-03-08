@@ -215,7 +215,8 @@ const calculateLocalPipeResult = (
   };
 };
 
-export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editRfqId }: Props) {
+export default function StraightPipeRfqOrchestrator(props: Props) {
+  const { onSuccess, onCancel, editRfqId } = props;
   const isEditing = editRfqId !== undefined;
   const { showToast } = useToast();
   const searchParams = useSearchParams();

@@ -9,11 +9,8 @@ interface PvcSpecsTableProps {
   onSelect?: (spec: PvcPipeSpecification) => void;
 }
 
-export default function PvcSpecsTable({
-  selectedNominalDiameter,
-  selectedPressureRating,
-  onSelect,
-}: PvcSpecsTableProps) {
+export default function PvcSpecsTable(props: PvcSpecsTableProps) {
+  const { selectedNominalDiameter, selectedPressureRating, onSelect } = props;
   const [specs, setSpecs] = useState<PvcPipeSpecification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -21,12 +21,8 @@ interface StockControlHeaderProps {
   showMenuButton?: boolean;
 }
 
-export function StockControlHeader({
-  onSearch,
-  lowStockCount = 0,
-  onMenuToggle,
-  showMenuButton = false,
-}: StockControlHeaderProps) {
+export function StockControlHeader(props: StockControlHeaderProps) {
+  const { onSearch, lowStockCount = 0, onMenuToggle, showMenuButton = false } = props;
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);

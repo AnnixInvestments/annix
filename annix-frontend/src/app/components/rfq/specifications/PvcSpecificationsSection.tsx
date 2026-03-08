@@ -16,10 +16,8 @@ export interface PvcSpecificationsSectionProps {
   onUpdateGlobalSpecs: (specs: GlobalSpecs) => void;
 }
 
-export function PvcSpecificationsSection({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-}: PvcSpecificationsSectionProps) {
+export function PvcSpecificationsSection(props: PvcSpecificationsSectionProps) {
+  const { globalSpecs, onUpdateGlobalSpecs } = props;
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const pvcType = e.target.value as PvcType;
     onUpdateGlobalSpecs({

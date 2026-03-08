@@ -6,7 +6,8 @@ interface ImportPreviewProps {
   onCancel: () => void;
 }
 
-export function ImportPreview({ rows, onConfirm, onCancel }: ImportPreviewProps) {
+export function ImportPreview(props: ImportPreviewProps) {
+  const { rows, onConfirm, onCancel } = props;
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">

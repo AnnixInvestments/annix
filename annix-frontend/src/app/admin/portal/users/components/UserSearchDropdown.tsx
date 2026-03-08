@@ -9,7 +9,8 @@ interface UserSearchDropdownProps {
   excludeUserIds?: number[];
 }
 
-export function UserSearchDropdown({ onSelectUser, excludeUserIds = [] }: UserSearchDropdownProps) {
+export function UserSearchDropdown(props: UserSearchDropdownProps) {
+  const { onSelectUser, excludeUserIds = [] } = props;
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);

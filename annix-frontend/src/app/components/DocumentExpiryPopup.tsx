@@ -20,7 +20,8 @@ const documentTypeLabels: Record<string, string> = {
   other: "Other Document",
 };
 
-export function DocumentExpiryPopup({ userType, onUploadDocument }: DocumentExpiryPopupProps) {
+export function DocumentExpiryPopup(props: DocumentExpiryPopupProps) {
+  const { userType, onUploadDocument } = props;
   const { expiryResult, hasExpiringDocuments, dismissDocument, dismissAll } =
     useDocumentExpiryCheck({
       userType,

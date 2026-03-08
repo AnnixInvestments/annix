@@ -803,23 +803,24 @@ Tell me what you're trying to add and I'll guide you to the right place!`,
   };
 }
 
-export default function NixFormHelper({
-  isVisible,
-  onClose,
-  onReactivate,
-  isMinimized,
-  onAskQuestion,
-  onFormAction,
-  items = [],
-  globalSpecs,
-  diagnosticTargetItemId = null,
-  diagnosticIssues = [],
-  diagnosticDismissedIds = [],
-  onStartDiagnostic,
-  onDismissDiagnostic,
-  onClearDiagnostic,
-  onApplyFix,
-}: NixFormHelperProps) {
+export default function NixFormHelper(props: NixFormHelperProps) {
+  const {
+    isVisible,
+    onClose,
+    onReactivate,
+    isMinimized,
+    onAskQuestion,
+    onFormAction,
+    items = [],
+    globalSpecs,
+    diagnosticTargetItemId = null,
+    diagnosticIssues = [],
+    diagnosticDismissedIds = [],
+    onStartDiagnostic,
+    onDismissDiagnostic,
+    onClearDiagnostic,
+    onApplyFix,
+  } = props;
   const [position, setPosition] = useState<Position | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showHoverDialog, setShowHoverDialog] = useState(false);
@@ -2407,7 +2408,8 @@ export default function NixFormHelper({
   );
 }
 
-export function NixMinimizedButton({ onClick }: { onClick: () => void }) {
+export function NixMinimizedButton(props: { onClick: () => void }) {
+  const { onClick } = props;
   return (
     <button
       onClick={onClick}

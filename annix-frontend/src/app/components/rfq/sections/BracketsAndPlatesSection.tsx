@@ -19,11 +19,8 @@ interface BracketsAndPlatesSectionProps {
   onDataChange?: (brackets: BracketEntry[], plates: CompensationPlateEntry[]) => void;
 }
 
-export default function BracketsAndPlatesSection({
-  initialBrackets = [],
-  initialPlates = [],
-  onDataChange,
-}: BracketsAndPlatesSectionProps) {
+export default function BracketsAndPlatesSection(props: BracketsAndPlatesSectionProps) {
+  const { initialBrackets = [], initialPlates = [], onDataChange } = props;
   const [brackets, setBrackets] = useState<BracketEntry[]>(initialBrackets);
   const [plates, setPlates] = useState<CompensationPlateEntry[]>(initialPlates);
   const [activeTab, setActiveTab] = useState<"brackets" | "plates">("brackets");

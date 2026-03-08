@@ -12,7 +12,8 @@ interface CalloffInputProps {
   onAdd: (quantity: number, status: CalloffStatus, notes: string) => void;
 }
 
-export function CalloffInput({ maxQuantity, onAdd }: CalloffInputProps) {
+export function CalloffInput(props: CalloffInputProps) {
+  const { maxQuantity, onAdd } = props;
   const [quantity, setQuantity] = useState(0);
   const [status, setStatus] = useState<CalloffStatus>(CALLOFF_STATUS.REQUESTED);
   const [notes, setNotes] = useState("");

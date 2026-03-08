@@ -16,7 +16,8 @@ interface VoiceFilterAuthContextValue {
 
 const VoiceFilterAuthContext = createContext<VoiceFilterAuthContextValue | null>(null);
 
-export function VoiceFilterAuthProvider({ children }: { children: React.ReactNode }) {
+export function VoiceFilterAuthProvider(props: { children: React.ReactNode }) {
+  const { children } = props;
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<VoiceFilterUser | null>(null);
 

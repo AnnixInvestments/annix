@@ -13,14 +13,8 @@ interface AppToggleCardProps {
   isRevoking?: boolean;
 }
 
-export function AppToggleCard({
-  app,
-  access,
-  onEdit,
-  onRevoke,
-  onEnable,
-  isRevoking,
-}: AppToggleCardProps) {
+export function AppToggleCard(props: AppToggleCardProps) {
+  const { app, access, onEdit, onRevoke, onEnable, isRevoking } = props;
   const hasAccess = access !== null;
 
   const isExpired = useMemo(() => {

@@ -19,15 +19,16 @@ type SortDirection = "asc" | "desc";
 
 const ITEMS_PER_PAGE = 12;
 
-export function PumpProductList({
-  products,
-  onProductSelect,
-  selectedProductIds = [],
-  multiSelect = false,
-  showFilters = true,
-  linkPrefix,
-  emptyMessage = "No pump products found",
-}: PumpProductListProps) {
+export function PumpProductList(props: PumpProductListProps) {
+  const {
+    products,
+    onProductSelect,
+    selectedProductIds = [],
+    multiSelect = false,
+    showFilters = true,
+    linkPrefix,
+    emptyMessage = "No pump products found",
+  } = props;
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [manufacturerFilter, setManufacturerFilter] = useState<string>("");

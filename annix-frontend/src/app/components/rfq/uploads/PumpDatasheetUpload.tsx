@@ -89,14 +89,15 @@ const SERVICE_TYPE_HELP: Record<string, { title: string; examples: string[] }> =
   },
 };
 
-export default function PumpDatasheetUpload({
-  datasheets,
-  onAddDatasheet,
-  onRemoveDatasheet,
-  maxDatasheets = 5,
-  maxFileSizeMB = 25,
-  serviceType = "new_pump",
-}: PumpDatasheetUploadProps) {
+export default function PumpDatasheetUpload(props: PumpDatasheetUploadProps) {
+  const {
+    datasheets,
+    onAddDatasheet,
+    onRemoveDatasheet,
+    maxDatasheets = 5,
+    maxFileSizeMB = 25,
+    serviceType = "new_pump",
+  } = props;
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

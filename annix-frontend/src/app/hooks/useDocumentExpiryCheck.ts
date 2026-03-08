@@ -24,11 +24,8 @@ interface UseDocumentExpiryCheckOptions {
   checkIntervalMs?: number;
 }
 
-export function useDocumentExpiryCheck({
-  userType,
-  enabled = true,
-  checkIntervalMs = 60000,
-}: UseDocumentExpiryCheckOptions) {
+export function useDocumentExpiryCheck(props: UseDocumentExpiryCheckOptions) {
+  const { userType, enabled = true, checkIntervalMs = 60000 } = props;
   const [expiryResult, setExpiryResult] = useState<ExpiryCheckResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

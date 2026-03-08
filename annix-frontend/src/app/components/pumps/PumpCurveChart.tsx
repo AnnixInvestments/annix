@@ -37,17 +37,18 @@ const COLORS = {
   bepZone: "#dbeafe",
 };
 
-export function PumpCurveChart({
-  pumpCurve,
-  systemCurve,
-  operatingPoint,
-  width = 600,
-  height = 400,
-  showEfficiency = true,
-  showPower = false,
-  showNpsh = false,
-  title,
-}: PumpCurveChartProps) {
+export function PumpCurveChart(props: PumpCurveChartProps) {
+  const {
+    pumpCurve,
+    systemCurve,
+    operatingPoint,
+    width = 600,
+    height = 400,
+    showEfficiency = true,
+    showPower = false,
+    showNpsh = false,
+    title,
+  } = props;
   const [hoveredPoint, setHoveredPoint] = useState<PumpCurvePoint | null>(null);
 
   const chartWidth = width - PADDING.left - PADDING.right;

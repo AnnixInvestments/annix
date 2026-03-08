@@ -11,12 +11,8 @@ interface NixProcessingPopupProps {
   estimatedTimeRemaining?: number;
 }
 
-export default function NixProcessingPopup({
-  isVisible,
-  progress,
-  statusMessage,
-  estimatedTimeRemaining,
-}: NixProcessingPopupProps) {
+export default function NixProcessingPopup(props: NixProcessingPopupProps) {
+  const { isVisible, progress, statusMessage, estimatedTimeRemaining } = props;
   const [dots, setDots] = useState("");
 
   useEffect(() => {

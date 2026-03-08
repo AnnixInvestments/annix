@@ -61,17 +61,18 @@ const nominalBores = [
 const bendTypes = ["1.5D", "2D", "3D", "5D"];
 const standardAngles = [15, 22.5, 30, 45, 60, 90];
 
-export default function BendItemsStep({
-  entries,
-  globalSpecs,
-  masterData,
-  onAddEntry,
-  onUpdateEntry,
-  onRemoveEntry,
-  onCalculate,
-  errors,
-  loading,
-}: BendItemsStepProps) {
+export default function BendItemsStep(props: BendItemsStepProps) {
+  const {
+    entries,
+    globalSpecs,
+    masterData,
+    onAddEntry,
+    onUpdateEntry,
+    onRemoveEntry,
+    onCalculate,
+    errors,
+    loading,
+  } = props;
   const [isCalculating, setIsCalculating] = useState(false);
 
   // Generate item description based on specifications

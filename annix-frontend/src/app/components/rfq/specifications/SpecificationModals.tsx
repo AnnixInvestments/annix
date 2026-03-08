@@ -65,7 +65,8 @@ export interface MaterialWarningModalProps {
   onProceed: () => void;
 }
 
-export function MaterialWarningModal({ warning, onClose, onProceed }: MaterialWarningModalProps) {
+export function MaterialWarningModal(props: MaterialWarningModalProps) {
+  const { warning, onClose, onProceed } = props;
   if (!warning.show) return null;
 
   return (
@@ -155,11 +156,8 @@ export interface ConfirmationWarningModalProps {
   onProceed: () => void;
 }
 
-export function ConfirmationWarningModal({
-  warning,
-  onClose,
-  onProceed,
-}: ConfirmationWarningModalProps) {
+export function ConfirmationWarningModal(props: ConfirmationWarningModalProps) {
+  const { warning, onClose, onProceed } = props;
   if (!warning.show) return null;
 
   return (
@@ -227,7 +225,8 @@ export interface RestrictionPopupProps {
   onClose: () => void;
 }
 
-export function RestrictionPopup({ position, onClose }: RestrictionPopupProps) {
+export function RestrictionPopup(props: RestrictionPopupProps) {
+  const { position, onClose } = props;
   return (
     <div
       className="fixed z-[100] bg-slate-800 text-white px-4 py-3 rounded-lg shadow-xl border border-slate-600 max-w-xs"
@@ -275,11 +274,8 @@ export interface FeatureRestrictionPopupProps {
   onClose: () => void;
 }
 
-export function FeatureRestrictionPopup({
-  feature,
-  position,
-  onClose,
-}: FeatureRestrictionPopupProps) {
+export function FeatureRestrictionPopup(props: FeatureRestrictionPopupProps) {
+  const { feature, position, onClose } = props;
   const info = FEATURE_DESCRIPTIONS[feature];
   return (
     <div

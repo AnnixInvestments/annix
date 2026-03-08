@@ -42,15 +42,9 @@ function calculateFinalPrice(
   return Math.round(finalPrice * 100) / 100;
 }
 
-export function ProductPreviewTable({
-  products,
-  costSettings,
-  codings,
-  onUpdate,
-  onDelete,
-  onToggleSelect,
-  onSelectAll,
-}: ProductPreviewTableProps) {
+export function ProductPreviewTable(props: ProductPreviewTableProps) {
+  const { products, costSettings, codings, onUpdate, onDelete, onToggleSelect, onSelectAll } =
+    props;
   const typeCodings = codings.filter((c) => c.codingType === "TYPE");
   const compoundCodings = codings.filter((c) => c.codingType === "COMPOUND");
   const colourCodings = codings.filter((c) => c.codingType === "COLOUR");

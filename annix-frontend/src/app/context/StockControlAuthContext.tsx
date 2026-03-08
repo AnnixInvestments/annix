@@ -22,7 +22,8 @@ interface StockControlAuthContextType extends StockControlAuthState {
 
 const StockControlAuthContext = createContext<StockControlAuthContextType | undefined>(undefined);
 
-export function StockControlAuthProvider({ children }: { children: ReactNode }) {
+export function StockControlAuthProvider(props: { children: ReactNode }) {
+  const { children } = props;
   const [state, setState] = useState<StockControlAuthState>({
     isAuthenticated: false,
     isLoading: true,

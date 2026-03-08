@@ -15,7 +15,8 @@ interface ProductFormModalProps {
   onCancel: () => void;
 }
 
-export function ProductFormModal({ isOpen, product, onSave, onCancel }: ProductFormModalProps) {
+export function ProductFormModal(props: ProductFormModalProps) {
+  const { isOpen, product, onSave, onCancel } = props;
   const [isSaving, setIsSaving] = useState(false);
   const isEditing = product !== null;
 

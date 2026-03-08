@@ -32,7 +32,8 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-export function RoleForm({ role, onSubmit, onCancel, isSubmitting }: RoleFormProps) {
+export function RoleForm(props: RoleFormProps) {
+  const { role, onSubmit, onCancel, isSubmitting } = props;
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");

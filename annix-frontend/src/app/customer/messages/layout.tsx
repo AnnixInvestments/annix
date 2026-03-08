@@ -99,6 +99,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function CustomerMessagesLayout({ children }: { children: React.ReactNode }) {
+export default function CustomerMessagesLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <ProtectedLayout>{children}</ProtectedLayout>;
 }

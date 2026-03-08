@@ -92,16 +92,17 @@ const fieldsPerDocumentType: Record<string, string[]> = {
   bee_cert: ["beeLevel", "companyName"],
 };
 
-export function NixTrainingModal({
-  isOpen,
-  documentId,
-  entityId,
-  entityType,
-  documentType,
-  fieldComparison,
-  onClose,
-  onTrainingComplete,
-}: NixTrainingModalProps) {
+export function NixTrainingModal(props: NixTrainingModalProps) {
+  const {
+    isOpen,
+    documentId,
+    entityId,
+    entityType,
+    documentType,
+    fieldComparison,
+    onClose,
+    onTrainingComplete,
+  } = props;
   const [pages, setPages] = useState<PdfPageImage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);

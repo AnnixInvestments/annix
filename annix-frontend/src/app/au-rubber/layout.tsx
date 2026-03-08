@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description: "AU Rubber product management",
 };
 
-export default function AuRubberLayout({ children }: { children: React.ReactNode }) {
+export default function AuRubberLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <AuRubberLayoutClient>{children}</AuRubberLayoutClient>;
 }

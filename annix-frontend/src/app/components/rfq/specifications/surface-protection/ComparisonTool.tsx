@@ -163,7 +163,8 @@ interface ComparisonToolProps {
   maxSystems?: number;
 }
 
-export function ComparisonTool({ onSelectSystem, maxSystems = 3 }: ComparisonToolProps) {
+export function ComparisonTool(props: ComparisonToolProps) {
+  const { onSelectSystem, maxSystems = 3 } = props;
   const [selectedSystems, setSelectedSystems] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
 

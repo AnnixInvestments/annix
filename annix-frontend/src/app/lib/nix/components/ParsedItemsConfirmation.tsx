@@ -18,13 +18,8 @@ interface ParsedItemsConfirmationProps {
   rfqTitle?: string;
 }
 
-export function ParsedItemsConfirmation({
-  sessionId,
-  parseResponse,
-  onConfirm,
-  onCancel,
-  rfqTitle,
-}: ParsedItemsConfirmationProps) {
+export function ParsedItemsConfirmation(props: ParsedItemsConfirmationProps) {
+  const { sessionId, parseResponse, onConfirm, onCancel, rfqTitle } = props;
   const [confirmations, setConfirmations] = useState<Map<number, ItemConfirmation>>(() => {
     const map = new Map<number, ItemConfirmation>();
     parseResponse.parsedItems.forEach((item, index) => {

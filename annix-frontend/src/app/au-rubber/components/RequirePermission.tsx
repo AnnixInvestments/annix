@@ -10,11 +10,8 @@ interface RequirePermissionProps {
   fallbackUrl?: string;
 }
 
-export function RequirePermission({
-  permission,
-  children,
-  fallbackUrl = "/au-rubber/portal/dashboard",
-}: RequirePermissionProps) {
+export function RequirePermission(props: RequirePermissionProps) {
+  const { permission, children, fallbackUrl = "/au-rubber/portal/dashboard" } = props;
   const router = useRouter();
   const { isLoading, isAuthenticated, hasPermission, isAdmin } = useAuRubberAuth();
 

@@ -9,7 +9,8 @@ interface NixAiPopupProps {
   onNo: () => void;
 }
 
-export default function NixAiPopup({ isVisible, onYes, onNo }: NixAiPopupProps) {
+export default function NixAiPopup(props: NixAiPopupProps) {
+  const { isVisible, onYes, onNo } = props;
   if (!isVisible) return null;
 
   return (

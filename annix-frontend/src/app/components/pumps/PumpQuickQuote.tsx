@@ -37,7 +37,8 @@ interface ProductQuantity {
   notes: string;
 }
 
-export function PumpQuickQuote({ products, onSubmit, onCancel }: PumpQuickQuoteProps) {
+export function PumpQuickQuote(props: PumpQuickQuoteProps) {
+  const { products, onSubmit, onCancel } = props;
   const [step, setStep] = useState<"products" | "contact" | "review">("products");
   const [productQuantities, setProductQuantities] = useState<ProductQuantity[]>(
     products.map((p) => ({ productId: p.id, quantity: 1, notes: "" })),

@@ -25,15 +25,9 @@ interface OrderImportModalProps {
   initialFiles?: File[];
 }
 
-export function OrderImportModal({
-  isOpen,
-  onClose,
-  onOrderCreated,
-  companies,
-  products,
-  initialAnalysis,
-  initialFiles,
-}: OrderImportModalProps) {
+export function OrderImportModal(props: OrderImportModalProps) {
+  const { isOpen, onClose, onOrderCreated, companies, products, initialAnalysis, initialFiles } =
+    props;
   const [step, setStep] = useState<ImportStep>("upload");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeOrderFilesResult | null>(null);

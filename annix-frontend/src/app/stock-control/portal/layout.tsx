@@ -87,6 +87,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return <PortalContent>{children}</PortalContent>;
 }
 
-export default function StockControlPortalLayout({ children }: { children: React.ReactNode }) {
+export default function StockControlPortalLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <ProtectedLayout>{children}</ProtectedLayout>;
 }

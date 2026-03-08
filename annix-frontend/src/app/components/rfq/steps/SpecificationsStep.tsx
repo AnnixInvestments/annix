@@ -750,9 +750,7 @@ function FeatureRestrictionPopup({ feature, position, onClose }: FeatureRestrict
   );
 }
 
-export default function SpecificationsStep({
-  fetchAndSelectPressureClass,
-}: {
+export default function SpecificationsStep(props: {
   fetchAndSelectPressureClass: (
     standardId: number,
     workingPressureBar?: number,
@@ -760,6 +758,7 @@ export default function SpecificationsStep({
     materialGroup?: string,
   ) => Promise<any>;
 }) {
+  const { fetchAndSelectPressureClass } = props;
   const rfqData = useRfqWizardStore((s) => s.rfqData) as any;
   const masterData = useRfqWizardStore((s) => s.masterData);
   const errors = useRfqWizardStore((s) => s.validationErrors);

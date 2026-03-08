@@ -21,7 +21,8 @@ const defaultColorMap: Record<string, string> = {
   unregistered: "bg-purple-100 text-purple-800",
 };
 
-export function StatusBadge({ status, colorMap = defaultColorMap }: StatusBadgeProps) {
+export function StatusBadge(props: StatusBadgeProps) {
+  const { status, colorMap = defaultColorMap } = props;
   const normalizedStatus = status.toLowerCase();
   const colorClass = colorMap[normalizedStatus] || "bg-gray-100 text-gray-800";
 
@@ -40,7 +41,8 @@ export interface StatCardProps {
   colorClass: string;
 }
 
-export function StatCard({ title, value, icon, colorClass }: StatCardProps) {
+export function StatCard(props: StatCardProps) {
+  const { title, value, icon, colorClass } = props;
   return (
     <div className="bg-white overflow-hidden shadow rounded-lg">
       <div className="p-5">
@@ -71,7 +73,8 @@ export interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export function Pagination({ page, totalPages, total, limit, onPageChange }: PaginationProps) {
+export function Pagination(props: PaginationProps) {
+  const { page, totalPages, total, limit, onPageChange } = props;
   if (totalPages <= 1) return null;
 
   const startItem = (page - 1) * limit + 1;
@@ -160,7 +163,8 @@ export function Pagination({ page, totalPages, total, limit, onPageChange }: Pag
 }
 
 // Loading Spinner Component
-export function LoadingSpinner({ message = "Loading..." }: { message?: string }) {
+export function LoadingSpinner(props: { message?: string }) {
+  const { message = "Loading..." } = props;
   return (
     <div className="flex items-center justify-center min-h-96">
       <div className="text-center">
@@ -178,7 +182,8 @@ export interface ErrorDisplayProps {
   onRetry?: () => void;
 }
 
-export function ErrorDisplay({ title = "Error", message, onRetry }: ErrorDisplayProps) {
+export function ErrorDisplay(props: ErrorDisplayProps) {
+  const { title = "Error", message, onRetry } = props;
   return (
     <div className="flex items-center justify-center min-h-96">
       <div className="text-center">
@@ -204,7 +209,8 @@ export interface EmptyStateProps {
   description: string;
 }
 
-export function EmptyState({ icon, title, description }: EmptyStateProps) {
+export function EmptyState(props: EmptyStateProps) {
+  const { icon, title, description } = props;
   return (
     <div className="text-center py-12">
       <div className="mx-auto h-12 w-12 text-gray-400">{icon}</div>
@@ -222,12 +228,8 @@ export interface SearchBarProps {
   placeholder?: string;
 }
 
-export function SearchBar({
-  value,
-  onChange,
-  onSearch,
-  placeholder = "Search...",
-}: SearchBarProps) {
+export function SearchBar(props: SearchBarProps) {
+  const { value, onChange, onSearch, placeholder = "Search..." } = props;
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       onSearch();

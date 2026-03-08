@@ -82,13 +82,8 @@ interface ProductFormProps {
   isSaving: boolean;
 }
 
-export function ProductForm({
-  initialData,
-  onSubmit,
-  onCancel,
-  submitLabel,
-  isSaving,
-}: ProductFormProps) {
+export function ProductForm(props: ProductFormProps) {
+  const { initialData, onSubmit, onCancel, submitLabel, isSaving } = props;
   const [formData, setFormData] = useState<ProductFormData>(initialData);
   const [error, setError] = useState<string | null>(null);
   const [codings, setCodings] = useState<RubberProductCodingDto[]>([]);

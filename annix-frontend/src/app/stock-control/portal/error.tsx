@@ -2,13 +2,11 @@
 
 import { useEffect } from "react";
 
-export default function StockControlPortalError({
-  error,
-  reset,
-}: {
+export default function StockControlPortalError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { error, reset } = props;
   useEffect(() => {
     console.error("Stock Control portal error:", error);
   }, [error]);

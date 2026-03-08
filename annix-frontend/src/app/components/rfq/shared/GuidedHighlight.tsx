@@ -65,7 +65,8 @@ interface GuidedHighlightProps {
   onEndGuidance?: () => void;
 }
 
-export function GuidedHighlight({ onEndGuidance }: GuidedHighlightProps) {
+export function GuidedHighlight(props: GuidedHighlightProps) {
+  const { onEndGuidance } = props;
   const {
     isActive,
     isPaused,

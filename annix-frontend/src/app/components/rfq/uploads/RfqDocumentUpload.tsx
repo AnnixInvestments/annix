@@ -70,13 +70,14 @@ function getFileIcon(mimeType: string): React.ReactNode {
   );
 }
 
-export default function RfqDocumentUpload({
-  documents,
-  onAddDocument,
-  onRemoveDocument,
-  maxDocuments = 10,
-  maxFileSizeMB = 50,
-}: RfqDocumentUploadProps) {
+export default function RfqDocumentUpload(props: RfqDocumentUploadProps) {
+  const {
+    documents,
+    onAddDocument,
+    onRemoveDocument,
+    maxDocuments = 10,
+    maxFileSizeMB = 50,
+  } = props;
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

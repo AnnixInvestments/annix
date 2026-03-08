@@ -14,15 +14,8 @@ interface ApprovalModalProps {
   stepName: string;
 }
 
-export function ApprovalModal({
-  isOpen,
-  onClose,
-  onApprove,
-  onReject,
-  existingSignature,
-  jobNumber,
-  stepName,
-}: ApprovalModalProps) {
+export function ApprovalModal(props: ApprovalModalProps) {
+  const { isOpen, onClose, onApprove, onReject, existingSignature, jobNumber, stepName } = props;
   const [mode, setMode] = useState<"choice" | "approve" | "reject">("choice");
   const [comments, setComments] = useState("");
   const [rejectReason, setRejectReason] = useState("");

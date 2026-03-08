@@ -47,13 +47,14 @@ function getFileIcon(mimeType: string): React.ReactNode {
   );
 }
 
-export default function ValveDatasheetUpload({
-  datasheets,
-  onAddDatasheet,
-  onRemoveDatasheet,
-  maxDatasheets = 5,
-  maxFileSizeMB = 25,
-}: ValveDatasheetUploadProps) {
+export default function ValveDatasheetUpload(props: ValveDatasheetUploadProps) {
+  const {
+    datasheets,
+    onAddDatasheet,
+    onRemoveDatasheet,
+    maxDatasheets = 5,
+    maxFileSizeMB = 25,
+  } = props;
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

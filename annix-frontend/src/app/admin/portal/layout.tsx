@@ -168,6 +168,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function AdminPortalLayout({ children }: { children: React.ReactNode }) {
+export default function AdminPortalLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <ProtectedLayout>{children}</ProtectedLayout>;
 }

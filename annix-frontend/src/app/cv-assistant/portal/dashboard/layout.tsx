@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Dashboard",
 };
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return children;
 }

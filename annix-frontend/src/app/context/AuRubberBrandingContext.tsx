@@ -68,7 +68,8 @@ function darkenColor(hex: string, amount: number = 0.2): string {
 
 const AuRubberBrandingContext = createContext<AuRubberBrandingContextType | undefined>(undefined);
 
-export function AuRubberBrandingProvider({ children }: { children: ReactNode }) {
+export function AuRubberBrandingProvider(props: { children: ReactNode }) {
+  const { children } = props;
   const [branding, setBrandingState] = useState<AuRubberBranding>(defaultBranding);
   const [isLoaded, setIsLoaded] = useState(false);
 

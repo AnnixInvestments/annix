@@ -7,10 +7,8 @@ interface DynamicFaviconProps {
   fallbackIconUrl?: string;
 }
 
-export function DynamicFavicon({
-  iconUrl,
-  fallbackIconUrl = "/images/annix-icon.png",
-}: DynamicFaviconProps) {
+export function DynamicFavicon(props: DynamicFaviconProps) {
+  const { iconUrl, fallbackIconUrl = "/images/annix-icon.png" } = props;
   const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {

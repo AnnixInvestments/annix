@@ -112,7 +112,8 @@ function useDraggableDevtoolsButton() {
   }, []);
 }
 
-export function QueryProvider({ children }: { children: React.ReactNode }) {
+export function QueryProvider(props: { children: React.ReactNode }) {
+  const { children } = props;
   const client = queryClient();
   useDraggableDevtoolsButton();
 

@@ -48,13 +48,8 @@ function resolveConfig(config?: GoogleMapPreset | GoogleMapDisplayConfig): Googl
   return config;
 }
 
-export default function GoogleMapLocationPicker({
-  initialLocation,
-  onLocationSelect,
-  onClose,
-  apiKey,
-  config,
-}: GoogleMapLocationPickerProps) {
+export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerProps) {
+  const { initialLocation, onLocationSelect, onClose, apiKey, config } = props;
   const { showToast } = useToast();
   const displayConfig = resolveConfig(config);
   const [showManualEntry, setShowManualEntry] = useState(false);

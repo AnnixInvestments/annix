@@ -35,7 +35,8 @@ function travelTimeColor(minutes: number): {
   };
 }
 
-export function TravelTimeIndicator({ travelInfo, compact = false }: TravelTimeIndicatorProps) {
+export function TravelTimeIndicator(props: TravelTimeIndicatorProps) {
+  const { travelInfo, compact = false } = props;
   const colors = travelTimeColor(travelInfo.estimatedMinutes);
 
   if (compact) {
@@ -98,7 +99,8 @@ interface TravelTimeConnectorProps {
   travelInfo: TravelInfo | null;
 }
 
-export function TravelTimeConnector({ travelInfo }: TravelTimeConnectorProps) {
+export function TravelTimeConnector(props: TravelTimeConnectorProps) {
+  const { travelInfo } = props;
   if (!travelInfo) {
     return (
       <div className="flex items-center justify-center h-6">

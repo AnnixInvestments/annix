@@ -140,22 +140,23 @@ export interface Use3DSceneSetupReturn {
   };
 }
 
-export function use3DSceneSetup({
-  nominalBore,
-  outerDiameter,
-  wallThickness,
-  bendAngle,
-  tangent1 = 0,
-  tangent2 = 0,
-  numberOfSegments,
-  stubs = [],
-  flangeConfig = "PE",
-  closureLengthMm = 0,
-  bendRadiusMm,
-  bendItemType,
-  sweepTeePipeALengthMm,
-  flangeSpecs: apiFlangeSpecs,
-}: Use3DSceneSetupProps): Use3DSceneSetupReturn {
+export function use3DSceneSetup(props: Use3DSceneSetupProps): Use3DSceneSetupReturn {
+  const {
+    nominalBore,
+    outerDiameter,
+    wallThickness,
+    bendAngle,
+    tangent1 = 0,
+    tangent2 = 0,
+    numberOfSegments,
+    stubs = [],
+    flangeConfig = "PE",
+    closureLengthMm = 0,
+    bendRadiusMm,
+    bendItemType,
+    sweepTeePipeALengthMm,
+    flangeSpecs: apiFlangeSpecs,
+  } = props;
   const odMm = outerDiameter || nbToOd(nominalBore);
   const wtMm = calculateVisualWallThickness(odMm, wallThickness || 6);
 

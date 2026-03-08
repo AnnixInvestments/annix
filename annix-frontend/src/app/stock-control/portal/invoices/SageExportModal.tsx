@@ -9,7 +9,8 @@ interface SageExportModalProps {
   onSuccess: () => void;
 }
 
-export default function SageExportModal({ onClose, onSuccess }: SageExportModalProps) {
+export default function SageExportModal(props: SageExportModalProps) {
+  const { onClose, onSuccess } = props;
   const defaultDateTo = now().toISODate() ?? "";
   const defaultDateFrom = now().minus({ days: 30 }).toISODate() ?? "";
 

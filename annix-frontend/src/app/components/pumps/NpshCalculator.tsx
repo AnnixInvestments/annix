@@ -28,7 +28,8 @@ const FLUID_PRESETS: FluidPreset[] = [
   { name: "Gasoline @ 20°C", temperatureC: 20, specificGravity: 0.75, vaporPressureBar: 0.05 },
 ];
 
-export function NpshCalculator({ npshRequired = 3, onNpshCalculated }: NpshCalculatorProps) {
+export function NpshCalculator(props: NpshCalculatorProps) {
+  const { npshRequired = 3, onNpshCalculated } = props;
   const [selectedPreset, setSelectedPreset] = useState<string>("Water @ 20°C");
   const [customMode, setCustomMode] = useState(false);
 

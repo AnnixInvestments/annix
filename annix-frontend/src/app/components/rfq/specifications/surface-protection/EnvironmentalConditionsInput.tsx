@@ -16,10 +16,8 @@ interface ConditionCheck {
   message: string;
 }
 
-export function EnvironmentalConditionsInput({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-}: EnvironmentalConditionsInputProps) {
+export function EnvironmentalConditionsInput(props: EnvironmentalConditionsInputProps) {
+  const { globalSpecs, onUpdateGlobalSpecs } = props;
   const ambientTemp = globalSpecs.applicationAmbientTempC ?? 25;
   const relativeHumidity = globalSpecs.applicationHumidityPercent ?? 50;
   const steelTemp = globalSpecs.applicationSteelTempC ?? ambientTemp;

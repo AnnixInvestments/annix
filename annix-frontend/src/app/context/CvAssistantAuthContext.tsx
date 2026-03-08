@@ -22,7 +22,8 @@ interface CvAssistantAuthContextType extends CvAssistantAuthState {
 
 const CvAssistantAuthContext = createContext<CvAssistantAuthContextType | undefined>(undefined);
 
-export function CvAssistantAuthProvider({ children }: { children: ReactNode }) {
+export function CvAssistantAuthProvider(props: { children: ReactNode }) {
+  const { children } = props;
   const [state, setState] = useState<CvAssistantAuthState>({
     isAuthenticated: false,
     isLoading: true,

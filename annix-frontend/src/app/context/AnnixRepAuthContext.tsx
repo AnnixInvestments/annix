@@ -22,7 +22,8 @@ interface AnnixRepAuthContextValue {
 
 const AnnixRepAuthContext = createContext<AnnixRepAuthContextValue | null>(null);
 
-export function AnnixRepAuthProvider({ children }: { children: React.ReactNode }) {
+export function AnnixRepAuthProvider(props: { children: React.ReactNode }) {
+  const { children } = props;
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<AnnixRepAuthUser | null>(null);
 

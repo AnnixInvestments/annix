@@ -34,10 +34,8 @@ const BREAKDOWN_COLORS: Record<string, string> = {
   Maintenance: "bg-green-500",
 };
 
-export function PumpLifecycleCostCalculator({
-  initialInputs,
-  onCalculate,
-}: PumpLifecycleCostCalculatorProps) {
+export function PumpLifecycleCostCalculator(props: PumpLifecycleCostCalculatorProps) {
+  const { initialInputs, onCalculate } = props;
   const [inputs, setInputs] = useState<LifecycleCostInputs>({
     ...DEFAULT_INPUTS,
     ...initialInputs,

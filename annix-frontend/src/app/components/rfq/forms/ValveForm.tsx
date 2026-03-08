@@ -83,17 +83,18 @@ const HAZARDOUS_AREA_OPTIONS = [
   { value: "zone_22", label: "Zone 22 (Dust)" },
 ];
 
-export default function ValveForm({
-  entry,
-  index: _index,
-  entriesCount: _entriesCount,
-  globalSpecs,
-  masterData: _masterData,
-  onUpdateEntry,
-  onRemoveEntry,
-  generateItemDescription,
-  requiredProducts: _requiredProducts = [],
-}: ValveFormProps) {
+export default function ValveForm(props: ValveFormProps) {
+  const {
+    entry,
+    index: _index,
+    entriesCount: _entriesCount,
+    globalSpecs,
+    masterData: _masterData,
+    onUpdateEntry,
+    onRemoveEntry,
+    generateItemDescription,
+    requiredProducts: _requiredProducts = [],
+  } = props;
   const [categoryFilter, setCategoryFilter] = useState<ValveCategory | "all">("all");
   const [calculationResults, setCalculationResults] = useState<any>(null);
 

@@ -16,7 +16,8 @@ function FormLoading() {
   );
 }
 
-export default function UnifiedMultiStepRfqForm({ onSuccess, onCancel }: Props) {
+export default function UnifiedMultiStepRfqForm(props: Props) {
+  const { onSuccess, onCancel } = props;
   return (
     <div className="max-w-full mx-auto">
       <Suspense fallback={<FormLoading />}>

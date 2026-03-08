@@ -47,13 +47,8 @@ const STATUS_BADGES: Record<string, { bg: string; text: string; label: string }>
   expired: { bg: "bg-gray-100", text: "text-gray-600", label: "Expired" },
 };
 
-export default function QuoteComparisonView({
-  quotes,
-  boqNumber,
-  projectName,
-  onSelectQuote,
-  selectedSupplierId,
-}: QuoteComparisonViewProps) {
+export default function QuoteComparisonView(props: QuoteComparisonViewProps) {
+  const { quotes, boqNumber, projectName, onSelectQuote, selectedSupplierId } = props;
   const [sortBy, setSortBy] = useState<"price" | "supplier" | "date">("price");
   const [selectedQuotes, setSelectedQuotes] = useState<number[]>([]);
   const [showDeclined, setShowDeclined] = useState(false);

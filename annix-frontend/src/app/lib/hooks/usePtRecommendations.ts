@@ -37,16 +37,19 @@ interface UsePtRecommendationsReturn {
 
 const DEBOUNCE_MS = 300;
 
-export function usePtRecommendations({
-  standardId,
-  workingPressureBar,
-  temperatureCelsius,
-  materialGroup,
-  currentPressureClassId,
-  steelSpecName,
-  pressureClassDesignation,
-  enabled = true,
-}: UsePtRecommendationsParams): UsePtRecommendationsReturn {
+export function usePtRecommendations(
+  props: UsePtRecommendationsParams,
+): UsePtRecommendationsReturn {
+  const {
+    standardId,
+    workingPressureBar,
+    temperatureCelsius,
+    materialGroup,
+    currentPressureClassId,
+    steelSpecName,
+    pressureClassDesignation,
+    enabled = true,
+  } = props;
   const [recommendations, setRecommendations] = useState<PtRecommendationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -17,11 +17,8 @@ export interface WeldDefectAcceptanceRefProps {
   compact?: boolean;
 }
 
-export function WeldDefectAcceptanceRef({
-  selectedCode,
-  showSourServiceLimits = false,
-  compact = false,
-}: WeldDefectAcceptanceRefProps) {
+export function WeldDefectAcceptanceRef(props: WeldDefectAcceptanceRefProps) {
+  const { selectedCode, showSourServiceLimits = false, compact = false } = props;
   const [activeCode, setActiveCode] = useState<WeldingCode>(selectedCode ?? "API_1104");
 
   const criteria = useMemo(() => {
@@ -176,12 +173,8 @@ export interface DefectQuickCheckProps {
   wallThicknessMm?: number;
 }
 
-export function DefectQuickCheck({
-  code,
-  defectType,
-  measuredValueMm,
-  wallThicknessMm,
-}: DefectQuickCheckProps) {
+export function DefectQuickCheck(props: DefectQuickCheckProps) {
+  const { code, defectType, measuredValueMm, wallThicknessMm } = props;
   const criteria = useMemo(() => {
     return WELD_DEFECT_CRITERIA.find((c) => c.code === code && c.defectType === defectType);
   }, [code, defectType]);

@@ -18,7 +18,8 @@ interface AllocationModalProps {
   stockItems: StockItem[];
 }
 
-export function AllocationModal({ isOpen, onClose, onSave, stockItems }: AllocationModalProps) {
+export function AllocationModal(props: AllocationModalProps) {
+  const { isOpen, onClose, onSave, stockItems } = props;
   const [form, setForm] = useState<AllocationFormData>({
     stockItemId: null,
     quantity: "1",

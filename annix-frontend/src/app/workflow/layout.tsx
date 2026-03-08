@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: "Manage your Annix workflow and pipelines.",
 };
 
-export default function WorkflowLayout({ children }: { children: ReactNode }) {
+export default function WorkflowLayout(props: { children: ReactNode }) {
+  const { children } = props;
   return children;
 }

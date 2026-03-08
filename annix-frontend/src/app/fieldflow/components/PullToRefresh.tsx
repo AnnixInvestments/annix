@@ -10,13 +10,8 @@ interface PullToRefreshProps {
   className?: string;
 }
 
-export function PullToRefresh({
-  children,
-  onRefresh,
-  disabled = false,
-  threshold = 80,
-  className = "",
-}: PullToRefreshProps) {
+export function PullToRefresh(props: PullToRefreshProps) {
+  const { children, onRefresh, disabled = false, threshold = 80, className = "" } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);

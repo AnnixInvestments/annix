@@ -13,15 +13,16 @@ interface RecurrenceModalProps {
   isDestructive?: boolean;
 }
 
-export function RecurrenceModal({
-  isOpen,
-  onClose,
-  onConfirm,
-  title,
-  description,
-  actionLabel,
-  isDestructive = false,
-}: RecurrenceModalProps) {
+export function RecurrenceModal(props: RecurrenceModalProps) {
+  const {
+    isOpen,
+    onClose,
+    onConfirm,
+    title,
+    description,
+    actionLabel,
+    isDestructive = false,
+  } = props;
   const [selectedScope, setSelectedScope] = useState<RecurrenceUpdateScope>("this");
 
   if (!isOpen) return null;

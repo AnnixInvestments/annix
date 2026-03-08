@@ -46,14 +46,8 @@ const fieldLabels: Record<string, string> = {
 
 const fieldsToTrain = ["poNumber", "orderDate", "deliveryDate", "lineItemsTable"];
 
-export function PoTrainingModal({
-  isOpen,
-  file,
-  companyId,
-  formatHash,
-  onClose,
-  onTrainingComplete,
-}: PoTrainingModalProps) {
+export function PoTrainingModal(props: PoTrainingModalProps) {
+  const { isOpen, file, companyId, formatHash, onClose, onTrainingComplete } = props;
   const [pages, setPages] = useState<PdfPageImage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);

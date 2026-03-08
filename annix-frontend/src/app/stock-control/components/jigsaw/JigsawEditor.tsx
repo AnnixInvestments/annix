@@ -30,19 +30,14 @@ import {
 import { PanelTray } from "./PanelTray";
 import { RollCanvas } from "./RollCanvas";
 
-export function JigsawEditor({
-  parsedItems,
-  rubberSpec,
-  existingManualRolls,
-  onSave,
-  saving,
-}: {
+export function JigsawEditor(props: {
   parsedItems: ParsedPipeItem[];
   rubberSpec: RubberSpec | null | undefined;
   existingManualRolls: RubberPlanManualRoll[];
   onSave: (rolls: RubberPlanManualRoll[]) => void;
   saving: boolean;
 }) {
+  const { parsedItems, rubberSpec, existingManualRolls, onSave, saving } = props;
   const [rolls, setRolls] = useState<JigsawRoll[]>(() => {
     if (existingManualRolls.length > 0) {
       return existingManualRolls.map((r) => ({

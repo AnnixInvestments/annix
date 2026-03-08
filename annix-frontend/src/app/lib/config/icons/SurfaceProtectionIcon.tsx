@@ -5,7 +5,8 @@ interface SurfaceProtectionIconProps {
   size?: number;
 }
 
-export function SurfaceProtectionIcon({ className = "", size = 24 }: SurfaceProtectionIconProps) {
+export function SurfaceProtectionIcon(props: SurfaceProtectionIconProps) {
+  const { className = "", size = 24 } = props;
   const width = size * 2;
   const height = size * 1.2;
 

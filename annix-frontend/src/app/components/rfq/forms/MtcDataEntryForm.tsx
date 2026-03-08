@@ -116,12 +116,8 @@ export interface MtcDataEntryFormProps {
   isSubmitting?: boolean;
 }
 
-export function MtcDataEntryForm({
-  initialData,
-  onSubmit,
-  onCancel,
-  isSubmitting = false,
-}: MtcDataEntryFormProps) {
+export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
+  const { initialData, onSubmit, onCancel, isSubmitting = false } = props;
   const [formData, setFormData] = useState<MtcFormData>(() => ({
     ...defaultFormData(),
     ...initialData,

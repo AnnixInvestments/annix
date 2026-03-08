@@ -18,15 +18,9 @@ interface RemoteAccessRequestModalProps {
   onAccessGranted: () => void;
 }
 
-export default function RemoteAccessRequestModal({
-  isOpen,
-  onClose,
-  documentType,
-  documentId,
-  documentName,
-  requestType,
-  onAccessGranted,
-}: RemoteAccessRequestModalProps) {
+export default function RemoteAccessRequestModal(props: RemoteAccessRequestModalProps) {
+  const { isOpen, onClose, documentType, documentId, documentName, requestType, onAccessGranted } =
+    props;
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPolling, setIsPolling] = useState(false);

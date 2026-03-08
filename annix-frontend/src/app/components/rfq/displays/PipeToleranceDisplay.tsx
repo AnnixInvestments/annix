@@ -16,13 +16,8 @@ export interface PipeToleranceDisplayProps {
   compact?: boolean;
 }
 
-export function PipeToleranceDisplay({
-  odMm,
-  wallMm,
-  npsInches,
-  standard,
-  compact = false,
-}: PipeToleranceDisplayProps) {
+export function PipeToleranceDisplay(props: PipeToleranceDisplayProps) {
+  const { odMm, wallMm, npsInches, standard, compact = false } = props;
   const toleranceSpec = useMemo(() => toleranceForPipe(standard, npsInches), [standard, npsInches]);
 
   const calculated = useMemo(
@@ -109,7 +104,8 @@ export interface ToleranceQuickRefProps {
   standard: ToleranceStandard;
 }
 
-export function ToleranceQuickRef({ standard }: ToleranceQuickRefProps) {
+export function ToleranceQuickRef(props: ToleranceQuickRefProps) {
+  const { standard } = props;
   return (
     <div className="text-xs text-gray-600 bg-blue-50 rounded px-2 py-1 border border-blue-100">
       <span className="font-medium">{toleranceStandardLabel(standard)}</span>

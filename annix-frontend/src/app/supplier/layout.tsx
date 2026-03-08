@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description: "Annix supplier portal for BOQ pricing",
 };
 
-export default function SupplierLayout({ children }: { children: React.ReactNode }) {
+export default function SupplierLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <SupplierLayoutClient>{children}</SupplierLayoutClient>;
 }

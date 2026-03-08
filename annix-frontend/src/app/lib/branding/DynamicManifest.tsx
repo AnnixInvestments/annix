@@ -8,7 +8,8 @@ interface DynamicManifestProps {
   manifestConfig?: ManifestConfig;
 }
 
-export function DynamicManifest({ manifestUrl, manifestConfig }: DynamicManifestProps) {
+export function DynamicManifest(props: DynamicManifestProps) {
+  const { manifestUrl, manifestConfig } = props;
   const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {

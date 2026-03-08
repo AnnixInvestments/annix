@@ -81,17 +81,18 @@ function calculatePlateArea(item: PlateBomItem): number {
   return (item.lengthMm / 1000) * (item.widthMm / 1000) * item.quantity;
 }
 
-export default function TankChuteForm({
-  entry,
-  index: _index,
-  entriesCount: _entriesCount,
-  globalSpecs: _globalSpecs,
-  masterData: _masterData,
-  onUpdateEntry,
-  onRemoveEntry: _onRemoveEntry,
-  generateItemDescription,
-  requiredProducts: _requiredProducts = [],
-}: TankChuteFormProps) {
+export default function TankChuteForm(props: TankChuteFormProps) {
+  const {
+    entry,
+    index: _index,
+    entriesCount: _entriesCount,
+    globalSpecs: _globalSpecs,
+    masterData: _masterData,
+    onUpdateEntry,
+    onRemoveEntry: _onRemoveEntry,
+    generateItemDescription,
+    requiredProducts: _requiredProducts = [],
+  } = props;
   const specs = entry.specs ?? {};
   const plateBom = specs.plateBom ?? [];
   const isCalculatedWeight = specs.weightSource === "calculated";

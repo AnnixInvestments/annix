@@ -30,13 +30,8 @@ interface BracketFormProps {
 
 const generateId = (): string => `bracket-${generateUniqueId()}`;
 
-export default function BracketForm({
-  entries,
-  onAddEntry,
-  onUpdateEntry,
-  onRemoveEntry,
-  onDuplicateEntry,
-}: BracketFormProps) {
+export default function BracketForm(props: BracketFormProps) {
+  const { entries, onAddEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry } = props;
   const addNewBracket = () => {
     const defaultMaterial = STEEL_MATERIALS[0];
     const dimensions = defaultBracketDimensions();

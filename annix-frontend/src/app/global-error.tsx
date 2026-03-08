@@ -2,13 +2,11 @@
 
 import { useEffect } from "react";
 
-export default function GlobalError({
-  error,
-  reset,
-}: {
+export default function GlobalError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { error, reset } = props;
   useEffect(() => {
     console.error("Global error:", error);
   }, [error]);

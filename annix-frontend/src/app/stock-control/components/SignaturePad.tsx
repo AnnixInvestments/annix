@@ -10,13 +10,8 @@ interface SignaturePadProps {
   height?: number;
 }
 
-export function SignaturePad({
-  onSave,
-  onCancel,
-  existingSignature,
-  width = 400,
-  height = 200,
-}: SignaturePadProps) {
+export function SignaturePad(props: SignaturePadProps) {
+  const { onSave, onCancel, existingSignature, width = 400, height = 200 } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);

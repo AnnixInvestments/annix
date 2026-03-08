@@ -5,17 +5,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { CUT_COLORS } from "./jigsawLayout";
 import { effectiveLength, effectiveWidth, type JigsawPanel } from "./jigsawTypes";
 
-export function DraggablePanel({
-  panel,
-  scale,
-  onRotate,
-  isPlaced,
-}: {
+export function DraggablePanel(props: {
   panel: JigsawPanel;
   scale: number | null;
   onRotate: (panelId: string) => void;
   isPlaced: boolean;
 }) {
+  const { panel, scale, onRotate, isPlaced } = props;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: panel.panelId,
   });

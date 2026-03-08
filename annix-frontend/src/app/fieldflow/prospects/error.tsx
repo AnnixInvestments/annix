@@ -3,13 +3,11 @@
 import { useEffect } from "react";
 import { PageErrorFallback } from "../components/ErrorBoundary";
 
-export default function ProspectsError({
-  error,
-  reset,
-}: {
+export default function ProspectsError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { error, reset } = props;
   useEffect(() => {
     console.error("Prospects error:", error);
   }, [error]);

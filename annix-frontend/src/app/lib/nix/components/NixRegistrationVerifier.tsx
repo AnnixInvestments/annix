@@ -82,18 +82,19 @@ const DOCUMENT_TYPE_LABELS: Record<RegistrationDocumentType, string> = {
   bee: "BEE Certificate",
 };
 
-export default function NixRegistrationVerifier({
-  isVisible,
-  isProcessing,
-  verificationResult,
-  documentType,
-  file,
-  onApplyCorrections,
-  onProceedWithMismatch,
-  onRetryUpload,
-  onClose,
-  onFieldLearned,
-}: NixRegistrationVerifierProps) {
+export default function NixRegistrationVerifier(props: NixRegistrationVerifierProps) {
+  const {
+    isVisible,
+    isProcessing,
+    verificationResult,
+    documentType,
+    file,
+    onApplyCorrections,
+    onProceedWithMismatch,
+    onRetryUpload,
+    onClose,
+    onFieldLearned,
+  } = props;
   const [dots, setDots] = useState("");
   const [selectedCorrections, setSelectedCorrections] = useState<Set<string>>(new Set());
   const [showAnnotator, setShowAnnotator] = useState(false);

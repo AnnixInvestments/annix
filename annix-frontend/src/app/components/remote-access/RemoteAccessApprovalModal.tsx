@@ -11,12 +11,8 @@ interface RemoteAccessApprovalModalProps {
   onResponded: () => void;
 }
 
-export default function RemoteAccessApprovalModal({
-  isOpen,
-  onClose,
-  request,
-  onResponded,
-}: RemoteAccessApprovalModalProps) {
+export default function RemoteAccessApprovalModal(props: RemoteAccessApprovalModalProps) {
+  const { isOpen, onClose, request, onResponded } = props;
   const [denialReason, setDenialReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

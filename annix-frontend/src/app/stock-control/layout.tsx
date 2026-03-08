@@ -23,6 +23,7 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function StockControlLayout({ children }: { children: React.ReactNode }) {
+export default function StockControlLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <StockControlLayoutClient>{children}</StockControlLayoutClient>;
 }

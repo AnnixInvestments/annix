@@ -34,12 +34,8 @@ const sizeMap = {
  * 1. Save the logo as: public/images/annix-logo.png
  * 2. The component will automatically use it
  */
-export default function AmixLogo({
-  size = "md",
-  showText = true,
-  className = "",
-  useSignatureFont = true,
-}: AmixLogoProps) {
+export default function AmixLogo(props: AmixLogoProps) {
+  const { size = "md", showText = true, className = "", useSignatureFont = true } = props;
   const { logo: logoSize } = sizeMap[size];
 
   if (showText) {
@@ -96,10 +92,10 @@ export default function AmixLogo({
 /**
  * Full logo with navy background - for use on light backgrounds
  */
-export function AmixLogoWithBackground({
-  size = "md",
-  className = "",
-}: Omit<AmixLogoProps, "showText" | "useSignatureFont">) {
+export function AmixLogoWithBackground(
+  props: Omit<AmixLogoProps, "showText" | "useSignatureFont">,
+) {
+  const { size = "md", className = "" } = props;
   return (
     <div
       className={`inline-flex items-center rounded-lg px-4 py-2 ${className}`}

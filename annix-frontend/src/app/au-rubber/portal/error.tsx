@@ -2,13 +2,11 @@
 
 import { useEffect } from "react";
 
-export default function AuRubberPortalError({
-  error,
-  reset,
-}: {
+export default function AuRubberPortalError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { error, reset } = props;
   useEffect(() => {
     console.error("AU Rubber portal error:", error);
   }, [error]);

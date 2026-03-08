@@ -163,13 +163,8 @@ function MaterialDropdownButton({
   );
 }
 
-export function MaterialTypeSelector({
-  selectedMaterials,
-  onSelectMaterial,
-  onAddItem,
-  disabled,
-  fittingsDisabled,
-}: MaterialTypeSelectorProps) {
+export function MaterialTypeSelector(props: MaterialTypeSelectorProps) {
+  const { selectedMaterials, onSelectMaterial, onAddItem, disabled, fittingsDisabled } = props;
   const availableMaterials = MATERIAL_OPTIONS.filter((opt) => {
     const productKey = opt.value === "steel" ? "fabricated_steel" : opt.value;
     return selectedMaterials.includes(productKey);
@@ -206,7 +201,8 @@ export interface MaterialBadgeProps {
   onClear: () => void;
 }
 
-export function MaterialBadge({ material, onClear }: MaterialBadgeProps) {
+export function MaterialBadge(props: MaterialBadgeProps) {
+  const { material, onClear } = props;
   const option = MATERIAL_OPTIONS.find((o) => o.value === material);
   if (!option) return null;
 
@@ -238,14 +234,8 @@ export interface ItemTypeButtonsProps {
   fittingsDisabled?: boolean;
 }
 
-export function ItemTypeButtons({
-  material,
-  onAddPipe,
-  onAddBend,
-  onAddFitting,
-  disabled,
-  fittingsDisabled,
-}: ItemTypeButtonsProps) {
+export function ItemTypeButtons(props: ItemTypeButtonsProps) {
+  const { material, onAddPipe, onAddBend, onAddFitting, disabled, fittingsDisabled } = props;
   const option = MATERIAL_OPTIONS.find((o) => o.value === material);
   const baseClasses = option
     ? `${option.bgColor} ${option.hoverColor} ${option.borderColor}`
@@ -451,11 +441,8 @@ function FirstItemMaterialCard({
   );
 }
 
-export function FirstItemMaterialSelector({
-  selectedMaterials,
-  onAddItem,
-  fittingsDisabled,
-}: FirstItemMaterialSelectorProps) {
+export function FirstItemMaterialSelector(props: FirstItemMaterialSelectorProps) {
+  const { selectedMaterials, onAddItem, fittingsDisabled } = props;
   const availableMaterials = MATERIAL_OPTIONS.filter((opt) => {
     const productKey = opt.value === "steel" ? "fabricated_steel" : opt.value;
     return selectedMaterials.includes(productKey);

@@ -34,7 +34,8 @@ interface CustomerAuthContextType extends CustomerAuthState {
 
 const CustomerAuthContext = createContext<CustomerAuthContextType | undefined>(undefined);
 
-export function CustomerAuthProvider({ children }: { children: ReactNode }) {
+export function CustomerAuthProvider(props: { children: ReactNode }) {
+  const { children } = props;
   const [state, setState] = useState<CustomerAuthState>({
     isAuthenticated: false,
     isLoading: true,

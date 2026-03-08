@@ -22,14 +22,8 @@ const FIELD_LABELS: Record<string, string> = {
   companyName: "Company Name",
 };
 
-export default function DocumentValidationModal({
-  isOpen,
-  onClose,
-  mismatches,
-  documentType,
-  onAcceptExtracted,
-  onReupload,
-}: DocumentValidationModalProps) {
+export default function DocumentValidationModal(props: DocumentValidationModalProps) {
+  const { isOpen, onClose, mismatches, documentType, onAcceptExtracted, onReupload } = props;
   if (!isOpen) return null;
 
   const documentLabel = documentType === "vat" ? "VAT Registration" : "Company Registration";

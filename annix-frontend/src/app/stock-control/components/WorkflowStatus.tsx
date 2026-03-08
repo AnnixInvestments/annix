@@ -41,7 +41,8 @@ interface WorkflowStatusProps {
   approvals: JobCardApproval[];
 }
 
-export function WorkflowStatus({ currentStatus, approvals }: WorkflowStatusProps) {
+export function WorkflowStatus(props: WorkflowStatusProps) {
+  const { currentStatus, approvals } = props;
   const currentStepIndex = STATUS_MAP[currentStatus] ?? -1;
 
   const approvalByStep = approvals.reduce(

@@ -7,7 +7,8 @@ interface TimeSlotProps {
   time: Date;
 }
 
-export function TimeSlot({ id, time }: TimeSlotProps) {
+export function TimeSlot(props: TimeSlotProps) {
+  const { id, time } = props;
   const { isOver, setNodeRef } = useDroppable({
     id,
   });

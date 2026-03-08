@@ -12,10 +12,8 @@ interface UseRemoteAccessPollingOptions {
   pollIntervalMs?: number;
 }
 
-export function useRemoteAccessPolling({
-  enabled = true,
-  pollIntervalMs = 30000,
-}: UseRemoteAccessPollingOptions = {}) {
+export function useRemoteAccessPolling(props: UseRemoteAccessPollingOptions = {}) {
+  const { enabled = true, pollIntervalMs = 30000 } = props;
   const [pendingRequests, setPendingRequests] = useState<RemoteAccessRequestResponse[]>([]);
   const [count, setCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);

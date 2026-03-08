@@ -38,17 +38,18 @@ const SCHEDULE_OPTIONS = [
   { value: "Sch160", label: "Sch 160" },
 ];
 
-export default function ExpansionJointForm({
-  entry,
-  index: _index,
-  entriesCount: _entriesCount,
-  globalSpecs,
-  masterData: _masterData,
-  onUpdateEntry,
-  onRemoveEntry,
-  generateItemDescription,
-  requiredProducts: _requiredProducts = [],
-}: ExpansionJointFormProps) {
+export default function ExpansionJointForm(props: ExpansionJointFormProps) {
+  const {
+    entry,
+    index: _index,
+    entriesCount: _entriesCount,
+    globalSpecs,
+    masterData: _masterData,
+    onUpdateEntry,
+    onRemoveEntry,
+    generateItemDescription,
+    requiredProducts: _requiredProducts = [],
+  } = props;
   const { data: nbToOdMap = {} } = useNbToOdMap();
   const [calculationResults, setCalculationResults] = useState<any>(null);
 

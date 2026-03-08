@@ -32,9 +32,8 @@ interface SessionExpiredModalProps {
  * 1. Add <SessionExpiredModal /> to your layout
  * 2. Call sessionExpiredEvent.emit() when a 401 error occurs
  */
-export default function SessionExpiredModal({
-  loginUrl = "/customer/login",
-}: SessionExpiredModalProps) {
+export default function SessionExpiredModal(props: SessionExpiredModalProps) {
+  const { loginUrl = "/customer/login" } = props;
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {

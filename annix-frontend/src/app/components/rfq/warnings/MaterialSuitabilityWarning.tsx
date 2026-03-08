@@ -29,15 +29,16 @@ interface MaterialSuitabilityWarningProps {
   className?: string;
 }
 
-export function MaterialSuitabilityWarning({
-  color,
-  steelSpecName,
-  effectivePressure,
-  effectiveTemperature,
-  allSteelSpecs,
-  onSelectSpec,
-  className = "",
-}: MaterialSuitabilityWarningProps) {
+export function MaterialSuitabilityWarning(props: MaterialSuitabilityWarningProps) {
+  const {
+    color,
+    steelSpecName,
+    effectivePressure,
+    effectiveTemperature,
+    allSteelSpecs,
+    onSelectSpec,
+    className = "",
+  } = props;
   const { data: allLimits } = useAllMaterialLimits();
   const { data: suitableSpecPatterns } = useSuitableMaterials(
     effectiveTemperature,

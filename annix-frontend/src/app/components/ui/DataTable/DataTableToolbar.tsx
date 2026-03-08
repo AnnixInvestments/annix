@@ -11,14 +11,15 @@ export interface DataTableToolbarProps {
   extraActions?: React.ReactNode;
 }
 
-export function DataTableToolbar({
-  search,
-  onSearchChange,
-  onSearch,
-  searchPlaceholder = "Search...",
-  onExport,
-  extraActions,
-}: DataTableToolbarProps) {
+export function DataTableToolbar(props: DataTableToolbarProps) {
+  const {
+    search,
+    onSearchChange,
+    onSearch,
+    searchPlaceholder = "Search...",
+    onExport,
+    extraActions,
+  } = props;
   const [localSearch, setLocalSearch] = useState(search ?? "");
 
   const handleSearchChange = (value: string) => {

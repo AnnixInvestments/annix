@@ -27,11 +27,8 @@ interface HdpePipeCalculatorProps {
   ) => void;
 }
 
-export default function HdpePipeCalculator({
-  pricePerKg,
-  buttweldPrice,
-  onCalculationComplete,
-}: HdpePipeCalculatorProps) {
+export default function HdpePipeCalculator(props: HdpePipeCalculatorProps) {
+  const { pricePerKg, buttweldPrice, onCalculationComplete } = props;
   const [entries, setEntries] = useState<PipeEntry[]>([
     { id: crypto.randomUUID(), nominalBore: 110, sdr: 11, length: 6, quantity: 1 },
   ]);

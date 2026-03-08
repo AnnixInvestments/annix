@@ -34,7 +34,8 @@ const END_TYPES: Array<{ value: RecurrenceEndType; label: string }> = [
   { value: "until", label: "On date" },
 ];
 
-export function RecurrenceEditor({ value, onChange }: RecurrenceEditorProps) {
+export function RecurrenceEditor(props: RecurrenceEditorProps) {
+  const { value, onChange } = props;
   const updateField = <K extends keyof RecurrenceOptions>(
     field: K,
     fieldValue: RecurrenceOptions[K],

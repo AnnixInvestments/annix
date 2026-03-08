@@ -20,13 +20,8 @@ interface OrderAnalysisReviewProps {
   onNewCompanyChange?: (details: NewCompanyDetails | null) => void;
 }
 
-export function OrderAnalysisReview({
-  analysis,
-  companies,
-  products,
-  onUpdate,
-  onNewCompanyChange,
-}: OrderAnalysisReviewProps) {
+export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
+  const { analysis, companies, products, onUpdate, onNewCompanyChange } = props;
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const [editedLine, setEditedLine] = useState<AnalyzedOrderLine | null>(null);
   const [isCreatingNewCompany, setIsCreatingNewCompany] = useState(false);

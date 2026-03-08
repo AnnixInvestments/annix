@@ -24,7 +24,8 @@ const StockControlRbacContext = createContext<StockControlRbacContextValue>({
   reloadRbacConfig: async () => {},
 });
 
-export function StockControlRbacProvider({ children }: { children: React.ReactNode }) {
+export function StockControlRbacProvider(props: { children: React.ReactNode }) {
+  const { children } = props;
   const [rbacConfig, setRbacConfig] = useState<RbacConfig>(defaultConfig);
   const [isLoaded, setIsLoaded] = useState(false);
 

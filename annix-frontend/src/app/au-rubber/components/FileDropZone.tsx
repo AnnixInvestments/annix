@@ -12,14 +12,15 @@ interface FileDropZoneProps {
   className?: string;
 }
 
-export function FileDropZone({
-  onFilesSelected,
-  accept = ".pdf,application/pdf",
-  multiple = true,
-  disabled = false,
-  children,
-  className = "",
-}: FileDropZoneProps) {
+export function FileDropZone(props: FileDropZoneProps) {
+  const {
+    onFilesSelected,
+    accept = ".pdf,application/pdf",
+    multiple = true,
+    disabled = false,
+    children,
+    className = "",
+  } = props;
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragEnter = useCallback(

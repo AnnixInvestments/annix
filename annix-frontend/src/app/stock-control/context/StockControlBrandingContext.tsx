@@ -75,7 +75,8 @@ const StockControlBrandingContext = createContext<StockControlBrandingContextTyp
   undefined,
 );
 
-export function StockControlBrandingProvider({ children }: { children: ReactNode }) {
+export function StockControlBrandingProvider(props: { children: ReactNode }) {
+  const { children } = props;
   const { profile } = useStockControlAuth();
 
   const colors = useMemo(() => {

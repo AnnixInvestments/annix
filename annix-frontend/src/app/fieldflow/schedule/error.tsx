@@ -3,13 +3,11 @@
 import { useEffect } from "react";
 import { PageErrorFallback } from "../components/ErrorBoundary";
 
-export default function ScheduleError({
-  error,
-  reset,
-}: {
+export default function ScheduleError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { error, reset } = props;
   useEffect(() => {
     console.error("Schedule error:", error);
   }, [error]);

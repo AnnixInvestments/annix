@@ -10,15 +10,9 @@ interface DeleteConfirmationModalProps {
   onCancel: () => void;
 }
 
-export function DeleteConfirmationModal({
-  entityName,
-  recordId,
-  recordSummary,
-  isDeleting,
-  deleteError,
-  onConfirm,
-  onCancel,
-}: DeleteConfirmationModalProps) {
+export function DeleteConfirmationModal(props: DeleteConfirmationModalProps) {
+  const { entityName, recordId, recordSummary, isDeleting, deleteError, onConfirm, onCancel } =
+    props;
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">

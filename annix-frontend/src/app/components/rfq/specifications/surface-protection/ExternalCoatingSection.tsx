@@ -14,26 +14,27 @@ import {
 import type { ExternalCoatingSectionProps } from "./types";
 import { APPLICATION_METHODS, SUBSTRATE_TYPES } from "./types";
 
-export function ExternalCoatingSection({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-  isUnregisteredCustomer,
-  showFeatureRestrictionPopup,
-  effectiveInstallationType,
-  effectiveUvExposure,
-  effectiveMechanicalRisk,
-  effectiveIso12944,
-  effectiveMarineInfluence,
-  effectiveIndustrialPollution,
-  effectiveEcpTemperature,
-  isInstallationTypeAutoFilled,
-  isUvExposureAutoFilled,
-  isMechanicalRiskAutoFilled,
-  isIso12944AutoFilled,
-  isMarineInfluenceAutoFilled,
-  isIndustrialPollutionAutoFilled,
-  isEcpTemperatureAutoFilled,
-}: ExternalCoatingSectionProps) {
+export function ExternalCoatingSection(props: ExternalCoatingSectionProps) {
+  const {
+    globalSpecs,
+    onUpdateGlobalSpecs,
+    isUnregisteredCustomer,
+    showFeatureRestrictionPopup,
+    effectiveInstallationType,
+    effectiveUvExposure,
+    effectiveMechanicalRisk,
+    effectiveIso12944,
+    effectiveMarineInfluence,
+    effectiveIndustrialPollution,
+    effectiveEcpTemperature,
+    isInstallationTypeAutoFilled,
+    isUvExposureAutoFilled,
+    isMechanicalRiskAutoFilled,
+    isIso12944AutoFilled,
+    isMarineInfluenceAutoFilled,
+    isIndustrialPollutionAutoFilled,
+    isEcpTemperatureAutoFilled,
+  } = props;
   const [iso12944Systems, setIso12944Systems] = useState<ISO12944SystemsByDurabilityResult | null>(
     null,
   );

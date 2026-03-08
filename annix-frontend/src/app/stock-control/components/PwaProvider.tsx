@@ -24,7 +24,8 @@ interface ServiceWorkerState {
   registration: ServiceWorkerRegistration | null;
 }
 
-export function PwaProvider({ children }: { children: React.ReactNode }) {
+export function PwaProvider(props: { children: React.ReactNode }) {
+  const { children } = props;
   const [swState, setSwState] = useState<ServiceWorkerState>({
     isRegistered: false,
     isUpdateAvailable: false,

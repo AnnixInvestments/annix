@@ -91,6 +91,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return <PortalContent>{children}</PortalContent>;
 }
 
-export default function AuRubberPortalLayout({ children }: { children: React.ReactNode }) {
+export default function AuRubberPortalLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <ProtectedLayout>{children}</ProtectedLayout>;
 }

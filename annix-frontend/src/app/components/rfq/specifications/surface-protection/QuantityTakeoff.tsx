@@ -45,11 +45,8 @@ const CERAMIC_COVERAGE = {
   wastagePercent: 10,
 };
 
-export function QuantityTakeoff({
-  surfaceAreaM2,
-  coatingType,
-  systemDetails = {},
-}: QuantityTakeoffProps) {
+export function QuantityTakeoff(props: QuantityTakeoffProps) {
+  const { surfaceAreaM2, coatingType, systemDetails = {} } = props;
   const [customWastage, setCustomWastage] = useState<Record<string, number>>({});
 
   const quantities = useMemo((): MaterialQuantity[] => {

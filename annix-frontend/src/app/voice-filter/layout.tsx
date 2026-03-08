@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description: "Annix voice filter and call management",
 };
 
-export default function VoiceFilterLayout({ children }: { children: React.ReactNode }) {
+export default function VoiceFilterLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <VoiceFilterLayoutClient>{children}</VoiceFilterLayoutClient>;
 }

@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description: "Annix customer portal for RFQ management",
 };
 
-export default function CustomerLayout({ children }: { children: React.ReactNode }) {
+export default function CustomerLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <CustomerLayoutClient>{children}</CustomerLayoutClient>;
 }

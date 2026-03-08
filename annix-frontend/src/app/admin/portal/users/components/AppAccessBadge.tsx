@@ -15,7 +15,8 @@ const APP_COLORS: Record<string, { bg: string; text: string; border: string }> =
 
 const DEFAULT_COLORS = { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200" };
 
-export function AppAccessBadge({ access }: AppAccessBadgeProps) {
+export function AppAccessBadge(props: AppAccessBadgeProps) {
+  const { access } = props;
   const colors = APP_COLORS[access.appCode] ?? DEFAULT_COLORS;
 
   const roleDisplay = access.useCustomPermissions

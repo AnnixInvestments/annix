@@ -31,7 +31,8 @@ interface ItemIdentifierProps {
   onCreateNew?: (item: IdentifiedItem) => void;
 }
 
-export function ItemIdentifier({ onSelectExisting, onCreateNew }: ItemIdentifierProps) {
+export function ItemIdentifier(props: ItemIdentifierProps) {
+  const { onSelectExisting, onCreateNew } = props;
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<IdentifyResponse | null>(null);

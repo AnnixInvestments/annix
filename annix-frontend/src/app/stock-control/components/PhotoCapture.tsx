@@ -11,12 +11,8 @@ interface PhotoCaptureProps {
   compressOnCapture?: boolean;
 }
 
-export function PhotoCapture({
-  onCapture,
-  currentPhotoUrl,
-  enableCamera = true,
-  compressOnCapture = true,
-}: PhotoCaptureProps) {
+export function PhotoCapture(props: PhotoCaptureProps) {
+  const { onCapture, currentPhotoUrl, enableCamera = true, compressOnCapture = true } = props;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);

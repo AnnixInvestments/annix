@@ -518,7 +518,8 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function SupplierBoqDetailPage({ params }: PageProps) {
+export default function SupplierBoqDetailPage(props: PageProps) {
+  const { params } = props;
   const resolvedParams = use(params);
   const router = useRouter();
   const { showToast } = useToast();

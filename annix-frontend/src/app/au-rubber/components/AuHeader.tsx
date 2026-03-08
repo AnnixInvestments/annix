@@ -250,7 +250,8 @@ interface AuHeaderProps {
   onSearch?: (query: string) => void;
 }
 
-export function AuHeader({ onSearch }: AuHeaderProps) {
+export function AuHeader(props: AuHeaderProps) {
+  const { onSearch } = props;
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);

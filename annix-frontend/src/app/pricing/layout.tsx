@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description: "View pricing plans for Annix industrial pipeline quoting platform.",
 };
 
-export default function PricingLayout({ children }: { children: ReactNode }) {
+export default function PricingLayout(props: { children: ReactNode }) {
+  const { children } = props;
   return children;
 }

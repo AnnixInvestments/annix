@@ -5,7 +5,8 @@ interface DeviceInfoDisplayProps {
   isLoading: boolean;
 }
 
-export function DeviceInfoDisplay({ fingerprint, isLoading }: DeviceInfoDisplayProps) {
+export function DeviceInfoDisplay(props: DeviceInfoDisplayProps) {
+  const { fingerprint, isLoading } = props;
   return (
     <div className="bg-gray-50 rounded-lg p-4">
       <h4 className="text-sm font-medium text-gray-900 mb-2">Device Information</h4>
@@ -122,13 +123,8 @@ interface AcceptanceCheckboxProps {
   required?: boolean;
 }
 
-export function AcceptanceCheckbox({
-  id,
-  checked,
-  onChange,
-  label,
-  required = false,
-}: AcceptanceCheckboxProps) {
+export function AcceptanceCheckbox(props: AcceptanceCheckboxProps) {
+  const { id, checked, onChange, label, required = false } = props;
   return (
     <div className="flex items-start">
       <input
@@ -149,7 +145,8 @@ interface ErrorDisplayProps {
   error: string | null;
 }
 
-export function ErrorDisplay({ error }: ErrorDisplayProps) {
+export function ErrorDisplay(props: ErrorDisplayProps) {
+  const { error } = props;
   if (!error) return null;
 
   return (
@@ -165,7 +162,8 @@ interface InfoBannerProps {
   variant?: "info" | "warning";
 }
 
-export function InfoBanner({ title, message, variant = "info" }: InfoBannerProps) {
+export function InfoBanner(props: InfoBannerProps) {
+  const { title, message, variant = "info" } = props;
   const colorClasses = {
     info: {
       bg: "bg-blue-50",

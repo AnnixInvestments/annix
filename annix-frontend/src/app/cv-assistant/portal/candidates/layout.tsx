@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Candidates",
 };
 
-export default function CandidatesLayout({ children }: { children: React.ReactNode }) {
+export default function CandidatesLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return children;
 }

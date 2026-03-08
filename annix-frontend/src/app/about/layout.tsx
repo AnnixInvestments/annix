@@ -7,6 +7,7 @@ export const metadata: Metadata = {
     "Learn about Annix, the leading industrial pipeline quoting platform for fabrication and piping suppliers.",
 };
 
-export default function AboutLayout({ children }: { children: ReactNode }) {
+export default function AboutLayout(props: { children: ReactNode }) {
+  const { children } = props;
   return children;
 }

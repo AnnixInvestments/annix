@@ -18,11 +18,8 @@ interface SystemCurveOverlayProps {
   ) => void;
 }
 
-export function SystemCurveOverlay({
-  pumpCurve,
-  initialSystemParams,
-  onOperatingPointChange,
-}: SystemCurveOverlayProps) {
+export function SystemCurveOverlay(props: SystemCurveOverlayProps) {
+  const { pumpCurve, initialSystemParams, onOperatingPointChange } = props;
   const [systemParams, setSystemParams] = useState<SystemCurveParams>({
     staticHeadM: initialSystemParams?.staticHeadM ?? 10,
     frictionLossAtDesignFlowM: initialSystemParams?.frictionLossAtDesignFlowM ?? 10,

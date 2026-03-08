@@ -376,15 +376,7 @@ const ItemWrapper = memo(function ItemWrapper({
 // Render counter for performance debugging
 let itemUploadStepRenderCount = 0;
 
-export default function ItemUploadStep({
-  onUpdateEntry,
-  onCalculate,
-  onCalculateBend,
-  onCalculateFitting,
-  fetchAvailableSchedules,
-  getFilteredPressureClasses,
-  onReady,
-}: {
+export default function ItemUploadStep(props: {
   onUpdateEntry: (id: string, updates: any) => void;
   onCalculate?: () => void;
   onCalculateBend?: (id: string) => void;
@@ -397,6 +389,15 @@ export default function ItemUploadStep({
   getFilteredPressureClasses: (standardId: number) => Promise<any[]>;
   onReady?: () => void;
 }) {
+  const {
+    onUpdateEntry,
+    onCalculate,
+    onCalculateBend,
+    onCalculateFitting,
+    fetchAvailableSchedules,
+    getFilteredPressureClasses,
+    onReady,
+  } = props;
   const rfqData = useRfqWizardStore((s) => s.rfqData);
   const masterData = useRfqWizardStore((s) => s.masterData);
   const { data: nbToOdMap = {} } = useNbToOdMap();

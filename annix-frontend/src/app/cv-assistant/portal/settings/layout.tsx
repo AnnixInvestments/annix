@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Settings",
 };
 
-export default function SettingsLayout({ children }: { children: React.ReactNode }) {
+export default function SettingsLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return children;
 }

@@ -21,11 +21,8 @@ interface PvcPipeCalculatorProps {
   ) => void;
 }
 
-export default function PvcPipeCalculator({
-  pricePerKg,
-  cementJointPrice,
-  onCalculationComplete,
-}: PvcPipeCalculatorProps) {
+export default function PvcPipeCalculator(props: PvcPipeCalculatorProps) {
+  const { pricePerKg, cementJointPrice, onCalculationComplete } = props;
   const [entries, setEntries] = useState<PipeEntry[]>([
     { id: crypto.randomUUID(), nominalDiameter: 110, pressureRating: 10, length: 6, quantity: 1 },
   ]);

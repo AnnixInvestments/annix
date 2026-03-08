@@ -363,18 +363,19 @@ function ImagePreviewViewer({ pages, presignedUrl }: { pages: string[]; presigne
   );
 }
 
-export function DocumentReviewModal({
-  isOpen,
-  data,
-  isLoading,
-  onClose,
-  onApprove,
-  onReject,
-  onReVerify,
-  isSubmitting,
-  fetchPreviewImages,
-  entityType = "customer",
-}: DocumentReviewModalProps) {
+export function DocumentReviewModal(props: DocumentReviewModalProps) {
+  const {
+    isOpen,
+    data,
+    isLoading,
+    onClose,
+    onApprove,
+    onReject,
+    onReVerify,
+    isSubmitting,
+    fetchPreviewImages,
+    entityType = "customer",
+  } = props;
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [previewImages, setPreviewImages] = useState<string[] | null>(null);

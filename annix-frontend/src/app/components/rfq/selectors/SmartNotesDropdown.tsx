@@ -74,11 +74,8 @@ interface SmartNotesDropdownProps {
   placeholder?: string;
 }
 
-export function SmartNotesDropdown({
-  selectedNotes,
-  onNotesChange,
-  placeholder = "Select or add notes...",
-}: SmartNotesDropdownProps) {
+export function SmartNotesDropdown(props: SmartNotesDropdownProps) {
+  const { selectedNotes, onNotesChange, placeholder = "Select or add notes..." } = props;
   const [isOpen, setIsOpen] = useState(false);
   const [customInput, setCustomInput] = useState("");
   const [availableNotes, setAvailableNotes] = useState<SmartNote[]>(DEFAULT_NOTES);

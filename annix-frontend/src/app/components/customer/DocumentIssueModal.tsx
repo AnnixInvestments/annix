@@ -27,15 +27,16 @@ const FIELD_LABELS: Record<string, string> = {
   postalCode: "Postal Code",
 };
 
-export default function DocumentIssueModal({
-  isOpen,
-  onClose,
-  documentType,
-  issueType,
-  mismatches = [],
-  onGoBackToReview,
-  onProceedWithManualReview,
-}: DocumentIssueModalProps) {
+export default function DocumentIssueModal(props: DocumentIssueModalProps) {
+  const {
+    isOpen,
+    onClose,
+    documentType,
+    issueType,
+    mismatches = [],
+    onGoBackToReview,
+    onProceedWithManualReview,
+  } = props;
   if (!isOpen) return null;
 
   const documentLabel = documentType === "vat" ? "VAT Registration" : "Company Registration";

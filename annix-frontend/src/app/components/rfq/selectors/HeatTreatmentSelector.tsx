@@ -44,19 +44,20 @@ const DESIGN_CODE_OPTIONS = [
   { value: "API_570", label: "API 570 (Inspection)" },
 ];
 
-export default function HeatTreatmentSelector({
-  value,
-  onChange,
-  material,
-  wallThicknessMm,
-  weldType,
-  designCode,
-  weightKg,
-  disabled = false,
-  showRequirementCheck = true,
-  showCostEstimate = true,
-  className = "",
-}: HeatTreatmentSelectorProps) {
+export default function HeatTreatmentSelector(props: HeatTreatmentSelectorProps) {
+  const {
+    value,
+    onChange,
+    material,
+    wallThicknessMm,
+    weldType,
+    designCode,
+    weightKg,
+    disabled = false,
+    showRequirementCheck = true,
+    showCostEstimate = true,
+    className = "",
+  } = props;
   const { treatments, isLoading, treatmentByCode, checkRequirement, isCheckingRequirement } =
     useHeatTreatments();
   const [requirement, setRequirement] = useState<HeatTreatmentRequirementResponse | null>(null);

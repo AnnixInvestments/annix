@@ -39,18 +39,19 @@ const SERVICE_FLUID_OPTIONS = [
   { value: "high_temp", label: "High Temperature Service" },
 ];
 
-export default function GasketMaterialSelector({
-  value,
-  onChange,
-  flangeFace,
-  designTempC,
-  designPressureBar,
-  serviceFluid,
-  flangeMaterial,
-  disabled = false,
-  showCompatibilityCheck = true,
-  className = "",
-}: GasketMaterialSelectorProps) {
+export default function GasketMaterialSelector(props: GasketMaterialSelectorProps) {
+  const {
+    value,
+    onChange,
+    flangeFace,
+    designTempC,
+    designPressureBar,
+    serviceFluid,
+    flangeMaterial,
+    disabled = false,
+    showCompatibilityCheck = true,
+    className = "",
+  } = props;
   const { materials, isLoading, materialByCode, checkCompatibility, isCheckingCompatibility } =
     useGasketMaterials();
   const [compatibility, setCompatibility] = useState<GasketCompatibilityResponse | null>(null);

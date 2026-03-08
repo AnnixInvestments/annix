@@ -96,18 +96,19 @@ export interface MaterialSpecificationsSectionProps {
   onMaterialWarning: (warning: MaterialWarning) => void;
 }
 
-export function MaterialSpecificationsSection({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-  masterData,
-  availablePressureClasses,
-  fetchAndSelectPressureClass,
-  ptRecommendations,
-  autoPressureClassId,
-  isUnregisteredCustomer,
-  showRestrictionPopup,
-  onMaterialWarning,
-}: MaterialSpecificationsSectionProps) {
+export function MaterialSpecificationsSection(props: MaterialSpecificationsSectionProps) {
+  const {
+    globalSpecs,
+    onUpdateGlobalSpecs,
+    masterData,
+    availablePressureClasses,
+    fetchAndSelectPressureClass,
+    ptRecommendations,
+    autoPressureClassId,
+    isUnregisteredCustomer,
+    showRestrictionPopup,
+    onMaterialWarning,
+  } = props;
   const { data: allLimits } = useAllMaterialLimits();
   const { data: allFlangeTypes = [] } = useAllFlangeTypes();
   const [steelSpecDropdownOpen, setSteelSpecDropdownOpen] = useState(false);

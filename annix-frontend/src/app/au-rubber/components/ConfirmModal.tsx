@@ -11,16 +11,17 @@ interface ConfirmModalProps {
   onCancel: () => void;
 }
 
-export function ConfirmModal({
-  isOpen,
-  title,
-  message,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
-  variant = "danger",
-  onConfirm,
-  onCancel,
-}: ConfirmModalProps) {
+export function ConfirmModal(props: ConfirmModalProps) {
+  const {
+    isOpen,
+    title,
+    message,
+    confirmLabel = "Confirm",
+    cancelLabel = "Cancel",
+    variant = "danger",
+    onConfirm,
+    onCancel,
+  } = props;
   if (!isOpen) return null;
 
   const variantStyles = {

@@ -83,17 +83,18 @@ const RANGE_UNIT_OPTIONS = [
   { value: "mv", label: "mV" },
 ];
 
-export default function InstrumentForm({
-  entry,
-  index: _index,
-  entriesCount: _entriesCount,
-  globalSpecs,
-  masterData: _masterData,
-  onUpdateEntry,
-  onRemoveEntry,
-  generateItemDescription,
-  requiredProducts: _requiredProducts = [],
-}: InstrumentFormProps) {
+export default function InstrumentForm(props: InstrumentFormProps) {
+  const {
+    entry,
+    index: _index,
+    entriesCount: _entriesCount,
+    globalSpecs,
+    masterData: _masterData,
+    onUpdateEntry,
+    onRemoveEntry,
+    generateItemDescription,
+    requiredProducts: _requiredProducts = [],
+  } = props;
   const [activeCategory, setActiveCategory] = useState<InstrumentCategory>("flow");
   const [calculationResults, setCalculationResults] = useState<any>(null);
 

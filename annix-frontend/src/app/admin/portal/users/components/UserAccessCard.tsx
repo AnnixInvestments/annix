@@ -9,7 +9,8 @@ interface UserAccessCardProps {
   onRevoke: () => void;
 }
 
-export function UserAccessCard({ access, onEdit, onRevoke }: UserAccessCardProps) {
+export function UserAccessCard(props: UserAccessCardProps) {
+  const { access, onEdit, onRevoke } = props;
   const displayName = [access.firstName, access.lastName].filter(Boolean).join(" ") || access.email;
   const isExpired = access.expiresAt && new Date(access.expiresAt) < new Date();
 

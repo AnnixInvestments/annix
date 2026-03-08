@@ -7,12 +7,8 @@ interface UserNavigationBarProps {
   onNext: () => void;
 }
 
-export function UserNavigationBar({
-  currentIndex,
-  totalUsers,
-  onPrevious,
-  onNext,
-}: UserNavigationBarProps) {
+export function UserNavigationBar(props: UserNavigationBarProps) {
+  const { currentIndex, totalUsers, onPrevious, onNext } = props;
   const canGoPrevious = currentIndex > 0;
   const canGoNext = currentIndex < totalUsers - 1;
 

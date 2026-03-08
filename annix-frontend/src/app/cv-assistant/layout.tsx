@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description: "AI-powered CV screening and candidate management",
 };
 
-export default function CvAssistantLayout({ children }: { children: React.ReactNode }) {
+export default function CvAssistantLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <CvAssistantAuthProvider>{children}</CvAssistantAuthProvider>;
 }

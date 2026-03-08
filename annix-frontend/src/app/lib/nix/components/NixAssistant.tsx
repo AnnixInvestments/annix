@@ -18,7 +18,8 @@ interface NixAssistantProps {
   pageContext?: PageContext;
 }
 
-export function NixAssistant({ context = "general", pageContext }: NixAssistantProps) {
+export function NixAssistant(props: NixAssistantProps) {
+  const { context = "general", pageContext } = props;
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [errorKey, setErrorKey] = useState(0);

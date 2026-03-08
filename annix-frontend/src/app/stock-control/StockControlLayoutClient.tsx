@@ -4,7 +4,8 @@ import { StockControlAuthProvider } from "@/app/context/StockControlAuthContext"
 import { PwaProvider } from "./components/PwaProvider";
 import { StockControlDynamicBranding } from "./components/StockControlDynamicBranding";
 
-export default function StockControlLayoutClient({ children }: { children: React.ReactNode }) {
+export default function StockControlLayoutClient(props: { children: React.ReactNode }) {
+  const { children } = props;
   return (
     <StockControlAuthProvider>
       <StockControlDynamicBranding />

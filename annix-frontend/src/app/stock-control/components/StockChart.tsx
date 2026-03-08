@@ -10,7 +10,8 @@ interface StockChartProps {
   title: string;
 }
 
-export function StockChart({ data, title }: StockChartProps) {
+export function StockChart(props: StockChartProps) {
+  const { data, title } = props;
   const maxValue = data.reduce((max, point) => Math.max(max, point.value), 0);
 
   return (

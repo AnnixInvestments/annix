@@ -14,15 +14,16 @@ interface ClosureLengthSelectorProps {
   variant?: "default" | "compact";
 }
 
-export function ClosureLengthSelector({
-  nominalBore,
-  currentValue,
-  wallThickness,
-  onUpdate,
-  error,
-  showTackWeldInfo = true,
-  variant = "default",
-}: ClosureLengthSelectorProps) {
+export function ClosureLengthSelector(props: ClosureLengthSelectorProps) {
+  const {
+    nominalBore,
+    currentValue,
+    wallThickness,
+    onUpdate,
+    error,
+    showTackWeldInfo = true,
+    variant = "default",
+  } = props;
   const { data: nbToOdMap = {} } = useNbToOdMap();
   const limits = closureLengthLimits(nominalBore);
   const closureWeightKg =

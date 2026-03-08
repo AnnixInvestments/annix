@@ -59,12 +59,8 @@ interface NearbyMapProps {
   onSelectProspect: (prospect: Prospect | null) => void;
 }
 
-export default function NearbyMap({
-  userLocation,
-  prospects,
-  selectedProspect,
-  onSelectProspect,
-}: NearbyMapProps) {
+export default function NearbyMap(props: NearbyMapProps) {
+  const { userLocation, prospects, selectedProspect, onSelectProspect } = props;
   const [infoWindowProspect, setInfoWindowProspect] = useState<Prospect | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({

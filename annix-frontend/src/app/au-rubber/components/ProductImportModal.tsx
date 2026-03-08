@@ -148,12 +148,8 @@ function extractNumber(row: Record<string, unknown>, possibleKeys: string[]): nu
   return null;
 }
 
-export function ProductImportModal({
-  isOpen,
-  onClose,
-  onImportComplete,
-  codings,
-}: ProductImportModalProps) {
+export function ProductImportModal(props: ProductImportModalProps) {
+  const { isOpen, onClose, onImportComplete, codings } = props;
   const [step, setStep] = useState<ImportStep>("upload");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeProductFilesResult | null>(null);

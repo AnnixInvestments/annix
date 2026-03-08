@@ -8,7 +8,8 @@ interface ArSteelWarningBannerProps {
   className?: string;
 }
 
-export function ArSteelWarningBanner({ steelSpecName, className = "" }: ArSteelWarningBannerProps) {
+export function ArSteelWarningBanner(props: ArSteelWarningBannerProps) {
+  const { steelSpecName, className = "" } = props;
   const { data: allLimits } = useAllMaterialLimits();
 
   if (!steelSpecName) return null;

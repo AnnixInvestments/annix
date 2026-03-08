@@ -6,7 +6,8 @@ interface StructuralSteelIconProps {
 }
 
 // Structural Steel I-Beam / H-Beam icon
-export function StructuralSteelIcon({ className = "", size = 24 }: StructuralSteelIconProps) {
+export function StructuralSteelIcon(props: StructuralSteelIconProps) {
+  const { className = "", size = 24 } = props;
   const width = size * 1.6;
   const height = size;
 

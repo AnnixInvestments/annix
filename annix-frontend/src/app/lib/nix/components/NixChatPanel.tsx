@@ -378,18 +378,19 @@ const persistSessionId = (sessionId: number | null): void => {
   }
 };
 
-export function NixChatPanel({
-  sessionId: initialSessionId,
-  rfqId,
-  currentRfqItems,
-  onClose,
-  onSessionCreated,
-  savedGeometry,
-  onGeometryChange,
-  className = "",
-  portalContext = "general",
-  pageContext,
-}: NixChatPanelProps) {
+export function NixChatPanel(props: NixChatPanelProps) {
+  const {
+    sessionId: initialSessionId,
+    rfqId,
+    currentRfqItems,
+    onClose,
+    onSessionCreated,
+    savedGeometry,
+    onGeometryChange,
+    className = "",
+    portalContext = "general",
+    pageContext,
+  } = props;
   const [sessionId, setSessionId] = useState<number | null>(() => {
     return initialSessionId ?? loadPersistedSessionId();
   });

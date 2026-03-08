@@ -10,7 +10,8 @@ interface RbacConfigPanelProps {
   onClose: () => void;
 }
 
-export function RbacConfigPanel({ isOpen, onClose }: RbacConfigPanelProps) {
+export function RbacConfigPanel(props: RbacConfigPanelProps) {
+  const { isOpen, onClose } = props;
   const { rbacConfig, reloadRbacConfig } = useStockControlRbac();
   const [localConfig, setLocalConfig] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);

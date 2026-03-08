@@ -15,7 +15,8 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+export function Pagination(props: PaginationProps) {
+  const { currentPage, totalPages, onPageChange } = props;
   if (totalPages <= 1) return null;
 
   return (
@@ -51,7 +52,8 @@ interface EmptyStateProps {
   icon?: React.ReactNode;
 }
 
-export function EmptyState({ message, icon }: EmptyStateProps) {
+export function EmptyState(props: EmptyStateProps) {
+  const { message, icon } = props;
   return (
     <div className="text-center py-12">
       {icon && <div className="mx-auto h-12 w-12 text-gray-400 mb-3">{icon}</div>}
@@ -67,7 +69,8 @@ interface SortHeaderProps {
   onSort: (key: string) => void;
 }
 
-export function SortHeader({ label, sortKey, currentSort, onSort }: SortHeaderProps) {
+export function SortHeader(props: SortHeaderProps) {
+  const { label, sortKey, currentSort, onSort } = props;
   const isActive = currentSort.key === sortKey;
 
   return (

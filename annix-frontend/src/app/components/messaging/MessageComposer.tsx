@@ -9,12 +9,13 @@ interface MessageComposerProps {
   showAttachments?: boolean;
 }
 
-export function MessageComposer({
-  onSend,
-  placeholder = "Type a message...",
-  disabled = false,
-  showAttachments = true,
-}: MessageComposerProps) {
+export function MessageComposer(props: MessageComposerProps) {
+  const {
+    onSend,
+    placeholder = "Type a message...",
+    disabled = false,
+    showAttachments = true,
+  } = props;
   const [content, setContent] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);

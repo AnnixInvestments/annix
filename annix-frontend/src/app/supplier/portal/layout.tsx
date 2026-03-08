@@ -66,7 +66,8 @@ function SupplierNavigation({
   );
 }
 
-export default function SupplierPortalLayout({ children }: { children: React.ReactNode }) {
+export default function SupplierPortalLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   const router = useRouter();
   const { isAuthenticated, isLoading, supplier, logout } = useSupplierAuth();
 

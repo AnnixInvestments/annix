@@ -52,23 +52,24 @@ interface WorkingConditionsSectionProps {
   className?: string;
 }
 
-export function WorkingConditionsSection({
-  color,
-  entryId,
-  idPrefix,
-  workingPressureBar,
-  workingTemperatureC,
-  globalPressureBar,
-  globalTemperatureC,
-  onPressureChange,
-  onTemperatureChange,
-  onReset,
-  gridCols = 3,
-  pressureTooltip,
-  temperatureTooltip,
-  extraFields,
-  className = "",
-}: WorkingConditionsSectionProps) {
+export function WorkingConditionsSection(props: WorkingConditionsSectionProps) {
+  const {
+    color,
+    entryId,
+    idPrefix,
+    workingPressureBar,
+    workingTemperatureC,
+    globalPressureBar,
+    globalTemperatureC,
+    onPressureChange,
+    onTemperatureChange,
+    onReset,
+    gridCols = 3,
+    pressureTooltip,
+    temperatureTooltip,
+    extraFields,
+    className = "",
+  } = props;
   const colors = colorClasses[color];
   const hasOverride = workingPressureBar !== undefined || workingTemperatureC !== undefined;
   const effectivePressure = workingPressureBar ?? globalPressureBar ?? "";

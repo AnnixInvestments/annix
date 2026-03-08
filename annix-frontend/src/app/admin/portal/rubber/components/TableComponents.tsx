@@ -9,7 +9,8 @@ export interface SortIconProps {
   direction: SortDirection;
 }
 
-export function SortIcon({ active, direction }: SortIconProps) {
+export function SortIcon(props: SortIconProps) {
+  const { active, direction } = props;
   return (
     <span className="ml-1 inline-block">
       {active ? (
@@ -45,7 +46,8 @@ export interface TableLoadingStateProps {
   message?: string;
 }
 
-export function TableLoadingState({ message = "Loading..." }: TableLoadingStateProps) {
+export function TableLoadingState(props: TableLoadingStateProps) {
+  const { message = "Loading..." } = props;
   return (
     <div className="flex items-center justify-center py-12">
       <div className="text-center">
@@ -66,7 +68,8 @@ export interface TableEmptyStateProps {
   };
 }
 
-export function TableEmptyState({ icon, title, subtitle, action }: TableEmptyStateProps) {
+export function TableEmptyState(props: TableEmptyStateProps) {
+  const { icon, title, subtitle, action } = props;
   return (
     <div className="text-center py-12">
       <div className="mx-auto h-12 w-12 text-gray-400">{icon}</div>
@@ -95,13 +98,8 @@ export interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export function Pagination({
-  currentPage,
-  totalItems,
-  itemsPerPage,
-  itemName,
-  onPageChange,
-}: PaginationProps) {
+export function Pagination(props: PaginationProps) {
+  const { currentPage, totalItems, itemsPerPage, itemName, onPageChange } = props;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   if (totalItems <= itemsPerPage) {

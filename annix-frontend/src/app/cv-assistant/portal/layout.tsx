@@ -84,7 +84,8 @@ function CogIcon({ className }: { className?: string }) {
   );
 }
 
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
+export default function PortalLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, isLoading, user, logout } = useCvAssistantAuth();

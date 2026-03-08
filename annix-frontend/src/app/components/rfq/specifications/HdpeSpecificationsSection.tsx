@@ -91,11 +91,8 @@ const COLOR_OPTIONS: ColorOption[] = [
   },
 ];
 
-export function HdpeSpecificationsSection({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-  flangeStandards = [],
-}: HdpeSpecificationsSectionProps) {
+export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps) {
+  const { globalSpecs, onUpdateGlobalSpecs, flangeStandards = [] } = props;
   const selectedGrade = globalSpecs.hdpeGrade ?? "PE100";
   const selectedSdr = globalSpecs.hdpeSdr;
   const operatingTemp = globalSpecs.hdpeOperatingTempC ?? 20;

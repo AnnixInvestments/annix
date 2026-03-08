@@ -23,7 +23,8 @@ interface DraggableMeetingProps {
   height: number;
 }
 
-export function DraggableMeeting({ meeting, height }: DraggableMeetingProps) {
+export function DraggableMeeting(props: DraggableMeetingProps) {
+  const { meeting, height } = props;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: meeting.id,
     disabled: meeting.status === "completed" || meeting.status === "in_progress",

@@ -105,12 +105,13 @@ interface PageErrorFallbackProps {
   message?: string;
 }
 
-export function PageErrorFallback({
-  error,
-  reset,
-  title = "Unable to load this page",
-  message = "There was a problem loading the content. Please try again.",
-}: PageErrorFallbackProps) {
+export function PageErrorFallback(props: PageErrorFallbackProps) {
+  const {
+    error,
+    reset,
+    title = "Unable to load this page",
+    message = "There was a problem loading the content. Please try again.",
+  } = props;
   return (
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="text-center p-8 max-w-md">
@@ -164,17 +165,18 @@ export function PageErrorFallback({
   );
 }
 
-export function QueryErrorFallback({
-  error,
-  refetch,
-  title = "Failed to load data",
-  message = "We couldn't fetch the requested data. Please check your connection and try again.",
-}: {
+export function QueryErrorFallback(props: {
   error?: Error | null;
   refetch?: () => void;
   title?: string;
   message?: string;
 }) {
+  const {
+    error,
+    refetch,
+    title = "Failed to load data",
+    message = "We couldn't fetch the requested data. Please check your connection and try again.",
+  } = props;
   return (
     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
       <div className="flex items-start gap-3">

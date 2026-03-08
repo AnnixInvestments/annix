@@ -71,17 +71,18 @@ const PUMP_CATEGORY_OPTIONS = [
   { value: "specialty", label: "Specialty Pumps" },
 ];
 
-export default function PumpForm({
-  entry,
-  index: _index,
-  entriesCount: _entriesCount,
-  globalSpecs: _globalSpecs,
-  masterData: _masterData,
-  onUpdateEntry,
-  onRemoveEntry,
-  generateItemDescription,
-  requiredProducts: _requiredProducts = [],
-}: PumpFormProps) {
+export default function PumpForm(props: PumpFormProps) {
+  const {
+    entry,
+    index: _index,
+    entriesCount: _entriesCount,
+    globalSpecs: _globalSpecs,
+    masterData: _masterData,
+    onUpdateEntry,
+    onRemoveEntry,
+    generateItemDescription,
+    requiredProducts: _requiredProducts = [],
+  } = props;
   const [calculationResults, setCalculationResults] = useState<any>(null);
   const [selectedSparePartCategory, setSelectedSparePartCategory] = useState<string | null>(null);
   const [showSelectionWizard, setShowSelectionWizard] = useState(false);

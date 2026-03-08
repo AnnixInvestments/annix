@@ -18,7 +18,8 @@ interface AdminAuthContextType extends AdminAuthState {
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
-export function AdminAuthProvider({ children }: { children: ReactNode }) {
+export function AdminAuthProvider(props: { children: ReactNode }) {
+  const { children } = props;
   const [state, setState] = useState<AdminAuthState>({
     isAuthenticated: false,
     isLoading: true,

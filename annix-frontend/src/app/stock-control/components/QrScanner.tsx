@@ -8,7 +8,8 @@ interface QrScannerProps {
   onClose: () => void;
 }
 
-export function QrScanner({ onScan, onClose }: QrScannerProps) {
+export function QrScanner(props: QrScannerProps) {
+  const { onScan, onClose } = props;
   const [error, setError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const scannerRef = useRef<Html5Qrcode | null>(null);

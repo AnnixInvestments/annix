@@ -12,7 +12,8 @@ interface LayoutContextValue {
 
 const LayoutContext = createContext<LayoutContextValue | null>(null);
 
-export function LayoutProvider({ children }: { children: ReactNode }) {
+export function LayoutProvider(props: { children: ReactNode }) {
+  const { children } = props;
   const [maxWidth, setMaxWidth] = useState<MaxWidth>("max-w-full");
 
   const setFullWidth = useCallback(() => setMaxWidth("max-w-full"), []);

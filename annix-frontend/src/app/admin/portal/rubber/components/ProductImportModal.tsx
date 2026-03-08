@@ -156,7 +156,8 @@ function parseCSV(text: string): ParsedRow[] {
     });
 }
 
-export function ProductImportModal({ isOpen, onClose, onImportComplete }: ProductImportModalProps) {
+export function ProductImportModal(props: ProductImportModalProps) {
+  const { isOpen, onClose, onImportComplete } = props;
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
   const [updateExisting, setUpdateExisting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);

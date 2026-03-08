@@ -8,11 +8,8 @@ interface SpecificationSheetGeneratorProps {
   customerName?: string;
 }
 
-export function SpecificationSheetGenerator({
-  globalSpecs,
-  projectName = "Project",
-  customerName = "Customer",
-}: SpecificationSheetGeneratorProps) {
+export function SpecificationSheetGenerator(props: SpecificationSheetGeneratorProps) {
+  const { globalSpecs, projectName = "Project", customerName = "Customer" } = props;
   const generatePdfContent = () => {
     const externalSpec = {
       coatingType: globalSpecs.externalCoatingType || "Not specified",

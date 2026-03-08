@@ -23,7 +23,8 @@ interface DocumentPreviewModalProps {
   onClose: () => void;
 }
 
-export function DocumentPreviewModal({ state, onClose }: DocumentPreviewModalProps) {
+export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
+  const { state, onClose } = props;
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && state.isOpen) {

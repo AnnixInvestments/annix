@@ -58,7 +58,8 @@ interface Props {
 
 const bendTypes = ["1D", "1.5D", "2D", "3D", "5D"];
 
-export default function MultiStepBendRfqForm({ onSuccess, onCancel }: Props) {
+export default function MultiStepBendRfqForm(props: Props) {
+  const { onSuccess, onCancel } = props;
   const { showToast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);

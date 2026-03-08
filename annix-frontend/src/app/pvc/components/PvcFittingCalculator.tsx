@@ -26,11 +26,8 @@ interface PvcFittingCalculatorProps {
   ) => void;
 }
 
-export default function PvcFittingCalculator({
-  pricePerKg,
-  cementJointPrice,
-  onCalculationComplete,
-}: PvcFittingCalculatorProps) {
+export default function PvcFittingCalculator(props: PvcFittingCalculatorProps) {
+  const { pricePerKg, cementJointPrice, onCalculationComplete } = props;
   const [entries, setEntries] = useState<FittingEntry[]>([
     { id: crypto.randomUUID(), fittingTypeCode: "elbow_90", nominalDiameter: 110, quantity: 1 },
   ]);

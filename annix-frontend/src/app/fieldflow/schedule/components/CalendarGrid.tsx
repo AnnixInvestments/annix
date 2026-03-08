@@ -24,14 +24,15 @@ interface CalendarGridProps {
   onReschedule: (meetingId: number, newStart: Date, newEnd: Date) => void;
 }
 
-export function CalendarGrid({
-  meetings,
-  date,
-  startHour = 8,
-  endHour = 18,
-  slotDurationMinutes = 30,
-  onReschedule,
-}: CalendarGridProps) {
+export function CalendarGrid(props: CalendarGridProps) {
+  const {
+    meetings,
+    date,
+    startHour = 8,
+    endHour = 18,
+    slotDurationMinutes = 30,
+    onReschedule,
+  } = props;
   const [activeMeeting, setActiveMeeting] = useState<Meeting | null>(null);
 
   const sensors = useSensors(

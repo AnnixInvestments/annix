@@ -10,15 +10,16 @@ interface DocumentActionButtonsProps {
   deleteDisabledReason?: string;
 }
 
-export function DocumentActionButtons({
-  filename,
-  onView,
-  onDownload,
-  onDelete,
-  isLoading = false,
-  canDelete = true,
-  deleteDisabledReason,
-}: DocumentActionButtonsProps) {
+export function DocumentActionButtons(props: DocumentActionButtonsProps) {
+  const {
+    filename,
+    onView,
+    onDownload,
+    onDelete,
+    isLoading = false,
+    canDelete = true,
+    deleteDisabledReason,
+  } = props;
   const deleteDisabled = isLoading || !canDelete;
   const deleteTooltip =
     !canDelete && deleteDisabledReason ? deleteDisabledReason : `Delete ${filename}`;

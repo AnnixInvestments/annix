@@ -30,13 +30,8 @@ interface CompensationPlateFormProps {
 
 const generateId = (): string => `plate-${generateUniqueId()}`;
 
-export default function CompensationPlateForm({
-  entries,
-  onAddEntry,
-  onUpdateEntry,
-  onRemoveEntry,
-  onDuplicateEntry,
-}: CompensationPlateFormProps) {
+export default function CompensationPlateForm(props: CompensationPlateFormProps) {
+  const { entries, onAddEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry } = props;
   const { plateSizes, isLoading, plateSizeById: lookupPlateSizeById } = useStandardPlateSizes();
 
   const addNewPlate = (standardSizeId?: string) => {

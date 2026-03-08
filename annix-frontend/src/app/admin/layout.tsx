@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description: "Annix administration portal",
 };
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <AdminAuthProvider>{children}</AdminAuthProvider>;
 }

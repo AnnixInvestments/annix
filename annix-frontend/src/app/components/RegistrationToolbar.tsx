@@ -17,13 +17,8 @@ export interface RegistrationToolbarProps {
   homeHref?: string;
 }
 
-export function RegistrationTopToolbar({
-  title,
-  homeHref = "/",
-}: {
-  title: string;
-  homeHref?: string;
-}) {
+export function RegistrationTopToolbar(props: { title: string; homeHref?: string }) {
+  const { title, homeHref = "/" } = props;
   return (
     <nav
       className="fixed top-0 left-0 right-0 z-50 shadow-lg"
@@ -63,17 +58,13 @@ export function RegistrationTopToolbar({
   );
 }
 
-export function RegistrationBottomToolbar({
-  steps,
-  currentStep,
-  onStepChange,
-  canNavigateToStep,
-}: {
+export function RegistrationBottomToolbar(props: {
   steps: StepConfig[];
   currentStep: string;
   onStepChange: (step: string) => void;
   canNavigateToStep: (step: string) => boolean;
 }) {
+  const { steps, currentStep, onStepChange, canNavigateToStep } = props;
   const currentIndex = steps.findIndex((s) => s.id === currentStep);
   const isFirstStep = currentIndex === 0;
   const isLastStep = currentIndex === steps.length - 1;
@@ -180,14 +171,8 @@ export function RegistrationBottomToolbar({
   );
 }
 
-export default function RegistrationToolbar({
-  steps,
-  currentStep,
-  onStepChange,
-  canNavigateToStep,
-  title,
-  homeHref = "/",
-}: RegistrationToolbarProps) {
+export default function RegistrationToolbar(props: RegistrationToolbarProps) {
+  const { steps, currentStep, onStepChange, canNavigateToStep, title, homeHref = "/" } = props;
   return (
     <>
       <RegistrationTopToolbar title={title} homeHref={homeHref} />

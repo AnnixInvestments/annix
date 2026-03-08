@@ -37,12 +37,8 @@ type ActiveTool =
   | "conditions"
   | "inspection";
 
-export function SurfaceProtectionSection({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-  isUnregisteredCustomer,
-  rfqData,
-}: SurfaceProtectionSectionProps) {
+export function SurfaceProtectionSection(props: SurfaceProtectionSectionProps) {
+  const { globalSpecs, onUpdateGlobalSpecs, isUnregisteredCustomer, rfqData } = props;
   const [activeTool, setActiveTool] = useState<ActiveTool>(null);
   const [systemBuilderTarget, setSystemBuilderTarget] = useState<"external" | "internal">(
     "external",

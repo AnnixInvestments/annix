@@ -10,7 +10,8 @@ interface FeatureGateProps {
   children: React.ReactNode;
 }
 
-export function FeatureGate({ featureFlag, fallbackPath, children }: FeatureGateProps) {
+export function FeatureGate(props: FeatureGateProps) {
+  const { featureFlag, fallbackPath, children } = props;
   const router = useRouter();
   const { isFeatureEnabled, isLoading } = useFeatureGate();
 

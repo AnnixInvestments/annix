@@ -100,17 +100,18 @@ const findSimilarClarifications = (
   });
 };
 
-export default function NixClarificationPopup({
-  clarification,
-  allClarifications,
-  totalClarifications,
-  currentIndex,
-  pendingDocuments,
-  onSubmit,
-  onSubmitBatch,
-  onSkip,
-  onClose,
-}: NixClarificationPopupProps) {
+export default function NixClarificationPopup(props: NixClarificationPopupProps) {
+  const {
+    clarification,
+    allClarifications,
+    totalClarifications,
+    currentIndex,
+    pendingDocuments,
+    onSubmit,
+    onSubmitBatch,
+    onSkip,
+    onClose,
+  } = props;
   const [response, setResponse] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [applyToSimilar, setApplyToSimilar] = useState(true);

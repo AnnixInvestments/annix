@@ -28,13 +28,9 @@ export interface WorkingConditionsSectionProps {
   ) => Promise<number | undefined>;
 }
 
-export function WorkingConditionsSection({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-  masterData,
-  errors,
-  fetchAndSelectPressureClass,
-}: WorkingConditionsSectionProps) {
+export function WorkingConditionsSection(props: WorkingConditionsSectionProps) {
+  const { globalSpecs, onUpdateGlobalSpecs, masterData, errors, fetchAndSelectPressureClass } =
+    props;
   const workingPressures = WORKING_PRESSURE_BAR;
   const workingTemperatures = WORKING_TEMPERATURE_CELSIUS;
 

@@ -3,13 +3,11 @@
 import { useEffect } from "react";
 import { PageErrorFallback } from "../components/ErrorBoundary";
 
-export default function AnalyticsError({
-  error,
-  reset,
-}: {
+export default function AnalyticsError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { error, reset } = props;
   useEffect(() => {
     console.error("Analytics error:", error);
   }, [error]);

@@ -29,7 +29,8 @@ const DEFAULT_COST_SETTINGS: CostSettings = {
   categoryMarkups: [],
 };
 
-export function ProductCostBuilder({ detectedCompounds, onApply }: ProductCostBuilderProps) {
+export function ProductCostBuilder(props: ProductCostBuilderProps) {
+  const { detectedCompounds, onApply } = props;
   const [settings, setSettings] = useState<CostSettings>(() => ({
     ...DEFAULT_COST_SETTINGS,
     categoryMarkups: detectedCompounds.map((compound) => ({

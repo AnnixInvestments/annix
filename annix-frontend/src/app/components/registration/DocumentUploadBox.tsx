@@ -19,18 +19,19 @@ interface DocumentUploadBoxProps {
   accept?: string;
 }
 
-export function DocumentUploadBox({
-  label,
-  description,
-  required = false,
-  file,
-  onFileSelect,
-  onError,
-  statusMessage,
-  statusType = "success",
-  enableDragDrop = false,
-  accept = ".pdf,.jpg,.jpeg,.png",
-}: DocumentUploadBoxProps) {
+export function DocumentUploadBox(props: DocumentUploadBoxProps) {
+  const {
+    label,
+    description,
+    required = false,
+    file,
+    onFileSelect,
+    onError,
+    statusMessage,
+    statusType = "success",
+    enableDragDrop = false,
+    accept = ".pdf,.jpg,.jpeg,.png",
+  } = props;
   const [isDragging, setIsDragging] = useState(false);
 
   const validateAndSelectFile = useCallback(

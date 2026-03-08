@@ -48,7 +48,8 @@ function priorityStyles(priority: BroadcastPriority): {
   return styles[priority];
 }
 
-export function BroadcastBanner({ broadcasts, onMarkRead, onViewAll }: BroadcastBannerProps) {
+export function BroadcastBanner(props: BroadcastBannerProps) {
+  const { broadcasts, onMarkRead, onViewAll } = props;
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
 
   const unreadBroadcasts = broadcasts.filter((b) => !b.isRead && !dismissedIds.has(b.id));

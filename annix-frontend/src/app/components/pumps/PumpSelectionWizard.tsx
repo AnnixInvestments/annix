@@ -38,7 +38,8 @@ const PRIORITY_OPTIONS = [
   { value: "footprint", label: "Compact Size", description: "Space-constrained installation" },
 ];
 
-export function PumpSelectionWizard({ onComplete, onSelectPumpType }: PumpSelectionWizardProps) {
+export function PumpSelectionWizard(props: PumpSelectionWizardProps) {
+  const { onComplete, onSelectPumpType } = props;
   const [currentStep, setCurrentStep] = useState<WizardStep>("application");
   const [criteria, setCriteria] = useState<SelectionCriteria>({
     flowRateM3h: 50,

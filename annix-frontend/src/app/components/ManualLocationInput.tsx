@@ -18,10 +18,8 @@ interface ManualLocationInputProps {
   onClose: () => void;
 }
 
-export default function ManualLocationInput({
-  onLocationSelect,
-  onClose,
-}: ManualLocationInputProps) {
+export default function ManualLocationInput(props: ManualLocationInputProps) {
+  const { onLocationSelect, onClose } = props;
   const [manualAddress, setManualAddress] = useState("");
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");

@@ -10,6 +10,7 @@ export const metadata: Metadata = {
     "Mobile-first sales field assistant with smart prospecting, calendar sync, and meeting recording",
 };
 
-export default function AnnixRepLayout({ children }: { children: React.ReactNode }) {
+export default function AnnixRepLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <AnnixRepLayoutClient>{children}</AnnixRepLayoutClient>;
 }

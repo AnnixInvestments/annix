@@ -91,14 +91,8 @@ const ATTACHMENT_TYPES = [
   { value: "other", label: "Other Document" },
 ];
 
-export function SupplierQuoteForm({
-  rfqItems,
-  rfqNumber,
-  customerName,
-  onSubmit,
-  onSaveDraft,
-  onCancel,
-}: SupplierQuoteFormProps) {
+export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
+  const { rfqItems, rfqNumber, customerName, onSubmit, onSaveDraft, onCancel } = props;
   const [quoteNumber, setQuoteNumber] = useState(`QT-${Date.now().toString(36).toUpperCase()}`);
   const [validUntil, setValidUntil] = useState(() => {
     const date = new Date();

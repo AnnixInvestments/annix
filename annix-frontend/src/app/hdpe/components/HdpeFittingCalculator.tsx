@@ -27,12 +27,8 @@ interface HdpeFittingCalculatorProps {
   ) => void;
 }
 
-export default function HdpeFittingCalculator({
-  pricePerKg,
-  buttweldPrice,
-  stubPrice,
-  onCalculationComplete,
-}: HdpeFittingCalculatorProps) {
+export default function HdpeFittingCalculator(props: HdpeFittingCalculatorProps) {
+  const { pricePerKg, buttweldPrice, stubPrice, onCalculationComplete } = props;
   const [entries, setEntries] = useState<FittingEntry[]>([
     { id: crypto.randomUUID(), fittingTypeCode: "molded_90_elbow", nominalBore: 110, quantity: 1 },
   ]);

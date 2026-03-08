@@ -36,14 +36,7 @@ function GridLines({ roll, scale }: { roll: JigsawRoll; scale: number }) {
   );
 }
 
-export function RollCanvas({
-  rollIndex,
-  roll,
-  panels,
-  onRotate,
-  onUpdateRoll,
-  onRemoveRoll,
-}: {
+export function RollCanvas(props: {
   rollIndex: number;
   roll: JigsawRoll;
   panels: PlacedPanel[];
@@ -51,6 +44,7 @@ export function RollCanvas({
   onUpdateRoll: (rollIndex: number, field: keyof JigsawRoll, value: number) => void;
   onRemoveRoll: (rollIndex: number) => void;
 }) {
+  const { rollIndex, roll, panels, onRotate, onUpdateRoll, onRemoveRoll } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(700);
 

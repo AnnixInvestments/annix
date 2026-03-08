@@ -69,14 +69,11 @@ const estimateWallThickness = (nbMm: number): number => {
   return stdWalls[nbMm] || 6.0;
 };
 
-export function usePipeSteelWorkCalculations({
-  workType,
-  nominalDiameterMm,
-  bracketType,
-  pipelineLengthM,
-  branchDiameterMm,
-  quantity,
-}: UsePipeSteelWorkCalculationsProps): UsePipeSteelWorkCalculationsResult {
+export function usePipeSteelWorkCalculations(
+  props: UsePipeSteelWorkCalculationsProps,
+): UsePipeSteelWorkCalculationsResult {
+  const { workType, nominalDiameterMm, bracketType, pipelineLengthM, branchDiameterMm, quantity } =
+    props;
   const [supportSpacing, setSupportSpacing] = useState<SupportSpacingResponse | null>(null);
   const [bracketTypes, setBracketTypes] = useState<BracketTypeResponse[]>([]);
   const [bracketDimensions, setBracketDimensions] = useState<BracketDimensionResponse | null>(null);

@@ -15,12 +15,8 @@ interface RemoteAccessPendingStatusProps {
   onAccessDenied?: () => void;
 }
 
-export default function RemoteAccessPendingStatus({
-  documentType,
-  documentId,
-  onAccessGranted,
-  onAccessDenied,
-}: RemoteAccessPendingStatusProps) {
+export default function RemoteAccessPendingStatus(props: RemoteAccessPendingStatusProps) {
+  const { documentType, documentId, onAccessGranted, onAccessDenied } = props;
   const [status, setStatus] = useState<AccessStatusResponse | null>(null);
   const [isPolling, setIsPolling] = useState(true);
 

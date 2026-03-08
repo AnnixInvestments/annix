@@ -26,7 +26,8 @@ interface AddMineModalProps {
   onMineCreated: (mine: SaMine) => void;
 }
 
-export default function AddMineModal({ isOpen, onClose, onMineCreated }: AddMineModalProps) {
+export default function AddMineModal(props: AddMineModalProps) {
+  const { isOpen, onClose, onMineCreated } = props;
   const [commodities, setCommodities] = useState<Commodity[]>([]);
   const [isLoadingCommodities, setIsLoadingCommodities] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

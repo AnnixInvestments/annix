@@ -7,7 +7,8 @@ interface FieldErrorProps {
   className?: string;
 }
 
-export function FieldError({ error, className = "" }: FieldErrorProps) {
+export function FieldError(props: FieldErrorProps) {
+  const { error, className = "" } = props;
   if (!error) return null;
 
   return (
@@ -39,15 +40,16 @@ interface FormFieldProps {
   hint?: string;
 }
 
-export function FormField({
-  label,
-  required = false,
-  error,
-  children,
-  className = "",
-  labelClassName = "",
-  hint,
-}: FormFieldProps) {
+export function FormField(props: FormFieldProps) {
+  const {
+    label,
+    required = false,
+    error,
+    children,
+    className = "",
+    labelClassName = "",
+    hint,
+  } = props;
   return (
     <div className={className}>
       <label className={`block text-xs font-semibold text-gray-900 mb-1 ${labelClassName}`}>

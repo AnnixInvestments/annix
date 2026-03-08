@@ -41,7 +41,8 @@ const RFQ_PRODUCT_FLAG_MAP = PRODUCTS_AND_SERVICES.reduce<Record<string, Product
 
 type Tab = "roles" | "products";
 
-export function RoleManagementPanel({ isOpen, onClose, appDetails }: RoleManagementPanelProps) {
+export function RoleManagementPanel(props: RoleManagementPanelProps) {
+  const { isOpen, onClose, appDetails } = props;
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<Tab>("roles");
   const [editingRole, setEditingRole] = useState<RbacAppRole | null>(null);

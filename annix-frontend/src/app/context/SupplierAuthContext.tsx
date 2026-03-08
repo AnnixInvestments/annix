@@ -28,7 +28,8 @@ interface SupplierAuthContextType extends SupplierAuthState {
 
 const SupplierAuthContext = createContext<SupplierAuthContextType | undefined>(undefined);
 
-export function SupplierAuthProvider({ children }: { children: ReactNode }) {
+export function SupplierAuthProvider(props: { children: ReactNode }) {
+  const { children } = props;
   const [state, setState] = useState<SupplierAuthState>({
     isAuthenticated: false,
     isLoading: true,

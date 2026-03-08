@@ -195,7 +195,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function AnnixRepLayoutClient({ children }: { children: React.ReactNode }) {
+export default function AnnixRepLayoutClient(props: { children: React.ReactNode }) {
+  const { children } = props;
   return (
     <LayoutProvider>
       <AnnixRepAuthProvider>

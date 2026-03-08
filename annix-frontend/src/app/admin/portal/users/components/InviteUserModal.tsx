@@ -11,13 +11,8 @@ interface InviteUserModalProps {
   isInviting: boolean;
 }
 
-export function InviteUserModal({
-  isOpen,
-  onClose,
-  appDetails,
-  onInvite,
-  isInviting,
-}: InviteUserModalProps) {
+export function InviteUserModal(props: InviteUserModalProps) {
+  const { isOpen, onClose, appDetails, onInvite, isInviting } = props;
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

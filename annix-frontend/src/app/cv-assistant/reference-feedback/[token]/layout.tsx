@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: "Reference Feedback",
 };
 
-export default function ReferenceFeedbackLayout({ children }: { children: React.ReactNode }) {
+export default function ReferenceFeedbackLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return children;
 }

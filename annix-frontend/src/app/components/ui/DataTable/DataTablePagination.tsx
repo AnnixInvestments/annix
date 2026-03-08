@@ -11,16 +11,17 @@ export interface DataTablePaginationProps {
   className?: string;
 }
 
-export function DataTablePagination({
-  page,
-  totalPages,
-  total,
-  pageSize,
-  onPageChange,
-  onPageSizeChange,
-  pageSizeOptions = [10, 25, 50, 100],
-  className = "",
-}: DataTablePaginationProps) {
+export function DataTablePagination(props: DataTablePaginationProps) {
+  const {
+    page,
+    totalPages,
+    total,
+    pageSize,
+    onPageChange,
+    onPageSizeChange,
+    pageSizeOptions = [10, 25, 50, 100],
+    className = "",
+  } = props;
   if (totalPages <= 1 && !onPageSizeChange) return null;
 
   const startItem = (page - 1) * pageSize + 1;

@@ -110,11 +110,8 @@ function findHighlightedIndex(
   return values.indexOf(targetValue);
 }
 
-export function PumpComparisonTable({
-  products,
-  onRemoveProduct,
-  onRequestQuote,
-}: PumpComparisonTableProps) {
+export function PumpComparisonTable(props: PumpComparisonTableProps) {
+  const { products, onRemoveProduct, onRequestQuote } = props;
   const [showDifferencesOnly, setShowDifferencesOnly] = useState(false);
 
   const visibleSpecs = useMemo(() => {

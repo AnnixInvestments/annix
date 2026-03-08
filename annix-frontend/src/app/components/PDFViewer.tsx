@@ -14,7 +14,8 @@ interface PDFViewerProps {
   className?: string;
 }
 
-export function PDFViewer({ url, className = "" }: PDFViewerProps) {
+export function PDFViewer(props: PDFViewerProps) {
+  const { url, className = "" } = props;
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);

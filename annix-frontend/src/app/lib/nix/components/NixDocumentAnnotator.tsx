@@ -28,15 +28,9 @@ const DOCUMENT_TYPE_LABELS: Record<RegistrationDocumentType, string> = {
   bee: "BEE Certificate",
 };
 
-export default function NixDocumentAnnotator({
-  isVisible,
-  file,
-  documentType,
-  missingFields,
-  onFieldExtracted,
-  onComplete,
-  onClose,
-}: NixDocumentAnnotatorProps) {
+export default function NixDocumentAnnotator(props: NixDocumentAnnotatorProps) {
+  const { isVisible, file, documentType, missingFields, onFieldExtracted, onComplete, onClose } =
+    props;
   const [isLoading, setIsLoading] = useState(true);
   const [pages, setPages] = useState<PdfPageImage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);

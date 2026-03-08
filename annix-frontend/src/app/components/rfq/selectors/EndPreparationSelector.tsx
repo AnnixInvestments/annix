@@ -17,14 +17,15 @@ export interface EndPreparationSelectorProps {
   showDetails?: boolean;
 }
 
-export function EndPreparationSelector({
-  selectedPrep,
-  wallThicknessMm,
-  onPrepChange,
-  disabled,
-  showRecommendation = true,
-  showDetails = true,
-}: EndPreparationSelectorProps) {
+export function EndPreparationSelector(props: EndPreparationSelectorProps) {
+  const {
+    selectedPrep,
+    wallThicknessMm,
+    onPrepChange,
+    disabled,
+    showRecommendation = true,
+    showDetails = true,
+  } = props;
   const recommended = useMemo(() => {
     return wallThicknessMm ? recommendedEndPrep(wallThicknessMm) : null;
   }, [wallThicknessMm]);
@@ -223,7 +224,8 @@ export interface EndPrepBadgeProps {
   prepType: EndPrepType;
 }
 
-export function EndPrepBadge({ prepType }: EndPrepBadgeProps) {
+export function EndPrepBadge(props: EndPrepBadgeProps) {
+  const { prepType } = props;
   const spec = endPreparationByType(prepType);
   if (!spec) return null;
 

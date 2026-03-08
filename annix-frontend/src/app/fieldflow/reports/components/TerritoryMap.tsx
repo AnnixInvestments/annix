@@ -27,7 +27,8 @@ const statusLabels: Record<string, string> = {
   lost: "Lost",
 };
 
-export default function TerritoryMap({ report }: TerritoryMapProps) {
+export default function TerritoryMap(props: TerritoryMapProps) {
+  const { report } = props;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
 

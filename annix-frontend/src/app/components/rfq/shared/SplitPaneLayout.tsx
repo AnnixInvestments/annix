@@ -21,14 +21,9 @@ interface SplitPaneLayoutProps {
     | "tank_chute";
 }
 
-export default function SplitPaneLayout({
-  entryId,
-  formContent,
-  previewContent,
-  calcResultsContent,
-  showSplitToggle,
-  itemType,
-}: SplitPaneLayoutProps) {
+export default function SplitPaneLayout(props: SplitPaneLayoutProps) {
+  const { entryId, formContent, previewContent, calcResultsContent, showSplitToggle, itemType } =
+    props;
   const [splitPaneEnabledState, setSplitPaneEnabledState] = useState<Record<string, boolean>>({});
   const [splitPaneWidthState, setSplitPaneWidthState] = useState<Record<string, number>>({});
   const [splitPaneHeightState, setSplitPaneHeightState] = useState<Record<string, number>>({});

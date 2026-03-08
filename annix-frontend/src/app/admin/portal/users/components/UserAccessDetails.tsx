@@ -13,12 +13,8 @@ interface UserAccessDetailsProps {
   onRevokeAccess: (access: RbacAppAccessSummary) => void;
 }
 
-export function UserAccessDetails({
-  user,
-  apps,
-  onEditAccess,
-  onRevokeAccess,
-}: UserAccessDetailsProps) {
+export function UserAccessDetails(props: UserAccessDetailsProps) {
+  const { user, apps, onEditAccess, onRevokeAccess } = props;
   const accessByApp = user.appAccess.reduce(
     (acc, access) => {
       acc[access.appCode] = access;

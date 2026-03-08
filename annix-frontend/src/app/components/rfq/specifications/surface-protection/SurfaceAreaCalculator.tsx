@@ -53,10 +53,8 @@ const NB_TO_OD_MAP: Record<number, number> = {
   1200: 1219.2,
 };
 
-export function SurfaceAreaCalculator({
-  items: propItems,
-  onCalculationComplete,
-}: SurfaceAreaCalculatorProps) {
+export function SurfaceAreaCalculator(props: SurfaceAreaCalculatorProps) {
+  const { items: propItems, onCalculationComplete } = props;
   const [manualItems, setManualItems] = useState<PipeItem[]>([
     {
       id: "1",

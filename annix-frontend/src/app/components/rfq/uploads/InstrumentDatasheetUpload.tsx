@@ -47,13 +47,14 @@ function getFileIcon(mimeType: string): React.ReactNode {
   );
 }
 
-export default function InstrumentDatasheetUpload({
-  datasheets,
-  onAddDatasheet,
-  onRemoveDatasheet,
-  maxDatasheets = 5,
-  maxFileSizeMB = 25,
-}: InstrumentDatasheetUploadProps) {
+export default function InstrumentDatasheetUpload(props: InstrumentDatasheetUploadProps) {
+  const {
+    datasheets,
+    onAddDatasheet,
+    onRemoveDatasheet,
+    maxDatasheets = 5,
+    maxFileSizeMB = 25,
+  } = props;
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

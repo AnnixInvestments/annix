@@ -7,7 +7,8 @@ interface SkeletonProps {
   style?: React.CSSProperties;
 }
 
-export function Skeleton({ className = "", style }: SkeletonProps) {
+export function Skeleton(props: SkeletonProps) {
+  const { className = "", style } = props;
   return (
     <div
       className={`animate-pulse bg-gray-200 dark:bg-slate-700 rounded ${className}`}
@@ -16,13 +17,8 @@ export function Skeleton({ className = "", style }: SkeletonProps) {
   );
 }
 
-export function SkeletonText({
-  lines = 1,
-  className = "",
-}: {
-  lines?: number;
-  className?: string;
-}) {
+export function SkeletonText(props: { lines?: number; className?: string }) {
+  const { lines = 1, className = "" } = props;
   return (
     <div className={`space-y-2 ${className}`}>
       {Array.from({ length: lines }).map((_, i) => (
@@ -32,7 +28,8 @@ export function SkeletonText({
   );
 }
 
-export function SkeletonCard({ className = "" }: SkeletonProps) {
+export function SkeletonCard(props: SkeletonProps) {
+  const { className = "" } = props;
   return (
     <div
       className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 ${className}`}
@@ -56,7 +53,8 @@ export function SkeletonCard({ className = "" }: SkeletonProps) {
   );
 }
 
-export function SkeletonStatCard({ className = "" }: SkeletonProps) {
+export function SkeletonStatCard(props: SkeletonProps) {
+  const { className = "" } = props;
   return (
     <div
       className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 ${className}`}
@@ -68,15 +66,8 @@ export function SkeletonStatCard({ className = "" }: SkeletonProps) {
   );
 }
 
-export function SkeletonTable({
-  rows = 5,
-  columns = 4,
-  className = "",
-}: {
-  rows?: number;
-  columns?: number;
-  className?: string;
-}) {
+export function SkeletonTable(props: { rows?: number; columns?: number; className?: string }) {
+  const { rows = 5, columns = 4, className = "" } = props;
   return (
     <div
       className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden ${className}`}
@@ -103,7 +94,8 @@ export function SkeletonTable({
   );
 }
 
-export function SkeletonChart({ className = "" }: SkeletonProps) {
+export function SkeletonChart(props: SkeletonProps) {
+  const { className = "" } = props;
   return (
     <div
       className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 ${className}`}
@@ -118,13 +110,8 @@ export function SkeletonChart({ className = "" }: SkeletonProps) {
   );
 }
 
-export function SkeletonList({
-  items = 5,
-  className = "",
-}: {
-  items?: number;
-  className?: string;
-}) {
+export function SkeletonList(props: { items?: number; className?: string }) {
+  const { items = 5, className = "" } = props;
   return (
     <div className={`space-y-3 ${className}`}>
       {Array.from({ length: items }).map((_, i) => (
@@ -371,7 +358,8 @@ interface LoadingStateProps {
   className?: string;
 }
 
-export function LoadingState({ children, isLoading, skeleton, className = "" }: LoadingStateProps) {
+export function LoadingState(props: LoadingStateProps) {
+  const { children, isLoading, skeleton, className = "" } = props;
   if (isLoading) {
     return <div className={className}>{skeleton ?? <SkeletonCard />}</div>;
   }

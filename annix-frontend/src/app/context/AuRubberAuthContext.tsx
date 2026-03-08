@@ -22,7 +22,8 @@ interface AuRubberAuthContextType extends AuRubberAuthState {
 
 const AuRubberAuthContext = createContext<AuRubberAuthContextType | undefined>(undefined);
 
-export function AuRubberAuthProvider({ children }: { children: ReactNode }) {
+export function AuRubberAuthProvider(props: { children: ReactNode }) {
+  const { children } = props;
   const [state, setState] = useState<AuRubberAuthState>({
     isAuthenticated: false,
     isLoading: true,

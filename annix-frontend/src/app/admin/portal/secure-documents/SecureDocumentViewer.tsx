@@ -163,12 +163,8 @@ interface SecureDocumentViewerProps {
   isReadOnly?: boolean;
 }
 
-export default function SecureDocumentViewer({
-  document,
-  onBack,
-  onEdit,
-  isReadOnly = false,
-}: SecureDocumentViewerProps) {
+export default function SecureDocumentViewer(props: SecureDocumentViewerProps) {
+  const { document, onBack, onEdit, isReadOnly = false } = props;
   const { resolvedTheme } = useTheme();
   const [downloading, setDownloading] = useState(false);
 

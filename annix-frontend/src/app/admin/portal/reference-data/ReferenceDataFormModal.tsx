@@ -20,15 +20,8 @@ interface ReferenceDataFormModalProps {
   onCancel: () => void;
 }
 
-export function ReferenceDataFormModal({
-  entityDisplayName,
-  columns,
-  relations,
-  initialData,
-  isSaving,
-  onSave,
-  onCancel,
-}: ReferenceDataFormModalProps) {
+export function ReferenceDataFormModal(props: ReferenceDataFormModalProps) {
+  const { entityDisplayName, columns, relations, initialData, isSaving, onSave, onCancel } = props;
   const isEditing = initialData !== null;
 
   const editableColumns = columns.filter(

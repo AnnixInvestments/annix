@@ -34,13 +34,14 @@ const APPLICATION_FILTERS = [
   { value: "fire_protection", label: "Fire Protection" },
 ];
 
-export function PumpProductBrowser({
-  products,
-  onRequestQuote,
-  onProductDetail,
-  showSelectionWizard = true,
-  showApi610Wizard = true,
-}: PumpProductBrowserProps) {
+export function PumpProductBrowser(props: PumpProductBrowserProps) {
+  const {
+    products,
+    onRequestQuote,
+    onProductDetail,
+    showSelectionWizard = true,
+    showApi610Wizard = true,
+  } = props;
   const [mode, setMode] = useState<BrowserMode>("browse");
   const [selectedProducts, setSelectedProducts] = useState<PumpProductCardData[]>([]);
   const [selectionRequirements, setSelectionRequirements] = useState<any>(null);

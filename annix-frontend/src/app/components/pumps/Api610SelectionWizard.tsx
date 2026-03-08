@@ -58,7 +58,8 @@ const MAINTENANCE_ACCESS: {
   { value: "difficult", label: "Difficult Access", description: "Tight space, minimal access" },
 ];
 
-export function Api610SelectionWizard({ onComplete, initialCriteria }: Api610SelectionWizardProps) {
+export function Api610SelectionWizard(props: Api610SelectionWizardProps) {
+  const { onComplete, initialCriteria } = props;
   const [currentStep, setCurrentStep] = useState<WizardStep>("operating-conditions");
   const [criteria, setCriteria] = useState<Api610SelectionCriteria>({
     flowRateM3h: initialCriteria?.flowRateM3h ?? 100,

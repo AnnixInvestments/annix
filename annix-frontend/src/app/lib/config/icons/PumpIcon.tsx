@@ -6,7 +6,8 @@ interface PumpIconProps {
 }
 
 // Industrial centrifugal/slurry pump - blue with volute casing
-export function IndustrialPumpIcon({ className = "", size = 24 }: PumpIconProps) {
+export function IndustrialPumpIcon(props: PumpIconProps) {
+  const { className = "", size = 24 } = props;
   const width = size * 1.8;
   const height = size;
 

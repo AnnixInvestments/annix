@@ -16,19 +16,20 @@ interface PasswordInputProps {
   className?: string;
 }
 
-export function PasswordInput({
-  id,
-  label,
-  value,
-  onChange,
-  required = false,
-  showToggle = false,
-  errors = [],
-  showSuccessMessage = false,
-  successMessage = "Password meets all requirements",
-  placeholder,
-  className = "",
-}: PasswordInputProps) {
+export function PasswordInput(props: PasswordInputProps) {
+  const {
+    id,
+    label,
+    value,
+    onChange,
+    required = false,
+    showToggle = false,
+    errors = [],
+    showSuccessMessage = false,
+    successMessage = "Password meets all requirements",
+    placeholder,
+    className = "",
+  } = props;
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -107,17 +108,18 @@ interface ConfirmPasswordInputProps {
   className?: string;
 }
 
-export function ConfirmPasswordInput({
-  id,
-  label,
-  value,
-  password,
-  onChange,
-  required = false,
-  showToggle = false,
-  mismatchMessage = "Passwords do not match",
-  className = "",
-}: ConfirmPasswordInputProps) {
+export function ConfirmPasswordInput(props: ConfirmPasswordInputProps) {
+  const {
+    id,
+    label,
+    value,
+    password,
+    onChange,
+    required = false,
+    showToggle = false,
+    mismatchMessage = "Passwords do not match",
+    className = "",
+  } = props;
   const [showPassword, setShowPassword] = useState(false);
   const showMismatch = value.length > 0 && password !== value;
 

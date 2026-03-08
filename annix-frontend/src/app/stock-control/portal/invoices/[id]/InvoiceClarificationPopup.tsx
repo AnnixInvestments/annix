@@ -27,14 +27,8 @@ interface InvoiceClarificationPopupProps {
   onClose: () => void;
 }
 
-export default function InvoiceClarificationPopup({
-  clarification,
-  totalClarifications,
-  currentIndex,
-  stockItems,
-  onSubmit,
-  onSkip,
-}: InvoiceClarificationPopupProps) {
+export default function InvoiceClarificationPopup(props: InvoiceClarificationPopupProps) {
+  const { clarification, totalClarifications, currentIndex, stockItems, onSubmit, onSkip } = props;
   const [selectedStockItemId, setSelectedStockItemId] = useState<number | null>(null);
   const [showNewItemForm, setShowNewItemForm] = useState(false);
   const [newItemForm, setNewItemForm] = useState({

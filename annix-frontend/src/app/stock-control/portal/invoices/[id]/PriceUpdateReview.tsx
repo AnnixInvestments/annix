@@ -7,7 +7,8 @@ interface PriceUpdateReviewProps {
   onApprove: () => void;
 }
 
-export default function PriceUpdateReview({ priceSummary, onApprove }: PriceUpdateReviewProps) {
+export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
+  const { priceSummary, onApprove } = props;
   const { items, totalOldValue, totalNewValue } = priceSummary;
   const totalChangePercent =
     totalOldValue > 0 ? ((totalNewValue - totalOldValue) / totalOldValue) * 100 : 0;

@@ -6,7 +6,8 @@ interface ReorderAlertProps {
   items: StockItem[];
 }
 
-export function ReorderAlert({ items }: ReorderAlertProps) {
+export function ReorderAlert(props: ReorderAlertProps) {
+  const { items } = props;
   if (items.length === 0) return null;
 
   return (

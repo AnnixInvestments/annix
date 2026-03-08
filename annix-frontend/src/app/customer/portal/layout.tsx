@@ -120,6 +120,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function CustomerPortalLayout({ children }: { children: React.ReactNode }) {
+export default function CustomerPortalLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
   return <ProtectedLayout>{children}</ProtectedLayout>;
 }

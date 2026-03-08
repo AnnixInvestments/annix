@@ -68,13 +68,8 @@ function categoryLabel(category: string): string {
   return category.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
-export function PumpProductCard({
-  product,
-  onSelect,
-  selected = false,
-  showActions = true,
-  linkTo,
-}: PumpProductCardProps) {
+export function PumpProductCard(props: PumpProductCardProps) {
+  const { product, onSelect, selected = false, showActions = true, linkTo } = props;
   const categoryColor = CATEGORY_COLORS[product.category] || CATEGORY_COLORS.centrifugal;
   const statusColor = STATUS_COLORS[product.status] || STATUS_COLORS.active;
 

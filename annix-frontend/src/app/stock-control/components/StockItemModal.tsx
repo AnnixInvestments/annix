@@ -34,7 +34,8 @@ const emptyForm: StockItemFormData = {
   location: "",
 };
 
-export function StockItemModal({ isOpen, onClose, onSave, item }: StockItemModalProps) {
+export function StockItemModal(props: StockItemModalProps) {
+  const { isOpen, onClose, onSave, item } = props;
   const [form, setForm] = useState<StockItemFormData>(emptyForm);
 
   useEffect(() => {

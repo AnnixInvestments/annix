@@ -23,17 +23,13 @@ import {
 } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 
-export default function BOQStep({
-  onPrevStep,
-  onSubmit,
-  onResubmit,
-  isEditing,
-}: {
+export default function BOQStep(props: {
   onPrevStep?: () => void;
   onSubmit?: () => void;
   onResubmit?: () => void;
   isEditing?: boolean;
 }) {
+  const { onPrevStep, onSubmit, onResubmit, isEditing } = props;
   const rfqData = useRfqWizardStore((s) => s.rfqData);
   const masterData = useRfqWizardStore((s) => s.masterData);
   const loading = useRfqWizardStore((s) => s.isSubmitting);

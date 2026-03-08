@@ -8,7 +8,8 @@ interface ThemeToggleProps {
   iconClassName?: string;
 }
 
-export function ThemeToggle({ className, iconClassName }: ThemeToggleProps) {
+export function ThemeToggle(props: ThemeToggleProps) {
+  const { className, iconClassName } = props;
   const { resolvedTheme, toggleTheme } = useTheme();
   const tooltipText = `Switch to ${resolvedTheme === "light" ? "dark" : "light"} mode`;
   const buttonClass = className ?? "p-2 rounded-lg transition-colors hover:bg-amix-navy-light";

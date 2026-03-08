@@ -26,14 +26,8 @@ interface CustomerDnAnalysisModalProps {
   isCreating: boolean;
 }
 
-export function CustomerDnAnalysisModal({
-  analysis,
-  files,
-  customers,
-  onClose,
-  onConfirm,
-  isCreating,
-}: CustomerDnAnalysisModalProps) {
+export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
+  const { analysis, files, customers, onClose, onConfirm, isCreating } = props;
   const [overrides, setOverrides] = useState<CustomerDnOverride[]>(
     analysis.groups.map((group) => ({
       deliveryNoteNumber: group.deliveryNoteNumber,

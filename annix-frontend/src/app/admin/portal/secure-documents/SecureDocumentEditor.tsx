@@ -37,15 +37,16 @@ interface SecureDocumentEditorProps {
   onBack: () => void;
 }
 
-export default function SecureDocumentEditor({
-  document,
-  initialData,
-  paneMode = "live",
-  fullscreen = false,
-  onStateChange,
-  onSave,
-  onBack,
-}: SecureDocumentEditorProps) {
+export default function SecureDocumentEditor(props: SecureDocumentEditorProps) {
+  const {
+    document,
+    initialData,
+    paneMode = "live",
+    fullscreen = false,
+    onStateChange,
+    onSave,
+    onBack,
+  } = props;
   const [title, setTitle] = useState(initialData?.title || document?.title || "");
   const [description, setDescription] = useState(
     initialData?.description || document?.description || "",

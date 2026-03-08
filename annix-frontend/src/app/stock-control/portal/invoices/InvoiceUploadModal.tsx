@@ -11,11 +11,8 @@ interface InvoiceUploadModalProps {
   onSuccess: () => void;
 }
 
-export default function InvoiceUploadModal({
-  deliveryNotes,
-  onClose,
-  onSuccess,
-}: InvoiceUploadModalProps) {
+export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
+  const { deliveryNotes, onClose, onSuccess } = props;
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

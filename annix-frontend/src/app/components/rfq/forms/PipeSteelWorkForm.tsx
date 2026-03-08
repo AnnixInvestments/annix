@@ -29,17 +29,18 @@ const NB_OPTIONS = [
   15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 750, 900,
 ];
 
-export default function PipeSteelWorkForm({
-  entry,
-  index: _index,
-  entriesCount: _entriesCount,
-  globalSpecs,
-  masterData,
-  onUpdateEntry,
-  onRemoveEntry,
-  generateItemDescription,
-  requiredProducts = [],
-}: PipeSteelWorkFormProps) {
+export default function PipeSteelWorkForm(props: PipeSteelWorkFormProps) {
+  const {
+    entry,
+    index: _index,
+    entriesCount: _entriesCount,
+    globalSpecs,
+    masterData,
+    onUpdateEntry,
+    onRemoveEntry,
+    generateItemDescription,
+    requiredProducts = [],
+  } = props;
   const specs = entry.specs ?? {};
   const workType = specs.workType || "pipe_support";
   const nominalDiameterMm = specs.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;

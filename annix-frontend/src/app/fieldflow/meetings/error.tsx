@@ -3,13 +3,11 @@
 import { useEffect } from "react";
 import { PageErrorFallback } from "../components/ErrorBoundary";
 
-export default function MeetingsError({
-  error,
-  reset,
-}: {
+export default function MeetingsError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { error, reset } = props;
   useEffect(() => {
     console.error("Meetings error:", error);
   }, [error]);

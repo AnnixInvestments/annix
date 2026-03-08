@@ -5,7 +5,8 @@ interface BoltNutIconProps {
   size?: number;
 }
 
-export function BoltNutIcon({ className = "", size = 24 }: BoltNutIconProps) {
+export function BoltNutIcon(props: BoltNutIconProps) {
+  const { className = "", size = 24 } = props;
   const width = size * 2.2;
   const height = size * 1.1;
 

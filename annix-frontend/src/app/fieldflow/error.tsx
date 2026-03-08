@@ -3,13 +3,11 @@
 import { useEffect } from "react";
 import { PageErrorFallback } from "./components/ErrorBoundary";
 
-export default function FieldFlowError({
-  error,
-  reset,
-}: {
+export default function FieldFlowError(props: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { error, reset } = props;
   useEffect(() => {
     console.error("FieldFlow error:", error);
   }, [error]);

@@ -41,12 +41,8 @@ const TOPCOAT_PRODUCTS = paintProducts.filter(
     p.genericType.toLowerCase().includes("acrylic"),
 );
 
-export function SystemBuilderWizard({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-  onClose,
-  target,
-}: SystemBuilderWizardProps) {
+export function SystemBuilderWizard(props: SystemBuilderWizardProps) {
+  const { globalSpecs, onUpdateGlobalSpecs, onClose, target } = props;
   const [currentStep, setCurrentStep] = useState<WizardStep>("primer");
   const [primer, setPrimer] = useState<CoatLayer>({
     productId: null,

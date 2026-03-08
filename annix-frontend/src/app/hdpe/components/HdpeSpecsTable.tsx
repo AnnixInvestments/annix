@@ -9,11 +9,8 @@ interface HdpeSpecsTableProps {
   onSelect?: (spec: HdpePipeSpecification) => void;
 }
 
-export default function HdpeSpecsTable({
-  selectedNominalBore,
-  selectedSdr,
-  onSelect,
-}: HdpeSpecsTableProps) {
+export default function HdpeSpecsTable(props: HdpeSpecsTableProps) {
+  const { selectedNominalBore, selectedSdr, onSelect } = props;
   const [specs, setSpecs] = useState<HdpePipeSpecification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

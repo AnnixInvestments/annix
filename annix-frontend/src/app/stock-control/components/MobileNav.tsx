@@ -15,7 +15,8 @@ interface MobileNavProps {
   onClose: () => void;
 }
 
-export function MobileNav({ isOpen, onClose }: MobileNavProps) {
+export function MobileNav(props: MobileNavProps) {
+  const { isOpen, onClose } = props;
   const pathname = usePathname();
   const { user, logout } = useStockControlAuth();
   const { colors } = useStockControlBranding();

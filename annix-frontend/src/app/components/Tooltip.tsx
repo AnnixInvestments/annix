@@ -8,7 +8,8 @@ interface TooltipProps {
   position?: "top" | "bottom";
 }
 
-export function Tooltip({ children, text, position = "bottom" }: TooltipProps) {
+export function Tooltip(props: TooltipProps) {
+  const { children, text, position = "bottom" } = props;
   const positionClasses = position === "top" ? "bottom-full mb-2" : "top-full mt-2";
 
   return (
