@@ -21,7 +21,6 @@ import {
   Pagination,
   SortDirection,
   SortIcon,
-  TableIcons,
   TableLoadingState,
 } from "../../components/TableComponents";
 
@@ -43,12 +42,7 @@ interface AnalysisResult {
   graphPdfs: number[];
 }
 
-type SortColumn =
-  | "cocNumber"
-  | "supplierCompanyName"
-  | "cocType"
-  | "processingStatus"
-  | "createdAt";
+type SortColumn = "productionDate" | "cocNumber" | "processingStatus" | "createdAt";
 
 export default function SupplierCocsPage() {
   const { showToast } = useToast();
@@ -60,11 +54,17 @@ export default function SupplierCocsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<SupplierCocType | "">("");
   const [filterStatus, setFilterStatus] = useState<CocProcessingStatus | "">("");
-  const [currentPage, setCurrentPage] = useState(0);
-  const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [compounderPage, setCompounderPage] = useState(0);
+  const [calendererPage, setCalendererPage] = useState(0);
+  const [compounderSort, setCompounderSort] = useState<{
+    column: SortColumn;
+    direction: SortDirection;
+  }>({ column: "productionDate", direction: "desc" });
+  const [calendererSort, setCalendererSort] = useState<{
+    column: SortColumn;
+    direction: SortDirection;
+  }>({ column: "productionDate", direction: "desc" });
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadType, setUploadType] = useState<SupplierCocType>("COMPOUNDER");
   const [uploadSupplierId, setUploadSupplierId] = useState<number | null>(null);
@@ -138,7 +138,6 @@ export default function SupplierCocsPage() {
       setIsLoading(true);
       const [cocsData, companiesData] = await Promise.all([
         auRubberApiClient.supplierCocs({
-          cocType: filterType || undefined,
           processingStatus: filterStatus || undefined,
         }),
         auRubberApiClient.companies(),
@@ -155,58 +154,71 @@ export default function SupplierCocsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [filterType, filterStatus]);
+  }, [filterStatus]);
 
-  const handleSort = (column: SortColumn) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+  const handleSort = (section: "compounder" | "calenderer", column: SortColumn) => {
+    const setter = section === "compounder" ? setCompounderSort : setCalendererSort;
+    const current = section === "compounder" ? compounderSort : calendererSort;
+    if (current.column === column) {
+      setter({ column, direction: current.direction === "asc" ? "desc" : "asc" });
     } else {
-      setSortColumn(column);
-      setSortDirection("asc");
+      setter({ column, direction: "desc" });
     }
   };
 
-  const sortCocs = (cocsToSort: RubberSupplierCocDto[]): RubberSupplierCocDto[] => {
+  const sortCocs = (
+    cocsToSort: RubberSupplierCocDto[],
+    sort: { column: SortColumn; direction: SortDirection },
+  ): RubberSupplierCocDto[] => {
     return [...cocsToSort].sort((a, b) => {
-      const direction = sortDirection === "asc" ? 1 : -1;
-      if (sortColumn === "cocNumber") {
+      const direction = sort.direction === "asc" ? 1 : -1;
+      if (sort.column === "productionDate") {
+        return direction * (a.productionDate || "").localeCompare(b.productionDate || "");
+      }
+      if (sort.column === "cocNumber") {
         return direction * (a.cocNumber || "").localeCompare(b.cocNumber || "");
       }
-      if (sortColumn === "supplierCompanyName") {
-        return direction * (a.supplierCompanyName || "").localeCompare(b.supplierCompanyName || "");
-      }
-      if (sortColumn === "cocType") {
-        return direction * a.cocType.localeCompare(b.cocType);
-      }
-      if (sortColumn === "processingStatus") {
+      if (sort.column === "processingStatus") {
         return direction * a.processingStatus.localeCompare(b.processingStatus);
       }
-      if (sortColumn === "createdAt") {
+      if (sort.column === "createdAt") {
         return direction * a.createdAt.localeCompare(b.createdAt);
       }
       return 0;
     });
   };
 
-  const filteredCocs = sortCocs(
-    cocs.filter((coc) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        coc.cocNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        coc.supplierCompanyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        coc.compoundCode?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    }),
+  const baseFiltered = cocs.filter((coc) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      coc.cocNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      coc.supplierCompanyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      coc.compoundCode?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
+  });
+
+  const compounderCocs = sortCocs(
+    baseFiltered.filter((c) => c.cocType === "COMPOUNDER"),
+    compounderSort,
+  );
+  const calendererCocs = sortCocs(
+    baseFiltered.filter((c) => c.cocType === "CALENDARER"),
+    calendererSort,
   );
 
-  const paginatedCocs = filteredCocs.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+  const paginatedCompounder = compounderCocs.slice(
+    compounderPage * ITEMS_PER_PAGE,
+    (compounderPage + 1) * ITEMS_PER_PAGE,
+  );
+  const paginatedCalenderer = calendererCocs.slice(
+    calendererPage * ITEMS_PER_PAGE,
+    (calendererPage + 1) * ITEMS_PER_PAGE,
   );
 
   useEffect(() => {
-    setCurrentPage(0);
-  }, [searchQuery, filterType, filterStatus]);
+    setCompounderPage(0);
+    setCalendererPage(0);
+  }, [searchQuery, filterStatus]);
 
   useEffect(() => {
     if (!isAnalyzing) return;
@@ -379,9 +391,8 @@ export default function SupplierCocsPage() {
     }
   };
 
-  const approvableCocs = filteredCocs.filter(
-    (c) => c.processingStatus === "EXTRACTED" || c.processingStatus === "NEEDS_REVIEW",
-  );
+  const isApprovable = (c: RubberSupplierCocDto): boolean =>
+    c.processingStatus === "EXTRACTED" || c.processingStatus === "NEEDS_REVIEW";
 
   const toggleApprovalSelection = (id: number) => {
     setSelectedForApproval((prev) => {
@@ -395,10 +406,8 @@ export default function SupplierCocsPage() {
     });
   };
 
-  const toggleAllApprovalSelection = () => {
-    const pageApprovable = paginatedCocs.filter(
-      (c) => c.processingStatus === "EXTRACTED" || c.processingStatus === "NEEDS_REVIEW",
-    );
+  const toggleAllApprovalSelection = (pageCocs: RubberSupplierCocDto[]) => {
+    const pageApprovable = pageCocs.filter(isApprovable);
     const allSelected = pageApprovable.every((c) => selectedForApproval.has(c.id));
     if (allSelected) {
       setSelectedForApproval((prev) => {
@@ -529,18 +538,6 @@ export default function SupplierCocsPage() {
             />
           </div>
           <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Type:</label>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as SupplierCocType | "")}
-              className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm rounded-md border"
-            >
-              <option value="">All Types</option>
-              <option value="COMPOUNDER">Compounder</option>
-              <option value="CALENDARER">Calendarer</option>
-            </select>
-          </div>
-          <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">Status:</label>
             <select
               value={filterStatus}
@@ -557,195 +554,220 @@ export default function SupplierCocsPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        {isLoading ? (
+      {isLoading ? (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
           <TableLoadingState message="Loading supplier CoCs..." />
-        ) : filteredCocs.length === 0 ? (
-          <div className="p-8">
-            <div className="flex flex-col items-center justify-center py-12">
-              <TableIcons.document className="w-12 h-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-1">No supplier CoCs found</h3>
-              <p className="text-sm text-gray-500">
-                {searchQuery || filterType || filterStatus
-                  ? "Try adjusting your filters"
-                  : "Upload CoC documents using the drop zone above"}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                {approvableCocs.length > 0 && (
-                  <th scope="col" className="px-4 py-3 w-10">
-                    <input
-                      type="checkbox"
-                      checked={
-                        paginatedCocs.filter(
-                          (c) =>
-                            c.processingStatus === "EXTRACTED" ||
-                            c.processingStatus === "NEEDS_REVIEW",
-                        ).length > 0 &&
-                        paginatedCocs
-                          .filter(
-                            (c) =>
-                              c.processingStatus === "EXTRACTED" ||
-                              c.processingStatus === "NEEDS_REVIEW",
-                          )
-                          .every((c) => selectedForApproval.has(c.id))
-                      }
-                      onChange={toggleAllApprovalSelection}
-                      className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                    />
-                  </th>
-                )}
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("cocNumber")}
-                >
-                  CoC Number
-                  <SortIcon active={sortColumn === "cocNumber"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("supplierCompanyName")}
-                >
-                  Supplier
-                  <SortIcon
-                    active={sortColumn === "supplierCompanyName"}
-                    direction={sortDirection}
-                  />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("cocType")}
-                >
-                  Type
-                  <SortIcon active={sortColumn === "cocType"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Compound
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("processingStatus")}
-                >
-                  Status
-                  <SortIcon active={sortColumn === "processingStatus"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("createdAt")}
-                >
-                  Created
-                  <SortIcon active={sortColumn === "createdAt"} direction={sortDirection} />
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedCocs.map((coc) => (
-                <tr key={coc.id} className="hover:bg-gray-50">
-                  {approvableCocs.length > 0 && (
-                    <td className="px-4 py-4 w-10">
-                      {(coc.processingStatus === "EXTRACTED" ||
-                        coc.processingStatus === "NEEDS_REVIEW") && (
-                        <input
-                          type="checkbox"
-                          checked={selectedForApproval.has(coc.id)}
-                          onChange={() => toggleApprovalSelection(coc.id)}
-                          className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                        />
+        </div>
+      ) : (
+        [
+          {
+            label: "Compounder (S&N Rubber)",
+            badge: "bg-purple-100 text-purple-800",
+            section: "compounder" as const,
+            items: compounderCocs,
+            paginated: paginatedCompounder,
+            page: compounderPage,
+            setPage: setCompounderPage,
+            sort: compounderSort,
+          },
+          {
+            label: "Calenderer (Impilo Industries)",
+            badge: "bg-indigo-100 text-indigo-800",
+            section: "calenderer" as const,
+            items: calendererCocs,
+            paginated: paginatedCalenderer,
+            page: calendererPage,
+            setPage: setCalendererPage,
+            sort: calendererSort,
+          },
+        ].map((group) => {
+          const hasApprovable = group.items.some(isApprovable);
+          return (
+            <div key={group.section} className="bg-white shadow rounded-lg overflow-hidden mb-6">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <h2 className="text-lg font-semibold text-gray-900">{group.label}</h2>
+                  <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${group.badge}`}>
+                    {group.items.length}
+                  </span>
+                </div>
+              </div>
+              {group.items.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-sm text-gray-500">
+                    {searchQuery || filterStatus ? "No matching CoCs" : "No CoCs uploaded yet"}
+                  </p>
+                </div>
+              ) : (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {hasApprovable && (
+                        <th scope="col" className="px-4 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={
+                              group.paginated.filter(isApprovable).length > 0 &&
+                              group.paginated
+                                .filter(isApprovable)
+                                .every((c) => selectedForApproval.has(c.id))
+                            }
+                            onChange={() => toggleAllApprovalSelection(group.paginated)}
+                            className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          />
+                        </th>
                       )}
-                    </td>
-                  )}
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
-                      className="text-yellow-600 hover:text-yellow-800 font-medium"
-                    >
-                      {coc.cocNumber || `COC-${coc.id}`}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {coc.supplierCompanyName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{typeBadge(coc.cocType)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {coc.compoundCode || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {statusBadge(coc.processingStatus)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(coc.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                    {coc.graphPdfPath && (
-                      <button
-                        onClick={async () => {
-                          const url = await auRubberApiClient.documentUrl(coc.graphPdfPath!);
-                          window.open(url, "_blank");
-                        }}
-                        className="text-blue-600 hover:text-blue-800 inline-flex items-center"
-                        title="View Rheometer Graph"
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort(group.section, "productionDate")}
                       >
-                        <LineChart className="w-4 h-4" />
-                      </button>
-                    )}
-                    <Link
-                      href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
-                      className="text-yellow-600 hover:text-yellow-800 inline-flex items-center"
-                      title="View CoC"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Link>
-                    <button
-                      onClick={() => handleReextract(coc.id)}
-                      disabled={reextractingId === coc.id}
-                      className="text-green-600 hover:text-green-800 inline-flex items-center disabled:opacity-50"
-                      title="Re-extract data"
-                    >
-                      <RefreshCw
-                        className={`w-4 h-4 ${reextractingId === coc.id ? "animate-spin" : ""}`}
-                      />
-                    </button>
-                    {isAdmin && (
-                      <button
-                        onClick={() => {
-                          setDeletingId(coc.id);
-                          setShowDeleteModal(true);
-                        }}
-                        className="text-red-600 hover:text-red-800 inline-flex items-center"
-                        title="Delete"
+                        Doc Date
+                        <SortIcon
+                          active={group.sort.column === "productionDate"}
+                          direction={group.sort.direction}
+                        />
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort(group.section, "cocNumber")}
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <Pagination
-          currentPage={currentPage}
-          totalItems={filteredCocs.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-          itemName="CoCs"
-          onPageChange={setCurrentPage}
-        />
-      </div>
+                        CoC Number
+                        <SortIcon
+                          active={group.sort.column === "cocNumber"}
+                          direction={group.sort.direction}
+                        />
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Compound
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort(group.section, "processingStatus")}
+                      >
+                        Status
+                        <SortIcon
+                          active={group.sort.column === "processingStatus"}
+                          direction={group.sort.direction}
+                        />
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort(group.section, "createdAt")}
+                      >
+                        Uploaded
+                        <SortIcon
+                          active={group.sort.column === "createdAt"}
+                          direction={group.sort.direction}
+                        />
+                      </th>
+                      <th scope="col" className="relative px-6 py-3">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {group.paginated.map((coc) => (
+                      <tr key={coc.id} className="hover:bg-gray-50">
+                        {hasApprovable && (
+                          <td className="px-4 py-4 w-10">
+                            {isApprovable(coc) && (
+                              <input
+                                type="checkbox"
+                                checked={selectedForApproval.has(coc.id)}
+                                onChange={() => toggleApprovalSelection(coc.id)}
+                                className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                              />
+                            )}
+                          </td>
+                        )}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {coc.productionDate
+                            ? new Date(coc.productionDate).toLocaleDateString()
+                            : "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Link
+                            href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
+                            className="text-yellow-600 hover:text-yellow-800 font-medium"
+                          >
+                            {coc.cocNumber || `COC-${coc.id}`}
+                          </Link>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {coc.compoundCode || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {statusBadge(coc.processingStatus)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(coc.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                          {coc.graphPdfPath && (
+                            <button
+                              onClick={async () => {
+                                const url = await auRubberApiClient.documentUrl(coc.graphPdfPath!);
+                                window.open(url, "_blank");
+                              }}
+                              className="text-blue-600 hover:text-blue-800 inline-flex items-center"
+                              title="View Rheometer Graph"
+                            >
+                              <LineChart className="w-4 h-4" />
+                            </button>
+                          )}
+                          <Link
+                            href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
+                            className="text-yellow-600 hover:text-yellow-800 inline-flex items-center"
+                            title="View CoC"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                          <button
+                            onClick={() => handleReextract(coc.id)}
+                            disabled={reextractingId === coc.id}
+                            className="text-green-600 hover:text-green-800 inline-flex items-center disabled:opacity-50"
+                            title="Re-extract data"
+                          >
+                            <RefreshCw
+                              className={`w-4 h-4 ${reextractingId === coc.id ? "animate-spin" : ""}`}
+                            />
+                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => {
+                                setDeletingId(coc.id);
+                                setShowDeleteModal(true);
+                              }}
+                              className="text-red-600 hover:text-red-800 inline-flex items-center"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <Pagination
+                currentPage={group.page}
+                totalItems={group.items.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+                itemName="CoCs"
+                onPageChange={group.setPage}
+              />
+            </div>
+          );
+        })
+      )}
 
       {showUploadModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
