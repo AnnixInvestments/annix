@@ -184,6 +184,11 @@ export class RubberCocService {
     if (extractedData.ticketNumber) coc.ticketNumber = extractedData.ticketNumber;
 
     await this.supplierCocRepository.save(coc);
+
+    if (coc.cocType === SupplierCocType.CALENDARER) {
+      this.autoLinkCalendererToCompounder(coc);
+    }
+
     return this.mapSupplierCocToDto(coc);
   }
 
@@ -723,6 +728,80 @@ export class RubberCocService {
       linkedCocIds: [...new Set(linkedCocIds)],
       linkedBatches: [...new Set(linkedBatches)],
     };
+  }
+
+  private autoLinkCalendererToCompounder(calendererCoc: RubberSupplierCoc): void {
+    const existingLinks = calendererCoc.extractedData?.linkedCompounderCocIds || [];
+    if (existingLinks.length > 0) return;
+
+    this.linkCalendererToCompounderCocs(calendererCoc.id)
+      .then(async (result) => {
+        if (result.linkedCocIds.length > 0) {
+          this.logger.log(
+            `Auto-linked calenderer ${calendererCoc.id} to compounder(s) [${result.linkedCocIds.join(", ")}] via batch numbers`,
+          );
+          return;
+        }
+
+        const compoundCode =
+          calendererCoc.compoundCode || calendererCoc.extractedData?.compoundCode;
+        if (!compoundCode) return;
+
+        const compounderCoc = await this.findCompounderByCompoundCode(compoundCode);
+        if (!compounderCoc) return;
+
+        const updatedExtractedData = {
+          ...calendererCoc.extractedData,
+          linkedCompounderCocIds: [compounderCoc.id],
+        };
+        await this.supplierCocRepository.update(calendererCoc.id, {
+          extractedData: updatedExtractedData,
+        });
+
+        this.logger.log(
+          `Auto-linked calenderer ${calendererCoc.id} to compounder ${compounderCoc.id} via compound code ${compoundCode}`,
+        );
+
+        const refreshed = await this.supplierCocRepository.findOne({
+          where: { id: calendererCoc.id },
+        });
+        if (refreshed) {
+          this.triggerReadinessCheckForLinkedCalenderer(refreshed);
+        }
+      })
+      .catch((error) => {
+        this.logger.error(
+          `Auto-link calenderer ${calendererCoc.id} to compounder failed: ${error.message}`,
+        );
+      });
+  }
+
+  private async findCompounderByCompoundCode(
+    calendererCompoundCode: string,
+  ): Promise<RubberSupplierCoc | null> {
+    const match = calendererCompoundCode.match(/^([A-Za-z]+)(\d+)$/);
+    if (!match) return null;
+
+    const [, baseCode, hardness] = match;
+    const compounderPattern = `AUA${hardness}${baseCode}`;
+
+    const compounderCocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
+      .andWhere("coc.compound_code = :code", { code: compounderPattern })
+      .orderBy("coc.id", "DESC")
+      .getMany();
+
+    if (compounderCocs.length === 0) return null;
+
+    if (compounderCocs.length > 1) {
+      this.logger.warn(
+        `Multiple compounder CoCs match ${compounderPattern}: [${compounderCocs.map((c) => c.id).join(", ")}] — using most recent`,
+      );
+    }
+
+    const withGraph = compounderCocs.find((c) => c.graphPdfPath);
+    return withGraph || compounderCocs[0];
   }
 
   async traceabilityForRoll(rollNumber: string): Promise<{
