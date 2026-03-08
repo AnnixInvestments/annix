@@ -49,6 +49,8 @@ const pdfParseModule = require("pdf-parse");
 const pdfParse = pdfParseModule.default ?? pdfParseModule;
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const XLSX = require("xlsx");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mammoth = require("mammoth");
 
 export interface InboundEmailAttachment {
   filename: string;
@@ -174,32 +176,26 @@ export class RubberInboundEmailService {
       `Processing inbound email from: ${emailData.from}, subject: ${emailData.subject}`,
     );
 
-    const excelAttachments = emailData.attachments.filter((att) =>
-      this.isExcelFile(att.filename, att.contentType),
+    const supportedAttachments = emailData.attachments.filter(
+      (att) =>
+        att.contentType === "application/pdf" ||
+        att.filename?.toLowerCase().endsWith(".pdf") ||
+        this.isExcelFile(att.filename, att.contentType) ||
+        this.isWordFile(att.filename, att.contentType),
     );
 
-    const convertedExcelAttachments = await this.convertExcelAttachmentsToPdfLike(excelAttachments);
-
-    const pdfAttachments = [
-      ...emailData.attachments.filter(
-        (att) =>
-          att.contentType === "application/pdf" || att.filename?.toLowerCase().endsWith(".pdf"),
-      ),
-      ...convertedExcelAttachments,
-    ];
-
-    if (pdfAttachments.length === 0) {
-      result.errors.push("No PDF or Excel attachments found in email");
-      this.logger.warn("No PDF or Excel attachments found in email");
+    if (supportedAttachments.length === 0) {
+      result.errors.push("No PDF, Excel, or Word attachments found in email");
+      this.logger.warn("No PDF, Excel, or Word attachments found in email");
       return result;
     }
 
     const documentType = this.determineDocumentType(emailData.subject);
 
     if (documentType === "coc") {
-      await this.processCocAttachments(pdfAttachments, emailData, result);
+      await this.processCocAttachments(supportedAttachments, emailData, result);
     } else {
-      await this.processNonCocAttachments(pdfAttachments, emailData, documentType, result);
+      await this.processNonCocAttachments(supportedAttachments, emailData, documentType, result);
     }
 
     result.success =
@@ -224,7 +220,7 @@ export class RubberInboundEmailService {
 
     for (const attachment of attachments) {
       try {
-        const pdfText = await this.extractTextFromPdf(attachment.content);
+        const pdfText = await this.extractTextFromAttachment(attachment);
         const graphResult = this.detectIfGraph(pdfText, attachment.filename);
 
         const supplierMapping = graphResult.isGraph
@@ -361,10 +357,10 @@ export class RubberInboundEmailService {
   ): Promise<void> {
     for (const attachment of attachments) {
       try {
-        const pdfText = await this.extractTextFromPdf(attachment.content);
+        const documentText = await this.extractTextFromAttachment(attachment);
 
         const supplierMapping = await this.identifySupplierFromDocument(
-          pdfText,
+          documentText,
           attachment.filename,
           emailData.from,
           emailData.subject,
@@ -402,23 +398,36 @@ export class RubberInboundEmailService {
           this.logger.log(`Created Tax Invoice ${invoice.id} from email attachment`);
 
           try {
-            const pdfText = await this.extractTextFromPdf(attachment.content);
-            if (pdfText.length >= 50) {
-              const extractionResult = await this.cocExtractionService.extractTaxInvoice(pdfText);
-              await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
-              this.logger.log(
-                `Auto-extracted Tax Invoice ${invoice.id} in ${extractionResult.processingTimeMs}ms`,
-              );
+            const isPdf =
+              attachment.contentType === "application/pdf" ||
+              attachment.filename?.toLowerCase().endsWith(".pdf");
+
+            if (isPdf) {
+              const pdfText = await this.extractTextFromPdf(attachment.content);
+              if (pdfText.length >= 50) {
+                const extractionResult =
+                  await this.cocExtractionService.extractTaxInvoice(pdfText);
+                await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
+                this.logger.log(
+                  `Auto-extracted Tax Invoice ${invoice.id} in ${extractionResult.processingTimeMs}ms`,
+                );
+              } else {
+                this.logger.log(
+                  `Tax Invoice ${invoice.id} PDF text too short (${pdfText.length} chars), falling back to OCR`,
+                );
+                const extractionResult =
+                  await this.cocExtractionService.extractTaxInvoiceFromImages(attachment.content);
+                await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
+                this.logger.log(
+                  `Auto-extracted Tax Invoice ${invoice.id} via OCR in ${extractionResult.processingTimeMs}ms`,
+                );
+              }
             } else {
-              this.logger.log(
-                `Tax Invoice ${invoice.id} PDF text too short (${pdfText.length} chars), falling back to OCR`,
-              );
-              const extractionResult = await this.cocExtractionService.extractTaxInvoiceFromImages(
-                attachment.content,
-              );
+              const extractionResult =
+                await this.cocExtractionService.extractTaxInvoice(documentText);
               await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
               this.logger.log(
-                `Auto-extracted Tax Invoice ${invoice.id} via OCR in ${extractionResult.processingTimeMs}ms`,
+                `Auto-extracted Tax Invoice ${invoice.id} from ${attachment.contentType} in ${extractionResult.processingTimeMs}ms`,
               );
             }
           } catch (extractionError) {
@@ -462,6 +471,34 @@ export class RubberInboundEmailService {
     );
   }
 
+  private isWordFile(filename: string | undefined, contentType: string): boolean {
+    const wordMimeTypes = [
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    const filenameLower = filename?.toLowerCase() ?? "";
+    return (
+      wordMimeTypes.includes(contentType) ||
+      filenameLower.endsWith(".doc") ||
+      filenameLower.endsWith(".docx")
+    );
+  }
+
+  private async extractTextFromWord(buffer: Buffer): Promise<string> {
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value || "";
+  }
+
+  private async extractTextFromAttachment(attachment: InboundEmailAttachment): Promise<string> {
+    if (this.isExcelFile(attachment.filename, attachment.contentType)) {
+      return this.extractTextFromExcel(attachment.content);
+    } else if (this.isWordFile(attachment.filename, attachment.contentType)) {
+      return this.extractTextFromWord(attachment.content);
+    } else {
+      return this.extractTextFromPdf(attachment.content);
+    }
+  }
+
   private extractTextFromExcel(buffer: Buffer): string {
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheets = workbook.SheetNames.map((name: string) => {
@@ -470,28 +507,6 @@ export class RubberInboundEmailService {
       return `--- SHEET: ${name} ---\n${csv}`;
     });
     return sheets.join("\n\n");
-  }
-
-  private async convertExcelAttachmentsToPdfLike(
-    attachments: InboundEmailAttachment[],
-  ): Promise<InboundEmailAttachment[]> {
-    return attachments
-      .map((att) => {
-        try {
-          this.extractTextFromExcel(att.content);
-          this.logger.log(`Validated Excel attachment ${att.filename} for processing`);
-          return {
-            filename: att.filename,
-            content: att.content,
-            contentType: att.contentType,
-            size: att.size,
-          };
-        } catch (error) {
-          this.logger.error(`Failed to read Excel ${att.filename}: ${error.message}`);
-          return null;
-        }
-      })
-      .filter((att): att is InboundEmailAttachment => att !== null);
   }
 
   private async extractTextFromPdf(buffer: Buffer): Promise<string> {

@@ -109,11 +109,23 @@ export class RubberInboundEmailController {
     try {
       const parsed = await simpleParser(body.rawEmail);
 
+      const supportedExtensions = [".pdf", ".xls", ".xlsx", ".doc", ".docx"];
+      const supportedMimeTypes = [
+        "application/pdf",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ];
+
       const attachments = (parsed.attachments || [])
-        .filter(
-          (att) =>
-            att.contentType === "application/pdf" || att.filename?.toLowerCase().endsWith(".pdf"),
-        )
+        .filter((att) => {
+          const ext = att.filename?.toLowerCase().split(".").pop() || "";
+          return (
+            supportedMimeTypes.includes(att.contentType) ||
+            supportedExtensions.includes(`.${ext}`)
+          );
+        })
         .map((att) => ({
           filename: att.filename || "attachment.pdf",
           content: att.content,
