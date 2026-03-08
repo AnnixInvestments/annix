@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
+import { fromISO, fromJSDate } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { InvoiceClarification } from "../entities/invoice-clarification.entity";
@@ -74,7 +75,7 @@ export class InvoiceService {
       deliveryNoteId: dto.deliveryNoteId || null,
       invoiceNumber: dto.invoiceNumber,
       supplierName,
-      invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : null,
+      invoiceDate: dto.invoiceDate ? fromISO(dto.invoiceDate).toJSDate() : null,
       extractionStatus: InvoiceExtractionStatus.PENDING,
     });
 
@@ -261,14 +262,14 @@ export class InvoiceService {
     });
 
     if (invoice.invoiceDate) {
-      const invoiceDate = new Date(invoice.invoiceDate);
+      const invoiceDate = fromJSDate(invoice.invoiceDate);
       const dateMatches = deliveryNotes.filter((dn) => {
         if (!dn.receivedDate) return false;
         const alreadySuggested = suggestions.some((s) => s.id === dn.id);
         if (alreadySuggested) return false;
 
         const daysDiff = Math.abs(
-          (invoiceDate.getTime() - dn.receivedDate.getTime()) / (1000 * 60 * 60 * 24),
+          invoiceDate.diff(fromJSDate(dn.receivedDate), "days").days,
         );
         return daysDiff <= 14;
       });

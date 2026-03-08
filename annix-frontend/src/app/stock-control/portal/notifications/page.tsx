@@ -4,7 +4,7 @@ import { Bell, Check, CheckCheck, Filter } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { stockControlApiClient, WorkflowNotification } from "@/app/lib/api/stockControlApi";
-import { formatDateLongZA } from "@/app/lib/datetime";
+import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
 
 type FilterType = "all" | "unread";
 
@@ -38,7 +38,7 @@ export default function NotificationsPage() {
     try {
       await stockControlApiClient.markNotificationAsRead(notificationId);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, readAt: new Date().toISOString() } : n)),
+        prev.map((n) => (n.id === notificationId ? { ...n, readAt: nowISO() } : n)),
       );
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
@@ -50,7 +50,7 @@ export default function NotificationsPage() {
     try {
       await stockControlApiClient.markAllNotificationsAsRead();
       setNotifications((prev) =>
-        prev.map((n) => ({ ...n, readAt: n.readAt || new Date().toISOString() })),
+        prev.map((n) => ({ ...n, readAt: n.readAt || nowISO() })),
       );
     } catch (error) {
       console.error("Failed to mark all as read:", error);
@@ -187,7 +187,7 @@ export default function NotificationsPage() {
                         </span>
                       )}
                       <span className="text-xs text-gray-400">
-                        {formatDateLongZA(new Date(notification.createdAt))}
+                        {formatDateLongZA(notification.createdAt)}
                       </span>
                       {notification.jobCard && (
                         <span className="text-xs text-gray-500">

@@ -11,6 +11,7 @@ import type {
   StockItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
 
 function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", {
@@ -2029,11 +2030,7 @@ export default function InventoryPage() {
                     <h1 className="text-2xl font-bold text-gray-900 print:text-xl">Stock List</h1>
                     <p className="text-sm text-gray-500">
                       Generated on{" "}
-                      {new Date().toLocaleDateString("en-ZA", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
+                      {formatDateLongZA(nowISO())}
                     </p>
                   </div>
                   <table className="min-w-full divide-y divide-gray-200 print:text-sm">

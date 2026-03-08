@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { nowMillis } from "@/app/lib/datetime";
 import { compressPhoto, fileToDataUrl } from "../lib/offline/photoSync";
 
 interface PhotoCaptureProps {
@@ -83,7 +84,7 @@ export function PhotoCapture({
       async (blob) => {
         if (!blob) return;
 
-        const file = new File([blob], `photo-${Date.now()}.jpg`, {
+        const file = new File([blob], `photo-${nowMillis()}.jpg`, {
           type: "image/jpeg",
         });
 

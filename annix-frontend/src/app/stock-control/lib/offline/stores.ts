@@ -1,5 +1,5 @@
 import { del, entries, get, keys, set, type UseStore } from "idb-keyval";
-import { nowISO } from "@/app/lib/datetime";
+import { nowISO, nowMillis } from "@/app/lib/datetime";
 import {
   deliveryNotesStore,
   jobCardsStore,
@@ -153,11 +153,11 @@ export const offlinePhotos = {
 
 export const offlinePendingActions = {
   async add(action: Omit<PendingAction, "id" | "timestamp" | "retryCount">): Promise<string> {
-    const id = `action-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const id = `action-${nowMillis()}-${Math.random().toString(36).slice(2, 9)}`;
     const pendingAction: PendingAction = {
       ...action,
       id,
-      timestamp: Date.now(),
+      timestamp: nowMillis(),
       retryCount: 0,
     };
     await set(id, pendingAction, pendingActionsStore);

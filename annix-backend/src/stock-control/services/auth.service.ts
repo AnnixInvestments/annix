@@ -13,6 +13,7 @@ import * as bcrypt from "bcrypt";
 import { ILike, MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
+import { now } from "../../lib/datetime";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
 import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
@@ -71,7 +72,7 @@ export class StockControlAuthService {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const verificationToken = uuidv4();
-    const verificationExpires = new Date(Date.now() + VERIFICATION_EXPIRY_HOURS * 60 * 60 * 1000);
+    const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
     let companyId: number;
     let role: StockControlRole;
@@ -86,7 +87,7 @@ export class StockControlAuthService {
         throw new BadRequestException("Invalid or expired invitation token");
       }
 
-      if (new Date() > invitation.expiresAt) {
+      if (now().toJSDate() > invitation.expiresAt) {
         invitation.status = StockControlInvitationStatus.EXPIRED;
         await this.invitationRepo.save(invitation);
         throw new BadRequestException("Invitation has expired");
@@ -97,7 +98,7 @@ export class StockControlAuthService {
       isInvitedUser = true;
 
       invitation.status = StockControlInvitationStatus.ACCEPTED;
-      invitation.acceptedAt = new Date();
+      invitation.acceptedAt = now().toJSDate();
       await this.invitationRepo.save(invitation);
     } else {
       const company = this.companyRepo.create({
@@ -139,7 +140,7 @@ export class StockControlAuthService {
     const user = await this.userRepo.findOne({
       where: {
         emailVerificationToken: token,
-        emailVerificationExpires: MoreThan(new Date()),
+        emailVerificationExpires: MoreThan(now().toJSDate()),
       },
     });
 
@@ -184,7 +185,7 @@ export class StockControlAuthService {
     }
 
     const verificationToken = uuidv4();
-    const verificationExpires = new Date(Date.now() + VERIFICATION_EXPIRY_HOURS * 60 * 60 * 1000);
+    const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
     user.emailVerificationToken = verificationToken;
     user.emailVerificationExpires = verificationExpires;
@@ -200,7 +201,7 @@ export class StockControlAuthService {
 
     if (user?.emailVerified) {
       const resetToken = uuidv4();
-      const resetExpires = new Date(Date.now() + 60 * 60 * 1000);
+      const resetExpires = now().plus({ hours: 1 }).toJSDate();
 
       user.resetPasswordToken = resetToken;
       user.resetPasswordExpires = resetExpires;
@@ -218,7 +219,7 @@ export class StockControlAuthService {
     const user = await this.userRepo.findOne({
       where: {
         resetPasswordToken: token,
-        resetPasswordExpires: MoreThan(new Date()),
+        resetPasswordExpires: MoreThan(now().toJSDate()),
       },
     });
 

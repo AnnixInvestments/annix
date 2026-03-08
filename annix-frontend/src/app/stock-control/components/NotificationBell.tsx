@@ -175,7 +175,7 @@ export function NotificationBell() {
                             </span>
                           )}
                           <span className="text-xs text-gray-400">
-                            {formatDateLongZA(new Date(notification.createdAt))}
+                            {formatDateLongZA(notification.createdAt)}
                           </span>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { nowMillis } from "@/app/lib/datetime";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -102,7 +103,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       const dismissed = localStorage.getItem("stock-control-pwa-dismissed");
       if (dismissed) {
         const dismissedAt = parseInt(dismissed, 10);
-        const daysSinceDismissed = (Date.now() - dismissedAt) / (1000 * 60 * 60 * 24);
+        const daysSinceDismissed = (nowMillis() - dismissedAt) / (1000 * 60 * 60 * 24);
         if (daysSinceDismissed < 7) {
           return;
         }
@@ -151,7 +152,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
 
   const handleDismissInstall = () => {
     setShowInstallPrompt(false);
-    localStorage.setItem("stock-control-pwa-dismissed", Date.now().toString());
+    localStorage.setItem("stock-control-pwa-dismissed", nowMillis().toString());
   };
 
   return (

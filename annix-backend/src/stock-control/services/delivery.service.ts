@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { fromISO, now, nowMillis } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
@@ -47,7 +48,7 @@ export class DeliveryService {
     const deliveryNote = this.deliveryNoteRepo.create({
       deliveryNumber: data.deliveryNumber,
       supplierName: data.supplierName,
-      receivedDate: data.receivedDate || new Date(),
+      receivedDate: data.receivedDate || now().toJSDate(),
       notes: data.notes || null,
       photoUrl: data.photoUrl || null,
       receivedBy: data.receivedBy || null,
@@ -344,17 +345,17 @@ export class DeliveryService {
     this.logger.log(`File uploaded successfully, path: ${uploadResult.path}`);
 
     const receivedDate = analyzedData.deliveryDate
-      ? new Date(analyzedData.deliveryDate)
-      : new Date();
+      ? fromISO(analyzedData.deliveryDate).toJSDate()
+      : now().toJSDate();
 
-    let deliveryNumber = analyzedData.deliveryNoteNumber || `DN-${Date.now()}`;
+    let deliveryNumber = analyzedData.deliveryNoteNumber || `DN-${nowMillis()}`;
 
     const existingNote = await this.deliveryNoteRepo.findOne({
       where: { companyId, deliveryNumber },
     });
 
     if (existingNote) {
-      deliveryNumber = `${deliveryNumber}-${Date.now()}`;
+      deliveryNumber = `${deliveryNumber}-${nowMillis()}`;
       this.logger.log(
         `Delivery note ${analyzedData.deliveryNoteNumber} already exists, using ${deliveryNumber}`,
       );
@@ -690,7 +691,7 @@ export class DeliveryService {
       .filter((w) => w.length > 0)
       .slice(0, 4)
       .join("-");
-    return descWords || `ITEM-${Date.now()}`;
+    return descWords || `ITEM-${nowMillis()}`;
   }
 
   async createInvoiceFromAnalyzedData(
@@ -721,9 +722,9 @@ export class DeliveryService {
     );
 
     const invoiceNumber =
-      analyzedData.invoiceNumber || analyzedData.deliveryNoteNumber || `INV-${Date.now()}`;
+      analyzedData.invoiceNumber || analyzedData.deliveryNoteNumber || `INV-${nowMillis()}`;
 
-    const invoiceDate = analyzedData.deliveryDate ? new Date(analyzedData.deliveryDate) : null;
+    const invoiceDate = analyzedData.deliveryDate ? fromISO(analyzedData.deliveryDate).toJSDate() : null;
 
     const invoiceSupplierName = analyzedData.fromCompany?.name || "Unknown Supplier";
 

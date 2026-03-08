@@ -1,5 +1,5 @@
 import imageCompression from "browser-image-compression";
-import { nowISO } from "@/app/lib/datetime";
+import { nowISO, nowMillis } from "@/app/lib/datetime";
 import { offlinePhotos, type PendingPhoto } from "./stores";
 
 export interface PhotoCompressionOptions {
@@ -48,11 +48,11 @@ export async function queuePhotoUpload(params: {
   const compressed = await compressPhoto(params.file);
 
   const photo: PendingPhoto = {
-    id: `photo-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    id: `photo-${nowMillis()}-${Math.random().toString(36).slice(2, 9)}`,
     entityType: params.entityType,
     entityId: params.entityId,
     blob: compressed,
-    filename: params.file.name || `photo-${Date.now()}.jpg`,
+    filename: params.file.name || `photo-${nowMillis()}.jpg`,
     uploadUrl: params.uploadUrl,
     authHeader: params.authHeader,
     synced: false,
