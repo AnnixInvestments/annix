@@ -7,6 +7,7 @@ import { useTheme } from "@/app/components/ThemeProvider";
 import { adminApiClient, SecureDocumentWithContent } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { log } from "@/app/lib/logger";
+import MermaidBlock from "./MermaidBlock";
 
 function authorName(doc: SecureDocumentWithContent): string {
   if (!doc.createdBy) return "Unknown";
@@ -337,6 +338,20 @@ export default function SecureDocumentViewer(props: SecureDocumentViewerProps) {
                     } as React.CSSProperties)
                   : { backgroundColor: "transparent" }
               }
+              components={{
+                code: ({ className, children, ...props }) => {
+                  const match = /language-mermaid/.exec(className || "");
+                  if (match) {
+                    const chart = String(children).replace(/\n$/, "");
+                    return <MermaidBlock chart={chart} />;
+                  }
+                  return (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+              }}
             />
           )}
         </div>

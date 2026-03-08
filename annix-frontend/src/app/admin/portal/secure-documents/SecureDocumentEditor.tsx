@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "@/app/components/ThemeProvider";
 import { SecureDocumentWithContent } from "@/app/lib/api/adminApi";
+import MermaidBlock from "./MermaidBlock";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -331,6 +332,22 @@ export default function SecureDocumentEditor(props: SecureDocumentEditorProps) {
               height={editorHeight}
               preview={localPaneMode}
               commandsFilter={commandsFilter}
+              previewOptions={{
+                components: {
+                  code: ({ className, children, ...codeProps }) => {
+                    const match = /language-mermaid/.exec(className || "");
+                    if (match) {
+                      const chart = String(children).replace(/\n$/, "");
+                      return <MermaidBlock chart={chart} />;
+                    }
+                    return (
+                      <code className={className} {...codeProps}>
+                        {children}
+                      </code>
+                    );
+                  },
+                },
+              }}
               style={
                 resolvedTheme === "dark"
                   ? ({
