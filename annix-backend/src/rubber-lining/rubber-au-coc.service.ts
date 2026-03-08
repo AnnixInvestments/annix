@@ -458,18 +458,8 @@ export class RubberAuCocService {
       elongation: batch.elongationPercent ? Number(batch.elongationPercent) : null,
     }));
 
-    const colourMap: Record<string, string> = {
-      R: "Red",
-      W: "White",
-      B: "Black",
-      Y: "Yellow",
-      G: "Green",
-      P: "Pink",
-    };
-    const colour = compoundCode ? colourMap[compoundCode.charAt(0).toUpperCase()] : null;
-    const baseDescription =
+    const compoundDescription =
       qualityConfig?.compoundDescription || compoundCoding?.name || "Rubber Compound";
-    const compoundDescription = colour ? `${colour} ${baseDescription}` : baseDescription;
 
     const productionDate = firstRoll?.productionDate
       ? formatDateZA(firstRoll.productionDate)
@@ -564,6 +554,15 @@ export class RubberAuCocService {
           }
         }
 
+        if (!compounderCoc && compoundCode && compoundCode !== "Per Supplier CoC") {
+          compounderCoc = await this.findCompounderByCompoundCode(compoundCode);
+          if (compounderCoc) {
+            this.logger.log(
+              `Matched compounder CoC ${compounderCoc.id} (${compounderCoc.compoundCode}) by compound code for calenderer ${supplierCoc.id}`,
+            );
+          }
+        }
+
         graphPdfPath = compounderCoc?.graphPdfPath || supplierCoc.graphPdfPath || null;
 
         if (compoundCode && compoundCode !== "Per Supplier CoC") {
@@ -603,17 +602,7 @@ export class RubberAuCocService {
             }
           }
 
-          const colourMap: Record<string, string> = {
-            R: "Red",
-            W: "White",
-            B: "Black",
-            Y: "Yellow",
-            G: "Green",
-            P: "Pink",
-          };
-          const colour = colourMap[compoundCode.charAt(0).toUpperCase()];
-          const baseDescription = qualityConfig?.compoundDescription || compoundDescription;
-          compoundDescription = colour ? `${colour} ${baseDescription}` : baseDescription;
+          compoundDescription = qualityConfig?.compoundDescription || compoundDescription;
         }
 
         const batchSourceCocId = compounderCoc?.id || supplierCoc.id;
@@ -664,6 +653,32 @@ export class RubberAuCocService {
       qualityConfig,
       graphPdfPath,
     };
+  }
+
+  private async findCompounderByCompoundCode(
+    calendererCompoundCode: string,
+  ): Promise<RubberSupplierCoc | null> {
+    const match = calendererCompoundCode.match(/^([A-Za-z]+)(\d+)$/);
+    if (!match) return null;
+
+    const [, baseCode, hardness] = match;
+    const compounderPattern = `AUA${hardness}${baseCode}`;
+
+    this.logger.log(
+      `Looking for compounder by compound code pattern: ${compounderPattern} (from calenderer ${calendererCompoundCode})`,
+    );
+
+    const compounderCocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
+      .andWhere("coc.compound_code = :code", { code: compounderPattern })
+      .orderBy("coc.id", "DESC")
+      .getMany();
+
+    if (compounderCocs.length === 0) return null;
+
+    const withGraph = compounderCocs.find((c) => c.graphPdfPath);
+    return withGraph || compounderCocs[0];
   }
 
   private async createPdf(data: CocPdfData): Promise<Buffer> {
