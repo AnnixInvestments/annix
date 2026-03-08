@@ -313,24 +313,29 @@ Instead of a sidebar with 12 equal-weight items, the dashboard should present th
 
 ```mermaid
 graph LR
-    subgraph Inbound["Inbound (Blue)"]
+    subgraph Inbound
         D[Deliveries] --> I[Invoices]
     end
-    subgraph Workshop["Workshop (Amber)"]
+    subgraph Workshop
         JC[Job Cards] --> CA[Coating Analysis]
         CA --> R[Requisitions]
         R --> SA[Stock Allocation]
     end
-    subgraph Outbound["Outbound (Green)"]
+    subgraph Outbound
         IS[Issue Stock] --> Disp[Dispatch]
     end
 
-    Inbound --> Workshop
-    Workshop --> Outbound
+    I --> JC
+    SA --> IS
 
-    style Inbound fill:#dbeafe,stroke:#2563eb
-    style Workshop fill:#fef3c7,stroke:#d97706
-    style Outbound fill:#d1fae5,stroke:#059669
+    style D fill:#dbeafe,stroke:#2563eb
+    style I fill:#dbeafe,stroke:#2563eb
+    style JC fill:#fef3c7,stroke:#d97706
+    style CA fill:#fef3c7,stroke:#d97706
+    style R fill:#fef3c7,stroke:#d97706
+    style SA fill:#fef3c7,stroke:#d97706
+    style IS fill:#d1fae5,stroke:#059669
+    style Disp fill:#d1fae5,stroke:#059669
 ```
 
 Each lane shows a count of items at each stage (e.g. "3 deliveries pending extraction, 2 invoices need clarification"). Clicking a count takes you straight to the filtered list. Inventory, Staff, Reports, and Settings become secondary navigation (top bar or gear icon) since they are reference data, not workflow steps.
@@ -340,12 +345,12 @@ Each lane shows a count of items at each stage (e.g. "3 deliveries pending extra
 When a new company or user is created, present a sequential setup checklist:
 
 ```mermaid
-flowchart LR
-    A["1. Company\nDetails"] --> B["2. Locations &\nDepartments"]
-    B --> C["3. Import\nInventory"]
-    C --> D["4. Add Staff &\nPrint QR Badges"]
-    D --> E["5. Invite Team\n& Assign Roles"]
-    E --> F["6. Configure\nWorkflow Steps"]
+graph LR
+    A["1. Company Details"] --> B["2. Locations & Departments"]
+    B --> C["3. Import Inventory"]
+    C --> D["4. Add Staff & Print QR Badges"]
+    D --> E["5. Invite Team & Assign Roles"]
+    E --> F["6. Configure Workflow Steps"]
 
     style A fill:#d1fae5,stroke:#059669
     style B fill:#d1fae5,stroke:#059669
@@ -373,13 +378,9 @@ This removes the need to understand the workflow upfront - the system tells you 
 Currently these are separate pages. Since coating analysis and requisitions are generated from job cards and only make sense in that context, they should be **tabs or sections within the job card detail page** rather than top-level navigation items.
 
 ```mermaid
-graph TB
-    subgraph JobCardDetail["Job Card Detail Page"]
-        direction LR
-        T1["Details"] --- T2["Line Items"] --- T3["Coating\nAnalysis"] --- T4["Requisition"] --- T5["Allocations"] --- T6["Dispatch"]
-    end
+graph LR
+    T1["Details"] --> T2["Line Items"] --> T3["Coating Analysis"] --> T4["Requisition"] --> T5["Allocations"] --> T6["Dispatch"]
 
-    style JobCardDetail fill:#f8fafc,stroke:#94a3b8
     style T3 fill:#e0e7ff,stroke:#4f46e5
     style T4 fill:#fef3c7,stroke:#d97706
 ```
@@ -405,9 +406,9 @@ Different roles have different daily priorities:
 ```mermaid
 graph TD
     Login[User logs in] --> Role{Role?}
-    Role -->|Storeman| S["Today's Tasks:\nPending issuances\nDeliveries to receive\nDispatch jobs"]
-    Role -->|Accounts| A["Invoices Queue:\nPending extraction\nNeeds clarification\nAwaiting approval"]
-    Role -->|Manager| M["Approvals Queue:\nJob card approvals\nPrice change reviews\nOver-allocation alerts"]
+    Role -->|Storeman| S["Today's Tasks: Pending issuances, deliveries, dispatch"]
+    Role -->|Accounts| A["Invoices Queue: Extraction, clarification, approval"]
+    Role -->|Manager| M["Approvals Queue: Job cards, price changes, over-allocations"]
 
     style S fill:#d1fae5,stroke:#059669
     style A fill:#dbeafe,stroke:#2563eb

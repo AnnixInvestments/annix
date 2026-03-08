@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { type ReactElement, useCallback, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { useTheme } from "@/app/components/ThemeProvider";
 import { adminApiClient, SecureDocumentWithContent } from "@/app/lib/api/adminApi";
@@ -18,6 +18,18 @@ function authorName(doc: SecureDocumentWithContent): string {
   if (username) return username;
   if (email) return email;
   return "Unknown";
+}
+
+function extractText(node: React.ReactNode): string {
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (node === null || node === undefined || typeof node === "boolean") return "";
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (React.isValidElement(node)) {
+    const props = node.props as { children?: React.ReactNode };
+    return extractText(props.children);
+  }
+  return "";
 }
 
 const MarkdownPreview = dynamic(
@@ -339,17 +351,21 @@ export default function SecureDocumentViewer(props: SecureDocumentViewerProps) {
                   : { backgroundColor: "transparent" }
               }
               components={{
-                code: ({ className, children, ...props }) => {
-                  const match = /language-mermaid/.exec(className || "");
-                  if (match) {
-                    const chart = String(children).replace(/\n$/, "");
-                    return <MermaidBlock chart={chart} />;
-                  }
-                  return (
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
+                pre: ({ children, ...props }) => {
+                  const codeChild = React.Children.toArray(children).find(
+                    (
+                      child,
+                    ): child is ReactElement<{ className?: string; children?: React.ReactNode }> =>
+                      React.isValidElement(child) && child.type === "code",
                   );
+                  if (codeChild) {
+                    const className = (codeChild.props as { className?: string }).className || "";
+                    if (/language-mermaid/.test(className)) {
+                      const text = extractText(codeChild.props.children);
+                      return <MermaidBlock chart={text} />;
+                    }
+                  }
+                  return <pre {...props}>{children}</pre>;
                 },
               }}
             />

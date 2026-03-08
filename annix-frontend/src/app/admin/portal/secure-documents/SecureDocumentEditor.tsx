@@ -9,6 +9,18 @@ import MermaidBlock from "./MermaidBlock";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
+function extractText(node: React.ReactNode): string {
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (node === null || node === undefined || typeof node === "boolean") return "";
+  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (React.isValidElement(node)) {
+    const props = node.props as { children?: React.ReactNode };
+    return extractText(props.children);
+  }
+  return "";
+}
+
 interface InitialData {
   title: string;
   description: string;
@@ -334,17 +346,25 @@ export default function SecureDocumentEditor(props: SecureDocumentEditorProps) {
               commandsFilter={commandsFilter}
               previewOptions={{
                 components: {
-                  code: ({ className, children, ...codeProps }) => {
-                    const match = /language-mermaid/.exec(className || "");
-                    if (match) {
-                      const chart = String(children).replace(/\n$/, "");
-                      return <MermaidBlock chart={chart} />;
-                    }
-                    return (
-                      <code className={className} {...codeProps}>
-                        {children}
-                      </code>
+                  pre: ({
+                    children,
+                    ...preProps
+                  }: React.HTMLAttributes<HTMLPreElement> & { children?: React.ReactNode }) => {
+                    const codeChild = React.Children.toArray(children).find(
+                      (child): child is React.ReactElement =>
+                        React.isValidElement(child) && child.type === "code",
                     );
+                    if (codeChild) {
+                      const codeClassName =
+                        (codeChild.props as { className?: string }).className || "";
+                      if (/language-mermaid/.test(codeClassName)) {
+                        const text = extractText(
+                          (codeChild.props as { children?: React.ReactNode }).children,
+                        );
+                        return <MermaidBlock chart={text} />;
+                      }
+                    }
+                    return <pre {...preProps}>{children}</pre>;
                   },
                 },
               }}
