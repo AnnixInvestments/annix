@@ -567,57 +567,42 @@ export class RubberAuCocService {
         ];
 
         if (orderNumbers.length > 0) {
-          const calendererCocs = await this.supplierCocRepository
+          this.logger.log(
+            `Extracted supplier order numbers ${JSON.stringify(orderNumbers)} from roll numbers ${JSON.stringify(rollNumbers)} for AU CoC ${coc.cocNumber}`,
+          );
+
+          const allSupplierCocs = await this.supplierCocRepository
             .createQueryBuilder("coc")
-            .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
+            .where("coc.order_number IS NOT NULL")
+            .orderBy("coc.id", "DESC")
             .getMany();
 
           supplierCoc =
-            calendererCocs.find((coc) => {
-              const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
+            allSupplierCocs.find((sc) => {
+              const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
                 .trim()
                 .toUpperCase();
-              return orderNumbers.some((on) => cocOrderNumber === on.toUpperCase());
+              return (
+                cocOrderNumber.length > 0 &&
+                orderNumbers.some((on) => cocOrderNumber === on.toUpperCase())
+              );
             }) || null;
 
           if (supplierCoc) {
             this.logger.log(
-              `Matched calenderer CoC ${supplierCoc.id} (order: ${supplierCoc.orderNumber}) for AU CoC ${coc.cocNumber}`,
+              `Matched supplier CoC ${supplierCoc.id} (type: ${supplierCoc.cocType}, order: ${supplierCoc.orderNumber}) via roll number prefix for AU CoC ${coc.cocNumber}`,
             );
           }
         }
       }
 
-      if (!supplierCoc && coc.poNumber) {
-        const poSegments = coc.poNumber
-          .split("/")
-          .map((s) => s.trim().toUpperCase())
-          .filter(Boolean);
-
-        const allSupplierCocs = await this.supplierCocRepository
-          .createQueryBuilder("sc")
-          .where("sc.order_number IS NOT NULL")
-          .orderBy("sc.id", "DESC")
-          .getMany();
-
-        supplierCoc =
-          allSupplierCocs.find((sc) => {
-            const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
-              .trim()
-              .toUpperCase();
-            return cocOrderNumber.length > 0 && poSegments.some((seg) => seg === cocOrderNumber);
-          }) || null;
-
-        if (supplierCoc) {
-          this.logger.log(
-            `Matched supplier CoC ${supplierCoc.id} (order: ${supplierCoc.orderNumber}) via PO number "${coc.poNumber}" for AU CoC ${coc.cocNumber}`,
-          );
-        }
-      }
-
       if (!supplierCoc) {
+        const rollNumbers = extractedRolls
+          .map((r) => r.rollNumber)
+          .filter(Boolean)
+          .join(", ");
         this.logger.warn(
-          `No supplier CoC found for AU CoC ${coc.cocNumber} (DN: ${sourceDeliveryNote?.deliveryNoteNumber || "none"}, PO: ${coc.poNumber || "none"}) — lab data table will be empty`,
+          `No supplier CoC found for AU CoC ${coc.cocNumber} (DN: ${sourceDeliveryNote?.deliveryNoteNumber || "none"}, rolls: ${rollNumbers || "none"}) — lab data table will be empty`,
         );
       }
 

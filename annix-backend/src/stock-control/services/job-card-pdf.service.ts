@@ -342,7 +342,7 @@ export class JobCardPdfService {
 
   private async prepareRubberAllocation(jobCard: JobCard): Promise<{
     plan: CuttingPlan;
-    stockRolls: { thicknessMm: number; quantityAvailable: number }[];
+    stockRolls: { thicknessMm: number; widthMm: number; lengthM: number; quantityAvailable: number }[];
     isRubberJob: boolean;
     totalM2: number;
   }> {
@@ -455,7 +455,7 @@ export class JobCardPdfService {
     jobCard: JobCard,
     rubberData: {
       plan: CuttingPlan;
-      stockRolls: { thicknessMm: number; quantityAvailable: number }[];
+      stockRolls: { thicknessMm: number; widthMm: number; lengthM: number; quantityAvailable: number }[];
       isRubberJob: boolean;
       totalM2: number;
     },
@@ -689,8 +689,19 @@ export class JobCardPdfService {
         });
       } else {
         const manualRolls = jobCard.rubberPlanOverride?.manualRolls;
-        const rollWidthMm = manualRolls && manualRolls.length > 0 ? manualRolls[0].widthMm : 1200;
-        const rollLengthM = manualRolls && manualRolls.length > 0 ? manualRolls[0].lengthM : 12.5;
+        const firstStockRoll = stockRolls.find((r) => r.widthMm > 0 && r.lengthM > 0);
+        const rollWidthMm =
+          manualRolls && manualRolls.length > 0
+            ? manualRolls[0].widthMm
+            : firstStockRoll
+              ? firstStockRoll.widthMm
+              : 1200;
+        const rollLengthM =
+          manualRolls && manualRolls.length > 0
+            ? manualRolls[0].lengthM
+            : firstStockRoll
+              ? firstStockRoll.lengthM
+              : 12.5;
         const rollAreaM2 = (rollWidthMm / 1000) * rollLengthM;
         const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
         const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;
