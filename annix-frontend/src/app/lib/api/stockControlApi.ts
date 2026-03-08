@@ -1966,7 +1966,7 @@ class StockControlApiClient {
   }
 
   async downloadJobCardQrPdf(id: number): Promise<void> {
-    return this.downloadBlob(`/stock-control/job-cards/${id}/qr/pdf`, `job-card-${id}.pdf`);
+    return this.downloadBlob(`/stock-control/workflow/job-cards/${id}/print`, `job-card-${id}.pdf`);
   }
 
   async confirmJobCardImport(rows: JobCardImportRow[]): Promise<JobCardImportResult> {
