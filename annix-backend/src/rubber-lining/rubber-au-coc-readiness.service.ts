@@ -181,19 +181,17 @@ export class RubberAuCocReadinessService {
     return result;
   }
 
-  async checkReadinessForDeliveryNote(
-    customerDeliveryNoteId: number,
-  ): Promise<ReadinessResult | null> {
+  async checkAndAutoGenerateForDeliveryNote(customerDeliveryNoteId: number): Promise<void> {
     const auCoc = await this.auCocRepository.findOne({
       where: { sourceDeliveryNoteId: customerDeliveryNoteId },
     });
 
     if (!auCoc) {
       this.logger.debug(`No AU CoC found for delivery note ${customerDeliveryNoteId}`);
-      return null;
+      return;
     }
 
-    return this.checkReadiness(auCoc.id);
+    await this.autoGenerateIfReady(auCoc.id);
   }
 
   async checkAndAutoGenerateForCoc(supplierCocId: number): Promise<void> {

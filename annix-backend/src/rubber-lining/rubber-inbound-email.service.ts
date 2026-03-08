@@ -1425,14 +1425,7 @@ ${truncatedText}`;
 
   private triggerReadinessCheckForGraphLink(cocId: number): void {
     this.auCocReadinessService
-      .checkReadinessForCoc(cocId)
-      .then((results) =>
-        Promise.all(
-          results
-            .filter((r) => r.ready)
-            .map((r) => this.auCocReadinessService.autoGenerateIfReady(r.details.calendererCocId!)),
-        ),
-      )
+      .checkAndAutoGenerateForCoc(cocId)
       .catch((error) => {
         this.logger.error(
           `Readiness check after graph link to CoC ${cocId} failed: ${error.message}`,
@@ -1442,16 +1435,7 @@ ${truncatedText}`;
 
   private triggerReadinessCheckForDeliveryNote(deliveryNoteId: number): void {
     this.auCocReadinessService
-      .checkReadinessForDeliveryNote(deliveryNoteId)
-      .then((result) => {
-        if (result?.ready) {
-          const auCocId = result.details.calendererCocId;
-          if (auCocId) {
-            return this.auCocReadinessService.autoGenerateIfReady(auCocId);
-          }
-        }
-        return undefined;
-      })
+      .checkAndAutoGenerateForDeliveryNote(deliveryNoteId)
       .catch((error) => {
         this.logger.error(
           `Readiness check after DN ${deliveryNoteId} creation failed: ${error.message}`,
