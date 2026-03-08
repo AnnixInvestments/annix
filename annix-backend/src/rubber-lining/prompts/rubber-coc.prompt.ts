@@ -456,6 +456,13 @@ LINE ITEMS:
 - Some invoices have a single line item; others have many
 - Look for columns labeled "Description", "Qty", "Unit Price", "Amount", "Total"
 
+PRODUCT SUMMARY (CRITICAL for Impilo Industries invoices):
+- Below or after the line items table, there is often a free-text summary line describing the actual product
+- Examples: "2 rolls Steam cure 40 Black 6x1200x12", "3 rolls Autoclave cure 38 Red 8x1200x12.5"
+- This line contains: number of rolls, curing method (Steam/Autoclave), Shore hardness, colour, and dimensions (thickness x width x length)
+- Extract this ENTIRE line as "productSummary" - it is MORE IMPORTANT than the line item descriptions for identifying the product
+- Also look for a delivery note reference (e.g., "DN08516") near this summary
+
 TOTALS:
 - subtotal: The sum before VAT (excl VAT)
 - vatAmount: The VAT amount (typically 15% in South Africa)
@@ -466,6 +473,9 @@ Return a JSON object with this structure:
   "invoiceNumber": string or null,
   "invoiceDate": string or null (ISO format YYYY-MM-DD),
   "companyName": string or null (the supplier/vendor issuing the invoice),
+  "productSummary": string or null (e.g., "2 rolls Steam cure 40 Black 6x1200x12" - the free-text product description line below the line items table),
+  "deliveryNoteRef": string or null (e.g., "DN08516" - the delivery note reference if present),
+  "orderNumber": string or null (the Order No from the document header),
   "lineItems": [
     {
       "description": string,
@@ -484,6 +494,7 @@ Guidelines:
 - Extract ALL line items - do not skip any
 - Amounts should be numeric values (not strings)
 - If a value is unclear or missing, use null
+- CRITICAL: Always extract the productSummary line - it describes the rubber rolls (curing method, hardness, colour, dimensions)
 - Return ONLY the JSON object, no additional text`;
 
 export function taxInvoiceExtractionPrompt(pdfText: string): string {

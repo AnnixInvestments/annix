@@ -527,13 +527,37 @@ export class RubberAuCocService {
 
     if (coc.sourceDeliveryNoteId || extractedRolls.length > 0) {
       let supplierCoc: RubberSupplierCoc | null = null;
+      let sourceDeliveryNote: RubberDeliveryNote | null = null;
 
       if (coc.sourceDeliveryNoteId) {
-        const deliveryNote = await this.deliveryNoteRepository.findOne({
+        sourceDeliveryNote = await this.deliveryNoteRepository.findOne({
           where: { id: coc.sourceDeliveryNoteId },
           relations: ["linkedCoc"],
         });
-        supplierCoc = deliveryNote?.linkedCoc || null;
+        supplierCoc = sourceDeliveryNote?.linkedCoc || null;
+      }
+
+      if (!supplierCoc && sourceDeliveryNote) {
+        const siblingDn = await this.deliveryNoteRepository
+          .createQueryBuilder("dn")
+          .leftJoinAndSelect("dn.linkedCoc", "coc")
+          .where("dn.linked_coc_id IS NOT NULL")
+          .andWhere("dn.id != :id", { id: sourceDeliveryNote.id })
+          .andWhere("dn.supplier_company_id = :supplierId", {
+            supplierId: sourceDeliveryNote.supplierCompanyId,
+          })
+          .andWhere("dn.customer_reference = :custRef", {
+            custRef: sourceDeliveryNote.customerReference,
+          })
+          .orderBy("dn.created_at", "DESC")
+          .getOne();
+
+        if (siblingDn?.linkedCoc) {
+          supplierCoc = siblingDn.linkedCoc;
+          this.logger.log(
+            `Found supplier CoC ${supplierCoc.id} via sibling DN ${siblingDn.id} for AU CoC ${coc.cocNumber}`,
+          );
+        }
       }
 
       if (!supplierCoc && extractedRolls.length > 0) {

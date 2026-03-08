@@ -218,16 +218,30 @@ export class RubberTaxInvoiceService {
     numberOfRolls: number | null;
     costPerUnit: number | null;
   } {
-    if (!data?.lineItems || data.lineItems.length === 0) {
+    if (!data) {
       return { productDescription: null, numberOfRolls: null, costPerUnit: null };
     }
 
-    const rollItem = data.lineItems.find(
-      (item) =>
-        item.description.toLowerCase().includes("roll") ||
-        item.description.toLowerCase().includes("calender"),
-    );
-    const mainItem = rollItem || data.lineItems[0];
+    if (data.productSummary) {
+      const rollMatch = data.productSummary.match(/(\d+)\s*rolls?/i);
+      const numberOfRolls = rollMatch ? Number(rollMatch[1]) : null;
+
+      const pricedItem = data.lineItems.find((item) => (item.amount ?? 0) > 0);
+      const costPerUnit = pricedItem?.unitPrice ?? null;
+
+      return {
+        productDescription: data.productSummary,
+        numberOfRolls,
+        costPerUnit,
+      };
+    }
+
+    if (!data.lineItems || data.lineItems.length === 0) {
+      return { productDescription: null, numberOfRolls: null, costPerUnit: null };
+    }
+
+    const pricedItem = data.lineItems.find((item) => (item.amount ?? 0) > 0);
+    const mainItem = pricedItem || data.lineItems[0];
 
     const rollMatch = data.lineItems
       .map((item) => item.description)
@@ -236,7 +250,7 @@ export class RubberTaxInvoiceService {
 
     return {
       productDescription: mainItem.description,
-      numberOfRolls: rollMatch ? Number(rollMatch[1]) : (rollItem?.quantity ?? null),
+      numberOfRolls: rollMatch ? Number(rollMatch[1]) : null,
       costPerUnit: mainItem.unitPrice,
     };
   }
