@@ -1,6 +1,6 @@
 import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
-import type { TestDataSummary } from "../entities/rubber-au-coc-item.entity";
 import { AuCocStatus } from "../entities/rubber-au-coc.entity";
+import type { TestDataSummary } from "../entities/rubber-au-coc-item.entity";
 import { BatchPassFailStatus } from "../entities/rubber-compound-batch.entity";
 import {
   DeliveryNoteStatus,

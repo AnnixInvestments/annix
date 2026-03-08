@@ -671,9 +671,7 @@ export default function SupplierCocsPage() {
                           </td>
                         )}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {coc.productionDate
-                            ? formatDateZA(coc.productionDate)
-                            : "-"}
+                          {coc.productionDate ? formatDateZA(coc.productionDate) : "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Link

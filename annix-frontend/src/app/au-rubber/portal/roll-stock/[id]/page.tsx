@@ -220,9 +220,7 @@ export default function RollStockDetailPage() {
             )}
             <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formatDateTimeZA(roll.createdAt)}
-              </dd>
+              <dd className="mt-1 text-sm text-gray-900">{formatDateTimeZA(roll.createdAt)}</dd>
             </div>
             {roll.notes && (
               <div className="col-span-2">

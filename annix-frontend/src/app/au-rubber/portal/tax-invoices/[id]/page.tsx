@@ -241,9 +241,7 @@ export default function TaxInvoiceDetailPage() {
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formatDateTimeZA(invoice.createdAt)}
-              </dd>
+              <dd className="mt-1 text-sm text-gray-900">{formatDateTimeZA(invoice.createdAt)}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Exported to Sage</dt>

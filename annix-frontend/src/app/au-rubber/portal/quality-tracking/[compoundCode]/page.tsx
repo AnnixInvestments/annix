@@ -13,7 +13,6 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
-import { formatDateZA } from "@/app/lib/datetime";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -23,6 +22,7 @@ import {
   type QualityConfigDto,
   type TrendDirection,
 } from "@/app/lib/api/auRubberApi";
+import { formatDateZA } from "@/app/lib/datetime";
 
 type ViewMode = "table" | "chart";
 

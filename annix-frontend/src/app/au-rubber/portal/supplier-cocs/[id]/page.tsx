@@ -267,9 +267,7 @@ export default function SupplierCocDetailPage() {
             )}
             <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {formatDateTimeZA(coc.createdAt)}
-              </dd>
+              <dd className="mt-1 text-sm text-gray-900">{formatDateTimeZA(coc.createdAt)}</dd>
             </div>
             {coc.approvedAt && (
               <div>

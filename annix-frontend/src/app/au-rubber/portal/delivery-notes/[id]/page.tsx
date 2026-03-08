@@ -521,9 +521,7 @@ export default function DeliveryNoteDetailPage() {
           </div>
           <div>
             <dt className="text-sm font-medium text-gray-500">Created</dt>
-            <dd className="mt-1 text-sm text-gray-900">
-              {formatDateTimeZA(note.createdAt)}
-            </dd>
+            <dd className="mt-1 text-sm text-gray-900">{formatDateTimeZA(note.createdAt)}</dd>
           </div>
         </dl>
         {note.linkedCocId && (
