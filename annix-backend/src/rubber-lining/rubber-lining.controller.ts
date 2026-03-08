@@ -1701,13 +1701,22 @@ Formula: totalPrice = totalKg × salePricePerKg
           })),
       );
 
-      const firstDn = customerResult.deliveryNotes[0];
+      const currentDnNumber = note.deliveryNoteNumber;
+      const matchingDn = customerResult.deliveryNotes.find(
+        (dn) => dn.deliveryNoteNumber === currentDnNumber,
+      );
+      const dnMetadata = matchingDn || customerResult.deliveryNotes[0];
+
+      const filteredRolls = currentDnNumber
+        ? allRolls.filter((roll) => roll.deliveryNoteNumber === currentDnNumber)
+        : allRolls;
+
       extractedData = {
-        deliveryNoteNumber: firstDn?.deliveryNoteNumber,
-        deliveryDate: firstDn?.deliveryDate,
-        customerName: firstDn?.customerName,
-        customerReference: firstDn?.customerReference,
-        rolls: allRolls,
+        deliveryNoteNumber: dnMetadata?.deliveryNoteNumber,
+        deliveryDate: dnMetadata?.deliveryDate,
+        customerName: dnMetadata?.customerName,
+        customerReference: dnMetadata?.customerReference,
+        rolls: filteredRolls.length > 0 ? filteredRolls : allRolls,
       };
     } else {
       let pdfText = "";
