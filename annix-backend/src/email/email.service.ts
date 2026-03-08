@@ -11,6 +11,7 @@ export interface EmailAttachment {
 
 export interface EmailOptions {
   to: string;
+  cc?: string;
   subject: string;
   html: string;
   text?: string;
@@ -95,6 +96,7 @@ export class EmailService {
       await this.transporter.sendMail({
         from,
         to: options.to,
+        ...(options.cc ? { cc: options.cc } : {}),
         replyTo,
         subject: options.subject,
         html: options.html,

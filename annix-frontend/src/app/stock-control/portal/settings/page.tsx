@@ -199,6 +199,8 @@ export default function StockControlSettingsPage() {
   const [smtpError, setSmtpError] = useState("");
   const [smtpSuccess, setSmtpSuccess] = useState("");
   const [smtpExpanded, setSmtpExpanded] = useState(false);
+  const [notificationEmails, setNotificationEmails] = useState<string[]>([]);
+  const [newNotificationEmail, setNewNotificationEmail] = useState("");
 
   const loadTeamData = useCallback(async () => {
     setTeamLoading(true);
@@ -250,7 +252,8 @@ export default function StockControlSettingsPage() {
       setSmtpFromEmail(config.smtpFromEmail ?? "");
       setSmtpPassSet(config.smtpPassSet);
       setSmtpPass("");
-      if (config.smtpHost) {
+      setNotificationEmails(config.notificationEmails ?? []);
+      if (config.smtpHost || config.notificationEmails?.length > 0) {
         setSmtpExpanded(true);
       }
     } catch {
@@ -601,6 +604,7 @@ export default function StockControlSettingsPage() {
         smtpPass: smtpPass || null,
         smtpFromName: smtpFromName.trim() || null,
         smtpFromEmail: smtpFromEmail.trim() || null,
+        notificationEmails,
       });
       setSmtpSuccess("SMTP configuration saved.");
       if (smtpPass) {
@@ -640,6 +644,7 @@ export default function StockControlSettingsPage() {
         smtpPass: null,
         smtpFromName: null,
         smtpFromEmail: null,
+        notificationEmails: [],
       });
       setSmtpHost("");
       setSmtpPort("");
@@ -648,6 +653,8 @@ export default function StockControlSettingsPage() {
       setSmtpFromName("");
       setSmtpFromEmail("");
       setSmtpPassSet(false);
+      setNotificationEmails([]);
+      setNewNotificationEmail("");
       setSmtpSuccess("SMTP configuration cleared. Emails will use the global sender.");
     } catch (e) {
       setSmtpError(e instanceof Error ? e.message : "Failed to clear SMTP configuration");
@@ -1036,6 +1043,9 @@ export default function StockControlSettingsPage() {
         {!smtpExpanded && (
           <p className="mt-1 text-sm text-gray-500">
             {smtpHost ? `Sending via ${smtpHost}` : "Using default Annix email sender"}
+            {notificationEmails.length > 0
+              ? ` · ${notificationEmails.length} notification recipient${notificationEmails.length === 1 ? "" : "s"}`
+              : ""}
           </p>
         )}
         {smtpExpanded && (
@@ -1143,6 +1153,87 @@ export default function StockControlSettingsPage() {
                 />
               </div>
             </div>
+            <div className="mt-6 border-t border-gray-200 pt-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Notification Recipients</h3>
+              <p className="text-xs text-gray-500 mb-3">
+                These email addresses will be CC&apos;d on all outgoing emails from this company.
+              </p>
+              {notificationEmails.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {notificationEmails.map((email) => (
+                    <span
+                      key={email}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm bg-teal-50 text-teal-700 border border-teal-200"
+                    >
+                      {email}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNotificationEmails(notificationEmails.filter((e) => e !== email));
+                          setSmtpSuccess("");
+                        }}
+                        className="ml-1 text-teal-400 hover:text-red-500 transition-colors"
+                      >
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={newNotificationEmail}
+                  onChange={(e) => setNewNotificationEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const trimmed = newNotificationEmail.trim().toLowerCase();
+                      if (trimmed?.includes("@") && !notificationEmails.includes(trimmed)) {
+                        setNotificationEmails([...notificationEmails, trimmed]);
+                        setNewNotificationEmail("");
+                        setSmtpSuccess("");
+                      }
+                    }
+                  }}
+                  placeholder="email@example.com"
+                  className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const trimmed = newNotificationEmail.trim().toLowerCase();
+                    if (trimmed?.includes("@") && !notificationEmails.includes(trimmed)) {
+                      setNotificationEmails([...notificationEmails, trimmed]);
+                      setNewNotificationEmail("");
+                      setSmtpSuccess("");
+                    }
+                  }}
+                  disabled={!newNotificationEmail.trim() || !newNotificationEmail.includes("@")}
+                  className="px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              {notificationEmails.length > 0 && (
+                <p className="mt-2 text-xs text-gray-400 italic">
+                  Click &quot;Save&quot; below to persist changes.
+                </p>
+              )}
+            </div>
+
             {smtpError && <p className="mt-4 text-sm text-red-600">{smtpError}</p>}
             {smtpSuccess && <p className="mt-4 text-sm text-green-600">{smtpSuccess}</p>}
             <div className="mt-4 flex gap-3">

@@ -82,6 +82,9 @@ export class StockControlCompany {
   @Column({ name: "smtp_from_email", type: "varchar", length: 255, nullable: true })
   smtpFromEmail: string | null;
 
+  @Column({ name: "notification_emails", type: "jsonb", default: "[]" })
+  notificationEmails: string[];
+
   @Column({ name: "piping_loss_factor_pct", type: "int", default: 45 })
   pipingLossFactorPct: number;
 

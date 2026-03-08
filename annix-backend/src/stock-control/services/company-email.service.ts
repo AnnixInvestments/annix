@@ -14,6 +14,7 @@ export interface SmtpConfigDto {
   smtpPass: string | null;
   smtpFromName: string | null;
   smtpFromEmail: string | null;
+  notificationEmails?: string[];
 }
 
 export interface SmtpConfigResponse {
@@ -23,6 +24,7 @@ export interface SmtpConfigResponse {
   smtpPassSet: boolean;
   smtpFromName: string | null;
   smtpFromEmail: string | null;
+  notificationEmails: string[];
 }
 
 @Injectable()
@@ -45,7 +47,14 @@ export class CompanyEmailService {
       !company.smtpUser ||
       !company.smtpPassEncrypted
     ) {
-      return this.emailService.sendEmail(options);
+      const ccRecipients = (company?.notificationEmails ?? []).filter(
+        (email) => email !== options.to,
+      );
+      const optionsWithCc =
+        ccRecipients.length > 0
+          ? { ...options, cc: ccRecipients.join(", ") }
+          : options;
+      return this.emailService.sendEmail(optionsWithCc);
     }
 
     const encryptionKey = this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY");
@@ -73,9 +82,14 @@ export class CompanyEmailService {
       const domain = fromEmail.split("@")[1] || "annix.co.za";
       const messageId = `<${Date.now()}.${Math.random().toString(36).substring(2)}@${domain}>`;
 
+      const ccRecipients = (company.notificationEmails ?? []).filter(
+        (email) => email !== options.to,
+      );
+
       await transporter.sendMail({
         from,
         to: options.to,
+        ...(ccRecipients.length > 0 ? { cc: ccRecipients.join(", ") } : {}),
         replyTo: options.replyTo || fromEmail,
         subject: options.subject,
         html: options.html,
@@ -106,6 +120,7 @@ export class CompanyEmailService {
       smtpPassSet: company?.smtpPassEncrypted !== null && company?.smtpPassEncrypted !== undefined,
       smtpFromName: company?.smtpFromName ?? null,
       smtpFromEmail: company?.smtpFromEmail ?? null,
+      notificationEmails: company?.notificationEmails ?? [],
     };
   }
 
@@ -118,6 +133,9 @@ export class CompanyEmailService {
       smtpUser: dto.smtpUser,
       smtpFromName: dto.smtpFromName,
       smtpFromEmail: dto.smtpFromEmail,
+      ...(dto.notificationEmails !== undefined
+        ? { notificationEmails: dto.notificationEmails }
+        : {}),
     };
 
     if (dto.smtpPass !== null && dto.smtpPass !== undefined && encryptionKey) {

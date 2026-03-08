@@ -69,6 +69,7 @@ export interface SmtpConfigResponse {
   smtpPassSet: boolean;
   smtpFromName: string | null;
   smtpFromEmail: string | null;
+  notificationEmails: string[];
 }
 
 export interface SmtpConfigUpdate {
@@ -78,6 +79,7 @@ export interface SmtpConfigUpdate {
   smtpPass: string | null;
   smtpFromName: string | null;
   smtpFromEmail: string | null;
+  notificationEmails?: string[];
 }
 
 export interface StockControlCompany {
