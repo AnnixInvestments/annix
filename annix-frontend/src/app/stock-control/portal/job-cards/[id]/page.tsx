@@ -1340,7 +1340,9 @@ function RubberAllocationGuard({ jobCard }: { jobCard: JobCard }) {
 export default function JobCardDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, profile } = useStockControlAuth();
+  const authContext = useStockControlAuth();
+  const user = authContext.user;
+  const profile = authContext.profile;
   const jobId = Number(params.id);
 
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
@@ -1789,6 +1791,11 @@ export default function JobCardDetailPage() {
   }
 
   const transitions = STATUS_TRANSITIONS[jobCard.status.toLowerCase()] || [];
+  const canApprove = workflowStatus?.canApprove ?? false;
+  const currentStep = workflowStatus?.currentStep ?? null;
+  const currentStatus = workflowStatus?.currentStatus ?? null;
+  const userRole = user?.role ?? null;
+  const pipingLossPct = profile?.pipingLossFactorPct ?? 45;
 
   return (
     <div className="space-y-6">
@@ -1850,9 +1857,9 @@ export default function JobCardDetailPage() {
               {transition.label}
             </button>
           ))}
-          {workflowStatus?.canApprove && workflowStatus.currentStep && (
+          {canApprove && currentStep && (
             <button
-              onClick={() => openApprovalModal(workflowStatus.currentStep!)}
+              onClick={() => openApprovalModal(currentStep)}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1866,7 +1873,7 @@ export default function JobCardDetailPage() {
               Review &amp; Approve
             </button>
           )}
-          {workflowStatus?.currentStatus === "ready_for_dispatch" && (
+          {currentStatus === "ready_for_dispatch" && (
             <>
               <button
                 onClick={handlePrintSignedPdf}
@@ -1917,24 +1924,21 @@ export default function JobCardDetailPage() {
         </div>
       </div>
 
-      {workflowStatus && workflowStatus.currentStatus !== "draft" && (
+      {workflowStatus && currentStatus !== "draft" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <WorkflowStatus currentStatus={workflowStatus.currentStatus} approvals={approvals} />
+            <WorkflowStatus currentStatus={currentStatus!} approvals={approvals} />
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Workflow Actions</h3>
-            {workflowStatus.canApprove && workflowStatus.currentStep ? (
+            {canApprove && currentStep ? (
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">
                   This job card is awaiting your approval at the{" "}
-                  <span className="font-medium">
-                    {workflowStatus.currentStep.replace(/_/g, " ")}
-                  </span>{" "}
-                  step.
+                  <span className="font-medium">{currentStep.replace(/_/g, " ")}</span> step.
                 </p>
                 <button
-                  onClick={() => openApprovalModal(workflowStatus.currentStep!)}
+                  onClick={() => openApprovalModal(currentStep)}
                   className="w-full px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 font-medium"
                 >
                   Review &amp; Approve
@@ -1942,7 +1946,7 @@ export default function JobCardDetailPage() {
               </div>
             ) : (
               <div className="text-sm text-gray-500">
-                {workflowStatus.currentStatus === "dispatched" ? (
+                {currentStatus === "dispatched" ? (
                   <p className="text-green-600 font-medium">
                     This job card has been fully dispatched.
                   </p>
@@ -2201,7 +2205,7 @@ export default function JobCardDetailPage() {
                   </tbody>
                 </table>
                 <p className="mt-2 text-xs text-gray-400 italic">
-                  Coverage includes {profile?.pipingLossFactorPct ?? 45}% piping loss factor
+                  Coverage includes {pipingLossPct}% piping loss factor
                 </p>
                 {coatingAnalysis.stockAssessment.length > 0 && (
                   <div className="mt-4 pt-3 border-t border-gray-100">
@@ -2914,7 +2918,7 @@ export default function JobCardDetailPage() {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                           Pending Approval
                         </span>
-                        {(user?.role === "manager" || user?.role === "admin") && (
+                        {(userRole === "manager" || userRole === "admin") && (
                           <div className="flex space-x-2">
                             <button
                               onClick={() => handleApproveAllocation(allocation.id)}
