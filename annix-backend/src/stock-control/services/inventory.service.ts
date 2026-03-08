@@ -38,7 +38,13 @@ export class InventoryService {
     const skip = (page - 1) * limit;
 
     if (filters?.search) {
-      return this.searchItems(companyId, filters.search, skip, limit, filters?.belowMinStock === "true");
+      return this.searchItems(
+        companyId,
+        filters.search,
+        skip,
+        limit,
+        filters?.belowMinStock === "true",
+      );
     }
 
     const qb = this.stockItemRepo

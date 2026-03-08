@@ -2029,8 +2029,7 @@ export default function InventoryPage() {
                   <div className="text-center mb-6 print:mb-4">
                     <h1 className="text-2xl font-bold text-gray-900 print:text-xl">Stock List</h1>
                     <p className="text-sm text-gray-500">
-                      Generated on{" "}
-                      {formatDateLongZA(nowISO())}
+                      Generated on {formatDateLongZA(nowISO())}
                     </p>
                   </div>
                   <table className="min-w-full divide-y divide-gray-200 print:text-sm">

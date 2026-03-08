@@ -724,7 +724,9 @@ export class DeliveryService {
     const invoiceNumber =
       analyzedData.invoiceNumber || analyzedData.deliveryNoteNumber || `INV-${nowMillis()}`;
 
-    const invoiceDate = analyzedData.deliveryDate ? fromISO(analyzedData.deliveryDate).toJSDate() : null;
+    const invoiceDate = analyzedData.deliveryDate
+      ? fromISO(analyzedData.deliveryDate).toJSDate()
+      : null;
 
     const invoiceSupplierName = analyzedData.fromCompany?.name || "Unknown Supplier";
 

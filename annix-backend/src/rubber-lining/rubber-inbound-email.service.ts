@@ -263,17 +263,15 @@ export class RubberInboundEmailService {
         }
 
         try {
-          const actualType = await this.classifyDocumentType(cert.pdfText, cert.attachment.filename);
+          const actualType = await this.classifyDocumentType(
+            cert.pdfText,
+            cert.attachment.filename,
+          );
           if (actualType !== "coc") {
             this.logger.log(
               `Rerouting ${cert.attachment.filename} from CoC to ${actualType} (supplier: ${cert.supplierMapping.company.name})`,
             );
-            await this.processNonCocAttachments(
-              [cert.attachment],
-              emailData,
-              actualType,
-              result,
-            );
+            await this.processNonCocAttachments([cert.attachment], emailData, actualType, result);
             continue;
           }
         } catch (error) {
@@ -690,8 +688,19 @@ export class RubberInboundEmailService {
   ): Promise<"coc" | "delivery_note" | "tax_invoice"> {
     const textLower = pdfText.toLowerCase();
 
-    const taxInvoiceKeywords = ["tax invoice", "invoice number", "invoice date", "payment terms", "amount due"];
-    const deliveryNoteKeywords = ["delivery note", "goods received", "dispatch note", "packing slip"];
+    const taxInvoiceKeywords = [
+      "tax invoice",
+      "invoice number",
+      "invoice date",
+      "payment terms",
+      "amount due",
+    ];
+    const deliveryNoteKeywords = [
+      "delivery note",
+      "goods received",
+      "dispatch note",
+      "packing slip",
+    ];
 
     if (taxInvoiceKeywords.some((kw) => textLower.includes(kw))) {
       this.logger.log(`Rule-based classification: tax_invoice (file: ${filename})`);

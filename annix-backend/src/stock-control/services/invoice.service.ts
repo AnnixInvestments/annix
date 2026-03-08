@@ -268,9 +268,7 @@ export class InvoiceService {
         const alreadySuggested = suggestions.some((s) => s.id === dn.id);
         if (alreadySuggested) return false;
 
-        const daysDiff = Math.abs(
-          invoiceDate.diff(fromJSDate(dn.receivedDate), "days").days,
-        );
+        const daysDiff = Math.abs(invoiceDate.diff(fromJSDate(dn.receivedDate), "days").days);
         return daysDiff <= 14;
       });
 

@@ -49,9 +49,7 @@ export default function NotificationsPage() {
     setIsMarkingAll(true);
     try {
       await stockControlApiClient.markAllNotificationsAsRead();
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, readAt: n.readAt || nowISO() })),
-      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, readAt: n.readAt || nowISO() })));
     } catch (error) {
       console.error("Failed to mark all as read:", error);
     } finally {
