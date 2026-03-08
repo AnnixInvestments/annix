@@ -326,7 +326,7 @@ export class SecureDocumentsService {
     results: LocalDocument[],
     depth: number,
   ): Promise<void> {
-    if (depth > 3) return;
+    if (depth > 4) return;
 
     try {
       const entries = await fs.promises.readdir(dir, { withFileTypes: true });
