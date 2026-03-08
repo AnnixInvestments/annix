@@ -122,8 +122,7 @@ export class RubberInboundEmailController {
         .filter((att) => {
           const ext = att.filename?.toLowerCase().split(".").pop() || "";
           return (
-            supportedMimeTypes.includes(att.contentType) ||
-            supportedExtensions.includes(`.${ext}`)
+            supportedMimeTypes.includes(att.contentType) || supportedExtensions.includes(`.${ext}`)
           );
         })
         .map((att) => ({
