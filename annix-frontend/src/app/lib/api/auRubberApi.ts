@@ -782,6 +782,16 @@ export interface RubberAuCocDto {
   approvedByName: string | null;
   notes: string | null;
   createdBy: string | null;
+  readinessStatus: string | null;
+  readinessDetails: {
+    calendererCocId: number | null;
+    compounderCocId: number | null;
+    graphPdfPath: string | null;
+    calendererApproved: boolean;
+    compounderApproved: boolean;
+    missingDocuments: string[];
+    lastCheckedAt: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
   items: RubberAuCocItemDto[];
@@ -2443,6 +2453,27 @@ class AuRubberApiClient {
 
   auCocStatuses(): Promise<{ value: string; label: string }[]> {
     return this.request("/rubber-lining/portal/au-coc-statuses");
+  }
+
+  pendingAuCocs(): Promise<RubberAuCocDto[]> {
+    return this.request("/rubber-lining/portal/au-cocs/pending");
+  }
+
+  auCocReadiness(id: number): Promise<{
+    ready: boolean;
+    readinessStatus: string;
+    calendererCocId: number | null;
+    compounderCocId: number | null;
+    graphPdfPath: string | null;
+    missingDocuments: string[];
+  }> {
+    return this.request(`/rubber-lining/portal/au-cocs/${id}/readiness`);
+  }
+
+  autoGenerateAuCoc(id: number): Promise<{ generated: boolean; auCocId: number; reason: string }> {
+    return this.request(`/rubber-lining/portal/au-cocs/${id}/auto-generate`, {
+      method: "POST",
+    });
   }
 
   async stockLocations(includeInactive = false): Promise<StockLocationDto[]> {
