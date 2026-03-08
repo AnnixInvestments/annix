@@ -83,6 +83,8 @@ export default function SupplierCocsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [reextractingId, setReextractingId] = useState<number | null>(null);
   const [showSageExportModal, setShowSageExportModal] = useState(false);
+  const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
+  const [isBulkApproving, setIsBulkApproving] = useState(false);
 
   const LazySageExportModal = dynamic(() => import("./SageExportModal"), { ssr: false });
 
@@ -377,6 +379,62 @@ export default function SupplierCocsPage() {
     }
   };
 
+  const approvableCocs = filteredCocs.filter(
+    (c) => c.processingStatus === "EXTRACTED" || c.processingStatus === "NEEDS_REVIEW",
+  );
+
+  const toggleApprovalSelection = (id: number) => {
+    setSelectedForApproval((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllApprovalSelection = () => {
+    const pageApprovable = paginatedCocs.filter(
+      (c) => c.processingStatus === "EXTRACTED" || c.processingStatus === "NEEDS_REVIEW",
+    );
+    const allSelected = pageApprovable.every((c) => selectedForApproval.has(c.id));
+    if (allSelected) {
+      setSelectedForApproval((prev) => {
+        const next = new Set(prev);
+        pageApprovable.forEach((c) => next.delete(c.id));
+        return next;
+      });
+    } else {
+      setSelectedForApproval((prev) => {
+        const next = new Set(prev);
+        pageApprovable.forEach((c) => next.add(c.id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedForApproval.size === 0) return;
+    try {
+      setIsBulkApproving(true);
+      const ids = Array.from(selectedForApproval);
+      await ids.reduce(
+        (chain, id) =>
+          chain.then(() => auRubberApiClient.approveSupplierCoc(id).then(() => undefined)),
+        Promise.resolve() as Promise<void>,
+      );
+      showToast(`Approved ${ids.length} CoC${ids.length > 1 ? "s" : ""} successfully`, "success");
+      setSelectedForApproval(new Set());
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to approve CoCs", "error");
+    } finally {
+      setIsBulkApproving(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -404,20 +462,34 @@ export default function SupplierCocsPage() {
             Manage and track supplier CoC documents from compounder and calendarer
           </p>
         </div>
-        <button
-          onClick={() => setShowSageExportModal(true)}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          Export to Sage
-        </button>
+        <div className="flex items-center space-x-3">
+          {selectedForApproval.size > 0 && (
+            <button
+              onClick={handleBulkApprove}
+              disabled={isBulkApproving}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              {isBulkApproving
+                ? "Approving..."
+                : `Approve ${selectedForApproval.size} CoC${selectedForApproval.size > 1 ? "s" : ""}`}
+            </button>
+          )}
+          <button
+            onClick={() => setShowSageExportModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Export to Sage
+          </button>
+        </div>
       </div>
 
       <FileDropZone
@@ -504,6 +576,29 @@ export default function SupplierCocsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                {approvableCocs.length > 0 && (
+                  <th scope="col" className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={
+                        paginatedCocs.filter(
+                          (c) =>
+                            c.processingStatus === "EXTRACTED" ||
+                            c.processingStatus === "NEEDS_REVIEW",
+                        ).length > 0 &&
+                        paginatedCocs
+                          .filter(
+                            (c) =>
+                              c.processingStatus === "EXTRACTED" ||
+                              c.processingStatus === "NEEDS_REVIEW",
+                          )
+                          .every((c) => selectedForApproval.has(c.id))
+                      }
+                      onChange={toggleAllApprovalSelection}
+                      className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                  </th>
+                )}
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -561,6 +656,19 @@ export default function SupplierCocsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedCocs.map((coc) => (
                 <tr key={coc.id} className="hover:bg-gray-50">
+                  {approvableCocs.length > 0 && (
+                    <td className="px-4 py-4 w-10">
+                      {(coc.processingStatus === "EXTRACTED" ||
+                        coc.processingStatus === "NEEDS_REVIEW") && (
+                        <input
+                          type="checkbox"
+                          checked={selectedForApproval.has(coc.id)}
+                          onChange={() => toggleApprovalSelection(coc.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                        />
+                      )}
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
                       href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
