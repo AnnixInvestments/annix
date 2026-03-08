@@ -58,6 +58,7 @@ export default function CustomerDeliveryNotesPage() {
   const [analysisResult, setAnalysisResult] = useState<AnalyzeCustomerDnsResult | null>(null);
   const [analysisFiles, setAnalysisFiles] = useState<File[]>([]);
   const [generatingCocForId, setGeneratingCocForId] = useState<number | null>(null);
+  const [reanalyzingId, setReanalyzingId] = useState<number | null>(null);
 
   const fetchData = async () => {
     try {
@@ -243,6 +244,19 @@ export default function CustomerDeliveryNotesPage() {
       showToast(err instanceof Error ? err.message : "Failed to create delivery note", "error");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleReanalyze = async (noteId: number) => {
+    try {
+      setReanalyzingId(noteId);
+      await auRubberApiClient.extractDeliveryNote(noteId);
+      showToast("Re-analysis complete", "success");
+      await fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to re-analyze delivery note", "error");
+    } finally {
+      setReanalyzingId(null);
     }
   };
 
@@ -579,7 +593,21 @@ export default function CustomerDeliveryNotesPage() {
                       <span className="text-gray-400">Not linked</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                    <button
+                      onClick={() => handleReanalyze(note.id)}
+                      disabled={reanalyzingId === note.id}
+                      className="text-orange-600 hover:text-orange-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {reanalyzingId === note.id ? (
+                        <span className="inline-flex items-center">
+                          <Loader2 className="animate-spin h-3 w-3 mr-1" />
+                          Analyzing...
+                        </span>
+                      ) : (
+                        "Reanalyze"
+                      )}
+                    </button>
                     <Link
                       href={`/au-rubber/portal/delivery-notes/${note.id}`}
                       className="text-blue-600 hover:text-blue-800"
