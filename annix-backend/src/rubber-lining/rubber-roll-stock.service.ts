@@ -375,6 +375,8 @@ export class RubberRollStockService {
           notes: auCocRecord.notes,
           approvedByName: auCocRecord.approvedByName,
           approvedAt: auCocRecord.approvedAt?.toISOString() ?? null,
+          readinessStatus: auCocRecord.readinessStatus ?? null,
+          readinessDetails: auCocRecord.readinessDetails ?? null,
           createdAt: auCocRecord.createdAt.toISOString(),
           updatedAt: auCocRecord.updatedAt.toISOString(),
         };
