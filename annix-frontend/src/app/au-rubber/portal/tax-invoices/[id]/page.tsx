@@ -20,9 +20,17 @@ export default function TaxInvoiceDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
 
   const invoiceId = Number(params.id);
+
+  const isOfficeFile = (path: string): boolean => {
+    const ext = path.split(".").pop()?.toLowerCase() || "";
+    return ["xlsx", "xls", "docx", "doc", "pptx", "ppt"].includes(ext);
+  };
+
+  const officeViewerUrl = (url: string): string =>
+    `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
 
   const fetchData = async () => {
     try {
@@ -32,7 +40,7 @@ export default function TaxInvoiceDetailPage() {
 
       if (data.documentPath) {
         const url = await auRubberApiClient.documentUrl(data.documentPath);
-        setPdfUrl(url);
+        setDocumentUrl(url);
       }
 
       setError(null);
@@ -179,9 +187,9 @@ export default function TaxInvoiceDetailPage() {
             <FileText className="w-5 h-5 text-gray-500" />
             <span className="font-medium text-gray-900">Document</span>
           </div>
-          {pdfUrl && (
+          {documentUrl && (
             <a
-              href={pdfUrl}
+              href={documentUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-orange-600 hover:text-orange-800"
@@ -192,8 +200,14 @@ export default function TaxInvoiceDetailPage() {
           )}
         </div>
         <div className="h-[600px] bg-gray-100">
-          {pdfUrl ? (
-            <iframe src={pdfUrl} className="w-full h-full" title="Tax Invoice Document" />
+          {documentUrl && invoice.documentPath && isOfficeFile(invoice.documentPath) ? (
+            <iframe
+              src={officeViewerUrl(documentUrl)}
+              className="w-full h-full"
+              title="Tax Invoice Document"
+            />
+          ) : documentUrl ? (
+            <iframe src={documentUrl} className="w-full h-full" title="Tax Invoice Document" />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500">
               No document available

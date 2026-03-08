@@ -24,9 +24,22 @@ export default function SupplierCocDetailPage() {
   const [error, setError] = useState<Error | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
 
   const cocId = Number(params.id);
+
+  const documentExtension = (path: string): string => {
+    const ext = path.split(".").pop()?.toLowerCase() || "";
+    return ext;
+  };
+
+  const isOfficeFile = (path: string): boolean => {
+    const ext = documentExtension(path);
+    return ["xlsx", "xls", "docx", "doc", "pptx", "ppt"].includes(ext);
+  };
+
+  const officeViewerUrl = (url: string): string =>
+    `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
 
   const fetchData = async () => {
     try {
@@ -40,7 +53,7 @@ export default function SupplierCocDetailPage() {
 
       if (cocData.documentPath) {
         const url = await auRubberApiClient.documentUrl(cocData.documentPath);
-        setPdfUrl(url);
+        setDocumentUrl(url);
       }
 
       setError(null);
@@ -188,9 +201,9 @@ export default function SupplierCocDetailPage() {
             <FileText className="w-5 h-5 text-gray-500" />
             <span className="font-medium text-gray-900">Document</span>
           </div>
-          {pdfUrl && (
+          {documentUrl && (
             <a
-              href={pdfUrl}
+              href={documentUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-yellow-600 hover:text-yellow-800"
@@ -201,8 +214,14 @@ export default function SupplierCocDetailPage() {
           )}
         </div>
         <div className="h-[600px] bg-gray-100">
-          {pdfUrl ? (
-            <iframe src={pdfUrl} className="w-full h-full" title="CoC Document" />
+          {documentUrl && coc.documentPath && isOfficeFile(coc.documentPath) ? (
+            <iframe
+              src={officeViewerUrl(documentUrl)}
+              className="w-full h-full"
+              title="CoC Document"
+            />
+          ) : documentUrl ? (
+            <iframe src={documentUrl} className="w-full h-full" title="CoC Document" />
           ) : (
             <div className="flex items-center justify-center h-full text-gray-500">
               No document available
