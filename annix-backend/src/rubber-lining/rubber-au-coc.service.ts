@@ -627,6 +627,21 @@ export class RubberAuCocService {
           }
         }
 
+        if (!compounderCoc && supplierCoc.orderNumber) {
+          compounderCoc = await this.supplierCocRepository.findOne({
+            where: {
+              cocType: SupplierCocType.COMPOUNDER,
+              orderNumber: supplierCoc.orderNumber,
+            },
+            order: { id: "DESC" },
+          });
+          if (compounderCoc) {
+            this.logger.log(
+              `Matched compounder CoC ${compounderCoc.id} (${compounderCoc.compoundCode}) by shared order number ${supplierCoc.orderNumber} for calenderer ${supplierCoc.id}`,
+            );
+          }
+        }
+
         if (!compounderCoc && compoundCode && compoundCode !== "Per Supplier CoC") {
           compounderCoc = await this.findCompounderByCompoundCode(compoundCode);
           if (compounderCoc) {
@@ -738,16 +753,20 @@ export class RubberAuCocService {
     if (!match) return null;
 
     const [, baseCode, hardness] = match;
-    const compounderPattern = `AUA${hardness}${baseCode}`;
+    const baseWithoutGrade = baseCode.length > 2 ? baseCode.slice(0, -1) : baseCode;
+    const candidates = [
+      `AUA${hardness}${baseWithoutGrade}`,
+      `AUA${hardness}${baseCode}`,
+    ];
 
     this.logger.log(
-      `Looking for compounder by compound code pattern: ${compounderPattern} (from calenderer ${calendererCompoundCode})`,
+      `Looking for compounder by compound code candidates: ${JSON.stringify(candidates)} (from calenderer ${calendererCompoundCode})`,
     );
 
     const compounderCocs = await this.supplierCocRepository
       .createQueryBuilder("coc")
       .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
-      .andWhere("coc.compound_code = :code", { code: compounderPattern })
+      .andWhere("coc.compound_code IN (:...codes)", { codes: candidates })
       .orderBy("coc.id", "DESC")
       .getMany();
 
