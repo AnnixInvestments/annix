@@ -188,6 +188,8 @@ export default function CustomerTaxInvoicesPage() {
     (currentPage + 1) * ITEMS_PER_PAGE,
   );
 
+  const hasApprovable = paginatedInvoices.some((inv) => inv.status === "EXTRACTED");
+
   useEffect(() => {
     setCurrentPage(0);
   }, [searchQuery, filterStatus]);
@@ -421,7 +423,7 @@ export default function CustomerTaxInvoicesPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                {paginatedInvoices.some((inv) => inv.status === "EXTRACTED") && (
+                {hasApprovable && (
                   <th scope="col" className="px-4 py-3 w-10">
                     <input
                       type="checkbox"
@@ -491,7 +493,7 @@ export default function CustomerTaxInvoicesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedInvoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-gray-50">
-                  {paginatedInvoices.some((i) => i.status === "EXTRACTED") && (
+                  {hasApprovable && (
                     <td className="px-4 py-4 w-10">
                       {inv.status === "EXTRACTED" && (
                         <input
