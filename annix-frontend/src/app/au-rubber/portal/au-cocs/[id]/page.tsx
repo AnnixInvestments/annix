@@ -338,6 +338,79 @@ export default function AuCocDetailPage() {
         </div>
       </div>
 
+      {coc.readinessDetails && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">
+            Document Chain
+            {coc.readinessStatus === "AUTO_GENERATED" && (
+              <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-700">
+                Auto-generated
+              </span>
+            )}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border rounded-lg p-3">
+              <div className="text-xs font-medium text-gray-500 uppercase">Calenderer CoC</div>
+              {coc.readinessDetails.calendererCocId ? (
+                <Link
+                  href={`/au-rubber/portal/supplier-cocs/${coc.readinessDetails.calendererCocId}`}
+                  className="mt-1 text-sm text-yellow-600 hover:text-yellow-800 font-medium"
+                >
+                  CoC #{coc.readinessDetails.calendererCocId}
+                </Link>
+              ) : (
+                <div className="mt-1 text-sm text-gray-400">Not linked</div>
+              )}
+              <div className="mt-1">
+                {coc.readinessDetails.calendererApproved ? (
+                  <span className="text-xs text-green-600">Approved</span>
+                ) : (
+                  <span className="text-xs text-orange-500">Pending</span>
+                )}
+              </div>
+            </div>
+            <div className="border rounded-lg p-3">
+              <div className="text-xs font-medium text-gray-500 uppercase">Compounder CoC</div>
+              {coc.readinessDetails.compounderCocId ? (
+                <Link
+                  href={`/au-rubber/portal/supplier-cocs/${coc.readinessDetails.compounderCocId}`}
+                  className="mt-1 text-sm text-yellow-600 hover:text-yellow-800 font-medium"
+                >
+                  CoC #{coc.readinessDetails.compounderCocId}
+                </Link>
+              ) : (
+                <div className="mt-1 text-sm text-gray-400">Not linked</div>
+              )}
+              <div className="mt-1">
+                {coc.readinessDetails.compounderApproved ? (
+                  <span className="text-xs text-green-600">Approved</span>
+                ) : (
+                  <span className="text-xs text-orange-500">Pending</span>
+                )}
+              </div>
+            </div>
+            <div className="border rounded-lg p-3">
+              <div className="text-xs font-medium text-gray-500 uppercase">Rheometer Graph</div>
+              {coc.readinessDetails.graphPdfPath ? (
+                <div className="mt-1 text-sm text-green-600">Available</div>
+              ) : (
+                <div className="mt-1 text-sm text-orange-500">Missing</div>
+              )}
+            </div>
+          </div>
+          {coc.readinessDetails.missingDocuments.length > 0 && (
+            <div className="mt-3 text-sm text-orange-600">
+              Missing: {coc.readinessDetails.missingDocuments.join(", ")}
+            </div>
+          )}
+          {coc.readinessDetails.lastCheckedAt && (
+            <div className="mt-2 text-xs text-gray-400">
+              Last checked: {formatDateTimeZA(coc.readinessDetails.lastCheckedAt)}
+            </div>
+          )}
+        </div>
+      )}
+
       {coc.extractedRollData &&
         coc.extractedRollData.length > 0 &&
         (!coc.items || coc.items.length === 0) && (

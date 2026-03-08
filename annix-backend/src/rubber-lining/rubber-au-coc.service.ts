@@ -323,7 +323,7 @@ export class RubberAuCocService {
       coc.generatedPdfPath = `au-cocs/${filename}`;
       await this.auCocRepository.save(coc);
 
-      this.logger.log(`PDF generated for AU CoC ${coc.cocNumber}`);
+      this.logger.log(`PDF generated and uploaded for AU CoC ${coc.cocNumber}`);
       return { buffer, filename };
     } catch (error) {
       this.logger.error(`Error generating PDF for AU CoC ${id}:`, error);
@@ -382,11 +382,11 @@ export class RubberAuCocService {
     if (!coc) {
       throw new BadRequestException("AU CoC not found");
     }
-    if (!coc.generatedPdfPath) {
+    if (coc.status === AuCocStatus.DRAFT) {
       throw new BadRequestException("PDF must be generated before sending");
     }
 
-    const pdfBuffer = await this.storageService.download(coc.generatedPdfPath);
+    const { buffer: pdfBuffer } = await this.pdfBuffer(id);
     const customerName = coc.customerCompany?.name || "Customer";
 
     await this.emailService.sendEmail({
