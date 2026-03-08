@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, RefreshCw } from "lucide-react";
+import { CheckCircle, Download, FileText, RefreshCw } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -20,6 +20,7 @@ export default function TaxInvoiceDetailPage() {
   const [invoice, setInvoice] = useState<RubberTaxInvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
 
@@ -69,6 +70,20 @@ export default function TaxInvoiceDetailPage() {
       showToast(message, "error");
     } finally {
       setIsExtracting(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    try {
+      setIsApproving(true);
+      await auRubberApiClient.updateTaxInvoice(invoiceId, { status: "APPROVED" });
+      await fetchData();
+      showToast("Invoice approved successfully", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Approval failed";
+      showToast(message, "error");
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -168,18 +183,30 @@ export default function TaxInvoiceDetailPage() {
             )}
           </div>
         </div>
-        <button
-          onClick={handleExtract}
-          disabled={isExtracting || !invoice.documentPath}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${isExtracting ? "animate-spin" : ""}`} />
-          {isExtracting
-            ? "Extracting..."
-            : invoice.status === "PENDING"
-              ? "Extract Data"
-              : "Re-extract"}
-        </button>
+        <div className="flex items-center gap-2">
+          {invoice.status === "EXTRACTED" && (
+            <button
+              onClick={handleApprove}
+              disabled={isApproving}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <CheckCircle className={`w-4 h-4 mr-2 ${isApproving ? "animate-pulse" : ""}`} />
+              {isApproving ? "Approving..." : "Approve"}
+            </button>
+          )}
+          <button
+            onClick={handleExtract}
+            disabled={isExtracting || !invoice.documentPath}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isExtracting ? "animate-spin" : ""}`} />
+            {isExtracting
+              ? "Extracting..."
+              : invoice.status === "PENDING"
+                ? "Extract Data"
+                : "Re-extract"}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden mb-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, Trash2, X } from "lucide-react";
+import { CheckCircle, Download, FileText, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -53,6 +53,8 @@ export default function SupplierTaxInvoicesPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [showSageExportModal, setShowSageExportModal] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
+  const [isBulkApproving, setIsBulkApproving] = useState(false);
 
   const handleDelete = async (id: number, invoiceNumber: string) => {
     if (!window.confirm(`Delete tax invoice ${invoiceNumber}? This cannot be undone.`)) return;
@@ -65,6 +67,61 @@ export default function SupplierTaxInvoicesPage() {
       showToast(err instanceof Error ? err.message : "Failed to delete tax invoice", "error");
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const toggleApprovalSelection = (id: number) => {
+    setSelectedForApproval((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllApprovalSelection = () => {
+    const pageApprovable = paginatedInvoices.filter((inv) => inv.status === "EXTRACTED");
+    const allSelected = pageApprovable.every((inv) => selectedForApproval.has(inv.id));
+    if (allSelected) {
+      setSelectedForApproval((prev) => {
+        const next = new Set(prev);
+        pageApprovable.forEach((inv) => next.delete(inv.id));
+        return next;
+      });
+    } else {
+      setSelectedForApproval((prev) => {
+        const next = new Set(prev);
+        pageApprovable.forEach((inv) => next.add(inv.id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedForApproval.size === 0) return;
+    try {
+      setIsBulkApproving(true);
+      const ids = Array.from(selectedForApproval);
+      await ids.reduce(
+        (chain, id) =>
+          chain.then(() =>
+            auRubberApiClient.updateTaxInvoice(id, { status: "APPROVED" }).then(() => undefined),
+          ),
+        Promise.resolve() as Promise<void>,
+      );
+      showToast(
+        `Approved ${ids.length} invoice${ids.length > 1 ? "s" : ""} successfully`,
+        "success",
+      );
+      setSelectedForApproval(new Set());
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to approve invoices", "error");
+    } finally {
+      setIsBulkApproving(false);
     }
   };
 
@@ -260,6 +317,18 @@ export default function SupplierTaxInvoicesPage() {
           <p className="mt-1 text-sm text-gray-600">Track tax invoices received from suppliers</p>
         </div>
         <div className="flex items-center gap-2">
+          {selectedForApproval.size > 0 && (
+            <button
+              onClick={handleBulkApprove}
+              disabled={isBulkApproving}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              {isBulkApproving
+                ? "Approving..."
+                : `Approve ${selectedForApproval.size} invoice${selectedForApproval.size > 1 ? "s" : ""}`}
+            </button>
+          )}
           <button
             onClick={() => setShowSageExportModal(true)}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -380,6 +449,22 @@ export default function SupplierTaxInvoicesPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  {paginatedInvoices.some((inv) => inv.status === "EXTRACTED") && (
+                    <th scope="col" className="px-4 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={
+                          paginatedInvoices.filter((inv) => inv.status === "EXTRACTED").length >
+                            0 &&
+                          paginatedInvoices
+                            .filter((inv) => inv.status === "EXTRACTED")
+                            .every((inv) => selectedForApproval.has(inv.id))
+                        }
+                        onChange={toggleAllApprovalSelection}
+                        className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      />
+                    </th>
+                  )}
                   <th
                     scope="col"
                     className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -456,6 +541,18 @@ export default function SupplierTaxInvoicesPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedInvoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-gray-50">
+                    {paginatedInvoices.some((i) => i.status === "EXTRACTED") && (
+                      <td className="px-4 py-4 w-10">
+                        {inv.status === "EXTRACTED" && (
+                          <input
+                            type="checkbox"
+                            checked={selectedForApproval.has(inv.id)}
+                            onChange={() => toggleApprovalSelection(inv.id)}
+                            className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          />
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-4 whitespace-nowrap">
                       <Link
                         href={`/au-rubber/portal/tax-invoices/${inv.id}`}
