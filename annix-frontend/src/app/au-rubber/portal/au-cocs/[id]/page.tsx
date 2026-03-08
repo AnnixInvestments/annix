@@ -251,7 +251,9 @@ export default function AuCocDetailPage() {
                 <dt className="text-sm font-medium text-gray-500">Sent</dt>
                 <dd className="mt-1 text-sm text-gray-900">
                   {new Date(coc.sentAt).toLocaleString()}
-                  {coc.sentTo && <span className="text-gray-500 ml-1">to {coc.sentTo}</span>}
+                  {coc.sentToEmail && (
+                    <span className="text-gray-500 ml-1">to {coc.sentToEmail}</span>
+                  )}
                 </dd>
               </div>
             )}
