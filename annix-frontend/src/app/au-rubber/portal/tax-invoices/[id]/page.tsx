@@ -255,74 +255,66 @@ export default function TaxInvoiceDetailPage() {
         </div>
 
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Extracted Data</h2>
-          {invoice.extractedData && invoice.extractedData.lineItems.length > 0 ? (
-            <div className="overflow-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Description
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                      Qty
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                      Unit Price
-                    </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {invoice.extractedData.lineItems.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="px-3 py-2 text-gray-900">{item.description}</td>
-                      <td className="px-3 py-2 text-gray-500 text-right">{item.quantity ?? "-"}</td>
-                      <td className="px-3 py-2 text-gray-500 text-right">
-                        {formatCurrency(item.unitPrice)}
-                      </td>
-                      <td className="px-3 py-2 text-gray-900 text-right">
-                        {formatCurrency(item.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-gray-50">
-                  {invoice.extractedData.subtotal != null && (
-                    <tr>
-                      <td colSpan={3} className="px-3 py-2 text-right font-medium text-gray-700">
-                        Subtotal
-                      </td>
-                      <td className="px-3 py-2 text-right font-medium text-gray-900">
-                        {formatCurrency(invoice.extractedData.subtotal)}
-                      </td>
-                    </tr>
-                  )}
-                  {invoice.extractedData.vatAmount != null && (
-                    <tr>
-                      <td colSpan={3} className="px-3 py-2 text-right font-medium text-gray-700">
-                        VAT
-                      </td>
-                      <td className="px-3 py-2 text-right font-medium text-gray-900">
-                        {formatCurrency(invoice.extractedData.vatAmount)}
-                      </td>
-                    </tr>
-                  )}
-                  {invoice.extractedData.totalAmount != null && (
-                    <tr>
-                      <td colSpan={3} className="px-3 py-2 text-right font-semibold text-gray-900">
-                        Total
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold text-gray-900">
-                        {formatCurrency(invoice.extractedData.totalAmount)}
-                      </td>
-                    </tr>
-                  )}
-                </tfoot>
-              </table>
-            </div>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Invoice Summary</h2>
+          {invoice.extractedData ? (
+            <dl className="space-y-4">
+              {invoice.productDescription && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Product Description</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{invoice.productDescription}</dd>
+                </div>
+              )}
+              {invoice.extractedData.deliveryNoteRef && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Delivery Note Ref</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {invoice.extractedData.deliveryNoteRef}
+                  </dd>
+                </div>
+              )}
+              {invoice.extractedData.orderNumber && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Order Number</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {invoice.extractedData.orderNumber}
+                  </dd>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Number of Rolls</dt>
+                  <dd className="mt-1 text-lg font-semibold text-gray-900">
+                    {invoice.numberOfRolls ?? "-"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Cost per Roll</dt>
+                  <dd className="mt-1 text-lg font-semibold text-gray-900">
+                    {formatCurrency(invoice.costPerUnit)}
+                  </dd>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Subtotal (ex VAT)</dt>
+                  <dd className="mt-1 text-sm font-medium text-gray-900">
+                    {formatCurrency(invoice.extractedData.subtotal)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">VAT</dt>
+                  <dd className="mt-1 text-sm font-medium text-gray-900">
+                    {formatCurrency(invoice.extractedData.vatAmount)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Total (incl VAT)</dt>
+                  <dd className="mt-1 text-sm font-semibold text-gray-900">
+                    {formatCurrency(invoice.extractedData.totalAmount)}
+                  </dd>
+                </div>
+              </div>
+            </dl>
           ) : (
             <p className="text-sm text-gray-500">No data extracted yet</p>
           )}
