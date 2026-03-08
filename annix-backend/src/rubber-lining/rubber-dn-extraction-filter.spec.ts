@@ -61,7 +61,13 @@ describe("Delivery Note Extraction Roll Filtering", () => {
       customerName: "Polymer Lining Systems (Pty) Ltd",
       customerReference: "PL7776/PO6719",
       lineItems: [
-        { rollNumber: "154-41210", thicknessMm: 20, widthMm: 950, lengthM: 12.5, actualWeightKg: 258 },
+        {
+          rollNumber: "154-41210",
+          thicknessMm: 20,
+          widthMm: 950,
+          lengthM: 12.5,
+          actualWeightKg: 258,
+        },
       ],
     },
     {
@@ -70,7 +76,13 @@ describe("Delivery Note Extraction Roll Filtering", () => {
       customerName: "Polymer Lining Systems (Pty) Ltd",
       customerReference: "PL7776/PO6719",
       lineItems: [
-        { rollNumber: "155-41213", thicknessMm: 8, widthMm: 950, lengthM: 12.5, actualWeightKg: 102 },
+        {
+          rollNumber: "155-41213",
+          thicknessMm: 8,
+          widthMm: 950,
+          lengthM: 12.5,
+          actualWeightKg: 102,
+        },
       ],
     },
     {
@@ -88,7 +100,13 @@ describe("Delivery Note Extraction Roll Filtering", () => {
       customerName: "Polymer Lining Systems (Pty) Ltd",
       customerReference: "PL7776/PO6719",
       lineItems: [
-        { rollNumber: "162-41212", thicknessMm: 8, widthMm: 1200, lengthM: 12.5, actualWeightKg: 132 },
+        {
+          rollNumber: "162-41212",
+          thicknessMm: 8,
+          widthMm: 1200,
+          lengthM: 12.5,
+          actualWeightKg: 132,
+        },
       ],
     },
   ];
