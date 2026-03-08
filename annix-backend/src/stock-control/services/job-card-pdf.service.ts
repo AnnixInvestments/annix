@@ -342,7 +342,12 @@ export class JobCardPdfService {
 
   private async prepareRubberAllocation(jobCard: JobCard): Promise<{
     plan: CuttingPlan;
-    stockRolls: { thicknessMm: number; widthMm: number; lengthM: number; quantityAvailable: number }[];
+    stockRolls: {
+      thicknessMm: number;
+      widthMm: number;
+      lengthM: number;
+      quantityAvailable: number;
+    }[];
     isRubberJob: boolean;
     totalM2: number;
   }> {
@@ -455,7 +460,12 @@ export class JobCardPdfService {
     jobCard: JobCard,
     rubberData: {
       plan: CuttingPlan;
-      stockRolls: { thicknessMm: number; widthMm: number; lengthM: number; quantityAvailable: number }[];
+      stockRolls: {
+        thicknessMm: number;
+        widthMm: number;
+        lengthM: number;
+        quantityAvailable: number;
+      }[];
       isRubberJob: boolean;
       totalM2: number;
     },
