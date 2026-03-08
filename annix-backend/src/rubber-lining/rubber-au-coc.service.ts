@@ -754,10 +754,7 @@ export class RubberAuCocService {
 
     const [, baseCode, hardness] = match;
     const baseWithoutGrade = baseCode.length > 2 ? baseCode.slice(0, -1) : baseCode;
-    const candidates = [
-      `AUA${hardness}${baseWithoutGrade}`,
-      `AUA${hardness}${baseCode}`,
-    ];
+    const candidates = [`AUA${hardness}${baseWithoutGrade}`, `AUA${hardness}${baseCode}`];
 
     this.logger.log(
       `Looking for compounder by compound code candidates: ${JSON.stringify(candidates)} (from calenderer ${calendererCompoundCode})`,
