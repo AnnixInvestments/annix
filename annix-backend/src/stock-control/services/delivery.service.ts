@@ -121,8 +121,10 @@ export class DeliveryService {
     if (note.photoUrl) {
       try {
         note.photoUrl = await this.storageService.getPresignedUrl(note.photoUrl, 3600);
-      } catch {
-        // Keep original path if presigned URL generation fails
+      } catch (error) {
+        this.logger.warn(
+          `Failed to generate presigned URL for ${note.photoUrl}: ${error?.message ?? error}`,
+        );
       }
     }
     return note;

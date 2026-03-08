@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
+import { now } from "../../lib/datetime";
 import { JobCard } from "../entities/job-card.entity";
 import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
@@ -453,11 +454,14 @@ export class WorkflowNotificationService {
   }
 
   async markAsRead(notificationId: number, userId: number): Promise<void> {
-    await this.notificationRepo.update({ id: notificationId, userId }, { readAt: new Date() });
+    await this.notificationRepo.update(
+      { id: notificationId, userId },
+      { readAt: now().toJSDate() },
+    );
   }
 
   async markAllAsRead(userId: number): Promise<void> {
-    await this.notificationRepo.update({ userId, readAt: IsNull() }, { readAt: new Date() });
+    await this.notificationRepo.update({ userId, readAt: IsNull() }, { readAt: now().toJSDate() });
   }
 
   private rolesForStep(step: WorkflowStep): StockControlRole[] {
