@@ -112,7 +112,13 @@ export class JobCardPdfService {
       let currentY = 280;
       currentY = this.drawLineItems(doc, jobCard, currentY);
       currentY = this.drawRubberAllocationSync(doc, jobCard, rubberAllocationResult, currentY);
-      currentY = this.drawCoatingSpecification(doc, coatingAnalysis, currentY, company, totalPipeQty);
+      currentY = this.drawCoatingSpecification(
+        doc,
+        coatingAnalysis,
+        currentY,
+        company,
+        totalPipeQty,
+      );
       currentY = this.drawAllocations(doc, jobCard, currentY);
       this.drawSignatureBoxes(doc, approvals);
       this.drawFooter(doc);
@@ -315,9 +321,7 @@ export class JobCardPdfService {
           : `${coat.minDftUm}-${coat.maxDftUm}`;
 
       const litresPerPipe =
-        totalPipeQty > 0 && coat.litersRequired > 0
-          ? coat.litersRequired / totalPipeQty
-          : 0;
+        totalPipeQty > 0 && coat.litersRequired > 0 ? coat.litersRequired / totalPipeQty : 0;
 
       doc.text(coat.product, 50, y, { width: 200 });
       doc.text(dftRange, 260, y);
@@ -620,10 +624,8 @@ export class JobCardPdfService {
       }
     } else {
       const manualRolls = jobCard.rubberPlanOverride?.manualRolls;
-      const rollWidthMm =
-        manualRolls && manualRolls.length > 0 ? manualRolls[0].widthMm : 1200;
-      const rollLengthM =
-        manualRolls && manualRolls.length > 0 ? manualRolls[0].lengthM : 12.5;
+      const rollWidthMm = manualRolls && manualRolls.length > 0 ? manualRolls[0].widthMm : 1200;
+      const rollLengthM = manualRolls && manualRolls.length > 0 ? manualRolls[0].lengthM : 12.5;
       const rollAreaM2 = (rollWidthMm / 1000) * rollLengthM;
       const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
       const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;
@@ -633,7 +635,11 @@ export class JobCardPdfService {
       doc
         .fontSize(8)
         .font("Helvetica")
-        .text(`Standard work rolls: ${rollWidthMm}mm x ${rollLengthM}m = ${rollAreaM2.toFixed(2)} m² per roll`, 50, y);
+        .text(
+          `Standard work rolls: ${rollWidthMm}mm x ${rollLengthM}m = ${rollAreaM2.toFixed(2)} m² per roll`,
+          50,
+          y,
+        );
 
       y += 15;
       doc.fontSize(9).font("Helvetica-Bold");

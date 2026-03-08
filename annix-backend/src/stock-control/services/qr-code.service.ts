@@ -318,9 +318,7 @@ export class QrCodeService {
         }
 
         const litresPerPipe =
-          totalPipeQty > 0 && coat.litersRequired > 0
-            ? coat.litersRequired / totalPipeQty
-            : 0;
+          totalPipeQty > 0 && coat.litersRequired > 0 ? coat.litersRequired / totalPipeQty : 0;
 
         let xPos = margin + 3;
         doc.fillColor("#111827");
@@ -508,10 +506,8 @@ export class QrCodeService {
     if (totalM2 <= 0) return startY;
 
     const manualRolls = jobCard.rubberPlanOverride?.manualRolls;
-    const rollWidthMm =
-      manualRolls && manualRolls.length > 0 ? manualRolls[0].widthMm : 1200;
-    const rollLengthM =
-      manualRolls && manualRolls.length > 0 ? manualRolls[0].lengthM : 12.5;
+    const rollWidthMm = manualRolls && manualRolls.length > 0 ? manualRolls[0].widthMm : 1200;
+    const rollLengthM = manualRolls && manualRolls.length > 0 ? manualRolls[0].lengthM : 12.5;
     const rollAreaM2 = (rollWidthMm / 1000) * rollLengthM;
     const rollsNeeded = Math.ceil(totalM2 / rollAreaM2);
     const lastRollUsage = totalM2 - (rollsNeeded - 1) * rollAreaM2;

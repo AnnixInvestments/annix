@@ -51,9 +51,7 @@ export class CompanyEmailService {
         (email) => email !== options.to,
       );
       const optionsWithCc =
-        ccRecipients.length > 0
-          ? { ...options, cc: ccRecipients.join(", ") }
-          : options;
+        ccRecipients.length > 0 ? { ...options, cc: ccRecipients.join(", ") } : options;
       return this.emailService.sendEmail(optionsWithCc);
     }
 
