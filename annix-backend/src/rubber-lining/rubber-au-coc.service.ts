@@ -588,6 +588,39 @@ export class RubberAuCocService {
         }
       }
 
+      if (!supplierCoc && coc.poNumber) {
+        const poSegments = coc.poNumber
+          .split("/")
+          .map((s) => s.trim().toUpperCase())
+          .filter(Boolean);
+
+        const allSupplierCocs = await this.supplierCocRepository
+          .createQueryBuilder("sc")
+          .where("sc.order_number IS NOT NULL")
+          .orderBy("sc.id", "DESC")
+          .getMany();
+
+        supplierCoc =
+          allSupplierCocs.find((sc) => {
+            const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
+              .trim()
+              .toUpperCase();
+            return cocOrderNumber.length > 0 && poSegments.some((seg) => seg === cocOrderNumber);
+          }) || null;
+
+        if (supplierCoc) {
+          this.logger.log(
+            `Matched supplier CoC ${supplierCoc.id} (order: ${supplierCoc.orderNumber}) via PO number "${coc.poNumber}" for AU CoC ${coc.cocNumber}`,
+          );
+        }
+      }
+
+      if (!supplierCoc) {
+        this.logger.warn(
+          `No supplier CoC found for AU CoC ${coc.cocNumber} (DN: ${sourceDeliveryNote?.deliveryNoteNumber || "none"}, PO: ${coc.poNumber || "none"}) — lab data table will be empty`,
+        );
+      }
+
       if (supplierCoc) {
         compoundCode = supplierCoc.compoundCode || compoundCode;
 
