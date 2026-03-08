@@ -24,7 +24,15 @@ import { formatDateZA } from "@/app/lib/datetime";
 
 const SageExportModal = lazy(() => import("../SageExportModal"));
 
-type SortColumn = "invoiceNumber" | "companyName" | "status" | "invoiceDate" | "totalAmount";
+type SortColumn =
+  | "invoiceNumber"
+  | "companyName"
+  | "status"
+  | "invoiceDate"
+  | "totalAmount"
+  | "productDescription"
+  | "numberOfRolls"
+  | "costPerUnit";
 
 export default function SupplierTaxInvoicesPage() {
   const { showToast } = useToast();
@@ -114,6 +122,15 @@ export default function SupplierTaxInvoicesPage() {
       }
       if (sortColumn === "totalAmount") {
         return direction * ((a.totalAmount || 0) - (b.totalAmount || 0));
+      }
+      if (sortColumn === "productDescription") {
+        return direction * (a.productDescription || "").localeCompare(b.productDescription || "");
+      }
+      if (sortColumn === "numberOfRolls") {
+        return direction * ((a.numberOfRolls || 0) - (b.numberOfRolls || 0));
+      }
+      if (sortColumn === "costPerUnit") {
+        return direction * ((a.costPerUnit || 0) - (b.costPerUnit || 0));
       }
       return 0;
     });
@@ -359,112 +376,141 @@ export default function SupplierTaxInvoicesPage() {
             </div>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("invoiceNumber")}
-                >
-                  Invoice #
-                  <SortIcon active={sortColumn === "invoiceNumber"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("companyName")}
-                >
-                  Company
-                  <SortIcon active={sortColumn === "companyName"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("invoiceDate")}
-                >
-                  Date
-                  <SortIcon active={sortColumn === "invoiceDate"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("status")}
-                >
-                  Status
-                  <SortIcon active={sortColumn === "status"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("totalAmount")}
-                >
-                  Total
-                  <SortIcon active={sortColumn === "totalAmount"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  VAT
-                </th>
-                <th
-                  scope="col"
-                  className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-12"
-                />
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedInvoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/au-rubber/portal/tax-invoices/${inv.id}`}
-                      className="text-orange-600 font-medium hover:text-orange-800 hover:underline"
-                    >
-                      {inv.invoiceNumber}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {inv.companyName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="flex items-center gap-1.5">
-                      {statusBadge(inv.status)}
-                      {inv.exportedToSageAt && (
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                          Exported
-                        </span>
-                      )}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
-                    {formatCurrency(inv.totalAmount)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                    {formatCurrency(inv.vatAmount)}
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-right">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(inv.id, inv.invoiceNumber);
-                      }}
-                      disabled={deletingId === inv.id}
-                      className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-                      title="Delete invoice"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("invoiceNumber")}
+                  >
+                    Invoice #
+                    <SortIcon active={sortColumn === "invoiceNumber"} direction={sortDirection} />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("companyName")}
+                  >
+                    Company
+                    <SortIcon active={sortColumn === "companyName"} direction={sortDirection} />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("invoiceDate")}
+                  >
+                    Doc Date
+                    <SortIcon active={sortColumn === "invoiceDate"} direction={sortDirection} />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("productDescription")}
+                  >
+                    Description
+                    <SortIcon
+                      active={sortColumn === "productDescription"}
+                      direction={sortDirection}
+                    />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("numberOfRolls")}
+                  >
+                    Rolls
+                    <SortIcon active={sortColumn === "numberOfRolls"} direction={sortDirection} />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("costPerUnit")}
+                  >
+                    Cost/Unit
+                    <SortIcon active={sortColumn === "costPerUnit"} direction={sortDirection} />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("totalAmount")}
+                  >
+                    Total
+                    <SortIcon active={sortColumn === "totalAmount"} direction={sortDirection} />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("status")}
+                  >
+                    Status
+                    <SortIcon active={sortColumn === "status"} direction={sortDirection} />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-12"
+                  />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {paginatedInvoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <Link
+                        href={`/au-rubber/portal/tax-invoices/${inv.id}`}
+                        className="text-orange-600 font-medium hover:text-orange-800 hover:underline"
+                      >
+                        {inv.invoiceNumber}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {inv.companyName || "-"}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-900 max-w-xs truncate">
+                      {inv.productDescription || "-"}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                      {inv.numberOfRolls ?? "-"}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                      {formatCurrency(inv.costPerUnit)}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                      {formatCurrency(inv.totalAmount)}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <span className="flex items-center gap-1.5">
+                        {statusBadge(inv.status)}
+                        {inv.exportedToSageAt && (
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                            Exported
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap text-right">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(inv.id, inv.invoiceNumber);
+                        }}
+                        disabled={deletingId === inv.id}
+                        className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                        title="Delete invoice"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
         <Pagination
           currentPage={currentPage}

@@ -441,8 +441,9 @@ CRITICAL - DATE FORMAT:
 - Look for "Date:", "Invoice Date:", "Tax Invoice Date:" fields
 
 INVOICE NUMBER:
-- Look for "Invoice No:", "Invoice Number:", "Tax Invoice No:", "Number:" fields
-- This is distinct from any PO or reference number
+- Look for "Document No", "Document Number", "Invoice No:", "Invoice Number:", "Tax Invoice No:", "Number:" fields
+- Impilo Industries uses "Document No" as their invoice number field - this IS the invoice number
+- This is distinct from any PO, Order No, or reference number
 
 COMPANY NAME:
 - Extract the supplier/vendor company name from the letterhead or "FROM:" section

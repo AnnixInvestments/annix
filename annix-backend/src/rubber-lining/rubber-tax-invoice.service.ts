@@ -40,6 +40,9 @@ export interface RubberTaxInvoiceDto {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  productDescription: string | null;
+  numberOfRolls: number | null;
+  costPerUnit: number | null;
 }
 
 export interface CreateTaxInvoiceDto {
@@ -192,10 +195,10 @@ export class RubberTaxInvoiceService {
     if (!invoice) return null;
 
     invoice.extractedData = data;
-    if (data.invoiceNumber && !invoice.invoiceNumber) {
+    if (data.invoiceNumber) {
       invoice.invoiceNumber = data.invoiceNumber;
     }
-    if (data.invoiceDate && !invoice.invoiceDate) {
+    if (data.invoiceDate) {
       invoice.invoiceDate = new Date(data.invoiceDate);
     }
     if (data.totalAmount != null) {
@@ -210,7 +213,37 @@ export class RubberTaxInvoiceService {
     return this.mapToDto(invoice);
   }
 
+  private extractProductSummary(data: ExtractedTaxInvoiceData | null): {
+    productDescription: string | null;
+    numberOfRolls: number | null;
+    costPerUnit: number | null;
+  } {
+    if (!data?.lineItems || data.lineItems.length === 0) {
+      return { productDescription: null, numberOfRolls: null, costPerUnit: null };
+    }
+
+    const rollItem = data.lineItems.find(
+      (item) =>
+        item.description.toLowerCase().includes("roll") ||
+        item.description.toLowerCase().includes("calender"),
+    );
+    const mainItem = rollItem || data.lineItems[0];
+
+    const rollMatch = data.lineItems
+      .map((item) => item.description)
+      .join(" ")
+      .match(/(\d+)\s*rolls?/i);
+
+    return {
+      productDescription: mainItem.description,
+      numberOfRolls: rollMatch ? Number(rollMatch[1]) : (rollItem?.quantity ?? null),
+      costPerUnit: mainItem.unitPrice,
+    };
+  }
+
   private mapToDto(invoice: RubberTaxInvoice): RubberTaxInvoiceDto {
+    const productSummary = this.extractProductSummary(invoice.extractedData);
+
     return {
       id: invoice.id,
       firebaseUid: invoice.firebaseUid,
@@ -230,6 +263,9 @@ export class RubberTaxInvoiceService {
       createdBy: invoice.createdBy,
       createdAt: invoice.createdAt.toISOString(),
       updatedAt: invoice.updatedAt.toISOString(),
+      productDescription: productSummary.productDescription,
+      numberOfRolls: productSummary.numberOfRolls,
+      costPerUnit: productSummary.costPerUnit,
     };
   }
 }

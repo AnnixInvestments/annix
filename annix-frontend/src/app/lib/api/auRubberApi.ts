@@ -109,6 +109,9 @@ export interface RubberTaxInvoiceDto {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  productDescription: string | null;
+  numberOfRolls: number | null;
+  costPerUnit: number | null;
 }
 
 export interface MetricStats {
