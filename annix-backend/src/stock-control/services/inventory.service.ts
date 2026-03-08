@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, In, Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { StockItem } from "../entities/stock-item.entity";
 import { RequisitionService } from "./requisition.service";
@@ -38,26 +38,24 @@ export class InventoryService {
     const skip = (page - 1) * limit;
 
     if (filters?.search) {
-      return this.searchItems(companyId, filters.search, skip, limit);
+      return this.searchItems(companyId, filters.search, skip, limit, filters?.belowMinStock === "true");
     }
 
-    const where: Record<string, unknown> = { companyId };
+    const qb = this.stockItemRepo
+      .createQueryBuilder("item")
+      .where("item.companyId = :companyId", { companyId });
 
     if (filters?.category) {
-      where.category = filters.category;
+      qb.andWhere("item.category = :category", { category: filters.category });
     }
-
-    const [items, total] = await this.stockItemRepo.findAndCount({
-      where,
-      order: { name: "ASC" },
-      skip,
-      take: limit,
-    });
 
     if (filters?.belowMinStock === "true") {
-      const lowStockItems = items.filter((item) => item.quantity <= item.minStockLevel);
-      return { items: lowStockItems, total: lowStockItems.length };
+      qb.andWhere("item.quantity <= item.min_stock_level");
     }
+
+    qb.orderBy("item.name", "ASC").skip(skip).take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
 
     return { items, total };
   }
@@ -67,17 +65,23 @@ export class InventoryService {
     search: string,
     skip: number,
     limit: number,
+    belowMinStock = false,
   ): Promise<{ items: StockItem[]; total: number }> {
-    const [items, total] = await this.stockItemRepo.findAndCount({
-      where: [
-        { companyId, name: ILike(`%${search}%`) },
-        { companyId, sku: ILike(`%${search}%`) },
-        { companyId, description: ILike(`%${search}%`) },
-      ],
-      order: { name: "ASC" },
-      skip,
-      take: limit,
-    });
+    const qb = this.stockItemRepo
+      .createQueryBuilder("item")
+      .where("item.companyId = :companyId", { companyId })
+      .andWhere(
+        "(item.name ILIKE :search OR item.sku ILIKE :search OR item.description ILIKE :search)",
+        { search: `%${search}%` },
+      );
+
+    if (belowMinStock) {
+      qb.andWhere("item.quantity <= item.min_stock_level");
+    }
+
+    qb.orderBy("item.name", "ASC").skip(skip).take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
 
     return { items, total };
   }
