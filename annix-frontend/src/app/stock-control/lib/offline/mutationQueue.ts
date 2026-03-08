@@ -111,6 +111,12 @@ export async function processMutation(action: PendingAction): Promise<boolean> {
       return true;
     }
 
+    if (response.status >= 400 && response.status < 500) {
+      await removeMutation(action.id);
+      notifyListeners("onMutationProcessed", action.id, "failed", `HTTP ${response.status} (client error)`);
+      return false;
+    }
+
     await retryMutation(action.id);
     notifyListeners("onMutationProcessed", action.id, "failed", `HTTP ${response.status}`);
     return false;
