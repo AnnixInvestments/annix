@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { generateUniqueId } from "../lib/datetime";
+import { generateUniqueId, nowMillis } from "../lib/datetime";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE, StorageResult } from "../storage/storage.interface";
 import { RubberCompany } from "./entities/rubber-company.entity";
@@ -406,7 +406,7 @@ export class RubberInboundEmailService {
         );
 
         if (documentType === "tax_invoice") {
-          const invoiceNumber = `INV-${Date.now()}`;
+          const invoiceNumber = `INV-${nowMillis()}`;
           const invoice = await this.taxInvoiceService.createTaxInvoice(
             {
               invoiceNumber,
@@ -457,7 +457,7 @@ export class RubberInboundEmailService {
             );
           }
         } else {
-          const generatedDnNumber = `DN-${Date.now()}`;
+          const generatedDnNumber = `DN-${nowMillis()}`;
           const dn = await this.deliveryNoteService.createDeliveryNote(
             {
               deliveryNoteType: supplierMapping.deliveryNoteType,
@@ -469,6 +469,12 @@ export class RubberInboundEmailService {
           );
           result.deliveryNoteIds.push(dn.id);
           this.logger.log(`Created Delivery Note ${dn.id} from email attachment`);
+
+          this.deliveryNoteService
+            .autoLinkToSupplierCoc(dn.id)
+            .catch((error) =>
+              this.logger.error(`Auto-link DN ${dn.id} to CoC failed: ${error.message}`),
+            );
         }
       } catch (error) {
         const errorMsg = `Failed to process attachment ${attachment.filename}: ${error.message}`;
@@ -857,7 +863,7 @@ ${truncatedText}`;
       for (const file of files) {
         const storageResult = await this.storageService.upload(file, subPath);
 
-        const dnNumber = metadata.deliveryNoteNumber || `DN-${Date.now()}`;
+        const dnNumber = metadata.deliveryNoteNumber || `DN-${nowMillis()}`;
         const dn = await this.deliveryNoteService.createDeliveryNote(
           {
             deliveryNoteType: metadata.deliveryNoteType || DeliveryNoteType.COMPOUND,
@@ -1395,29 +1401,67 @@ ${truncatedText}`;
     pdfText: string,
     batchNumbers: string[],
   ): Promise<number | null> {
-    if (batchNumbers.length === 0) {
-      return null;
+    const existingCocs = await this.cocService.allSupplierCocs();
+    const cocsWithoutGraph = existingCocs.filter((coc) => !coc.graphPdfPath);
+
+    if (batchNumbers.length > 0) {
+      const batchMatch = cocsWithoutGraph.find((coc) => {
+        const cocBatches = [
+          ...(coc.extractedData?.batchNumbers || []),
+          ...(coc.extractedData?.batches || []).map((b) => b.batchNumber),
+        ];
+        return batchNumbers.some((bn) =>
+          cocBatches.some((cb) => cb.toLowerCase().trim() === bn.toLowerCase().trim()),
+        );
+      });
+
+      if (batchMatch) {
+        return this.uploadAndLinkGraph(file, batchMatch);
+      }
     }
 
-    const existingCocs = await this.cocService.allSupplierCocs();
+    const compoundCodeMatch = this.extractCompoundCodeFromText(pdfText);
+    if (compoundCodeMatch) {
+      const codeMatch = cocsWithoutGraph.find(
+        (coc) =>
+          coc.compoundCode?.toUpperCase() === compoundCodeMatch.toUpperCase() ||
+          coc.extractedData?.compoundCode?.toUpperCase() === compoundCodeMatch.toUpperCase(),
+      );
 
-    for (const coc of existingCocs) {
-      const cocBatches = coc.extractedData?.batchNumbers || [];
-      const hasMatchingBatches = batchNumbers.some((bn) => cocBatches.includes(bn));
-
-      if (hasMatchingBatches && !coc.graphPdfPath) {
-        const subPath = coc.supplierCompanyId
-          ? `au-rubber/graphs/${coc.supplierCompanyId}`
-          : "au-rubber/graphs";
-
-        const storageResult = await this.storageService.upload(file, subPath);
-
-        await this.cocService.updateSupplierCoc(coc.id, {
-          graphPdfPath: storageResult.path,
-        });
-
-        return coc.id;
+      if (codeMatch) {
+        this.logger.log(
+          `Graph matched to CoC ${codeMatch.id} via compound code ${compoundCodeMatch}`,
+        );
+        return this.uploadAndLinkGraph(file, codeMatch);
       }
+    }
+
+    return null;
+  }
+
+  private async uploadAndLinkGraph(
+    file: Express.Multer.File,
+    coc: { id: number; supplierCompanyId: number | null },
+  ): Promise<number> {
+    const subPath = coc.supplierCompanyId
+      ? `au-rubber/graphs/${coc.supplierCompanyId}`
+      : "au-rubber/graphs";
+
+    const storageResult = await this.storageService.upload(file, subPath);
+
+    await this.cocService.updateSupplierCoc(coc.id, {
+      graphPdfPath: storageResult.path,
+    });
+
+    return coc.id;
+  }
+
+  private extractCompoundCodeFromText(text: string): string | null {
+    const patterns = [/AUA\d{2,3}[A-Z]{2,6}/i, /[A-Z]{4}\d{2,3}/i];
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) return match[0].toUpperCase();
     }
 
     return null;

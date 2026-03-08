@@ -187,7 +187,21 @@ export class RubberAuCocReadinessService {
     });
 
     if (!auCoc) {
-      this.logger.debug(`No AU CoC found for delivery note ${customerDeliveryNoteId}`);
+      this.logger.debug(
+        `No AU CoC found for delivery note ${customerDeliveryNoteId}, auto-creating`,
+      );
+      try {
+        const created = await this.auCocService.createAuCocFromDeliveryNote(
+          customerDeliveryNoteId,
+          "auto-link",
+        );
+        await this.autoGenerateIfReady(created.id);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Could not auto-create AU CoC for DN ${customerDeliveryNoteId}: ${errorMsg}`,
+        );
+      }
       return;
     }
 

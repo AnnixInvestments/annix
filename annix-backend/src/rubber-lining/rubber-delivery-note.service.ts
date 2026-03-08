@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { formatISODate, generateUniqueId } from "../lib/datetime";
@@ -34,6 +34,8 @@ const DELIVERY_NOTE_STATUS_LABELS: Record<DeliveryNoteStatus, string> = {
 
 @Injectable()
 export class RubberDeliveryNoteService {
+  private readonly logger = new Logger(RubberDeliveryNoteService.name);
+
   constructor(
     @InjectRepository(RubberDeliveryNote)
     private deliveryNoteRepository: Repository<RubberDeliveryNote>,
@@ -556,5 +558,54 @@ export class RubberDeliveryNoteService {
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
     };
+  }
+
+  async autoLinkToSupplierCoc(deliveryNoteId: number): Promise<number | null> {
+    const note = await this.deliveryNoteRepository.findOne({
+      where: { id: deliveryNoteId },
+    });
+
+    if (!note || note.linkedCocId) return note?.linkedCocId ?? null;
+
+    const supplierCocs = await this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.supplier_company_id = :companyId", {
+        companyId: note.supplierCompanyId,
+      })
+      .orderBy("coc.id", "DESC")
+      .getMany();
+
+    if (supplierCocs.length === 0) return null;
+
+    const batchRange = note.extractedData?.batchRange;
+    const dnNumber = note.deliveryNoteNumber;
+
+    const matched = supplierCocs.find((coc) => {
+      const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
+        .trim()
+        .toUpperCase();
+      const cocBatches = [
+        ...(coc.extractedData?.batchNumbers || []),
+        ...(coc.extractedData?.batches || []).map((b) => b.batchNumber),
+      ];
+
+      if (batchRange && cocBatches.some((b) => batchRange.includes(b))) {
+        return true;
+      }
+
+      if (cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber)) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (!matched) return null;
+
+    await this.linkToCoc(deliveryNoteId, matched.id);
+    this.logger.log(
+      `Auto-linked supplier DN ${deliveryNoteId} to CoC ${matched.id} (${matched.cocType})`,
+    );
+    return matched.id;
   }
 }

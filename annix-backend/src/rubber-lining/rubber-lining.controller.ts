@@ -31,6 +31,7 @@ import {
 import { Response } from "express";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
+import { nowMillis } from "../lib/datetime";
 import { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
 import { SageExportService } from "../sage-export/sage-export.service";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
@@ -1923,7 +1924,11 @@ Formula: totalPrice = totalKg × salePricePerKg
       throw new BadRequestException("No file uploaded");
     }
 
-    const analyzedData = JSON.parse(analyzedDataJson) as {
+    if (!analyzedDataJson) {
+      throw new BadRequestException("analyzedData field is required");
+    }
+
+    let analyzedData: {
       deliveryNoteNumber?: string;
       deliveryDate?: string;
       fromCompany?: { name?: string };
@@ -1936,13 +1941,18 @@ Formula: totalPrice = totalKg × salePricePerKg
         weightKg?: number;
       }>;
     };
+    try {
+      analyzedData = JSON.parse(analyzedDataJson);
+    } catch {
+      throw new BadRequestException("Invalid JSON in analyzedData field");
+    }
 
     const supplierCompany = await this.rubberDeliveryNoteService.findOrCreateCompanyByName(
       analyzedData.fromCompany?.name || "Unknown Supplier",
       "supplier",
     );
 
-    const fileName = `dn_${analyzedData.deliveryNoteNumber || "unknown"}_${Date.now()}${file.originalname.substring(file.originalname.lastIndexOf("."))}`;
+    const fileName = `dn_${analyzedData.deliveryNoteNumber || "unknown"}_${nowMillis()}${file.originalname.substring(file.originalname.lastIndexOf("."))}`;
     const filePath = `${StorageArea.AU_RUBBER}/delivery-notes/${fileName}`;
     await this.storageService.upload(
       {
@@ -1956,7 +1966,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     const deliveryNote = await this.rubberDeliveryNoteService.createDeliveryNote(
       {
         deliveryNoteType: DeliveryNoteType.ROLL,
-        deliveryNoteNumber: analyzedData.deliveryNoteNumber ?? `SCAN_${Date.now()}`,
+        deliveryNoteNumber: analyzedData.deliveryNoteNumber ?? `SCAN_${nowMillis()}`,
         deliveryDate: analyzedData.deliveryDate || null,
         supplierCompanyId: supplierCompany.id,
         documentPath: filePath,

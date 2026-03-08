@@ -302,7 +302,16 @@ export class RubberInboundEmailController {
     const user = req.user;
     const createdBy = user?.email || "upload";
 
-    const analysis: AnalyzeFilesResult = JSON.parse(body.analysis);
+    if (!body.analysis) {
+      throw new BadRequestException("analysis field is required");
+    }
+
+    let analysis: AnalyzeFilesResult;
+    try {
+      analysis = JSON.parse(body.analysis);
+    } catch {
+      throw new BadRequestException("Invalid JSON in analysis field");
+    }
 
     this.logger.log(`Creating CoCs from ${files.length} analyzed files...`);
 
@@ -414,8 +423,30 @@ export class RubberInboundEmailController {
     const user = req.user;
     const createdBy = user?.email || "upload";
 
-    const analysis: AnalyzeCustomerDnsResult = JSON.parse(body.analysis);
-    const overrides = body.overrides ? JSON.parse(body.overrides) : [];
+    if (!body.analysis) {
+      throw new BadRequestException("analysis field is required");
+    }
+
+    let analysis: AnalyzeCustomerDnsResult;
+    try {
+      analysis = JSON.parse(body.analysis);
+    } catch {
+      throw new BadRequestException("Invalid JSON in analysis field");
+    }
+
+    let overrides: Array<{
+      deliveryNoteNumber?: string;
+      customerId?: number;
+      customerReference?: string;
+      deliveryDate?: string;
+    }> = [];
+    if (body.overrides) {
+      try {
+        overrides = JSON.parse(body.overrides);
+      } catch {
+        throw new BadRequestException("Invalid JSON in overrides field");
+      }
+    }
 
     this.logger.log(`Creating ${analysis.groups.length} customer DNs from analyzed files...`);
 
@@ -564,7 +595,17 @@ export class RubberInboundEmailController {
       throw new BadRequestException("No file uploaded");
     }
 
-    const coordinates: RegionCoordinates = JSON.parse(body.coordinates);
+    if (!body.coordinates) {
+      throw new BadRequestException("coordinates field is required");
+    }
+
+    let coordinates: RegionCoordinates;
+    try {
+      coordinates = JSON.parse(body.coordinates);
+    } catch {
+      throw new BadRequestException("Invalid JSON in coordinates field");
+    }
+
     this.logger.log(
       `Extracting region for field ${body.fieldName}: ${JSON.stringify(coordinates)}`,
     );
