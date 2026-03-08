@@ -222,12 +222,15 @@ export class RubberTaxInvoiceService {
       return { productDescription: null, numberOfRolls: null, costPerUnit: null };
     }
 
+    const subtotalExVat = data.subtotal;
+
     if (data.productSummary) {
       const rollMatch = data.productSummary.match(/(\d+)\s*rolls?/i);
       const numberOfRolls = rollMatch ? Number(rollMatch[1]) : null;
-
-      const pricedItem = data.lineItems.find((item) => (item.amount ?? 0) > 0);
-      const costPerUnit = pricedItem?.unitPrice ?? null;
+      const costPerUnit =
+        subtotalExVat != null && numberOfRolls != null && numberOfRolls > 0
+          ? Math.round((subtotalExVat / numberOfRolls) * 100) / 100
+          : subtotalExVat;
 
       return {
         productDescription: data.productSummary,
@@ -240,18 +243,22 @@ export class RubberTaxInvoiceService {
       return { productDescription: null, numberOfRolls: null, costPerUnit: null };
     }
 
-    const pricedItem = data.lineItems.find((item) => (item.amount ?? 0) > 0);
-    const mainItem = pricedItem || data.lineItems[0];
+    const mainItem = data.lineItems[0];
 
     const rollMatch = data.lineItems
       .map((item) => item.description)
       .join(" ")
       .match(/(\d+)\s*rolls?/i);
+    const numberOfRolls = rollMatch ? Number(rollMatch[1]) : null;
+    const costPerUnit =
+      subtotalExVat != null && numberOfRolls != null && numberOfRolls > 0
+        ? Math.round((subtotalExVat / numberOfRolls) * 100) / 100
+        : subtotalExVat;
 
     return {
       productDescription: mainItem.description,
-      numberOfRolls: rollMatch ? Number(rollMatch[1]) : null,
-      costPerUnit: mainItem.unitPrice,
+      numberOfRolls,
+      costPerUnit,
     };
   }
 
