@@ -184,17 +184,28 @@ export default function AuRubberCompaniesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState<RubberCompanyDto | null>(null);
   const [deleteCompanyId, setDeleteCompanyId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    companyType: CompanyType;
+    code: string;
+    pricingTierId: number | null;
+    vatNumber: string;
+    registrationNumber: string;
+    isCompoundOwner: boolean;
+    notes: string;
+    address: { street: string; city: string; province: string; postalCode: string };
+    availableProducts: string[];
+  }>({
     name: "",
-    companyType: "CUSTOMER" as CompanyType,
+    companyType: "CUSTOMER",
     code: "",
-    pricingTierId: null as number | null,
+    pricingTierId: null,
     vatNumber: "",
     registrationNumber: "",
     isCompoundOwner: false,
     notes: "",
     address: { street: "", city: "", province: "", postalCode: "" },
-    availableProducts: [] as string[],
+    availableProducts: [],
   });
 
   const [customerSortColumn, setCustomerSortColumn] = useState<SortColumn>("name");
