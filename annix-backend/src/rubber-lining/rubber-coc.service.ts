@@ -660,7 +660,7 @@ export class RubberCocService {
       }
       if (newCoc.extractedData) {
         existingCoc.extractedData = {
-          ...existingCoc.extractedData,
+          ...(existingCoc.extractedData ?? {}),
           ...newCoc.extractedData,
         };
       }
@@ -715,7 +715,7 @@ export class RubberCocService {
 
     if (linkedCocIds.length > 0) {
       const updatedExtractedData = {
-        ...calendererCoc.extractedData,
+        ...(calendererCoc.extractedData ?? {}),
         linkedCompounderCocIds: linkedCocIds,
       };
       calendererCoc.extractedData = updatedExtractedData;
@@ -751,7 +751,7 @@ export class RubberCocService {
         if (!compounderCoc) return;
 
         const updatedExtractedData = {
-          ...calendererCoc.extractedData,
+          ...(calendererCoc.extractedData ?? {}),
           linkedCompounderCocIds: [compounderCoc.id],
         };
         await this.supplierCocRepository.update(calendererCoc.id, {

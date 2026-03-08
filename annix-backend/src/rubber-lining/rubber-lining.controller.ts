@@ -1918,7 +1918,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   async acceptAnalyzedDeliveryNote(
     @UploadedFile() file: Express.Multer.File,
     @Body("analyzedData") analyzedDataJson: string,
-    @Req() req: Request,
+    @Req() req: AdminRequest,
   ): Promise<RubberDeliveryNoteDto> {
     if (!file) {
       throw new BadRequestException("No file uploaded");
@@ -1952,7 +1952,9 @@ Formula: totalPrice = totalKg × salePricePerKg
       "supplier",
     );
 
-    const fileName = `dn_${analyzedData.deliveryNoteNumber || "unknown"}_${nowMillis()}${file.originalname.substring(file.originalname.lastIndexOf("."))}`;
+    const extIndex = file.originalname.lastIndexOf(".");
+    const ext = extIndex >= 0 ? file.originalname.substring(extIndex) : ".pdf";
+    const fileName = `dn_${analyzedData.deliveryNoteNumber || "unknown"}_${nowMillis()}${ext}`;
     const filePath = `${StorageArea.AU_RUBBER}/delivery-notes/${fileName}`;
     await this.storageService.upload(
       {
@@ -1971,7 +1973,7 @@ Formula: totalPrice = totalKg × salePricePerKg
         supplierCompanyId: supplierCompany.id,
         documentPath: filePath,
       },
-      (req as unknown as { user?: { email?: string } }).user?.email,
+      req.user?.email,
     );
 
     const extractedData = {
@@ -2284,6 +2286,21 @@ Formula: totalPrice = totalKg × salePricePerKg
       "Content-Length": buffer.length.toString(),
     });
     res.send(buffer);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/au-cocs/pending")
+  @ApiOperation({ summary: "List AU CoCs pending generation with readiness details" })
+  async pendingAuCocs() {
+    const cocs = await this.rubberAuCocService.allAuCocs({ status: "DRAFT" as never });
+    const pendingCocs = cocs.filter(
+      (coc) =>
+        coc.readinessStatus &&
+        coc.readinessStatus !== "NOT_TRACKED" &&
+        coc.readinessStatus !== "AUTO_GENERATED",
+    );
+    return pendingCocs;
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

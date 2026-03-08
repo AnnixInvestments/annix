@@ -442,7 +442,7 @@ export class RubberAuCocService {
     }
 
     const rollDimensions = firstRoll
-      ? `${Number(firstRoll.thicknessMm)}mm x ${Number(firstRoll.widthMm)}mm x ${Number(firstRoll.lengthM)}m`
+      ? `${firstRoll.thicknessMm ?? "-"}mm x ${firstRoll.widthMm ?? "-"}mm x ${firstRoll.lengthM ?? "-"}m`
       : "-";
     const rollSizesQty = `${rollDimensions} ${items.length} roll${items.length !== 1 ? "s" : ""}`;
 
@@ -1027,6 +1027,8 @@ export class RubberAuCocService {
       notes: coc.notes,
       approvedByName: coc.approvedByName,
       approvedAt: coc.approvedAt?.toISOString() ?? null,
+      readinessStatus: coc.readinessStatus ?? null,
+      readinessDetails: coc.readinessDetails ?? null,
       createdAt: coc.createdAt.toISOString(),
       updatedAt: coc.updatedAt.toISOString(),
     };

@@ -529,6 +529,16 @@ export class RubberAuCocDto {
   notes: string | null;
   approvedByName: string | null;
   approvedAt: string | null;
+  readinessStatus: string | null;
+  readinessDetails: {
+    calendererCocId: number | null;
+    compounderCocId: number | null;
+    graphPdfPath: string | null;
+    calendererApproved: boolean;
+    compounderApproved: boolean;
+    missingDocuments: string[];
+    lastCheckedAt: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
   items?: RubberAuCocItemDto[];
