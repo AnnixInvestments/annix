@@ -65,6 +65,7 @@ export default function MermaidBlock({ chart }: MermaidBlockProps) {
     <div
       ref={containerRef}
       className="my-4 overflow-x-auto flex justify-center"
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: mermaid.render() produces sanitised SVG
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );
