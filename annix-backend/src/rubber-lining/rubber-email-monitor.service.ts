@@ -5,6 +5,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import * as Imap from "imap-simple";
 import { simpleParser } from "mailparser";
 import { Repository } from "typeorm";
+import { nowMillis } from "../lib/datetime";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { RubberCompany } from "./entities/rubber-company.entity";
@@ -142,7 +143,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
       };
 
       for (const attachment of pdfAttachments) {
-        const messageId = parsed.messageId || `${Date.now()}-${Math.random()}`;
+        const messageId = parsed.messageId || `${nowMillis()}-${Math.random()}`;
         const filename = attachment.filename || "attachment.pdf";
 
         const pdfText = await this.extractTextFromPdf(attachment.content);
@@ -230,7 +231,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
           }
         } else if (documentType === "tax_invoice") {
           const invoiceNumber =
-            this.extractInvoiceNumber(pdfText, subject) || `INV-EMAIL-${Date.now()}`;
+            this.extractInvoiceNumber(pdfText, subject) || `INV-EMAIL-${nowMillis()}`;
           const invoice = await this.taxInvoiceService.createTaxInvoice(
             {
               invoiceNumber,
@@ -244,7 +245,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
             `Created Tax Invoice ${invoice.id} (${invoice.invoiceNumber}) from email: ${filename}`,
           );
         } else {
-          const dnNumber = `DN-EMAIL-${Date.now()}`;
+          const dnNumber = `DN-EMAIL-${nowMillis()}`;
           const dn = await this.deliveryNoteService.createDeliveryNote(
             {
               deliveryNoteType: supplierInfo.deliveryNoteType,

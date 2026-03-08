@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { pdfToPng } from "pdf-to-png-converter";
 import { AiUsageService } from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
+import { nowMillis } from "../lib/datetime";
 import {
   ExtractedCustomerDeliveryNoteData,
   ExtractedCustomerDeliveryNotesResult,
@@ -191,7 +192,7 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMillis();
     this.logger.log("Extracting compounder CoC data...");
 
     if (!this.apiKey) {
@@ -204,7 +205,7 @@ export class RubberCocExtractionService {
       "compounder-coc-extraction",
     );
 
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Compounder CoC extracted in ${processingTimeMs}ms`);
 
     const extractedData = response.data as ExtractedCocData;
@@ -234,7 +235,7 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMillis();
     this.logger.log("Extracting calenderer CoC data...");
 
     if (!this.apiKey) {
@@ -247,7 +248,7 @@ export class RubberCocExtractionService {
       "calenderer-coc-extraction",
     );
 
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Calenderer CoC extracted in ${processingTimeMs}ms`);
 
     const extractedData = response.data as ExtractedCocData;
@@ -277,7 +278,7 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMillis();
     this.logger.log("Extracting delivery note data...");
 
     if (!this.apiKey) {
@@ -290,7 +291,7 @@ export class RubberCocExtractionService {
       "delivery-note-extraction",
     );
 
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Delivery note extracted in ${processingTimeMs}ms`);
 
     return {
@@ -306,7 +307,7 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMillis();
     this.logger.log("Extracting customer delivery note data...");
 
     if (!this.apiKey) {
@@ -319,7 +320,7 @@ export class RubberCocExtractionService {
       "customer-dn-extraction",
     );
 
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Customer delivery note extracted in ${processingTimeMs}ms`);
 
     const rawData = response.data as unknown as ExtractedCustomerDeliveryNotesResult;
@@ -343,7 +344,7 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMillis();
     this.logger.log("Extracting customer delivery note data using OCR...");
 
     if (!this.apiKey) {
@@ -360,7 +361,7 @@ export class RubberCocExtractionService {
       "customer-dn-ocr-extraction",
     );
 
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Customer delivery note extracted via OCR in ${processingTimeMs}ms`);
 
     const rawData = response.data as unknown as ExtractedCustomerDeliveryNotesResult;
@@ -388,7 +389,7 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMillis();
     this.logger.log("Extracting tax invoice data...");
 
     if (!this.apiKey) {
@@ -401,7 +402,7 @@ export class RubberCocExtractionService {
       "tax-invoice-extraction",
     );
 
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Tax invoice extracted in ${processingTimeMs}ms`);
 
     return {
@@ -416,7 +417,7 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMillis();
     this.logger.log("Extracting tax invoice data using OCR...");
 
     if (!this.apiKey) {
@@ -433,7 +434,7 @@ export class RubberCocExtractionService {
       "tax-invoice-ocr-extraction",
     );
 
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Tax invoice extracted via OCR in ${processingTimeMs}ms`);
 
     return {
@@ -756,7 +757,7 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMillis();
     this.logger.log("Extracting delivery note from scanned PDF using OCR...");
 
     if (!this.apiKey) {
@@ -772,7 +773,7 @@ export class RubberCocExtractionService {
       "delivery-note-ocr-extraction",
     );
 
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Delivery note extracted via OCR in ${processingTimeMs}ms`);
 
     return {
@@ -787,7 +788,7 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMillis();
     this.logger.log(`Analyzing ${imageBuffers.length} delivery note photo(s)...`);
 
     if (!this.apiKey) {
@@ -801,7 +802,7 @@ export class RubberCocExtractionService {
       "delivery-note-photo-analysis",
     );
 
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Delivery note photo analyzed in ${processingTimeMs}ms`);
 
     return {
@@ -816,7 +817,7 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    const startTime = Date.now();
+    const startTime = nowMillis();
     this.logger.log("Analyzing delivery note PDF...");
 
     if (!this.apiKey) {
@@ -832,7 +833,7 @@ export class RubberCocExtractionService {
       "delivery-note-pdf-analysis",
     );
 
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Delivery note PDF analyzed in ${processingTimeMs}ms`);
 
     return {
