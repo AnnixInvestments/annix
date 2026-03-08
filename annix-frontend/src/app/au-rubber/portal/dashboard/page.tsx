@@ -7,6 +7,7 @@ import {
 } from "@annix/product-data/rubber/orderStatus";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import type { RubberAuCocDto } from "@/app/lib/api/auRubberApi";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type {
   RubberCompanyDto,
@@ -29,6 +30,8 @@ export default function AuRubberDashboard() {
   const [orders, setOrders] = useState<RubberOrderDto[]>([]);
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
   const [products, setProducts] = useState<RubberProductDto[]>([]);
+  const [pendingAuCocs, setPendingAuCocs] = useState<RubberAuCocDto[]>([]);
+  const [generatingIds, setGeneratingIds] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
@@ -37,14 +40,16 @@ export default function AuRubberDashboard() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [ordersData, companiesData, productsData] = await Promise.all([
+        const [ordersData, companiesData, productsData, pendingData] = await Promise.all([
           auRubberApiClient.orders(),
           auRubberApiClient.companies(),
           auRubberApiClient.products(),
+          auRubberApiClient.pendingAuCocs().catch(() => []),
         ]);
         setOrders(Array.isArray(ordersData) ? ordersData : []);
         setCompanies(Array.isArray(companiesData) ? companiesData : []);
         setProducts(Array.isArray(productsData) ? productsData : []);
+        setPendingAuCocs(Array.isArray(pendingData) ? pendingData : []);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err : new Error("Failed to load data"));
@@ -54,6 +59,46 @@ export default function AuRubberDashboard() {
     };
     fetchData();
   }, []);
+
+  const triggerGeneration = async (auCocId: number) => {
+    setGeneratingIds((prev) => new Set([...prev, auCocId]));
+    try {
+      const result = await auRubberApiClient.autoGenerateAuCoc(auCocId);
+      if (result.generated) {
+        setPendingAuCocs((prev) => prev.filter((c) => c.id !== auCocId));
+      }
+    } catch (err) {
+      console.error("Failed to auto-generate AU CoC:", err);
+    } finally {
+      setGeneratingIds((prev) => {
+        const next = new Set([...prev]);
+        next.delete(auCocId);
+        return next;
+      });
+    }
+  };
+
+  const readinessLabel = (status: string | null): string => {
+    const labels: Record<string, string> = {
+      WAITING_FOR_CALENDERER_COC: "Waiting for Calenderer CoC",
+      WAITING_FOR_COMPOUNDER_COC: "Waiting for Compounder CoC",
+      WAITING_FOR_GRAPH: "Waiting for Graph",
+      WAITING_FOR_APPROVAL: "Waiting for Approval",
+      READY_FOR_GENERATION: "Ready to Generate",
+    };
+    return labels[status ?? ""] ?? status ?? "Unknown";
+  };
+
+  const readinessColor = (status: string | null): string => {
+    const colors: Record<string, string> = {
+      WAITING_FOR_CALENDERER_COC: "bg-orange-100 text-orange-800",
+      WAITING_FOR_COMPOUNDER_COC: "bg-orange-100 text-orange-800",
+      WAITING_FOR_GRAPH: "bg-orange-100 text-orange-800",
+      WAITING_FOR_APPROVAL: "bg-yellow-100 text-yellow-800",
+      READY_FOR_GENERATION: "bg-green-100 text-green-800",
+    };
+    return colors[status ?? ""] ?? "bg-gray-100 text-gray-800";
+  };
 
   const ordersByStatus: StatusCount[] = Object.entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
     status: value,
@@ -446,6 +491,83 @@ export default function AuRubberDashboard() {
             </div>
           )}
         </div>
+
+        {pendingAuCocs.length > 0 && (
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">Pending AU CoCs</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  {pendingAuCocs.length} AU CoC{pendingAuCocs.length !== 1 ? "s" : ""} awaiting
+                  document completion
+                </p>
+              </div>
+              <Link
+                href="/au-rubber/portal/au-cocs"
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                View all &rarr;
+              </Link>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {pendingAuCocs.map((coc) => (
+                <div key={coc.id} className="px-4 py-4 sm:px-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-3">
+                        <Link
+                          href={`/au-rubber/portal/au-cocs/${coc.id}`}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate"
+                        >
+                          {coc.cocNumber}
+                        </Link>
+                        <span
+                          className={`px-2 py-0.5 text-xs font-medium rounded-full ${readinessColor(coc.readinessStatus)}`}
+                        >
+                          {readinessLabel(coc.readinessStatus)}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
+                        <span>{coc.customerCompanyName ?? "Unknown Customer"}</span>
+                        {coc.deliveryNoteRef && <span>DN: {coc.deliveryNoteRef}</span>}
+                        {coc.poNumber && <span>PO: {coc.poNumber}</span>}
+                      </div>
+                      {coc.readinessDetails?.missingDocuments &&
+                        coc.readinessDetails.missingDocuments.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {coc.readinessDetails.missingDocuments.map((doc) => (
+                              <span
+                                key={doc}
+                                className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-red-50 text-red-700 rounded"
+                              >
+                                {doc}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                    </div>
+                    {coc.readinessStatus === "READY_FOR_GENERATION" && (
+                      <button
+                        onClick={() => triggerGeneration(coc.id)}
+                        disabled={generatingIds.has(coc.id)}
+                        className="ml-4 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      >
+                        {generatingIds.has(coc.id) ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1.5"></div>
+                            Generating...
+                          </>
+                        ) : (
+                          "Generate"
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </RequirePermission>
   );
