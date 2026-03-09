@@ -52,34 +52,42 @@ function manualRollsToCuttingPlan(manualRolls: RubberPlanManualRoll[]): CuttingP
 
     Object.entries(grouped).forEach(([widthKey, cutsInBand]) => {
       const bandWidthMm = Number(widthKey);
-      const lanesNeeded = cutsInBand.length;
-      const maxLaneLengthMm = Math.max(...cutsInBand.map((c) => c.lengthMm));
+      const maxLanesPerBand = Math.max(1, Math.floor(rollWidthMm / bandWidthMm));
 
-      bands.push({
-        bandIndex,
-        lanes: lanesNeeded,
-        laneWidthMm: bandWidthMm,
-        startMm: currentBandStart,
-        heightMm: maxLaneLengthMm,
-        widthUsedMm: lanesNeeded * bandWidthMm,
-      });
+      Array.from(
+        { length: Math.ceil(cutsInBand.length / maxLanesPerBand) },
+        (_, chunkIdx) =>
+          cutsInBand.slice(chunkIdx * maxLanesPerBand, (chunkIdx + 1) * maxLanesPerBand),
+      ).forEach((chunk) => {
+        const lanesNeeded = chunk.length;
+        const maxLaneLengthMm = Math.max(...chunk.map((c) => c.lengthMm));
 
-      cutsInBand.forEach((cut, laneIdx) => {
-        cutPieces.push({
-          itemId: `manual-${rollIndex}-${bandIndex}-${laneIdx}`,
-          itemNo: null,
-          description: cut.description,
-          widthMm: cut.widthMm,
-          lengthMm: cut.lengthMm,
-          positionMm: currentBandStart,
-          lane: laneIdx,
-          band: bandIndex,
-          stripsPerPiece: 1,
+        bands.push({
+          bandIndex,
+          lanes: lanesNeeded,
+          laneWidthMm: bandWidthMm,
+          startMm: currentBandStart,
+          heightMm: maxLaneLengthMm,
+          widthUsedMm: lanesNeeded * bandWidthMm,
         });
-      });
 
-      currentBandStart += maxLaneLengthMm;
-      bandIndex += 1;
+        chunk.forEach((cut, laneIdx) => {
+          cutPieces.push({
+            itemId: `manual-${rollIndex}-${bandIndex}-${laneIdx}`,
+            itemNo: null,
+            description: cut.description,
+            widthMm: cut.widthMm,
+            lengthMm: cut.lengthMm,
+            positionMm: currentBandStart,
+            lane: laneIdx,
+            band: bandIndex,
+            stripsPerPiece: 1,
+          });
+        });
+
+        currentBandStart += maxLaneLengthMm;
+        bandIndex += 1;
+      });
     });
 
     const usedAreaSqM = cutPieces.reduce(
