@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   CompanySettings,
+  NotificationPreferences,
   cvAssistantApiClient,
   PopiaRetentionStats,
 } from "@/app/lib/api/cvAssistantApi";
@@ -10,10 +11,12 @@ import {
 export default function SettingsPage() {
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [popiaStats, setPopiaStats] = useState<PopiaRetentionStats | null>(null);
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
+  const [notifSaved, setNotifSaved] = useState(false);
 
   const [companyName, setCompanyName] = useState("");
   const [imapHost, setImapHost] = useState("");
@@ -23,24 +26,35 @@ export default function SettingsPage() {
   const [monitoringEnabled, setMonitoringEnabled] = useState(false);
   const [emailFromAddress, setEmailFromAddress] = useState("");
 
+  const [matchAlertThreshold, setMatchAlertThreshold] = useState(80);
+  const [digestEnabled, setDigestEnabled] = useState(true);
+  const [pushEnabled, setPushEnabled] = useState(false);
+
   useEffect(() => {
     fetchSettings();
   }, []);
 
   const fetchSettings = async () => {
     try {
-      const [data, popia] = await Promise.all([
+      const [data, popia, notif] = await Promise.all([
         cvAssistantApiClient.settings(),
         cvAssistantApiClient.popiaRetentionStats().catch(() => null),
+        cvAssistantApiClient.notificationPreferences().catch(() => null),
       ]);
       setSettings(data);
       setPopiaStats(popia);
+      setNotifPrefs(notif);
       setCompanyName(data.name);
       setImapHost(data.imapHost || "");
       setImapPort(data.imapPort?.toString() || "993");
       setImapUser(data.imapUser || "");
       setMonitoringEnabled(data.monitoringEnabled);
       setEmailFromAddress(data.emailFromAddress || "");
+      if (notif) {
+        setMatchAlertThreshold(notif.matchAlertThreshold);
+        setDigestEnabled(notif.digestEnabled);
+        setPushEnabled(notif.pushEnabled);
+      }
     } catch (error) {
       console.error("Failed to fetch settings:", error);
     } finally {
@@ -104,6 +118,56 @@ export default function SettingsPage() {
       });
     } finally {
       setIsTesting(false);
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    setIsSaving(true);
+    setNotifSaved(false);
+    try {
+      await cvAssistantApiClient.updateNotificationPreferences({
+        matchAlertThreshold,
+        digestEnabled,
+        pushEnabled,
+      });
+      setNotifSaved(true);
+      setTimeout(() => setNotifSaved(false), 3000);
+    } catch (error) {
+      console.error("Failed to save notification settings:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEnablePush = async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return;
+    }
+
+    try {
+      const { key } = await cvAssistantApiClient.notificationVapidKey();
+      if (!key) {
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: key,
+      });
+
+      const subJson = subscription.toJSON();
+      await cvAssistantApiClient.subscribePush({
+        endpoint: subJson.endpoint!,
+        keys: {
+          p256dh: subJson.keys!.p256dh!,
+          auth: subJson.keys!.auth!,
+        },
+      });
+
+      setPushEnabled(true);
+    } catch (error) {
+      console.error("Failed to enable push notifications:", error);
     }
   };
 
@@ -257,6 +321,86 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">Notifications & Alerts</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Configure how and when you receive notifications about candidate matches and recruitment
+          activity.
+        </p>
+
+        <div className="space-y-5 max-w-md">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Match Alert Threshold
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Only notify when candidate match score exceeds this percentage
+            </p>
+            <div className="flex items-center space-x-3">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={matchAlertThreshold}
+                onChange={(e) => setMatchAlertThreshold(parseInt(e.target.value, 10))}
+                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-violet-600"
+              />
+              <span className="text-sm font-medium text-gray-900 w-12 text-right">
+                {matchAlertThreshold}%
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="digestEnabled"
+              checked={digestEnabled}
+              onChange={(e) => setDigestEnabled(e.target.checked)}
+              className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
+            />
+            <label htmlFor="digestEnabled" className="ml-2 text-sm text-gray-700">
+              Weekly email digest of matching jobs and candidate activity
+            </label>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="pushEnabled"
+              checked={pushEnabled}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  handleEnablePush();
+                } else {
+                  setPushEnabled(false);
+                }
+              }}
+              className="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
+            />
+            <label htmlFor="pushEnabled" className="ml-2 text-sm text-gray-700">
+              Push notifications for high-scoring matches
+            </label>
+          </div>
+
+          {notifSaved && (
+            <div className="px-4 py-3 rounded-lg text-sm bg-green-50 text-green-700">
+              Notification preferences saved
+            </div>
+          )}
+
+          <button
+            onClick={handleSaveNotifications}
+            disabled={isSaving}
+            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50"
+          >
+            {isSaving ? "Saving..." : "Save Notification Settings"}
+          </button>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-2">POPIA Compliance</h2>
         <p className="text-sm text-gray-600 mb-4">

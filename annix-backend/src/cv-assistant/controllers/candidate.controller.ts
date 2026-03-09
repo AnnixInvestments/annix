@@ -149,6 +149,9 @@ export class CandidateController {
         candidate.popiaConsentedAt = now().toJSDate();
       }
     }
+    if (dto.jobAlertsOptIn !== undefined) {
+      candidate.jobAlertsOptIn = dto.jobAlertsOptIn;
+    }
 
     return this.candidateService.updateExtractedData(id, candidate);
   }

@@ -43,4 +43,8 @@ export class UpdateCandidateProfileDto {
   @IsBoolean()
   @IsOptional()
   popiaConsent?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  jobAlertsOptIn?: boolean;
 }
