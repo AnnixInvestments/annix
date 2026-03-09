@@ -479,6 +479,59 @@ export interface DashboardStats {
   activeJobs: number;
 }
 
+export interface CpoSummary {
+  activeCpos: number;
+  awaitingCalloff: number;
+  overdueInvoices: number;
+}
+
+export interface CpoFulfillmentReportItem {
+  cpoId: number;
+  cpoNumber: string;
+  jobNumber: string;
+  customerName: string | null;
+  status: string;
+  items: {
+    itemCode: string | null;
+    itemDescription: string | null;
+    quantityOrdered: number;
+    quantityFulfilled: number;
+    remaining: number;
+    percentComplete: number;
+  }[];
+  totalOrdered: number;
+  totalFulfilled: number;
+  totalRemaining: number;
+  percentComplete: number;
+}
+
+export interface CpoCalloffBreakdown {
+  summary: {
+    pending: number;
+    calledOff: number;
+    delivered: number;
+    invoiced: number;
+    total: number;
+  };
+  byCpo: {
+    cpoId: number;
+    cpoNumber: string;
+    pending: number;
+    calledOff: number;
+    delivered: number;
+    invoiced: number;
+  }[];
+}
+
+export interface CpoOverdueInvoiceItem {
+  recordId: number;
+  cpoNumber: string;
+  jobCardNumber: string | null;
+  calloffType: string;
+  deliveredAt: string | null;
+  daysSinceDelivery: number;
+}
+
 export interface SohSummary {
   category: string;
   totalQuantity: number;
@@ -602,6 +655,19 @@ export interface EligibleUser {
   name: string;
   email: string;
   role: string;
+}
+
+export interface StepNotificationRecipients {
+  step: string;
+  emails: string[];
+}
+
+export interface UserLocationSummary {
+  userId: number;
+  userName: string;
+  userEmail: string;
+  userRole: string;
+  locationIds: number[];
 }
 
 export interface WorkflowStatus {
@@ -2219,6 +2285,10 @@ class StockControlApiClient {
     return this.request("/stock-control/dashboard/reorder-alerts");
   }
 
+  async cpoSummary(): Promise<CpoSummary> {
+    return this.request("/stock-control/dashboard/cpo-summary");
+  }
+
   async costByJob(): Promise<CostByJob[]> {
     return this.request("/stock-control/reports/cost-by-job");
   }
@@ -2641,6 +2711,37 @@ class StockControlApiClient {
     });
   }
 
+  async notificationRecipients(): Promise<StepNotificationRecipients[]> {
+    return this.request("/stock-control/workflow/notification-recipients");
+  }
+
+  async updateNotificationRecipients(
+    step: string,
+    emails: string[],
+  ): Promise<{ success: boolean }> {
+    return this.request(
+      `/stock-control/workflow/notification-recipients/${encodeURIComponent(step)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ emails }),
+      },
+    );
+  }
+
+  async userLocationAssignments(): Promise<UserLocationSummary[]> {
+    return this.request("/stock-control/workflow/user-locations");
+  }
+
+  async updateUserLocations(
+    userId: number,
+    locationIds: number[],
+  ): Promise<{ success: boolean }> {
+    return this.request(`/stock-control/workflow/user-locations/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify({ locationIds }),
+    });
+  }
+
   async supplierInvoices(): Promise<SupplierInvoice[]> {
     return this.request("/stock-control/invoices");
   }
@@ -2989,6 +3090,27 @@ class StockControlApiClient {
       method: "PUT",
       body: JSON.stringify({ status }),
     });
+  }
+
+  async cpoFulfillmentReport(): Promise<CpoFulfillmentReportItem[]> {
+    return this.request("/stock-control/cpos/reports/fulfillment");
+  }
+
+  async cpoCalloffBreakdown(): Promise<CpoCalloffBreakdown> {
+    return this.request("/stock-control/cpos/reports/calloff-breakdown");
+  }
+
+  async cpoOverdueInvoices(): Promise<CpoOverdueInvoiceItem[]> {
+    return this.request("/stock-control/cpos/reports/overdue-invoices");
+  }
+
+  async cpoExportCsv(): Promise<Blob> {
+    const headers = this.authHeaders();
+    const response = await fetch(`${this.baseURL}/stock-control/cpos/reports/export`, { headers });
+    if (!response.ok) {
+      throw new Error("Failed to export CSV");
+    }
+    return response.blob();
   }
 
   async globalSearch(query: string, limit: number = 20): Promise<GlobalSearchResponse> {

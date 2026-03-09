@@ -3,6 +3,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
+import { UserLocationAssignment } from "../entities/user-location-assignment.entity";
+import { WorkflowNotificationRecipient } from "../entities/workflow-notification-recipient.entity";
 import { WorkflowStepAssignment } from "../entities/workflow-step-assignment.entity";
 
 export interface StepAssignment {
@@ -10,6 +12,19 @@ export interface StepAssignment {
   userIds: number[];
   primaryUserId: number | null;
   users: { id: number; name: string; email: string; role: StockControlRole }[];
+}
+
+export interface StepNotificationRecipients {
+  step: WorkflowStep;
+  emails: string[];
+}
+
+export interface UserLocationSummary {
+  userId: number;
+  userName: string;
+  userEmail: string;
+  userRole: StockControlRole;
+  locationIds: number[];
 }
 
 @Injectable()
@@ -21,6 +36,10 @@ export class WorkflowAssignmentService {
     private readonly assignmentRepo: Repository<WorkflowStepAssignment>,
     @InjectRepository(StockControlUser)
     private readonly userRepo: Repository<StockControlUser>,
+    @InjectRepository(WorkflowNotificationRecipient)
+    private readonly recipientRepo: Repository<WorkflowNotificationRecipient>,
+    @InjectRepository(UserLocationAssignment)
+    private readonly userLocationRepo: Repository<UserLocationAssignment>,
   ) {}
 
   async allAssignments(companyId: number): Promise<StepAssignment[]> {
@@ -193,5 +212,115 @@ export class WorkflowAssignmentService {
     };
 
     return compatibleMap[step] || Object.values(StockControlRole);
+  }
+
+  async allNotificationRecipients(companyId: number): Promise<StepNotificationRecipients[]> {
+    const recipients = await this.recipientRepo.find({
+      where: { companyId },
+      order: { workflowStep: "ASC", email: "ASC" },
+    });
+
+    const grouped = recipients.reduce(
+      (acc, r) => {
+        if (!acc[r.workflowStep]) {
+          acc[r.workflowStep] = [];
+        }
+        acc[r.workflowStep].push(r.email);
+        return acc;
+      },
+      {} as Record<string, string[]>,
+    );
+
+    return Object.values(WorkflowStep).map((step) => ({
+      step,
+      emails: grouped[step] || [],
+    }));
+  }
+
+  async notificationRecipientsForStep(companyId: number, step: WorkflowStep): Promise<string[]> {
+    const recipients = await this.recipientRepo.find({
+      where: { companyId, workflowStep: step },
+      order: { email: "ASC" },
+    });
+    return recipients.map((r) => r.email);
+  }
+
+  async updateNotificationRecipients(
+    companyId: number,
+    step: WorkflowStep,
+    emails: string[],
+  ): Promise<void> {
+    await this.recipientRepo.delete({ companyId, workflowStep: step });
+
+    if (emails.length === 0) {
+      return;
+    }
+
+    const uniqueEmails = [...new Set(emails.map((e) => e.trim().toLowerCase()))];
+    const entities = uniqueEmails.map((email) =>
+      this.recipientRepo.create({ companyId, workflowStep: step, email }),
+    );
+
+    await this.recipientRepo.save(entities);
+    this.logger.log(
+      `Updated ${step} notification recipients for company ${companyId}: ${uniqueEmails.join(", ")}`,
+    );
+  }
+
+  async allUserLocationAssignments(companyId: number): Promise<UserLocationSummary[]> {
+    const assignments = await this.userLocationRepo.find({
+      where: { companyId },
+      relations: ["user", "location"],
+      order: { userId: "ASC" },
+    });
+
+    const grouped = assignments.reduce(
+      (acc, a) => {
+        if (!acc[a.userId]) {
+          acc[a.userId] = {
+            userId: a.userId,
+            userName: a.user.name,
+            userEmail: a.user.email,
+            userRole: a.user.role,
+            locationIds: [],
+          };
+        }
+        acc[a.userId].locationIds.push(a.locationId);
+        return acc;
+      },
+      {} as Record<number, UserLocationSummary>,
+    );
+
+    return Object.values(grouped);
+  }
+
+  async updateUserLocations(
+    companyId: number,
+    userId: number,
+    locationIds: number[],
+  ): Promise<void> {
+    await this.userLocationRepo.delete({ companyId, userId });
+
+    if (locationIds.length === 0) {
+      return;
+    }
+
+    const uniqueIds = [...new Set(locationIds)];
+    const entities = uniqueIds.map((locationId) =>
+      this.userLocationRepo.create({ companyId, userId, locationId }),
+    );
+
+    await this.userLocationRepo.save(entities);
+    this.logger.log(
+      `Updated location assignments for user ${userId} in company ${companyId}: ${uniqueIds.join(", ")}`,
+    );
+  }
+
+  async locationIdsForUser(companyId: number, userId: number): Promise<number[]> {
+    const assignments = await this.userLocationRepo.find({
+      where: { companyId, userId },
+      select: ["locationId"],
+    });
+    return assignments.map((a) => a.locationId);
   }
 }

@@ -10,6 +10,8 @@ import {
   StockControlInvitation,
   StockControlLocation,
   StockControlTeamMember,
+  StepNotificationRecipients,
+  UserLocationSummary,
   stockControlApiClient,
   WorkflowStepAssignment,
 } from "@/app/lib/api/stockControlApi";
@@ -1585,6 +1587,8 @@ export default function StockControlSettingsPage() {
       </div>
 
       <WorkflowAssignmentsSection />
+      <NotificationRecipientsSection />
+      <UserLocationAssignmentsSection locations={locations} teamMembers={teamMembers} />
       <AppInfoSection />
     </div>
   );
@@ -1833,6 +1837,393 @@ function WorkflowAssignmentsSection() {
               )}
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NotificationRecipientsSection() {
+  const [recipients, setRecipients] = useState<StepNotificationRecipients[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingStep, setEditingStep] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState("");
+  const [editEmails, setEditEmails] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const loadRecipients = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await stockControlApiClient.notificationRecipients();
+      setRecipients(data);
+    } catch {
+      setError("Failed to load notification recipients");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRecipients();
+  }, [loadRecipients]);
+
+  const handleEditStep = (step: string) => {
+    const existing = recipients.find((r) => r.step === step);
+    setEditEmails(existing?.emails || []);
+    setEmailInput("");
+    setEditingStep(step);
+    setError("");
+    setSuccess(false);
+  };
+
+  const handleAddEmail = () => {
+    const trimmed = emailInput.trim().toLowerCase();
+    if (!trimmed || !trimmed.includes("@")) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    if (editEmails.includes(trimmed)) {
+      setError("This email has already been added");
+      return;
+    }
+    setEditEmails((prev) => [...prev, trimmed]);
+    setEmailInput("");
+    setError("");
+  };
+
+  const handleRemoveEmail = (email: string) => {
+    setEditEmails((prev) => prev.filter((e) => e !== email));
+  };
+
+  const handleSave = async () => {
+    if (!editingStep) return;
+
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      await stockControlApiClient.updateNotificationRecipients(editingStep, editEmails);
+      await loadRecipients();
+      setEditingStep(null);
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save recipients");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const stepLabel = (step: string) => WORKFLOW_STEPS.find((s) => s.key === step)?.label || step;
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">Notification Recipients</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Configure who receives email notifications for each workflow step. Add one or more email
+        addresses per step. If no recipients are configured, notifications go to assigned users only.
+      </p>
+
+      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+      {success && (
+        <p className="text-sm text-green-600 mb-4">Notification recipients updated successfully.</p>
+      )}
+
+      {loading ? (
+        <div className="text-center py-4 text-gray-500">Loading notification recipients...</div>
+      ) : (
+        <div className="space-y-3">
+          {recipients.map((recipient) => (
+            <div key={recipient.step} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-medium text-gray-900">{stepLabel(recipient.step)}</h3>
+                <button
+                  type="button"
+                  onClick={() =>
+                    editingStep === recipient.step
+                      ? setEditingStep(null)
+                      : handleEditStep(recipient.step)
+                  }
+                  className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                >
+                  {editingStep === recipient.step ? "Cancel" : "Edit"}
+                </button>
+              </div>
+
+              {editingStep === recipient.step ? (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddEmail();
+                        }
+                      }}
+                      placeholder="Enter email address"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-teal-500 focus:border-teal-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddEmail}
+                      className="px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  {editEmails.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {editEmails.map((email) => (
+                        <span
+                          key={email}
+                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {email}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEmail(email)}
+                            className="ml-1.5 text-blue-600 hover:text-blue-800"
+                          >
+                            &times;
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                    >
+                      {saving ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingStep(null)}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {recipient.emails.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">
+                      No additional recipients configured
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {recipient.emails.map((email) => (
+                        <span
+                          key={email}
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {email}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserLocationAssignmentsSection({
+  locations,
+  teamMembers,
+}: {
+  locations: StockControlLocation[];
+  teamMembers: StockControlTeamMember[];
+}) {
+  const [userLocations, setUserLocations] = useState<UserLocationSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [selectedLocationIds, setSelectedLocationIds] = useState<number[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const activeLocations = locations.filter((l) => l.active);
+
+  const loadUserLocations = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await stockControlApiClient.userLocationAssignments();
+      setUserLocations(data);
+    } catch {
+      setError("Failed to load user location assignments");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUserLocations();
+  }, [loadUserLocations]);
+
+  const handleEditUser = (userId: number) => {
+    const existing = userLocations.find((ul) => ul.userId === userId);
+    setSelectedLocationIds(existing?.locationIds || []);
+    setEditingUserId(userId);
+    setError("");
+    setSuccess(false);
+  };
+
+  const handleLocationToggle = (locationId: number) => {
+    setSelectedLocationIds((prev) =>
+      prev.includes(locationId)
+        ? prev.filter((id) => id !== locationId)
+        : [...prev, locationId],
+    );
+  };
+
+  const handleSave = async () => {
+    if (editingUserId === null) return;
+
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      await stockControlApiClient.updateUserLocations(editingUserId, selectedLocationIds);
+      await loadUserLocations();
+      setEditingUserId(null);
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save location assignments");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const locationName = (id: number) => locations.find((l) => l.id === id)?.name || `Location ${id}`;
+
+  const eligibleMembers = teamMembers.filter(
+    (m) => m.role === "storeman" || m.role === "manager" || m.role === "admin",
+  );
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">Store Location Assignments</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Assign store locations to team members. This determines which locations each person can
+        allocate stock from. If no locations are assigned, the user can allocate from any location.
+      </p>
+
+      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+      {success && (
+        <p className="text-sm text-green-600 mb-4">Location assignments updated successfully.</p>
+      )}
+
+      {activeLocations.length === 0 ? (
+        <p className="text-sm text-gray-500 italic">
+          No store locations configured. Add locations in the Locations section above first.
+        </p>
+      ) : loading ? (
+        <div className="text-center py-4 text-gray-500">Loading location assignments...</div>
+      ) : (
+        <div className="space-y-3">
+          {eligibleMembers.map((member) => {
+            const userLoc = userLocations.find((ul) => ul.userId === member.id);
+            const assignedIds = userLoc?.locationIds || [];
+
+            return (
+              <div key={member.id} className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="font-medium text-gray-900">{member.name}</h3>
+                    <p className="text-xs text-gray-500">
+                      {member.email} &middot;{" "}
+                      <span className="capitalize">{member.role}</span>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      editingUserId === member.id
+                        ? setEditingUserId(null)
+                        : handleEditUser(member.id)
+                    }
+                    className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                  >
+                    {editingUserId === member.id ? "Cancel" : "Edit"}
+                  </button>
+                </div>
+
+                {editingUserId === member.id ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {activeLocations.map((loc) => (
+                        <label
+                          key={loc.id}
+                          className="flex items-center space-x-2 text-sm cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedLocationIds.includes(loc.id)}
+                            onChange={() => handleLocationToggle(loc.id)}
+                            className="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                          />
+                          <span className="text-gray-900">{loc.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                      >
+                        {saving ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingUserId(null)}
+                        className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    {assignedIds.length === 0 ? (
+                      <p className="text-sm text-gray-500 italic">
+                        All locations (no restriction)
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {assignedIds.map((id) => (
+                          <span
+                            key={id}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800"
+                          >
+                            {locationName(id)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

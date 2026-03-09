@@ -169,6 +169,52 @@ export class WorkflowController {
     return { success: true };
   }
 
+  @Get("notification-recipients")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Get all notification recipients for company" })
+  async allNotificationRecipients(@Req() req: any) {
+    return this.assignmentService.allNotificationRecipients(req.user.companyId);
+  }
+
+  @Put("notification-recipients/:step")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update notification recipients for a workflow step" })
+  async updateNotificationRecipients(
+    @Req() req: any,
+    @Param("step") step: string,
+    @Body() body: { emails: string[] },
+  ) {
+    await this.assignmentService.updateNotificationRecipients(
+      req.user.companyId,
+      step as WorkflowStep,
+      body.emails,
+    );
+    return { success: true };
+  }
+
+  @Get("user-locations")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Get all user location assignments for company" })
+  async allUserLocations(@Req() req: any) {
+    return this.assignmentService.allUserLocationAssignments(req.user.companyId);
+  }
+
+  @Put("user-locations/:userId")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update location assignments for a user" })
+  async updateUserLocations(
+    @Req() req: any,
+    @Param("userId") userId: number,
+    @Body() body: { locationIds: number[] },
+  ) {
+    await this.assignmentService.updateUserLocations(
+      req.user.companyId,
+      userId,
+      body.locationIds,
+    );
+    return { success: true };
+  }
+
   @Get("job-cards/:id/dispatch/start")
   @StockControlRoles("storeman", "admin", "manager")
   @ApiOperation({ summary: "Start dispatch session for a job card" })

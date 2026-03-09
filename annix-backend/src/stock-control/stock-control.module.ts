@@ -61,6 +61,8 @@ import { StockControlLocation } from "./entities/stock-control-location.entity";
 import { StockControlRbacConfig } from "./entities/stock-control-rbac-config.entity";
 import { StockControlSupplier } from "./entities/stock-control-supplier.entity";
 import { StockControlUser } from "./entities/stock-control-user.entity";
+import { UserLocationAssignment } from "./entities/user-location-assignment.entity";
+import { WorkflowNotificationRecipient } from "./entities/workflow-notification-recipient.entity";
 import { StockIssuance } from "./entities/stock-issuance.entity";
 import { StockItem } from "./entities/stock-item.entity";
 import { StockMovement } from "./entities/stock-movement.entity";
@@ -149,6 +151,8 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       CustomerPurchaseOrder,
       CustomerPurchaseOrderItem,
       CpoCalloffRecord,
+      WorkflowNotificationRecipient,
+      UserLocationAssignment,
     ]),
     EmailModule,
     JwtModule.registerAsync({
