@@ -239,7 +239,7 @@ export default function DeliveryNoteDetailPage() {
         count > 1 ? `Extract accepted - ${count} delivery notes created` : "Extract accepted",
         "success",
       );
-      router.push("/au-rubber/portal/delivery-notes/customers");
+      router.back();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to accept extract", "error");
       setIsAccepting(false);
@@ -274,7 +274,7 @@ export default function DeliveryNoteDetailPage() {
       setIsDeleting(true);
       await auRubberApiClient.deleteDeliveryNote(noteId);
       showToast("Delivery note deleted successfully", "success");
-      router.push("/au-rubber/portal/delivery-notes/customers");
+      router.back();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to delete delivery note", "error");
       setIsDeleting(false);
