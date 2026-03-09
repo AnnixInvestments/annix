@@ -6,6 +6,7 @@ import * as QRCode from "qrcode";
 import { ILike, MoreThan, Repository } from "typeorm";
 import { formatDateTime } from "../../lib/datetime";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
+import type { RubberPlanManualRoll } from "../entities/job-card.entity";
 import { JobCard } from "../entities/job-card.entity";
 import {
   ApprovalStatus,
@@ -23,7 +24,6 @@ import {
   parseRubberSpecNote,
   type RollAllocation,
 } from "../lib/rubberCuttingCalculator";
-import type { RubberPlanManualRoll } from "../entities/job-card.entity";
 
 @Injectable()
 export class JobCardPdfService {
@@ -781,10 +781,7 @@ export class JobCardPdfService {
     return groups;
   }
 
-  private manualRollToAllocation(
-    mRoll: RubberPlanManualRoll,
-    rollIndex: number,
-  ): RollAllocation {
+  private manualRollToAllocation(mRoll: RubberPlanManualRoll, rollIndex: number): RollAllocation {
     const rollLengthMm = mRoll.lengthM * 1000;
     const rollWidthMm = mRoll.widthMm;
 
@@ -853,7 +850,8 @@ export class JobCardPdfService {
     }
 
     const totalUsedMm = cuts.reduce((sum, c) => sum + c.lengthMm, 0);
-    const wastePercentage = rollLengthMm > 0 ? ((rollLengthMm - totalUsedMm) / rollLengthMm) * 100 : 0;
+    const wastePercentage =
+      rollLengthMm > 0 ? ((rollLengthMm - totalUsedMm) / rollLengthMm) * 100 : 0;
 
     return {
       rollIndex: rollIndex + 1,
