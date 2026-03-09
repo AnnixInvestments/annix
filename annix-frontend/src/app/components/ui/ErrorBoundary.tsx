@@ -1,10 +1,7 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
-import {
-  attemptChunkErrorRecovery,
-  isChunkLoadError,
-} from "@/app/lib/chunkErrorRecovery";
+import { attemptChunkErrorRecovery, isChunkLoadError } from "@/app/lib/chunkErrorRecovery";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
