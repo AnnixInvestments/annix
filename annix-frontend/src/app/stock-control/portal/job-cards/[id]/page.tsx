@@ -250,21 +250,127 @@ function groupIdenticalRolls(rolls: RollAllocation[]): RollGroup[] {
   return groups;
 }
 
-function OffcutList({ offcuts }: { offcuts: Offcut[] }) {
+function OffcutList({
+  offcuts,
+  jobCardId,
+  thicknessMm,
+  color,
+  userRole,
+}: {
+  offcuts: Offcut[];
+  jobCardId?: number;
+  thicknessMm?: number;
+  color?: string | null;
+  userRole?: string | null;
+}) {
+  const [wastageIdx, setWastageIdx] = useState<number | null>(null);
+  const [wastageSG, setWastageSG] = useState<number>(1.5);
+  const [wastageSubmitting, setWastageSubmitting] = useState(false);
+  const [markedWastage, setMarkedWastage] = useState<Set<number>>(new Set());
+
   if (offcuts.length === 0) return null;
+
+  const canMarkWastage =
+    (userRole === "manager" || userRole === "admin") && jobCardId !== undefined && thicknessMm;
+
+  const calculateWeightKg = (offcut: Offcut, sg: number): number => {
+    const thicknessM = (thicknessMm || 0) / 1000;
+    const widthM = offcut.widthMm / 1000;
+    const lengthM = offcut.lengthMm / 1000;
+    return thicknessM * widthM * lengthM * sg * 1000;
+  };
+
+  const handleMarkWastage = async (idx: number) => {
+    if (!jobCardId || !thicknessMm) return;
+    const offcut = offcuts[idx];
+    setWastageSubmitting(true);
+    try {
+      await stockControlApiClient.markOffcutAsWastage(jobCardId, {
+        widthMm: offcut.widthMm,
+        lengthMm: offcut.lengthMm,
+        thicknessMm,
+        color: color || null,
+        specificGravity: wastageSG,
+      });
+      setMarkedWastage((prev) => new Set([...prev, idx]));
+      setWastageIdx(null);
+    } finally {
+      setWastageSubmitting(false);
+    }
+  };
 
   return (
     <div className="mt-2">
       <div className="text-xs text-gray-500 mb-1">Offcuts:</div>
       <div className="flex flex-wrap gap-1">
-        {offcuts.map((offcut, idx) => (
-          <span
-            key={`offcut-${idx}`}
-            className="text-xs bg-gray-100 border border-dashed border-gray-400 rounded px-2 py-0.5 text-gray-600"
-          >
-            {offcut.widthMm}mm x {offcut.lengthMm}mm ({offcut.areaSqM.toFixed(3)} m&#178;)
-          </span>
-        ))}
+        {offcuts.map((offcut, idx) => {
+          const isMarked = markedWastage.has(idx);
+          return (
+            <div key={`offcut-${idx}`} className="flex flex-col gap-1">
+              <span
+                className={`text-xs border border-dashed rounded px-2 py-0.5 ${
+                  isMarked
+                    ? "bg-red-50 border-red-400 text-red-600 line-through"
+                    : "bg-gray-100 border-gray-400 text-gray-600"
+                }`}
+              >
+                {offcut.widthMm}mm x {offcut.lengthMm}mm ({offcut.areaSqM.toFixed(3)} m&#178;)
+                {canMarkWastage && !isMarked && (
+                  <button
+                    type="button"
+                    onClick={() => setWastageIdx(wastageIdx === idx ? null : idx)}
+                    className="ml-2 text-red-500 hover:text-red-700 font-medium"
+                    title="Mark as wastage"
+                  >
+                    Wastage
+                  </button>
+                )}
+                {isMarked && <span className="ml-2 text-red-500 font-medium">Wastage</span>}
+              </span>
+              {wastageIdx === idx && (
+                <div className="bg-red-50 border border-red-200 rounded p-2 text-xs">
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-gray-600">SG:</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0.5"
+                      max="3.0"
+                      value={wastageSG}
+                      onChange={(e) => setWastageSG(Number(e.target.value))}
+                      className="w-16 px-1 py-0.5 border rounded text-xs"
+                    />
+                    <span className="text-gray-500">
+                      = {calculateWeightKg(offcut, wastageSG).toFixed(2)} kg
+                    </span>
+                  </div>
+                  {color && (
+                    <p className="text-gray-500 mb-1">
+                      Colour: <span className="font-medium text-gray-700">{color}</span>
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleMarkWastage(idx)}
+                      disabled={wastageSubmitting}
+                      className="px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {wastageSubmitting ? "Saving..." : "Confirm Wastage"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWastageIdx(null)}
+                      className="px-2 py-0.5 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -282,11 +388,17 @@ function CuttingDiagram({
   colorMap,
   groupCount,
   thicknessMm,
+  jobCardId,
+  rubberColor,
+  userRole,
 }: {
   roll: RollAllocation;
   colorMap: Map<string, string>;
   groupCount?: number;
   thicknessMm?: number;
+  jobCardId?: number;
+  rubberColor?: string | null;
+  userRole?: string | null;
 }) {
   const rollLengthMm = roll.rollSpec.lengthM * 1000;
   const rollWidthMm = roll.rollSpec.widthMm;
@@ -375,7 +487,7 @@ function CuttingDiagram({
       </div>
 
       <div className="mt-2">
-        <div className="text-xs text-gray-500 mb-1">Cut List:</div>
+        <div className="text-xs text-gray-500 mb-1">Cuttings:</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
           {roll.cuts.map((cut, idx) => {
             const colorClass =
@@ -414,7 +526,13 @@ function CuttingDiagram({
         </div>
       </div>
 
-      <OffcutList offcuts={roll.offcuts} />
+      <OffcutList
+        offcuts={roll.offcuts}
+        jobCardId={jobCardId}
+        thicknessMm={thicknessMm}
+        color={rubberColor}
+        userRole={userRole}
+      />
     </div>
   );
 }
@@ -422,9 +540,13 @@ function CuttingDiagram({
 function PipeCuttingView({
   plan,
   fallbackThicknessMm,
+  jobCardId,
+  userRole,
 }: {
   plan: CuttingPlan;
   fallbackThicknessMm?: number;
+  jobCardId?: number;
+  userRole?: string | null;
 }) {
   const colorMap = plan.rolls
     .flatMap((roll) => roll.cuts)
@@ -484,6 +606,9 @@ function PipeCuttingView({
             colorMap={colorMap}
             groupCount={group.count}
             thicknessMm={group.representativeRoll.plyThicknessMm || fallbackThickness}
+            jobCardId={jobCardId}
+            rubberColor={plan.rubberSpec?.color}
+            userRole={userRole}
           />
         ))}
         {individualRolls.map((roll) => (
@@ -492,6 +617,9 @@ function PipeCuttingView({
             roll={roll}
             colorMap={colorMap}
             thicknessMm={roll.plyThicknessMm || fallbackThickness}
+            jobCardId={jobCardId}
+            rubberColor={plan.rubberSpec?.color}
+            userRole={userRole}
           />
         ))}
       </div>
@@ -764,6 +892,7 @@ function RubberSOHPanel({
   selectedPly,
   onPlyChange,
   lineItems,
+  userRole,
 }: {
   stockOptions: RubberStockOptionsResponse;
   plan: CuttingPlan;
@@ -772,6 +901,7 @@ function RubberSOHPanel({
   onOverrideSaved: (override: RubberPlanOverride) => void;
   selectedPly: number[] | null;
   onPlyChange: (ply: number[] | null) => void;
+  userRole?: string | null;
   lineItems: Array<{
     id?: number;
     itemCode: string | null;
@@ -782,11 +912,7 @@ function RubberSOHPanel({
   }>;
 }) {
   const [planDecision, setPlanDecision] = useState<"pending" | "accepted" | "rejected">(
-    existingOverride?.status === "accepted"
-      ? "accepted"
-      : existingOverride?.status === "manual"
-        ? "rejected"
-        : "pending",
+    existingOverride?.status === "accepted" ? "accepted" : "pending",
   );
   const [manualRolls, setManualRolls] = useState<RubberPlanManualRoll[]>(
     existingOverride?.manualRolls || [],
@@ -876,6 +1002,7 @@ function RubberSOHPanel({
       };
       await stockControlApiClient.updateRubberPlan(jobCardId, override);
       setManualRolls(rolls);
+      setPlanDecision("pending");
       onOverrideSaved(override);
     } finally {
       setSaving(false);
@@ -1135,6 +1262,7 @@ function RubberAllocationSection({
   jobCardId,
   rubberPlanOverride,
 }: RubberAllocationProps) {
+  const { user: scUser } = useStockControlAuth();
   const [stockOptions, setStockOptions] = useState<RubberStockOptionsResponse | null>(null);
   const [override, setOverride] = useState<RubberPlanOverride | null>(rubberPlanOverride);
   const [selectedPly, setSelectedPly] = useState<number[] | null>(
@@ -1284,6 +1412,8 @@ function RubberAllocationSection({
           <PipeCuttingView
             plan={plan}
             fallbackThicknessMm={stockOptions?.rubberSpec?.thicknessMm}
+            jobCardId={jobCardId}
+            userRole={scUser?.role ?? null}
           />
         ) : (
           <GenericM2View totalM2={plan.genericM2Total} items={plan.genericM2Items} />
@@ -1308,6 +1438,7 @@ function RubberAllocationSection({
             selectedPly={selectedPly}
             onPlyChange={setSelectedPly}
             lineItems={lineItemsForPlan}
+            userRole={scUser?.role ?? null}
           />
         )}
       </div>

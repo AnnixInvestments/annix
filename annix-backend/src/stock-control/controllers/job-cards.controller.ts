@@ -21,6 +21,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, MoreThan, Repository } from "typeorm";
 import { RubberDimensionOverride } from "../entities/rubber-dimension-override.entity";
 import { StockItem } from "../entities/stock-item.entity";
+import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
@@ -50,6 +51,8 @@ export class JobCardsController {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(RubberDimensionOverride)
     private readonly dimensionOverrideRepo: Repository<RubberDimensionOverride>,
+    @InjectRepository(StockMovement)
+    private readonly stockMovementRepo: Repository<StockMovement>,
   ) {}
 
   @Get()
@@ -288,6 +291,73 @@ export class JobCardsController {
     }
 
     return result;
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Post(":id/rubber-wastage")
+  @ApiOperation({ summary: "Mark an offcut as wastage and add to rubber wastage stock" })
+  async markOffcutAsWastage(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body()
+    body: {
+      widthMm: number;
+      lengthMm: number;
+      thicknessMm: number;
+      color: string | null;
+      specificGravity: number;
+    },
+  ) {
+    const companyId = req.user.companyId;
+
+    const thicknessM = body.thicknessMm / 1000;
+    const widthM = body.widthMm / 1000;
+    const lengthM = body.lengthMm / 1000;
+    const volumeM3 = thicknessM * widthM * lengthM;
+    const weightKg = volumeM3 * (body.specificGravity || 1) * 1000;
+
+    const colour = (body.color || "Unknown").trim();
+    const wastageName = `Rubber Wastage - ${colour}`;
+    const wastageSku = `RW-${colour.toUpperCase().replace(/\s+/g, "-")}`;
+
+    let wastageItem = await this.stockItemRepo.findOne({
+      where: { companyId, sku: wastageSku, category: "rubber-wastage" },
+    });
+
+    if (!wastageItem) {
+      wastageItem = this.stockItemRepo.create({
+        companyId,
+        sku: wastageSku,
+        name: wastageName,
+        description: `Rubber wastage scraps (${colour}). Mixed hardnesses/compounds allowed within same colour.`,
+        category: "rubber-wastage",
+        unitOfMeasure: "kg",
+        quantity: 0,
+        minStockLevel: 0,
+        color: colour,
+      });
+      wastageItem = await this.stockItemRepo.save(wastageItem);
+    }
+
+    const roundedKg = Math.round(weightKg * 100) / 100;
+    const wholeKg = Math.max(1, Math.round(weightKg));
+    await this.stockItemRepo.update(wastageItem.id, {
+      quantity: () => `quantity + ${wholeKg}`,
+    });
+
+    const movement = this.stockMovementRepo.create({
+      stockItem: wastageItem,
+      companyId,
+      movementType: MovementType.IN,
+      quantity: wholeKg,
+      referenceType: ReferenceType.MANUAL,
+      referenceId: id,
+      notes: `Rubber offcut wastage from JC #${id}: ${body.widthMm}mm x ${body.lengthMm}mm x ${body.thicknessMm}mm (SG ${body.specificGravity}) = ${roundedKg} kg`,
+      createdBy: req.user.name,
+    });
+    await this.stockMovementRepo.save(movement);
+
+    return { weightKg: roundedKg, stockItemId: wastageItem.id };
   }
 
   private async upsertDimensionOverrides(companyId: number, overrides: any[]): Promise<void> {

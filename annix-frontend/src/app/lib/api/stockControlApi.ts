@@ -1925,6 +1925,23 @@ class StockControlApiClient {
     });
   }
 
+  async markOffcutAsWastage(
+    jobCardId: number,
+    data: {
+      widthMm: number;
+      lengthMm: number;
+      thicknessMm: number;
+      color: string | null;
+      specificGravity: number;
+    },
+  ): Promise<{ weightKg: number; stockItemId: number }> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/rubber-wastage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
   async rubberDimensionSuggestions(params: {
     itemType?: string | null;
     nbMm?: number | null;
