@@ -103,6 +103,12 @@ const COATING_PRODUCTS: CoatingProductSpec[] = [
     genericType: "epoxy_mastic",
     volumeSolidsPercent: 85,
   },
+  {
+    name: "Pilot QD Red Oxide",
+    aliases: ["pilot qd", "pilot qd red", "pilot red oxide", "jotun pilot qd"],
+    genericType: "alkyd",
+    volumeSolidsPercent: 49,
+  },
 
   // ── International (AkzoNobel) ──────────────────────────
   {

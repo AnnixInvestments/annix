@@ -66,7 +66,8 @@ Rules:
 - Tag each coat with "area": "external" for coats under EXT section, "internal" for coats under INT section
 - If notes mention both EXT and INT, set applicationType to "both" and include all coats with their respective area tags
 - Surface prep: look for "BLAST", "HAND TOOL", "POWER TOOL" keywords. If internal rubber lining (R/L) is specified, surface prep is "sa3_blast" (SA3 abrasive blast required before rubber lining)
-- "R/L" or "RUBBER LINING" in INT section means internal rubber lining — set applicationType to "both" and include an internal area coat entry
+- "R/L" or "RUBBER LINING" in INT section means internal rubber lining — set applicationType to "both" but DO NOT include rubber as a coat entry. Rubber lining is not paint.
+- NEVER include rubber lining products (identified by keywords: R/L, SHORE, RUBBER, LINING, LINER, LAGGING) in the coats array — only include paint/coating products
 - Return valid JSON only, no additional text`;
 
 @Injectable()
@@ -466,17 +467,23 @@ export class CoatingAnalysisService {
 
     const parsed = JSON.parse(jsonMatch[0]);
 
+    const RUBBER_PATTERN = /\br\/l\b|rubber|shore|lining|liner|lagging/i;
+
+    const allCoats = (parsed.coats || []).map((coat: any) => ({
+      product: coat.product || "Unknown",
+      genericType: coat.genericType || "unknown",
+      area: coat.area === "internal" ? "internal" : "external",
+      minDftUm: coat.minDftUm || 0,
+      maxDftUm: coat.maxDftUm || 0,
+      solidsByVolumePercent: coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME,
+    }));
+
+    const paintCoats = allCoats.filter((coat: AiCoatResult) => !RUBBER_PATTERN.test(coat.product));
+
     return {
       applicationType: parsed.applicationType || "external",
       surfacePrep: parsed.surfacePrep || null,
-      coats: (parsed.coats || []).map((coat: any) => ({
-        product: coat.product || "Unknown",
-        genericType: coat.genericType || "unknown",
-        area: coat.area === "internal" ? "internal" : "external",
-        minDftUm: coat.minDftUm || 0,
-        maxDftUm: coat.maxDftUm || 0,
-        solidsByVolumePercent: coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME,
-      })),
+      coats: paintCoats,
     };
   }
 
