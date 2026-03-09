@@ -229,14 +229,18 @@ export class RubberTaxInvoiceService {
     const extractedQuantity = data.productQuantity || null;
     const extractedUnit = data.productUnit || null;
 
-    const textToSearch = data.productSummary
-      || data.lineItems?.map((item) => item.description).join(" ")
-      || "";
+    const textToSearch =
+      data.productSummary || data.lineItems?.map((item) => item.description).join(" ") || "";
 
-    const { quantity, unit } = this.extractQuantityAndUnit(textToSearch, extractedQuantity, extractedUnit);
+    const { quantity, unit } = this.extractQuantityAndUnit(
+      textToSearch,
+      extractedQuantity,
+      extractedUnit,
+    );
 
-    const productDescription = data.productSummary
-      || (data.lineItems && data.lineItems.length > 0 ? data.lineItems[0].description : null);
+    const productDescription =
+      data.productSummary ||
+      (data.lineItems && data.lineItems.length > 0 ? data.lineItems[0].description : null);
 
     const costPerUnit =
       subtotalExVat != null && quantity != null && quantity > 0

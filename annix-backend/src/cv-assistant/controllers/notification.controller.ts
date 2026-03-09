@@ -1,9 +1,9 @@
 import { Body, Controller, Delete, Get, Patch, Post, Request, UseGuards } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { CvNotificationService } from "../services/cv-notification.service";
-import { InjectRepository } from "@nestjs/typeorm";
-import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
-import { Repository } from "typeorm";
 
 @Controller("cv-assistant/notifications")
 @UseGuards(CvAssistantAuthGuard)

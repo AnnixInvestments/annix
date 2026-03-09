@@ -2174,7 +2174,7 @@ This is an automated notification from the Annix test site.
             </thead>
             <tbody>${matchRows}</tbody>
           </table>`
-        : "<p style=\"color: #6b7280;\">No high-scoring matches this week.</p>";
+        : '<p style="color: #6b7280;">No high-scoring matches this week.</p>';
 
     const html = `
       <!DOCTYPE html>

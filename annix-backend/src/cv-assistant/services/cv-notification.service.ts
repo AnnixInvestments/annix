@@ -4,8 +4,8 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, MoreThan, Repository } from "typeorm";
 import * as webpush from "web-push";
-import { DateTime } from "../../lib/datetime";
 import { EmailService } from "../../email/email.service";
+import { DateTime } from "../../lib/datetime";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
@@ -57,7 +57,11 @@ export class CvNotificationService {
     return this.configService.get<string>("VAPID_PUBLIC_KEY") ?? null;
   }
 
-  async subscribe(userId: number, companyId: number, subscription: { endpoint: string; keys: { p256dh: string; auth: string } }): Promise<void> {
+  async subscribe(
+    userId: number,
+    companyId: number,
+    subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+  ): Promise<void> {
     const existing = await this.pushSubRepo.findOne({
       where: { endpoint: subscription.endpoint },
     });
@@ -216,7 +220,10 @@ export class CvNotificationService {
         .leftJoinAndSelect("match.externalJob", "job")
         .leftJoinAndSelect("match.candidate", "candidate")
         .where("match.created_at > :since", { since: sevenDaysAgo })
-        .andWhere("match.candidate_id IN (SELECT id FROM cv_assistant_candidates WHERE job_posting_id IN (:...ids))", { ids: jobPostingIds })
+        .andWhere(
+          "match.candidate_id IN (SELECT id FROM cv_assistant_candidates WHERE job_posting_id IN (:...ids))",
+          { ids: jobPostingIds },
+        )
         .andWhere("match.overall_score >= 0.7")
         .orderBy("match.overall_score", "DESC")
         .take(10)

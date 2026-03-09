@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import {
   CompanySettings,
-  NotificationPreferences,
   cvAssistantApiClient,
+  NotificationPreferences,
   PopiaRetentionStats,
 } from "@/app/lib/api/cvAssistantApi";
 

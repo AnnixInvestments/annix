@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, forwardRef } from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Candidate } from "../entities/candidate.entity";
@@ -96,7 +96,9 @@ export class CandidateJobMatchingService {
         matches.map((m) => ({ externalJobId: m.externalJobId, overallScore: m.overallScore })),
       )
       .catch((err) => {
-        this.logger.warn(`Failed to send match alerts for candidate ${candidateId}: ${err.message}`);
+        this.logger.warn(
+          `Failed to send match alerts for candidate ${candidateId}: ${err.message}`,
+        );
       });
 
     return matches;

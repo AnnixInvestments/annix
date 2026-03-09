@@ -54,10 +54,8 @@ function manualRollsToCuttingPlan(manualRolls: RubberPlanManualRoll[]): CuttingP
       const bandWidthMm = Number(widthKey);
       const maxLanesPerBand = Math.max(1, Math.floor(rollWidthMm / bandWidthMm));
 
-      Array.from(
-        { length: Math.ceil(cutsInBand.length / maxLanesPerBand) },
-        (_, chunkIdx) =>
-          cutsInBand.slice(chunkIdx * maxLanesPerBand, (chunkIdx + 1) * maxLanesPerBand),
+      Array.from({ length: Math.ceil(cutsInBand.length / maxLanesPerBand) }, (_, chunkIdx) =>
+        cutsInBand.slice(chunkIdx * maxLanesPerBand, (chunkIdx + 1) * maxLanesPerBand),
       ).forEach((chunk) => {
         const lanesNeeded = chunk.length;
         const maxLaneLengthMm = Math.max(...chunk.map((c) => c.lengthMm));

@@ -2,8 +2,8 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { DateTime, fromISO, now } from "../../lib/datetime";
+import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
-import { CandidateStatus, Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
 
