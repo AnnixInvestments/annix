@@ -63,7 +63,7 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
         <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>

@@ -1015,7 +1015,7 @@ export default function DeliveryNoteDetailPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
               onClick={() => setShowLinkModal(false)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -1063,7 +1063,7 @@ export default function DeliveryNoteDetailPage() {
       {showPodModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={closePodModal} />
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={closePodModal} />
             <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4 border-b">
                 <h3 className="text-lg font-medium text-gray-900">
@@ -1166,7 +1166,7 @@ export default function DeliveryNoteDetailPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
               onClick={() => setShowDeleteConfirm(false)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">

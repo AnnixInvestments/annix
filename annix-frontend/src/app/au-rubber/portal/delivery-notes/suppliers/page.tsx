@@ -575,7 +575,7 @@ export default function SupplierDeliveryNotesPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
               onClick={() => setShowUploadModal(false)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
@@ -696,7 +696,7 @@ export default function SupplierDeliveryNotesPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
               onClick={closeAutoCreateModal}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
