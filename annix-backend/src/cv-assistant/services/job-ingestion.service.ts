@@ -6,6 +6,7 @@ import { DateTime } from "../../lib/datetime";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
 import { AdzunaJobResult, AdzunaService } from "./adzuna.service";
+import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { EmbeddingService } from "./embedding.service";
 
 @Injectable()
@@ -19,6 +20,7 @@ export class JobIngestionService {
     private readonly externalJobRepo: Repository<ExternalJob>,
     private readonly adzunaService: AdzunaService,
     private readonly embeddingService: EmbeddingService,
+    private readonly candidateJobMatchingService: CandidateJobMatchingService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -233,9 +235,17 @@ export class JobIngestionService {
       });
 
       const saved = await this.externalJobRepo.save(externalJob);
-      this.embeddingService.embedExternalJob(saved.id).catch((err) => {
-        this.logger.warn(`Failed to embed job ${saved.id}: ${err.message}`);
-      });
+      this.embeddingService
+        .embedExternalJob(saved.id)
+        .then((embedded) => {
+          if (embedded) {
+            return this.candidateJobMatchingService.matchJobToCandidates(saved.id);
+          }
+          return null;
+        })
+        .catch((err) => {
+          this.logger.warn(`Failed to embed/match job ${saved.id}: ${err.message}`);
+        });
       ingested += 1;
     }
 

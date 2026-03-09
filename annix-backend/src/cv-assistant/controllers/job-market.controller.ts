@@ -14,6 +14,7 @@ import {
 import { CreateJobMarketSourceDto, UpdateJobMarketSourceDto } from "../dto/job-market.dto";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { AdzunaService } from "../services/adzuna.service";
+import { CandidateJobMatchingService } from "../services/candidate-job-matching.service";
 import { EmbeddingService } from "../services/embedding.service";
 import { JobIngestionService } from "../services/job-ingestion.service";
 import { JobMarketSourceService } from "../services/job-market-source.service";
@@ -30,6 +31,7 @@ export class JobMarketController {
     private readonly ingestionService: JobIngestionService,
     private readonly adzunaService: AdzunaService,
     private readonly embeddingService: EmbeddingService,
+    private readonly matchingService: CandidateJobMatchingService,
   ) {}
 
   @Get("sources")
@@ -119,5 +121,33 @@ export class JobMarketController {
       candidates,
       jobs,
     };
+  }
+
+  @Get("candidates/:candidateId/recommended-jobs")
+  async recommendedJobs(@Param("candidateId", ParseIntPipe) candidateId: number) {
+    return this.matchingService.recommendedJobsForCandidate(candidateId);
+  }
+
+  @Post("candidates/:candidateId/match")
+  async triggerCandidateMatch(@Param("candidateId", ParseIntPipe) candidateId: number) {
+    const matches = await this.matchingService.matchCandidateToJobs(candidateId);
+    return { matched: matches.length };
+  }
+
+  @Get("jobs/:jobId/matching-candidates")
+  async matchingCandidates(@Param("jobId", ParseIntPipe) jobId: number) {
+    return this.matchingService.matchingCandidatesForJob(jobId);
+  }
+
+  @Post("jobs/:jobId/match")
+  async triggerJobMatch(@Param("jobId", ParseIntPipe) jobId: number) {
+    const matches = await this.matchingService.matchJobToCandidates(jobId);
+    return { matched: matches.length };
+  }
+
+  @Post("matches/:matchId/dismiss")
+  async dismissMatch(@Param("matchId", ParseIntPipe) matchId: number) {
+    await this.matchingService.dismissMatch(matchId);
+    return { message: "Match dismissed" };
   }
 }

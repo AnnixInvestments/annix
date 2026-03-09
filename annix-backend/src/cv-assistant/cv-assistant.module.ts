@@ -15,6 +15,7 @@ import { ReferenceFeedbackController } from "./controllers/reference-feedback.co
 import { ReferencesController } from "./controllers/references.controller";
 import { SettingsController } from "./controllers/settings.controller";
 import { Candidate } from "./entities/candidate.entity";
+import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
 import { CvAssistantCompany } from "./entities/cv-assistant-company.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
@@ -25,6 +26,7 @@ import { CvAssistantAuthGuard } from "./guards/cv-assistant-auth.guard";
 import { CvAssistantRoleGuard } from "./guards/cv-assistant-role.guard";
 import { AdzunaService } from "./services/adzuna.service";
 import { CvAssistantAuthService } from "./services/auth.service";
+import { CandidateJobMatchingService } from "./services/candidate-job-matching.service";
 import { CandidateService } from "./services/candidate.service";
 import { CvExtractionService } from "./services/cv-extraction.service";
 import { EmailMonitorService } from "./services/email-monitor.service";
@@ -47,6 +49,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CandidateReference,
       JobMarketSource,
       ExternalJob,
+      CandidateJobMatch,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -91,6 +94,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     JobIngestionService,
     JobMarketSourceService,
     EmbeddingService,
+    CandidateJobMatchingService,
   ],
 })
 export class CvAssistantModule {}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  type CandidateJobMatch,
   type CreateJobMarketSourceDto,
   cvAssistantApiClient,
   type ExternalJob,
@@ -271,6 +272,28 @@ export default function JobMarketPage() {
 }
 
 function JobCard({ job }: { job: ExternalJob }) {
+  const [showCandidates, setShowCandidates] = useState(false);
+  const [matchingCandidates, setMatchingCandidates] = useState<CandidateJobMatch[]>([]);
+  const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
+
+  const handleShowCandidates = async () => {
+    if (showCandidates) {
+      setShowCandidates(false);
+      return;
+    }
+    setShowCandidates(true);
+    setIsLoadingCandidates(true);
+    try {
+      const matches = await cvAssistantApiClient.matchingCandidatesForJob(job.id);
+      setMatchingCandidates(matches);
+    } catch (error) {
+      console.error("Failed to fetch matching candidates:", error);
+      setMatchingCandidates([]);
+    } finally {
+      setIsLoadingCandidates(false);
+    }
+  };
+
   const formatSalary = (min: number | null, max: number | null, currency: string | null) => {
     if (!min && !max) return null;
     const curr = currency ?? "ZAR";
@@ -312,11 +335,24 @@ function JobCard({ job }: { job: ExternalJob }) {
           {job.description && (
             <p className="mt-2 text-sm text-gray-600 line-clamp-2">{job.description}</p>
           )}
-          {job.category && (
-            <span className="inline-block mt-2 px-2 py-0.5 text-xs bg-violet-50 text-violet-700 rounded-full">
-              {job.category}
-            </span>
-          )}
+          <div className="flex items-center gap-2 mt-2">
+            {job.category && (
+              <span className="px-2 py-0.5 text-xs bg-violet-50 text-violet-700 rounded-full">
+                {job.category}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleShowCandidates}
+              className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
+                showCandidates
+                  ? "bg-violet-100 text-violet-700 font-medium"
+                  : "bg-gray-100 text-gray-600 hover:bg-violet-50 hover:text-violet-600"
+              }`}
+            >
+              Matching Candidates
+            </button>
+          </div>
         </div>
         {job.sourceUrl && (
           <a
@@ -329,6 +365,63 @@ function JobCard({ job }: { job: ExternalJob }) {
           </a>
         )}
       </div>
+      {showCandidates && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          {isLoadingCandidates ? (
+            <div className="flex items-center gap-2 py-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-violet-600" />
+              <span className="text-xs text-gray-500">Finding matching candidates...</span>
+            </div>
+          ) : matchingCandidates.length === 0 ? (
+            <p className="text-xs text-gray-500 py-1">No matching candidates found.</p>
+          ) : (
+            <div className="space-y-2">
+              {matchingCandidates.map((match) => {
+                const candidate = match.candidate;
+                const scorePct = Math.round(match.overallScore * 100);
+                return (
+                  <div
+                    key={match.id}
+                    className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-sm font-bold ${
+                          scorePct >= 70
+                            ? "text-green-600"
+                            : scorePct >= 40
+                              ? "text-yellow-600"
+                              : "text-gray-500"
+                        }`}
+                      >
+                        {scorePct}%
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {candidate?.name ?? "Unknown"}
+                        </p>
+                        <p className="text-xs text-gray-500">{candidate?.email ?? ""}</p>
+                      </div>
+                    </div>
+                    {match.matchDetails && (
+                      <div className="flex flex-wrap gap-1">
+                        {match.matchDetails.skillsMatched.slice(0, 3).map((skill) => (
+                          <span
+                            key={skill}
+                            className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

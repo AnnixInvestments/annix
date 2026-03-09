@@ -194,6 +194,31 @@ export interface JobMarketStats {
   }>;
 }
 
+export interface CandidateJobMatchDetails {
+  embeddingSimilarity: number;
+  skillsOverlap: number;
+  skillsMatched: string[];
+  skillsMissing: string[];
+  experienceMatch: number;
+  locationMatch: number;
+  reasoning: string;
+}
+
+export interface CandidateJobMatch {
+  id: number;
+  candidateId: number;
+  externalJobId: number;
+  similarityScore: number;
+  structuredScore: number;
+  overallScore: number;
+  matchDetails: CandidateJobMatchDetails | null;
+  dismissed: boolean;
+  externalJob?: ExternalJob;
+  candidate?: Candidate;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const TOKEN_KEYS = {
   accessToken: "cvAssistantAccessToken",
   refreshToken: "cvAssistantRefreshToken",
@@ -674,6 +699,30 @@ class CvAssistantApiClient {
 
   async jobMarketStats(): Promise<JobMarketStats> {
     return this.request("/cv-assistant/job-market/stats");
+  }
+
+  async recommendedJobsForCandidate(candidateId: number): Promise<CandidateJobMatch[]> {
+    return this.request(`/cv-assistant/job-market/candidates/${candidateId}/recommended-jobs`);
+  }
+
+  async triggerCandidateMatch(candidateId: number): Promise<{ matched: number }> {
+    return this.request(`/cv-assistant/job-market/candidates/${candidateId}/match`, {
+      method: "POST",
+    });
+  }
+
+  async matchingCandidatesForJob(jobId: number): Promise<CandidateJobMatch[]> {
+    return this.request(`/cv-assistant/job-market/jobs/${jobId}/matching-candidates`);
+  }
+
+  async triggerJobMatch(jobId: number): Promise<{ matched: number }> {
+    return this.request(`/cv-assistant/job-market/jobs/${jobId}/match`, { method: "POST" });
+  }
+
+  async dismissMatch(matchId: number): Promise<{ message: string }> {
+    return this.request(`/cv-assistant/job-market/matches/${matchId}/dismiss`, {
+      method: "POST",
+    });
   }
 }
 

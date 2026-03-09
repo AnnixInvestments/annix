@@ -5,6 +5,7 @@ import { EmailService } from "../../email/email.service";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { JobPosting } from "../entities/job-posting.entity";
 import { CandidateService } from "./candidate.service";
+import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvExtractionService } from "./cv-extraction.service";
 import { EmbeddingService } from "./embedding.service";
 import { JobMatchService } from "./job-match.service";
@@ -25,6 +26,7 @@ export class WorkflowAutomationService {
     private readonly referenceService: ReferenceService,
     private readonly emailService: EmailService,
     private readonly embeddingService: EmbeddingService,
+    private readonly candidateJobMatchingService: CandidateJobMatchingService,
   ) {}
 
   async processCandidateCv(candidateId: number): Promise<void> {
@@ -65,11 +67,19 @@ export class WorkflowAutomationService {
         await this.referenceService.createReferencesFromExtractedData(candidateId, data);
       }
 
-      this.embeddingService.embedCandidate(candidateId).catch((err) => {
-        this.logger.warn(
-          `Failed to generate embedding for candidate ${candidateId}: ${err.message}`,
-        );
-      });
+      this.embeddingService
+        .embedCandidate(candidateId)
+        .then((embedded) => {
+          if (embedded) {
+            return this.candidateJobMatchingService.matchCandidateToJobs(candidateId);
+          }
+          return null;
+        })
+        .catch((err) => {
+          this.logger.warn(
+            `Failed to generate embedding/matches for candidate ${candidateId}: ${err.message}`,
+          );
+        });
 
       await this.applyAutomationRules(candidate);
 
