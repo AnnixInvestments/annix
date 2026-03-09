@@ -1587,7 +1587,7 @@ export default function StockControlSettingsPage() {
       </div>
 
       <WorkflowAssignmentsSection />
-      <NotificationRecipientsSection />
+      <NotificationRecipientsSection teamMembers={teamMembers} />
       <UserLocationAssignmentsSection locations={locations} teamMembers={teamMembers} />
       <AppInfoSection />
     </div>
@@ -1843,11 +1843,11 @@ function WorkflowAssignmentsSection() {
   );
 }
 
-function NotificationRecipientsSection() {
+function NotificationRecipientsSection({ teamMembers }: { teamMembers: StockControlTeamMember[] }) {
   const [recipients, setRecipients] = useState<StepNotificationRecipients[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingStep, setEditingStep] = useState<string | null>(null);
-  const [emailInput, setEmailInput] = useState("");
+  const [selectedEmail, setSelectedEmail] = useState("");
   const [editEmails, setEditEmails] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -1872,24 +1872,21 @@ function NotificationRecipientsSection() {
   const handleEditStep = (step: string) => {
     const existing = recipients.find((r) => r.step === step);
     setEditEmails(existing?.emails || []);
-    setEmailInput("");
+    setSelectedEmail("");
     setEditingStep(step);
     setError("");
     setSuccess(false);
   };
 
   const handleAddEmail = () => {
-    const trimmed = emailInput.trim().toLowerCase();
-    if (!trimmed || !trimmed.includes("@")) {
-      setError("Please enter a valid email address");
-      return;
-    }
+    if (!selectedEmail) return;
+    const trimmed = selectedEmail.trim().toLowerCase();
     if (editEmails.includes(trimmed)) {
-      setError("This email has already been added");
+      setError("This user has already been added");
       return;
     }
     setEditEmails((prev) => [...prev, trimmed]);
-    setEmailInput("");
+    setSelectedEmail("");
     setError("");
   };
 
@@ -1956,23 +1953,25 @@ function NotificationRecipientsSection() {
               {editingStep === recipient.step ? (
                 <div className="space-y-3">
                   <div className="flex gap-2">
-                    <input
-                      type="email"
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddEmail();
-                        }
-                      }}
-                      placeholder="Enter email address"
+                    <select
+                      value={selectedEmail}
+                      onChange={(e) => setSelectedEmail(e.target.value)}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-teal-500 focus:border-teal-500"
-                    />
+                    >
+                      <option value="">Select a team member...</option>
+                      {teamMembers
+                        .filter((m) => !editEmails.includes(m.email.toLowerCase()))
+                        .map((member) => (
+                          <option key={member.id} value={member.email.toLowerCase()}>
+                            {member.name} ({member.email})
+                          </option>
+                        ))}
+                    </select>
                     <button
                       type="button"
                       onClick={handleAddEmail}
-                      className="px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+                      disabled={!selectedEmail}
+                      className="px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
                     >
                       Add
                     </button>
@@ -1980,21 +1979,24 @@ function NotificationRecipientsSection() {
 
                   {editEmails.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {editEmails.map((email) => (
-                        <span
-                          key={email}
-                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                        >
-                          {email}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveEmail(email)}
-                            className="ml-1.5 text-blue-600 hover:text-blue-800"
+                      {editEmails.map((email) => {
+                        const member = teamMembers.find((m) => m.email.toLowerCase() === email);
+                        return (
+                          <span
+                            key={email}
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                           >
-                            &times;
-                          </button>
-                        </span>
-                      ))}
+                            {member ? member.name : email}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveEmail(email)}
+                              className="ml-1.5 text-blue-600 hover:text-blue-800"
+                            >
+                              &times;
+                            </button>
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -2024,14 +2026,19 @@ function NotificationRecipientsSection() {
                     </p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
-                      {recipient.emails.map((email) => (
-                        <span
-                          key={email}
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                        >
-                          {email}
-                        </span>
-                      ))}
+                      {recipient.emails.map((email) => {
+                        const member = teamMembers.find(
+                          (m) => m.email.toLowerCase() === email.toLowerCase(),
+                        );
+                        return (
+                          <span
+                            key={email}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          >
+                            {member ? `${member.name} (${email})` : email}
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
