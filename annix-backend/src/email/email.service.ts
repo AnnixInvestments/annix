@@ -2089,4 +2089,189 @@ This is an automated notification from the Annix test site.
       html,
     });
   }
+
+  async sendCvAssistantMatchAlertEmail(
+    email: string,
+    recruiterName: string,
+    candidateName: string,
+    jobTitle: string,
+    scorePct: number,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>High-Scoring Match Alert - CV Assistant</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #8B5CF6;">Match Alert</h1>
+          <p>Hi ${recruiterName},</p>
+          <p>A high-scoring candidate match has been found:</p>
+          <div style="background-color: #f5f3ff; border-left: 4px solid #8B5CF6; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Candidate:</strong> ${candidateName}</p>
+            <p style="margin: 5px 0 0 0;"><strong>Job:</strong> ${jobTitle}</p>
+            <p style="margin: 5px 0 0 0;"><strong>Match Score:</strong> ${scorePct}%</p>
+          </div>
+          <p style="margin: 30px 0;">
+            <a href="${frontendUrl}/cv-assistant/portal/dashboard"
+               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View Dashboard
+            </a>
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            You can adjust your alert threshold in Settings.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Match Alert: ${candidateName} - ${scorePct}% match for ${jobTitle}`,
+      html,
+    });
+  }
+
+  async sendCvAssistantWeeklyDigestEmail(
+    email: string,
+    recruiterName: string,
+    digest: {
+      newCandidates: number;
+      topMatches: Array<{ candidateName: string; jobTitle: string; score: number }>;
+      activeJobPostings: number;
+    },
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+
+    const matchRows = digest.topMatches
+      .map(
+        (m) =>
+          `<tr>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${m.candidateName}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee;">${m.jobTitle}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${m.score}%</td>
+          </tr>`,
+      )
+      .join("");
+
+    const matchTable =
+      digest.topMatches.length > 0
+        ? `
+          <h3 style="color: #374151;">Top Matches This Week</h3>
+          <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+            <thead>
+              <tr style="background-color: #f9fafb;">
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #e5e7eb;">Candidate</th>
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #e5e7eb;">Job</th>
+                <th style="padding: 8px; text-align: center; border-bottom: 2px solid #e5e7eb;">Score</th>
+              </tr>
+            </thead>
+            <tbody>${matchRows}</tbody>
+          </table>`
+        : "<p style=\"color: #6b7280;\">No high-scoring matches this week.</p>";
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Weekly Digest - CV Assistant</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #8B5CF6;">Weekly Digest</h1>
+          <p>Hi ${recruiterName},</p>
+          <p>Here is your weekly recruitment summary:</p>
+          <div style="display: flex; gap: 15px; margin: 20px 0;">
+            <div style="background-color: #f5f3ff; border-radius: 8px; padding: 15px; flex: 1; text-align: center;">
+              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #8B5CF6;">${digest.newCandidates}</p>
+              <p style="margin: 5px 0 0 0; font-size: 12px; color: #6b7280;">New Candidates</p>
+            </div>
+            <div style="background-color: #f5f3ff; border-radius: 8px; padding: 15px; flex: 1; text-align: center;">
+              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #8B5CF6;">${digest.activeJobPostings}</p>
+              <p style="margin: 5px 0 0 0; font-size: 12px; color: #6b7280;">Active Postings</p>
+            </div>
+          </div>
+          ${matchTable}
+          <p style="margin: 30px 0;">
+            <a href="${frontendUrl}/cv-assistant/portal/dashboard"
+               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View Dashboard
+            </a>
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            You can disable digest emails in your CV Assistant settings.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "Your Weekly Recruitment Digest - CV Assistant",
+      html,
+    });
+  }
+
+  async sendCvAssistantJobAlertEmail(
+    email: string,
+    candidateName: string,
+    jobs: Array<{ title: string; company: string | null; location: string | null; score: number }>,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+
+    const jobCards = jobs
+      .map(
+        (j) => `
+          <div style="background-color: #f9fafb; border-radius: 8px; padding: 15px; margin: 10px 0;">
+            <p style="margin: 0; font-weight: bold; color: #111827;">${j.title}</p>
+            ${j.company ? `<p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">${j.company}</p>` : ""}
+            ${j.location ? `<p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">${j.location}</p>` : ""}
+            <p style="margin: 8px 0 0 0; font-size: 13px; color: #8B5CF6;">${j.score}% match</p>
+          </div>`,
+      )
+      .join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>New Job Matches - CV Assistant</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #8B5CF6;">New Job Matches</h1>
+          <p>Hi ${candidateName},</p>
+          <p>We found ${jobs.length} new job${jobs.length === 1 ? "" : "s"} matching your profile:</p>
+          ${jobCards}
+          <p style="margin: 30px 0;">
+            <a href="${frontendUrl}/cv-assistant/portal/dashboard"
+               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View All Matches
+            </a>
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            You are receiving this because you opted in to job alerts. To unsubscribe, update your preferences in your candidate profile.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `${jobs.length} New Job Match${jobs.length === 1 ? "" : "es"} for You - CV Assistant`,
+      html,
+    });
+  }
 }

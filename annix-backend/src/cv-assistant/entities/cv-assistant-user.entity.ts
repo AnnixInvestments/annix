@@ -54,6 +54,15 @@ export class CvAssistantUser {
   @Column({ name: "company_id" })
   companyId: number;
 
+  @Column({ name: "match_alert_threshold", type: "int", default: 80 })
+  matchAlertThreshold: number;
+
+  @Column({ name: "digest_enabled", type: "boolean", default: true })
+  digestEnabled: boolean;
+
+  @Column({ name: "push_enabled", type: "boolean", default: false })
+  pushEnabled: boolean;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -94,6 +94,9 @@ export class Candidate {
   @Column({ name: "last_active_at", type: "timestamptz", nullable: true })
   lastActiveAt: Date | null;
 
+  @Column({ name: "job_alerts_opt_in", type: "boolean", default: false })
+  jobAlertsOptIn: boolean;
+
   @Column({ name: "rejection_sent_at", type: "timestamptz", nullable: true })
   rejectionSentAt: Date | null;
 

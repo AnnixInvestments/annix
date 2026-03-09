@@ -1,9 +1,10 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, forwardRef } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
+import { CvNotificationService } from "./cv-notification.service";
 
 const WEIGHT_EMBEDDING = 0.5;
 const WEIGHT_SKILLS = 0.25;
@@ -23,6 +24,8 @@ export class CandidateJobMatchingService {
     private readonly candidateRepo: Repository<Candidate>,
     @InjectRepository(ExternalJob)
     private readonly externalJobRepo: Repository<ExternalJob>,
+    @Inject(forwardRef(() => CvNotificationService))
+    private readonly notificationService: CvNotificationService,
   ) {}
 
   async matchCandidateToJobs(candidateId: number): Promise<CandidateJobMatch[]> {
@@ -86,6 +89,16 @@ export class CandidateJobMatchingService {
     }
 
     this.logger.log(`Matched candidate ${candidateId} to ${matches.length} jobs`);
+
+    this.notificationService
+      .notifyRecruitersOfHighMatch(
+        candidateId,
+        matches.map((m) => ({ externalJobId: m.externalJobId, overallScore: m.overallScore })),
+      )
+      .catch((err) => {
+        this.logger.warn(`Failed to send match alerts for candidate ${candidateId}: ${err.message}`);
+      });
+
     return matches;
   }
 

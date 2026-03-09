@@ -89,6 +89,7 @@ export interface Candidate {
   popiaConsent: boolean;
   popiaConsentedAt: string | null;
   lastActiveAt: string | null;
+  jobAlertsOptIn: boolean;
   jobPostingId: number;
   jobPosting?: JobPosting;
   references?: CandidateReference[];
@@ -237,11 +238,88 @@ export interface MarketInsights {
   dataAsOf: string;
 }
 
+export interface FunnelStage {
+  label: string;
+  count: number;
+  rate: number | null;
+}
+
+export interface ConversionFunnelResponse {
+  stages: FunnelStage[];
+  dateFrom: string | null;
+  dateTo: string | null;
+}
+
+export interface MatchAccuracyBand {
+  range: string;
+  total: number;
+  accepted: number;
+  accuracy: number;
+}
+
+export interface MatchAccuracyResponse {
+  bands: MatchAccuracyBand[];
+  overall: { total: number; accepted: number; accuracy: number };
+}
+
+export interface TimeToFillJob {
+  title: string;
+  averageDays: number;
+  candidateCount: number;
+}
+
+export interface TimeToFillResponse {
+  overall: { averageDays: number; medianDays: number; count: number };
+  byJob: TimeToFillJob[];
+}
+
+export interface CategoryCount {
+  category: string;
+  count: number;
+}
+
+export interface LocationCount {
+  location: string;
+  count: number;
+}
+
+export interface SalaryByCategory {
+  category: string;
+  averageSalary: number;
+  currency: string;
+  count: number;
+}
+
+export interface MonthlyJobCount {
+  month: string;
+  count: number;
+}
+
+export interface SkillDemand {
+  skill: string;
+  count: number;
+}
+
+export interface MarketTrendsResponse {
+  byCategory: CategoryCount[];
+  byLocation: LocationCount[];
+  salaryByCategory: SalaryByCategory[];
+  monthlyTrend: MonthlyJobCount[];
+  topSkills: SkillDemand[];
+  totalJobs: number;
+}
+
 export interface PopiaRetentionStats {
   totalCandidates: number;
   expiringWithin30Days: number;
   withConsent: number;
   withoutConsent: number;
+}
+
+export interface NotificationPreferences {
+  matchAlertThreshold: number;
+  digestEnabled: boolean;
+  pushEnabled: boolean;
 }
 
 export interface CandidateJobMatchDetails {
@@ -777,7 +855,7 @@ class CvAssistantApiClient {
 
   async updateCandidateProfile(
     id: number,
-    data: { beeLevel?: number | null; popiaConsent?: boolean },
+    data: { beeLevel?: number | null; popiaConsent?: boolean; jobAlertsOptIn?: boolean },
   ): Promise<Candidate> {
     return this.request(`/cv-assistant/candidates/${id}/profile`, {
       method: "PATCH",
@@ -795,6 +873,84 @@ class CvAssistantApiClient {
 
   async marketInsights(): Promise<MarketInsights> {
     return this.request("/cv-assistant/dashboard/market-insights");
+  }
+
+  async analyticsConversionFunnel(
+    dateFrom?: string,
+    dateTo?: string,
+  ): Promise<ConversionFunnelResponse> {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    const qs = params.toString();
+    return this.request<ConversionFunnelResponse>(
+      `/cv-assistant/analytics/funnel${qs ? `?${qs}` : ""}`,
+    );
+  }
+
+  async analyticsMatchAccuracy(): Promise<MatchAccuracyResponse> {
+    return this.request<MatchAccuracyResponse>("/cv-assistant/analytics/match-accuracy");
+  }
+
+  async analyticsTimeToFill(): Promise<TimeToFillResponse> {
+    return this.request<TimeToFillResponse>("/cv-assistant/analytics/time-to-fill");
+  }
+
+  async analyticsMarketTrends(): Promise<MarketTrendsResponse> {
+    return this.request<MarketTrendsResponse>("/cv-assistant/analytics/market-trends");
+  }
+
+  async analyticsExportFunnelCsv(dateFrom?: string, dateTo?: string): Promise<string> {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    const qs = params.toString();
+    const res = await fetch(
+      `${this.baseURL}/cv-assistant/analytics/export/funnel${qs ? `?${qs}` : ""}`,
+      { headers: this.headers() },
+    );
+    return res.text();
+  }
+
+  async analyticsExportTimeToFillCsv(): Promise<string> {
+    const res = await fetch(`${this.baseURL}/cv-assistant/analytics/export/time-to-fill`, {
+      headers: this.headers(),
+    });
+    return res.text();
+  }
+
+  async notificationVapidKey(): Promise<{ key: string | null }> {
+    return this.request("/cv-assistant/notifications/vapid-key");
+  }
+
+  async subscribePush(subscription: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+  }): Promise<{ message: string }> {
+    return this.request("/cv-assistant/notifications/subscribe", {
+      method: "POST",
+      body: JSON.stringify(subscription),
+    });
+  }
+
+  async unsubscribePush(endpoint: string): Promise<{ message: string }> {
+    return this.request("/cv-assistant/notifications/unsubscribe", {
+      method: "DELETE",
+      body: JSON.stringify({ endpoint }),
+    });
+  }
+
+  async notificationPreferences(): Promise<NotificationPreferences> {
+    return this.request("/cv-assistant/notifications/preferences");
+  }
+
+  async updateNotificationPreferences(
+    data: Partial<NotificationPreferences>,
+  ): Promise<{ message: string }> {
+    return this.request("/cv-assistant/notifications/preferences", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
   }
 }
 

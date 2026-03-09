@@ -6,11 +6,13 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { EmailModule } from "../email/email.module";
 import { NixModule } from "../nix/nix.module";
 import { StorageModule } from "../storage/storage.module";
+import { AnalyticsController } from "./controllers/analytics.controller";
 import { CvAssistantAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { JobMarketController } from "./controllers/job-market.controller";
 import { JobPostingController } from "./controllers/job-posting.controller";
+import { NotificationController } from "./controllers/notification.controller";
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
 import { ReferencesController } from "./controllers/references.controller";
 import { SettingsController } from "./controllers/settings.controller";
@@ -19,12 +21,14 @@ import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
 import { CvAssistantCompany } from "./entities/cv-assistant-company.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
+import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
 import { ExternalJob } from "./entities/external-job.entity";
 import { JobMarketSource } from "./entities/job-market-source.entity";
 import { JobPosting } from "./entities/job-posting.entity";
 import { CvAssistantAuthGuard } from "./guards/cv-assistant-auth.guard";
 import { CvAssistantRoleGuard } from "./guards/cv-assistant-role.guard";
 import { AdzunaService } from "./services/adzuna.service";
+import { AnalyticsService } from "./services/analytics.service";
 import { CvAssistantAuthService } from "./services/auth.service";
 import { CandidateService } from "./services/candidate.service";
 import { CandidateJobMatchingService } from "./services/candidate-job-matching.service";
@@ -35,6 +39,7 @@ import { JobIngestionService } from "./services/job-ingestion.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
 import { JobMatchService } from "./services/job-match.service";
 import { JobPostingService } from "./services/job-posting.service";
+import { CvNotificationService } from "./services/cv-notification.service";
 import { MarketInsightsService } from "./services/market-insights.service";
 import { PopiaService } from "./services/popia.service";
 import { ReferenceService } from "./services/reference.service";
@@ -52,6 +57,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       JobMarketSource,
       ExternalJob,
       CandidateJobMatch,
+      CvPushSubscription,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -79,6 +85,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     SettingsController,
     ReferencesController,
     JobMarketController,
+    AnalyticsController,
+    NotificationController,
   ],
   providers: [
     CvAssistantAuthGuard,
@@ -99,6 +107,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     CandidateJobMatchingService,
     PopiaService,
     MarketInsightsService,
+    AnalyticsService,
+    CvNotificationService,
   ],
 })
 export class CvAssistantModule {}
