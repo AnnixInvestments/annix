@@ -63,6 +63,7 @@ export default function InvoiceDetailPage() {
   const [currentClarificationIndex, setCurrentClarificationIndex] = useState(0);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [isReExtracting, setIsReExtracting] = useState(false);
 
   const fetchInvoice = useCallback(async () => {
     try {
@@ -193,6 +194,20 @@ export default function InvoiceDetailPage() {
       }
     } catch (err) {
       console.error("Failed to skip clarification:", err);
+    }
+  };
+
+  const handleReExtract = async () => {
+    try {
+      setIsReExtracting(true);
+      await stockControlApiClient.reExtractInvoice(invoiceId);
+      await fetchInvoice();
+      await fetchClarifications();
+      await fetchPriceSummary();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Re-extraction failed"));
+    } finally {
+      setIsReExtracting(false);
     }
   };
 
@@ -484,6 +499,15 @@ export default function InvoiceDetailPage() {
                   className="w-full rounded-lg border border-gray-200 hover:opacity-80 transition-opacity"
                 />
               </a>
+              {(invoice.extractionStatus === "pending" || invoice.extractionStatus === "failed") && (
+                <button
+                  onClick={handleReExtract}
+                  disabled={isReExtracting}
+                  className="mt-3 w-full px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400"
+                >
+                  {isReExtracting ? "Extracting..." : "Re-extract Invoice Data"}
+                </button>
+              )}
             </div>
           )}
 

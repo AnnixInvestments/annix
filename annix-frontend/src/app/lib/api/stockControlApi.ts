@@ -2912,6 +2912,12 @@ class StockControlApiClient {
     return response.json();
   }
 
+  async reExtractInvoice(invoiceId: number): Promise<SupplierInvoice> {
+    return this.request(`/stock-control/invoices/${invoiceId}/re-extract`, {
+      method: "POST",
+    });
+  }
+
   async invoiceClarifications(invoiceId: number): Promise<InvoiceClarification[]> {
     return this.request(`/stock-control/invoices/${invoiceId}/clarifications`);
   }

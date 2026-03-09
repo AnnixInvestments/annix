@@ -83,11 +83,13 @@ export class InvoiceService {
   }
 
   async findAll(companyId: number): Promise<SupplierInvoice[]> {
-    return this.invoiceRepo.find({
+    const invoices = await this.invoiceRepo.find({
       where: { companyId },
       relations: ["deliveryNote"],
       order: { createdAt: "DESC" },
     });
+
+    return Promise.all(invoices.map((inv) => this.resolveScanUrl(inv)));
   }
 
   async findById(companyId: number, id: number): Promise<SupplierInvoice> {
@@ -100,6 +102,47 @@ export class InvoiceService {
       throw new NotFoundException(`Invoice ${id} not found`);
     }
 
+    return this.resolveScanUrl(invoice);
+  }
+
+  async reExtract(companyId: number, invoiceId: number): Promise<SupplierInvoice> {
+    const invoice = await this.findById(companyId, invoiceId);
+
+    if (!invoice.scanUrl) {
+      throw new NotFoundException("No scan uploaded for this invoice");
+    }
+
+    const fileBuffer = await this.storageService.download(invoice.scanUrl);
+    const imageBase64 = fileBuffer.toString("base64");
+    const mediaType = this.mimeFromPath(invoice.scanUrl);
+
+    return this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
+  }
+
+  private mimeFromPath(
+    path: string,
+  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
+    const ext = path.split(".").pop()?.toLowerCase();
+    const mimeMap: Record<string, "image/jpeg" | "image/png" | "image/gif" | "image/webp"> = {
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+    };
+    return mimeMap[ext || ""] || "image/jpeg";
+  }
+
+  private async resolveScanUrl(invoice: SupplierInvoice): Promise<SupplierInvoice> {
+    if (invoice.scanUrl && !invoice.scanUrl.startsWith("http")) {
+      invoice.scanUrl = await this.storageService.getPresignedUrl(invoice.scanUrl, 3600);
+    } else if (invoice.scanUrl && invoice.scanUrl.includes("X-Amz-Expires")) {
+      const pathMatch = invoice.scanUrl.match(/\.com\/(.+?)\?/);
+      if (pathMatch) {
+        const s3Key = decodeURIComponent(pathMatch[1]);
+        invoice.scanUrl = await this.storageService.getPresignedUrl(s3Key, 3600);
+      }
+    }
     return invoice;
   }
 
@@ -111,7 +154,7 @@ export class InvoiceService {
     const invoice = await this.findById(companyId, invoiceId);
 
     const uploadResult = await this.storageService.upload(file, "stock-control/invoices");
-    invoice.scanUrl = uploadResult.url;
+    invoice.scanUrl = uploadResult.path;
     await this.invoiceRepo.save(invoice);
 
     const imageBase64 = file.buffer.toString("base64");

@@ -118,6 +118,12 @@ export class InvoicesController {
     return this.invoiceService.uploadScan(req.user.companyId, id, file);
   }
 
+  @Post(":id/re-extract")
+  @ApiOperation({ summary: "Re-trigger AI extraction on an existing invoice scan" })
+  async reExtract(@Req() req: any, @Param("id") id: number) {
+    return this.invoiceService.reExtract(req.user.companyId, id);
+  }
+
   @Get(":id/clarifications")
   @ApiOperation({ summary: "Pending clarifications for invoice" })
   async clarifications(@Req() req: any, @Param("id") id: number) {
