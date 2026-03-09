@@ -3,6 +3,7 @@ export interface CoatingProductSpec {
   aliases: string[];
   genericType: string;
   volumeSolidsPercent: number;
+  defaultDftUm?: number | null;
 }
 
 const COATING_PRODUCTS: CoatingProductSpec[] = [
@@ -108,6 +109,7 @@ const COATING_PRODUCTS: CoatingProductSpec[] = [
     aliases: ["pilot qd", "pilot qd red", "pilot red oxide", "jotun pilot qd"],
     genericType: "alkyd",
     volumeSolidsPercent: 49,
+    defaultDftUm: 50,
   },
 
   // ── International (AkzoNobel) ──────────────────────────

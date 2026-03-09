@@ -12,6 +12,8 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { JigsawEditor } from "@/app/stock-control/components/jigsaw/JigsawEditor";
 import {
+  type BandSpec,
+  type CutPiece,
   type CuttingPlan,
   calculateCuttingPlan,
   expandAndRotateItems,
@@ -24,6 +26,153 @@ import { isValidLineItem } from "../lib/helpers";
 const STANDARD_ROLL_WIDTH_MM = 1200;
 const STANDARD_ROLL_LENGTH_M = 12.5;
 const STANDARD_ROLL_AREA_M2 = (STANDARD_ROLL_WIDTH_MM / 1000) * STANDARD_ROLL_LENGTH_M;
+
+function manualRollsToCuttingPlan(manualRolls: RubberPlanManualRoll[]): CuttingPlan {
+  const rolls: RollAllocation[] = manualRolls.map((mr, rollIndex) => {
+    const rollLengthMm = mr.lengthM * 1000;
+    const rollWidthMm = mr.widthMm;
+    const rollAreaSqM = (rollWidthMm / 1000) * (rollLengthMm / 1000);
+
+    const expandedCuts = mr.cuts.flatMap((cut) =>
+      Array.from({ length: cut.quantity }, (_, qi) => ({ ...cut, qi })),
+    );
+
+    const bands: BandSpec[] = [];
+    const cutPieces: CutPiece[] = [];
+    let currentBandStart = 0;
+    let bandIndex = 0;
+
+    const grouped = expandedCuts.reduce(
+      (acc, cut) => {
+        const key = String(cut.widthMm);
+        return { ...acc, [key]: [...(acc[key] || []), cut] };
+      },
+      {} as Record<string, typeof expandedCuts>,
+    );
+
+    Object.entries(grouped).forEach(([widthKey, cutsInBand]) => {
+      const bandWidthMm = Number(widthKey);
+      const lanesNeeded = cutsInBand.length;
+      const maxLaneLengthMm = Math.max(...cutsInBand.map((c) => c.lengthMm));
+
+      bands.push({
+        bandIndex,
+        lanes: lanesNeeded,
+        laneWidthMm: bandWidthMm,
+        startMm: currentBandStart,
+        heightMm: maxLaneLengthMm,
+        widthUsedMm: lanesNeeded * bandWidthMm,
+      });
+
+      cutsInBand.forEach((cut, laneIdx) => {
+        cutPieces.push({
+          itemId: `manual-${rollIndex}-${bandIndex}-${laneIdx}`,
+          itemNo: null,
+          description: cut.description,
+          widthMm: cut.widthMm,
+          lengthMm: cut.lengthMm,
+          positionMm: currentBandStart,
+          lane: laneIdx,
+          band: bandIndex,
+          stripsPerPiece: 1,
+        });
+      });
+
+      currentBandStart += maxLaneLengthMm;
+      bandIndex += 1;
+    });
+
+    const usedAreaSqM = cutPieces.reduce(
+      (sum, cp) => sum + (cp.widthMm / 1000) * (cp.lengthMm / 1000),
+      0,
+    );
+    const wasteAreaSqM = rollAreaSqM - usedAreaSqM;
+    const wastePercentage = rollAreaSqM > 0 ? (wasteAreaSqM / rollAreaSqM) * 100 : 0;
+
+    const offcuts: Offcut[] = [];
+    const usedWidthMm = bands.reduce(
+      (max, b) => Math.max(max, b.widthUsedMm),
+      0,
+    );
+    const usedLengthMm = currentBandStart;
+
+    if (usedLengthMm < rollLengthMm) {
+      const remainingLengthMm = rollLengthMm - usedLengthMm;
+      offcuts.push({
+        widthMm: rollWidthMm,
+        lengthMm: remainingLengthMm,
+        areaSqM: (rollWidthMm / 1000) * (remainingLengthMm / 1000),
+      });
+    }
+
+    bands.forEach((band) => {
+      if (band.widthUsedMm < rollWidthMm) {
+        const gapWidthMm = rollWidthMm - band.widthUsedMm;
+        offcuts.push({
+          widthMm: gapWidthMm,
+          lengthMm: band.heightMm,
+          areaSqM: (gapWidthMm / 1000) * (band.heightMm / 1000),
+        });
+      }
+    });
+
+    const maxLanes = bands.length > 0 ? Math.max(...bands.map((b) => b.lanes)) : 1;
+    const laneWidth = maxLanes > 0 ? Math.floor(rollWidthMm / maxLanes) : rollWidthMm;
+
+    return {
+      rollIndex,
+      rollSpec: {
+        widthMm: rollWidthMm,
+        lengthM: mr.lengthM,
+        areaSqM: rollAreaSqM,
+        lanes: maxLanes,
+        laneWidthMm: laneWidth,
+      },
+      cuts: cutPieces,
+      usedLengthMm: bands.map((b) => b.heightMm),
+      wastePercentage,
+      hasLengthwiseCut: bands.some((b) => b.lanes > 1),
+      bands,
+      offcuts,
+      plyThicknessMm: mr.thicknessMm,
+    };
+  });
+
+  const totalUsedSqM = rolls.reduce(
+    (sum, r) =>
+      sum + r.cuts.reduce((s, c) => s + (c.widthMm / 1000) * (c.lengthMm / 1000), 0),
+    0,
+  );
+  const totalRollAreaSqM = rolls.reduce(
+    (sum, r) => sum + (r.rollSpec.widthMm / 1000) * r.rollSpec.lengthM,
+    0,
+  );
+  const totalWasteSqM = totalRollAreaSqM - totalUsedSqM;
+  const wastePercentage = totalRollAreaSqM > 0 ? (totalWasteSqM / totalRollAreaSqM) * 100 : 0;
+
+  const allOffcuts = rolls.flatMap((r) => r.offcuts);
+  const thicknesses = [...new Set(manualRolls.map((r) => r.thicknessMm))];
+
+  return {
+    rolls,
+    totalRollsNeeded: rolls.length,
+    totalWasteSqM,
+    totalUsedSqM,
+    wastePercentage,
+    hasPipeItems: true,
+    genericM2Items: [],
+    genericM2Total: 0,
+    rubberSpec: null,
+    plies: thicknesses.map((t) => ({
+      thicknessMm: t,
+      rolls: rolls.filter((r) => r.plyThicknessMm === t),
+      totalRollsNeeded: rolls.filter((r) => r.plyThicknessMm === t).length,
+    })),
+    totalThicknessMm: thicknesses.reduce((sum, t) => sum + t, 0),
+    isMultiPly: thicknesses.length > 1,
+    offcuts: allOffcuts,
+  };
+}
 
 const ROLL_WIDTH_OPTIONS_MM = [
   800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450,
@@ -157,13 +306,13 @@ function OffcutList({
                   <button
                     type="button"
                     onClick={() => setWastageIdx(wastageIdx === idx ? null : idx)}
-                    className="ml-2 text-red-500 hover:text-red-700 font-medium"
-                    title="Mark as wastage"
+                    className="ml-2 text-orange-500 hover:text-orange-700 font-medium"
+                    title="Record offcut weight for scrap tracking"
                   >
-                    Wastage
+                    Weigh
                   </button>
                 )}
-                {isMarked && <span className="ml-2 text-red-500 font-medium">Wastage</span>}
+                {isMarked && <span className="ml-2 text-orange-500 font-medium">Weighed</span>}
               </span>
               {wastageIdx === idx && (
                 <div className="bg-red-50 border border-red-200 rounded p-2 text-xs">
@@ -192,9 +341,9 @@ function OffcutList({
                       type="button"
                       onClick={() => handleMarkWastage(idx)}
                       disabled={wastageSubmitting}
-                      className="px-2 py-0.5 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                      className="px-2 py-0.5 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50"
                     >
-                      {wastageSubmitting ? "Saving..." : "Confirm Wastage"}
+                      {wastageSubmitting ? "Saving..." : "Record Weight"}
                     </button>
                     <button
                       type="button"
@@ -1131,7 +1280,7 @@ function RubberAllocationSection({
       }
     : null;
 
-  const plan = calculateCuttingPlan(
+  const autoPlan = calculateCuttingPlan(
     lineItems.map((li, idx) => ({
       id: li.id || idx,
       itemCode: li.itemCode,
@@ -1143,6 +1292,11 @@ function RubberAllocationSection({
     stockQuery,
     selectedPly,
   );
+
+  const plan =
+    override?.status === "manual" && override.manualRolls?.length
+      ? manualRollsToCuttingPlan(override.manualRolls)
+      : autoPlan;
 
   const totalM2Required = lineItems.reduce((sum, li) => sum + (li.m2 ? Number(li.m2) : 0), 0);
 

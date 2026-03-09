@@ -161,7 +161,7 @@ export function CoatingAnalysisTab({
                 </div>
               )}
               <EditableM2Field
-                label="Ext m\u00B2"
+                label="Ext m²"
                 value={coatingAnalysis.extM2}
                 onSave={async (val) => {
                   const updated = await stockControlApiClient.updateCoatingSurfaceArea(
@@ -173,7 +173,7 @@ export function CoatingAnalysisTab({
                 }}
               />
               <EditableM2Field
-                label="Int m\u00B2"
+                label="Int m²"
                 value={coatingAnalysis.intM2}
                 onSave={async (val) => {
                   const updated = await stockControlApiClient.updateCoatingSurfaceArea(

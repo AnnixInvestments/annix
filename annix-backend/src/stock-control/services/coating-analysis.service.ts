@@ -498,8 +498,11 @@ export class CoatingAnalysisService {
     totalM2: number,
     retentionFactor: number,
   ): CoatDetail {
-    const midDftUm = (coat.minDftUm + coat.maxDftUm) / 2;
     const knownProduct = lookupCoatingProduct(coat.product);
+    const hasDft = coat.minDftUm > 0 || coat.maxDftUm > 0;
+    const effectiveMinDft = hasDft ? coat.minDftUm : knownProduct?.defaultDftUm || coat.minDftUm;
+    const effectiveMaxDft = hasDft ? coat.maxDftUm : knownProduct?.defaultDftUm || coat.maxDftUm;
+    const midDftUm = (effectiveMinDft + effectiveMaxDft) / 2;
     const volumeSolids = knownProduct
       ? knownProduct.volumeSolidsPercent
       : coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME;
@@ -507,7 +510,7 @@ export class CoatingAnalysisService {
 
     if (knownProduct) {
       this.logger.log(
-        `Coating "${coat.product}" matched to "${knownProduct.name}" — vol solids: ${knownProduct.volumeSolidsPercent}%`,
+        `Coating "${coat.product}" matched to "${knownProduct.name}" — vol solids: ${knownProduct.volumeSolidsPercent}%${!hasDft && knownProduct.defaultDftUm ? ` (using default DFT: ${knownProduct.defaultDftUm}µm)` : ""}`,
       );
     } else {
       this.logger.warn(
@@ -525,8 +528,8 @@ export class CoatingAnalysisService {
       product: coat.product,
       genericType: coat.genericType,
       area: coat.area,
-      minDftUm: coat.minDftUm,
-      maxDftUm: coat.maxDftUm,
+      minDftUm: effectiveMinDft,
+      maxDftUm: effectiveMaxDft,
       solidsByVolumePercent: volumeSolids,
       coverageM2PerLiter: Math.round(coverageM2PerLiter * 100) / 100,
       litersRequired,
