@@ -123,7 +123,7 @@ export function SmtpConfigSection() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}

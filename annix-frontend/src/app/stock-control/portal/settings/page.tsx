@@ -649,10 +649,10 @@ export default function StockControlSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Account Settings</h1>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <h1 className="text-2xl font-bold text-gray-900 lg:col-span-2">Account Settings</h1>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Company Details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -838,10 +838,10 @@ export default function StockControlSettingsPage() {
         >
           {detailsSaving ? "Saving..." : "Save Company Details"}
         </button>
-      </div>
+        </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Coating Loss Factors</h2>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Coating Loss Factors</h2>
         <p className="text-sm text-gray-500 mb-4">
           Paint loss factors account for material lost during application due to surface geometry,
           overspray, and wastage. Higher loss means more paint is needed per m². These values are
@@ -922,7 +922,7 @@ export default function StockControlSettingsPage() {
 
       <SmtpConfigSection />
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Branding</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1209,7 +1209,7 @@ export default function StockControlSettingsPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Team Management</h2>
           <button
@@ -1358,7 +1358,7 @@ export default function StockControlSettingsPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Departments</h2>
         <p className="text-sm text-gray-500 mb-4">
           Manage departments that can be assigned to staff members.
@@ -1462,7 +1462,7 @@ export default function StockControlSettingsPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Locations</h2>
         <p className="text-sm text-gray-500 mb-4">Manage storage locations for inventory items.</p>
 
@@ -1713,7 +1713,7 @@ function WorkflowAssignmentsSection() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-2">Workflow Assignments</h2>
       <p className="text-sm text-gray-500 mb-4">
         Assign specific users to workflow steps. If no users are assigned, the system will notify
@@ -1920,7 +1920,7 @@ function NotificationRecipientsSection({ teamMembers }: { teamMembers: StockCont
   const stepLabel = (step: string) => WORKFLOW_STEPS.find((s) => s.key === step)?.label || step;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-2">Notification Recipients</h2>
       <p className="text-sm text-gray-500 mb-4">
         Configure who receives email notifications for each workflow step. Add one or more email
@@ -2128,7 +2128,7 @@ function UserLocationAssignmentsSection({
   );
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-2">Store Location Assignments</h2>
       <p className="text-sm text-gray-500 mb-4">
         Assign store locations to team members. This determines which locations each person can
@@ -2282,7 +2282,7 @@ function AppInfoSection() {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">App Info</h2>
 
       <div className="space-y-3">
