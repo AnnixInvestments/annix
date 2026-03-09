@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { ALL_NAV_ITEMS } from "../config/navItems";
+import { ALL_NAV_ITEMS, NAV_GROUP_ORDER } from "../config/navItems";
 import { useStockControlBranding } from "../context/StockControlBrandingContext";
 import { useStockControlRbac } from "../context/StockControlRbacContext";
 import { useNotificationCount } from "../hooks/useNotificationCount";
@@ -136,26 +136,76 @@ export function MobileNav(props: MobileNavProps) {
 
           <nav className="flex-1 overflow-y-auto p-3">
             <div className="space-y-1">
-              {visibleNavItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors"
-                  style={
-                    isActive(item.href)
-                      ? { backgroundColor: colors.sidebarActive, color: "#FFFFFF" }
-                      : { color: colors.sidebarText }
-                  }
-                >
-                  <span className="mr-3">{item.icon}</span>
-                  {item.label}
-                  {item.href === "/stock-control/portal/notifications" && notificationCount > 0 && (
-                    <span className="ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
-                      {notificationCount > 9 ? "9+" : notificationCount}
-                    </span>
-                  )}
-                </Link>
-              ))}
+              {visibleNavItems
+                .filter((item) => !item.group || item.group === "hidden")
+                .filter((item) => item.group !== "hidden")
+                .map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors"
+                    style={
+                      isActive(item.href)
+                        ? { backgroundColor: colors.sidebarActive, color: "#FFFFFF" }
+                        : { color: colors.sidebarText }
+                    }
+                  >
+                    <span className="mr-3">{item.icon}</span>
+                    {item.label}
+                  </Link>
+                ))}
+              {NAV_GROUP_ORDER.map((groupName) => {
+                const items = visibleNavItems.filter((item) => item.group === groupName);
+                if (items.length === 0) return null;
+                return (
+                  <div key={groupName}>
+                    <p
+                      className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider"
+                      style={{ color: colors.sidebarText, opacity: 0.5 }}
+                    >
+                      {groupName}
+                    </p>
+                    {items.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors"
+                        style={
+                          isActive(item.href)
+                            ? { backgroundColor: colors.sidebarActive, color: "#FFFFFF" }
+                            : { color: colors.sidebarText }
+                        }
+                      >
+                        <span className="mr-3">{item.icon}</span>
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                );
+              })}
+              {visibleNavItems
+                .filter((item) => item.group === "hidden")
+                .map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-colors"
+                    style={
+                      isActive(item.href)
+                        ? { backgroundColor: colors.sidebarActive, color: "#FFFFFF" }
+                        : { color: colors.sidebarText }
+                    }
+                  >
+                    <span className="mr-3">{item.icon}</span>
+                    {item.label}
+                    {item.href === "/stock-control/portal/notifications" &&
+                      notificationCount > 0 && (
+                        <span className="ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                          {notificationCount > 9 ? "9+" : notificationCount}
+                        </span>
+                      )}
+                  </Link>
+                ))}
             </div>
           </nav>
 
