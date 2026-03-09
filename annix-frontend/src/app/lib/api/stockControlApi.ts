@@ -195,6 +195,7 @@ export interface JobCard {
   customFields: Record<string, string> | null;
   rubberPlanOverride: RubberPlanOverride | null;
   status: string;
+  workflowStatus: string;
   versionNumber?: number;
   sourceFilePath?: string | null;
   sourceFileName?: string | null;

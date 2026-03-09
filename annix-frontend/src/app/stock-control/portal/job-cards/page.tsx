@@ -7,6 +7,7 @@ import type { JobCard } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { HelpTooltip } from "../../components/HelpTooltip";
+import { CompactWorkflowStepper } from "../../components/WorkflowStatus";
 import { setPendingImportFile } from "./import/pending-file";
 
 const STATUS_TABS = ["all", "draft", "active", "completed", "cancelled"] as const;
@@ -371,6 +372,12 @@ export default function JobCardsPage() {
                 </th>
                 <th
                   scope="col"
+                  className="hidden xl:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Workflow
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Created
@@ -418,6 +425,9 @@ export default function JobCardsPage() {
                         CPO
                       </span>
                     ) : null}
+                  </td>
+                  <td className="hidden xl:table-cell px-6 py-4 whitespace-nowrap">
+                    <CompactWorkflowStepper workflowStatus={job.workflowStatus ?? job.status} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDateZA(job.createdAt)}
