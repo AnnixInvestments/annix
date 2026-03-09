@@ -838,10 +838,10 @@ export default function StockControlSettingsPage() {
         >
           {detailsSaving ? "Saving..." : "Save Company Details"}
         </button>
-        </div>
+      </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Coating Loss Factors</h2>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Coating Loss Factors</h2>
         <p className="text-sm text-gray-500 mb-4">
           Paint loss factors account for material lost during application due to surface geometry,
           overspray, and wastage. Higher loss means more paint is needed per m². These values are
