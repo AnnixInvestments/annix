@@ -23,9 +23,7 @@ export class PopiaService {
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async purgeInactiveCandidates(): Promise<{ purged: number }> {
-    const cutoffDate = DateTime.now()
-      .minus({ months: PopiaService.RETENTION_MONTHS })
-      .toJSDate();
+    const cutoffDate = DateTime.now().minus({ months: PopiaService.RETENTION_MONTHS }).toJSDate();
 
     const inactiveCandidates = await this.candidateRepo.find({
       where: [
@@ -49,7 +47,9 @@ export class PopiaService {
     }
 
     if (purged > 0) {
-      this.logger.log(`POPIA retention: purged ${purged} inactive candidates (${PopiaService.RETENTION_MONTHS}+ months)`);
+      this.logger.log(
+        `POPIA retention: purged ${purged} inactive candidates (${PopiaService.RETENTION_MONTHS}+ months)`,
+      );
     }
 
     return { purged };
@@ -89,7 +89,9 @@ export class PopiaService {
       `POPIA right to erasure exercised for candidate ${candidateId} by company ${companyId}`,
     );
 
-    return { message: "All candidate data has been permanently deleted per POPIA right to erasure" };
+    return {
+      message: "All candidate data has been permanently deleted per POPIA right to erasure",
+    };
   }
 
   async retentionStats(companyId: number): Promise<{
@@ -103,9 +105,7 @@ export class PopiaService {
       .plus({ days: 30 })
       .toJSDate();
 
-    const expiryDate = DateTime.now()
-      .minus({ months: PopiaService.RETENTION_MONTHS })
-      .toJSDate();
+    const expiryDate = DateTime.now().minus({ months: PopiaService.RETENTION_MONTHS }).toJSDate();
 
     const candidates = await this.candidateRepo
       .createQueryBuilder("candidate")

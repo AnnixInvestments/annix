@@ -135,8 +135,7 @@ function manualRollsToCuttingPlan(manualRolls: RubberPlanManualRoll[]): CuttingP
   });
 
   const totalUsedSqM = rolls.reduce(
-    (sum, r) =>
-      sum + r.cuts.reduce((s, c) => s + (c.widthMm / 1000) * (c.lengthMm / 1000), 0),
+    (sum, r) => sum + r.cuts.reduce((s, c) => s + (c.widthMm / 1000) * (c.lengthMm / 1000), 0),
     0,
   );
   const totalRollAreaSqM = rolls.reduce(

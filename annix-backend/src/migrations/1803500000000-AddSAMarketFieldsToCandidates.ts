@@ -23,8 +23,8 @@ export class AddSAMarketFieldsToCandidates1803500000000 implements MigrationInte
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_cv_candidates_popia_consent`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_cv_candidates_last_active`);
+    await queryRunner.query("DROP INDEX IF EXISTS idx_cv_candidates_popia_consent");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_cv_candidates_last_active");
     await queryRunner.query(`
       ALTER TABLE cv_assistant_candidates
       DROP COLUMN IF EXISTS bee_level,

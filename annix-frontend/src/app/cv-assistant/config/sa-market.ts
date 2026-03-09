@@ -62,16 +62,40 @@ export const BEE_LEVELS = [
 ] as const;
 
 export const SA_PROFESSIONAL_REGISTRATIONS = [
-  { code: "ECSA", name: "Engineering Council of SA", types: ["Pr Eng", "Pr Tech Eng", "Pr Cert Eng"] },
-  { code: "SACPCMP", name: "SA Council for Project & Construction Management", types: ["Pr CPM", "Pr CM", "Pr CHS"] },
-  { code: "SACAP", name: "SA Council for the Architectural Profession", types: ["Pr Arch", "Sr Arch Tech"] },
-  { code: "SACNASP", name: "SA Council for Natural Scientific Professions", types: ["Pr Sci Nat", "Cand Sci Nat"] },
+  {
+    code: "ECSA",
+    name: "Engineering Council of SA",
+    types: ["Pr Eng", "Pr Tech Eng", "Pr Cert Eng"],
+  },
+  {
+    code: "SACPCMP",
+    name: "SA Council for Project & Construction Management",
+    types: ["Pr CPM", "Pr CM", "Pr CHS"],
+  },
+  {
+    code: "SACAP",
+    name: "SA Council for the Architectural Profession",
+    types: ["Pr Arch", "Sr Arch Tech"],
+  },
+  {
+    code: "SACNASP",
+    name: "SA Council for Natural Scientific Professions",
+    types: ["Pr Sci Nat", "Cand Sci Nat"],
+  },
   { code: "SAICA", name: "SA Institute of Chartered Accountants", types: ["CA(SA)"] },
   { code: "SAIPA", name: "SA Institute of Professional Accountants", types: ["AGA(SA)", "AT(SA)"] },
   { code: "HPCSA", name: "Health Professions Council of SA", types: ["Registered Practitioner"] },
   { code: "SANC", name: "SA Nursing Council", types: ["Registered Nurse", "Enrolled Nurse"] },
-  { code: "CIDB", name: "Construction Industry Development Board", types: ["Grade 1-9 Contractor"] },
-  { code: "SAIOSH", name: "SA Institute of Occupational Safety and Health", types: ["SHEPrac", "SHEMTEC"] },
+  {
+    code: "CIDB",
+    name: "Construction Industry Development Board",
+    types: ["Grade 1-9 Contractor"],
+  },
+  {
+    code: "SAIOSH",
+    name: "SA Institute of Occupational Safety and Health",
+    types: ["SHEPrac", "SHEMTEC"],
+  },
 ] as const;
 
 export const SA_SALARY_BANDS = [

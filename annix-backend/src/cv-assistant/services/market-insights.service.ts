@@ -95,7 +95,10 @@ export class MarketInsightsService {
     const results = await this.externalJobRepo
       .createQueryBuilder("job")
       .select("job.category", "category")
-      .addSelect("AVG((COALESCE(job.salary_min, 0) + COALESCE(job.salary_max, 0)) / 2)", "avgSalary")
+      .addSelect(
+        "AVG((COALESCE(job.salary_min, 0) + COALESCE(job.salary_max, 0)) / 2)",
+        "avgSalary",
+      )
       .addSelect("MIN(job.salary_min)", "minSalary")
       .addSelect("MAX(job.salary_max)", "maxSalary")
       .addSelect("COUNT(*)", "sampleSize")
@@ -103,14 +106,16 @@ export class MarketInsightsService {
       .andWhere("job.salary_min IS NOT NULL OR job.salary_max IS NOT NULL")
       .andWhere("job.category IS NOT NULL")
       .groupBy("job.category")
-      .orderBy("\"sampleSize\"", "DESC")
+      .orderBy('"sampleSize"', "DESC")
       .limit(10)
       .getRawMany();
 
     return results.map((row) => {
       const avgSalary = row.avgSalary ? Math.round(Number(row.avgSalary)) : null;
       const salaryBand = avgSalary
-        ? SA_SALARY_RANGES.bands.find((b) => avgSalary >= b.min && (b.max === null || avgSalary < b.max))?.monthly ?? null
+        ? (SA_SALARY_RANGES.bands.find(
+            (b) => avgSalary >= b.min && (b.max === null || avgSalary < b.max),
+          )?.monthly ?? null)
         : null;
 
       return {
@@ -185,20 +190,21 @@ export class MarketInsightsService {
       .createQueryBuilder("job")
       .select("job.location_area", "location")
       .addSelect("COUNT(*)", "jobCount")
-      .addSelect("AVG((COALESCE(job.salary_min, 0) + COALESCE(job.salary_max, 0)) / 2)", "avgSalary")
+      .addSelect(
+        "AVG((COALESCE(job.salary_min, 0) + COALESCE(job.salary_max, 0)) / 2)",
+        "avgSalary",
+      )
       .where("job.source_id IN (:...sourceIds)", { sourceIds })
       .andWhere("job.location_area IS NOT NULL")
       .groupBy("job.location_area")
-      .orderBy("\"jobCount\"", "DESC")
+      .orderBy('"jobCount"', "DESC")
       .limit(10)
       .getRawMany();
 
     return results.map((row) => {
       const avgSalary = row.avgSalary ? Math.round(Number(row.avgSalary)) : null;
       const costOfLivingIndex = SA_SALARY_RANGES.costOfLivingIndex[row.location] ?? 1.0;
-      const adjustedSalary = avgSalary
-        ? Math.round(avgSalary / costOfLivingIndex)
-        : null;
+      const adjustedSalary = avgSalary ? Math.round(avgSalary / costOfLivingIndex) : null;
 
       return {
         location: row.location,

@@ -260,8 +260,8 @@ export default function SettingsPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-2">POPIA Compliance</h2>
         <p className="text-sm text-gray-600 mb-4">
-          Data retention policy in accordance with the Protection of Personal Information Act. Candidate
-          data is automatically deleted after 12 months of inactivity.
+          Data retention policy in accordance with the Protection of Personal Information Act.
+          Candidate data is automatically deleted after 12 months of inactivity.
         </p>
 
         {popiaStats && (
