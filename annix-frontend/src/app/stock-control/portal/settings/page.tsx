@@ -1901,8 +1901,12 @@ function NotificationRecipientsSection({ teamMembers }: { teamMembers: StockCont
     setError("");
     setSuccess(false);
 
+    const emailsToSave = selectedEmail.trim().toLowerCase()
+      ? [...new Set([...editEmails, selectedEmail.trim().toLowerCase()])]
+      : editEmails;
+
     try {
-      await stockControlApiClient.updateNotificationRecipients(editingStep, editEmails);
+      await stockControlApiClient.updateNotificationRecipients(editingStep, emailsToSave);
       await loadRecipients();
       setEditingStep(null);
       setSuccess(true);
