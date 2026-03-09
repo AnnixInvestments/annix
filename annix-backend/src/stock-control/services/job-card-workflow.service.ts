@@ -306,14 +306,24 @@ export class JobCardWorkflowService {
     jobCard.workflowStatus = JobCardWorkflowStatus.DOCUMENT_UPLOADED;
     await this.jobCardRepo.save(jobCard);
 
+    const firstDocument = await this.documentRepo.findOne({
+      where: { jobCardId, companyId },
+      order: { createdAt: "ASC" },
+    });
+
+    const documentUploader =
+      firstDocument?.uploadedById && firstDocument?.uploadedByName
+        ? { id: firstDocument.uploadedById, name: firstDocument.uploadedByName }
+        : user;
+
     await this.createApprovalRecord(companyId, jobCardId, WorkflowStep.DOCUMENT_UPLOAD, {
-      id: user.id,
-      name: user.name,
+      id: documentUploader.id,
+      name: documentUploader.name,
       companyId,
       role: StockControlRole.ACCOUNTS,
     });
 
-    this.logger.log(`Workflow initialized for job card ${jobCardId} by ${user.name}`);
+    this.logger.log(`Workflow initialized for job card ${jobCardId} by ${user.name}, document upload credited to ${documentUploader.name}`);
   }
 
   async documents(companyId: number, jobCardId: number): Promise<JobCardDocument[]> {
