@@ -319,8 +319,16 @@ FORMAT 2 - SUPPLIER DELIVERY NOTE (incoming, e.g., Impilo Industries):
 - Header shows supplier company name and "DELIVERY NOTE" title
 - Table with: Document No (the DN number), Order No. (customerReference), Date, Delivery Details
 - Stock items table with Stock Code, Description, Qty columns
-- Roll info as: "Roll # 41210    258 kg" and dimensions as: "1 roll Steam 40 Red 20x950x12.5"
-- Parse "20x950x12.5" as thicknessMm=20, widthMm=950, lengthM=12.5
+- CRITICAL: Impilo DNs list multiple stock codes (TOLLCALENDERKG, TOLLCALENDERROLLS, TOLLRAWMATAUSC38RED) per delivery,
+  plus repeated zero-quantity sections. These are INTERNAL TOLL ACCOUNTING entries, NOT separate physical items.
+  You must consolidate them into a SINGLE line item per actual calendered roll:
+  - Roll number and weight come from the TOLLCALENDERROLLS line (e.g., "Roll # 41212    132 kg")
+  - Compound type and dimensions come from the TOLLRAWMATAUSC38RED description (e.g., "1 roll Steam 40 Red 8x1200x12.5")
+  - Parse "8x1200x12.5" as thicknessMm=8, widthMm=1200, lengthM=12.5
+  - Compound code: extract the compound (e.g., "SC38 RED" or "SC40 RED") from the description
+  - IGNORE all lines with Qty 0 entirely
+  - IGNORE standalone TOLLCALENDERKG lines (these are just weight accounting)
+  - The result should be ONE line item per roll, combining roll number, weight, compound, and dimensions
 - Customer name appears as "COD [CUSTOMER NAME]" in address block
 - Sales Order Number at footer (e.g., SO185032)
 
@@ -361,6 +369,7 @@ Guidelines:
 - Extract compound codes and parse their components where possible
 - Parse dimension strings like "20x950x12.5" into thicknessMm, widthMm, lengthM
 - Each delivery note typically has one roll/line item, but may have multiple
+- For Impilo/supplier DNs: return ONE line item per physical roll, NOT one per stock code. Combine roll number, weight, compound, and dimensions from the different stock code lines.
 - Return ONLY the JSON object, no additional text`;
 
 export const CUSTOMER_DELIVERY_NOTE_OCR_PROMPT = `You are an expert at extracting structured data from delivery note IMAGES for rubber sheeting products.
@@ -388,16 +397,22 @@ Table structure with columns:
 │ Document No  │ Order No. │ Date       │ Delivery Details │
 │ D08422       │ 162       │ 2026/02/25 │ Ex works         │
 └─────────────┴───────────┴────────────┴──────────────────┘
-Stock items table:
-│ Stock Code          │ Description                                      │ Qty │
-│ TOLLCALENDERKG      │ Toll Calendered Customer Material per KG          │ 132 │
-│ TOLLCALENDERROLLS   │ Toll Calendered Rolls Customer Supplied Compound  │ 1   │
-│ TOLLRAWMATAUSC38RED │ Toll Raw Compound AU SC38 RED per KG              │ 128 │
-Roll info appears as: "Roll # 41210    258 kg" and sheet dimensions as: "1 roll Steam 40 Red 20x950x12.5"
+Stock items table shows multiple stock codes but these are INTERNAL TOLL ACCOUNTING, not separate items:
+│ TOLLCALENDERKG      │ Toll Calendered Customer Material per KG          │ 132 │ ← weight accounting only
+│ TOLLCALENDERROLLS   │ Toll Calendered Rolls Customer Supplied Compound  │ 1   │ ← has roll # and weight
+│ TOLLRAWMATAUSC38RED │ Toll Raw Compound AU SC38 RED per KG              │ 128 │ ← has compound and dimensions
+
+CRITICAL: Consolidate these into a SINGLE line item per actual calendered roll:
+- Roll number and weight: from TOLLCALENDERROLLS line (e.g., "Roll # 41212    132 kg")
+- Compound and dimensions: from TOLLRAWMATAUSC38RED description (e.g., "1 roll Steam 40 Red 8x1200x12.5")
+- Parse "8x1200x12.5" as thicknessMm=8, widthMm=1200, lengthM=12.5
+- Compound code: extract "SC38 RED" or "SC40 RED" from the description
+- IGNORE all lines with Qty 0 entirely
+- IGNORE standalone TOLLCALENDERKG lines (weight accounting only)
+- Result: ONE line item per roll with roll number, weight, compound, and dimensions combined
+
 - The "Document No" field (e.g., D08422) is the deliveryNoteNumber
 - "Order No." is the customerReference
-- Roll # is the rollNumber, followed by weight in kg
-- Dimensions format "20x950x12.5" means thickness(mm) x width(mm) x length(m)
 - Customer name appears as "COD [CUSTOMER NAME]" in the address block
 - Sales Order Number at footer (e.g., SO185032) can also be used as customerReference if Order No. is missing
 
@@ -442,6 +457,7 @@ IMPORTANT:
 - If two pages show the same DN (e.g., customer copy + supplier copy), only return it ONCE.
 - Parse roll dimensions like "20x950x12.5" or "8x800x12.5" into thicknessMm, widthMm, lengthM.
 - Parse dates from DD/MM/YYYY or YYYY/MM/DD to ISO YYYY-MM-DD format.
+- For Impilo/supplier DNs: return ONE line item per physical roll, NOT one per stock code. Combine roll number, weight, compound, and dimensions from the different stock code lines. Ignore all zero-quantity lines.
 
 Return ONLY the JSON object, no additional text.`;
 
