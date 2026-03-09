@@ -38,7 +38,7 @@ export class CreateRubberDimensionOverrides1802400000000 implements MigrationInt
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS uq_rubber_dim_override_lookup`);
-    await queryRunner.query(`DROP TABLE IF EXISTS rubber_dimension_overrides`);
+    await queryRunner.query("DROP INDEX IF EXISTS uq_rubber_dim_override_lookup");
+    await queryRunner.query("DROP TABLE IF EXISTS rubber_dimension_overrides");
   }
 }

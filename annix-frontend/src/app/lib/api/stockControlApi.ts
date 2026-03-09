@@ -1680,15 +1680,13 @@ class StockControlApiClient {
     });
   }
 
-  async rubberDimensionSuggestions(
-    params: {
-      itemType?: string | null;
-      nbMm?: number | null;
-      schedule?: string | null;
-      pipeLengthMm: number;
-      flangeConfig?: string | null;
-    },
-  ): Promise<RubberDimensionOverride[]> {
+  async rubberDimensionSuggestions(params: {
+    itemType?: string | null;
+    nbMm?: number | null;
+    schedule?: string | null;
+    pipeLengthMm: number;
+    flangeConfig?: string | null;
+  }): Promise<RubberDimensionOverride[]> {
     const searchParams = new URLSearchParams();
     if (params.itemType) searchParams.set("itemType", params.itemType);
     if (params.nbMm) searchParams.set("nbMm", String(params.nbMm));
