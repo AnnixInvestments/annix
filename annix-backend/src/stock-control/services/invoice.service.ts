@@ -119,9 +119,7 @@ export class InvoiceService {
     return this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
   }
 
-  private mimeFromPath(
-    path: string,
-  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
+  private mimeFromPath(path: string): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
     const ext = path.split(".").pop()?.toLowerCase();
     const mimeMap: Record<string, "image/jpeg" | "image/png" | "image/gif" | "image/webp"> = {
       jpg: "image/jpeg",
@@ -136,7 +134,7 @@ export class InvoiceService {
   private async resolveScanUrl(invoice: SupplierInvoice): Promise<SupplierInvoice> {
     if (invoice.scanUrl && !invoice.scanUrl.startsWith("http")) {
       invoice.scanUrl = await this.storageService.getPresignedUrl(invoice.scanUrl, 3600);
-    } else if (invoice.scanUrl && invoice.scanUrl.includes("X-Amz-Expires")) {
+    } else if (invoice.scanUrl?.includes("X-Amz-Expires")) {
       const pathMatch = invoice.scanUrl.match(/\.com\/(.+?)\?/);
       if (pathMatch) {
         const s3Key = decodeURIComponent(pathMatch[1]);

@@ -499,7 +499,8 @@ export default function InvoiceDetailPage() {
                   className="w-full rounded-lg border border-gray-200 hover:opacity-80 transition-opacity"
                 />
               </a>
-              {(invoice.extractionStatus === "pending" || invoice.extractionStatus === "failed") && (
+              {(invoice.extractionStatus === "pending" ||
+                invoice.extractionStatus === "failed") && (
                 <button
                   onClick={handleReExtract}
                   disabled={isReExtracting}

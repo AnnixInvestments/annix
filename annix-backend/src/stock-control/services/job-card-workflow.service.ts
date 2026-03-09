@@ -323,7 +323,9 @@ export class JobCardWorkflowService {
       role: StockControlRole.ACCOUNTS,
     });
 
-    this.logger.log(`Workflow initialized for job card ${jobCardId} by ${user.name}, document upload credited to ${documentUploader.name}`);
+    this.logger.log(
+      `Workflow initialized for job card ${jobCardId} by ${user.name}, document upload credited to ${documentUploader.name}`,
+    );
   }
 
   async documents(companyId: number, jobCardId: number): Promise<JobCardDocument[]> {
