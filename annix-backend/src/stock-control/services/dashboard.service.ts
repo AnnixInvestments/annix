@@ -1,11 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { JobCard, JobCardStatus } from "../entities/job-card.entity";
+import { In, Repository } from "typeorm";
+import { CoatingAnalysisStatus, JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
+import { DeliveryNote } from "../entities/delivery-note.entity";
+import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { Requisition, RequisitionStatus } from "../entities/requisition.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockControlLocation } from "../entities/stock-control-location.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { StockMovement } from "../entities/stock-movement.entity";
+import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 
 export interface DashboardStats {
   totalItems: number;
@@ -25,6 +29,34 @@ export interface RecentActivity {
   createdAt: Date;
 }
 
+export interface WorkflowLaneCounts {
+  inbound: {
+    deliveriesPending: number;
+    deliveriesProcessed: number;
+    invoicesPending: number;
+    invoicesNeedClarification: number;
+    invoicesAwaitingApproval: number;
+  };
+  workshop: {
+    jobCardsDraft: number;
+    jobCardsPendingAdmin: number;
+    jobCardsPendingManager: number;
+    jobCardsRequisitionSent: number;
+    jobCardsPendingAllocation: number;
+    jobCardsPendingFinal: number;
+    coatingPending: number;
+    coatingAnalysed: number;
+    requisitionsPending: number;
+    requisitionsApproved: number;
+    requisitionsOrdered: number;
+  };
+  outbound: {
+    jobCardsReadyForDispatch: number;
+    jobCardsDispatched: number;
+    lowStockAlerts: number;
+  };
+}
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -38,6 +70,14 @@ export class DashboardService {
     private readonly allocationRepo: Repository<StockAllocation>,
     @InjectRepository(StockControlLocation)
     private readonly locationRepo: Repository<StockControlLocation>,
+    @InjectRepository(DeliveryNote)
+    private readonly deliveryNoteRepo: Repository<DeliveryNote>,
+    @InjectRepository(SupplierInvoice)
+    private readonly invoiceRepo: Repository<SupplierInvoice>,
+    @InjectRepository(Requisition)
+    private readonly requisitionRepo: Repository<Requisition>,
+    @InjectRepository(JobCardCoatingAnalysis)
+    private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
   ) {}
 
   async stats(companyId: number): Promise<DashboardStats> {
@@ -137,5 +177,117 @@ export class DashboardService {
       .andWhere("item.quantity <= item.min_stock_level")
       .orderBy("item.quantity", "ASC")
       .getMany();
+  }
+
+  async workflowLaneCounts(companyId: number): Promise<WorkflowLaneCounts> {
+    const jcCountByStatus = async (status: JobCardWorkflowStatus) =>
+      this.jobCardRepo.count({
+        where: {
+          companyId,
+          workflowStatus: status,
+          status: In([JobCardStatus.ACTIVE, JobCardStatus.DRAFT]),
+        },
+      });
+
+    const [
+      deliveriesPending,
+      deliveriesProcessed,
+      invoicesPending,
+      invoicesNeedClarification,
+      invoicesAwaitingApproval,
+      jobCardsDraft,
+      jobCardsPendingAdmin,
+      jobCardsPendingManager,
+      jobCardsRequisitionSent,
+      jobCardsPendingAllocation,
+      jobCardsPendingFinal,
+      coatingPending,
+      coatingAnalysed,
+      requisitionsPending,
+      requisitionsApproved,
+      requisitionsOrdered,
+      jobCardsReadyForDispatch,
+      jobCardsDispatched,
+      lowStockAlerts,
+    ] = await Promise.all([
+      this.deliveryNoteRepo.count({
+        where: { companyId, extractionStatus: null },
+      }),
+      this.deliveryNoteRepo.count({
+        where: { companyId, extractionStatus: "completed" },
+      }),
+      this.invoiceRepo.count({
+        where: {
+          companyId,
+          extractionStatus: In([
+            InvoiceExtractionStatus.PENDING,
+            InvoiceExtractionStatus.PROCESSING,
+          ]),
+        },
+      }),
+      this.invoiceRepo.count({
+        where: { companyId, extractionStatus: InvoiceExtractionStatus.NEEDS_CLARIFICATION },
+      }),
+      this.invoiceRepo.count({
+        where: { companyId, extractionStatus: InvoiceExtractionStatus.AWAITING_APPROVAL },
+      }),
+      jcCountByStatus(JobCardWorkflowStatus.DRAFT),
+      jcCountByStatus(JobCardWorkflowStatus.DOCUMENT_UPLOADED),
+      jcCountByStatus(JobCardWorkflowStatus.ADMIN_APPROVED),
+      jcCountByStatus(JobCardWorkflowStatus.REQUISITION_SENT),
+      jcCountByStatus(JobCardWorkflowStatus.MANAGER_APPROVED),
+      jcCountByStatus(JobCardWorkflowStatus.STOCK_ALLOCATED),
+      this.coatingRepo.count({
+        where: { companyId, status: CoatingAnalysisStatus.PENDING },
+      }),
+      this.coatingRepo.count({
+        where: { companyId, status: CoatingAnalysisStatus.ANALYSED },
+      }),
+      this.requisitionRepo.count({
+        where: { companyId, status: RequisitionStatus.PENDING },
+      }),
+      this.requisitionRepo.count({
+        where: { companyId, status: RequisitionStatus.APPROVED },
+      }),
+      this.requisitionRepo.count({
+        where: { companyId, status: RequisitionStatus.ORDERED },
+      }),
+      jcCountByStatus(JobCardWorkflowStatus.READY_FOR_DISPATCH),
+      jcCountByStatus(JobCardWorkflowStatus.DISPATCHED),
+      this.stockItemRepo
+        .createQueryBuilder("item")
+        .where("item.company_id = :companyId", { companyId })
+        .andWhere("item.min_stock_level > 0")
+        .andWhere("item.quantity <= item.min_stock_level")
+        .getCount(),
+    ]);
+
+    return {
+      inbound: {
+        deliveriesPending,
+        deliveriesProcessed,
+        invoicesPending,
+        invoicesNeedClarification,
+        invoicesAwaitingApproval,
+      },
+      workshop: {
+        jobCardsDraft,
+        jobCardsPendingAdmin,
+        jobCardsPendingManager,
+        jobCardsRequisitionSent,
+        jobCardsPendingAllocation,
+        jobCardsPendingFinal,
+        coatingPending,
+        coatingAnalysed,
+        requisitionsPending,
+        requisitionsApproved,
+        requisitionsOrdered,
+      },
+      outbound: {
+        jobCardsReadyForDispatch,
+        jobCardsDispatched,
+        lowStockAlerts,
+      },
+    };
   }
 }
