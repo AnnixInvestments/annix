@@ -105,6 +105,10 @@ describe("CvExtractionService", () => {
         certifications: [],
         references: [],
         summary: "Experienced software developer",
+        detectedLanguage: null,
+        professionalRegistrations: [],
+        saQualifications: [],
+        location: null,
       });
     });
 
@@ -126,6 +130,10 @@ describe("CvExtractionService", () => {
         certifications: [],
         references: [],
         summary: null,
+        detectedLanguage: null,
+        professionalRegistrations: [],
+        saQualifications: [],
+        location: null,
       });
     });
 
@@ -144,6 +152,10 @@ describe("CvExtractionService", () => {
         certifications: [],
         references: [],
         summary: null,
+        detectedLanguage: null,
+        professionalRegistrations: [],
+        saQualifications: [],
+        location: null,
       });
     });
   });
