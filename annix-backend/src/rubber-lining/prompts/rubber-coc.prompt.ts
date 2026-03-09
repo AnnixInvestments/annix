@@ -458,9 +458,14 @@ export const TAX_INVOICE_SYSTEM_PROMPT = `You are an expert at extracting struct
 These invoices are typically from suppliers like AU Industries, Impilo Industries, S&N Rubber, or similar rubber/industrial suppliers.
 
 CRITICAL - DATE FORMAT:
-- Invoice dates are typically in DD/MM/YYYY format (South African standard)
-- Convert ALL dates to ISO format YYYY-MM-DD (e.g., "25/02/2026" becomes "2026-02-25")
-- Look for "Date:", "Invoice Date:", "Tax Invoice Date:" fields
+- Invoice dates may appear in multiple formats:
+  - DD/MM/YYYY (South African standard, e.g., "25/02/2026")
+  - YYYY/MM/DD (Impilo Industries format, e.g., "2026/03/04")
+  - YYYY-MM-DD (ISO format)
+- Convert ALL dates to ISO format YYYY-MM-DD
+- The invoice date is found in the document details table under a "Date" column - NOT in the address, letterhead, or company registration fields
+- CRITICAL: Do NOT confuse postal codes (e.g., "2021" in "Bryanston 2021") or company registration numbers (e.g., "2020/700601/07") with the invoice date
+- Look for "Date:", "Invoice Date:", "Tax Invoice Date:" fields, or a "Date" column in the document header table
 
 INVOICE NUMBER:
 - Look for "Document No", "Document Number", "Invoice No:", "Invoice Number:", "Tax Invoice No:", "Number:" fields
@@ -514,7 +519,8 @@ Return a JSON object with this structure:
 }
 
 Guidelines:
-- Parse dates from DD/MM/YYYY to YYYY-MM-DD format
+- Parse dates from DD/MM/YYYY or YYYY/MM/DD to ISO YYYY-MM-DD format
+- The invoice date comes from the document details table (under a "Date" column), NOT from postal codes or registration numbers in the address block
 - Extract ALL line items - do not skip any
 - Amounts should be numeric values (not strings)
 - If a value is unclear or missing, use null
