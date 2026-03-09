@@ -5,7 +5,7 @@ export class AddStockControlSupplier1801100000000 implements MigrationInterface 
     const tableExists = await queryRunner.query(`
       SELECT EXISTS (
         SELECT 1 FROM information_schema.tables
-        WHERE table_name = 'stock_control_company'
+        WHERE table_name = 'stock_control_companies'
       ) AS "exists"
     `);
 
