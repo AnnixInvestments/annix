@@ -117,7 +117,8 @@ export class AdzunaService {
 
   private mapResult(result: AdzunaApiResponse["results"][number]): AdzunaJobResult {
     const areaArray = result.location?.area ?? [];
-    const locationArea = areaArray.length > 1 ? areaArray[areaArray.length - 1] : (areaArray[0] ?? null);
+    const locationArea =
+      areaArray.length > 1 ? areaArray[areaArray.length - 1] : (areaArray[0] ?? null);
 
     return {
       id: String(result.id),

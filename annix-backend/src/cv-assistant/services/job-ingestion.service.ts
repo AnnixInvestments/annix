@@ -42,7 +42,9 @@ export class JobIngestionService {
     this.resetDailyCounterIfNeeded(source);
 
     if (source.requestsToday >= source.rateLimitPerDay) {
-      this.logger.warn(`Rate limit reached for source ${source.name} (${source.requestsToday}/${source.rateLimitPerDay})`);
+      this.logger.warn(
+        `Rate limit reached for source ${source.name} (${source.requestsToday}/${source.rateLimitPerDay})`,
+      );
       return { ingested: 0, skipped: 0 };
     }
 

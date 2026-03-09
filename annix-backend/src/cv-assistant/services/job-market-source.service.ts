@@ -38,7 +38,11 @@ export class JobMarketSourceService {
     return source;
   }
 
-  async update(id: number, companyId: number, dto: UpdateJobMarketSourceDto): Promise<JobMarketSource> {
+  async update(
+    id: number,
+    companyId: number,
+    dto: UpdateJobMarketSourceDto,
+  ): Promise<JobMarketSource> {
     const source = await this.findById(id, companyId);
 
     if (dto.name !== undefined) source.name = dto.name;
@@ -47,7 +51,8 @@ export class JobMarketSourceService {
     if (dto.countryCodes !== undefined) source.countryCodes = dto.countryCodes;
     if (dto.categories !== undefined) source.categories = dto.categories;
     if (dto.enabled !== undefined) source.enabled = dto.enabled;
-    if (dto.ingestionIntervalHours !== undefined) source.ingestionIntervalHours = dto.ingestionIntervalHours;
+    if (dto.ingestionIntervalHours !== undefined)
+      source.ingestionIntervalHours = dto.ingestionIntervalHours;
 
     return this.sourceRepo.save(source);
   }

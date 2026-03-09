@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   type CreateJobMarketSourceDto,
+  cvAssistantApiClient,
   type ExternalJob,
   type JobMarketSource,
   type JobMarketStats,
-  cvAssistantApiClient,
 } from "@/app/lib/api/cvAssistantApi";
 
 export default function JobMarketPage() {
@@ -115,9 +115,7 @@ export default function JobMarketPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Job Market</h1>
-          <p className="text-gray-600 mt-1">
-            Browse external job listings and manage data sources
-          </p>
+          <p className="text-gray-600 mt-1">Browse external job listings and manage data sources</p>
         </div>
       </div>
 
@@ -242,10 +240,7 @@ export default function JobMarketPage() {
           </div>
 
           {showAddSource && (
-            <AddSourceForm
-              onSubmit={handleAddSource}
-              onCancel={() => setShowAddSource(false)}
-            />
+            <AddSourceForm onSubmit={handleAddSource} onCancel={() => setShowAddSource(false)} />
           )}
 
           {sources.length === 0 ? (
@@ -313,9 +308,7 @@ function JobCard({ job }: { job: ExternalJob }) {
               </>
             )}
           </div>
-          {salary && (
-            <p className="mt-1 text-sm font-medium text-green-700">{salary}</p>
-          )}
+          {salary && <p className="mt-1 text-sm font-medium text-green-700">{salary}</p>}
           {job.description && (
             <p className="mt-2 text-sm text-gray-600 line-clamp-2">{job.description}</p>
           )}
@@ -368,9 +361,7 @@ function SourceCard({
             </span>
             <span
               className={`px-2 py-0.5 text-xs rounded-full ${
-                source.enabled
-                  ? "bg-green-50 text-green-700"
-                  : "bg-gray-100 text-gray-500"
+                source.enabled ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
               }`}
             >
               {source.enabled ? "Active" : "Disabled"}

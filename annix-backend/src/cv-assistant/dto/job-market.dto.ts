@@ -1,13 +1,4 @@
-import {
-  IsArray,
-  IsBoolean,
-  IsEnum,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from "class-validator";
+import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 import { JobSourceProvider } from "../entities/job-market-source.entity";
 
 export class CreateJobMarketSourceDto {

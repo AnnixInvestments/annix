@@ -66,7 +66,9 @@ export class WorkflowAutomationService {
       }
 
       this.embeddingService.embedCandidate(candidateId).catch((err) => {
-        this.logger.warn(`Failed to generate embedding for candidate ${candidateId}: ${err.message}`);
+        this.logger.warn(
+          `Failed to generate embedding for candidate ${candidateId}: ${err.message}`,
+        );
       });
 
       await this.applyAutomationRules(candidate);

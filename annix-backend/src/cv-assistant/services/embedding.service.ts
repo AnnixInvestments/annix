@@ -83,7 +83,8 @@ export class EmbeddingService {
       if (ed.summary) parts.push(ed.summary);
       if (ed.skills.length > 0) parts.push(`Skills: ${ed.skills.join(", ")}`);
       if (ed.education.length > 0) parts.push(`Education: ${ed.education.join(", ")}`);
-      if (ed.certifications.length > 0) parts.push(`Certifications: ${ed.certifications.join(", ")}`);
+      if (ed.certifications.length > 0)
+        parts.push(`Certifications: ${ed.certifications.join(", ")}`);
       if (ed.experienceYears) parts.push(`Experience: ${ed.experienceYears} years`);
     }
 

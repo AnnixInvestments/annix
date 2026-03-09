@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddEmbeddingColumns1803300000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS vector`);
+    await queryRunner.query("CREATE EXTENSION IF NOT EXISTS vector");
 
     await queryRunner.query(`
       DO $$ BEGIN
@@ -36,7 +36,11 @@ export class AddEmbeddingColumns1803300000000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_external_jobs_embedding"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_candidates_embedding"`);
-    await queryRunner.query(`ALTER TABLE "cv_assistant_external_jobs" DROP COLUMN IF EXISTS "embedding"`);
-    await queryRunner.query(`ALTER TABLE "cv_assistant_candidates" DROP COLUMN IF EXISTS "embedding"`);
+    await queryRunner.query(
+      `ALTER TABLE "cv_assistant_external_jobs" DROP COLUMN IF EXISTS "embedding"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "cv_assistant_candidates" DROP COLUMN IF EXISTS "embedding"`,
+    );
   }
 }
