@@ -161,6 +161,7 @@ export interface JobCardLineItem {
   quantity: number | null;
   jtNo: string | null;
   m2: number | null;
+  notes: string | null;
   sortOrder: number;
   companyId: number;
   createdAt: string;
@@ -188,6 +189,8 @@ export interface JobCard {
   sourceFileName?: string | null;
   createdAt: string;
   updatedAt: string;
+  cpoId: number | null;
+  isCpoCalloff: boolean;
   allocations?: StockAllocation[];
   lineItems?: JobCardLineItem[];
 }
@@ -439,7 +442,9 @@ export interface Requisition {
   id: number;
   requisitionNumber: string;
   jobCardId: number | null;
-  source: "job_card" | "reorder";
+  cpoId: number | null;
+  source: "job_card" | "reorder" | "cpo";
+  isCalloffOrder: boolean;
   status: string;
   notes: string | null;
   createdBy: string | null;
@@ -448,6 +453,23 @@ export interface Requisition {
   updatedAt: string;
   jobCard?: JobCard | null;
   items: RequisitionItem[];
+}
+
+export interface CpoCalloffRecord {
+  id: number;
+  companyId: number;
+  cpoId: number;
+  jobCardId: number | null;
+  requisitionId: number | null;
+  calloffType: "rubber" | "paint" | "solution";
+  status: "pending" | "called_off" | "delivered" | "invoiced";
+  calledOffAt: string | null;
+  deliveredAt: string | null;
+  invoicedAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  jobCard?: JobCard | null;
 }
 
 export interface DashboardStats {
@@ -822,6 +844,72 @@ export interface JobCardImportUploadResponse {
   savedMapping: JobCardImportMapping | null;
   documentNumber: string | null;
   drawingRows?: JobCardImportRow[];
+}
+
+export interface CustomerPurchaseOrderItem {
+  id: number;
+  cpoId: number;
+  companyId: number;
+  itemCode: string | null;
+  itemDescription: string | null;
+  itemNo: string | null;
+  quantityOrdered: number;
+  quantityFulfilled: number;
+  jtNo: string | null;
+  m2: number | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface CustomerPurchaseOrder {
+  id: number;
+  companyId: number;
+  cpoNumber: string;
+  jobNumber: string;
+  jobName: string | null;
+  customerName: string | null;
+  poNumber: string | null;
+  siteLocation: string | null;
+  contactPerson: string | null;
+  dueDate: string | null;
+  notes: string | null;
+  reference: string | null;
+  customFields: Record<string, string> | null;
+  status: string;
+  totalItems: number;
+  totalQuantity: number;
+  fulfilledQuantity: number;
+  sourceFilePath: string | null;
+  sourceFileName: string | null;
+  createdBy: string | null;
+  items: CustomerPurchaseOrderItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GlobalSearchResultItem {
+  id: number;
+  type: "job_card" | "stock_item" | "staff" | "delivery_note" | "invoice" | "purchase_order";
+  title: string;
+  subtitle: string | null;
+  status: string | null;
+  href: string;
+  updatedAt: string | null;
+  matchRank: number;
+}
+
+export interface GlobalSearchResponse {
+  results: GlobalSearchResultItem[];
+  totalCount: number;
+  query: string;
+}
+
+export interface CpoImportResult {
+  totalRows: number;
+  created: number;
+  skipped: number;
+  errors: { row: number; message: string }[];
+  createdCpoIds: number[];
 }
 
 export interface InvitationValidation {
@@ -2844,6 +2932,71 @@ class StockControlApiClient {
       method: "PATCH",
       body: JSON.stringify({ config }),
     });
+  }
+  async cpos(status?: string): Promise<CustomerPurchaseOrder[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : "";
+    return this.request(`/stock-control/cpos${query}`);
+  }
+
+  async cpoById(id: number): Promise<CustomerPurchaseOrder> {
+    return this.request(`/stock-control/cpos/${id}`);
+  }
+
+  async uploadCpoImportFile(file: File): Promise<JobCardImportUploadResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/cpos/upload`;
+    const { Authorization } = this.headers();
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { ...(Authorization ? { Authorization } : {}) },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `Upload failed: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async confirmCpoImport(rows: JobCardImportRow[]): Promise<CpoImportResult> {
+    return this.request("/stock-control/cpos/confirm", {
+      method: "POST",
+      body: JSON.stringify({ rows }),
+    });
+  }
+
+  async updateCpoStatus(id: number, status: string): Promise<CustomerPurchaseOrder> {
+    return this.request(`/stock-control/cpos/${id}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async deleteCpo(id: number): Promise<void> {
+    return this.request(`/stock-control/cpos/${id}`, { method: "DELETE" });
+  }
+
+  async cpoCalloffRecords(cpoId: number): Promise<CpoCalloffRecord[]> {
+    return this.request(`/stock-control/cpos/${cpoId}/calloff-records`);
+  }
+
+  async updateCalloffRecordStatus(
+    recordId: number,
+    status: string,
+  ): Promise<CpoCalloffRecord> {
+    return this.request(`/stock-control/cpos/calloff-records/${recordId}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async globalSearch(query: string, limit: number = 20): Promise<GlobalSearchResponse> {
+    const params = new URLSearchParams({ q: query, limit: String(limit) });
+    return this.request(`/stock-control/search?${params.toString()}`);
   }
 }
 

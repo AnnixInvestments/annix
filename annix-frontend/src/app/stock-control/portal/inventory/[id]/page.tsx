@@ -7,6 +7,7 @@ import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { StockControlLocation, StockItem, StockMovement } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 
 function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", {
@@ -128,6 +129,7 @@ export default function InventoryDetailPage() {
     }
   };
 
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isDownloadingQr, setIsDownloadingQr] = useState(false);
 
   const handlePrintQr = async () => {
@@ -138,6 +140,18 @@ export default function InventoryDetailPage() {
       setError(err instanceof Error ? err : new Error("Failed to download QR label"));
     } finally {
       setIsDownloadingQr(false);
+    }
+  };
+
+  const handlePhotoCapture = async (file: File) => {
+    try {
+      setIsUploadingPhoto(true);
+      const updatedItem = await stockControlApiClient.uploadStockItemPhoto(itemId, file);
+      setItem(updatedItem);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to upload photo"));
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -321,20 +335,31 @@ export default function InventoryDetailPage() {
         </div>
 
         <div>
-          {item.photoUrl && (
-            <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
-              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Photo</h3>
-              </div>
-              <div className="p-4">
+          <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+            <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Photo</h3>
+            </div>
+            <div className="p-4">
+              {item.photoUrl && (
                 <img
                   src={item.photoUrl}
                   alt={item.name}
-                  className="w-full rounded-lg object-cover"
+                  className="w-full rounded-lg object-cover mb-3"
                 />
-              </div>
+              )}
+              {isUploadingPhoto ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                  Uploading...
+                </div>
+              ) : (
+                <PhotoCapture
+                  onCapture={handlePhotoCapture}
+                  currentPhotoUrl={undefined}
+                />
+              )}
             </div>
-          )}
+          </div>
 
           <div className="bg-white shadow rounded-lg overflow-hidden">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">

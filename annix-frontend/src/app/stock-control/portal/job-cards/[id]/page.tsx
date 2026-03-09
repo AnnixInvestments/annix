@@ -1832,6 +1832,14 @@ export default function JobCardDetailPage() {
               >
                 {jobCard.status}
               </span>
+              {jobCard.cpoId ? (
+                <Link
+                  href={`/stock-control/portal/purchase-orders/${jobCard.cpoId}`}
+                  className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 hover:bg-purple-200"
+                >
+                  CPO Linked
+                </Link>
+              ) : null}
             </div>
             <p className="mt-1 text-sm text-gray-500">{jobCard.jobName}</p>
           </div>
@@ -2054,27 +2062,11 @@ export default function JobCardDetailPage() {
                 })
                 .join("\n")
                 .trim();
-              const noteLineItems = (jobCard.lineItems || [])
-                .filter((li) => {
-                  const code = (li.itemCode || "").trim();
-                  const hasNoData =
-                    !li.itemDescription &&
-                    !li.itemNo &&
-                    !li.jtNo &&
-                    (li.quantity === null || Number.isNaN(li.quantity));
-                  if (!hasNoData || !code) return false;
-                  const isLongTextNote = code.length > 60;
-                  const isRubberSpecNote =
-                    /^r\/l\b/i.test(code) || /rubber\s+(lining|sheet|lagging)/i.test(code);
-                  return isLongTextNote || isRubberSpecNote;
-                })
-                .map((li) => (li.itemCode || "").trim());
-              const combinedNotes = [cleanedNotes, ...noteLineItems].filter(Boolean).join("\n\n");
-              return combinedNotes ? (
+              return cleanedNotes ? (
                 <div className="col-span-2">
                   <dt className="text-sm font-medium text-gray-500">Notes</dt>
                   <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-                    {combinedNotes}
+                    {cleanedNotes}
                   </dd>
                 </div>
               ) : null;
@@ -2431,58 +2423,110 @@ export default function JobCardDetailPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {jobCard.lineItems.filter(isValidLineItem).map((li, idx) => (
-                  <tr key={li.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{idx + 1}</td>
-                    <td className="px-3 py-2 text-sm font-mono text-gray-900 break-all">
-                      {li.itemCode || "-"}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-gray-900 break-words">
-                      {li.itemDescription || "-"}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-gray-900 break-all">
-                      {li.itemNo || "-"}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                      {li.quantity ?? "-"}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
-                      {li.m2 ? Number(li.m2).toFixed(2) : "-"}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
-                      {li.jtNo || "-"}
-                    </td>
-                  </tr>
-                ))}
+                {(() => {
+                  const validItems = jobCard.lineItems.filter(isValidLineItem);
+                  const rows: React.ReactNode[] = [];
+                  let itemCounter = 0;
+
+                  validItems.forEach((li, idx) => {
+                    const isNewNoteGroup =
+                      li.notes &&
+                      (idx === 0 || validItems[idx - 1].notes !== li.notes);
+                    const isLastInNoteGroup =
+                      li.notes &&
+                      (idx === validItems.length - 1 || validItems[idx + 1].notes !== li.notes);
+
+                    itemCounter++;
+                    rows.push(
+                      <tr key={li.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{itemCounter}</td>
+                        <td className="px-3 py-2 text-sm font-mono text-gray-900 break-all">
+                          {li.itemCode || "-"}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-900 break-words">
+                          {li.itemDescription || "-"}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-900 break-all">
+                          {li.itemNo || "-"}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                          {li.quantity ?? "-"}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
+                          {li.m2 ? Number(li.m2).toFixed(2) : "-"}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
+                          {li.jtNo || "-"}
+                        </td>
+                      </tr>,
+                    );
+
+                    if (isLastInNoteGroup && li.notes) {
+                      rows.push(
+                        <tr key={`note-${li.id}`} className="bg-amber-50">
+                          <td className="px-3 py-1.5" />
+                          <td colSpan={6} className="px-3 py-1.5 text-sm italic text-amber-800 whitespace-pre-wrap">
+                            {li.notes}
+                          </td>
+                        </tr>,
+                      );
+                    }
+                  });
+
+                  return rows;
+                })()}
               </tbody>
             </table>
           </div>
           <div className="md:hidden divide-y divide-gray-200">
-            {jobCard.lineItems.filter(isValidLineItem).map((li, idx) => (
-              <div key={li.id} className="p-4 hover:bg-gray-50">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-gray-400">#{idx + 1}</span>
-                    <span className="text-sm font-mono font-medium text-gray-900">
-                      {li.itemCode || "-"}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-3 text-sm">
-                    {li.quantity && (
-                      <span className="font-semibold text-gray-900">Qty: {li.quantity}</span>
+            {(() => {
+              const validItems = jobCard.lineItems.filter(isValidLineItem);
+              const elements: React.ReactNode[] = [];
+              let itemCounter = 0;
+
+              validItems.forEach((li, idx) => {
+                const isLastInNoteGroup =
+                  li.notes &&
+                  (idx === validItems.length - 1 || validItems[idx + 1].notes !== li.notes);
+
+                itemCounter++;
+                elements.push(
+                  <div key={li.id} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-400">#{itemCounter}</span>
+                        <span className="text-sm font-mono font-medium text-gray-900">
+                          {li.itemCode || "-"}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-3 text-sm">
+                        {li.quantity && (
+                          <span className="font-semibold text-gray-900">Qty: {li.quantity}</span>
+                        )}
+                        {li.m2 && <span className="text-gray-600">{Number(li.m2).toFixed(2)} m²</span>}
+                      </div>
+                    </div>
+                    {li.itemDescription && (
+                      <p className="text-sm text-gray-700 mb-1">{li.itemDescription}</p>
                     )}
-                    {li.m2 && <span className="text-gray-600">{Number(li.m2).toFixed(2)} m²</span>}
-                  </div>
-                </div>
-                {li.itemDescription && (
-                  <p className="text-sm text-gray-700 mb-1">{li.itemDescription}</p>
-                )}
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                  {li.itemNo && <span>Item: {li.itemNo}</span>}
-                  {li.jtNo && <span>JT: {li.jtNo}</span>}
-                </div>
-              </div>
-            ))}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                      {li.itemNo && <span>Item: {li.itemNo}</span>}
+                      {li.jtNo && <span>JT: {li.jtNo}</span>}
+                    </div>
+                  </div>,
+                );
+
+                if (isLastInNoteGroup && li.notes) {
+                  elements.push(
+                    <div key={`note-${li.id}`} className="px-4 py-2 bg-amber-50">
+                      <p className="text-sm italic text-amber-800 whitespace-pre-wrap">{li.notes}</p>
+                    </div>,
+                  );
+                }
+              });
+
+              return elements;
+            })()}
           </div>
         </div>
       )}
