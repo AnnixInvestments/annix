@@ -112,7 +112,7 @@ export function RequisitionTab({ requisition }: RequisitionTabProps) {
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-3 py-2 text-sm text-gray-900">{item.productName || "-"}</td>
                     <td className="px-3 py-2 text-sm text-right text-gray-900">
-                      {item.quantityRequired ?? item.packsToOrder ?? "-"}
+                      {item.quantityRequired || item.packsToOrder || "-"}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900">
                       {item.packSizeLitres ? `${item.packSizeLitres}L` : "-"}

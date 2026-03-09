@@ -410,7 +410,7 @@ export function CoatingAnalysisTab({
                       accept=".pdf"
                       className="hidden"
                       onChange={(e) => {
-                        const file = e.target.files?.[0] ?? null;
+                        const file = e.target.files?.[0] || null;
                         onTdsFileChange(file);
                       }}
                     />

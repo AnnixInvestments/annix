@@ -117,7 +117,7 @@ export function LineItemsTab({ jobCard, attachments }: LineItemsTabProps) {
                       {li.itemNo || "-"}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                      {li.quantity ?? "-"}
+                      {li.quantity || "-"}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
                       {li.m2 ? Number(li.m2).toFixed(2) : "-"}

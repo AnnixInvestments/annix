@@ -281,7 +281,7 @@ function CuttingDiagram({
           const width = isFullRoll ? 100 - left : rawWidth;
           const colorClass =
             colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
-          const rolls = cut.stripsPerPiece ?? 1;
+          const rolls = cut.stripsPerPiece || 1;
           const displayLabel =
             rolls > 1 ? `${rolls} rolls` : cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
 
@@ -350,7 +350,7 @@ function CuttingDiagram({
                     <span className="text-gray-500 flex-shrink-0">Lane {cut.lane + 1}</span>
                   </>
                 )}
-                {(cut.stripsPerPiece ?? 1) > 1 && (
+                {(cut.stripsPerPiece || 1) > 1 && (
                   <>
                     <span className="text-gray-400 flex-shrink-0">|</span>
                     <span className="text-orange-600 font-medium flex-shrink-0">
@@ -827,7 +827,7 @@ function RubberSOHPanel({
     rollsToSave?: RubberPlanManualRoll[],
     dimensionOverrides?: RubberDimensionOverride[],
   ) => {
-    const rolls = rollsToSave ?? manualRolls;
+    const rolls = rollsToSave !== undefined ? rollsToSave : manualRolls;
     setSaving(true);
     try {
       const override: RubberPlanOverride = {
@@ -1251,7 +1251,7 @@ function RubberAllocationSection({
             plan={plan}
             fallbackThicknessMm={stockOptions?.rubberSpec?.thicknessMm}
             jobCardId={jobCardId}
-            userRole={scUser?.role ?? null}
+            userRole={scUser?.role || null}
           />
         ) : (
           <GenericM2View totalM2={plan.genericM2Total} items={plan.genericM2Items} />
@@ -1276,7 +1276,7 @@ function RubberAllocationSection({
             selectedPly={selectedPly}
             onPlyChange={setSelectedPly}
             lineItems={lineItemsForPlan}
-            userRole={scUser?.role ?? null}
+            userRole={scUser?.role || null}
           />
         )}
       </div>
@@ -1307,7 +1307,7 @@ export function RubberAllocationGuard({ jobCard }: { jobCard: JobCard }) {
     <RubberAllocationSection
       lineItems={validItems}
       jobCardId={jobCard.id}
-      rubberPlanOverride={jobCard.rubberPlanOverride ?? null}
+      rubberPlanOverride={jobCard.rubberPlanOverride || null}
     />
   );
 }

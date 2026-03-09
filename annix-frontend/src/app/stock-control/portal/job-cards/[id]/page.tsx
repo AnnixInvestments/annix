@@ -106,7 +106,7 @@ export default function JobCardDetailPage() {
         .requisitions()
         .then((reqs) => {
           const match = reqs.find((r) => r.jobCardId === jobId && r.status !== "cancelled");
-          setRequisition(match ?? null);
+          setRequisition(match || null);
         })
         .catch(() => setRequisition(null));
 
@@ -449,11 +449,11 @@ export default function JobCardDetailPage() {
     }
   };
 
-  const currentStatus = workflowStatus?.currentStatus ?? null;
-  const canApprove = workflowStatus?.canApprove ?? false;
-  const currentStep = workflowStatus?.currentStep ?? null;
-  const userRole = user?.role ?? null;
-  const pipingLossPct = profile?.pipingLossFactorPct ?? 45;
+  const currentStatus = workflowStatus?.currentStatus || null;
+  const canApprove = workflowStatus?.canApprove || false;
+  const currentStep = workflowStatus?.currentStep || null;
+  const userRole = user?.role || null;
+  const pipingLossPct = profile?.pipingLossFactorPct || 45;
 
   const validLineItemCount = useMemo(
     () => (jobCard?.lineItems ? jobCard.lineItems.filter(isValidLineItem).length : 0),
@@ -461,7 +461,7 @@ export default function JobCardDetailPage() {
   );
 
   const tabDefinitions: TabDefinition[] = useMemo(() => {
-    const status = jobCard?.status?.toLowerCase() ?? "draft";
+    const status = jobCard?.status?.toLowerCase() || "draft";
     return [
       { id: "details", label: "Details" },
       {
