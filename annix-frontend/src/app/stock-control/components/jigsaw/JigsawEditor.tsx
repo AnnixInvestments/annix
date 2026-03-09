@@ -10,8 +10,9 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useCallback, useState } from "react";
-import type { RubberPlanManualRoll } from "@/app/lib/api/stockControlApi";
+import { useCallback, useEffect, useState } from "react";
+import type { RubberDimensionOverride, RubberPlanManualRoll } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import type { ParsedPipeItem, RubberSpec } from "@/app/stock-control/lib/rubberCuttingCalculator";
 import {
   CUT_COLORS,
@@ -35,7 +36,7 @@ export function JigsawEditor(props: {
   parsedItems: ParsedPipeItem[];
   rubberSpec: RubberSpec | null | undefined;
   existingManualRolls: RubberPlanManualRoll[];
-  onSave: (rolls: RubberPlanManualRoll[]) => void;
+  onSave: (rolls: RubberPlanManualRoll[], overrides: RubberDimensionOverride[]) => void;
   saving: boolean;
 }) {
   const { parsedItems, rubberSpec, existingManualRolls, onSave, saving } = props;
@@ -62,6 +63,77 @@ export function JigsawEditor(props: {
   const [unplacedPanels, setUnplacedPanels] = useState<JigsawPanel[]>(() => allPanels);
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [suggestionsApplied, setSuggestionsApplied] = useState(false);
+
+  useEffect(() => {
+    if (suggestionsApplied || existingManualRolls.length > 0) return;
+
+    const contexts = new Map<string, JigsawPanel>();
+    unplacedPanels.forEach((p) => {
+      const key = [
+        p.dimensionContext.itemType ?? "",
+        p.dimensionContext.nbMm ?? 0,
+        p.dimensionContext.schedule ?? "",
+        p.dimensionContext.lengthMm,
+        p.dimensionContext.flangeConfig ?? "",
+      ].join("|");
+      if (!contexts.has(key)) contexts.set(key, p);
+    });
+
+    const fetchSuggestions = async () => {
+      const entries = Array.from(contexts.entries());
+      const results = await Promise.all(
+        entries.map(async ([key, panel]) => {
+          try {
+            const suggestions = await stockControlApiClient.rubberDimensionSuggestions({
+              itemType: panel.dimensionContext.itemType,
+              nbMm: panel.dimensionContext.nbMm,
+              schedule: panel.dimensionContext.schedule,
+              pipeLengthMm: panel.dimensionContext.lengthMm,
+              flangeConfig: panel.dimensionContext.flangeConfig,
+            });
+            if (suggestions.length > 0) {
+              return { key, suggestion: suggestions[0] };
+            }
+          } catch {
+            // Suggestions are best-effort
+          }
+          return null;
+        }),
+      );
+
+      const suggestionMap = new Map<string, RubberDimensionOverride>();
+      results.forEach((r) => {
+        if (r) suggestionMap.set(r.key, r.suggestion);
+      });
+
+      if (suggestionMap.size > 0) {
+        setUnplacedPanels((prev) =>
+          prev.map((p) => {
+            const key = [
+              p.dimensionContext.itemType ?? "",
+              p.dimensionContext.nbMm ?? 0,
+              p.dimensionContext.schedule ?? "",
+              p.dimensionContext.lengthMm,
+              p.dimensionContext.flangeConfig ?? "",
+            ].join("|");
+            const suggestion = suggestionMap.get(key);
+            if (suggestion) {
+              return {
+                ...p,
+                widthMm: suggestion.overrideWidthMm,
+                lengthMm: suggestion.overrideLengthMm,
+              };
+            }
+            return p;
+          }),
+        );
+      }
+      setSuggestionsApplied(true);
+    };
+
+    fetchSuggestions();
+  }, [suggestionsApplied, existingManualRolls.length, unplacedPanels]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -159,6 +231,52 @@ export function JigsawEditor(props: {
     }
   };
 
+  const handleEditDimensions = useCallback(
+    (panelId: string, newWidth: number, newLength: number) => {
+      const target = unplacedPanels.find((p) => p.panelId === panelId);
+      if (!target) return;
+
+      const baseId = panelId.split("-")[0];
+
+      setUnplacedPanels((prev) =>
+        prev.map((p) => {
+          if (p.panelId.split("-")[0] !== baseId) return p;
+          return { ...p, widthMm: newWidth, lengthMm: newLength };
+        }),
+      );
+
+      const placedSiblings = placedPanels.filter((p) => p.panelId.split("-")[0] === baseId);
+      if (placedSiblings.length > 0) {
+        const updated = placedSiblings.map((p) => ({
+          ...p,
+          widthMm: newWidth,
+          lengthMm: newLength,
+        }));
+
+        const stillValid = updated.filter((p) => {
+          const roll = rolls[p.rollIndex];
+          return roll && isWithinBounds(p, roll);
+        });
+
+        const ejected = updated.filter((p) => {
+          const roll = rolls[p.rollIndex];
+          return !roll || !isWithinBounds(p, roll);
+        });
+
+        const ejectedUnplaced: JigsawPanel[] = ejected.map(
+          ({ rollIndex: _ri, xMm: _x, yMm: _y, ...rest }) => rest,
+        );
+
+        setPlacedPanels((prev) => [
+          ...prev.filter((p) => p.panelId.split("-")[0] !== baseId),
+          ...stillValid,
+        ]);
+        setUnplacedPanels((prev) => [...prev, ...ejectedUnplaced]);
+      }
+    },
+    [unplacedPanels, placedPanels, rolls],
+  );
+
   const handleRotate = useCallback(
     (panelId: string) => {
       const placedIdx = placedPanels.findIndex((p) => p.panelId === panelId);
@@ -228,7 +346,31 @@ export function JigsawEditor(props: {
 
   const handleSave = () => {
     const serialized = serializeToManualRolls(rolls, placedPanels);
-    onSave(serialized);
+
+    const allCurrentPanels = [...unplacedPanels, ...placedPanels];
+    const seenBaseIds = new Set<string>();
+    const overrides: RubberDimensionOverride[] = allCurrentPanels
+      .filter((p) => {
+        const changed = p.widthMm !== p.originalWidthMm || p.lengthMm !== p.originalLengthMm;
+        const baseId = p.panelId.split("-")[0];
+        if (!changed || seenBaseIds.has(baseId)) return false;
+        seenBaseIds.add(baseId);
+        return true;
+      })
+      .map((p) => ({
+        itemType: p.dimensionContext.itemType,
+        nbMm: p.dimensionContext.nbMm,
+        odMm: p.dimensionContext.odMm,
+        schedule: p.dimensionContext.schedule,
+        pipeLengthMm: p.dimensionContext.lengthMm,
+        flangeConfig: p.dimensionContext.flangeConfig,
+        calculatedWidthMm: p.originalWidthMm,
+        calculatedLengthMm: p.originalLengthMm,
+        overrideWidthMm: p.widthMm,
+        overrideLengthMm: p.lengthMm,
+      }));
+
+    onSave(serialized, overrides);
   };
 
   const activePanel = activeDragId ? findPanel(activeDragId) : null;
@@ -243,7 +385,11 @@ export function JigsawEditor(props: {
         onDragEnd={handleDragEnd}
       >
         <div className="flex gap-3">
-          <PanelTray panels={unplacedPanels} onRotate={handleRotate} />
+          <PanelTray
+            panels={unplacedPanels}
+            onRotate={handleRotate}
+            onEditDimensions={handleEditDimensions}
+          />
 
           <div className="flex-1 space-y-3">
             {rolls.map((roll, idx) => (

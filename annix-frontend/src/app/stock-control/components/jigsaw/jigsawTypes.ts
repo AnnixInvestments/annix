@@ -1,3 +1,12 @@
+export interface PanelDimensionContext {
+  nbMm: number | null;
+  odMm: number | null;
+  schedule: string | null;
+  lengthMm: number;
+  flangeConfig: string | null;
+  itemType: string | null;
+}
+
 export interface JigsawPanel {
   panelId: string;
   itemId: string;
@@ -5,8 +14,11 @@ export interface JigsawPanel {
   description: string;
   widthMm: number;
   lengthMm: number;
+  originalWidthMm: number;
+  originalLengthMm: number;
   rotated: boolean;
   colorIndex: number;
+  dimensionContext: PanelDimensionContext;
 }
 
 export interface PlacedPanel extends JigsawPanel {

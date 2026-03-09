@@ -43,6 +43,7 @@ import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity"
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { JobCardVersion } from "./entities/job-card-version.entity";
 import { PushSubscription } from "./entities/push-subscription.entity";
+import { RubberDimensionOverride } from "./entities/rubber-dimension-override.entity";
 import { Requisition } from "./entities/requisition.entity";
 import { RequisitionItem } from "./entities/requisition-item.entity";
 import { StaffMember } from "./entities/staff-member.entity";
@@ -137,6 +138,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       StockControlRbacConfig,
       StockControlSupplier,
       PushSubscription,
+      RubberDimensionOverride,
     ]),
     EmailModule,
     JwtModule.registerAsync({

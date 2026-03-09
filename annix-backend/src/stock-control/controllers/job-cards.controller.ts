@@ -19,6 +19,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, MoreThan, Repository } from "typeorm";
+import { RubberDimensionOverride } from "../entities/rubber-dimension-override.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
@@ -45,12 +46,43 @@ export class JobCardsController {
     private readonly workflowService: JobCardWorkflowService,
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
+    @InjectRepository(RubberDimensionOverride)
+    private readonly dimensionOverrideRepo: Repository<RubberDimensionOverride>,
   ) {}
 
   @Get()
   @ApiOperation({ summary: "List job cards with optional status filter" })
   async list(@Req() req: any, @Query("status") status?: string) {
     return this.jobCardService.findAll(req.user.companyId, status);
+  }
+
+  @Get("rubber-dimension-suggestions")
+  @ApiOperation({ summary: "Query learned rubber dimension overrides" })
+  async rubberDimensionSuggestions(@Req() req: any, @Query() query: any) {
+    const companyId = req.user.companyId;
+    const results = await this.dimensionOverrideRepo
+      .createQueryBuilder("o")
+      .where("o.company_id = :companyId", { companyId })
+      .andWhere("COALESCE(o.item_type, '') = COALESCE(:itemType, '')", {
+        itemType: query.itemType || null,
+      })
+      .andWhere("COALESCE(o.nb_mm, 0) = COALESCE(:nbMm, 0)", {
+        nbMm: query.nbMm ? Number(query.nbMm) : null,
+      })
+      .andWhere("COALESCE(o.schedule, '') = COALESCE(:schedule, '')", {
+        schedule: query.schedule || null,
+      })
+      .andWhere("o.pipe_length_mm = :pipeLengthMm", {
+        pipeLengthMm: Number(query.pipeLengthMm),
+      })
+      .andWhere("COALESCE(o.flange_config, '') = COALESCE(:flangeConfig, '')", {
+        flangeConfig: query.flangeConfig || null,
+      })
+      .orderBy("o.usage_count", "DESC")
+      .limit(1)
+      .getMany();
+
+    return results;
   }
 
   @Get(":id")
@@ -237,9 +269,72 @@ export class JobCardsController {
       reviewedBy: req.user.name,
       reviewedAt: new Date().toISOString(),
     };
-    return this.jobCardService.update(req.user.companyId, id, {
+    const result = await this.jobCardService.update(req.user.companyId, id, {
       rubberPlanOverride: jobCard.rubberPlanOverride,
     });
+
+    const overrides: any[] = body.dimensionOverrides || [];
+    if (overrides.length > 0) {
+      await this.upsertDimensionOverrides(req.user.companyId, overrides);
+    }
+
+    return result;
+  }
+
+  private async upsertDimensionOverrides(companyId: number, overrides: any[]): Promise<void> {
+    await Promise.all(
+      overrides.map(async (ov) => {
+        const existing = await this.dimensionOverrideRepo
+          .createQueryBuilder("o")
+          .where("o.company_id = :companyId", { companyId })
+          .andWhere("COALESCE(o.item_type, '') = COALESCE(:itemType, '')", {
+            itemType: ov.itemType || null,
+          })
+          .andWhere("COALESCE(o.nb_mm, 0) = COALESCE(:nbMm, 0)", {
+            nbMm: ov.nbMm || null,
+          })
+          .andWhere("COALESCE(o.od_mm, 0) = COALESCE(:odMm, 0)", {
+            odMm: ov.odMm || null,
+          })
+          .andWhere("COALESCE(o.schedule, '') = COALESCE(:schedule, '')", {
+            schedule: ov.schedule || null,
+          })
+          .andWhere("o.pipe_length_mm = :pipeLengthMm", {
+            pipeLengthMm: ov.pipeLengthMm,
+          })
+          .andWhere("COALESCE(o.flange_config, '') = COALESCE(:flangeConfig, '')", {
+            flangeConfig: ov.flangeConfig || null,
+          })
+          .getOne();
+
+        if (existing) {
+          await this.dimensionOverrideRepo.update(existing.id, {
+            overrideWidthMm: ov.overrideWidthMm,
+            overrideLengthMm: ov.overrideLengthMm,
+            calculatedWidthMm: ov.calculatedWidthMm,
+            calculatedLengthMm: ov.calculatedLengthMm,
+            usageCount: existing.usageCount + 1,
+            lastUsedAt: new Date(),
+          });
+        } else {
+          await this.dimensionOverrideRepo.save({
+            companyId,
+            itemType: ov.itemType || null,
+            nbMm: ov.nbMm || null,
+            odMm: ov.odMm || null,
+            schedule: ov.schedule || null,
+            pipeLengthMm: ov.pipeLengthMm,
+            flangeConfig: ov.flangeConfig || null,
+            calculatedWidthMm: ov.calculatedWidthMm,
+            calculatedLengthMm: ov.calculatedLengthMm,
+            overrideWidthMm: ov.overrideWidthMm,
+            overrideLengthMm: ov.overrideLengthMm,
+            usageCount: 1,
+            lastUsedAt: new Date(),
+          });
+        }
+      }),
+    );
   }
 
   @Post(":id/allocate")

@@ -11,6 +11,7 @@ import type {
   JobCardAttachment,
   JobCardVersion,
   Requisition,
+  RubberDimensionOverride,
   RubberPlanManualRoll,
   RubberPlanOverride,
   RubberStockOptionsResponse,
@@ -857,7 +858,10 @@ function RubberSOHPanel({
     }
   };
 
-  const handleSaveManual = async (rollsToSave?: RubberPlanManualRoll[]) => {
+  const handleSaveManual = async (
+    rollsToSave?: RubberPlanManualRoll[],
+    dimensionOverrides?: RubberDimensionOverride[],
+  ) => {
     const rolls = rollsToSave ?? manualRolls;
     setSaving(true);
     try {
@@ -865,6 +869,7 @@ function RubberSOHPanel({
         status: "manual",
         selectedPlyCombination: null,
         manualRolls: rolls,
+        dimensionOverrides: dimensionOverrides?.length ? dimensionOverrides : null,
         reviewedBy: null,
         reviewedAt: null,
       };
@@ -1093,7 +1098,7 @@ function RubberSOHPanel({
             )}
             rubberSpec={stockOptions?.rubberSpec}
             existingManualRolls={manualRolls}
-            onSave={(rolls) => handleSaveManual(rolls)}
+            onSave={(rolls, overrides) => handleSaveManual(rolls, overrides)}
             saving={saving}
           />
         </div>

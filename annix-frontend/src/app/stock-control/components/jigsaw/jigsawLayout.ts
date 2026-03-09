@@ -70,8 +70,18 @@ export function panelsFromParsedItems(expandedItems: ParsedPipeItem[]): JigsawPa
       description: item.description,
       widthMm: item.rubberWidthMm,
       lengthMm: item.rubberLengthMm,
+      originalWidthMm: item.rubberWidthMm,
+      originalLengthMm: item.rubberLengthMm,
       rotated: false,
       colorIndex,
+      dimensionContext: {
+        nbMm: item.nbMm,
+        odMm: item.odMm,
+        schedule: item.schedule,
+        lengthMm: item.lengthMm,
+        flangeConfig: item.flangeConfig,
+        itemType: item.itemType,
+      },
     };
   });
 }

@@ -4,8 +4,12 @@ import { useDroppable } from "@dnd-kit/core";
 import { DraggablePanel } from "./DraggablePanel";
 import type { JigsawPanel } from "./jigsawTypes";
 
-export function PanelTray(props: { panels: JigsawPanel[]; onRotate: (panelId: string) => void }) {
-  const { panels, onRotate } = props;
+export function PanelTray(props: {
+  panels: JigsawPanel[];
+  onRotate: (panelId: string) => void;
+  onEditDimensions: (panelId: string, widthMm: number, lengthMm: number) => void;
+}) {
+  const { panels, onRotate, onEditDimensions } = props;
   const { isOver, setNodeRef } = useDroppable({ id: "tray" });
 
   return (
@@ -25,6 +29,7 @@ export function PanelTray(props: { panels: JigsawPanel[]; onRotate: (panelId: st
             panel={panel}
             scale={null}
             onRotate={onRotate}
+            onEditDimensions={onEditDimensions}
             isPlaced={false}
           />
         ))

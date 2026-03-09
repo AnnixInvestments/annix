@@ -33,8 +33,22 @@ export interface RubberPlanOverride {
   status: "pending" | "accepted" | "manual";
   selectedPlyCombination: number[] | null;
   manualRolls: RubberPlanManualRoll[] | null;
+  dimensionOverrides?: RubberDimensionOverrideDto[] | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
+}
+
+export interface RubberDimensionOverrideDto {
+  itemType: string | null;
+  nbMm: number | null;
+  odMm: number | null;
+  schedule: string | null;
+  pipeLengthMm: number;
+  flangeConfig: string | null;
+  calculatedWidthMm: number;
+  calculatedLengthMm: number;
+  overrideWidthMm: number;
+  overrideLengthMm: number;
 }
 
 export enum JobCardStatus {

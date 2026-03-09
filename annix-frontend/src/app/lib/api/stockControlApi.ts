@@ -1680,6 +1680,26 @@ class StockControlApiClient {
     });
   }
 
+  async rubberDimensionSuggestions(
+    params: {
+      itemType?: string | null;
+      nbMm?: number | null;
+      schedule?: string | null;
+      pipeLengthMm: number;
+      flangeConfig?: string | null;
+    },
+  ): Promise<RubberDimensionOverride[]> {
+    const searchParams = new URLSearchParams();
+    if (params.itemType) searchParams.set("itemType", params.itemType);
+    if (params.nbMm) searchParams.set("nbMm", String(params.nbMm));
+    if (params.schedule) searchParams.set("schedule", params.schedule);
+    searchParams.set("pipeLengthMm", String(params.pipeLengthMm));
+    if (params.flangeConfig) searchParams.set("flangeConfig", params.flangeConfig);
+    return this.request(
+      `/stock-control/job-cards/rubber-dimension-suggestions?${searchParams.toString()}`,
+    );
+  }
+
   async uploadAllocationPhoto(
     jobCardId: number,
     allocationId: number,
