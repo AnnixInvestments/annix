@@ -12,6 +12,12 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
+import {
+  type GroupByOption,
+  InventoryCardView,
+  type SortDirection,
+  type SortField,
+} from "../../components/InventoryCardView";
 
 function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", {
@@ -48,7 +54,16 @@ function formatRandCell(value: string): string {
 
 const ITEMS_PER_PAGE = 20;
 
-type ViewMode = "list" | "grouped";
+type ViewMode = "list" | "grouped" | "cards";
+
+const VIEW_MODE_KEY = "asca-inventory-view-mode";
+
+function savedViewMode(): ViewMode {
+  if (typeof window === "undefined") return "cards";
+  const stored = localStorage.getItem(VIEW_MODE_KEY);
+  if (stored === "list" || stored === "grouped" || stored === "cards") return stored;
+  return "cards";
+}
 
 interface LocationGroup {
   locationId: number | null;
@@ -66,7 +81,11 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [locations, setLocations] = useState<StockControlLocation[]>([]);
   const [groupedData, setGroupedData] = useState<LocationGroup[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>("grouped");
+  const [viewMode, setViewMode] = useState<ViewMode>(savedViewMode);
+  const [cardGroupBy, setCardGroupBy] = useState<GroupByOption>("location");
+  const [cardSortField, setCardSortField] = useState<SortField>("name");
+  const [cardSortDirection, setCardSortDirection] = useState<SortDirection>("asc");
+  const [lowStockOnly, setLowStockOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [search, setSearch] = useState("");
@@ -123,8 +142,13 @@ export default function InventoryPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const changeViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem(VIEW_MODE_KEY, mode);
+  };
+
   const allItems = (): StockItem[] => {
-    if (viewMode === "grouped") {
+    if (viewMode === "grouped" || viewMode === "cards") {
       return groupedData
         .flatMap((g) => g.items)
         .filter((item): item is StockItem => item != null && typeof item === "object");
@@ -222,7 +246,7 @@ export default function InventoryPage() {
     try {
       setIsLoading(true);
 
-      if (viewMode === "grouped") {
+      if (viewMode === "grouped" || viewMode === "cards") {
         const [grouped, cats, locs] = await Promise.all([
           stockControlApiClient.stockItemsGrouped(search || undefined, locationFilter || undefined),
           stockControlApiClient.categories(),
@@ -1004,7 +1028,7 @@ export default function InventoryPage() {
           <p className="mt-1 text-lg font-semibold text-gray-800">
             Total SOH Value:{" "}
             {formatZAR(
-              viewMode === "grouped"
+              viewMode === "grouped" || viewMode === "cards"
                 ? groupedData.reduce(
                     (total, group) =>
                       total + group.items.reduce((sum, i) => sum + i.costPerUnit * i.quantity, 0),
@@ -1141,8 +1165,26 @@ export default function InventoryPage() {
           </select>
           <div className="flex rounded-md shadow-sm">
             <button
-              onClick={() => setViewMode("grouped")}
+              onClick={() => changeViewMode("cards")}
               className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
+                viewMode === "cards"
+                  ? "bg-teal-600 text-white border-teal-600"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+              }`}
+              title="Card view"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={() => changeViewMode("grouped")}
+              className={`px-3 py-2 text-sm font-medium border-t border-r border-b ${
                 viewMode === "grouped"
                   ? "bg-teal-600 text-white border-teal-600"
                   : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
@@ -1159,7 +1201,7 @@ export default function InventoryPage() {
               </svg>
             </button>
             <button
-              onClick={() => setViewMode("list")}
+              onClick={() => changeViewMode("list")}
               className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
                 viewMode === "list"
                   ? "bg-teal-600 text-white border-teal-600"
@@ -1179,6 +1221,60 @@ export default function InventoryPage() {
           </div>
         </div>
       </div>
+
+      {viewMode === "cards" && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <select
+            value={cardGroupBy}
+            onChange={(e) => setCardGroupBy(e.target.value as GroupByOption)}
+            className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+          >
+            <option value="none">No Grouping</option>
+            <option value="location">Group by Location</option>
+            <option value="category">Group by Category</option>
+            <option value="stockLevel">Group by Stock Level</option>
+          </select>
+          <select
+            value={`${cardSortField}-${cardSortDirection}`}
+            onChange={(e) => {
+              const [field, dir] = e.target.value.split("-") as [SortField, SortDirection];
+              setCardSortField(field);
+              setCardSortDirection(dir);
+            }}
+            className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+          >
+            <option value="name-asc">Name A-Z</option>
+            <option value="name-desc">Name Z-A</option>
+            <option value="quantity-asc">Quantity Low-High</option>
+            <option value="quantity-desc">Quantity High-Low</option>
+            <option value="stockLevel-asc">Stock Level (Critical First)</option>
+            <option value="stockLevel-desc">Stock Level (Healthy First)</option>
+            <option value="updatedAt-desc">Recently Updated</option>
+            <option value="updatedAt-asc">Oldest Updated</option>
+          </select>
+          <button
+            onClick={() => setLowStockOnly(!lowStockOnly)}
+            className={`inline-flex items-center px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
+              lowStockOnly
+                ? "bg-amber-100 text-amber-800 border-amber-300"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+            }`}
+          >
+            <svg
+              className={`w-4 h-4 mr-1.5 ${lowStockOnly ? "text-amber-600" : "text-gray-400"}`}
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Low Stock Only
+          </button>
+        </div>
+      )}
 
       {selectedIds.size > 0 && (
         <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -1304,7 +1400,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {viewMode === "grouped" && groupedData.length > 0 && (
+      {(viewMode === "grouped" || viewMode === "cards") && groupedData.length > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">
             {groupedData.length} location{groupedData.length !== 1 ? "s" : ""}, {total} items total
@@ -1324,7 +1420,21 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {viewMode === "grouped" ? (
+      {viewMode === "cards" ? (
+        <InventoryCardView
+          items={allItems()}
+          locations={locations}
+          groupBy={cardGroupBy}
+          sortField={cardSortField}
+          sortDirection={cardSortDirection}
+          lowStockOnly={lowStockOnly}
+          selectedIds={selectedIds}
+          onToggleSelect={toggleSelectItem}
+          onEdit={openEditModal}
+          onDelete={handleDelete}
+          canEditPrices={canEditPrices ?? false}
+        />
+      ) : viewMode === "grouped" ? (
         <div className="space-y-4">
           {groupedData.length === 0 ? (
             <div className="bg-white shadow rounded-lg text-center py-12">
