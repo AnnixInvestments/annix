@@ -3,6 +3,7 @@ import { ReferenceStatus } from "../entities/candidate-reference.entity";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { CandidateService } from "../services/candidate.service";
 import { JobPostingService } from "../services/job-posting.service";
+import { MarketInsightsService } from "../services/market-insights.service";
 import { ReferenceService } from "../services/reference.service";
 
 @Controller("cv-assistant/dashboard")
@@ -12,6 +13,7 @@ export class DashboardController {
     private readonly candidateService: CandidateService,
     private readonly jobPostingService: JobPostingService,
     private readonly referenceService: ReferenceService,
+    private readonly marketInsightsService: MarketInsightsService,
   ) {}
 
   @Get("stats")
@@ -37,5 +39,10 @@ export class DashboardController {
   @Get("top-candidates")
   async topCandidates(@Request() req: { user: { companyId: number } }) {
     return this.candidateService.topCandidates(req.user.companyId, 10);
+  }
+
+  @Get("market-insights")
+  async marketInsights(@Request() req: { user: { companyId: number } }) {
+    return this.marketInsightsService.insights(req.user.companyId);
   }
 }

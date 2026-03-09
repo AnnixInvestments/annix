@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Inject,
   Param,
@@ -14,11 +15,13 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { UpdateCandidateStatusDto } from "../dto/candidate.dto";
+import { UpdateCandidateProfileDto, UpdateCandidateStatusDto } from "../dto/candidate.dto";
 import { CandidateStatus } from "../entities/candidate.entity";
 import { CvAssistantAuthGuard } from "../guards/cv-assistant-auth.guard";
 import { CandidateService } from "../services/candidate.service";
+import { PopiaService } from "../services/popia.service";
 import { ReferenceService } from "../services/reference.service";
 import { WorkflowAutomationService } from "../services/workflow-automation.service";
 
@@ -31,6 +34,7 @@ export class CandidateController {
     private readonly candidateService: CandidateService,
     private readonly referenceService: ReferenceService,
     private readonly workflowService: WorkflowAutomationService,
+    private readonly popiaService: PopiaService,
   ) {}
 
   @Get()
@@ -128,6 +132,40 @@ export class CandidateController {
     return { message: `Sent ${count} reference request(s)` };
   }
 
+  @Patch(":id/profile")
+  async updateProfile(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateCandidateProfileDto,
+  ) {
+    const candidate = await this.candidateService.findById(req.user.companyId, id);
+
+    if (dto.beeLevel !== undefined) {
+      candidate.beeLevel = dto.beeLevel;
+    }
+    if (dto.popiaConsent !== undefined) {
+      candidate.popiaConsent = dto.popiaConsent;
+      if (dto.popiaConsent) {
+        candidate.popiaConsentedAt = now().toJSDate();
+      }
+    }
+
+    return this.candidateService.updateExtractedData(id, candidate);
+  }
+
+  @Delete(":id/erasure")
+  async rightToErasure(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.popiaService.rightToErasure(req.user.companyId, id);
+  }
+
+  @Get("popia/retention-stats")
+  async retentionStats(@Request() req: { user: { companyId: number } }) {
+    return this.popiaService.retentionStats(req.user.companyId);
+  }
+
   @Post("upload")
   @UseInterceptors(
     FileInterceptor("file", {
@@ -147,14 +185,20 @@ export class CandidateController {
     @Body("jobPostingId") jobPostingId: string,
     @Body("email") email?: string,
     @Body("name") name?: string,
+    @Body("popiaConsent") popiaConsent?: string,
   ) {
     const subPath = `cv-assistant/candidates/${req.user.companyId}`;
     const storageResult = await this.storageService.upload(file, subPath);
+
+    const hasConsent = popiaConsent === "true" || popiaConsent === "1";
 
     const candidate = await this.candidateService.create(parseInt(jobPostingId, 10), {
       email: email || null,
       name: name || null,
       cvFilePath: storageResult.path,
+      popiaConsent: hasConsent,
+      popiaConsentedAt: hasConsent ? now().toJSDate() : null,
+      lastActiveAt: now().toJSDate(),
     });
 
     await this.workflowService.processCandidateCv(candidate.id);

@@ -34,6 +34,10 @@ export interface ExtractedCvData {
     relationship: string | null;
   }>;
   summary: string | null;
+  detectedLanguage: string | null;
+  professionalRegistrations: string[];
+  saQualifications: string[];
+  location: string | null;
 }
 
 export interface MatchAnalysis {
@@ -77,6 +81,18 @@ export class Candidate {
 
   @Column({ name: "source_email_id", type: "varchar", length: 255, nullable: true })
   sourceEmailId: string | null;
+
+  @Column({ name: "bee_level", type: "int", nullable: true })
+  beeLevel: number | null;
+
+  @Column({ name: "popia_consent", type: "boolean", default: false })
+  popiaConsent: boolean;
+
+  @Column({ name: "popia_consented_at", type: "timestamptz", nullable: true })
+  popiaConsentedAt: Date | null;
+
+  @Column({ name: "last_active_at", type: "timestamptz", nullable: true })
+  lastActiveAt: Date | null;
 
   @Column({ name: "rejection_sent_at", type: "timestamptz", nullable: true })
   rejectionSentAt: Date | null;

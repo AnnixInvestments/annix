@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class UpdateCandidateStatusDto {
   @IsString()
@@ -27,4 +27,20 @@ export class CreateCandidateDto {
   @IsString()
   @IsOptional()
   name?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  popiaConsent?: boolean;
+}
+
+export class UpdateCandidateProfileDto {
+  @IsInt()
+  @Min(1)
+  @Max(8)
+  @IsOptional()
+  beeLevel?: number | null;
+
+  @IsBoolean()
+  @IsOptional()
+  popiaConsent?: boolean;
 }

@@ -60,6 +60,10 @@ export interface ExtractedCvData {
     relationship: string | null;
   }>;
   summary: string | null;
+  detectedLanguage: string | null;
+  professionalRegistrations: string[];
+  saQualifications: string[];
+  location: string | null;
 }
 
 export interface MatchAnalysis {
@@ -81,6 +85,10 @@ export interface Candidate {
   matchAnalysis: MatchAnalysis | null;
   matchScore: number | null;
   status: string;
+  beeLevel: number | null;
+  popiaConsent: boolean;
+  popiaConsentedAt: string | null;
+  lastActiveAt: string | null;
   jobPostingId: number;
   jobPosting?: JobPosting;
   references?: CandidateReference[];
@@ -192,6 +200,48 @@ export interface JobMarketStats {
     requestsToday: number;
     rateLimitPerDay: number;
   }>;
+}
+
+export interface SalaryBenchmark {
+  category: string;
+  averageSalary: number | null;
+  medianSalary: number | null;
+  minSalary: number | null;
+  maxSalary: number | null;
+  sampleSize: number;
+  salaryBand: string | null;
+}
+
+export interface DemandTrend {
+  category: string;
+  currentCount: number;
+  previousCount: number;
+  changePercent: number;
+  trend: "rising" | "falling" | "stable";
+}
+
+export interface LocationDemand {
+  location: string;
+  jobCount: number;
+  averageSalary: number | null;
+  costOfLivingIndex: number;
+  adjustedSalary: number | null;
+}
+
+export interface MarketInsights {
+  salaryBenchmarks: SalaryBenchmark[];
+  demandTrends: DemandTrend[];
+  topLocations: LocationDemand[];
+  topSkills: Array<{ skill: string; count: number }>;
+  totalActiveJobs: number;
+  dataAsOf: string;
+}
+
+export interface PopiaRetentionStats {
+  totalCandidates: number;
+  expiringWithin30Days: number;
+  withConsent: number;
+  withoutConsent: number;
 }
 
 export interface CandidateJobMatchDetails {
@@ -723,6 +773,28 @@ class CvAssistantApiClient {
     return this.request(`/cv-assistant/job-market/matches/${matchId}/dismiss`, {
       method: "POST",
     });
+  }
+
+  async updateCandidateProfile(
+    id: number,
+    data: { beeLevel?: number | null; popiaConsent?: boolean },
+  ): Promise<Candidate> {
+    return this.request(`/cv-assistant/candidates/${id}/profile`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async eraseCandidateData(id: number): Promise<{ message: string }> {
+    return this.request(`/cv-assistant/candidates/${id}/erasure`, { method: "DELETE" });
+  }
+
+  async popiaRetentionStats(): Promise<PopiaRetentionStats> {
+    return this.request("/cv-assistant/candidates/popia/retention-stats");
+  }
+
+  async marketInsights(): Promise<MarketInsights> {
+    return this.request("/cv-assistant/dashboard/market-insights");
   }
 }
 

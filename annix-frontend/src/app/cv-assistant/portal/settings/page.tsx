@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CompanySettings, cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import {
+  CompanySettings,
+  cvAssistantApiClient,
+  PopiaRetentionStats,
+} from "@/app/lib/api/cvAssistantApi";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<CompanySettings | null>(null);
+  const [popiaStats, setPopiaStats] = useState<PopiaRetentionStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -24,8 +29,12 @@ export default function SettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const data = await cvAssistantApiClient.settings();
+      const [data, popia] = await Promise.all([
+        cvAssistantApiClient.settings(),
+        cvAssistantApiClient.popiaRetentionStats().catch(() => null),
+      ]);
       setSettings(data);
+      setPopiaStats(popia);
       setCompanyName(data.name);
       setImapHost(data.imapHost || "");
       setImapPort(data.imapPort?.toString() || "993");
@@ -245,6 +254,63 @@ export default function SettingsPage() {
             >
               {isSaving ? "Saving..." : "Save Settings"}
             </button>
+          </div>
+        </div>
+      </div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">POPIA Compliance</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Data retention policy in accordance with the Protection of Personal Information Act. Candidate
+          data is automatically deleted after 12 months of inactivity.
+        </p>
+
+        {popiaStats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Total Candidates</p>
+              <p className="text-lg font-semibold text-gray-900">{popiaStats.totalCandidates}</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">With Consent</p>
+              <p className="text-lg font-semibold text-green-600">{popiaStats.withConsent}</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Without Consent</p>
+              <p className="text-lg font-semibold text-amber-600">{popiaStats.withoutConsent}</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Expiring (30 days)</p>
+              <p className="text-lg font-semibold text-red-600">
+                {popiaStats.expiringWithin30Days}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+          <div className="flex items-start">
+            <svg
+              className="w-5 h-5 text-blue-500 mt-0.5 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="ml-3 text-sm text-blue-700">
+              <p className="font-medium">Retention Policy</p>
+              <ul className="mt-1 list-disc pl-4 space-y-1">
+                <li>Candidate data auto-deleted after 12 months of inactivity</li>
+                <li>CV files removed from storage upon deletion</li>
+                <li>Right to erasure available per candidate via the candidate detail page</li>
+                <li>POPIA consent recorded with timestamp at candidate upload</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

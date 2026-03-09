@@ -35,6 +35,8 @@ import { JobIngestionService } from "./services/job-ingestion.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
 import { JobMatchService } from "./services/job-match.service";
 import { JobPostingService } from "./services/job-posting.service";
+import { MarketInsightsService } from "./services/market-insights.service";
+import { PopiaService } from "./services/popia.service";
 import { ReferenceService } from "./services/reference.service";
 import { SettingsService } from "./services/settings.service";
 import { WorkflowAutomationService } from "./services/workflow-automation.service";
@@ -95,6 +97,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     JobMarketSourceService,
     EmbeddingService,
     CandidateJobMatchingService,
+    PopiaService,
+    MarketInsightsService,
   ],
 })
 export class CvAssistantModule {}

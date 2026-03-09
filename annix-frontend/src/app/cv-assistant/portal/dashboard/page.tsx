@@ -2,22 +2,30 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Candidate, cvAssistantApiClient, DashboardStats } from "@/app/lib/api/cvAssistantApi";
+import {
+  Candidate,
+  cvAssistantApiClient,
+  DashboardStats,
+  MarketInsights,
+} from "@/app/lib/api/cvAssistantApi";
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [topCandidates, setTopCandidates] = useState<Candidate[]>([]);
+  const [marketInsights, setMarketInsights] = useState<MarketInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsData, candidatesData] = await Promise.all([
+        const [statsData, candidatesData, insightsData] = await Promise.all([
           cvAssistantApiClient.dashboardStats(),
           cvAssistantApiClient.topCandidates(),
+          cvAssistantApiClient.marketInsights().catch(() => null),
         ]);
         setStats(statsData);
         setTopCandidates(candidatesData);
+        setMarketInsights(insightsData);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -238,6 +246,131 @@ export default function DashboardPage() {
           </table>
         </div>
       </div>
+
+      {marketInsights && marketInsights.totalActiveJobs > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">SA Market Insights</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Based on {marketInsights.totalActiveJobs.toLocaleString()} active job listings
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-gray-200">
+            <div className="p-6">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+                Salary Benchmarks (ZAR/year)
+              </h3>
+              {marketInsights.salaryBenchmarks.length === 0 ? (
+                <p className="text-sm text-gray-400">No salary data available</p>
+              ) : (
+                <div className="space-y-3">
+                  {marketInsights.salaryBenchmarks.slice(0, 5).map((bench) => (
+                    <div key={bench.category} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700 truncate mr-2">
+                        {bench.category.replace(/-jobs$/, "").replace(/-/g, " ")}
+                      </span>
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-medium text-gray-900">
+                          {bench.averageSalary
+                            ? `R ${(bench.averageSalary / 1000).toFixed(0)}k`
+                            : "-"}
+                        </span>
+                        {bench.salaryBand && (
+                          <span className="text-xs text-gray-500 ml-1">({bench.salaryBand})</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+                Demand Trends (7-day)
+              </h3>
+              {marketInsights.demandTrends.length === 0 ? (
+                <p className="text-sm text-gray-400">No trend data yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {marketInsights.demandTrends.slice(0, 5).map((trend) => (
+                    <div key={trend.category} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700 truncate mr-2">
+                        {trend.category.replace(/-jobs$/, "").replace(/-/g, " ")}
+                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-sm text-gray-900">{trend.currentCount}</span>
+                        <span
+                          className={`text-xs font-medium ${
+                            trend.trend === "rising"
+                              ? "text-green-600"
+                              : trend.trend === "falling"
+                                ? "text-red-600"
+                                : "text-gray-500"
+                          }`}
+                        >
+                          {trend.trend === "rising"
+                            ? `+${trend.changePercent}%`
+                            : trend.trend === "falling"
+                              ? `${trend.changePercent}%`
+                              : "stable"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+                Top Locations
+              </h3>
+              {marketInsights.topLocations.length === 0 ? (
+                <p className="text-sm text-gray-400">No location data yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {marketInsights.topLocations.slice(0, 5).map((loc) => (
+                    <div key={loc.location} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700 truncate mr-2">{loc.location}</span>
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-medium text-gray-900">
+                          {loc.jobCount} jobs
+                        </span>
+                        {loc.costOfLivingIndex !== 1.0 && (
+                          <span className="text-xs text-gray-500 ml-1">
+                            CoL: {loc.costOfLivingIndex.toFixed(2)}x
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {marketInsights.topSkills.length > 0 && (
+            <div className="px-6 py-4 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
+                In-Demand Skills
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {marketInsights.topSkills.slice(0, 15).map((skill) => (
+                  <span
+                    key={skill.skill}
+                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 text-violet-700"
+                  >
+                    {skill.skill}
+                    <span className="ml-1 text-violet-400">({skill.count})</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

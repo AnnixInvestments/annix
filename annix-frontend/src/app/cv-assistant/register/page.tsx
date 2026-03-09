@@ -9,6 +9,7 @@ export default function CvAssistantRegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [popiaConsent, setPopiaConsent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -161,9 +162,28 @@ export default function CvAssistantRegisterPage() {
               />
             </div>
 
+            <div className="flex items-start">
+              <input
+                id="popiaConsent"
+                type="checkbox"
+                checked={popiaConsent}
+                onChange={(e) => setPopiaConsent(e.target.checked)}
+                required
+                className="mt-1 h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
+              />
+              <label htmlFor="popiaConsent" className="ml-2 text-sm text-gray-600">
+                I consent to the processing of my personal information in accordance with the{" "}
+                <span className="text-violet-600 font-medium">
+                  Protection of Personal Information Act (POPIA)
+                </span>
+                . I understand that my data will be retained for 12 months from my last activity and
+                I may request erasure of my data at any time.
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !popiaConsent}
               className="w-full bg-violet-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isLoading ? "Creating account..." : "Create account"}

@@ -64,6 +64,14 @@ export class CvExtractionService {
           : [],
         references: Array.isArray(extractedData.references) ? extractedData.references : [],
         summary: extractedData.summary || null,
+        detectedLanguage: extractedData.detectedLanguage || null,
+        professionalRegistrations: Array.isArray(extractedData.professionalRegistrations)
+          ? extractedData.professionalRegistrations
+          : [],
+        saQualifications: Array.isArray(extractedData.saQualifications)
+          ? extractedData.saQualifications
+          : [],
+        location: extractedData.location || null,
       };
     } catch (error) {
       this.logger.error(`Failed to extract CV data: ${error.message}`);
@@ -77,6 +85,10 @@ export class CvExtractionService {
         certifications: [],
         references: [],
         summary: null,
+        detectedLanguage: null,
+        professionalRegistrations: [],
+        saQualifications: [],
+        location: null,
       };
     }
   }
