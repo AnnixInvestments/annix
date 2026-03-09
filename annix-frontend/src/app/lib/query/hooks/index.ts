@@ -469,6 +469,19 @@ export {
   useRfqs,
 } from "./rfq/useRfqs";
 export {
+  useCpoSummary,
+  useDashboardPreferences,
+  useDashboardStats,
+  usePendingApprovals,
+  useRecentActivity,
+  useReorderAlerts,
+  useRoleSummary,
+  useSohByLocation,
+  useSohSummary,
+  useUpdateDashboardPreferences,
+  useWorkflowLaneCounts,
+} from "./stock-control";
+export {
   useDeclineBoq,
   useMarkBoqViewed,
   useSetBoqReminder,

@@ -15,6 +15,7 @@ import { StockControlAuthController } from "./controllers/auth.controller";
 import { CpoController } from "./controllers/cpo.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
+import { GlossaryController } from "./controllers/glossary.controller";
 import { ImportController } from "./controllers/import.controller";
 import { InventoryController } from "./controllers/inventory.controller";
 import { InvitationController } from "./controllers/invitation.controller";
@@ -36,9 +37,11 @@ import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
 import { CpoCalloffRecord } from "./entities/cpo-calloff-record.entity";
 import { CustomerPurchaseOrder } from "./entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "./entities/customer-purchase-order-item.entity";
+import { DashboardPreference } from "./entities/dashboard-preference.entity";
 import { DeliveryNote } from "./entities/delivery-note.entity";
 import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
 import { DispatchScan } from "./entities/dispatch-scan.entity";
+import { GlossaryTerm } from "./entities/glossary-term.entity";
 import { InvoiceClarification } from "./entities/invoice-clarification.entity";
 import { JobCard } from "./entities/job-card.entity";
 import { JobCardApproval } from "./entities/job-card-approval.entity";
@@ -82,6 +85,7 @@ import { DashboardService } from "./services/dashboard.service";
 import { DeliveryService } from "./services/delivery.service";
 import { DispatchService } from "./services/dispatch.service";
 import { DrawingExtractionService } from "./services/drawing-extraction.service";
+import { GlossaryService } from "./services/glossary.service";
 import { ImportService } from "./services/import.service";
 import { InventoryService } from "./services/inventory.service";
 import { StockControlInvitationService } from "./services/invitation.service";
@@ -151,6 +155,8 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       CustomerPurchaseOrder,
       CustomerPurchaseOrderItem,
       CpoCalloffRecord,
+      DashboardPreference,
+      GlossaryTerm,
       WorkflowNotificationRecipient,
       UserLocationAssignment,
     ]),
@@ -198,6 +204,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     InvoicesController,
     SupplierController,
     CpoController,
+    GlossaryController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -239,6 +246,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     SageInvoiceAdapterService,
     SearchService,
     CpoService,
+    GlossaryService,
   ],
 })
 export class StockControlModule {}

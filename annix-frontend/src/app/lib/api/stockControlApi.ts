@@ -45,6 +45,17 @@ export interface StockControlUserProfile {
   linkedStaffId: number | null;
   createdAt: string;
   companyUpdatedAt: string | null;
+  hideTooltips: boolean;
+}
+
+export interface GlossaryTerm {
+  id: number;
+  abbreviation: string;
+  term: string;
+  definition: string;
+  category: string | null;
+  companyId: number;
+  isCustom: boolean;
 }
 
 export interface CompanyDetailsUpdate {
@@ -483,6 +494,80 @@ export interface CpoSummary {
   activeCpos: number;
   awaitingCalloff: number;
   overdueInvoices: number;
+}
+
+export interface StoremanDashboard {
+  incomingDeliveries: number;
+  dispatchReadyJobs: number;
+  todayMovements: number;
+  reorderAlerts: number;
+}
+
+export interface AccountsDashboard {
+  pendingExtraction: number;
+  processing: number;
+  needsClarification: number;
+  awaitingApproval: number;
+  completedThisMonth: number;
+  overdueInvoices: number;
+}
+
+export interface ManagerDashboard {
+  pendingApprovals: number;
+  activeJobs: number;
+  overAllocations: number;
+  dispatchReady: number;
+  reorderAlerts: number;
+}
+
+export interface AdminDashboard {
+  storeman: StoremanDashboard;
+  accounts: AccountsDashboard;
+  manager: ManagerDashboard;
+  totalUsers: number;
+}
+
+export type RoleDashboardSummary =
+  | ({ role: "storeman" } & StoremanDashboard)
+  | ({ role: "accounts" } & AccountsDashboard)
+  | ({ role: "manager" } & ManagerDashboard)
+  | ({ role: "admin" } & AdminDashboard)
+  | { role: "viewer"; activeJobs: number; totalItems: number; lowStockCount: number };
+
+export interface DashboardPreferences {
+  id: number;
+  userId: number;
+  pinnedWidgets: string[];
+  hiddenWidgets: string[];
+  viewOverride: string | null;
+}
+
+export interface WorkflowLaneCounts {
+  inbound: {
+    deliveriesPending: number;
+    deliveriesProcessed: number;
+    invoicesPending: number;
+    invoicesNeedClarification: number;
+    invoicesAwaitingApproval: number;
+  };
+  workshop: {
+    jobCardsDraft: number;
+    jobCardsPendingAdmin: number;
+    jobCardsPendingManager: number;
+    jobCardsRequisitionSent: number;
+    jobCardsPendingAllocation: number;
+    jobCardsPendingFinal: number;
+    coatingPending: number;
+    coatingAnalysed: number;
+    requisitionsPending: number;
+    requisitionsApproved: number;
+    requisitionsOrdered: number;
+  };
+  outbound: {
+    jobCardsReadyForDispatch: number;
+    jobCardsDispatched: number;
+    lowStockAlerts: number;
+  };
 }
 
 export interface CpoFulfillmentReportItem {
@@ -2299,6 +2384,30 @@ class StockControlApiClient {
     return this.request("/stock-control/dashboard/cpo-summary");
   }
 
+  async roleDashboardSummary(role?: string): Promise<RoleDashboardSummary> {
+    const query = role ? `?role=${role}` : "";
+    return this.request(`/stock-control/dashboard/role-summary${query}`);
+  }
+
+  async dashboardPreferences(): Promise<DashboardPreferences | null> {
+    return this.request("/stock-control/dashboard/preferences");
+  }
+
+  async updateDashboardPreferences(data: {
+    pinnedWidgets?: string[];
+    hiddenWidgets?: string[];
+    viewOverride?: string | null;
+  }): Promise<DashboardPreferences> {
+    return this.request("/stock-control/dashboard/preferences", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async workflowLaneCounts(): Promise<WorkflowLaneCounts> {
+    return this.request("/stock-control/dashboard/workflow-lanes");
+  }
+
   async costByJob(): Promise<CostByJob[]> {
     return this.request("/stock-control/reports/cost-by-job");
   }
@@ -3123,6 +3232,37 @@ class StockControlApiClient {
   async globalSearch(query: string, limit: number = 20): Promise<GlobalSearchResponse> {
     const params = new URLSearchParams({ q: query, limit: String(limit) });
     return this.request(`/stock-control/search?${params.toString()}`);
+  }
+
+  async glossaryTerms(): Promise<GlossaryTerm[]> {
+    return this.request("/stock-control/glossary");
+  }
+
+  async upsertGlossaryTerm(
+    abbreviation: string,
+    body: { term: string; definition: string; category?: string | null },
+  ): Promise<GlossaryTerm> {
+    return this.request(`/stock-control/glossary/${encodeURIComponent(abbreviation)}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+  }
+
+  async deleteGlossaryTerm(abbreviation: string): Promise<void> {
+    return this.request(`/stock-control/glossary/${encodeURIComponent(abbreviation)}`, {
+      method: "DELETE",
+    });
+  }
+
+  async resetGlossary(): Promise<void> {
+    return this.request("/stock-control/glossary", { method: "DELETE" });
+  }
+
+  async updateTooltipPreference(hideTooltips: boolean): Promise<{ hideTooltips: boolean }> {
+    return this.request("/stock-control/auth/me/tooltip-preference", {
+      method: "PATCH",
+      body: JSON.stringify({ hideTooltips }),
+    });
   }
 }
 

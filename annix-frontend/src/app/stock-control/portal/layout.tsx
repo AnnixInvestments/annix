@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { MobileNav } from "../components/MobileNav";
 import { StockControlHeader } from "../components/StockControlHeader";
+import { GlossaryProvider } from "../context/GlossaryContext";
 import {
   StockControlBrandingProvider,
   useStockControlBranding,
@@ -49,11 +50,13 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   return (
     <StockControlBrandingProvider>
       <StockControlRbacProvider>
-        <div className="flex flex-col h-screen bg-gray-50">
-          {isMobile && <MobileNav isOpen={mobileNavOpen} onClose={handleMobileNavClose} />}
-          <StockControlHeader showMenuButton={isMobile} onMenuToggle={handleMenuToggle} />
-          <MainContent>{children}</MainContent>
-        </div>
+        <GlossaryProvider>
+          <div className="flex flex-col h-screen bg-gray-50">
+            {isMobile && <MobileNav isOpen={mobileNavOpen} onClose={handleMobileNavClose} />}
+            <StockControlHeader showMenuButton={isMobile} onMenuToggle={handleMenuToggle} />
+            <MainContent>{children}</MainContent>
+          </div>
+        </GlossaryProvider>
       </StockControlRbacProvider>
     </StockControlBrandingProvider>
   );

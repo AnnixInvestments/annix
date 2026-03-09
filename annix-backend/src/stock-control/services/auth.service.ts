@@ -317,6 +317,7 @@ export class StockControlAuthService {
       linkedStaffId: user.linkedStaffId ?? null,
       createdAt: user.createdAt,
       companyUpdatedAt: user.company?.updatedAt ?? null,
+      hideTooltips: user.hideTooltips ?? false,
     };
   }
 
@@ -336,6 +337,11 @@ export class StockControlAuthService {
 
     await this.userRepo.update(userId, { linkedStaffId });
     return { linkedStaffId };
+  }
+
+  async updateTooltipPreference(userId: number, hideTooltips: boolean) {
+    await this.userRepo.update(userId, { hideTooltips });
+    return { hideTooltips };
   }
 
   async refreshToken(refreshToken: string) {

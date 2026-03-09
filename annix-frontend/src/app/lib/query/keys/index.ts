@@ -20,4 +20,5 @@ export { reviewKeys } from "./reviewKeys";
 export type { RfqQueryParams } from "./rfqKeys";
 export { rfqKeys } from "./rfqKeys";
 export { rubberKeys } from "./rubberKeys";
+export { stockControlKeys } from "./stockControlKeys";
 export { supplierKeys } from "./supplierKeys";

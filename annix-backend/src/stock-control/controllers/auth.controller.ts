@@ -184,6 +184,13 @@ export class StockControlAuthController {
     return this.authService.updateLinkedStaff(req.user.id, req.user.companyId, body.linkedStaffId);
   }
 
+  @UseGuards(StockControlAuthGuard)
+  @Patch("me/tooltip-preference")
+  @ApiOperation({ summary: "Update tooltip visibility preference" })
+  async updateTooltipPreference(@Req() req: any, @Body() body: { hideTooltips: boolean }) {
+    return this.authService.updateTooltipPreference(req.user.id, body.hideTooltips);
+  }
+
   @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
   @StockControlRoles("admin")
   @Get("team")
