@@ -107,10 +107,10 @@ export class JobCardPdfService {
       );
 
       this.drawHeader(doc, company, jobCard);
-      this.drawJobCardDetails(doc, jobCard, noteItems);
+      const detailsEndY = this.drawJobCardDetails(doc, jobCard, noteItems);
       this.drawQrCode(doc, qrDataUrl);
 
-      let currentY = 280;
+      let currentY = Math.max(280, detailsEndY);
       currentY = this.drawLineItems(doc, jobCard, currentY);
       currentY = this.drawRubberAllocationSync(doc, jobCard, rubberAllocationResult, currentY);
       currentY = this.drawCoatingSpecification(
@@ -159,7 +159,7 @@ export class JobCardPdfService {
     doc: typeof PDFDocument,
     jobCard: JobCard,
     noteItems: JobCard["lineItems"],
-  ): void {
+  ): number {
     let y = 115;
     const leftCol = 50;
     const rightCol = 300;
@@ -189,29 +189,34 @@ export class JobCardPdfService {
       doc.font("Helvetica").text(` ${item.value}`);
     });
 
+    y += Math.ceil(details.length / 2) * 20;
+
     if (jobCard.description) {
-      y += Math.ceil(details.length / 2) * 20 + 10;
+      y += 10;
       doc
         .font("Helvetica-Bold")
         .text("Description:", leftCol, y)
         .font("Helvetica")
         .text(jobCard.description, leftCol, y + 15, { width: 495 });
+      const descLines = Math.ceil(jobCard.description.length / 80);
+      y += 15 + descLines * 12;
     }
 
     const noteTexts = (noteItems || []).map((item) => (item.itemCode || "").trim()).filter(Boolean);
     const combinedNotes = [jobCard.notes, ...noteTexts].filter(Boolean).join("\n\n");
 
     if (combinedNotes) {
-      const descHeight = jobCard.description
-        ? 30 + Math.ceil(jobCard.description.length / 80) * 12
-        : 0;
-      y += descHeight + 20;
-      doc
-        .font("Helvetica-Bold")
-        .text("Notes:", leftCol, y)
-        .font("Helvetica")
-        .text(combinedNotes, leftCol, y + 15, { width: 495 });
+      y += 10;
+      doc.font("Helvetica-Bold").text("Notes:", leftCol, y);
+      y += 15;
+      doc.font("Helvetica").text(combinedNotes, leftCol, y, { width: 495 });
+      const noteLines = combinedNotes
+        .split("\n")
+        .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / 80)), 0);
+      y += noteLines * 12;
     }
+
+    return y + 10;
   }
 
   private drawQrCode(doc: typeof PDFDocument, qrDataUrl: string): void {
