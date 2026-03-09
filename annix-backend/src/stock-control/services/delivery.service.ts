@@ -1,4 +1,11 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { fromISO, now, nowMillis } from "../../lib/datetime";
@@ -9,6 +16,7 @@ import { StockControlSupplier } from "../entities/stock-control-supplier.entity"
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
+import { CpoService } from "./cpo.service";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
 @Injectable()
@@ -31,6 +39,8 @@ export class DeliveryService {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly extractionService: InvoiceExtractionService,
+    @Inject(forwardRef(() => CpoService))
+    private readonly cpoService: CpoService,
   ) {}
 
   async create(
@@ -92,6 +102,11 @@ export class DeliveryService {
     });
 
     await Promise.all(itemPromises);
+
+    this.cpoService.linkDeliveryToCalloffs(companyId, data.supplierName, savedNote.id).catch((err) => {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      this.logger.warn(`Failed to link DN ${savedNote.id} to calloffs: ${msg}`);
+    });
 
     return this.findById(companyId, savedNote.id);
   }
@@ -412,6 +427,11 @@ export class DeliveryService {
         receivedBy,
       );
     }
+
+    this.cpoService.linkDeliveryToCalloffs(companyId, supplierName, savedNote.id).catch((err) => {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      this.logger.warn(`Failed to link DN ${savedNote.id} to calloffs: ${msg}`);
+    });
 
     return this.findById(companyId, savedNote.id);
   }

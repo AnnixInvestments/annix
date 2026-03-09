@@ -25,6 +25,12 @@ export class DashboardController {
     return this.dashboardService.sohSummary(req.user.companyId);
   }
 
+  @Get("soh-by-location")
+  @ApiOperation({ summary: "Stock on hand summary by location" })
+  async sohByLocation(@Req() req: any) {
+    return this.dashboardService.sohByLocation(req.user.companyId);
+  }
+
   @Get("recent-activity")
   @ApiOperation({ summary: "Recent stock movement activity" })
   async recentActivity(@Req() req: any) {

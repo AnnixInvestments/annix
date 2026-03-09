@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
+  CpoSummary,
   DashboardStats,
   JobCard,
   RecentActivity,
@@ -116,6 +117,7 @@ export default function StockControlDashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [reorderAlerts, setReorderAlerts] = useState<StockItem[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<JobCard[]>([]);
+  const [cpoSummary, setCpoSummary] = useState<CpoSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -123,18 +125,21 @@ export default function StockControlDashboard() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [statsData, sohData, activityData, alertsData, approvalsData] = await Promise.all([
-          stockControlApiClient.dashboardStats(),
-          stockControlApiClient.sohSummary(),
-          stockControlApiClient.recentActivity(),
-          stockControlApiClient.reorderAlerts(),
-          stockControlApiClient.pendingApprovals().catch(() => []),
-        ]);
+        const [statsData, sohData, activityData, alertsData, approvalsData, cpoData] =
+          await Promise.all([
+            stockControlApiClient.dashboardStats(),
+            stockControlApiClient.sohSummary(),
+            stockControlApiClient.recentActivity(),
+            stockControlApiClient.reorderAlerts(),
+            stockControlApiClient.pendingApprovals().catch(() => []),
+            stockControlApiClient.cpoSummary().catch(() => null),
+          ]);
         setStats(statsData);
         setSohSummary(Array.isArray(sohData) ? sohData : []);
         setRecentActivity(Array.isArray(activityData) ? activityData : []);
         setReorderAlerts(Array.isArray(alertsData) ? alertsData : []);
         setPendingApprovals(Array.isArray(approvalsData) ? approvalsData : []);
+        setCpoSummary(cpoData);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err : new Error("Failed to load dashboard data"));
@@ -463,6 +468,44 @@ export default function StockControlDashboard() {
           </div>
         </div>
       )}
+
+      {cpoSummary &&
+        (cpoSummary.activeCpos > 0 ||
+          cpoSummary.awaitingCalloff > 0 ||
+          cpoSummary.overdueInvoices > 0) && (
+          <Link
+            href="/stock-control/portal/purchase-orders"
+            className="block bg-white shadow rounded-lg overflow-hidden hover:ring-2 hover:ring-purple-500 transition-all"
+          >
+            <div className="px-3 py-4 sm:px-6 sm:py-5 border-b border-gray-200">
+              <h3 className="text-base sm:text-lg leading-6 font-medium text-gray-900">
+                Purchase Orders
+              </h3>
+            </div>
+            <div className="grid grid-cols-3 divide-x divide-gray-200">
+              <div className="p-3 sm:p-5 text-center">
+                <p className="text-lg sm:text-2xl font-semibold text-gray-900">
+                  {cpoSummary.activeCpos}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-500">Active CPOs</p>
+              </div>
+              <div className="p-3 sm:p-5 text-center">
+                <p className="text-lg sm:text-2xl font-semibold text-purple-600">
+                  {cpoSummary.awaitingCalloff}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-500">Awaiting Call-Off</p>
+              </div>
+              <div className="p-3 sm:p-5 text-center">
+                <p
+                  className={`text-lg sm:text-2xl font-semibold ${cpoSummary.overdueInvoices > 0 ? "text-red-600" : "text-gray-900"}`}
+                >
+                  {cpoSummary.overdueInvoices}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-500">Overdue Invoices</p>
+              </div>
+            </div>
+          </Link>
+        )}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-3 py-4 sm:px-6 sm:py-5 border-b border-gray-200">

@@ -538,6 +538,12 @@ export interface SohSummary {
   totalValue: number;
 }
 
+export interface SohByLocation {
+  location: string;
+  totalQuantity: number;
+  totalValue: number;
+}
+
 export interface RecentActivity {
   id: number;
   movementType: string;

@@ -10,12 +10,14 @@ import {
   Put,
   Query,
   Req,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import type { Response } from "express";
 import { CalloffStatus } from "../entities/cpo-calloff-record.entity";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
@@ -42,11 +44,35 @@ export class CpoController {
     return this.cpoService.findAll(req.user.companyId, status);
   }
 
-  @Get(":id")
-  @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
-  @ApiOperation({ summary: "Get a CPO by ID" })
-  async findById(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
-    return this.cpoService.findById(req.user.companyId, id);
+  @Get("reports/fulfillment")
+  @StockControlRoles("accounts", "manager", "admin")
+  @ApiOperation({ summary: "CPO fulfillment report: ordered vs fulfilled vs remaining" })
+  async fulfillmentReport(@Req() req: any) {
+    return this.cpoService.fulfillmentReport(req.user.companyId);
+  }
+
+  @Get("reports/calloff-breakdown")
+  @StockControlRoles("accounts", "manager", "admin")
+  @ApiOperation({ summary: "Call-off status breakdown (pending/called-off/delivered/invoiced)" })
+  async calloffBreakdown(@Req() req: any) {
+    return this.cpoService.calloffStatusBreakdown(req.user.companyId);
+  }
+
+  @Get("reports/overdue-invoices")
+  @StockControlRoles("accounts", "manager", "admin")
+  @ApiOperation({ summary: "Overdue invoice list (delivered 21+ days without invoice)" })
+  async overdueInvoiceReport(@Req() req: any) {
+    return this.cpoService.overdueInvoiceReport(req.user.companyId);
+  }
+
+  @Get("reports/export")
+  @StockControlRoles("accounts", "manager", "admin")
+  @ApiOperation({ summary: "Export CPO tracking data as CSV" })
+  async exportCsv(@Req() req: any, @Res() res: Response) {
+    const csv = await this.cpoService.exportCsv(req.user.companyId);
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=cpo-tracking-export.csv");
+    res.send(csv);
   }
 
   @Post("upload")
@@ -75,6 +101,23 @@ export class CpoController {
     return result;
   }
 
+  @Put("calloff-records/:recordId/status")
+  @ApiOperation({ summary: "Update call-off record status" })
+  async updateCalloffStatus(
+    @Req() req: any,
+    @Param("recordId", ParseIntPipe) recordId: number,
+    @Body() body: { status: CalloffStatus },
+  ) {
+    return this.cpoService.updateCalloffStatus(req.user.companyId, recordId, body.status);
+  }
+
+  @Get(":id")
+  @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
+  @ApiOperation({ summary: "Get a CPO by ID" })
+  async findById(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
+    return this.cpoService.findById(req.user.companyId, id);
+  }
+
   @Put(":id/status")
   @ApiOperation({ summary: "Update CPO status" })
   async updateStatus(
@@ -92,14 +135,11 @@ export class CpoController {
     return this.cpoService.calloffRecordsForCpo(req.user.companyId, id);
   }
 
-  @Put("calloff-records/:recordId/status")
-  @ApiOperation({ summary: "Update call-off record status" })
-  async updateCalloffStatus(
-    @Req() req: any,
-    @Param("recordId", ParseIntPipe) recordId: number,
-    @Body() body: { status: CalloffStatus },
-  ) {
-    return this.cpoService.updateCalloffStatus(req.user.companyId, recordId, body.status);
+  @Get(":id/overdue-records")
+  @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
+  @ApiOperation({ summary: "List overdue (uninvoiced 21+ days) call-off records for a CPO" })
+  async overdueRecords(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
+    return this.cpoService.overdueCalloffRecordsForCpo(req.user.companyId, id);
   }
 
   @Delete(":id")

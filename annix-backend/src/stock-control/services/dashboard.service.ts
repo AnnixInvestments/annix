@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { JobCard, JobCardStatus } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
+import { StockControlLocation } from "../entities/stock-control-location.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { StockMovement } from "../entities/stock-movement.entity";
 
@@ -35,6 +36,8 @@ export class DashboardService {
     private readonly movementRepo: Repository<StockMovement>,
     @InjectRepository(StockAllocation)
     private readonly allocationRepo: Repository<StockAllocation>,
+    @InjectRepository(StockControlLocation)
+    private readonly locationRepo: Repository<StockControlLocation>,
   ) {}
 
   async stats(companyId: number): Promise<DashboardStats> {
@@ -80,6 +83,27 @@ export class DashboardService {
 
     return result.map((r) => ({
       category: r.category,
+      totalQuantity: Number(r.totalQuantity),
+      totalValue: Number(r.totalValue),
+    }));
+  }
+
+  async sohByLocation(
+    companyId: number,
+  ): Promise<{ location: string; totalQuantity: number; totalValue: number }[]> {
+    const result = await this.stockItemRepo
+      .createQueryBuilder("item")
+      .leftJoin("item.locationEntity", "loc")
+      .select("COALESCE(loc.name, item.location, 'Unassigned')", "location")
+      .addSelect("SUM(item.quantity)", "totalQuantity")
+      .addSelect("SUM(item.quantity * item.cost_per_unit)", "totalValue")
+      .where("item.company_id = :companyId", { companyId })
+      .groupBy("COALESCE(loc.name, item.location, 'Unassigned')")
+      .orderBy("location", "ASC")
+      .getRawMany();
+
+    return result.map((r) => ({
+      location: r.location,
       totalQuantity: Number(r.totalQuantity),
       totalValue: Number(r.totalValue),
     }));

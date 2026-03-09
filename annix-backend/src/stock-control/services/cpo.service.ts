@@ -2,7 +2,8 @@ import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nest
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, LessThanOrEqual, Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { fromJSDate, now } from "../../lib/datetime";
+import { DeliveryNote } from "../entities/delivery-note.entity";
 import {
   CalloffStatus,
   CalloffType,
@@ -101,6 +102,8 @@ export class CpoService {
     private readonly requisitionRepo: Repository<Requisition>,
     @InjectRepository(RequisitionItem)
     private readonly requisitionItemRepo: Repository<RequisitionItem>,
+    @InjectRepository(DeliveryNote)
+    private readonly deliveryNoteRepo: Repository<DeliveryNote>,
     @Inject(forwardRef(() => CoatingAnalysisService))
     private readonly coatingAnalysisService: CoatingAnalysisService,
     private readonly notificationService: WorkflowNotificationService,
@@ -610,6 +613,304 @@ export class CpoService {
       },
       relations: ["jobCard"],
     });
+  }
+
+  async linkDeliveryToCalloffs(
+    companyId: number,
+    supplierName: string,
+    deliveryNoteId: number,
+  ): Promise<CpoCalloffRecord[]> {
+    const calledOffRecords = await this.calloffRepo.find({
+      where: { companyId, status: CalloffStatus.CALLED_OFF },
+      relations: ["cpo", "jobCard"],
+    });
+
+    if (calledOffRecords.length === 0) {
+      return [];
+    }
+
+    const normalised = supplierName.toLowerCase();
+    const matchedType = this.inferCalloffTypeFromSupplier(normalised);
+
+    if (!matchedType) {
+      this.logger.log(
+        `DN ${deliveryNoteId}: supplier "${supplierName}" did not match any calloff type`,
+      );
+      return [];
+    }
+
+    const matching = calledOffRecords.filter((r) => r.calloffType === matchedType);
+
+    if (matching.length === 0) {
+      return [];
+    }
+
+    const updated = await Promise.all(
+      matching.map(async (record) => {
+        record.status = CalloffStatus.DELIVERED;
+        record.deliveredAt = now().toJSDate();
+        record.notes = `Auto-delivered from DN #${deliveryNoteId} (${supplierName})`;
+        return this.calloffRepo.save(record);
+      }),
+    );
+
+    this.logger.log(
+      `DN ${deliveryNoteId}: auto-advanced ${updated.length} ${matchedType} calloff record(s) to delivered`,
+    );
+
+    return updated;
+  }
+
+  async fulfillmentReport(
+    companyId: number,
+  ): Promise<
+    {
+      cpoId: number;
+      cpoNumber: string;
+      jobNumber: string;
+      customerName: string | null;
+      status: string;
+      items: {
+        itemCode: string | null;
+        itemDescription: string | null;
+        quantityOrdered: number;
+        quantityFulfilled: number;
+        remaining: number;
+        percentComplete: number;
+      }[];
+      totalOrdered: number;
+      totalFulfilled: number;
+      totalRemaining: number;
+      percentComplete: number;
+    }[]
+  > {
+    const cpos = await this.cpoRepo.find({
+      where: { companyId },
+      relations: ["items"],
+      order: { createdAt: "DESC" },
+    });
+
+    return cpos.map((cpo) => {
+      const items = (cpo.items || []).map((item) => {
+        const ordered = Number(item.quantityOrdered) || 0;
+        const fulfilled = Number(item.quantityFulfilled) || 0;
+        const remaining = Math.max(0, ordered - fulfilled);
+        return {
+          itemCode: item.itemCode,
+          itemDescription: item.itemDescription,
+          quantityOrdered: ordered,
+          quantityFulfilled: fulfilled,
+          remaining,
+          percentComplete: ordered > 0 ? Math.round((fulfilled / ordered) * 100) : 0,
+        };
+      });
+
+      const totalOrdered = items.reduce((sum, i) => sum + i.quantityOrdered, 0);
+      const totalFulfilled = items.reduce((sum, i) => sum + i.quantityFulfilled, 0);
+      const totalRemaining = Math.max(0, totalOrdered - totalFulfilled);
+
+      return {
+        cpoId: cpo.id,
+        cpoNumber: cpo.cpoNumber,
+        jobNumber: cpo.jobNumber,
+        customerName: cpo.customerName,
+        status: cpo.status,
+        items,
+        totalOrdered,
+        totalFulfilled,
+        totalRemaining,
+        percentComplete: totalOrdered > 0 ? Math.round((totalFulfilled / totalOrdered) * 100) : 0,
+      };
+    });
+  }
+
+  async calloffStatusBreakdown(companyId: number): Promise<{
+    summary: { pending: number; calledOff: number; delivered: number; invoiced: number; total: number };
+    byCpo: {
+      cpoId: number;
+      cpoNumber: string;
+      pending: number;
+      calledOff: number;
+      delivered: number;
+      invoiced: number;
+    }[];
+  }> {
+    const records = await this.calloffRepo.find({
+      where: { companyId },
+      relations: ["cpo"],
+    });
+
+    const summary = records.reduce(
+      (acc, r) => ({
+        pending: acc.pending + (r.status === CalloffStatus.PENDING ? 1 : 0),
+        calledOff: acc.calledOff + (r.status === CalloffStatus.CALLED_OFF ? 1 : 0),
+        delivered: acc.delivered + (r.status === CalloffStatus.DELIVERED ? 1 : 0),
+        invoiced: acc.invoiced + (r.status === CalloffStatus.INVOICED ? 1 : 0),
+        total: acc.total + 1,
+      }),
+      { pending: 0, calledOff: 0, delivered: 0, invoiced: 0, total: 0 },
+    );
+
+    const byCpoMap = records.reduce<
+      Record<number, { cpoId: number; cpoNumber: string; pending: number; calledOff: number; delivered: number; invoiced: number }>
+    >((acc, r) => {
+      const existing = acc[r.cpoId] || {
+        cpoId: r.cpoId,
+        cpoNumber: r.cpo?.cpoNumber || `CPO-${r.cpoId}`,
+        pending: 0,
+        calledOff: 0,
+        delivered: 0,
+        invoiced: 0,
+      };
+      return {
+        ...acc,
+        [r.cpoId]: {
+          ...existing,
+          pending: existing.pending + (r.status === CalloffStatus.PENDING ? 1 : 0),
+          calledOff: existing.calledOff + (r.status === CalloffStatus.CALLED_OFF ? 1 : 0),
+          delivered: existing.delivered + (r.status === CalloffStatus.DELIVERED ? 1 : 0),
+          invoiced: existing.invoiced + (r.status === CalloffStatus.INVOICED ? 1 : 0),
+        },
+      };
+    }, {});
+
+    return { summary, byCpo: Object.values(byCpoMap) };
+  }
+
+  async overdueInvoiceReport(companyId: number): Promise<
+    {
+      recordId: number;
+      cpoNumber: string;
+      jobCardNumber: string | null;
+      calloffType: string;
+      deliveredAt: Date | null;
+      daysSinceDelivery: number;
+    }[]
+  > {
+    const twentyOneDaysAgo = now().minus({ days: 21 }).toJSDate();
+    const records = await this.calloffRepo.find({
+      where: {
+        companyId,
+        status: CalloffStatus.DELIVERED,
+        deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
+        invoicedAt: IsNull(),
+      },
+      relations: ["cpo", "jobCard"],
+    });
+
+    return records.map((r) => ({
+      recordId: r.id,
+      cpoNumber: r.cpo?.cpoNumber || `CPO-${r.cpoId}`,
+      jobCardNumber: r.jobCard?.jobNumber || null,
+      calloffType: r.calloffType,
+      deliveredAt: r.deliveredAt,
+      daysSinceDelivery: r.deliveredAt
+        ? Math.floor(now().diff(fromJSDate(r.deliveredAt), "days").days)
+        : 0,
+    }));
+  }
+
+  async exportCsv(companyId: number): Promise<string> {
+    const cpos = await this.cpoRepo.find({
+      where: { companyId },
+      relations: ["items"],
+      order: { createdAt: "DESC" },
+    });
+
+    const calloffRecords = await this.calloffRepo.find({
+      where: { companyId },
+      relations: ["cpo", "jobCard"],
+    });
+
+    const calloffByCpo = calloffRecords.reduce<Record<number, CpoCalloffRecord[]>>(
+      (acc, r) => ({
+        ...acc,
+        [r.cpoId]: [...(acc[r.cpoId] || []), r],
+      }),
+      {},
+    );
+
+    const headers = [
+      "CPO Number",
+      "Job Number",
+      "Customer",
+      "Status",
+      "Item Code",
+      "Description",
+      "Qty Ordered",
+      "Qty Fulfilled",
+      "Remaining",
+      "% Complete",
+      "Rubber Status",
+      "Paint Status",
+      "Solution Status",
+    ];
+
+    const rows = cpos.flatMap((cpo) => {
+      const records = calloffByCpo[cpo.id] || [];
+      const rubberStatus = records.find((r) => r.calloffType === CalloffType.RUBBER)?.status || "-";
+      const paintStatus = records.find((r) => r.calloffType === CalloffType.PAINT)?.status || "-";
+      const solutionStatus = records.find((r) => r.calloffType === CalloffType.SOLUTION)?.status || "-";
+
+      if (!cpo.items || cpo.items.length === 0) {
+        return [[
+          cpo.cpoNumber,
+          cpo.jobNumber,
+          cpo.customerName || "",
+          cpo.status,
+          "",
+          "",
+          "0",
+          "0",
+          "0",
+          "0",
+          rubberStatus,
+          paintStatus,
+          solutionStatus,
+        ]];
+      }
+
+      return cpo.items.map((item) => {
+        const ordered = Number(item.quantityOrdered) || 0;
+        const fulfilled = Number(item.quantityFulfilled) || 0;
+        const remaining = Math.max(0, ordered - fulfilled);
+        const pct = ordered > 0 ? Math.round((fulfilled / ordered) * 100) : 0;
+        return [
+          cpo.cpoNumber,
+          cpo.jobNumber,
+          cpo.customerName || "",
+          cpo.status,
+          item.itemCode || "",
+          item.itemDescription || "",
+          String(ordered),
+          String(fulfilled),
+          String(remaining),
+          String(pct),
+          rubberStatus,
+          paintStatus,
+          solutionStatus,
+        ];
+      });
+    });
+
+    return [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+  }
+
+  private inferCalloffTypeFromSupplier(normalisedName: string): CalloffType | null {
+    const rubberKeywords = ["rubber", "lining", "polycorp", "trelleborg", "rema"];
+    const paintKeywords = ["paint", "coating", "dulux", "sigma", "jotun", "hempel", "international"];
+    const solutionKeywords = ["solution", "chemical", "solvent", "thinner", "adhesive"];
+
+    if (rubberKeywords.some((kw) => normalisedName.includes(kw))) {
+      return CalloffType.RUBBER;
+    }
+    if (paintKeywords.some((kw) => normalisedName.includes(kw))) {
+      return CalloffType.PAINT;
+    }
+    if (solutionKeywords.some((kw) => normalisedName.includes(kw))) {
+      return CalloffType.SOLUTION;
+    }
+    return null;
   }
 
   private generateCpoNumber(jobNumber: string, jcNumber?: string): string {
