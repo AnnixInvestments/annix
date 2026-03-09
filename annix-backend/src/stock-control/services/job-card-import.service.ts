@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
@@ -10,6 +10,7 @@ import {
   JobCardImportMapping,
 } from "../entities/job-card-import-mapping.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { CpoService } from "./cpo.service";
 import { DrawingExtractionService } from "./drawing-extraction.service";
 
 export interface LineItemImportRow {
@@ -19,6 +20,7 @@ export interface LineItemImportRow {
   quantity?: string;
   jtNo?: string;
   m2?: number;
+  notes?: string;
 }
 
 export interface JobCardImportRow {
@@ -96,6 +98,46 @@ function isValidLineItem(li: LineItemImportRow): boolean {
   return true;
 }
 
+const NOTE_ROW_PATTERN =
+  /R\/L|rubber|lining|lagging|shore|paint|blast|coat|primer|oxide|epoxy|polyurethane/i;
+
+function isNoteRow(li: LineItemImportRow): boolean {
+  const itemCode = (li.itemCode || "").trim();
+  if (!itemCode) return false;
+  const description = (li.itemDescription || "").trim();
+  const qty = li.quantity ? parseFloat(li.quantity) : null;
+  const hasNoData = !description && !li.itemNo && !li.jtNo && (qty === null || Number.isNaN(qty));
+  return hasNoData && NOTE_ROW_PATTERN.test(itemCode);
+}
+
+function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[] {
+  const result: LineItemImportRow[] = [];
+  const pendingNotes: string[] = [];
+
+  items.forEach((item) => {
+    if (isNoteRow(item)) {
+      const noteText = (item.itemCode || "").trim();
+      const precedingRealItems = result.filter(
+        (r) => !pendingNotes.includes(r.notes || "") || r.notes === undefined,
+      );
+      const lastNoteIdx = result.reduce((idx, r, i) => (r.notes ? i : idx), -1);
+      const itemsSinceLastNote = result.slice(lastNoteIdx + 1);
+      if (itemsSinceLastNote.length > 0) {
+        itemsSinceLastNote.forEach((r) => {
+          r.notes = r.notes ? `${r.notes}\n${noteText}` : noteText;
+        });
+      } else if (result.length > 0) {
+        const last = result[result.length - 1];
+        last.notes = last.notes ? `${last.notes}\n${noteText}` : noteText;
+      }
+      return;
+    }
+    result.push({ ...item });
+  });
+
+  return result;
+}
+
 const JOB_CARD_MAPPING_PROMPT = `You are an expert at reading job cards and work orders. Given a grid of text extracted from a PDF or spreadsheet, identify where the job card fields are located.
 
 Job cards typically have these fields:
@@ -164,6 +206,8 @@ export class JobCardImportService {
     private readonly mappingRepo: Repository<JobCardImportMapping>,
     private readonly aiChatService: AiChatService,
     private readonly drawingExtractionService: DrawingExtractionService,
+    @Inject(forwardRef(() => CpoService))
+    private readonly cpoService: CpoService,
   ) {}
 
   async parseFile(
@@ -681,6 +725,12 @@ export class JobCardImportService {
             await this.lineItemRepo.save(lineItemEntities);
           }
 
+          await this.cpoService.matchJobCardToCpo(companyId, saved.id).catch((err) => {
+            this.logger.warn(
+              `CPO matching failed for JC ${saved.id}: ${err instanceof Error ? err.message : "Unknown"}`,
+            );
+          });
+
           result.updated++;
           result.createdJobCardIds.push(saved.id);
         } else {
@@ -709,6 +759,12 @@ export class JobCardImportService {
             );
             await this.lineItemRepo.save(lineItemEntities);
           }
+
+          await this.cpoService.matchJobCardToCpo(companyId, saved.id).catch((err) => {
+            this.logger.warn(
+              `CPO matching failed for JC ${saved.id}: ${err instanceof Error ? err.message : "Unknown"}`,
+            );
+          });
 
           result.created++;
           result.createdJobCardIds.push(saved.id);

@@ -3,7 +3,16 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
+import { JobCard } from "../entities/job-card.entity";
+import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { JobCardImportRow, LineItemImportRow } from "./job-card-import.service";
+
+export interface CpoMatchResult {
+  matched: boolean;
+  cpoId: number | null;
+  cpoNumber: string | null;
+  matchedItems: number;
+}
 
 export interface CpoImportResult {
   totalRows: number;
@@ -71,6 +80,10 @@ export class CpoService {
     private readonly cpoRepo: Repository<CustomerPurchaseOrder>,
     @InjectRepository(CustomerPurchaseOrderItem)
     private readonly cpoItemRepo: Repository<CustomerPurchaseOrderItem>,
+    @InjectRepository(JobCard)
+    private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(JobCardLineItem)
+    private readonly lineItemRepo: Repository<JobCardLineItem>,
   ) {}
 
   async findAll(companyId: number, status?: string): Promise<CustomerPurchaseOrder[]> {
@@ -209,6 +222,126 @@ export class CpoService {
     const cpo = await this.findById(companyId, id);
     cpo.status = status;
     return this.cpoRepo.save(cpo);
+  }
+
+  async matchJobCardToCpo(companyId: number, jobCardId: number): Promise<CpoMatchResult> {
+    const noMatch: CpoMatchResult = {
+      matched: false,
+      cpoId: null,
+      cpoNumber: null,
+      matchedItems: 0,
+    };
+
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+      relations: ["lineItems"],
+    });
+
+    if (!jobCard) {
+      return noMatch;
+    }
+
+    const cpos = await this.cpoRepo.find({
+      where: { companyId, jobNumber: jobCard.jobNumber, status: CpoStatus.ACTIVE },
+      relations: ["items"],
+    });
+
+    if (cpos.length === 0) {
+      return noMatch;
+    }
+
+    const cpo = cpos[0];
+    const jcLineItems = jobCard.lineItems || [];
+
+    const matchedItemIds = jcLineItems.reduce<number[]>((acc, jcItem) => {
+      const cpoItem = cpo.items.find((ci) => {
+        if (ci.itemCode && jcItem.itemCode) {
+          return ci.itemCode.trim().toLowerCase() === jcItem.itemCode.trim().toLowerCase();
+        }
+        if (ci.itemDescription && jcItem.itemDescription) {
+          return (
+            ci.itemDescription.trim().toLowerCase() === jcItem.itemDescription.trim().toLowerCase()
+          );
+        }
+        return false;
+      });
+
+      if (cpoItem) {
+        return [...acc, cpoItem.id];
+      }
+      return acc;
+    }, []);
+
+    const uniqueMatchedIds = [...new Set(matchedItemIds)];
+
+    if (uniqueMatchedIds.length > 0) {
+      await this.jobCardRepo.update(jobCardId, { cpoId: cpo.id, isCpoCalloff: true });
+
+      const fulfilmentUpdates = uniqueMatchedIds.map(async (cpoItemId) => {
+        const cpoItem = cpo.items.find((ci) => ci.id === cpoItemId);
+        if (!cpoItem) {
+          return;
+        }
+
+        const jcMatches = jcLineItems.filter((jcItem) => {
+          if (cpoItem.itemCode && jcItem.itemCode) {
+            return cpoItem.itemCode.trim().toLowerCase() === jcItem.itemCode.trim().toLowerCase();
+          }
+          if (cpoItem.itemDescription && jcItem.itemDescription) {
+            return (
+              cpoItem.itemDescription.trim().toLowerCase() ===
+              jcItem.itemDescription.trim().toLowerCase()
+            );
+          }
+          return false;
+        });
+
+        const fulfilledQty = jcMatches.reduce((sum, jcItem) => sum + (jcItem.quantity || 0), 0);
+        const newFulfilled = Math.min(
+          Number(cpoItem.quantityFulfilled) + fulfilledQty,
+          Number(cpoItem.quantityOrdered),
+        );
+
+        await this.cpoItemRepo.update(cpoItemId, { quantityFulfilled: newFulfilled });
+      });
+
+      await Promise.all(fulfilmentUpdates);
+
+      const updatedCpo = await this.cpoRepo.findOne({
+        where: { id: cpo.id },
+        relations: ["items"],
+      });
+
+      if (updatedCpo) {
+        const totalFulfilled = updatedCpo.items.reduce(
+          (sum, item) => sum + Number(item.quantityFulfilled),
+          0,
+        );
+        const updateFields: Partial<CustomerPurchaseOrder> = { fulfilledQuantity: totalFulfilled };
+
+        if (
+          totalFulfilled >= Number(updatedCpo.totalQuantity) &&
+          Number(updatedCpo.totalQuantity) > 0
+        ) {
+          updateFields.status = CpoStatus.FULFILLED;
+        }
+
+        await this.cpoRepo.update(cpo.id, updateFields);
+      }
+
+      this.logger.log(
+        `Matched JC #${jobCard.jobNumber} to CPO ${cpo.cpoNumber} (${uniqueMatchedIds.length} items)`,
+      );
+
+      return {
+        matched: true,
+        cpoId: cpo.id,
+        cpoNumber: cpo.cpoNumber,
+        matchedItems: uniqueMatchedIds.length,
+      };
+    }
+
+    return noMatch;
   }
 
   private generateCpoNumber(jobNumber: string, jcNumber?: string): string {

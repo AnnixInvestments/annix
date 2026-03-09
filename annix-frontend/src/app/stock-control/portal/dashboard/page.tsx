@@ -50,7 +50,13 @@ function PushNotificationBanner() {
     }
   }, []);
 
-  if (isLoading || dismissed || isSubscribed || permissionState !== "default") {
+  if (
+    isLoading ||
+    dismissed ||
+    isSubscribed ||
+    permissionState === "denied" ||
+    permissionState === "unsupported"
+  ) {
     return null;
   }
 
