@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { In, MoreThanOrEqual, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { JobCard } from "../entities/job-card.entity";
 import { StaffMember } from "../entities/staff-member.entity";
@@ -520,5 +520,94 @@ export class IssuanceService {
     }
 
     return issuance;
+  }
+
+  async undoIssuance(companyId: number, id: number, user: UserContext): Promise<StockIssuance> {
+    const issuance = await this.issuanceRepo.findOne({
+      where: { id, companyId },
+      relations: ["stockItem"],
+    });
+
+    if (!issuance) {
+      throw new NotFoundException("Issuance not found");
+    }
+
+    if (issuance.undone) {
+      throw new BadRequestException("This issuance has already been undone");
+    }
+
+    const fiveMinutesAgo = now().minus({ minutes: 5 }).toJSDate();
+    if (issuance.issuedAt < fiveMinutesAgo) {
+      throw new BadRequestException("Issuances can only be undone within 5 minutes of creation");
+    }
+
+    issuance.undone = true;
+    issuance.undoneAt = now().toJSDate();
+    issuance.undoneByName = user.name;
+    await this.issuanceRepo.save(issuance);
+
+    const stockItem = await this.stockItemRepo.findOne({
+      where: { id: issuance.stockItemId, companyId },
+    });
+
+    if (stockItem) {
+      stockItem.quantity = stockItem.quantity + issuance.quantity;
+      await this.stockItemRepo.save(stockItem);
+    }
+
+    const movement = this.movementRepo.create({
+      companyId,
+      stockItem: stockItem ?? undefined,
+      movementType: MovementType.IN,
+      quantity: issuance.quantity,
+      referenceType: ReferenceType.ISSUANCE,
+      referenceId: issuance.id,
+      notes: `Undo issuance #${issuance.id} by ${user.name}`,
+      createdBy: user.name,
+    });
+    await this.movementRepo.save(movement);
+
+    if (issuance.jobCardId) {
+      const allocation = await this.allocationRepo.findOne({
+        where: {
+          companyId,
+          jobCard: { id: issuance.jobCardId },
+          stockItem: { id: issuance.stockItemId },
+          staffMemberId: issuance.recipientStaffId,
+        },
+      });
+
+      if (allocation) {
+        await this.allocationRepo.remove(allocation);
+      }
+    }
+
+    this.logger.log(`Issuance #${id} undone by ${user.name}`);
+
+    const fullIssuance = await this.issuanceRepo.findOne({
+      where: { id },
+      relations: ["stockItem", "issuerStaff", "recipientStaff", "jobCard"],
+    });
+
+    if (!fullIssuance) {
+      throw new NotFoundException("Issuance not found after undo");
+    }
+
+    return fullIssuance;
+  }
+
+  async recentByUser(companyId: number, limit = 20): Promise<StockIssuance[]> {
+    const oneDayAgo = now().minus({ hours: 24 }).toJSDate();
+
+    return this.issuanceRepo.find({
+      where: {
+        companyId,
+        undone: false,
+        issuedAt: MoreThanOrEqual(oneDayAgo),
+      },
+      relations: ["stockItem", "issuerStaff", "recipientStaff", "jobCard"],
+      order: { issuedAt: "DESC" },
+      take: limit,
+    });
   }
 }

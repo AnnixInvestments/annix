@@ -71,6 +71,15 @@ export class StockIssuance {
   @Column({ name: "issued_at", type: "timestamptz" })
   issuedAt: Date;
 
+  @Column({ type: "boolean", default: false })
+  undone: boolean;
+
+  @Column({ name: "undone_at", type: "timestamptz", nullable: true })
+  undoneAt: Date | null;
+
+  @Column({ name: "undone_by_name", type: "varchar", length: 255, nullable: true })
+  undoneByName: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

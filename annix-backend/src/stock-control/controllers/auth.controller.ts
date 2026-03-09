@@ -177,6 +177,13 @@ export class StockControlAuthController {
     return this.authService.currentUser(req.user.id);
   }
 
+  @UseGuards(StockControlAuthGuard)
+  @Patch("me/linked-staff")
+  @ApiOperation({ summary: "Link or unlink a staff member to the current user" })
+  async updateLinkedStaff(@Req() req: any, @Body() body: { linkedStaffId: number | null }) {
+    return this.authService.updateLinkedStaff(req.user.id, req.user.companyId, body.linkedStaffId);
+  }
+
   @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
   @StockControlRoles("admin")
   @Get("team")

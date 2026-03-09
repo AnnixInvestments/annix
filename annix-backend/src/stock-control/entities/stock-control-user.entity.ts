@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { StaffMember } from "./staff-member.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 
 export enum StockControlRole {
@@ -54,6 +55,13 @@ export class StockControlUser {
 
   @Column({ name: "company_id" })
   companyId: number;
+
+  @ManyToOne(() => StaffMember, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "linked_staff_id" })
+  linkedStaff: StaffMember | null;
+
+  @Column({ name: "linked_staff_id", nullable: true })
+  linkedStaffId: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

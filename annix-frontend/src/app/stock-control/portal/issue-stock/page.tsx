@@ -1,11 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   BatchIssuanceDto,
+  BatchIssuanceResult,
   IssuanceScanResult,
   JobCard,
   StaffMember,
+  StockIssuance,
   StockItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -18,6 +21,34 @@ interface IssuanceItem {
   quantity: number;
 }
 
+interface SessionIssuance {
+  id: number;
+  issuanceIds: number[];
+  issuerName: string;
+  recipientName: string;
+  itemSummary: string;
+  itemCount: number;
+  totalQty: number;
+  jobNumber: string | null;
+  timestamp: string;
+  canUndo: boolean;
+}
+
+interface FavouriteCombo {
+  recipientId: number;
+  recipientName: string;
+  recipientPhoto: string | null;
+  itemIds: number[];
+  itemNames: string[];
+  useCount: number;
+  lastUsed: string;
+}
+
+const FAVOURITES_KEY = "asca-issuance-favourites";
+const QUICK_ISSUE_KEY = "asca-quick-issue-mode";
+const BATCH_MODE_KEY = "asca-batch-mode";
+const UNDO_WINDOW_MS = 5 * 60 * 1000;
+
 const STEPS: { key: Step; label: string }[] = [
   { key: "issuer", label: "Issuer" },
   { key: "recipient", label: "Recipient" },
@@ -26,7 +57,85 @@ const STEPS: { key: Step; label: string }[] = [
   { key: "confirm", label: "Confirm" },
 ];
 
+function loadFavourites(): FavouriteCombo[] {
+  try {
+    const raw = localStorage.getItem(FAVOURITES_KEY);
+    return raw ? (JSON.parse(raw) as FavouriteCombo[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveFavourites(favourites: FavouriteCombo[]): void {
+  localStorage.setItem(FAVOURITES_KEY, JSON.stringify(favourites));
+}
+
+function updateFavourites(recipient: StaffMember, items: IssuanceItem[]): void {
+  const existing = loadFavourites();
+  const itemIds = items.map((i) => i.stockItem.id).sort((a, b) => a - b);
+  const matchIndex = existing.findIndex(
+    (f) =>
+      f.recipientId === recipient.id &&
+      f.itemIds.length === itemIds.length &&
+      f.itemIds.every((id, idx) => id === itemIds[idx]),
+  );
+
+  if (matchIndex >= 0) {
+    const updated = [...existing];
+    updated[matchIndex] = {
+      ...updated[matchIndex],
+      useCount: updated[matchIndex].useCount + 1,
+      lastUsed: new Date().toISOString(),
+    };
+    saveFavourites(updated);
+  } else {
+    const newFav: FavouriteCombo = {
+      recipientId: recipient.id,
+      recipientName: recipient.name,
+      recipientPhoto: recipient.photoUrl ?? null,
+      itemIds,
+      itemNames: items.map((i) => i.stockItem.name),
+      useCount: 1,
+      lastUsed: new Date().toISOString(),
+    };
+    saveFavourites([newFav, ...existing].slice(0, 50));
+  }
+}
+
+function triggerHaptic(): void {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate(50);
+  }
+}
+
+function playSuccessSound(): void {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    gain.gain.value = 0.1;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+    setTimeout(() => ctx.close(), 200);
+  } catch {
+    // Audio not available
+  }
+}
+
+function staffInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export default function IssueStockPage() {
+  const { profile } = useStockControlAuth();
   const [currentStep, setCurrentStep] = useState<Step>("issuer");
   const [scanInput, setScanInput] = useState("");
   const [isScanning, setIsScanning] = useState(false);
@@ -41,6 +150,46 @@ export default function IssueStockPage() {
   const [items, setItems] = useState<IssuanceItem[]>([]);
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
   const [notes, setNotes] = useState("");
+
+  const [quickIssueMode, setQuickIssueMode] = useState(false);
+  const [batchMode, setBatchMode] = useState(false);
+  const [linkedStaff, setLinkedStaff] = useState<StaffMember | null>(null);
+  const [sessionIssuances, setSessionIssuances] = useState<SessionIssuance[]>([]);
+  const [showSessionSummary, setShowSessionSummary] = useState(false);
+  const [favourites, setFavourites] = useState<FavouriteCombo[]>([]);
+  const [showFavourites, setShowFavourites] = useState(false);
+  const [recentIssuances, setRecentIssuances] = useState<StockIssuance[]>([]);
+  const [undoingId, setUndoingId] = useState<number | null>(null);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [showLinkStaffModal, setShowLinkStaffModal] = useState(false);
+
+  useEffect(() => {
+    setQuickIssueMode(localStorage.getItem(QUICK_ISSUE_KEY) === "true");
+    setBatchMode(localStorage.getItem(BATCH_MODE_KEY) === "true");
+    setFavourites(loadFavourites());
+  }, []);
+
+  useEffect(() => {
+    if (profile?.linkedStaffId) {
+      stockControlApiClient
+        .staffMemberById(profile.linkedStaffId)
+        .then((staff) => {
+          setLinkedStaff(staff);
+          if (localStorage.getItem(QUICK_ISSUE_KEY) === "true" && !issuer) {
+            setIssuer(staff);
+            setCurrentStep("recipient");
+          }
+        })
+        .catch(() => setLinkedStaff(null));
+    }
+  }, [profile?.linkedStaffId]);
+
+  useEffect(() => {
+    stockControlApiClient
+      .recentIssuances()
+      .then(setRecentIssuances)
+      .catch(() => setRecentIssuances([]));
+  }, []);
 
   const currentStepIndex = STEPS.findIndex((s) => s.key === currentStep);
 
@@ -58,6 +207,8 @@ export default function IssueStockPage() {
   const handleCameraScan = (result: string) => {
     setShowCameraScanner(false);
     setScanInput(result);
+    triggerHaptic();
+    playSuccessSound();
     setTimeout(() => {
       processScanResult(result);
     }, 100);
@@ -71,6 +222,9 @@ export default function IssueStockPage() {
       setError(null);
 
       const result: IssuanceScanResult = await stockControlApiClient.scanIssuanceQr(input.trim());
+
+      triggerHaptic();
+      playSuccessSound();
 
       if (currentStep === "issuer") {
         if (result.type !== "staff") {
@@ -126,9 +280,7 @@ export default function IssueStockPage() {
   };
 
   const handleUpdateQuantity = (index: number, quantity: number) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], quantity };
-    setItems(newItems);
+    setItems(items.map((item, i) => (i === index ? { ...item, quantity } : item)));
   };
 
   const handleContinueToJobCard = () => {
@@ -147,6 +299,9 @@ export default function IssueStockPage() {
 
   const handleBack = () => {
     if (currentStep === "recipient") {
+      if (quickIssueMode && linkedStaff) {
+        return;
+      }
       setCurrentStep("issuer");
       setRecipient(null);
     } else if (currentStep === "stock_items") {
@@ -161,6 +316,30 @@ export default function IssueStockPage() {
     setError(null);
     setScanInput("");
   };
+
+  const startNextIssuance = useCallback(() => {
+    setItems([]);
+    setJobCard(null);
+    setNotes("");
+    setError(null);
+    setSuccessMessage(null);
+    setScanInput("");
+
+    if (batchMode && issuer) {
+      if (recipient) {
+        setCurrentStep("stock_items");
+      } else {
+        setCurrentStep("recipient");
+      }
+    } else if (quickIssueMode && linkedStaff) {
+      setRecipient(null);
+      setCurrentStep("recipient");
+    } else {
+      setIssuer(null);
+      setRecipient(null);
+      setCurrentStep("issuer");
+    }
+  }, [batchMode, quickIssueMode, linkedStaff, issuer, recipient]);
 
   const handleConfirm = async () => {
     if (!issuer || !recipient || items.length === 0) return;
@@ -188,26 +367,53 @@ export default function IssueStockPage() {
         notes: notes.trim() || null,
       };
 
-      const result = await stockControlApiClient.createBatchIssuance(dto);
+      const result: BatchIssuanceResult = await stockControlApiClient.createBatchIssuance(dto);
 
       if (result.errors.length > 0) {
         setError(`Some items failed: ${result.errors.map((e) => e.message).join(", ")}`);
       }
 
       if (result.created > 0) {
+        triggerHaptic();
+        playSuccessSound();
+
+        updateFavourites(recipient, items);
+        setFavourites(loadFavourites());
+
         const itemSummary = items
           .map((item) => `${item.quantity}x ${item.stockItem.name}`)
           .join(", ");
+
+        const sessionEntry: SessionIssuance = {
+          id: Date.now(),
+          issuanceIds: result.issuances.map((i) => i.id),
+          issuerName: issuer.name,
+          recipientName: recipient.name,
+          itemSummary,
+          itemCount: items.length,
+          totalQty: items.reduce((sum, item) => sum + item.quantity, 0),
+          jobNumber: jobCard?.jobNumber ?? null,
+          timestamp: new Date().toISOString(),
+          canUndo: true,
+        };
+
+        setSessionIssuances((prev) => [sessionEntry, ...prev]);
+
         setSuccessMessage(
-          `Successfully issued ${result.created} item(s) (${itemSummary}) from ${issuer.name} to ${recipient.name}`,
+          `Issued ${result.created} item(s) (${itemSummary}) from ${issuer.name} to ${recipient.name}`,
         );
 
-        setIssuer(null);
-        setRecipient(null);
-        setItems([]);
-        setJobCard(null);
-        setNotes("");
-        setCurrentStep("issuer");
+        stockControlApiClient
+          .recentIssuances()
+          .then(setRecentIssuances)
+          .catch(() => {});
+
+        if (batchMode) {
+          setItems([]);
+          setJobCard(null);
+          setNotes("");
+          setCurrentStep("stock_items");
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create issuance");
@@ -216,134 +422,94 @@ export default function IssueStockPage() {
     }
   };
 
+  const handleUndo = async (sessionEntry: SessionIssuance) => {
+    const elapsed = Date.now() - new Date(sessionEntry.timestamp).getTime();
+    if (elapsed > UNDO_WINDOW_MS) {
+      setError("Undo window has expired (5 minutes)");
+      return;
+    }
+
+    try {
+      setUndoingId(sessionEntry.id);
+      const undoPromises = sessionEntry.issuanceIds.map((issuanceId) =>
+        stockControlApiClient.undoIssuance(issuanceId),
+      );
+      await Promise.all(undoPromises);
+
+      setSessionIssuances((prev) =>
+        prev.map((s) => (s.id === sessionEntry.id ? { ...s, canUndo: false } : s)),
+      );
+
+      setSuccessMessage(`Undone: ${sessionEntry.itemSummary} to ${sessionEntry.recipientName}`);
+
+      stockControlApiClient
+        .recentIssuances()
+        .then(setRecentIssuances)
+        .catch(() => {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to undo issuance");
+    } finally {
+      setUndoingId(null);
+    }
+  };
+
   const handleReset = () => {
-    setIssuer(null);
+    setIssuer(quickIssueMode && linkedStaff ? linkedStaff : null);
     setRecipient(null);
     setItems([]);
     setJobCard(null);
     setNotes("");
-    setCurrentStep("issuer");
+    setCurrentStep(quickIssueMode && linkedStaff ? "recipient" : "issuer");
     setError(null);
     setSuccessMessage(null);
     setScanInput("");
   };
 
-  const renderStaffCard = (staff: StaffMember, label: string) => (
-    <div className="bg-gray-50 rounded-lg p-4 flex items-center space-x-4">
-      <div className="flex-shrink-0">
-        {staff.photoUrl ? (
-          <img
-            src={staff.photoUrl}
-            alt={staff.name}
-            className="h-12 w-12 rounded-full object-cover"
-          />
-        ) : (
-          <div className="h-12 w-12 rounded-full bg-teal-100 flex items-center justify-center">
-            <span className="text-teal-600 font-semibold">
-              {staff.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2)}
-            </span>
-          </div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
-        <p className="text-sm font-medium text-gray-900 truncate">{staff.name}</p>
-        {staff.employeeNumber && <p className="text-xs text-gray-500">#{staff.employeeNumber}</p>}
-      </div>
-      <svg className="h-5 w-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-        <path
-          fillRule="evenodd"
-          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-          clipRule="evenodd"
-        />
-      </svg>
-    </div>
-  );
+  const toggleQuickIssue = async (enabled: boolean) => {
+    if (enabled && !profile?.linkedStaffId) {
+      try {
+        const staffMembers = await stockControlApiClient.staffMembers({
+          active: "true",
+        });
+        setStaffList(staffMembers);
+        setShowLinkStaffModal(true);
+      } catch {
+        setError("Failed to load staff members");
+      }
+      return;
+    }
 
-  const renderStockItemCard = (item: StockItem, showCheckmark = true) => (
-    <div className="bg-gray-50 rounded-lg p-4 flex items-center space-x-4">
-      <div className="flex-shrink-0">
-        {item.photoUrl ? (
-          <img src={item.photoUrl} alt={item.name} className="h-12 w-12 rounded-lg object-cover" />
-        ) : (
-          <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
-            <svg
-              className="h-6 w-6 text-blue-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-              />
-            </svg>
-          </div>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500 uppercase tracking-wide">Stock Item</p>
-        <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
-        <p className="text-xs text-gray-500">
-          SKU: {item.sku} | Available: {item.quantity} {item.unitOfMeasure}
-        </p>
-      </div>
-      {showCheckmark && (
-        <svg
-          className="h-5 w-5 text-green-500 flex-shrink-0"
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-            clipRule="evenodd"
-          />
-        </svg>
-      )}
-    </div>
-  );
+    setQuickIssueMode(enabled);
+    localStorage.setItem(QUICK_ISSUE_KEY, String(enabled));
 
-  const renderJobCardCard = (jc: JobCard) => (
-    <div className="bg-gray-50 rounded-lg p-4 flex items-center space-x-4">
-      <div className="flex-shrink-0">
-        <div className="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center">
-          <svg
-            className="h-6 w-6 text-purple-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-            />
-          </svg>
-        </div>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500 uppercase tracking-wide">Job Card</p>
-        <p className="text-sm font-medium text-gray-900 truncate">{jc.jobNumber}</p>
-        <p className="text-xs text-gray-500 truncate">{jc.jobName}</p>
-      </div>
-      <svg className="h-5 w-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-        <path
-          fillRule="evenodd"
-          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-          clipRule="evenodd"
-        />
-      </svg>
-    </div>
-  );
+    if (enabled && linkedStaff && currentStep === "issuer") {
+      setIssuer(linkedStaff);
+      setCurrentStep("recipient");
+    } else if (!enabled && currentStep === "recipient" && !recipient) {
+      setIssuer(null);
+      setCurrentStep("issuer");
+    }
+  };
+
+  const handleLinkStaff = async (staffId: number) => {
+    try {
+      await stockControlApiClient.updateLinkedStaff(staffId);
+      const staff = await stockControlApiClient.staffMemberById(staffId);
+      setLinkedStaff(staff);
+      setShowLinkStaffModal(false);
+      setQuickIssueMode(true);
+      localStorage.setItem(QUICK_ISSUE_KEY, "true");
+      setIssuer(staff);
+      setCurrentStep("recipient");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to link staff member");
+    }
+  };
+
+  const toggleBatchMode = (enabled: boolean) => {
+    setBatchMode(enabled);
+    localStorage.setItem(BATCH_MODE_KEY, String(enabled));
+  };
 
   const totalItemsQty = items.reduce((sum, item) => sum + item.quantity, 0);
   const hasInvalidQuantities = items.some(
@@ -351,20 +517,159 @@ export default function IssueStockPage() {
   );
   const isConfirmDisabled = isSubmitting || items.length === 0 || hasInvalidQuantities;
 
+  const topFavourites = favourites.sort((a, b) => b.useCount - a.useCount).slice(0, 5);
+
   return (
     <>
       {showCameraScanner && (
         <QrScanner onScan={handleCameraScan} onClose={() => setShowCameraScanner(false)} />
       )}
+
+      {showLinkStaffModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden">
+            <div className="p-4 border-b">
+              <h3 className="text-lg font-medium text-gray-900">Link Your Staff Profile</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Select your staff member to enable Quick Issue mode
+              </p>
+            </div>
+            <div className="overflow-y-auto max-h-[60vh] p-4 space-y-2">
+              {staffList.map((staff) => (
+                <button
+                  key={staff.id}
+                  onClick={() => handleLinkStaff(staff.id)}
+                  className="w-full flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 border border-gray-200 text-left"
+                >
+                  <div className="flex-shrink-0">
+                    {staff.photoUrl ? (
+                      <img
+                        src={staff.photoUrl}
+                        alt={staff.name}
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center">
+                        <span className="text-teal-600 font-semibold text-sm">
+                          {staffInitials(staff.name)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{staff.name}</p>
+                    {staff.employeeNumber && (
+                      <p className="text-xs text-gray-500">#{staff.employeeNumber}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="p-4 border-t">
+              <button
+                onClick={() => setShowLinkStaffModal(false)}
+                className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Issue Stock</h1>
-          {currentStep !== "issuer" && (
-            <button onClick={handleReset} className="text-sm text-gray-500 hover:text-gray-700">
-              Start Over
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {sessionIssuances.length > 0 && (
+              <button
+                onClick={() => setShowSessionSummary(!showSessionSummary)}
+                className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+              >
+                Session ({sessionIssuances.length})
+              </button>
+            )}
+            {currentStep !== "issuer" && !(quickIssueMode && currentStep === "recipient") && (
+              <button onClick={handleReset} className="text-sm text-gray-500 hover:text-gray-700">
+                Start Over
+              </button>
+            )}
+          </div>
         </div>
+
+        <div className="flex flex-wrap gap-4 bg-gray-50 rounded-lg p-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={quickIssueMode}
+              onChange={(e) => toggleQuickIssue(e.target.checked)}
+              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+            />
+            <span className="text-sm text-gray-700">Quick Issue</span>
+            {linkedStaff && quickIssueMode && (
+              <span className="text-xs text-gray-500">({linkedStaff.name})</span>
+            )}
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={batchMode}
+              onChange={(e) => toggleBatchMode(e.target.checked)}
+              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+            />
+            <span className="text-sm text-gray-700">Batch Mode</span>
+          </label>
+        </div>
+
+        {showSessionSummary && sessionIssuances.length > 0 && (
+          <div className="bg-white shadow rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-gray-900">Session Summary</h3>
+              <button
+                onClick={() => {
+                  setSessionIssuances([]);
+                  setShowSessionSummary(false);
+                }}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Clear
+              </button>
+            </div>
+            <div className="space-y-2">
+              {sessionIssuances.map((entry) => (
+                <div
+                  key={entry.id}
+                  className={`flex items-center justify-between p-3 rounded-lg text-sm ${entry.canUndo ? "bg-green-50" : "bg-gray-100 opacity-60"}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{entry.itemSummary}</p>
+                    <p className="text-xs text-gray-500">
+                      {entry.issuerName} &rarr; {entry.recipientName}
+                      {entry.jobNumber ? ` | JC: ${entry.jobNumber}` : ""}
+                    </p>
+                  </div>
+                  {entry.canUndo ? (
+                    <button
+                      onClick={() => handleUndo(entry)}
+                      disabled={undoingId === entry.id}
+                      className="ml-3 px-3 py-1 text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded hover:bg-red-100 disabled:opacity-50"
+                    >
+                      {undoingId === entry.id ? "Undoing..." : "Undo"}
+                    </button>
+                  ) : (
+                    <span className="ml-3 text-xs text-gray-400">Undone</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 pt-3 border-t text-sm text-gray-600">
+              <strong>Total:</strong> {sessionIssuances.filter((s) => s.canUndo).length}{" "}
+              issuance(s),{" "}
+              {sessionIssuances.filter((s) => s.canUndo).reduce((sum, s) => sum + s.totalQty, 0)}{" "}
+              units
+            </div>
+          </div>
+        )}
 
         {successMessage && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm flex items-center justify-between">
@@ -378,12 +683,22 @@ export default function IssueStockPage() {
               </svg>
               {successMessage}
             </div>
-            <button
-              onClick={() => setSuccessMessage(null)}
-              className="text-green-500 hover:text-green-700 font-medium"
-            >
-              Dismiss
-            </button>
+            <div className="flex items-center gap-2">
+              {!batchMode && (
+                <button
+                  onClick={startNextIssuance}
+                  className="text-teal-600 hover:text-teal-700 font-medium"
+                >
+                  Issue More
+                </button>
+              )}
+              <button
+                onClick={() => setSuccessMessage(null)}
+                className="text-green-500 hover:text-green-700 font-medium"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 
@@ -450,12 +765,154 @@ export default function IssueStockPage() {
           ))}
         </div>
 
+        {currentStep === "recipient" && topFavourites.length > 0 && !recipient && (
+          <div className="bg-white shadow rounded-lg p-4">
+            <button
+              onClick={() => setShowFavourites(!showFavourites)}
+              className="flex items-center justify-between w-full text-sm font-medium text-gray-700"
+            >
+              <span>Recent / Favourites</span>
+              <svg
+                className={`w-4 h-4 transition-transform ${showFavourites ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {showFavourites && (
+              <div className="mt-3 space-y-2">
+                {topFavourites.map((fav, idx) => (
+                  <button
+                    key={`${fav.recipientId}-${idx}`}
+                    onClick={async () => {
+                      try {
+                        const staff = await stockControlApiClient.staffMemberById(fav.recipientId);
+                        setRecipient(staff);
+                        setCurrentStep("stock_items");
+                        triggerHaptic();
+                      } catch {
+                        setError("Staff member no longer available");
+                      }
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 border border-gray-200 text-left"
+                  >
+                    <div className="flex-shrink-0">
+                      {fav.recipientPhoto ? (
+                        <img
+                          src={fav.recipientPhoto}
+                          alt={fav.recipientName}
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center">
+                          <span className="text-teal-600 font-semibold text-xs">
+                            {staffInitials(fav.recipientName)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{fav.recipientName}</p>
+                      <p className="text-xs text-gray-500 truncate">{fav.itemNames.join(", ")}</p>
+                    </div>
+                    <span className="text-xs text-gray-400">{fav.useCount}x</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="bg-white shadow rounded-lg p-6">
           {issuer && currentStep !== "issuer" && (
-            <div className="mb-4">{renderStaffCard(issuer, "Issuer (Giving)")}</div>
+            <div className="mb-4">
+              <div className="bg-gray-50 rounded-lg p-4 flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  {issuer.photoUrl ? (
+                    <img
+                      src={issuer.photoUrl}
+                      alt={issuer.name}
+                      className="h-12 w-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-12 w-12 rounded-full bg-teal-100 flex items-center justify-center">
+                      <span className="text-teal-600 font-semibold">
+                        {staffInitials(issuer.name)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">
+                    Issuer (Giving)
+                    {quickIssueMode && " - Quick Issue"}
+                  </p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{issuer.name}</p>
+                  {issuer.employeeNumber && (
+                    <p className="text-xs text-gray-500">#{issuer.employeeNumber}</p>
+                  )}
+                </div>
+                <svg
+                  className="h-5 w-5 text-green-500 flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            </div>
           )}
           {recipient && currentStep !== "recipient" && currentStep !== "issuer" && (
-            <div className="mb-4">{renderStaffCard(recipient, "Recipient (Receiving)")}</div>
+            <div className="mb-4">
+              <div className="bg-gray-50 rounded-lg p-4 flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  {recipient.photoUrl ? (
+                    <img
+                      src={recipient.photoUrl}
+                      alt={recipient.name}
+                      className="h-12 w-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-12 w-12 rounded-full bg-teal-100 flex items-center justify-center">
+                      <span className="text-teal-600 font-semibold">
+                        {staffInitials(recipient.name)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">
+                    Recipient (Receiving)
+                  </p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{recipient.name}</p>
+                  {recipient.employeeNumber && (
+                    <p className="text-xs text-gray-500">#{recipient.employeeNumber}</p>
+                  )}
+                </div>
+                <svg
+                  className="h-5 w-5 text-green-500 flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            </div>
           )}
           {items.length > 0 && currentStep === "confirm" && (
             <div className="mb-4">
@@ -465,7 +922,47 @@ export default function IssueStockPage() {
               <div className="space-y-2">
                 {items.map((item) => (
                   <div key={item.stockItem.id} className="flex items-center gap-2">
-                    <div className="flex-1">{renderStockItemCard(item.stockItem, false)}</div>
+                    <div className="flex-1">
+                      <div className="bg-gray-50 rounded-lg p-4 flex items-center space-x-4">
+                        <div className="flex-shrink-0">
+                          {item.stockItem.photoUrl ? (
+                            <img
+                              src={item.stockItem.photoUrl}
+                              alt={item.stockItem.name}
+                              className="h-12 w-12 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                              <svg
+                                className="h-6 w-6 text-blue-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                                />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">
+                            Stock Item
+                          </p>
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {item.stockItem.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            SKU: {item.stockItem.sku} | Available: {item.stockItem.quantity}{" "}
+                            {item.stockItem.unitOfMeasure}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                     <div className="text-sm font-medium text-gray-700">
                       x{item.quantity} {item.stockItem.unitOfMeasure}
                     </div>
@@ -475,7 +972,43 @@ export default function IssueStockPage() {
             </div>
           )}
           {jobCard && currentStep === "confirm" && (
-            <div className="mb-4">{renderJobCardCard(jobCard)}</div>
+            <div className="mb-4">
+              <div className="bg-gray-50 rounded-lg p-4 flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                    <svg
+                      className="h-6 w-6 text-purple-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Job Card</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{jobCard.jobNumber}</p>
+                  <p className="text-xs text-gray-500 truncate">{jobCard.jobName}</p>
+                </div>
+                <svg
+                  className="h-5 w-5 text-green-500 flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            </div>
           )}
 
           {currentStep === "confirm" ? (
@@ -627,7 +1160,7 @@ export default function IssueStockPage() {
                     className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     {isScanning ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
                     ) : (
                       "Add"
                     )}
@@ -705,7 +1238,7 @@ export default function IssueStockPage() {
                     className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     {isScanning ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
                     ) : (
                       "Submit"
                     )}
@@ -714,7 +1247,7 @@ export default function IssueStockPage() {
               </div>
 
               <div className="flex justify-between pt-4 border-t">
-                {currentStep !== "issuer" ? (
+                {currentStep !== "issuer" && !(quickIssueMode && currentStep === "recipient") ? (
                   <button
                     onClick={handleBack}
                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
@@ -736,6 +1269,18 @@ export default function IssueStockPage() {
             </div>
           )}
         </div>
+
+        {batchMode && sessionIssuances.length > 0 && currentStep !== "confirm" && (
+          <div className="flex justify-center">
+            <button
+              onClick={() => setShowSessionSummary(true)}
+              className="px-6 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Done - View Session Summary ({sessionIssuances.length} issuance
+              {sessionIssuances.length !== 1 ? "s" : ""})
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

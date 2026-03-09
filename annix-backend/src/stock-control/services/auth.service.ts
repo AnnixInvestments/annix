@@ -16,6 +16,7 @@ import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
+import { StaffMember } from "../entities/staff-member.entity";
 import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
 import {
   StockControlInvitation,
@@ -37,6 +38,8 @@ export class StockControlAuthService {
     private readonly companyRepo: Repository<StockControlCompany>,
     @InjectRepository(StockControlInvitation)
     private readonly invitationRepo: Repository<StockControlInvitation>,
+    @InjectRepository(StaffMember)
+    private readonly staffRepo: Repository<StaffMember>,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly s3StorageService: S3StorageService,
@@ -311,9 +314,28 @@ export class StockControlAuthService {
       pipingLossFactorPct: user.company?.pipingLossFactorPct ?? 45,
       flatPlateLossFactorPct: user.company?.flatPlateLossFactorPct ?? 20,
       structuralSteelLossFactorPct: user.company?.structuralSteelLossFactorPct ?? 30,
+      linkedStaffId: user.linkedStaffId ?? null,
       createdAt: user.createdAt,
       companyUpdatedAt: user.company?.updatedAt ?? null,
     };
+  }
+
+  async updateLinkedStaff(
+    userId: number,
+    companyId: number,
+    linkedStaffId: number | null,
+  ): Promise<{ linkedStaffId: number | null }> {
+    if (linkedStaffId !== null) {
+      const staff = await this.staffRepo.findOne({
+        where: { id: linkedStaffId, companyId, active: true },
+      });
+      if (!staff) {
+        throw new NotFoundException("Staff member not found or inactive");
+      }
+    }
+
+    await this.userRepo.update(userId, { linkedStaffId });
+    return { linkedStaffId };
   }
 
   async refreshToken(refreshToken: string) {

@@ -42,6 +42,7 @@ export interface StockControlUserProfile {
   pipingLossFactorPct: number;
   flatPlateLossFactorPct: number;
   structuralSteelLossFactorPct: number;
+  linkedStaffId: number | null;
   createdAt: string;
   companyUpdatedAt: string | null;
 }
@@ -352,8 +353,22 @@ export interface RubberPlanOverride {
   status: "pending" | "accepted" | "manual";
   selectedPlyCombination: number[] | null;
   manualRolls: RubberPlanManualRoll[] | null;
+  dimensionOverrides?: RubberDimensionOverride[] | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
+}
+
+export interface RubberDimensionOverride {
+  itemType: string | null;
+  nbMm: number | null;
+  odMm: number | null;
+  schedule: string | null;
+  pipeLengthMm: number;
+  flangeConfig: string | null;
+  calculatedWidthMm: number;
+  calculatedLengthMm: number;
+  overrideWidthMm: number;
+  overrideLengthMm: number;
 }
 
 export interface StockControlSupplierDto {
@@ -641,6 +656,9 @@ export interface StockIssuance {
   issuedByUserId: number | null;
   issuedByName: string | null;
   issuedAt: string;
+  undone: boolean;
+  undoneAt: string | null;
+  undoneByName: string | null;
   createdAt: string;
 }
 
@@ -2479,6 +2497,21 @@ class StockControlApiClient {
 
   async issuanceById(id: number): Promise<StockIssuance> {
     return this.request(`/stock-control/issuance/${id}`);
+  }
+
+  async recentIssuances(): Promise<StockIssuance[]> {
+    return this.request("/stock-control/issuance/recent");
+  }
+
+  async undoIssuance(id: number): Promise<StockIssuance> {
+    return this.request(`/stock-control/issuance/${id}/undo`, { method: "POST" });
+  }
+
+  async updateLinkedStaff(linkedStaffId: number | null): Promise<{ linkedStaffId: number | null }> {
+    return this.request("/stock-control/auth/me/linked-staff", {
+      method: "PATCH",
+      body: JSON.stringify({ linkedStaffId }),
+    });
   }
 
   async workflowAssignments(): Promise<WorkflowStepAssignment[]> {

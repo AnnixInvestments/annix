@@ -59,9 +59,23 @@ export class IssuanceController {
     return this.issuanceService.findAll(req.user.companyId, filters);
   }
 
+  @Get("recent")
+  @StockControlRoles("storeman", "manager", "admin")
+  @ApiOperation({ summary: "Get recent issuances from the last 24 hours" })
+  async recentIssuances(@Req() req: any) {
+    return this.issuanceService.recentByUser(req.user.companyId);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Get a specific issuance by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {
     return this.issuanceService.findById(req.user.companyId, id);
+  }
+
+  @Post(":id/undo")
+  @StockControlRoles("storeman", "manager", "admin")
+  @ApiOperation({ summary: "Undo a recent issuance (within 5 minutes)" })
+  async undoIssuance(@Req() req: any, @Param("id") id: number) {
+    return this.issuanceService.undoIssuance(req.user.companyId, id, req.user);
   }
 }
