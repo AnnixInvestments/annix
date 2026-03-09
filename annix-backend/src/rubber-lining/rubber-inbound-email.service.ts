@@ -265,16 +265,22 @@ export class RubberInboundEmailService {
         }
 
         try {
-          const actualType = await this.classifyDocumentType(
-            cert.pdfText,
-            cert.attachment.filename,
-          );
-          if (actualType !== "coc") {
-            this.logger.log(
-              `Rerouting ${cert.attachment.filename} from CoC to ${actualType} (supplier: ${cert.supplierMapping.company.name})`,
+          const isKnownCocSupplier =
+            cert.supplierMapping.cocType === SupplierCocType.COMPOUNDER ||
+            cert.supplierMapping.cocType === SupplierCocType.CALENDARER;
+
+          if (!isKnownCocSupplier) {
+            const actualType = await this.classifyDocumentType(
+              cert.pdfText,
+              cert.attachment.filename,
             );
-            await this.processNonCocAttachments([cert.attachment], emailData, actualType, result);
-            continue;
+            if (actualType !== "coc") {
+              this.logger.log(
+                `Rerouting ${cert.attachment.filename} from CoC to ${actualType} (supplier: ${cert.supplierMapping.company.name})`,
+              );
+              await this.processNonCocAttachments([cert.attachment], emailData, actualType, result);
+              continue;
+            }
           }
         } catch (error) {
           this.logger.warn(
