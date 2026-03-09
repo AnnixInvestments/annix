@@ -2283,6 +2283,10 @@ class StockControlApiClient {
     return this.request("/stock-control/dashboard/soh-summary");
   }
 
+  async sohByLocation(): Promise<SohByLocation[]> {
+    return this.request("/stock-control/dashboard/soh-by-location");
+  }
+
   async recentActivity(): Promise<RecentActivity[]> {
     return this.request("/stock-control/dashboard/recent-activity");
   }
@@ -2738,10 +2742,7 @@ class StockControlApiClient {
     return this.request("/stock-control/workflow/user-locations");
   }
 
-  async updateUserLocations(
-    userId: number,
-    locationIds: number[],
-  ): Promise<{ success: boolean }> {
+  async updateUserLocations(userId: number, locationIds: number[]): Promise<{ success: boolean }> {
     return this.request(`/stock-control/workflow/user-locations/${userId}`, {
       method: "PUT",
       body: JSON.stringify({ locationIds }),

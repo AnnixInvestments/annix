@@ -8,6 +8,7 @@ import type {
   DashboardStats,
   JobCard,
   RecentActivity,
+  SohByLocation,
   SohSummary,
   StockItem,
 } from "@/app/lib/api/stockControlApi";
@@ -113,6 +114,7 @@ export default function StockControlDashboard() {
   const { colors, heroImageUrl } = useStockControlBranding();
   const { user } = useStockControlAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [sohByLocation, setSohByLocation] = useState<SohByLocation[]>([]);
   const [sohSummary, setSohSummary] = useState<SohSummary[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [reorderAlerts, setReorderAlerts] = useState<StockItem[]>([]);
@@ -125,9 +127,10 @@ export default function StockControlDashboard() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [statsData, sohData, activityData, alertsData, approvalsData, cpoData] =
+        const [statsData, locationData, sohData, activityData, alertsData, approvalsData, cpoData] =
           await Promise.all([
             stockControlApiClient.dashboardStats(),
+            stockControlApiClient.sohByLocation(),
             stockControlApiClient.sohSummary(),
             stockControlApiClient.recentActivity(),
             stockControlApiClient.reorderAlerts(),
@@ -135,6 +138,7 @@ export default function StockControlDashboard() {
             stockControlApiClient.cpoSummary().catch(() => null),
           ]);
         setStats(statsData);
+        setSohByLocation(Array.isArray(locationData) ? locationData : []);
         setSohSummary(Array.isArray(sohData) ? sohData : []);
         setRecentActivity(Array.isArray(activityData) ? activityData : []);
         setReorderAlerts(Array.isArray(alertsData) ? alertsData : []);
@@ -172,7 +176,8 @@ export default function StockControlDashboard() {
     );
   }
 
-  const maxSohQuantity = sohSummary.reduce((max, s) => Math.max(max, s.totalQuantity), 0);
+  const maxLocationQuantity = sohByLocation.reduce((max, s) => Math.max(max, s.totalQuantity), 0);
+  const maxCategoryQuantity = sohSummary.reduce((max, s) => Math.max(max, s.totalQuantity), 0);
 
   return (
     <div className="space-y-6">
@@ -348,6 +353,51 @@ export default function StockControlDashboard() {
         </Link>
       </div>
 
+      {sohByLocation.length > 0 && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-3 py-4 sm:px-6 sm:py-5 border-b border-gray-200">
+            <h3 className="text-base sm:text-lg leading-6 font-medium text-gray-900">
+              SOH by Location
+            </h3>
+          </div>
+          <div className="p-3 sm:p-6">
+            <div className="space-y-3 sm:space-y-4">
+              {sohByLocation.map((item) => (
+                <div
+                  key={item.location}
+                  className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0"
+                >
+                  <div className="sm:w-40 text-xs sm:text-sm font-medium text-gray-700 truncate">
+                    {item.location}
+                  </div>
+                  <div className="flex items-center flex-1 gap-2 sm:gap-0">
+                    <div className="flex-1 sm:mx-4">
+                      <div className="w-full bg-gray-200 rounded-full h-3 sm:h-4">
+                        <div
+                          className="bg-blue-500 h-3 sm:h-4 rounded-full transition-all"
+                          style={{
+                            width:
+                              maxLocationQuantity > 0
+                                ? `${(item.totalQuantity / maxLocationQuantity) * 100}%`
+                                : "0%",
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                    <div className="w-12 sm:w-20 text-xs sm:text-sm text-gray-600 text-right">
+                      {item.totalQuantity}
+                    </div>
+                    <div className="w-20 sm:w-28 text-xs sm:text-sm text-gray-500 text-right">
+                      {formatZAR(item.totalValue)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {sohSummary.length > 0 && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="px-3 py-4 sm:px-6 sm:py-5 border-b border-gray-200">
@@ -362,7 +412,7 @@ export default function StockControlDashboard() {
                   key={item.category}
                   className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0"
                 >
-                  <div className="sm:w-32 text-xs sm:text-sm font-medium text-gray-700 truncate">
+                  <div className="sm:w-40 text-xs sm:text-sm font-medium text-gray-700 truncate">
                     {item.category}
                   </div>
                   <div className="flex items-center flex-1 gap-2 sm:gap-0">
@@ -372,8 +422,8 @@ export default function StockControlDashboard() {
                           className="bg-teal-500 h-3 sm:h-4 rounded-full transition-all"
                           style={{
                             width:
-                              maxSohQuantity > 0
-                                ? `${(item.totalQuantity / maxSohQuantity) * 100}%`
+                              maxCategoryQuantity > 0
+                                ? `${(item.totalQuantity / maxCategoryQuantity) * 100}%`
                                 : "0%",
                           }}
                         ></div>

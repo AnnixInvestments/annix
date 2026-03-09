@@ -6,13 +6,13 @@ import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import {
   CandidateImage,
   EligibleUser,
+  StepNotificationRecipients,
   StockControlDepartment,
   StockControlInvitation,
   StockControlLocation,
   StockControlTeamMember,
-  StepNotificationRecipients,
-  UserLocationSummary,
   stockControlApiClient,
+  UserLocationSummary,
   WorkflowStepAssignment,
 } from "@/app/lib/api/stockControlApi";
 import { syncStatus } from "../../lib/offline/syncManager";
@@ -1923,7 +1923,8 @@ function NotificationRecipientsSection() {
       <h2 className="text-lg font-semibold text-gray-900 mb-2">Notification Recipients</h2>
       <p className="text-sm text-gray-500 mb-4">
         Configure who receives email notifications for each workflow step. Add one or more email
-        addresses per step. If no recipients are configured, notifications go to assigned users only.
+        addresses per step. If no recipients are configured, notifications go to assigned users
+        only.
       </p>
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
@@ -2086,9 +2087,7 @@ function UserLocationAssignmentsSection({
 
   const handleLocationToggle = (locationId: number) => {
     setSelectedLocationIds((prev) =>
-      prev.includes(locationId)
-        ? prev.filter((id) => id !== locationId)
-        : [...prev, locationId],
+      prev.includes(locationId) ? prev.filter((id) => id !== locationId) : [...prev, locationId],
     );
   };
 
@@ -2148,8 +2147,7 @@ function UserLocationAssignmentsSection({
                   <div>
                     <h3 className="font-medium text-gray-900">{member.name}</h3>
                     <p className="text-xs text-gray-500">
-                      {member.email} &middot;{" "}
-                      <span className="capitalize">{member.role}</span>
+                      {member.email} &middot; <span className="capitalize">{member.role}</span>
                     </p>
                   </div>
                   <button
@@ -2204,9 +2202,7 @@ function UserLocationAssignmentsSection({
                 ) : (
                   <div>
                     {assignedIds.length === 0 ? (
-                      <p className="text-sm text-gray-500 italic">
-                        All locations (no restriction)
-                      </p>
+                      <p className="text-sm text-gray-500 italic">All locations (no restriction)</p>
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         {assignedIds.map((id) => (

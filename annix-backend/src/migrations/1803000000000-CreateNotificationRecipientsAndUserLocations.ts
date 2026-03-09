@@ -28,7 +28,7 @@ export class CreateNotificationRecipientsAndUserLocations1803000000000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS user_location_assignments`);
-    await queryRunner.query(`DROP TABLE IF EXISTS workflow_notification_recipients`);
+    await queryRunner.query("DROP TABLE IF EXISTS user_location_assignments");
+    await queryRunner.query("DROP TABLE IF EXISTS workflow_notification_recipients");
   }
 }

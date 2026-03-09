@@ -3,7 +3,6 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, LessThanOrEqual, Repository } from "typeorm";
 import { fromJSDate, now } from "../../lib/datetime";
-import { DeliveryNote } from "../entities/delivery-note.entity";
 import {
   CalloffStatus,
   CalloffType,
@@ -11,6 +10,7 @@ import {
 } from "../entities/cpo-calloff-record.entity";
 import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
+import { DeliveryNote } from "../entities/delivery-note.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { Requisition, RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
@@ -661,9 +661,7 @@ export class CpoService {
     return updated;
   }
 
-  async fulfillmentReport(
-    companyId: number,
-  ): Promise<
+  async fulfillmentReport(companyId: number): Promise<
     {
       cpoId: number;
       cpoNumber: string;
@@ -725,7 +723,13 @@ export class CpoService {
   }
 
   async calloffStatusBreakdown(companyId: number): Promise<{
-    summary: { pending: number; calledOff: number; delivered: number; invoiced: number; total: number };
+    summary: {
+      pending: number;
+      calledOff: number;
+      delivered: number;
+      invoiced: number;
+      total: number;
+    };
     byCpo: {
       cpoId: number;
       cpoNumber: string;
@@ -752,7 +756,17 @@ export class CpoService {
     );
 
     const byCpoMap = records.reduce<
-      Record<number, { cpoId: number; cpoNumber: string; pending: number; calledOff: number; delivered: number; invoiced: number }>
+      Record<
+        number,
+        {
+          cpoId: number;
+          cpoNumber: string;
+          pending: number;
+          calledOff: number;
+          delivered: number;
+          invoiced: number;
+        }
+      >
     >((acc, r) => {
       const existing = acc[r.cpoId] || {
         cpoId: r.cpoId,
@@ -850,24 +864,27 @@ export class CpoService {
       const records = calloffByCpo[cpo.id] || [];
       const rubberStatus = records.find((r) => r.calloffType === CalloffType.RUBBER)?.status || "-";
       const paintStatus = records.find((r) => r.calloffType === CalloffType.PAINT)?.status || "-";
-      const solutionStatus = records.find((r) => r.calloffType === CalloffType.SOLUTION)?.status || "-";
+      const solutionStatus =
+        records.find((r) => r.calloffType === CalloffType.SOLUTION)?.status || "-";
 
       if (!cpo.items || cpo.items.length === 0) {
-        return [[
-          cpo.cpoNumber,
-          cpo.jobNumber,
-          cpo.customerName || "",
-          cpo.status,
-          "",
-          "",
-          "0",
-          "0",
-          "0",
-          "0",
-          rubberStatus,
-          paintStatus,
-          solutionStatus,
-        ]];
+        return [
+          [
+            cpo.cpoNumber,
+            cpo.jobNumber,
+            cpo.customerName || "",
+            cpo.status,
+            "",
+            "",
+            "0",
+            "0",
+            "0",
+            "0",
+            rubberStatus,
+            paintStatus,
+            solutionStatus,
+          ],
+        ];
       }
 
       return cpo.items.map((item) => {
@@ -893,12 +910,22 @@ export class CpoService {
       });
     });
 
-    return [headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    return [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
   }
 
   private inferCalloffTypeFromSupplier(normalisedName: string): CalloffType | null {
     const rubberKeywords = ["rubber", "lining", "polycorp", "trelleborg", "rema"];
-    const paintKeywords = ["paint", "coating", "dulux", "sigma", "jotun", "hempel", "international"];
+    const paintKeywords = [
+      "paint",
+      "coating",
+      "dulux",
+      "sigma",
+      "jotun",
+      "hempel",
+      "international",
+    ];
     const solutionKeywords = ["solution", "chemical", "solvent", "thinner", "adhesive"];
 
     if (rubberKeywords.some((kw) => normalisedName.includes(kw))) {

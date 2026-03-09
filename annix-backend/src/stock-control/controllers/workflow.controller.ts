@@ -207,11 +207,7 @@ export class WorkflowController {
     @Param("userId") userId: number,
     @Body() body: { locationIds: number[] },
   ) {
-    await this.assignmentService.updateUserLocations(
-      req.user.companyId,
-      userId,
-      body.locationIds,
-    );
+    await this.assignmentService.updateUserLocations(req.user.companyId, userId, body.locationIds);
     return { success: true };
   }
 

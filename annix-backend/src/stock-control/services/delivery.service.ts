@@ -103,10 +103,12 @@ export class DeliveryService {
 
     await Promise.all(itemPromises);
 
-    this.cpoService.linkDeliveryToCalloffs(companyId, data.supplierName, savedNote.id).catch((err) => {
-      const msg = err instanceof Error ? err.message : "Unknown error";
-      this.logger.warn(`Failed to link DN ${savedNote.id} to calloffs: ${msg}`);
-    });
+    this.cpoService
+      .linkDeliveryToCalloffs(companyId, data.supplierName, savedNote.id)
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        this.logger.warn(`Failed to link DN ${savedNote.id} to calloffs: ${msg}`);
+      });
 
     return this.findById(companyId, savedNote.id);
   }

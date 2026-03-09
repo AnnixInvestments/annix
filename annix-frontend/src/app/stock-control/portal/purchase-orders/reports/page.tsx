@@ -199,7 +199,9 @@ export default function CpoReportsPage() {
                           <td className="px-6 py-3 whitespace-nowrap text-sm text-right">
                             <span
                               className={
-                                cpo.totalRemaining > 0 ? "text-amber-600 font-medium" : "text-green-600"
+                                cpo.totalRemaining > 0
+                                  ? "text-amber-600 font-medium"
+                                  : "text-green-600"
                               }
                             >
                               {cpo.totalRemaining}
@@ -231,9 +233,21 @@ export default function CpoReportsPage() {
                 {(
                   [
                     { label: "Pending", value: calloffBreakdown.summary.pending, color: "yellow" },
-                    { label: "Called Off", value: calloffBreakdown.summary.calledOff, color: "blue" },
-                    { label: "Delivered", value: calloffBreakdown.summary.delivered, color: "green" },
-                    { label: "Invoiced", value: calloffBreakdown.summary.invoiced, color: "purple" },
+                    {
+                      label: "Called Off",
+                      value: calloffBreakdown.summary.calledOff,
+                      color: "blue",
+                    },
+                    {
+                      label: "Delivered",
+                      value: calloffBreakdown.summary.delivered,
+                      color: "green",
+                    },
+                    {
+                      label: "Invoiced",
+                      value: calloffBreakdown.summary.invoiced,
+                      color: "purple",
+                    },
                     { label: "Total", value: calloffBreakdown.summary.total, color: "gray" },
                   ] as const
                 ).map((stat) => (
