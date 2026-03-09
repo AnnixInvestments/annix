@@ -826,26 +826,10 @@ export default function StockControlSettingsPage() {
             />
           </div>
         </div>
-        {detailsError && <p className="mt-4 text-sm text-red-600">{detailsError}</p>}
-        {detailsSuccess && (
-          <p className="mt-4 text-sm text-green-600">Company details updated successfully.</p>
-        )}
-        <button
-          type="button"
-          onClick={handleSaveCompanyDetails}
-          disabled={detailsSaving}
-          className="mt-4 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {detailsSaving ? "Saving..." : "Save Company Details"}
-        </button>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Coating Loss Factors</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Paint loss factors account for material lost during application due to surface geometry,
-          overspray, and wastage. Higher loss means more paint is needed per m². These values are
-          used in coating analysis calculations.
+        <h3 className="text-sm font-semibold text-gray-900 mt-6 mb-2">Coating Loss Factors</h3>
+        <p className="text-xs text-gray-500 mb-3">
+          Paint loss factors account for material lost during application. Higher loss means more
+          paint is needed per m².
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
@@ -915,14 +899,24 @@ export default function StockControlSettingsPage() {
             </div>
           </div>
         </div>
-        <p className="mt-3 text-xs text-gray-400 italic">
-          Changes are saved with the &quot;Save Company Details&quot; button above.
-        </p>
+
+        {detailsError && <p className="mt-4 text-sm text-red-600">{detailsError}</p>}
+        {detailsSuccess && (
+          <p className="mt-4 text-sm text-green-600">Company details updated successfully.</p>
+        )}
+        <button
+          type="button"
+          onClick={handleSaveCompanyDetails}
+          disabled={detailsSaving}
+          className="mt-4 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {detailsSaving ? "Saving..." : "Save Company Details"}
+        </button>
       </div>
 
       <SmtpConfigSection />
 
-      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Branding</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1358,236 +1352,242 @@ export default function StockControlSettingsPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Departments</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Manage departments that can be assigned to staff members.
-        </p>
+      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Departments & Locations</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Departments</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Manage departments that can be assigned to staff members.
+            </p>
 
-        <div className="flex gap-2 mb-4">
-          <input
-            type="text"
-            placeholder="New department name"
-            value={newDepartmentName}
-            onChange={(e) => {
-              setNewDepartmentName(e.target.value);
-              setDepartmentError("");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddDepartment();
-            }}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-          />
-          <button
-            type="button"
-            onClick={handleAddDepartment}
-            disabled={!newDepartmentName.trim()}
-            className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
-          >
-            Add
-          </button>
-        </div>
-
-        {departmentError && <p className="text-sm text-red-600 mb-4">{departmentError}</p>}
-
-        {departmentsLoading ? (
-          <div className="text-center py-4 text-gray-500">Loading departments...</div>
-        ) : departments.length === 0 ? (
-          <div className="text-center py-4 text-gray-500">No departments yet</div>
-        ) : (
-          <div className="space-y-2">
-            {departments.map((dept) => (
-              <div
-                key={dept.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50"
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="New department name"
+                value={newDepartmentName}
+                onChange={(e) => {
+                  setNewDepartmentName(e.target.value);
+                  setDepartmentError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddDepartment();
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddDepartment}
+                disabled={!newDepartmentName.trim()}
+                className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
               >
-                {editingDepartmentId === dept.id ? (
-                  <input
-                    type="text"
-                    value={editingDepartmentName}
-                    onChange={(e) => setEditingDepartmentName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleUpdateDepartment(dept.id);
-                      if (e.key === "Escape") setEditingDepartmentId(null);
-                    }}
-                    autoFocus
-                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-                  />
-                ) : (
-                  <span className="text-sm text-gray-900">{dept.name}</span>
-                )}
-                <div className="flex items-center gap-2">
-                  {editingDepartmentId === dept.id ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateDepartment(dept.id)}
-                        className="text-xs font-medium text-teal-600 hover:text-teal-800"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingDepartmentId(null)}
-                        className="text-xs font-medium text-gray-600 hover:text-gray-800"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingDepartmentId(dept.id);
-                          setEditingDepartmentName(dept.name);
+                Add
+              </button>
+            </div>
+
+            {departmentError && <p className="text-sm text-red-600 mb-4">{departmentError}</p>}
+
+            {departmentsLoading ? (
+              <div className="text-center py-4 text-gray-500">Loading departments...</div>
+            ) : departments.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">No departments yet</div>
+            ) : (
+              <div className="space-y-2">
+                {departments.map((dept) => (
+                  <div
+                    key={dept.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50"
+                  >
+                    {editingDepartmentId === dept.id ? (
+                      <input
+                        type="text"
+                        value={editingDepartmentName}
+                        onChange={(e) => setEditingDepartmentName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleUpdateDepartment(dept.id);
+                          if (e.key === "Escape") setEditingDepartmentId(null);
                         }}
-                        className="text-xs font-medium text-teal-600 hover:text-teal-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteDepartment(dept.id)}
-                        className="text-xs font-medium text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Locations</h2>
-        <p className="text-sm text-gray-500 mb-4">Manage storage locations for inventory items.</p>
-
-        <div className="space-y-2 mb-4">
-          <input
-            type="text"
-            placeholder="New location name"
-            value={newLocationName}
-            onChange={(e) => {
-              setNewLocationName(e.target.value);
-              setLocationError("");
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-          />
-          <input
-            type="text"
-            placeholder="Description (optional)"
-            value={newLocationDescription}
-            onChange={(e) => setNewLocationDescription(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddLocation();
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-          />
-          <button
-            type="button"
-            onClick={handleAddLocation}
-            disabled={!newLocationName.trim()}
-            className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
-          >
-            Add Location
-          </button>
-        </div>
-
-        {locationError && <p className="text-sm text-red-600 mb-4">{locationError}</p>}
-
-        {locationsLoading ? (
-          <div className="text-center py-4 text-gray-500">Loading locations...</div>
-        ) : locations.length === 0 ? (
-          <div className="text-center py-4 text-gray-500">No locations yet</div>
-        ) : (
-          <div className="space-y-2">
-            {locations.map((loc) => (
-              <div
-                key={loc.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50"
-              >
-                {editingLocationId === loc.id ? (
-                  <div className="flex-1 space-y-2 mr-4">
-                    <input
-                      type="text"
-                      value={editingLocationName}
-                      onChange={(e) => setEditingLocationName(e.target.value)}
-                      autoFocus
-                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-                    />
-                    <input
-                      type="text"
-                      value={editingLocationDescription}
-                      onChange={(e) => setEditingLocationDescription(e.target.value)}
-                      placeholder="Description (optional)"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleUpdateLocation(loc.id);
-                        if (e.key === "Escape") setEditingLocationId(null);
-                      }}
-                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-                    />
-                  </div>
-                ) : (
-                  <div className="flex-1">
-                    <span className="text-sm text-gray-900">{loc.name}</span>
-                    {loc.description && (
-                      <span className="ml-2 text-xs text-gray-500">{loc.description}</span>
+                        autoFocus
+                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                      />
+                    ) : (
+                      <span className="text-sm text-gray-900">{dept.name}</span>
                     )}
+                    <div className="flex items-center gap-2">
+                      {editingDepartmentId === dept.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateDepartment(dept.id)}
+                            className="text-xs font-medium text-teal-600 hover:text-teal-800"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDepartmentId(null)}
+                            className="text-xs font-medium text-gray-600 hover:text-gray-800"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDepartmentId(dept.id);
+                              setEditingDepartmentName(dept.name);
+                            }}
+                            className="text-xs font-medium text-teal-600 hover:text-teal-800"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDepartment(dept.id)}
+                            className="text-xs font-medium text-red-600 hover:text-red-800"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className="flex items-center gap-2">
-                  {editingLocationId === loc.id ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateLocation(loc.id)}
-                        className="text-xs font-medium text-teal-600 hover:text-teal-800"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingLocationId(null)}
-                        className="text-xs font-medium text-gray-600 hover:text-gray-800"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingLocationId(loc.id);
-                          setEditingLocationName(loc.name);
-                          setEditingLocationDescription(loc.description ?? "");
-                        }}
-                        className="text-xs font-medium text-teal-600 hover:text-teal-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteLocation(loc.id)}
-                        className="text-xs font-medium text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
+
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Locations</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Manage storage locations for inventory items.
+            </p>
+
+            <div className="space-y-2 mb-4">
+              <input
+                type="text"
+                placeholder="New location name"
+                value={newLocationName}
+                onChange={(e) => {
+                  setNewLocationName(e.target.value);
+                  setLocationError("");
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              />
+              <input
+                type="text"
+                placeholder="Description (optional)"
+                value={newLocationDescription}
+                onChange={(e) => setNewLocationDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddLocation();
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddLocation}
+                disabled={!newLocationName.trim()}
+                className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+              >
+                Add Location
+              </button>
+            </div>
+
+            {locationError && <p className="text-sm text-red-600 mb-4">{locationError}</p>}
+
+            {locationsLoading ? (
+              <div className="text-center py-4 text-gray-500">Loading locations...</div>
+            ) : locations.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">No locations yet</div>
+            ) : (
+              <div className="space-y-2">
+                {locations.map((loc) => (
+                  <div
+                    key={loc.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50"
+                  >
+                    {editingLocationId === loc.id ? (
+                      <div className="flex-1 space-y-2 mr-4">
+                        <input
+                          type="text"
+                          value={editingLocationName}
+                          onChange={(e) => setEditingLocationName(e.target.value)}
+                          autoFocus
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                        />
+                        <input
+                          type="text"
+                          value={editingLocationDescription}
+                          onChange={(e) => setEditingLocationDescription(e.target.value)}
+                          placeholder="Description (optional)"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleUpdateLocation(loc.id);
+                            if (e.key === "Escape") setEditingLocationId(null);
+                          }}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-1">
+                        <span className="text-sm text-gray-900">{loc.name}</span>
+                        {loc.description && (
+                          <span className="ml-2 text-xs text-gray-500">{loc.description}</span>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      {editingLocationId === loc.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateLocation(loc.id)}
+                            className="text-xs font-medium text-teal-600 hover:text-teal-800"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingLocationId(null)}
+                            className="text-xs font-medium text-gray-600 hover:text-gray-800"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingLocationId(loc.id);
+                              setEditingLocationName(loc.name);
+                              setEditingLocationDescription(loc.description ?? "");
+                            }}
+                            className="text-xs font-medium text-teal-600 hover:text-teal-800"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLocation(loc.id)}
+                            className="text-xs font-medium text-red-600 hover:text-red-800"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      <WorkflowAssignmentsSection />
-      <NotificationRecipientsSection teamMembers={teamMembers} />
+      <WorkflowConfigurationSection teamMembers={teamMembers} />
       <UserLocationAssignmentsSection locations={locations} teamMembers={teamMembers} />
       <AppInfoSection />
     </div>
@@ -1605,26 +1605,47 @@ const WORKFLOW_STEPS = [
   { key: "DISPATCHED", label: "Dispatched" },
 ];
 
-function WorkflowAssignmentsSection() {
+function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockControlTeamMember[] }) {
   const [assignments, setAssignments] = useState<WorkflowStepAssignment[]>([]);
   const [eligibleUsers, setEligibleUsers] = useState<Record<string, EligibleUser[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [editingStep, setEditingStep] = useState<string | null>(null);
+  const [recipients, setRecipients] = useState<StepNotificationRecipients[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(true);
+  const [recipientsLoading, setRecipientsLoading] = useState(true);
+
+  const [editingAssignmentStep, setEditingAssignmentStep] = useState<string | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [primaryUserId, setPrimaryUserId] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+
+  const [editingNotifyStep, setEditingNotifyStep] = useState<string | null>(null);
+  const [selectedEmail, setSelectedEmail] = useState("");
+  const [editEmails, setEditEmails] = useState<string[]>([]);
+  const [notifySaving, setNotifySaving] = useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
   const loadAssignments = useCallback(async () => {
-    setLoading(true);
+    setAssignmentsLoading(true);
     try {
       const data = await stockControlApiClient.workflowAssignments();
       setAssignments(data);
     } catch {
       setError("Failed to load workflow assignments");
     } finally {
-      setLoading(false);
+      setAssignmentsLoading(false);
+    }
+  }, []);
+
+  const loadRecipients = useCallback(async () => {
+    setRecipientsLoading(true);
+    try {
+      const data = await stockControlApiClient.notificationRecipients();
+      setRecipients(data);
+    } catch {
+      setError("Failed to load notification recipients");
+    } finally {
+      setRecipientsLoading(false);
     }
   }, []);
 
@@ -1647,36 +1668,40 @@ function WorkflowAssignmentsSection() {
     loadAssignments();
   }, [loadAssignments]);
 
-  const handleEditStep = async (step: string) => {
+  useEffect(() => {
+    loadRecipients();
+  }, [loadRecipients]);
+
+  const handleEditAssignment = async (step: string) => {
     await loadEligibleUsers(step);
     const assignment = assignments.find((a) => a.step === step);
     setSelectedUserIds(assignment?.userIds || []);
     setPrimaryUserId(assignment?.primaryUserId || null);
-    setEditingStep(step);
+    setEditingAssignmentStep(step);
     setError("");
     setSuccess(false);
   };
 
-  const handleSave = async () => {
-    if (!editingStep) return;
+  const handleSaveAssignment = async () => {
+    if (!editingAssignmentStep) return;
 
-    setSaving(true);
+    setAssignmentSaving(true);
     setError("");
     setSuccess(false);
 
     try {
       await stockControlApiClient.updateWorkflowAssignments(
-        editingStep,
+        editingAssignmentStep,
         selectedUserIds,
         primaryUserId ?? undefined,
       );
       await loadAssignments();
-      setEditingStep(null);
+      setEditingAssignmentStep(null);
       setSuccess(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save assignments");
     } finally {
-      setSaving(false);
+      setAssignmentSaving(false);
     }
   };
 
@@ -1700,180 +1725,11 @@ function WorkflowAssignmentsSection() {
     setPrimaryUserId(userId);
   };
 
-  const stepLabel = (step: string) => WORKFLOW_STEPS.find((s) => s.key === step)?.label || step;
-
-  const roleLabel = (role: string) => {
-    const labels: Record<string, string> = {
-      admin: "Admin",
-      manager: "Manager",
-      accounts: "Accounts",
-      storeman: "Storeman",
-    };
-    return labels[role] || role;
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-2">Workflow Assignments</h2>
-      <p className="text-sm text-gray-500 mb-4">
-        Assign specific users to workflow steps. If no users are assigned, the system will notify
-        all users with the appropriate role.
-      </p>
-
-      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
-      {success && (
-        <p className="text-sm text-green-600 mb-4">Workflow assignments updated successfully.</p>
-      )}
-
-      {loading ? (
-        <div className="text-center py-4 text-gray-500">Loading workflow assignments...</div>
-      ) : (
-        <div className="space-y-3">
-          {assignments.map((assignment) => (
-            <div key={assignment.step} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-medium text-gray-900">{stepLabel(assignment.step)}</h3>
-                <button
-                  type="button"
-                  onClick={() => handleEditStep(assignment.step)}
-                  className="text-sm text-teal-600 hover:text-teal-700 font-medium"
-                >
-                  {editingStep === assignment.step ? "Cancel" : "Edit"}
-                </button>
-              </div>
-
-              {editingStep === assignment.step ? (
-                <div className="space-y-3">
-                  <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
-                    {eligibleUsers[assignment.step]?.length === 0 ? (
-                      <p className="text-sm text-gray-500 p-3">No eligible users found</p>
-                    ) : (
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50 sticky top-0">
-                          <tr>
-                            <th className="text-left px-3 py-2 font-medium text-gray-700">
-                              Assign
-                            </th>
-                            <th className="text-left px-3 py-2 font-medium text-gray-700">Name</th>
-                            <th className="text-left px-3 py-2 font-medium text-gray-700">Role</th>
-                            <th className="text-left px-3 py-2 font-medium text-gray-700">
-                              Primary
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {eligibleUsers[assignment.step]?.map((user) => (
-                            <tr key={user.id} className="hover:bg-gray-50">
-                              <td className="px-3 py-2">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedUserIds.includes(user.id)}
-                                  onChange={() => handleUserToggle(user.id)}
-                                  className="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
-                                />
-                              </td>
-                              <td className="px-3 py-2 text-gray-900">{user.name}</td>
-                              <td className="px-3 py-2 text-gray-500">{roleLabel(user.role)}</td>
-                              <td className="px-3 py-2">
-                                <input
-                                  type="radio"
-                                  name={`primary-${assignment.step}`}
-                                  checked={primaryUserId === user.id}
-                                  onChange={() => handlePrimaryChange(user.id)}
-                                  disabled={!selectedUserIds.includes(user.id)}
-                                  className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500 disabled:opacity-50"
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
-                    >
-                      {saving ? "Saving..." : "Save"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingStep(null)}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {assignment.users.length === 0 ? (
-                    <p className="text-sm text-gray-500 italic">
-                      Using role-based assignment (default)
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {assignment.users.map((user) => (
-                        <span
-                          key={user.id}
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            assignment.primaryUserId === user.id
-                              ? "bg-teal-100 text-teal-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {user.name}
-                          {assignment.primaryUserId === user.id && (
-                            <span className="ml-1 text-teal-600">(Primary)</span>
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function NotificationRecipientsSection({ teamMembers }: { teamMembers: StockControlTeamMember[] }) {
-  const [recipients, setRecipients] = useState<StepNotificationRecipients[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingStep, setEditingStep] = useState<string | null>(null);
-  const [selectedEmail, setSelectedEmail] = useState("");
-  const [editEmails, setEditEmails] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-
-  const loadRecipients = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await stockControlApiClient.notificationRecipients();
-      setRecipients(data);
-    } catch {
-      setError("Failed to load notification recipients");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadRecipients();
-  }, [loadRecipients]);
-
-  const handleEditStep = (step: string) => {
+  const handleEditNotify = (step: string) => {
     const existing = recipients.find((r) => r.step === step);
     setEditEmails(existing?.emails || []);
     setSelectedEmail("");
-    setEditingStep(step);
+    setEditingNotifyStep(step);
     setError("");
     setSuccess(false);
   };
@@ -1894,10 +1750,10 @@ function NotificationRecipientsSection({ teamMembers }: { teamMembers: StockCont
     setEditEmails((prev) => prev.filter((e) => e !== email));
   };
 
-  const handleSave = async () => {
-    if (!editingStep) return;
+  const handleSaveNotify = async () => {
+    if (!editingNotifyStep) return;
 
-    setSaving(true);
+    setNotifySaving(true);
     setError("");
     setSuccess(false);
 
@@ -1906,149 +1762,296 @@ function NotificationRecipientsSection({ teamMembers }: { teamMembers: StockCont
       : editEmails;
 
     try {
-      await stockControlApiClient.updateNotificationRecipients(editingStep, emailsToSave);
+      await stockControlApiClient.updateNotificationRecipients(editingNotifyStep, emailsToSave);
       await loadRecipients();
-      setEditingStep(null);
+      setEditingNotifyStep(null);
       setSuccess(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save recipients");
     } finally {
-      setSaving(false);
+      setNotifySaving(false);
     }
   };
 
   const stepLabel = (step: string) => WORKFLOW_STEPS.find((s) => s.key === step)?.label || step;
 
+  const roleLabel = (role: string) => {
+    const labels: Record<string, string> = {
+      admin: "Admin",
+      manager: "Manager",
+      accounts: "Accounts",
+      storeman: "Storeman",
+    };
+    return labels[role] || role;
+  };
+
+  const loading = assignmentsLoading || recipientsLoading;
+
+  const recipientsByStep = recipients.reduce<Record<string, StepNotificationRecipients>>(
+    (acc, r) => ({ ...acc, [r.step]: r }),
+    {},
+  );
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-2">Notification Recipients</h2>
+    <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">Workflow Configuration</h2>
       <p className="text-sm text-gray-500 mb-4">
-        Configure who receives email notifications for each workflow step. Add one or more email
-        addresses per step. If no recipients are configured, notifications go to assigned users
-        only.
+        Configure user assignments and notification recipients for each workflow step.
       </p>
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
       {success && (
-        <p className="text-sm text-green-600 mb-4">Notification recipients updated successfully.</p>
+        <p className="text-sm text-green-600 mb-4">Workflow configuration updated successfully.</p>
       )}
 
       {loading ? (
-        <div className="text-center py-4 text-gray-500">Loading notification recipients...</div>
+        <div className="text-center py-4 text-gray-500">Loading workflow configuration...</div>
       ) : (
         <div className="space-y-3">
-          {recipients.map((recipient) => (
-            <div key={recipient.step} className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-medium text-gray-900">{stepLabel(recipient.step)}</h3>
-                <button
-                  type="button"
-                  onClick={() =>
-                    editingStep === recipient.step
-                      ? setEditingStep(null)
-                      : handleEditStep(recipient.step)
-                  }
-                  className="text-sm text-teal-600 hover:text-teal-700 font-medium"
-                >
-                  {editingStep === recipient.step ? "Cancel" : "Edit"}
-                </button>
+          {assignments.map((assignment) => {
+            const recipient = recipientsByStep[assignment.step];
+            return (
+              <div key={assignment.step} className="border border-gray-200 rounded-lg p-4">
+                <h3 className="font-medium text-gray-900 mb-3">{stepLabel(assignment.step)}</h3>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase">
+                        Assigned Users
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          editingAssignmentStep === assignment.step
+                            ? setEditingAssignmentStep(null)
+                            : handleEditAssignment(assignment.step)
+                        }
+                        className="text-xs text-teal-600 hover:text-teal-700 font-medium"
+                      >
+                        {editingAssignmentStep === assignment.step ? "Cancel" : "Edit"}
+                      </button>
+                    </div>
+
+                    {editingAssignmentStep === assignment.step ? (
+                      <div className="space-y-3">
+                        <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
+                          {eligibleUsers[assignment.step]?.length === 0 ? (
+                            <p className="text-sm text-gray-500 p-3">No eligible users found</p>
+                          ) : (
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 sticky top-0">
+                                <tr>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-700">
+                                    Assign
+                                  </th>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-700">
+                                    Name
+                                  </th>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-700">
+                                    Role
+                                  </th>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-700">
+                                    Primary
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {eligibleUsers[assignment.step]?.map((user) => (
+                                  <tr key={user.id} className="hover:bg-gray-50">
+                                    <td className="px-3 py-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedUserIds.includes(user.id)}
+                                        onChange={() => handleUserToggle(user.id)}
+                                        className="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2 text-gray-900">{user.name}</td>
+                                    <td className="px-3 py-2 text-gray-500">
+                                      {roleLabel(user.role)}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <input
+                                        type="radio"
+                                        name={`primary-${assignment.step}`}
+                                        checked={primaryUserId === user.id}
+                                        onChange={() => handlePrimaryChange(user.id)}
+                                        disabled={!selectedUserIds.includes(user.id)}
+                                        className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500 disabled:opacity-50"
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleSaveAssignment}
+                            disabled={assignmentSaving}
+                            className="px-3 py-1.5 bg-teal-600 text-white text-xs font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                          >
+                            {assignmentSaving ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingAssignmentStep(null)}
+                            className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        {assignment.users.length === 0 ? (
+                          <p className="text-sm text-gray-500 italic">
+                            Using role-based assignment (default)
+                          </p>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {assignment.users.map((user) => (
+                              <span
+                                key={user.id}
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  assignment.primaryUserId === user.id
+                                    ? "bg-teal-100 text-teal-800"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                              >
+                                {user.name}
+                                {assignment.primaryUserId === user.id && (
+                                  <span className="ml-1 text-teal-600">(Primary)</span>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase">
+                        Notification Recipients
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          editingNotifyStep === assignment.step
+                            ? setEditingNotifyStep(null)
+                            : handleEditNotify(assignment.step)
+                        }
+                        className="text-xs text-teal-600 hover:text-teal-700 font-medium"
+                      >
+                        {editingNotifyStep === assignment.step ? "Cancel" : "Edit"}
+                      </button>
+                    </div>
+
+                    {editingNotifyStep === assignment.step ? (
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <select
+                            value={selectedEmail}
+                            onChange={(e) => setSelectedEmail(e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-teal-500 focus:border-teal-500"
+                          >
+                            <option value="">Select a team member...</option>
+                            {teamMembers
+                              .filter((m) => !editEmails.includes(m.email.toLowerCase()))
+                              .map((member) => (
+                                <option key={member.id} value={member.email.toLowerCase()}>
+                                  {member.name} ({member.email})
+                                </option>
+                              ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={handleAddEmail}
+                            disabled={!selectedEmail}
+                            className="px-3 py-2 bg-teal-600 text-white text-xs font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                          >
+                            Add
+                          </button>
+                        </div>
+
+                        {editEmails.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {editEmails.map((email) => {
+                              const member = teamMembers.find(
+                                (m) => m.email.toLowerCase() === email,
+                              );
+                              return (
+                                <span
+                                  key={email}
+                                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                >
+                                  {member ? member.name : email}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveEmail(email)}
+                                    className="ml-1.5 text-blue-600 hover:text-blue-800"
+                                  >
+                                    &times;
+                                  </button>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleSaveNotify}
+                            disabled={notifySaving}
+                            className="px-3 py-1.5 bg-teal-600 text-white text-xs font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                          >
+                            {notifySaving ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingNotifyStep(null)}
+                            className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md hover:bg-gray-200 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        {!recipient || recipient.emails.length === 0 ? (
+                          <p className="text-sm text-gray-500 italic">
+                            No additional recipients configured
+                          </p>
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {recipient.emails.map((email) => {
+                              const member = teamMembers.find(
+                                (m) => m.email.toLowerCase() === email.toLowerCase(),
+                              );
+                              return (
+                                <span
+                                  key={email}
+                                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                >
+                                  {member ? `${member.name} (${email})` : email}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-
-              {editingStep === recipient.step ? (
-                <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedEmail}
-                      onChange={(e) => setSelectedEmail(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-teal-500 focus:border-teal-500"
-                    >
-                      <option value="">Select a team member...</option>
-                      {teamMembers
-                        .filter((m) => !editEmails.includes(m.email.toLowerCase()))
-                        .map((member) => (
-                          <option key={member.id} value={member.email.toLowerCase()}>
-                            {member.name} ({member.email})
-                          </option>
-                        ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleAddEmail}
-                      disabled={!selectedEmail}
-                      className="px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
-                    >
-                      Add
-                    </button>
-                  </div>
-
-                  {editEmails.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {editEmails.map((email) => {
-                        const member = teamMembers.find((m) => m.email.toLowerCase() === email);
-                        return (
-                          <span
-                            key={email}
-                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                          >
-                            {member ? member.name : email}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveEmail(email)}
-                              className="ml-1.5 text-blue-600 hover:text-blue-800"
-                            >
-                              &times;
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
-                    >
-                      {saving ? "Saving..." : "Save"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingStep(null)}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {recipient.emails.length === 0 ? (
-                    <p className="text-sm text-gray-500 italic">
-                      No additional recipients configured
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {recipient.emails.map((email) => {
-                        const member = teamMembers.find(
-                          (m) => m.email.toLowerCase() === email.toLowerCase(),
-                        );
-                        return (
-                          <span
-                            key={email}
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                          >
-                            {member ? `${member.name} (${email})` : email}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
