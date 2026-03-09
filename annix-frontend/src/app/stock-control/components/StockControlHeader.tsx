@@ -158,7 +158,10 @@ export function StockControlHeader(props: StockControlHeaderProps) {
               </svg>
               <span className="hidden lg:inline">Search...</span>
               <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 text-xs bg-white/10 rounded font-mono">
-                {typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent) ? "⌘" : "Ctrl+"}K
+                {typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent)
+                  ? "⌘"
+                  : "Ctrl+"}
+                K
               </kbd>
             </button>
             <SyncStatus />

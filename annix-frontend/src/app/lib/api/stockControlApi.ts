@@ -2984,10 +2984,7 @@ class StockControlApiClient {
     return this.request(`/stock-control/cpos/${cpoId}/calloff-records`);
   }
 
-  async updateCalloffRecordStatus(
-    recordId: number,
-    status: string,
-  ): Promise<CpoCalloffRecord> {
+  async updateCalloffRecordStatus(recordId: number, status: string): Promise<CpoCalloffRecord> {
     return this.request(`/stock-control/cpos/calloff-records/${recordId}/status`, {
       method: "PUT",
       body: JSON.stringify({ status }),

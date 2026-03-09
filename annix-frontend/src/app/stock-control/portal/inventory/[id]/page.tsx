@@ -353,10 +353,7 @@ export default function InventoryDetailPage() {
                   Uploading...
                 </div>
               ) : (
-                <PhotoCapture
-                  onCapture={handlePhotoCapture}
-                  currentPhotoUrl={undefined}
-                />
+                <PhotoCapture onCapture={handlePhotoCapture} currentPhotoUrl={undefined} />
               )}
             </div>
           </div>

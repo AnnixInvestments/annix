@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  type GlobalSearchResultItem,
   type GlobalSearchResponse,
+  type GlobalSearchResultItem,
   stockControlApiClient,
 } from "@/app/lib/api/stockControlApi";
 
@@ -349,9 +349,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-                <p className="text-sm text-gray-500">
-                  No results for &ldquo;{query.trim()}&rdquo;
-                </p>
+                <p className="text-sm text-gray-500">No results for &ldquo;{query.trim()}&rdquo;</p>
                 <p className="text-xs text-gray-400 mt-1">Try a different search term</p>
               </div>
             )}
@@ -467,7 +465,9 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                               {result.title}
                             </div>
                             {result.subtitle && (
-                              <div className="text-xs text-gray-500 truncate">{result.subtitle}</div>
+                              <div className="text-xs text-gray-500 truncate">
+                                {result.subtitle}
+                              </div>
                             )}
                           </div>
                           {result.status && (
