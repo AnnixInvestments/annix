@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { JobCard } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { HelpTooltip } from "../../components/HelpTooltip";
 import { setPendingImportFile } from "./import/pending-file";
 
 const STATUS_TABS = ["all", "draft", "active", "completed", "cancelled"] as const;
@@ -247,7 +248,9 @@ export default function JobCardsPage() {
       )}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Job Cards</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Job Cards <HelpTooltip term="JC" />
+          </h1>
           <p className="mt-1 text-sm text-gray-600">Manage job cards and stock allocations</p>
         </div>
         <div className="flex items-center space-x-3">

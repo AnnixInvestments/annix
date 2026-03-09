@@ -35,6 +35,7 @@ import {
   parsePipeItem,
   type RollAllocation,
 } from "@/app/stock-control/lib/rubberCuttingCalculator";
+import { HelpTooltip } from "../../../components/HelpTooltip";
 
 function EditableM2Field({
   label,
@@ -2076,7 +2077,9 @@ export default function JobCardDetailPage() {
               <div className="mt-6 pt-4 border-t border-gray-200">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
-                    <h4 className="text-sm font-medium text-gray-900">Coating Specification</h4>
+                    <h4 className="text-sm font-medium text-gray-900">
+                      Coating Specification <HelpTooltip term="DFT" />
+                    </h4>
                     <span className="text-xs text-gray-400 italic">extracted by Nix</span>
                     {coatingAnalysis.status === "accepted" && (
                       <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-800">
@@ -2153,7 +2156,7 @@ export default function JobCardDetailPage() {
                       <th className="text-left py-2 pr-4 font-medium text-gray-500">Area</th>
                       <th className="text-left py-2 pr-4 font-medium text-gray-500">Product</th>
                       <th className="text-right py-2 pr-4 font-medium text-gray-500">
-                        DFT (&#181;m)
+                        DFT (&#181;m) <HelpTooltip term="DFT" />
                       </th>
                       <th className="text-right py-2 pr-4 font-medium text-gray-500">
                         Coverage (m&#178;/L)
@@ -2304,7 +2307,9 @@ export default function JobCardDetailPage() {
                       d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
                     />
                   </svg>
-                  <span className="text-sm font-medium text-gray-700">Requisition</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Requisition <HelpTooltip term="JC" />
+                  </span>
                 </div>
                 <Link
                   href={`/stock-control/portal/requisitions/${requisition.id}`}
@@ -2854,7 +2859,9 @@ export default function JobCardDetailPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Stock Allocations</h3>
+          <h3 className="text-lg leading-6 font-medium text-gray-900">
+            Stock Allocations <HelpTooltip term="SOH" />
+          </h3>
           <span className="text-sm text-gray-500">{allocations.length} allocations</span>
         </div>
         {allocations.length === 0 ? (

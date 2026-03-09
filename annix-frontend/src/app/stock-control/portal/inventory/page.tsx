@@ -12,6 +12,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
+import { HelpTooltip } from "../../components/HelpTooltip";
 import {
   type GroupByOption,
   InventoryCardView,
@@ -1026,7 +1027,7 @@ export default function InventoryPage() {
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
           <p className="mt-1 text-sm text-gray-600">Manage stock items and quantities</p>
           <p className="mt-1 text-lg font-semibold text-gray-800">
-            Total SOH Value:{" "}
+            Total SOH <HelpTooltip term="SOH" /> Value:{" "}
             {formatZAR(
               viewMode === "grouped" || viewMode === "cards"
                 ? groupedData.reduce(
@@ -1543,7 +1544,7 @@ export default function InventoryPage() {
                               Name
                             </th>
                             <th className="px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                              SOH
+                              SOH <HelpTooltip term="SOH" />
                             </th>
                             <th className="px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                               Min

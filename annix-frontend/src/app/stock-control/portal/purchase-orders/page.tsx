@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { CustomerPurchaseOrder } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { HelpTooltip } from "../../components/HelpTooltip";
 import { setPendingCpoImportFile } from "./import/pending-file";
 
 const STATUS_TABS = ["all", "active", "fulfilled", "cancelled"] as const;
@@ -126,7 +127,9 @@ export default function PurchaseOrdersPage() {
     >
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Customer Purchase Orders</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Customer Purchase Orders <HelpTooltip term="CPO" />
+          </h1>
           <p className="mt-1 text-sm text-gray-600">
             Track large jobs from order through to fulfilment
           </p>
