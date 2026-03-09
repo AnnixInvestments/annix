@@ -12,6 +12,7 @@ import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
 import { StockControlAuthController } from "./controllers/auth.controller";
+import { CpoController } from "./controllers/cpo.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
 import { ImportController } from "./controllers/import.controller";
@@ -31,6 +32,8 @@ import { StaffController } from "./controllers/staff.controller";
 import { SupplierController } from "./controllers/supplier.controller";
 import { WorkflowController } from "./controllers/workflow.controller";
 import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
+import { CustomerPurchaseOrder } from "./entities/customer-purchase-order.entity";
+import { CustomerPurchaseOrderItem } from "./entities/customer-purchase-order-item.entity";
 import { DeliveryNote } from "./entities/delivery-note.entity";
 import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
 import { DispatchScan } from "./entities/dispatch-scan.entity";
@@ -70,6 +73,7 @@ import { StockControlAuthService } from "./services/auth.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
 import { CoatingAnalysisService } from "./services/coating-analysis.service";
 import { CompanyEmailService } from "./services/company-email.service";
+import { CpoService } from "./services/cpo.service";
 import { DashboardService } from "./services/dashboard.service";
 import { DeliveryService } from "./services/delivery.service";
 import { DispatchService } from "./services/dispatch.service";
@@ -139,6 +143,8 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       StockControlSupplier,
       PushSubscription,
       RubberDimensionOverride,
+      CustomerPurchaseOrder,
+      CustomerPurchaseOrderItem,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -182,6 +188,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     SignatureController,
     InvoicesController,
     SupplierController,
+    CpoController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -221,6 +228,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     PriceHistoryService,
     RbacConfigService,
     SageInvoiceAdapterService,
+    CpoService,
   ],
 })
 export class StockControlModule {}
