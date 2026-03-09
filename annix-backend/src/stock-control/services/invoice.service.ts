@@ -106,17 +106,35 @@ export class InvoiceService {
   }
 
   async reExtract(companyId: number, invoiceId: number): Promise<SupplierInvoice> {
-    const invoice = await this.findById(companyId, invoiceId);
+    const invoice = await this.invoiceRepo.findOne({
+      where: { id: invoiceId, companyId },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException(`Invoice ${invoiceId} not found`);
+    }
 
     if (!invoice.scanUrl) {
       throw new NotFoundException("No scan uploaded for this invoice");
     }
 
-    const fileBuffer = await this.storageService.download(invoice.scanUrl);
+    const s3Key = this.extractS3Key(invoice.scanUrl);
+    const fileBuffer = await this.storageService.download(s3Key);
     const imageBase64 = fileBuffer.toString("base64");
-    const mediaType = this.mimeFromPath(invoice.scanUrl);
+    const mediaType = this.mimeFromPath(s3Key);
 
     return this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
+  }
+
+  private extractS3Key(scanUrl: string): string {
+    if (!scanUrl.startsWith("http")) {
+      return scanUrl;
+    }
+    const pathMatch = scanUrl.match(/\.com\/(.+?)(\?|$)/);
+    if (pathMatch) {
+      return decodeURIComponent(pathMatch[1]);
+    }
+    return scanUrl;
   }
 
   private mimeFromPath(path: string): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {

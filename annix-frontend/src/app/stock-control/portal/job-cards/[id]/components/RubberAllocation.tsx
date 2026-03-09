@@ -900,12 +900,17 @@ function RubberSOHPanel({
   }>;
 }) {
   const [planDecision, setPlanDecision] = useState<"pending" | "accepted" | "rejected">(
-    existingOverride?.status === "accepted" ? "accepted" : "pending",
+    existingOverride?.status === "accepted"
+      ? "accepted"
+      : existingOverride?.status === "manual"
+        ? "rejected"
+        : "pending",
   );
   const [manualRolls, setManualRolls] = useState<RubberPlanManualRoll[]>(
     existingOverride?.manualRolls || [],
   );
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [allocatingPly, setAllocatingPly] = useState<number | null>(null);
   const [allocatingWidthMm, setAllocatingWidthMm] = useState<number>(STANDARD_ROLL_WIDTH_MM);
   const [allocatingLengthM, setAllocatingLengthM] = useState<number>(STANDARD_ROLL_LENGTH_M);
@@ -950,6 +955,7 @@ function RubberSOHPanel({
 
   const handleAcceptPlan = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const override: RubberPlanOverride = {
         status: "accepted",
@@ -961,6 +967,9 @@ function RubberSOHPanel({
       await stockControlApiClient.updateRubberPlan(jobCardId, override);
       setPlanDecision("accepted");
       onOverrideSaved(override);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save plan";
+      setSaveError(message);
     } finally {
       setSaving(false);
     }
@@ -979,6 +988,7 @@ function RubberSOHPanel({
   ) => {
     const rolls = rollsToSave !== undefined ? rollsToSave : manualRolls;
     setSaving(true);
+    setSaveError(null);
     try {
       const override: RubberPlanOverride = {
         status: "manual",
@@ -990,8 +1000,10 @@ function RubberSOHPanel({
       };
       await stockControlApiClient.updateRubberPlan(jobCardId, override);
       setManualRolls(rolls);
-      setPlanDecision("pending");
       onOverrideSaved(override);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save manual plan";
+      setSaveError(message);
     } finally {
       setSaving(false);
     }
@@ -1193,6 +1205,13 @@ function RubberSOHPanel({
           )}
         </div>
       </div>
+
+      {saveError && (
+        <div className="p-3 mb-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-800 font-medium">Failed to save manual plan</p>
+          <p className="text-xs text-red-600 mt-1">{saveError}</p>
+        </div>
+      )}
 
       {planDecision === "rejected" && (
         <div className="border-2 border-amber-300 rounded-lg p-4 bg-amber-50">
