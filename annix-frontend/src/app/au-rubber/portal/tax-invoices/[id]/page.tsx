@@ -307,15 +307,21 @@ export default function TaxInvoiceDetailPage() {
                   </dd>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Number of Rolls</dt>
+                  <dt className="text-sm font-medium text-gray-500">Quantity</dt>
                   <dd className="mt-1 text-lg font-semibold text-gray-900">
                     {invoice.numberOfRolls != null ? invoice.numberOfRolls : "-"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Cost per Roll</dt>
+                  <dt className="text-sm font-medium text-gray-500">Unit</dt>
+                  <dd className="mt-1 text-lg font-semibold text-gray-900">
+                    {invoice.unit || "-"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Cost per Unit</dt>
                   <dd className="mt-1 text-lg font-semibold text-gray-900">
                     {formatCurrency(invoice.costPerUnit)}
                   </dd>

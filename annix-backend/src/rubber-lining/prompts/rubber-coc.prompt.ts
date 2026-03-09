@@ -474,6 +474,8 @@ Return a JSON object with this structure:
   "invoiceDate": string or null (ISO format YYYY-MM-DD),
   "companyName": string or null (the supplier/vendor issuing the invoice),
   "productSummary": string or null (e.g., "2 rolls Steam cure 40 Black 6x1200x12" - the free-text product description line below the line items table),
+  "productQuantity": number or null (the total quantity of product - e.g., 2 for "2 rolls", 500 for "500kg"),
+  "productUnit": string or null (the unit of measure - "rolls" or "kg". Use "rolls" for roll-based suppliers like Impilo, "kg" for weight-based suppliers like S&N Rubber),
   "deliveryNoteRef": string or null (e.g., "DN08516" - the delivery note reference if present),
   "orderNumber": string or null (the Order No from the document header),
   "lineItems": [

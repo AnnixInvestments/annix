@@ -507,8 +507,14 @@ export default function SupplierTaxInvoicesPage() {
                     className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("numberOfRolls")}
                   >
-                    Rolls
+                    Qty
                     <SortIcon active={sortColumn === "numberOfRolls"} direction={sortDirection} />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Unit
                   </th>
                   <th
                     scope="col"
@@ -574,6 +580,9 @@ export default function SupplierTaxInvoicesPage() {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                       {inv.numberOfRolls != null ? inv.numberOfRolls : "-"}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {inv.unit || "-"}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                       {formatCurrency(inv.costPerUnit)}

@@ -114,6 +114,7 @@ export interface RubberTaxInvoiceDto {
   updatedAt: string;
   productDescription: string | null;
   numberOfRolls: number | null;
+  unit: string | null;
   costPerUnit: number | null;
 }
 

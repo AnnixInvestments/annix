@@ -32,6 +32,8 @@ export interface ExtractedTaxInvoiceData {
   invoiceDate: string | null;
   companyName: string | null;
   productSummary: string | null;
+  productQuantity?: number | null;
+  productUnit?: string | null;
   deliveryNoteRef: string | null;
   orderNumber: string | null;
   lineItems: ExtractedTaxInvoiceLineItem[];

@@ -42,6 +42,7 @@ export interface RubberTaxInvoiceDto {
   updatedAt: string;
   productDescription: string | null;
   numberOfRolls: number | null;
+  unit: string | null;
   costPerUnit: number | null;
 }
 
@@ -216,50 +217,60 @@ export class RubberTaxInvoiceService {
   private extractProductSummary(data: ExtractedTaxInvoiceData | null): {
     productDescription: string | null;
     numberOfRolls: number | null;
+    unit: string | null;
     costPerUnit: number | null;
   } {
     if (!data) {
-      return { productDescription: null, numberOfRolls: null, costPerUnit: null };
+      return { productDescription: null, numberOfRolls: null, unit: null, costPerUnit: null };
     }
 
     const subtotalExVat = data.subtotal;
 
-    if (data.productSummary) {
-      const rollMatch = data.productSummary.match(/(\d+)\s*rolls?/i);
-      const numberOfRolls = rollMatch ? Number(rollMatch[1]) : null;
-      const costPerUnit =
-        subtotalExVat != null && numberOfRolls != null && numberOfRolls > 0
-          ? Math.round((subtotalExVat / numberOfRolls) * 100) / 100
-          : subtotalExVat;
+    const extractedQuantity = data.productQuantity || null;
+    const extractedUnit = data.productUnit || null;
 
-      return {
-        productDescription: data.productSummary,
-        numberOfRolls,
-        costPerUnit,
-      };
-    }
+    const textToSearch = data.productSummary
+      || data.lineItems?.map((item) => item.description).join(" ")
+      || "";
 
-    if (!data.lineItems || data.lineItems.length === 0) {
-      return { productDescription: null, numberOfRolls: null, costPerUnit: null };
-    }
+    const { quantity, unit } = this.extractQuantityAndUnit(textToSearch, extractedQuantity, extractedUnit);
 
-    const mainItem = data.lineItems[0];
+    const productDescription = data.productSummary
+      || (data.lineItems && data.lineItems.length > 0 ? data.lineItems[0].description : null);
 
-    const rollMatch = data.lineItems
-      .map((item) => item.description)
-      .join(" ")
-      .match(/(\d+)\s*rolls?/i);
-    const numberOfRolls = rollMatch ? Number(rollMatch[1]) : null;
     const costPerUnit =
-      subtotalExVat != null && numberOfRolls != null && numberOfRolls > 0
-        ? Math.round((subtotalExVat / numberOfRolls) * 100) / 100
+      subtotalExVat != null && quantity != null && quantity > 0
+        ? Math.round((subtotalExVat / quantity) * 100) / 100
         : subtotalExVat;
 
     return {
-      productDescription: mainItem.description,
-      numberOfRolls,
+      productDescription,
+      numberOfRolls: quantity,
+      unit,
       costPerUnit,
     };
+  }
+
+  private extractQuantityAndUnit(
+    text: string,
+    aiQuantity: number | null,
+    aiUnit: string | null,
+  ): { quantity: number | null; unit: string | null } {
+    if (aiQuantity != null && aiUnit != null) {
+      return { quantity: aiQuantity, unit: aiUnit.toLowerCase() };
+    }
+
+    const rollMatch = text.match(/(\d[\d,.]*)\s*rolls?/i);
+    if (rollMatch) {
+      return { quantity: Number(rollMatch[1].replace(/,/g, "")), unit: "rolls" };
+    }
+
+    const kgMatch = text.match(/(\d[\d,.]*)\s*kg/i);
+    if (kgMatch) {
+      return { quantity: Number(kgMatch[1].replace(/,/g, "")), unit: "kg" };
+    }
+
+    return { quantity: aiQuantity, unit: aiUnit };
   }
 
   private mapToDto(invoice: RubberTaxInvoice): RubberTaxInvoiceDto {
@@ -286,6 +297,7 @@ export class RubberTaxInvoiceService {
       updatedAt: invoice.updatedAt.toISOString(),
       productDescription: productSummary.productDescription,
       numberOfRolls: productSummary.numberOfRolls,
+      unit: productSummary.unit,
       costPerUnit: productSummary.costPerUnit,
     };
   }
