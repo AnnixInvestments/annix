@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import { CpoCalloffRecord } from "../entities/cpo-calloff-record.entity";
 import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { WorkflowStep } from "../entities/job-card-approval.entity";
@@ -526,6 +527,72 @@ export class WorkflowNotificationService {
     );
   }
 
+  async notifyCpoInvoiceOverdue(
+    companyId: number,
+    cpo: CustomerPurchaseOrder,
+    overdueRecords: CpoCalloffRecord[],
+  ): Promise<void> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const actionUrl = `${frontendUrl}/stock-control/portal/purchase-orders/${cpo.id}`;
+
+    const recipients = await this.userRepo.find({
+      where: [
+        { companyId, role: StockControlRole.MANAGER },
+        { companyId, role: StockControlRole.ADMIN },
+        { companyId, role: StockControlRole.ACCOUNTS },
+      ],
+    });
+
+    const recordSummary = overdueRecords
+      .map((r) => `${r.calloffType}${r.jobCard ? ` (JC ${r.jobCard.jobNumber})` : ""}`)
+      .join(", ");
+
+    const title = `Overdue Invoice: ${cpo.cpoNumber}`;
+    const message = `${overdueRecords.length} call-off item(s) for CPO ${cpo.cpoNumber} were delivered 21+ days ago but not yet invoiced: ${recordSummary}`;
+
+    const notifications = recipients.map((user) =>
+      this.notificationRepo.create({
+        companyId,
+        userId: user.id,
+        jobCardId: null,
+        title,
+        message,
+        actionType: NotificationActionType.CPO_INVOICE_OVERDUE,
+        actionUrl,
+      }),
+    );
+
+    await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        recipients.map((u) => u.id),
+        {
+          title,
+          body: message,
+          tag: `cpo-overdue-${cpo.id}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+
+    this.logger.log(
+      `Created ${notifications.length} overdue invoice notifications for CPO ${cpo.cpoNumber}`,
+    );
+
+    await Promise.all(
+      recipients.map((user) =>
+        this.sendCpoOverdueInvoiceEmail(
+          companyId,
+          user.email,
+          user.name,
+          cpo,
+          overdueRecords,
+          actionUrl,
+        ),
+      ),
+    );
+  }
+
   private rolesForStep(step: WorkflowStep): StockControlRole[] {
     const roleMap: Record<WorkflowStep, StockControlRole[]> = {
       [WorkflowStep.DOCUMENT_UPLOAD]: [StockControlRole.ACCOUNTS],
@@ -858,6 +925,68 @@ export class WorkflowNotificationService {
     return this.companyEmailService.sendEmail(companyId, {
       to: email,
       subject: `CPO Call-Off Needed: JC ${jobCard.jobNumber} for ${cpo.cpoNumber}`,
+      html,
+    });
+  }
+
+  private async sendCpoOverdueInvoiceEmail(
+    companyId: number,
+    email: string,
+    recipientName: string,
+    cpo: CustomerPurchaseOrder,
+    overdueRecords: CpoCalloffRecord[],
+    actionUrl: string,
+  ): Promise<boolean> {
+    const rows = overdueRecords
+      .map(
+        (r) =>
+          `<tr><td style="padding: 8px; border-bottom: 1px solid #eee;">${r.calloffType}</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${r.jobCard ? r.jobCard.jobNumber : "-"}</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${r.deliveredAt ? new Date(r.deliveredAt).toLocaleDateString("en-ZA") : "-"}</td></tr>`,
+      )
+      .join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Overdue CPO Invoice - Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #dc2626;">Overdue Invoice Alert</h1>
+          <p>Hello ${recipientName},</p>
+          <p>The following call-off items for CPO <strong>${cpo.cpoNumber}</strong> (${cpo.customerName || "Unknown customer"}) were delivered more than 3 weeks ago but have not yet been invoiced.</p>
+
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <thead>
+              <tr style="background-color: #fef2f2;">
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dc2626;">Type</th>
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dc2626;">Job Card</th>
+                <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dc2626;">Delivered</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+
+          <p style="margin: 30px 0;">
+            <a href="${actionUrl}"
+               style="background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View Purchase Order
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated notification from Stock Control.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.companyEmailService.sendEmail(companyId, {
+      to: email,
+      subject: `Overdue Invoice: CPO ${cpo.cpoNumber} - ${overdueRecords.length} item(s) uninvoiced`,
       html,
     });
   }

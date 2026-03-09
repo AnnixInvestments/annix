@@ -1,6 +1,8 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, LessThanOrEqual, Repository } from "typeorm";
+import { now } from "../../lib/datetime";
 import {
   CalloffStatus,
   CalloffType,
@@ -525,6 +527,89 @@ export class CpoService {
     }
 
     return this.calloffRepo.save(record);
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  async uninvoicedArrivalCheck(): Promise<void> {
+    this.logger.log("Running daily CPO uninvoiced arrival check...");
+
+    const twentyOneDaysAgo = now().minus({ days: 21 }).toJSDate();
+
+    const overdueRecords = await this.calloffRepo.find({
+      where: {
+        status: CalloffStatus.DELIVERED,
+        deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
+        invoicedAt: IsNull(),
+      },
+      relations: ["cpo", "jobCard"],
+    });
+
+    if (overdueRecords.length === 0) {
+      this.logger.log("No overdue uninvoiced CPO items found");
+      return;
+    }
+
+    const recordsByCpo = overdueRecords.reduce<Record<number, CpoCalloffRecord[]>>(
+      (acc, record) => ({
+        ...acc,
+        [record.cpoId]: [...(acc[record.cpoId] || []), record],
+      }),
+      {},
+    );
+
+    await Promise.all(
+      Object.entries(recordsByCpo).map(async ([cpoIdStr, records]) => {
+        const cpoId = Number(cpoIdStr);
+        const cpo = records[0]?.cpo;
+        if (!cpo) return;
+
+        await this.notificationService.notifyCpoInvoiceOverdue(cpo.companyId, cpo, records);
+      }),
+    );
+
+    this.logger.log(
+      `Sent overdue invoice notifications for ${Object.keys(recordsByCpo).length} CPO(s), ${overdueRecords.length} record(s)`,
+    );
+  }
+
+  async cpoSummary(companyId: number): Promise<{
+    activeCpos: number;
+    awaitingCalloff: number;
+    overdueInvoices: number;
+  }> {
+    const activeCpos = await this.cpoRepo.count({
+      where: { companyId, status: CpoStatus.ACTIVE },
+    });
+
+    const awaitingCalloff = await this.calloffRepo.count({
+      where: { companyId, status: CalloffStatus.PENDING },
+    });
+
+    const twentyOneDaysAgo = now().minus({ days: 21 }).toJSDate();
+    const overdueInvoices = await this.calloffRepo.count({
+      where: {
+        companyId,
+        status: CalloffStatus.DELIVERED,
+        deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
+        invoicedAt: IsNull(),
+      },
+    });
+
+    return { activeCpos, awaitingCalloff, overdueInvoices };
+  }
+
+  async overdueCalloffRecordsForCpo(companyId: number, cpoId: number): Promise<CpoCalloffRecord[]> {
+    const twentyOneDaysAgo = now().minus({ days: 21 }).toJSDate();
+    return this.calloffRepo.find({
+      where: {
+        cpoId,
+        companyId,
+        status: CalloffStatus.DELIVERED,
+        deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
+        invoicedAt: IsNull(),
+      },
+      relations: ["jobCard"],
+    });
   }
 
   private generateCpoNumber(jobNumber: string, jcNumber?: string): string {

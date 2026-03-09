@@ -1,13 +1,17 @@
 import { Controller, Get, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { CpoService } from "../services/cpo.service";
 import { DashboardService } from "../services/dashboard.service";
 
 @ApiTags("Stock Control - Dashboard")
 @Controller("stock-control/dashboard")
 @UseGuards(StockControlAuthGuard)
 export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) {}
+  constructor(
+    private readonly dashboardService: DashboardService,
+    private readonly cpoService: CpoService,
+  ) {}
 
   @Get("stats")
   @ApiOperation({ summary: "Dashboard statistics overview" })
@@ -31,5 +35,11 @@ export class DashboardController {
   @ApiOperation({ summary: "Items that need reordering" })
   async reorderAlerts(@Req() req: any) {
     return this.dashboardService.reorderAlerts(req.user.companyId);
+  }
+
+  @Get("cpo-summary")
+  @ApiOperation({ summary: "CPO summary for dashboard" })
+  async cpoSummary(@Req() req: any) {
+    return this.cpoService.cpoSummary(req.user.companyId);
   }
 }
