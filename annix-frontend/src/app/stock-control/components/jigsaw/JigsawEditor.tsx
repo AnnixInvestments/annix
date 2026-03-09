@@ -277,6 +277,8 @@ export function JigsawEditor(props: {
     [unplacedPanels, placedPanels, rolls],
   );
 
+  const [rotateFailedId, setRotateFailedId] = useState<string | null>(null);
+
   const handleRotate = useCallback(
     (panelId: string) => {
       const placedIdx = placedPanels.findIndex((p) => p.panelId === panelId);
@@ -286,6 +288,9 @@ export function JigsawEditor(props: {
         const roll = rolls[rotated.rollIndex];
         if (roll && isWithinBounds(rotated, roll) && !hasOverlap(rotated, placedPanels)) {
           setPlacedPanels((prev) => prev.map((p) => (p.panelId === panelId ? rotated : p)));
+        } else {
+          setRotateFailedId(panelId);
+          setTimeout(() => setRotateFailedId(null), 1500);
         }
         return;
       }
@@ -399,6 +404,7 @@ export function JigsawEditor(props: {
                 roll={roll}
                 panels={placedPanels.filter((p) => p.rollIndex === idx)}
                 onRotate={handleRotate}
+                rotateFailedId={rotateFailedId}
                 onUpdateRoll={updateRoll}
                 onRemoveRoll={removeRoll}
               />

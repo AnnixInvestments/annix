@@ -41,10 +41,11 @@ export function RollCanvas(props: {
   roll: JigsawRoll;
   panels: PlacedPanel[];
   onRotate: (panelId: string) => void;
+  rotateFailedId: string | null;
   onUpdateRoll: (rollIndex: number, field: keyof JigsawRoll, value: number) => void;
   onRemoveRoll: (rollIndex: number) => void;
 }) {
-  const { rollIndex, roll, panels, onRotate, onUpdateRoll, onRemoveRoll } = props;
+  const { rollIndex, roll, panels, onRotate, rotateFailedId, onUpdateRoll, onRemoveRoll } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(700);
 
@@ -150,7 +151,13 @@ export function RollCanvas(props: {
               top: `${panel.yMm * scale}px`,
             }}
           >
-            <DraggablePanel panel={panel} scale={scale} onRotate={onRotate} isPlaced={true} />
+            <DraggablePanel
+              panel={panel}
+              scale={scale}
+              onRotate={onRotate}
+              rotateFailed={rotateFailedId === panel.panelId}
+              isPlaced={true}
+            />
           </div>
         ))}
 

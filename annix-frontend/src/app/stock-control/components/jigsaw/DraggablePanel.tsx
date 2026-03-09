@@ -10,14 +10,30 @@ function isOverridden(panel: JigsawPanel): boolean {
   return panel.widthMm !== panel.originalWidthMm || panel.lengthMm !== panel.originalLengthMm;
 }
 
+function RotateIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className={className}
+    >
+      <path d="M2 8a6 6 0 0 1 10.2-4.2" strokeLinecap="round" />
+      <path d="M12 1v4H8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function DraggablePanel(props: {
   panel: JigsawPanel;
   scale: number | null;
   onRotate: (panelId: string) => void;
   onEditDimensions?: (panelId: string, widthMm: number, lengthMm: number) => void;
+  rotateFailed?: boolean;
   isPlaced: boolean;
 }) {
-  const { panel, scale, onRotate, onEditDimensions, isPlaced } = props;
+  const { panel, scale, onRotate, onEditDimensions, rotateFailed, isPlaced } = props;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: panel.panelId,
   });
@@ -30,6 +46,7 @@ export function DraggablePanel(props: {
   const ew = effectiveWidth(panel);
   const el = effectiveLength(panel);
   const overridden = isOverridden(panel);
+  const rotatedLabel = panel.rotated ? "W\u2194L" : "";
 
   const dragTransform = transform ? CSS.Translate.toString(transform) : undefined;
 
@@ -51,10 +68,15 @@ export function DraggablePanel(props: {
     setEditing(false);
   };
 
+  const rotateBtnClass = rotateFailed
+    ? "bg-red-500/80 animate-pulse"
+    : "bg-white/30 hover:bg-white/50";
+
   if (isPlaced && scale !== null) {
     const widthPx = el * scale;
     const heightPx = ew * scale;
     const showFullLabel = widthPx > 60 && heightPx > 30;
+    const showRotateBtn = widthPx > 30 && heightPx > 20;
 
     return (
       <div
@@ -76,6 +98,7 @@ export function DraggablePanel(props: {
             </span>
             <span className="text-[8px] leading-tight opacity-80">
               {ew}x{el}
+              {panel.rotated ? " (rotated)" : ""}
             </span>
           </>
         ) : (
@@ -83,18 +106,20 @@ export function DraggablePanel(props: {
             {panel.itemNo || panel.panelId}
           </span>
         )}
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRotate(panel.panelId);
-          }}
-          className="absolute top-0 right-0 w-4 h-4 bg-white/30 hover:bg-white/50 rounded-bl text-[8px] leading-none flex items-center justify-center"
-          title="Rotate"
-        >
-          R
-        </button>
+        {showRotateBtn && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRotate(panel.panelId);
+            }}
+            className={`absolute top-0 right-0 w-5 h-5 ${rotateBtnClass} rounded-bl flex items-center justify-center`}
+            title={rotateFailed ? "Cannot rotate: panel too large for roll" : "Rotate 90\u00b0"}
+          >
+            <RotateIcon className="w-3 h-3" />
+          </button>
+        )}
       </div>
     );
   }
@@ -171,6 +196,7 @@ export function DraggablePanel(props: {
           onPointerDown={onEditDimensions ? handleStartEdit : undefined}
         >
           {ew}mm x {el}mm
+          {panel.rotated ? " (rotated)" : ""}
         </div>
         {overridden && (
           <div className="text-[9px] opacity-50 truncate">
@@ -196,10 +222,10 @@ export function DraggablePanel(props: {
             e.stopPropagation();
             onRotate(panel.panelId);
           }}
-          className="w-6 h-5 bg-white/30 hover:bg-white/50 rounded text-[10px] font-bold flex items-center justify-center"
-          title="Rotate"
+          className={`w-6 h-6 ${rotateBtnClass} rounded flex items-center justify-center`}
+          title={`Rotate 90\u00b0${rotatedLabel ? ` (${rotatedLabel})` : ""}`}
         >
-          R
+          <RotateIcon className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>
