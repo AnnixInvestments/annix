@@ -15,12 +15,15 @@ import {
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import {
+  type BandSpec,
+  type CutPiece,
   type CuttingPlan,
   calculateCuttingPlan,
   parsePipeItem,
   parseRubberSpecNote,
   type RollAllocation,
 } from "../lib/rubberCuttingCalculator";
+import type { RubberPlanManualRoll } from "../entities/job-card.entity";
 
 @Injectable()
 export class JobCardPdfService {
@@ -527,34 +530,18 @@ export class JobCardPdfService {
         y += 10;
       }
 
-      manualOverride.manualRolls.forEach((mRoll, rollIdx) => {
+      const manualRollAllocations = manualOverride.manualRolls.map((mRoll, rollIdx) =>
+        this.manualRollToAllocation(mRoll, rollIdx),
+      );
+
+      manualRollAllocations.forEach((rollAlloc) => {
+        const diagramHeight = this.cuttingDiagramHeight(rollAlloc);
         const pageHeight = doc.page.height;
-        const estimatedHeight = 30 + mRoll.cuts.length * 10;
-        if (y + estimatedHeight > pageHeight - 165) {
+        if (y + diagramHeight > pageHeight - 165) {
           doc.addPage();
           y = 50;
         }
-
-        doc.fontSize(8).font("Helvetica-Bold");
-        doc.text(
-          `Roll ${rollIdx + 1}: ${mRoll.widthMm}mm × ${mRoll.lengthM}m × ${mRoll.thicknessMm}mm`,
-          50,
-          y,
-        );
-        y += 12;
-
-        if (mRoll.cuts.length > 0) {
-          doc.fontSize(7).font("Helvetica");
-          mRoll.cuts.forEach((cut) => {
-            doc.text(
-              `  ${cut.description || "Cut"}: ${cut.widthMm}mm × ${cut.lengthMm}mm × ${cut.quantity}`,
-              60,
-              y,
-            );
-            y += 10;
-          });
-        }
-        y += 5;
+        y = this.drawCuttingDiagramForRoll(doc, rollAlloc, y, 1, rollAlloc.plyThicknessMm);
       });
 
       if (plan.genericM2Total > 0) {
@@ -792,6 +779,99 @@ export class JobCardPdfService {
     });
 
     return groups;
+  }
+
+  private manualRollToAllocation(
+    mRoll: RubberPlanManualRoll,
+    rollIndex: number,
+  ): RollAllocation {
+    const rollLengthMm = mRoll.lengthM * 1000;
+    const rollWidthMm = mRoll.widthMm;
+
+    const cuts: CutPiece[] = [];
+    const bands: BandSpec[] = [];
+    let positionMm = 0;
+    let bandIndex = 0;
+    let currentBandLaneWidth = 0;
+    let currentBandStart = 0;
+    let lane = 0;
+
+    const sortedCuts = [...mRoll.cuts].sort((a, b) => b.widthMm - a.widthMm);
+
+    sortedCuts.forEach((cut) => {
+      if (cut.widthMm !== currentBandLaneWidth && cuts.length > 0) {
+        bands.push({
+          bandIndex: bandIndex,
+          lanes: 1,
+          laneWidthMm: currentBandLaneWidth,
+          startMm: currentBandStart,
+          heightMm: currentBandLaneWidth,
+          widthUsedMm: positionMm - currentBandStart,
+        });
+        bandIndex++;
+        currentBandStart = positionMm;
+        lane = 0;
+      }
+      currentBandLaneWidth = cut.widthMm;
+
+      Array.from({ length: cut.quantity }).forEach(() => {
+        cuts.push({
+          itemId: cut.description,
+          itemNo: cut.description,
+          description: cut.description,
+          widthMm: cut.widthMm,
+          lengthMm: cut.lengthMm,
+          positionMm,
+          lane,
+          band: bandIndex,
+          stripsPerPiece: 1,
+        });
+        positionMm += cut.lengthMm;
+      });
+    });
+
+    if (currentBandLaneWidth > 0) {
+      bands.push({
+        bandIndex: bandIndex,
+        lanes: 1,
+        laneWidthMm: currentBandLaneWidth,
+        startMm: currentBandStart,
+        heightMm: currentBandLaneWidth,
+        widthUsedMm: positionMm - currentBandStart,
+      });
+    }
+
+    if (bands.length === 0) {
+      bands.push({
+        bandIndex: 0,
+        lanes: 1,
+        laneWidthMm: rollWidthMm,
+        startMm: 0,
+        heightMm: rollWidthMm,
+        widthUsedMm: 0,
+      });
+    }
+
+    const totalUsedMm = cuts.reduce((sum, c) => sum + c.lengthMm, 0);
+    const wastePercentage = rollLengthMm > 0 ? ((rollLengthMm - totalUsedMm) / rollLengthMm) * 100 : 0;
+
+    return {
+      rollIndex: rollIndex + 1,
+      rollSpec: {
+        widthMm: rollWidthMm,
+        lengthM: mRoll.lengthM,
+        areaSqM: (rollWidthMm / 1000) * mRoll.lengthM,
+        lanes: 1,
+        laneWidthMm: rollWidthMm,
+      },
+      cuts,
+      usedLengthMm: [totalUsedMm],
+      wastePercentage: Math.max(0, wastePercentage),
+      hasLengthwiseCut: false,
+      bands,
+      offcuts: [],
+      plyThicknessMm: mRoll.thicknessMm,
+    };
   }
 
   private drawCuttingDiagramForRoll(
