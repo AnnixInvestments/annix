@@ -65,7 +65,7 @@ export default function StaffPage() {
     setEditingMember(member);
     setForm({
       name: member.name,
-      employeeNumber: member.employeeNumber ?? "",
+      employeeNumber: member.employeeNumber || "",
       departmentId: member.departmentId,
     });
     setCapturedFile(null);
@@ -519,7 +519,7 @@ export default function StaffPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Department</label>
                   <select
-                    value={form.departmentId ?? ""}
+                    value={form.departmentId || ""}
                     onChange={(e) =>
                       setForm({
                         ...form,
