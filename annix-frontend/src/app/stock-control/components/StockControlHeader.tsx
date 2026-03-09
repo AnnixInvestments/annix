@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { ALL_NAV_ITEMS } from "../config/navItems";
 import { useStockControlBranding } from "../context/StockControlBrandingContext";
 import { useStockControlRbac } from "../context/StockControlRbacContext";
 import { useNotificationCount } from "../hooks/useNotificationCount";
+import { GlobalSearchModal } from "./GlobalSearchModal";
 import { NotificationBell } from "./NotificationBell";
 import { OfflineIndicator } from "./OfflineIndicator";
 import { RbacConfigPanel } from "./RbacConfigPanel";
@@ -24,19 +25,28 @@ interface StockControlHeaderProps {
 export function StockControlHeader(props: StockControlHeaderProps) {
   const { onSearch, lowStockCount = 0, onMenuToggle, showMenuButton = false } = props;
   const pathname = usePathname();
-  const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [rbacPanelOpen, setRbacPanelOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { colors, logoUrl } = useStockControlBranding();
   const { user, logout } = useStockControlAuth();
   const { count: notificationCount } = useNotificationCount();
   const { rbacConfig } = useStockControlRbac();
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    onSearch?.(e.target.value);
-  };
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleLogout = async () => {
     setShowDropdown(false);
@@ -133,30 +143,24 @@ export function StockControlHeader(props: StockControlHeaderProps) {
           )}
 
           <div className="flex items-center space-x-1 sm:space-x-3 ml-auto shrink-0">
-            <div className="hidden sm:block">
-              <div className="relative">
-                <svg
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  placeholder="Search..."
-                  className="w-48 lg:w-64 pl-9 pr-3 py-1.5 text-sm bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-300 focus:bg-opacity-20"
+            <button
+              onClick={openSearch}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white/70 hover:bg-opacity-20 hover:text-white transition-colors"
+              aria-label="Search"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
-              </div>
-            </div>
+              </svg>
+              <span className="hidden lg:inline">Search...</span>
+              <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 text-xs bg-white/10 rounded font-mono">
+                {typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent) ? "⌘" : "Ctrl+"}K
+              </kbd>
+            </button>
             <SyncStatus />
             <OfflineIndicator />
             <ThemeToggle
@@ -270,6 +274,7 @@ export function StockControlHeader(props: StockControlHeaderProps) {
       </header>
 
       <RbacConfigPanel isOpen={rbacPanelOpen} onClose={() => setRbacPanelOpen(false)} />
+      <GlobalSearchModal isOpen={searchOpen} onClose={closeSearch} />
     </>
   );
 }

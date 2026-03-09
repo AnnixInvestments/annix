@@ -27,11 +27,13 @@ import { PublicBrandingController } from "./controllers/public-branding.controll
 import { QrCodeController } from "./controllers/qr-code.controller";
 import { ReportsController } from "./controllers/reports.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
+import { SearchController } from "./controllers/search.controller";
 import { SignatureController } from "./controllers/signature.controller";
 import { StaffController } from "./controllers/staff.controller";
 import { SupplierController } from "./controllers/supplier.controller";
 import { WorkflowController } from "./controllers/workflow.controller";
 import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
+import { CpoCalloffRecord } from "./entities/cpo-calloff-record.entity";
 import { CustomerPurchaseOrder } from "./entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "./entities/customer-purchase-order-item.entity";
 import { DeliveryNote } from "./entities/delivery-note.entity";
@@ -97,6 +99,7 @@ import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { RbacConfigService } from "./services/rbac-config.service";
+import { SearchService } from "./services/search.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
 import { SageInvoiceAdapterService } from "./services/sage-invoice-adapter.service";
@@ -145,6 +148,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       RubberDimensionOverride,
       CustomerPurchaseOrder,
       CustomerPurchaseOrderItem,
+      CpoCalloffRecord,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -183,6 +187,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     InvitationController,
     QrCodeController,
     RequisitionsController,
+    SearchController,
     StaffController,
     WorkflowController,
     SignatureController,
@@ -228,6 +233,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     PriceHistoryService,
     RbacConfigService,
     SageInvoiceAdapterService,
+    SearchService,
     CpoService,
   ],
 })
