@@ -90,10 +90,6 @@ function manualRollsToCuttingPlan(manualRolls: RubberPlanManualRoll[]): CuttingP
     const wastePercentage = rollAreaSqM > 0 ? (wasteAreaSqM / rollAreaSqM) * 100 : 0;
 
     const offcuts: Offcut[] = [];
-    const usedWidthMm = bands.reduce(
-      (max, b) => Math.max(max, b.widthUsedMm),
-      0,
-    );
     const usedLengthMm = currentBandStart;
 
     if (usedLengthMm < rollLengthMm) {
