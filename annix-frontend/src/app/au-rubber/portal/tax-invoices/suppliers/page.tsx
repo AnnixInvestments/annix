@@ -108,7 +108,7 @@ export default function SupplierTaxInvoicesPage() {
       await ids.reduce(
         (chain, id) =>
           chain.then(() =>
-            auRubberApiClient.updateTaxInvoice(id, { status: "APPROVED" }).then(() => undefined),
+            auRubberApiClient.approveTaxInvoice(id).then(() => undefined),
           ),
         Promise.resolve() as Promise<void>,
       );

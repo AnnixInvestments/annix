@@ -2946,6 +2946,17 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Put("portal/tax-invoices/:id/approve")
+  @ApiOperation({ summary: "Approve tax invoice and update compound stock" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async approveTaxInvoice(@Param("id") id: string): Promise<RubberTaxInvoiceDto> {
+    const invoice = await this.rubberTaxInvoiceService.approveTaxInvoice(Number(id));
+    if (!invoice) throw new NotFoundException("Tax invoice not found");
+    return invoice;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Delete("portal/tax-invoices/:id")
   @ApiOperation({ summary: "Delete tax invoice" })
   @ApiParam({ name: "id", description: "Tax invoice ID" })

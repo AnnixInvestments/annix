@@ -2859,6 +2859,12 @@ class AuRubberApiClient {
     });
   }
 
+  async approveTaxInvoice(id: number): Promise<RubberTaxInvoiceDto> {
+    return this.request(`/rubber-lining/portal/tax-invoices/${id}/approve`, {
+      method: "PUT",
+    });
+  }
+
   async deleteTaxInvoice(id: number): Promise<void> {
     return this.request(`/rubber-lining/portal/tax-invoices/${id}`, {
       method: "DELETE",

@@ -10,6 +10,7 @@ import {
   UpdateDeliveryNoteDto,
 } from "./dto/rubber-coc.dto";
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
+import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
 import {
   DeliveryNoteStatus,
   DeliveryNoteType,
@@ -20,6 +21,7 @@ import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.ent
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { RubberStockService } from "./rubber-stock.service";
 
 const DELIVERY_NOTE_TYPE_LABELS: Record<DeliveryNoteType, string> = {
   [DeliveryNoteType.COMPOUND]: "Compound",
@@ -49,6 +51,7 @@ export class RubberDeliveryNoteService {
     private productRepository: Repository<RubberProduct>,
     @InjectRepository(RubberProductCoding)
     private productCodingRepository: Repository<RubberProductCoding>,
+    private rubberStockService: RubberStockService,
   ) {}
 
   async allDeliveryNotes(filters?: {
@@ -274,7 +277,91 @@ export class RubberDeliveryNoteService {
 
     note.status = DeliveryNoteStatus.STOCK_CREATED;
     await this.deliveryNoteRepository.save(note);
+
+    await this.processCompoundStockOut(note);
+
     return this.mapDeliveryNoteToDto(note);
+  }
+
+  private async processCompoundStockOut(note: RubberDeliveryNote): Promise<void> {
+    const alreadyProcessed = await this.rubberStockService.movementExistsForReference(
+      CompoundMovementReferenceType.DELIVERY_DEDUCTION,
+      note.id,
+    );
+    if (alreadyProcessed) return;
+
+    const compoundCoding = await this.compoundCodingFromDeliveryNote(note);
+    if (!compoundCoding) {
+      this.logger.warn(
+        `Delivery note ${note.deliveryNoteNumber}: could not resolve compound coding for stock deduction`,
+      );
+      return;
+    }
+
+    const items = await this.deliveryNoteItemRepository.find({
+      where: { deliveryNoteId: note.id },
+    });
+
+    const totalKg = this.totalKgFromItems(note.deliveryNoteType, items);
+    if (totalKg <= 0) {
+      this.logger.warn(
+        `Delivery note ${note.deliveryNoteNumber}: no kg to deduct from items`,
+      );
+      return;
+    }
+
+    await this.rubberStockService.deductCompoundStockByCoding(
+      compoundCoding.id,
+      totalKg,
+      CompoundMovementReferenceType.DELIVERY_DEDUCTION,
+      note.id,
+      `Delivery note ${note.deliveryNoteNumber}`,
+    );
+
+    this.logger.log(
+      `Delivery note ${note.deliveryNoteNumber}: deducted ${totalKg} kg from compound stock for ${compoundCoding.code}`,
+    );
+  }
+
+  private async compoundCodingFromDeliveryNote(
+    note: RubberDeliveryNote,
+  ): Promise<RubberProductCoding | null> {
+    const compoundCode = note.linkedCoc?.compoundCode;
+    if (compoundCode) {
+      const coding = await this.productCodingRepository.findOne({
+        where: { code: compoundCode, codingType: ProductCodingType.COMPOUND },
+      });
+      if (coding) return coding;
+    }
+
+    const items = await this.deliveryNoteItemRepository.find({
+      where: { deliveryNoteId: note.id },
+    });
+    const itemWithCompound = items.find((item) => item.compoundType !== null);
+    if (itemWithCompound?.compoundType) {
+      const coding = await this.productCodingRepository.findOne({
+        where: { code: itemWithCompound.compoundType, codingType: ProductCodingType.COMPOUND },
+      });
+      if (coding) return coding;
+    }
+
+    return null;
+  }
+
+  private totalKgFromItems(
+    noteType: DeliveryNoteType,
+    items: RubberDeliveryNoteItem[],
+  ): number {
+    if (noteType === DeliveryNoteType.COMPOUND) {
+      return items.reduce(
+        (sum, item) => sum + (item.weightKg ? Number(item.weightKg) : 0),
+        0,
+      );
+    }
+    return items.reduce(
+      (sum, item) => sum + (item.rollWeightKg ? Number(item.rollWeightKg) : 0),
+      0,
+    );
   }
 
   async findByDnNumberAndCompany(

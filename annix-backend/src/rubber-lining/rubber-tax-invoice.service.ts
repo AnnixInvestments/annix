@@ -1,14 +1,20 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { formatISODate, generateUniqueId } from "../lib/datetime";
 import { RubberCompany } from "./entities/rubber-company.entity";
+import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
+import {
+  ProductCodingType,
+  RubberProductCoding,
+} from "./entities/rubber-product-coding.entity";
 import {
   ExtractedTaxInvoiceData,
   RubberTaxInvoice,
   TaxInvoiceStatus,
   TaxInvoiceType,
 } from "./entities/rubber-tax-invoice.entity";
+import { RubberStockService } from "./rubber-stock.service";
 
 const TAX_INVOICE_STATUS_LABELS: Record<TaxInvoiceStatus, string> = {
   [TaxInvoiceStatus.PENDING]: "Pending",
@@ -66,11 +72,16 @@ export interface UpdateTaxInvoiceDto {
 
 @Injectable()
 export class RubberTaxInvoiceService {
+  private readonly logger = new Logger(RubberTaxInvoiceService.name);
+
   constructor(
     @InjectRepository(RubberTaxInvoice)
     private taxInvoiceRepository: Repository<RubberTaxInvoice>,
     @InjectRepository(RubberCompany)
     private companyRepository: Repository<RubberCompany>,
+    @InjectRepository(RubberProductCoding)
+    private productCodingRepository: Repository<RubberProductCoding>,
+    private rubberStockService: RubberStockService,
   ) {}
 
   async allTaxInvoices(filters?: {
@@ -166,6 +177,133 @@ export class RubberTaxInvoiceService {
       relations: ["company"],
     });
     return this.mapToDto(result!);
+  }
+
+  async approveTaxInvoice(id: number): Promise<RubberTaxInvoiceDto | null> {
+    const invoice = await this.taxInvoiceRepository.findOne({
+      where: { id },
+      relations: ["company"],
+    });
+    if (!invoice) return null;
+
+    if (invoice.status === TaxInvoiceStatus.APPROVED) {
+      return this.mapToDto(invoice);
+    }
+
+    invoice.status = TaxInvoiceStatus.APPROVED;
+    await this.taxInvoiceRepository.save(invoice);
+
+    if (invoice.invoiceType === TaxInvoiceType.SUPPLIER) {
+      await this.processCompoundStockIn(invoice);
+    }
+
+    const result = await this.taxInvoiceRepository.findOne({
+      where: { id },
+      relations: ["company"],
+    });
+    return this.mapToDto(result!);
+  }
+
+  private async processCompoundStockIn(invoice: RubberTaxInvoice): Promise<void> {
+    const alreadyProcessed = await this.rubberStockService.movementExistsForReference(
+      CompoundMovementReferenceType.INVOICE_RECEIPT,
+      invoice.id,
+    );
+    if (alreadyProcessed) return;
+
+    const compoundCoding = await this.compoundCodingFromInvoice(invoice);
+    if (!compoundCoding) {
+      this.logger.warn(
+        `Tax invoice ${invoice.invoiceNumber}: could not resolve compound coding from product summary`,
+      );
+      return;
+    }
+
+    const quantityKg = this.compoundQuantityKgFromInvoice(invoice);
+    if (quantityKg === null || quantityKg <= 0) {
+      this.logger.warn(
+        `Tax invoice ${invoice.invoiceNumber}: could not determine kg quantity from extracted data`,
+      );
+      return;
+    }
+
+    const costPerKg = this.compoundCostPerKgFromInvoice(invoice, quantityKg);
+
+    await this.rubberStockService.addCompoundStockByCoding(
+      compoundCoding.id,
+      quantityKg,
+      costPerKg,
+      CompoundMovementReferenceType.INVOICE_RECEIPT,
+      invoice.id,
+      `Supplier invoice ${invoice.invoiceNumber}`,
+    );
+
+    this.logger.log(
+      `Tax invoice ${invoice.invoiceNumber}: added ${quantityKg} kg to compound stock for ${compoundCoding.code}`,
+    );
+  }
+
+  private async compoundCodingFromInvoice(
+    invoice: RubberTaxInvoice,
+  ): Promise<RubberProductCoding | null> {
+    const data = invoice.extractedData;
+    if (!data) return null;
+
+    const textToSearch =
+      data.productSummary ||
+      data.lineItems?.map((item) => item.description).join(" ") ||
+      "";
+
+    const snCodeMatch = textToSearch.match(
+      /AU[A-Z]\d{2}[A-Z]{1,2}[A-Z]{2}[A-Z0-9]{2,3}/i,
+    );
+    if (snCodeMatch) {
+      const code = snCodeMatch[0].toUpperCase();
+      const coding = await this.productCodingRepository.findOne({
+        where: { code, codingType: ProductCodingType.COMPOUND },
+      });
+      if (coding) return coding;
+    }
+
+    const compoundCodes = await this.productCodingRepository.find({
+      where: { codingType: ProductCodingType.COMPOUND },
+    });
+
+    const upperText = textToSearch.toUpperCase();
+    const matched = compoundCodes.find((c) => upperText.includes(c.code.toUpperCase()));
+    return matched ?? null;
+  }
+
+  private compoundQuantityKgFromInvoice(invoice: RubberTaxInvoice): number | null {
+    const data = invoice.extractedData;
+    if (!data) return null;
+
+    if (data.productQuantity != null && data.productUnit != null) {
+      if (data.productUnit.toLowerCase() === "kg") {
+        return data.productQuantity;
+      }
+    }
+
+    const textToSearch =
+      data.productSummary ||
+      data.lineItems?.map((item) => item.description).join(" ") ||
+      "";
+
+    const kgMatch = textToSearch.match(/(\d[\d,.]*)\s*kg/i);
+    if (kgMatch) {
+      return Number(kgMatch[1].replace(/,/g, ""));
+    }
+
+    return null;
+  }
+
+  private compoundCostPerKgFromInvoice(
+    invoice: RubberTaxInvoice,
+    quantityKg: number,
+  ): number | null {
+    const data = invoice.extractedData;
+    if (!data || !data.subtotal || quantityKg <= 0) return null;
+    return Math.round((data.subtotal / quantityKg) * 100) / 100;
   }
 
   async deleteTaxInvoice(id: number): Promise<boolean> {

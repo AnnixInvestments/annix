@@ -713,6 +713,107 @@ export class RubberStockService {
     return this.mapCompoundOrderToDto(order);
   }
 
+  async addCompoundStockByCoding(
+    compoundCodingId: number,
+    quantityKg: number,
+    costPerKg: number | null,
+    referenceType: CompoundMovementReferenceType,
+    referenceId: number | null,
+    notes: string | null,
+  ): Promise<RubberCompoundMovementDto> {
+    const coding = await this.productCodingRepository.findOne({
+      where: { id: compoundCodingId, codingType: ProductCodingType.COMPOUND },
+    });
+    if (!coding) {
+      throw new NotFoundException("Compound coding not found");
+    }
+
+    const existingStock = await this.compoundStockRepository.findOne({
+      where: { compoundCodingId },
+      relations: ["compoundCoding"],
+    });
+
+    const stock = existingStock
+      ? existingStock
+      : await this.compoundStockRepository.save(
+          this.compoundStockRepository.create({
+            firebaseUid: `pg_${generateUniqueId()}`,
+            compoundCodingId,
+            quantityKg: 0,
+            minStockLevelKg: 0,
+            reorderPointKg: 0,
+            costPerKg: null,
+          }),
+        );
+
+    stock.quantityKg = Number(stock.quantityKg) + quantityKg;
+    if (costPerKg !== null) {
+      stock.costPerKg = costPerKg;
+    }
+    await this.compoundStockRepository.save(stock);
+
+    const movement = this.movementRepository.create({
+      compoundStockId: stock.id,
+      movementType: CompoundMovementType.IN,
+      quantityKg,
+      referenceType,
+      referenceId,
+      notes,
+    });
+    const saved = await this.movementRepository.save(movement);
+
+    const result = await this.movementRepository.findOne({
+      where: { id: saved.id },
+      relations: ["compoundStock", "compoundStock.compoundCoding"],
+    });
+    return this.mapMovementToDto(result!);
+  }
+
+  async deductCompoundStockByCoding(
+    compoundCodingId: number,
+    quantityKg: number,
+    referenceType: CompoundMovementReferenceType,
+    referenceId: number | null,
+    notes: string | null,
+  ): Promise<RubberCompoundMovementDto | null> {
+    const stock = await this.compoundStockRepository.findOne({
+      where: { compoundCodingId },
+      relations: ["compoundCoding"],
+    });
+    if (!stock) return null;
+
+    stock.quantityKg = Number(stock.quantityKg) - quantityKg;
+    await this.compoundStockRepository.save(stock);
+
+    const movement = this.movementRepository.create({
+      compoundStockId: stock.id,
+      movementType: CompoundMovementType.OUT,
+      quantityKg,
+      referenceType,
+      referenceId,
+      notes,
+    });
+    const saved = await this.movementRepository.save(movement);
+
+    await this.checkAndCreateAutoOrder(stock);
+
+    const result = await this.movementRepository.findOne({
+      where: { id: saved.id },
+      relations: ["compoundStock", "compoundStock.compoundCoding"],
+    });
+    return this.mapMovementToDto(result!);
+  }
+
+  async movementExistsForReference(
+    referenceType: CompoundMovementReferenceType,
+    referenceId: number,
+  ): Promise<boolean> {
+    const count = await this.movementRepository.count({
+      where: { referenceType, referenceId },
+    });
+    return count > 0;
+  }
+
   private async checkAndCreateAutoOrder(stock: RubberCompoundStock): Promise<void> {
     const currentQty = Number(stock.quantityKg);
     const reorderPoint = Number(stock.reorderPointKg);

@@ -76,7 +76,7 @@ export default function TaxInvoiceDetailPage() {
   const handleApprove = async () => {
     try {
       setIsApproving(true);
-      await auRubberApiClient.updateTaxInvoice(invoiceId, { status: "APPROVED" });
+      await auRubberApiClient.approveTaxInvoice(invoiceId);
       await fetchData();
       showToast("Invoice approved successfully", "success");
     } catch (err) {
