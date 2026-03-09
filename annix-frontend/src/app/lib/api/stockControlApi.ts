@@ -2953,6 +2953,12 @@ class StockControlApiClient {
     });
   }
 
+  async deleteInvoice(invoiceId: number): Promise<void> {
+    return this.request(`/stock-control/invoices/${invoiceId}`, {
+      method: "DELETE",
+    });
+  }
+
   async manualMatchInvoiceItem(
     invoiceId: number,
     itemId: number,
