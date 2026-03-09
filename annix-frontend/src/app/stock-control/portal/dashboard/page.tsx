@@ -1,9 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { useCpoSummary, useDashboardStats, useWorkflowLaneCounts } from "@/app/lib/query/hooks";
+import type { WorkflowNotification } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import {
+  useCpoSummary,
+  useDashboardPreferences,
+  useDashboardStats,
+  usePendingApprovals,
+  useRoleSummary,
+  useUpdateDashboardPreferences,
+  useWorkflowLaneCounts,
+} from "@/app/lib/query/hooks";
+import { MyTasksWidget } from "../../components/dashboard/MyTasksWidget";
+import {
+  AccountsWidget,
+  AdminWidget,
+  ManagerWidget,
+  StoremanWidget,
+  ViewerWidget,
+} from "../../components/dashboard/RoleDashboardWidgets";
+import { ViewSwitcher } from "../../components/dashboard/ViewSwitcher";
+import { WidgetVisibilityToggle } from "../../components/dashboard/WidgetVisibilityToggle";
 import { useStockControlBranding } from "../../context/StockControlBrandingContext";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 
@@ -159,17 +179,102 @@ const INBOUND_ROLES = ["accounts", "manager", "admin"];
 const WORKSHOP_ROLES = ["storeman", "accounts", "manager", "admin"];
 const OUTBOUND_ROLES = ["storeman", "manager", "admin"];
 
+const ALL_WIDGETS = [
+  { key: "role-summary", label: "Role Summary" },
+  { key: "my-tasks", label: "My Tasks" },
+  { key: "stats", label: "Quick Stats" },
+  { key: "workflow-lanes", label: "Workflow Lanes" },
+  { key: "quick-links", label: "Quick Links" },
+];
+
+function RoleSummarySection({ activeView }: { activeView: string }) {
+  const { data: roleSummary, isLoading } = useRoleSummary(activeView);
+
+  if (isLoading) {
+    return (
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-gray-200 rounded w-3/4" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="h-16 bg-gray-200 rounded" />
+            <div className="h-16 bg-gray-200 rounded" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!roleSummary) {
+    return null;
+  }
+
+  if (roleSummary.role === "storeman") {
+    return <StoremanWidget data={roleSummary} />;
+  }
+  if (roleSummary.role === "accounts") {
+    return <AccountsWidget data={roleSummary} />;
+  }
+  if (roleSummary.role === "manager") {
+    return <ManagerWidget data={roleSummary} />;
+  }
+  if (roleSummary.role === "admin") {
+    return <AdminWidget data={roleSummary} />;
+  }
+  return <ViewerWidget data={roleSummary} />;
+}
+
 export default function StockControlDashboard() {
   const { colors, heroImageUrl } = useStockControlBranding();
   const { user } = useStockControlAuth();
   const { data: lanes, isLoading: lanesLoading } = useWorkflowLaneCounts();
   const { data: stats } = useDashboardStats();
   const { data: cpoSummary } = useCpoSummary();
+  const { data: pendingApprovals } = usePendingApprovals();
+  const { data: preferences } = useDashboardPreferences();
+  const updatePreferences = useUpdateDashboardPreferences();
+  const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
 
   const role = user?.role || "viewer";
-  const showInbound = INBOUND_ROLES.includes(role);
-  const showWorkshop = WORKSHOP_ROLES.includes(role);
-  const showOutbound = OUTBOUND_ROLES.includes(role);
+  const [activeView, setActiveView] = useState(role);
+
+  useEffect(() => {
+    setActiveView(preferences?.viewOverride ?? role);
+  }, [preferences?.viewOverride, role]);
+
+  useEffect(() => {
+    stockControlApiClient
+      .workflowNotifications(10)
+      .then((data) => setNotifications(Array.isArray(data) ? data : []))
+      .catch(() => setNotifications([]));
+  }, []);
+
+  const hiddenWidgets = preferences?.hiddenWidgets ?? [];
+
+  const handleWidgetToggle = useCallback(
+    (widgetKey: string) => {
+      const current = preferences?.hiddenWidgets ?? [];
+      const updated = current.includes(widgetKey)
+        ? current.filter((k) => k !== widgetKey)
+        : [...current, widgetKey];
+      updatePreferences.mutate({ hiddenWidgets: updated });
+    },
+    [preferences?.hiddenWidgets, updatePreferences],
+  );
+
+  const handleViewSwitch = useCallback(
+    (newRole: string) => {
+      setActiveView(newRole);
+      const override = newRole === role ? null : newRole;
+      updatePreferences.mutate({ viewOverride: override });
+    },
+    [role, updatePreferences],
+  );
+
+  const widgetVisible = (key: string) => !hiddenWidgets.includes(key);
+
+  const showInbound = INBOUND_ROLES.includes(activeView);
+  const showWorkshop = WORKSHOP_ROLES.includes(activeView);
+  const showOutbound = OUTBOUND_ROLES.includes(activeView);
 
   return (
     <div className="space-y-6">
@@ -203,7 +308,29 @@ export default function StockControlDashboard() {
 
       <PushNotificationBanner />
 
-      {stats && (
+      <div className="flex items-center justify-end gap-2">
+        <WidgetVisibilityToggle
+          allWidgets={ALL_WIDGETS}
+          hiddenWidgets={hiddenWidgets}
+          onToggle={handleWidgetToggle}
+        />
+        <ViewSwitcher
+          currentRole={role}
+          activeView={activeView}
+          onSwitch={handleViewSwitch}
+        />
+      </div>
+
+      {widgetVisible("role-summary") && <RoleSummarySection activeView={activeView} />}
+
+      {widgetVisible("my-tasks") && (
+        <MyTasksWidget
+          pendingApprovals={pendingApprovals ?? []}
+          notifications={notifications}
+        />
+      )}
+
+      {widgetVisible("stats") && stats && (
         <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Link
             href="/stock-control/portal/inventory"
@@ -238,7 +365,7 @@ export default function StockControlDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {widgetVisible("workflow-lanes") && (<><div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {showInbound &&
           (lanesLoading ? (
             <LaneSkeleton title="Inbound" color="bg-blue-600" />
@@ -466,11 +593,11 @@ export default function StockControlDashboard() {
 
       {!showInbound && !showWorkshop && !showOutbound && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-          <p className="text-gray-500">No workflow lanes available for your role.</p>
+          <p className="text-gray-500">No workflow lanes available for this view.</p>
         </div>
-      )}
+      )}</>)}
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {widgetVisible("quick-links") && <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Link
           href="/stock-control/portal/inventory"
           className="bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-teal-500 transition-all text-center"
@@ -553,7 +680,7 @@ export default function StockControlDashboard() {
           </svg>
           <p className="text-sm font-medium text-gray-700">Settings</p>
         </Link>
-      </div>
+      </div>}
     </div>
   );
 }
