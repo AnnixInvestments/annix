@@ -8,6 +8,7 @@ import { StockControlSupplier } from "../entities/stock-control-supplier.entity"
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { SupplierInvoice } from "../entities/supplier-invoice.entity";
+import { CpoService } from "./cpo.service";
 import { DeliveryService } from "./delivery.service";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
@@ -78,6 +79,10 @@ describe("DeliveryService", () => {
     }),
   };
 
+  const mockCpoService = {
+    linkDeliveryToCalloffs: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -90,6 +95,7 @@ describe("DeliveryService", () => {
         { provide: getRepositoryToken(StockControlSupplier), useValue: mockSupplierRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: InvoiceExtractionService, useValue: mockExtractionService },
+        { provide: CpoService, useValue: mockCpoService },
       ],
     }).compile();
 
