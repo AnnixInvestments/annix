@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { DeliveryNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 
 interface ExtractedLineItem {
@@ -34,6 +36,7 @@ function extractedLineItems(delivery: DeliveryNote): ExtractedLineItem[] {
 export default function DeliveryDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useStockControlAuth();
   const deliveryId = Number(params.id);
 
   const [delivery, setDelivery] = useState<DeliveryNote | null>(null);
@@ -195,6 +198,14 @@ export default function DeliveryDetailPage() {
           )}
         </button>
       </div>
+
+      <DeliveryNextAction
+        extractionStatus={delivery.extractionStatus}
+        hasLinkedItems={delivery.items !== undefined && delivery.items.length > 0}
+        extractedItemCount={extractedLineItems(delivery).length}
+        userRole={user?.role || null}
+        onLinkToStock={handleLinkToStock}
+      />
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
@@ -439,7 +450,7 @@ export default function DeliveryDetailPage() {
                         {item.productCode || item.compoundCode || item.itemCode || item.sku || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                        {item.quantity ?? "-"} {item.unitOfMeasure || ""}
+                        {item.quantity || "-"} {item.unitOfMeasure || ""}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-600">
                         {item.thicknessMm || item.widthMm || item.lengthM ? (

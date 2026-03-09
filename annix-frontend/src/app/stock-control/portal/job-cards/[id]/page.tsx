@@ -19,6 +19,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
+import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
 import { AllocationsTab } from "./components/AllocationsTab";
 import { CoatingAnalysisTab } from "./components/CoatingAnalysisTab";
@@ -670,6 +671,15 @@ export default function JobCardDetailPage() {
           </div>
         </div>
       )}
+
+      <JobCardNextAction
+        currentStatus={currentStatus}
+        canApprove={canApprove}
+        currentStep={currentStep}
+        userRole={userRole}
+        onApprove={currentStep ? () => openApprovalModal(currentStep) : undefined}
+        jobCardId={jobId}
+      />
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <JobCardTabs tabs={tabDefinitions} activeTab={activeTab} onTabChange={handleTabChange} />

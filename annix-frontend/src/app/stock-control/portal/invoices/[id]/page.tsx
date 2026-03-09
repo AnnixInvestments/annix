@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   DeliveryNote,
   InvoiceClarification,
@@ -13,6 +14,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { InvoiceNextAction } from "@/app/stock-control/components/NextActionBanner";
 import InvoiceClarificationPopup from "./InvoiceClarificationPopup";
 import PriceUpdateReview from "./PriceUpdateReview";
 
@@ -45,6 +47,7 @@ const MATCH_STATUS_COLORS: Record<string, string> = {
 export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useStockControlAuth();
   const invoiceId = Number(params.id);
 
   const [invoice, setInvoice] = useState<SupplierInvoice | null>(null);
@@ -261,6 +264,14 @@ export default function InvoiceDetailPage() {
           {STATUS_LABELS[invoice.extractionStatus] || invoice.extractionStatus}
         </span>
       </div>
+
+      <InvoiceNextAction
+        extractionStatus={invoice.extractionStatus}
+        pendingClarificationCount={clarifications.filter((c) => c.status === "pending").length}
+        hasPriceChanges={priceSummary !== null && priceSummary.items.length > 0}
+        userRole={user?.role || null}
+        onApprove={() => setShowApprovalModal(true)}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
