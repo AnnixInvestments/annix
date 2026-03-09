@@ -124,7 +124,7 @@ export class JobCardPdfService {
         totalPipeQty,
       );
       currentY = this.drawAllocations(doc, jobCard, currentY);
-      this.drawSignatureBoxes(doc, approvals);
+      currentY = this.drawSignatureBoxes(doc, approvals, currentY);
       this.drawFooter(doc);
 
       doc.end();
@@ -537,7 +537,7 @@ export class JobCardPdfService {
       manualRollAllocations.forEach((rollAlloc) => {
         const diagramHeight = this.cuttingDiagramHeight(rollAlloc);
         const pageHeight = doc.page.height;
-        if (y + diagramHeight > pageHeight - 165) {
+        if (y + diagramHeight > pageHeight - 60) {
           doc.addPage();
           y = 50;
         }
@@ -587,7 +587,7 @@ export class JobCardPdfService {
                 : "TO ORDER";
 
           const pageHeight = doc.page.height;
-          if (y + 20 > pageHeight - 165) {
+          if (y + 20 > pageHeight - 60) {
             doc.addPage();
             y = 50;
           }
@@ -602,7 +602,7 @@ export class JobCardPdfService {
 
           this.groupIdenticalRolls(ply.rolls).forEach((group) => {
             const diagramHeight = this.cuttingDiagramHeight(group.roll);
-            if (y + diagramHeight > pageHeight - 165) {
+            if (y + diagramHeight > pageHeight - 60) {
               doc.addPage();
               y = 50;
             }
@@ -628,7 +628,7 @@ export class JobCardPdfService {
         this.groupIdenticalRolls(plan.rolls).forEach((group) => {
           const diagramHeight = this.cuttingDiagramHeight(group.roll);
           const pageHeight = doc.page.height;
-          if (y + diagramHeight > pageHeight - 165) {
+          if (y + diagramHeight > pageHeight - 60) {
             doc.addPage();
             y = 50;
           }
@@ -677,7 +677,7 @@ export class JobCardPdfService {
         this.groupIdenticalRolls(retryPlan.rolls).forEach((group) => {
           const diagramHeight = this.cuttingDiagramHeight(group.roll);
           const pageHeight = doc.page.height;
-          if (y + diagramHeight > pageHeight - 165) {
+          if (y + diagramHeight > pageHeight - 60) {
             doc.addPage();
             y = 50;
           }
@@ -1046,7 +1046,11 @@ export class JobCardPdfService {
     return y + 10;
   }
 
-  private drawSignatureBoxes(doc: typeof PDFDocument, approvals: JobCardApproval[]): void {
+  private drawSignatureBoxes(
+    doc: typeof PDFDocument,
+    approvals: JobCardApproval[],
+    startY: number,
+  ): number {
     const stepLabels: { step: WorkflowStep; label: string }[] = [
       { step: WorkflowStep.DOCUMENT_UPLOAD, label: "Document Upload" },
       { step: WorkflowStep.ADMIN_APPROVAL, label: "Admin Approval" },
@@ -1062,13 +1066,19 @@ export class JobCardPdfService {
       approvals.filter((a) => a.status === ApprovalStatus.APPROVED).map((a) => [a.step, a]),
     );
 
-    const pageHeight = doc.page.height;
     const boxWidth = 120;
     const boxHeight = 50;
     const boxGap = 4;
     const startX = 50;
-    const startY = pageHeight - 165;
     const boxesPerRow = 4;
+    const totalRows = Math.ceil(stepLabels.length / boxesPerRow);
+    const totalHeight = totalRows * (boxHeight + boxGap) + 25;
+
+    const pageHeight = doc.page.height;
+    if (startY + totalHeight > pageHeight - 50) {
+      doc.addPage();
+      startY = 50;
+    }
 
     doc
       .moveTo(startX, startY - 10)
@@ -1116,6 +1126,8 @@ export class JobCardPdfService {
         doc.fillColor("black");
       }
     });
+
+    return startY + 8 + totalRows * (boxHeight + boxGap) + 10;
   }
 
   private partitionLineItems(lineItems: JobCard["lineItems"]): {
@@ -1182,19 +1194,26 @@ export class JobCardPdfService {
 
   private drawFooter(doc: typeof PDFDocument): void {
     const pageHeight = doc.page.height;
+    const range = doc.bufferedPageRange();
+    const totalPages = range.count;
+    const generatedText = `Generated: ${formatDateTime(new Date())}`;
 
-    doc
-      .fontSize(8)
-      .font("Helvetica")
-      .text(`Generated: ${formatDateTime(new Date())}`, 50, pageHeight - 50, {
-        align: "center",
-        width: 495,
-      });
-
-    const totalPages = doc.bufferedPageRange().count;
-    doc.text(`Page ${totalPages} of ${totalPages}`, 50, pageHeight - 35, {
-      align: "center",
-      width: 495,
+    Array.from({ length: totalPages }, (_, i) => i).forEach((i) => {
+      doc.switchToPage(i);
+      doc
+        .fontSize(8)
+        .font("Helvetica")
+        .fillColor("#666666")
+        .text(generatedText, 50, pageHeight - 40, {
+          align: "center",
+          width: 495,
+        })
+        .text(`Page ${i + 1} of ${totalPages}`, 50, pageHeight - 28, {
+          align: "center",
+          width: 495,
+        });
     });
+
+    doc.fillColor("black");
   }
 }
