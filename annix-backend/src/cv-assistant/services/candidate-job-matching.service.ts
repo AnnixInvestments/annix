@@ -59,7 +59,13 @@ export class CandidateJobMatchingService {
         skillsMissing: skillsResult.missing,
         experienceMatch,
         locationMatch,
-        reasoning: this.buildReasoning(embeddingSimilarity, skillsResult, experienceMatch, locationMatch, job),
+        reasoning: this.buildReasoning(
+          embeddingSimilarity,
+          skillsResult,
+          experienceMatch,
+          locationMatch,
+          job,
+        ),
       };
 
       const existing = await this.matchRepo.findOne({
@@ -89,7 +95,10 @@ export class CandidateJobMatchingService {
       return [];
     }
 
-    const similarCandidates = await this.findSimilarCandidatesByEmbedding(externalJobId, TOP_MATCHES_LIMIT);
+    const similarCandidates = await this.findSimilarCandidatesByEmbedding(
+      externalJobId,
+      TOP_MATCHES_LIMIT,
+    );
 
     const matches: CandidateJobMatch[] = [];
 
@@ -117,7 +126,13 @@ export class CandidateJobMatchingService {
         skillsMissing: skillsResult.missing,
         experienceMatch,
         locationMatch,
-        reasoning: this.buildReasoning(embeddingSimilarity, skillsResult, experienceMatch, locationMatch, job),
+        reasoning: this.buildReasoning(
+          embeddingSimilarity,
+          skillsResult,
+          experienceMatch,
+          locationMatch,
+          job,
+        ),
       };
 
       const existing = await this.matchRepo.findOne({

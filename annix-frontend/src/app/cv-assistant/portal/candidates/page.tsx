@@ -56,23 +56,26 @@ export default function CandidatesPage() {
     }
   };
 
-  const handleViewMatches = useCallback(async (candidateId: number) => {
-    if (expandedCandidate === candidateId) {
-      setExpandedCandidate(null);
-      return;
-    }
-    setExpandedCandidate(candidateId);
-    setIsLoadingMatches(true);
-    try {
-      const matches = await cvAssistantApiClient.recommendedJobsForCandidate(candidateId);
-      setRecommendedJobs(matches);
-    } catch (error) {
-      console.error("Failed to fetch recommended jobs:", error);
-      setRecommendedJobs([]);
-    } finally {
-      setIsLoadingMatches(false);
-    }
-  }, [expandedCandidate]);
+  const handleViewMatches = useCallback(
+    async (candidateId: number) => {
+      if (expandedCandidate === candidateId) {
+        setExpandedCandidate(null);
+        return;
+      }
+      setExpandedCandidate(candidateId);
+      setIsLoadingMatches(true);
+      try {
+        const matches = await cvAssistantApiClient.recommendedJobsForCandidate(candidateId);
+        setRecommendedJobs(matches);
+      } catch (error) {
+        console.error("Failed to fetch recommended jobs:", error);
+        setRecommendedJobs([]);
+      } finally {
+        setIsLoadingMatches(false);
+      }
+    },
+    [expandedCandidate],
+  );
 
   const handleDismissMatch = async (matchId: number) => {
     try {
@@ -195,123 +198,123 @@ export default function CandidatesPage() {
               ) : (
                 candidates.map((candidate) => (
                   <Fragment key={candidate.id}>
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {candidate.name || "Unknown"}
-                      </div>
-                      <div className="text-sm text-gray-500">{candidate.email || "-"}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {candidate.jobPosting?.title || "-"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {candidate.matchScore !== null ? (
-                        <div className="flex items-center">
-                          <span
-                            className={`text-sm font-bold ${
-                              candidate.matchScore >= 80
-                                ? "text-green-600"
-                                : candidate.matchScore >= 50
-                                  ? "text-yellow-600"
-                                  : "text-red-600"
+                    <tr className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {candidate.name || "Unknown"}
+                        </div>
+                        <div className="text-sm text-gray-500">{candidate.email || "-"}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {candidate.jobPosting?.title || "-"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {candidate.matchScore !== null ? (
+                          <div className="flex items-center">
+                            <span
+                              className={`text-sm font-bold ${
+                                candidate.matchScore >= 80
+                                  ? "text-green-600"
+                                  : candidate.matchScore >= 50
+                                    ? "text-yellow-600"
+                                    : "text-red-600"
+                              }`}
+                            >
+                              {candidate.matchScore}%
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {candidate.matchAnalysis ? (
+                          <div className="flex flex-wrap gap-1">
+                            {candidate.matchAnalysis.skillsMatched.slice(0, 2).map((skill, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                            {candidate.matchAnalysis.skillsMissing.slice(0, 1).map((skill, i) => (
+                              <span
+                                key={i}
+                                className="inline-flex px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(candidate.status)}`}
+                        >
+                          {candidate.status.replace(/_/g, " ")}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleViewMatches(candidate.id)}
+                            className={`text-sm ${
+                              expandedCandidate === candidate.id
+                                ? "text-violet-700 font-medium"
+                                : "text-violet-600 hover:text-violet-700"
                             }`}
                           >
-                            {candidate.matchScore}%
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {candidate.matchAnalysis ? (
-                        <div className="flex flex-wrap gap-1">
-                          {candidate.matchAnalysis.skillsMatched.slice(0, 2).map((skill, i) => (
-                            <span
-                              key={i}
-                              className="inline-flex px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                          {candidate.matchAnalysis.skillsMissing.slice(0, 1).map((skill, i) => (
-                            <span
-                              key={i}
-                              className="inline-flex px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded"
-                            >
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(candidate.status)}`}
-                      >
-                        {candidate.status.replace(/_/g, " ")}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button
-                          onClick={() => handleViewMatches(candidate.id)}
-                          className={`text-sm ${
-                            expandedCandidate === candidate.id
-                              ? "text-violet-700 font-medium"
-                              : "text-violet-600 hover:text-violet-700"
-                          }`}
-                        >
-                          Matches
-                        </button>
-                        {candidate.status !== "accepted" && candidate.status !== "rejected" && (
-                          <>
-                            {candidate.status !== "shortlisted" &&
-                              candidate.status !== "reference_check" && (
+                            Matches
+                          </button>
+                          {candidate.status !== "accepted" && candidate.status !== "rejected" && (
+                            <>
+                              {candidate.status !== "shortlisted" &&
+                                candidate.status !== "reference_check" && (
+                                  <button
+                                    onClick={() => handleAction(candidate.id, "shortlist")}
+                                    className="text-green-600 hover:text-green-700"
+                                  >
+                                    Shortlist
+                                  </button>
+                                )}
+                              {(candidate.status === "shortlisted" ||
+                                candidate.status === "reference_check") && (
                                 <button
-                                  onClick={() => handleAction(candidate.id, "shortlist")}
-                                  className="text-green-600 hover:text-green-700"
+                                  onClick={() => handleAction(candidate.id, "accept")}
+                                  className="text-emerald-600 hover:text-emerald-700"
                                 >
-                                  Shortlist
+                                  Accept
                                 </button>
                               )}
-                            {(candidate.status === "shortlisted" ||
-                              candidate.status === "reference_check") && (
                               <button
-                                onClick={() => handleAction(candidate.id, "accept")}
-                                className="text-emerald-600 hover:text-emerald-700"
+                                onClick={() => handleAction(candidate.id, "reject")}
+                                className="text-red-600 hover:text-red-700"
                               >
-                                Accept
+                                Reject
                               </button>
-                            )}
-                            <button
-                              onClick={() => handleAction(candidate.id, "reject")}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                  {expandedCandidate === candidate.id && (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-4 bg-violet-50">
-                        <RecommendedJobsPanel
-                          matches={recommendedJobs}
-                          isLoading={isLoadingMatches}
-                          onDismiss={handleDismissMatch}
-                        />
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
-                  )}
-                </Fragment>
+                    {expandedCandidate === candidate.id && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4 bg-violet-50">
+                          <RecommendedJobsPanel
+                            matches={recommendedJobs}
+                            isLoading={isLoadingMatches}
+                            onDismiss={handleDismissMatch}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))
               )}
             </tbody>
