@@ -134,7 +134,7 @@ export function StockControlHeader(props: StockControlHeaderProps) {
                 items.some((item) => isActive(item.href));
 
               return (
-                <nav className="hidden sm:flex items-center mx-4 overflow-x-auto scrollbar-hide">
+                <nav className="hidden sm:flex items-center mx-4">
                   <div className="flex items-center gap-1">
                     {directItems.map((item) => (
                       <Link

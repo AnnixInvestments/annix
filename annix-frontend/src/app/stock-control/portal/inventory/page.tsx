@@ -107,6 +107,8 @@ export default function InventoryPage() {
     locationId: null as number | null,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [importStep, setImportStep] = useState<
     "idle" | "parsing" | "preview" | "importing" | "result"
@@ -362,6 +364,8 @@ export default function InventoryPage() {
       minStockLevel: 0,
       locationId: null,
     });
+    setPhotoFile(null);
+    setPhotoPreview(null);
     setShowModal(true);
   };
 
@@ -378,18 +382,26 @@ export default function InventoryPage() {
       minStockLevel: item.minStockLevel,
       locationId: item.locationId,
     });
+    setPhotoFile(null);
+    setPhotoPreview(item.photoUrl || null);
     setShowModal(true);
   };
 
   const handleSave = async () => {
     try {
       setIsSaving(true);
+      let savedItem: StockItem;
       if (editingItem) {
-        await stockControlApiClient.updateStockItem(editingItem.id, modalForm);
+        savedItem = await stockControlApiClient.updateStockItem(editingItem.id, modalForm);
       } else {
-        await stockControlApiClient.createStockItem(modalForm);
+        savedItem = await stockControlApiClient.createStockItem(modalForm);
+      }
+      if (photoFile) {
+        await stockControlApiClient.uploadStockItemPhoto(savedItem.id, photoFile);
       }
       setShowModal(false);
+      setPhotoFile(null);
+      setPhotoPreview(null);
       fetchItems();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to save item"));
@@ -2097,6 +2109,58 @@ export default function InventoryPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
+                  <div className="flex items-center gap-4">
+                    {photoPreview ? (
+                      <div className="relative h-20 w-20 shrink-0">
+                        <img
+                          src={photoPreview}
+                          alt="Item photo"
+                          className="h-20 w-20 rounded-lg object-cover border border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPhotoFile(null);
+                            setPhotoPreview(null);
+                          }}
+                          className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="h-20 w-20 shrink-0 rounded-lg bg-gray-100 flex items-center justify-center border border-dashed border-gray-300">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {photoPreview ? "Change Photo" : "Add Photo"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setPhotoFile(file);
+                              setPhotoPreview(URL.createObjectURL(file));
+                            }
+                          }}
+                        />
+                      </label>
+                      <p className="mt-1 text-xs text-gray-500">JPG, PNG or WebP</p>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="mt-6 flex justify-end space-x-3">
