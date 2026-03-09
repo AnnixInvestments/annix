@@ -121,6 +121,79 @@ export interface CompanySettings {
   emailFromAddress: string | null;
 }
 
+export interface JobMarketSource {
+  id: number;
+  provider: string;
+  name: string;
+  apiId: string | null;
+  countryCodes: string[];
+  categories: string[];
+  enabled: boolean;
+  rateLimitPerDay: number;
+  requestsToday: number;
+  lastIngestedAt: string | null;
+  ingestionIntervalHours: number;
+  companyId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateJobMarketSourceDto {
+  provider: string;
+  name: string;
+  apiId?: string;
+  apiKey?: string;
+  countryCodes?: string[];
+  categories?: string[];
+  ingestionIntervalHours?: number;
+}
+
+export interface UpdateJobMarketSourceDto {
+  name?: string;
+  apiId?: string;
+  apiKey?: string;
+  countryCodes?: string[];
+  categories?: string[];
+  enabled?: boolean;
+  ingestionIntervalHours?: number;
+}
+
+export interface ExternalJob {
+  id: number;
+  title: string;
+  company: string | null;
+  country: string;
+  locationRaw: string | null;
+  locationArea: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+  description: string | null;
+  extractedSkills: string[];
+  category: string | null;
+  sourceExternalId: string;
+  sourceUrl: string | null;
+  postedAt: string | null;
+  expiresAt: string | null;
+  sourceId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobMarketStats {
+  totalJobs: number;
+  jobsLast7Days: number;
+  sources: Array<{
+    id: number;
+    name: string;
+    provider: string;
+    enabled: boolean;
+    lastIngestedAt: string | null;
+    requestsToday: number;
+    rateLimitPerDay: number;
+  }>;
+}
+
 const TOKEN_KEYS = {
   accessToken: "cvAssistantAccessToken",
   refreshToken: "cvAssistantRefreshToken",
@@ -545,6 +618,62 @@ class CvAssistantApiClient {
       method: "POST",
       body: JSON.stringify({ rating, feedbackText }),
     });
+  }
+
+  async jobMarketSources(): Promise<JobMarketSource[]> {
+    return this.request("/cv-assistant/job-market/sources");
+  }
+
+  async createJobMarketSource(data: CreateJobMarketSourceDto): Promise<JobMarketSource> {
+    return this.request("/cv-assistant/job-market/sources", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateJobMarketSource(
+    id: number,
+    data: UpdateJobMarketSourceDto,
+  ): Promise<JobMarketSource> {
+    return this.request(`/cv-assistant/job-market/sources/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteJobMarketSource(id: number): Promise<{ message: string }> {
+    return this.request(`/cv-assistant/job-market/sources/${id}`, { method: "DELETE" });
+  }
+
+  async triggerIngestion(sourceId: number): Promise<{ ingested: number; skipped: number }> {
+    return this.request(`/cv-assistant/job-market/sources/${sourceId}/ingest`, {
+      method: "POST",
+    });
+  }
+
+  async externalJobs(filters?: {
+    country?: string;
+    category?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ jobs: ExternalJob[]; total: number }> {
+    const params = new URLSearchParams();
+    if (filters?.country) params.append("country", filters.country);
+    if (filters?.category) params.append("category", filters.category);
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.page) params.append("page", String(filters.page));
+    if (filters?.limit) params.append("limit", String(filters.limit));
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/cv-assistant/job-market/jobs${query}`);
+  }
+
+  async externalJobById(id: number): Promise<ExternalJob> {
+    return this.request(`/cv-assistant/job-market/jobs/${id}`);
+  }
+
+  async jobMarketStats(): Promise<JobMarketStats> {
+    return this.request("/cv-assistant/job-market/stats");
   }
 }
 

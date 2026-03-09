@@ -101,6 +101,9 @@ export class Candidate {
   )
   references: CandidateReference[];
 
+  @Column({ type: "varchar", nullable: true })
+  embedding: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
