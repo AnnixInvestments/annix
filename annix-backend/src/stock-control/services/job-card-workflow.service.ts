@@ -123,6 +123,8 @@ export class JobCardWorkflowService {
 
     this.validateUserCanApprove(user.role, currentStep);
 
+    await this.notificationService.markJobCardNotificationsAsRead(user.id, jobCardId);
+
     let signatureUrl: string | null = null;
     if (input.signatureDataUrl) {
       const sig = await this.signatureService.uploadSignature(
@@ -199,6 +201,8 @@ export class JobCardWorkflowService {
     if (![StockControlRole.ADMIN, StockControlRole.MANAGER].includes(user.role)) {
       throw new ForbiddenException("Only admin or manager can reject");
     }
+
+    await this.notificationService.markJobCardNotificationsAsRead(user.id, jobCardId);
 
     await this.approvalRepo.update(
       { jobCardId, step: currentStep, status: ApprovalStatus.PENDING },

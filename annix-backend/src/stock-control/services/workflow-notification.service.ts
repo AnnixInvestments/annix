@@ -464,6 +464,13 @@ export class WorkflowNotificationService {
     await this.notificationRepo.update({ userId, readAt: IsNull() }, { readAt: now().toJSDate() });
   }
 
+  async markJobCardNotificationsAsRead(userId: number, jobCardId: number): Promise<void> {
+    await this.notificationRepo.update(
+      { userId, jobCardId, readAt: IsNull() },
+      { readAt: now().toJSDate() },
+    );
+  }
+
   private rolesForStep(step: WorkflowStep): StockControlRole[] {
     const roleMap: Record<WorkflowStep, StockControlRole[]> = {
       [WorkflowStep.DOCUMENT_UPLOAD]: [StockControlRole.ACCOUNTS],
