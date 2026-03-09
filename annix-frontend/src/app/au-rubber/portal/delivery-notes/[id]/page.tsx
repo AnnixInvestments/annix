@@ -378,29 +378,23 @@ export default function DeliveryNoteDetailPage() {
   const hasExtractedData =
     note.extractedData &&
     (() => {
+      const hasFields = (item: ExtractedDeliveryNoteData) =>
+        item.deliveryNoteNumber ||
+        item.deliveryDate ||
+        item.supplierName ||
+        item.customerName ||
+        item.customerReference ||
+        item.batchRange ||
+        item.totalWeightKg ||
+        (item.rolls && item.rolls.length > 0);
+
       if (Array.isArray(note.extractedData)) {
         return (
           note.extractedData.length > 0 &&
-          note.extractedData.some(
-            (item) =>
-              item &&
-              (item.deliveryNoteNumber ||
-                item.deliveryDate ||
-                item.supplierName ||
-                item.batchRange ||
-                item.totalWeightKg ||
-                (item.rolls && item.rolls.length > 0)),
-          )
+          note.extractedData.some((item) => item && hasFields(item))
         );
       }
-      return (
-        note.extractedData.deliveryNoteNumber ||
-        note.extractedData.deliveryDate ||
-        note.extractedData.supplierName ||
-        note.extractedData.batchRange ||
-        note.extractedData.totalWeightKg ||
-        (note.extractedData.rolls && note.extractedData.rolls.length > 0)
-      );
+      return hasFields(note.extractedData);
     })();
 
   const isEditing = editedData !== null;

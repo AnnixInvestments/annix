@@ -291,15 +291,16 @@ ${pdfText}
 Return ONLY a valid JSON object with the extracted data.`;
 }
 
-export const CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from customer delivery notes for rubber sheeting products.
+export const CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes for rubber sheeting products.
 
 CRITICAL: A single PDF may contain MULTIPLE delivery notes (one per page). You MUST detect and return ALL delivery notes found.
 The document text includes page markers like "--- PAGE 1 ---", "--- PAGE 2 ---", etc. Each page is typically a SEPARATE delivery note.
-If the document says "DOCUMENT HAS 4 PAGES", you should return 4 delivery notes in the array.
+If the document says "DOCUMENT HAS N PAGES", you should find up to N delivery notes in the array.
+If two pages show the same DN (e.g., customer copy + supplier copy), only return it ONCE.
 
-These are delivery notes from AU Industries (or similar rubber suppliers) to their customers.
+These delivery notes can be from AU Industries to their customers, OR from suppliers (e.g., Impilo Industries) to AU Industries.
 
-AU INDUSTRIES DELIVERY NOTE FORMAT:
+FORMAT 1 - AU INDUSTRIES DELIVERY NOTE (outgoing):
 - Header shows "DELIVERY NOTE" with fields:
   - NUMBER: 1298 (the DN number)
   - REFERENCE: PL7776/PO6719 (customer's PO reference) - THIS IS CRITICAL TO EXTRACT
@@ -307,44 +308,45 @@ AU INDUSTRIES DELIVERY NOTE FORMAT:
   - PAGE: 1/1
 - FROM section: AU INDUSTRIES (PTY) LTD
 - TO section: Customer name and address (e.g., POLYMER LINING SYSTEMS (PTY) LTD)
-
-CUSTOMER REFERENCE / PO NUMBER EXTRACTION - CRITICAL:
-- Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "P.O.:", "PO NUMBER:", "ORDER:", "YOUR REF:", "CUSTOMER REF:"
-- The reference/PO is often near the top of the document in the header area
-- Extract the FULL reference string (e.g., "PL7776/PO6719", "PO-12345", "ORD-2026-001")
-- This field is MANDATORY - search thoroughly for any reference number
 - Description column contains compound info like:
   "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m, 249.37kg per Roll @ 1.05 S.G's"
-  This decodes as:
   - RSCA40 = Roll Stock Cured A40 (A grade, 40 Shore hardness)
-  - 20 = thickness in mm
-  - 950 = width in mm
-  - 125 = length (12.5m)
-  - Color: Red
-  - Grade: A
-  - Shore: 40
-- Roll No & Weight line: "154-41210 - 258Kg" means roll number 154-41210, actual weight 258kg
+  - 20 = thickness in mm, 950 = width in mm, 125 = length (12.5m)
+- Roll No & Weight line: "154-41210 - 258Kg"
 - Quantity column shows qty (typically 1.00)
-- Signature stamp shows "Goods Received Date" with handwritten date
+
+FORMAT 2 - SUPPLIER DELIVERY NOTE (incoming, e.g., Impilo Industries):
+- Header shows supplier company name and "DELIVERY NOTE" title
+- Table with: Document No (the DN number), Order No. (customerReference), Date, Delivery Details
+- Stock items table with Stock Code, Description, Qty columns
+- Roll info as: "Roll # 41210    258 kg" and dimensions as: "1 roll Steam 40 Red 20x950x12.5"
+- Parse "20x950x12.5" as thicknessMm=20, widthMm=950, lengthM=12.5
+- Customer name appears as "COD [CUSTOMER NAME]" in address block
+- Sales Order Number at footer (e.g., SO185032)
+
+CUSTOMER REFERENCE / PO NUMBER EXTRACTION - CRITICAL:
+- Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "P.O.:", "PO NUMBER:", "ORDER No.", "ORDER:", "YOUR REF:", "CUSTOMER REF:"
+- The reference/PO is often near the top of the document in the header area
+- Extract the FULL reference string (e.g., "PL7776/PO6719", "PO-12345", "162")
 
 Return a JSON object with this structure:
 {
   "deliveryNotes": [
     {
-      "deliveryNoteNumber": string (e.g., "1298", "1299"),
-      "customerReference": string or null (CRITICAL - extract PO/reference number, e.g., "PL7776/PO6719", "PO-12345"),
-      "deliveryDate": string or null (ISO format YYYY-MM-DD, convert from DD/MM/YYYY),
-      "customerName": string or null (the TO: company name),
+      "deliveryNoteNumber": string (e.g., "1298", "D08422"),
+      "customerReference": string or null (PO/reference/order number),
+      "deliveryDate": string or null (ISO format YYYY-MM-DD),
+      "customerName": string or null (the recipient company name),
       "lineItems": [
         {
-          "compoundCode": string or null (e.g., "RSCA40-20.950.125"),
-          "compoundDescription": string or null (e.g., "Red A40 SC"),
+          "compoundCode": string or null (e.g., "RSCA40-20.950.125", "TOLLRAWMATAUSC38RED"),
+          "compoundDescription": string or null (e.g., "Red A40 SC", "Toll Raw Compound AU SC38 RED per KG"),
           "thicknessMm": number or null,
           "widthMm": number or null,
           "lengthM": number or null,
           "weightPerRollKg": number or null (theoretical weight per roll),
           "specificGravity": number or null (e.g., 1.05),
-          "rollNumber": string or null (e.g., "154-41210"),
+          "rollNumber": string or null (e.g., "154-41210", "41210"),
           "actualWeightKg": number or null (actual roll weight),
           "quantity": number or null
         }
@@ -354,54 +356,70 @@ Return a JSON object with this structure:
 }
 
 Guidelines:
-- SCAN THROUGH THE ENTIRE DOCUMENT - each page (marked by "--- PAGE X ---") is typically a separate delivery note
-- If you see "DOCUMENT HAS N PAGES", expect to find N delivery notes
-- Look for "NUMBER:" field to identify each delivery note (not the filename)
-- Parse dates from DD/MM/YYYY to YYYY-MM-DD format
-- Extract the compound code pattern (e.g., RSCA40-8.950.125) and parse its components
-- Roll number format is typically XXX-XXXXX (e.g., 154-41210, 156-41213)
-- "S.G's" or "SG" indicates specific gravity (typically 1.05 for natural rubber)
-- Each delivery note typically has one line item, but may have multiple
+- SCAN THROUGH THE ENTIRE DOCUMENT - each page is typically a separate delivery note
+- Parse dates from DD/MM/YYYY or YYYY/MM/DD to YYYY-MM-DD format
+- Extract compound codes and parse their components where possible
+- Parse dimension strings like "20x950x12.5" into thicknessMm, widthMm, lengthM
+- Each delivery note typically has one roll/line item, but may have multiple
 - Return ONLY the JSON object, no additional text`;
 
-export const CUSTOMER_DELIVERY_NOTE_OCR_PROMPT = `You are an expert at extracting structured data from customer delivery note IMAGES for rubber sheeting products.
+export const CUSTOMER_DELIVERY_NOTE_OCR_PROMPT = `You are an expert at extracting structured data from delivery note IMAGES for rubber sheeting products.
 
 IMPORTANT: You are analyzing IMAGES of delivery notes, not text. Look at the visual layout carefully.
+A single PDF may contain MULTIPLE delivery notes (one per page). You MUST detect and return ALL delivery notes found.
+Pages that are upside down, duplicates, or customer copies of the same DN should still be extracted if readable.
 
-DOCUMENT LAYOUT - AU INDUSTRIES DELIVERY NOTE:
-The header section (top of document) typically contains a box/table with these fields arranged horizontally:
+DOCUMENT FORMAT 1 - AU INDUSTRIES DELIVERY NOTE (outgoing):
+The header contains a box/table with fields arranged horizontally:
 ┌─────────────────────────────────────────────────────────────────┐
 │  DELIVERY NOTE                                                   │
 │  NUMBER: 1298    REFERENCE: PL7776/PO6719    DATE: 25/03/2026   │
 │  PAGE: 1/1                                                       │
 └─────────────────────────────────────────────────────────────────┘
-
-CRITICAL - REFERENCE/PO NUMBER EXTRACTION:
-1. Look in the HEADER BOX at the top of the document
-2. Find the field labeled "REFERENCE:" or "REF:" - it's usually between NUMBER and DATE
-3. The value looks like: "PL7776/PO6719", "PO-12345", "PLS-2026-001", etc.
-4. This is the customer's Purchase Order reference - EXTRACT IT!
-5. If you cannot find "REFERENCE:", look for: "YOUR REF:", "PO:", "ORDER REF:", "CUSTOMER REF:"
-
-FROM/TO sections show:
 - FROM: AU INDUSTRIES (PTY) LTD (the supplier)
-- TO: Customer name and address (e.g., POLYMER LINING SYSTEMS)
+- TO: Customer name and address
+- Product description: "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m"
+- Roll number and weight: "154-41210 - 258Kg"
 
-Product description line shows compound info like:
-"RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m"
-- RSCA40 = Roll Stock Cured A40
-- 20 = thickness in mm, 950 = width in mm, 12.5 = length in m
+DOCUMENT FORMAT 2 - SUPPLIER DELIVERY NOTE (incoming, e.g., Impilo Industries):
+Header shows supplier company name and "DELIVERY NOTE" title.
+Table structure with columns:
+┌─────────────┬───────────┬────────────┬──────────────────┐
+│ Document No  │ Order No. │ Date       │ Delivery Details │
+│ D08422       │ 162       │ 2026/02/25 │ Ex works         │
+└─────────────┴───────────┴────────────┴──────────────────┘
+Stock items table:
+│ Stock Code          │ Description                                      │ Qty │
+│ TOLLCALENDERKG      │ Toll Calendered Customer Material per KG          │ 132 │
+│ TOLLCALENDERROLLS   │ Toll Calendered Rolls Customer Supplied Compound  │ 1   │
+│ TOLLRAWMATAUSC38RED │ Toll Raw Compound AU SC38 RED per KG              │ 128 │
+Roll info appears as: "Roll # 41210    258 kg" and sheet dimensions as: "1 roll Steam 40 Red 20x950x12.5"
+- The "Document No" field (e.g., D08422) is the deliveryNoteNumber
+- "Order No." is the customerReference
+- Roll # is the rollNumber, followed by weight in kg
+- Dimensions format "20x950x12.5" means thickness(mm) x width(mm) x length(m)
+- Customer name appears as "COD [CUSTOMER NAME]" in the address block
+- Sales Order Number at footer (e.g., SO185032) can also be used as customerReference if Order No. is missing
 
-Roll number and weight appear as: "154-41210 - 258Kg"
+DOCUMENT FORMAT 3 - HANDWRITTEN/CUSTOMER COPY:
+Some pages may be handwritten customer copies with a simpler format:
+- DN number in large text (e.g., "23723")
+- Customer name, date, and order number in header
+- Quantity and description columns with handwritten entries
+- Extract what is legible; skip pages that are completely unreadable
+
+REFERENCE/PO NUMBER EXTRACTION - CRITICAL:
+Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "ORDER No.", "ORDER:", "YOUR REF:", "CUSTOMER REF:"
+Extract the FULL reference string.
 
 Return a JSON object with this structure:
 {
   "deliveryNotes": [
     {
-      "deliveryNoteNumber": string (from NUMBER: field),
-      "customerReference": string or null (from REFERENCE: field - LOOK CAREFULLY FOR THIS!),
+      "deliveryNoteNumber": string (DN number from any format),
+      "customerReference": string or null (PO/reference/order number),
       "deliveryDate": string or null (ISO format YYYY-MM-DD),
-      "customerName": string or null (from TO: section),
+      "customerName": string or null (the customer/recipient company),
       "lineItems": [
         {
           "compoundCode": string or null,
@@ -418,8 +436,12 @@ Return a JSON object with this structure:
   ]
 }
 
-IMPORTANT: Each page/image is typically a SEPARATE delivery note. Extract data from ALL pages.
-The REFERENCE field is CRITICAL - search the header area thoroughly for any PO/reference number.
+IMPORTANT:
+- Each page/image is typically a SEPARATE delivery note. Extract data from ALL pages.
+- If a page is upside down, still try to read it.
+- If two pages show the same DN (e.g., customer copy + supplier copy), only return it ONCE.
+- Parse roll dimensions like "20x950x12.5" or "8x800x12.5" into thicknessMm, widthMm, lengthM.
+- Parse dates from DD/MM/YYYY or YYYY/MM/DD to ISO YYYY-MM-DD format.
 
 Return ONLY the JSON object, no additional text.`;
 
