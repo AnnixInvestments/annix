@@ -90,34 +90,34 @@ export function DetailsTab({
   return (
     <div className="space-y-6">
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+        <div className="px-4 py-3 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Job Card Details</h3>
         </div>
-        <div className="px-4 py-5 sm:px-6">
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-6">
+        <div className="px-4 py-3 sm:px-6">
+          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
             <div>
               <dt className="text-sm font-medium text-gray-500">Job Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">{jobCard.jobNumber}</dd>
+              <dd className="text-sm text-gray-900">{jobCard.jobNumber}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">JC Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">{jobCard.jcNumber || "-"}</dd>
+              <dd className="text-sm text-gray-900">{jobCard.jcNumber || "-"}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Page Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">{jobCard.pageNumber || "-"}</dd>
+              <dd className="text-sm text-gray-900">{jobCard.pageNumber || "-"}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Job Name</dt>
-              <dd className="mt-1 text-sm text-gray-900">{jobCard.jobName}</dd>
+              <dd className="text-sm text-gray-900">{jobCard.jobName}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Customer</dt>
-              <dd className="mt-1 text-sm text-gray-900">{jobCard.customerName || "-"}</dd>
+              <dd className="text-sm text-gray-900">{jobCard.customerName || "-"}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Status</dt>
-              <dd className="mt-1">
+              <dd>
                 <span
                   className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(jobCard.status)}`}
                 >
@@ -127,52 +127,52 @@ export function DetailsTab({
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formatDateZA(jobCard.createdAt)}</dd>
+              <dd className="text-sm text-gray-900">{formatDateZA(jobCard.createdAt)}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formatDateZA(jobCard.updatedAt)}</dd>
+              <dd className="text-sm text-gray-900">{formatDateZA(jobCard.updatedAt)}</dd>
             </div>
             {jobCard.description && (
-              <div className="col-span-2">
+              <div className="col-span-2 sm:col-span-4">
                 <dt className="text-sm font-medium text-gray-500">Description</dt>
-                <dd className="mt-1 text-sm text-gray-900">{jobCard.description}</dd>
+                <dd className="text-sm text-gray-900">{jobCard.description}</dd>
               </div>
             )}
             {jobCard.poNumber && (
               <div>
                 <dt className="text-sm font-medium text-gray-500">PO Number</dt>
-                <dd className="mt-1 text-sm text-gray-900">{jobCard.poNumber}</dd>
+                <dd className="text-sm text-gray-900">{jobCard.poNumber}</dd>
               </div>
             )}
             {jobCard.siteLocation && (
               <div>
                 <dt className="text-sm font-medium text-gray-500">Site / Location</dt>
-                <dd className="mt-1 text-sm text-gray-900">{jobCard.siteLocation}</dd>
+                <dd className="text-sm text-gray-900">{jobCard.siteLocation}</dd>
               </div>
             )}
             {jobCard.contactPerson && (
               <div>
                 <dt className="text-sm font-medium text-gray-500">Contact Person</dt>
-                <dd className="mt-1 text-sm text-gray-900">{jobCard.contactPerson}</dd>
+                <dd className="text-sm text-gray-900">{jobCard.contactPerson}</dd>
               </div>
             )}
             {jobCard.dueDate && (
               <div>
                 <dt className="text-sm font-medium text-gray-500">Due Date</dt>
-                <dd className="mt-1 text-sm text-gray-900">{jobCard.dueDate}</dd>
+                <dd className="text-sm text-gray-900">{jobCard.dueDate}</dd>
               </div>
             )}
             {jobCard.reference && (
               <div>
                 <dt className="text-sm font-medium text-gray-500">Reference</dt>
-                <dd className="mt-1 text-sm text-gray-900">{jobCard.reference}</dd>
+                <dd className="text-sm text-gray-900">{jobCard.reference}</dd>
               </div>
             )}
             {filteredNotes ? (
-              <div className="col-span-2">
+              <div className="col-span-2 sm:col-span-4">
                 <dt className="text-sm font-medium text-gray-500">Notes</dt>
-                <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{filteredNotes}</dd>
+                <dd className="text-sm text-gray-900 whitespace-pre-wrap">{filteredNotes}</dd>
               </div>
             ) : null}
           </dl>
@@ -183,7 +183,7 @@ export function DetailsTab({
                 {Object.entries(jobCard.customFields).map(([key, value]) => (
                   <div key={key}>
                     <dt className="text-sm font-medium text-gray-500">{key}</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{value}</dd>
+                    <dd className="text-sm text-gray-900">{value}</dd>
                   </div>
                 ))}
               </dl>
