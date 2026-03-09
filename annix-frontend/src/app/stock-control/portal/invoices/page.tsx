@@ -33,6 +33,9 @@ export default function InvoicesPage() {
   const [error, setError] = useState<Error | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<SupplierInvoice | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -64,6 +67,21 @@ export default function InvoicesPage() {
   const handleInvoiceCreated = () => {
     setShowUploadModal(false);
     fetchInvoices();
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await stockControlApiClient.deleteInvoice(deleteTarget.id);
+      setDeleteTarget(null);
+      fetchInvoices();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete invoice");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (isLoading && invoices.length === 0) {
@@ -240,15 +258,10 @@ export default function InvoicesPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <button
                       type="button"
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.stopPropagation();
-                        if (!window.confirm(`Delete invoice ${invoice.invoiceNumber}?`)) return;
-                        try {
-                          await stockControlApiClient.deleteInvoice(invoice.id);
-                          fetchInvoices();
-                        } catch (err) {
-                          alert(err instanceof Error ? err.message : "Failed to delete");
-                        }
+                        setDeleteTarget(invoice);
+                        setDeleteError(null);
                       }}
                       className="text-gray-400 hover:text-red-600 transition-colors"
                       title="Delete invoice"
@@ -288,6 +301,59 @@ export default function InvoicesPage() {
           onClose={() => setShowExportModal(false)}
           onSuccess={() => fetchInvoices()}
         />
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setDeleteTarget(null)}
+            />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <svg
+                    className="w-5 h-5 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900">Delete Invoice</h3>
+              </div>
+              <p className="text-sm text-gray-500 mb-2">
+                Are you sure you want to delete invoice{" "}
+                <span className="font-medium text-gray-900">{deleteTarget.invoiceNumber}</span>?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">This action cannot be undone.</p>
+              {deleteError && <p className="text-sm text-red-600 mb-4">{deleteError}</p>}
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
