@@ -53,6 +53,7 @@ describe("JobCardWorkflowService", () => {
     notifyApprovalCompleted: jest.fn().mockResolvedValue(undefined),
     notifyRejection: jest.fn().mockResolvedValue(undefined),
     notifyDispatchReady: jest.fn().mockResolvedValue(undefined),
+    markJobCardNotificationsAsRead: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockRequisitionService = {
