@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { CpoCalloffRecord, CustomerPurchaseOrder } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -53,6 +53,13 @@ function nextCalloffStatus(current: string): string | null {
     return null;
   }
   return CALLOFF_STATUS_FLOW[idx + 1];
+}
+
+function isCalloffOverdue(record: CpoCalloffRecord): boolean {
+  if (record.status !== "delivered" || !record.deliveredAt) return false;
+  const deliveredDate = fromISO(record.deliveredAt as string);
+  const daysSinceDelivery = now().diff(deliveredDate, "days").days;
+  return daysSinceDelivery >= 21;
 }
 
 function itemFulfillmentPercent(ordered: number, fulfilled: number): number {
@@ -163,6 +170,8 @@ export default function CpoDetailPage() {
     },
     {},
   );
+
+  const overdueRecords = calloffRecords.filter(isCalloffOverdue);
 
   return (
     <div className="space-y-6">
@@ -282,6 +291,31 @@ export default function CpoDetailPage() {
         </div>
       )}
 
+      {overdueRecords.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
+          <svg
+            className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+              clipRule="evenodd"
+            />
+          </svg>
+          <div>
+            <h3 className="text-sm font-semibold text-red-800">
+              Overdue Invoice{overdueRecords.length > 1 ? "s" : ""}
+            </h3>
+            <p className="text-sm text-red-700 mt-0.5">
+              {overdueRecords.length} call-off{overdueRecords.length > 1 ? "s have" : " has"} been
+              delivered for more than 21 days without an invoice.
+            </p>
+          </div>
+        </div>
+      )}
+
       {calloffRecords.length > 0 && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -310,20 +344,28 @@ export default function CpoDetailPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {records.map((record) => {
                       const next = nextCalloffStatus(record.status);
+                      const overdue = isCalloffOverdue(record);
                       return (
                         <div
                           key={record.id}
-                          className="border rounded-lg p-3 flex flex-col space-y-2"
+                          className={`border rounded-lg p-3 flex flex-col space-y-2 ${overdue ? "border-red-300 bg-red-50" : ""}`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-900">
                               {calloffTypeLabel(record.calloffType)}
                             </span>
-                            <span
-                              className={`px-2 py-0.5 text-xs font-semibold rounded-full ${calloffStatusColor(record.status)}`}
-                            >
-                              {calloffStatusLabel(record.status)}
-                            </span>
+                            <div className="flex items-center space-x-1">
+                              {overdue && (
+                                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                  Overdue
+                                </span>
+                              )}
+                              <span
+                                className={`px-2 py-0.5 text-xs font-semibold rounded-full ${calloffStatusColor(record.status)}`}
+                              >
+                                {calloffStatusLabel(record.status)}
+                              </span>
+                            </div>
                           </div>
                           <div className="text-xs text-gray-500 space-y-0.5">
                             {record.calledOffAt && (
