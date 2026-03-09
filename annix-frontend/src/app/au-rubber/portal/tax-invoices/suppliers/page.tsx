@@ -107,9 +107,7 @@ export default function SupplierTaxInvoicesPage() {
       const ids = Array.from(selectedForApproval);
       await ids.reduce(
         (chain, id) =>
-          chain.then(() =>
-            auRubberApiClient.approveTaxInvoice(id).then(() => undefined),
-          ),
+          chain.then(() => auRubberApiClient.approveTaxInvoice(id).then(() => undefined)),
         Promise.resolve() as Promise<void>,
       );
       showToast(

@@ -304,9 +304,7 @@ export class RubberDeliveryNoteService {
 
     const totalKg = this.totalKgFromItems(note.deliveryNoteType, items);
     if (totalKg <= 0) {
-      this.logger.warn(
-        `Delivery note ${note.deliveryNoteNumber}: no kg to deduct from items`,
-      );
+      this.logger.warn(`Delivery note ${note.deliveryNoteNumber}: no kg to deduct from items`);
       return;
     }
 
@@ -348,15 +346,9 @@ export class RubberDeliveryNoteService {
     return null;
   }
 
-  private totalKgFromItems(
-    noteType: DeliveryNoteType,
-    items: RubberDeliveryNoteItem[],
-  ): number {
+  private totalKgFromItems(noteType: DeliveryNoteType, items: RubberDeliveryNoteItem[]): number {
     if (noteType === DeliveryNoteType.COMPOUND) {
-      return items.reduce(
-        (sum, item) => sum + (item.weightKg ? Number(item.weightKg) : 0),
-        0,
-      );
+      return items.reduce((sum, item) => sum + (item.weightKg ? Number(item.weightKg) : 0), 0);
     }
     return items.reduce(
       (sum, item) => sum + (item.rollWeightKg ? Number(item.rollWeightKg) : 0),

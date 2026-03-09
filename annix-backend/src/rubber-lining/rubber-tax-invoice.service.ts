@@ -4,10 +4,7 @@ import { Repository } from "typeorm";
 import { formatISODate, generateUniqueId } from "../lib/datetime";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
-import {
-  ProductCodingType,
-  RubberProductCoding,
-} from "./entities/rubber-product-coding.entity";
+import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import {
   ExtractedTaxInvoiceData,
   RubberTaxInvoice,
@@ -250,13 +247,9 @@ export class RubberTaxInvoiceService {
     if (!data) return null;
 
     const textToSearch =
-      data.productSummary ||
-      data.lineItems?.map((item) => item.description).join(" ") ||
-      "";
+      data.productSummary || data.lineItems?.map((item) => item.description).join(" ") || "";
 
-    const snCodeMatch = textToSearch.match(
-      /AU[A-Z]\d{2}[A-Z]{1,2}[A-Z]{2}[A-Z0-9]{2,3}/i,
-    );
+    const snCodeMatch = textToSearch.match(/AU[A-Z]\d{2}[A-Z]{1,2}[A-Z]{2}[A-Z0-9]{2,3}/i);
     if (snCodeMatch) {
       const code = snCodeMatch[0].toUpperCase();
       const coding = await this.productCodingRepository.findOne({
@@ -285,9 +278,7 @@ export class RubberTaxInvoiceService {
     }
 
     const textToSearch =
-      data.productSummary ||
-      data.lineItems?.map((item) => item.description).join(" ") ||
-      "";
+      data.productSummary || data.lineItems?.map((item) => item.description).join(" ") || "";
 
     const kgMatch = textToSearch.match(/(\d[\d,.]*)\s*kg/i);
     if (kgMatch) {
