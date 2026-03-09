@@ -2065,9 +2065,7 @@ export default function JobCardDetailPage() {
               return cleanedNotes ? (
                 <div className="col-span-2">
                   <dt className="text-sm font-medium text-gray-500">Notes</dt>
-                  <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-                    {cleanedNotes}
-                  </dd>
+                  <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{cleanedNotes}</dd>
                 </div>
               ) : null;
             })()}
@@ -2430,8 +2428,7 @@ export default function JobCardDetailPage() {
 
                   validItems.forEach((li, idx) => {
                     const isNewNoteGroup =
-                      li.notes &&
-                      (idx === 0 || validItems[idx - 1].notes !== li.notes);
+                      li.notes && (idx === 0 || validItems[idx - 1].notes !== li.notes);
                     const isLastInNoteGroup =
                       li.notes &&
                       (idx === validItems.length - 1 || validItems[idx + 1].notes !== li.notes);
@@ -2439,7 +2436,9 @@ export default function JobCardDetailPage() {
                     itemCounter++;
                     rows.push(
                       <tr key={li.id} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{itemCounter}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                          {itemCounter}
+                        </td>
                         <td className="px-3 py-2 text-sm font-mono text-gray-900 break-all">
                           {li.itemCode || "-"}
                         </td>
@@ -2465,7 +2464,10 @@ export default function JobCardDetailPage() {
                       rows.push(
                         <tr key={`note-${li.id}`} className="bg-amber-50">
                           <td className="px-3 py-1.5" />
-                          <td colSpan={6} className="px-3 py-1.5 text-sm italic text-amber-800 whitespace-pre-wrap">
+                          <td
+                            colSpan={6}
+                            className="px-3 py-1.5 text-sm italic text-amber-800 whitespace-pre-wrap"
+                          >
                             {li.notes}
                           </td>
                         </tr>,
@@ -2503,7 +2505,9 @@ export default function JobCardDetailPage() {
                         {li.quantity && (
                           <span className="font-semibold text-gray-900">Qty: {li.quantity}</span>
                         )}
-                        {li.m2 && <span className="text-gray-600">{Number(li.m2).toFixed(2)} m²</span>}
+                        {li.m2 && (
+                          <span className="text-gray-600">{Number(li.m2).toFixed(2)} m²</span>
+                        )}
                       </div>
                     </div>
                     {li.itemDescription && (
@@ -2519,7 +2523,9 @@ export default function JobCardDetailPage() {
                 if (isLastInNoteGroup && li.notes) {
                   elements.push(
                     <div key={`note-${li.id}`} className="px-4 py-2 bg-amber-50">
-                      <p className="text-sm italic text-amber-800 whitespace-pre-wrap">{li.notes}</p>
+                      <p className="text-sm italic text-amber-800 whitespace-pre-wrap">
+                        {li.notes}
+                      </p>
                     </div>,
                   );
                 }

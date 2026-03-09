@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
 import { DispatchScan } from "./dispatch-scan.entity";
 import { JobCardApproval } from "./job-card-approval.entity";
 import { JobCardAttachment } from "./job-card-attachment.entity";
@@ -136,6 +137,16 @@ export class JobCard {
 
   @Column({ name: "source_file_name", type: "varchar", length: 255, nullable: true })
   sourceFileName: string | null;
+
+  @ManyToOne(() => CustomerPurchaseOrder, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "cpo_id" })
+  cpo: CustomerPurchaseOrder | null;
+
+  @Column({ name: "cpo_id", nullable: true })
+  cpoId: number | null;
+
+  @Column({ name: "is_cpo_calloff", type: "boolean", default: false })
+  isCpoCalloff: boolean;
 
   @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })

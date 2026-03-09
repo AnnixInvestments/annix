@@ -43,6 +43,9 @@ export class JobCardLineItem {
   @Column({ name: "m2", type: "numeric", precision: 12, scale: 4, nullable: true })
   m2: number | null;
 
+  @Column({ type: "text", nullable: true })
+  notes: string | null;
+
   @Column({ name: "sort_order", type: "int", default: 0 })
   sortOrder: number;
 

@@ -410,6 +410,11 @@ export default function JobCardsPage() {
                     >
                       {job.status}
                     </span>
+                    {job.cpoId ? (
+                      <span className="ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                        CPO
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDateZA(job.createdAt)}

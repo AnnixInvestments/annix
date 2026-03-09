@@ -19,6 +19,7 @@ export enum NotificationActionType {
   DISPATCH_COMPLETED = "dispatch_completed",
   OVER_ALLOCATION_APPROVAL = "over_allocation_approval",
   JOB_CARDS_IMPORTED = "job_cards_imported",
+  CPO_CALLOFF_NEEDED = "cpo_calloff_needed",
 }
 
 @Entity("workflow_notifications")

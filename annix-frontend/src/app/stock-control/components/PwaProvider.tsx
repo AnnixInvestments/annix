@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { nowMillis } from "@/app/lib/datetime";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -22,6 +23,52 @@ interface ServiceWorkerState {
   isRegistered: boolean;
   isUpdateAvailable: boolean;
   registration: ServiceWorkerRegistration | null;
+}
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const buffer = new ArrayBuffer(rawData.length);
+  const outputArray = new Uint8Array(buffer);
+  rawData.split("").forEach((char, i) => {
+    outputArray[i] = char.charCodeAt(0);
+  });
+  return outputArray;
+}
+
+async function ensurePushSubscription(registration: ServiceWorkerRegistration): Promise<void> {
+  if (Notification.permission !== "granted") {
+    return;
+  }
+
+  try {
+    const existingSub = await registration.pushManager.getSubscription();
+    if (existingSub) {
+      return;
+    }
+
+    const { vapidPublicKey } = await stockControlApiClient.pushVapidKey();
+    if (!vapidPublicKey) {
+      return;
+    }
+
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+    });
+
+    const subscriptionJson = subscription.toJSON();
+    await stockControlApiClient.subscribePush({
+      endpoint: subscriptionJson.endpoint!,
+      keys: {
+        p256dh: subscriptionJson.keys!.p256dh!,
+        auth: subscriptionJson.keys!.auth!,
+      },
+    });
+  } catch (error) {
+    console.error("Auto push re-subscription failed:", error);
+  }
 }
 
 export function PwaProvider(props: { children: React.ReactNode }) {
@@ -85,6 +132,8 @@ export function PwaProvider(props: { children: React.ReactNode }) {
           },
           60 * 60 * 1000,
         );
+
+        ensurePushSubscription(registration);
       } catch (error) {
         console.error("Stock Control service worker registration failed:", error);
       }

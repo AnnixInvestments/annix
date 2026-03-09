@@ -1,11 +1,20 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import {
+  CalloffStatus,
+  CalloffType,
+  CpoCalloffRecord,
+} from "../entities/cpo-calloff-record.entity";
 import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { Requisition, RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
+import { RequisitionItem } from "../entities/requisition-item.entity";
+import { CoatingAnalysisService } from "./coating-analysis.service";
 import { JobCardImportRow, LineItemImportRow } from "./job-card-import.service";
+import { WorkflowNotificationService } from "./workflow-notification.service";
 
 export interface CpoMatchResult {
   matched: boolean;
@@ -84,6 +93,15 @@ export class CpoService {
     private readonly jobCardRepo: Repository<JobCard>,
     @InjectRepository(JobCardLineItem)
     private readonly lineItemRepo: Repository<JobCardLineItem>,
+    @InjectRepository(CpoCalloffRecord)
+    private readonly calloffRepo: Repository<CpoCalloffRecord>,
+    @InjectRepository(Requisition)
+    private readonly requisitionRepo: Repository<Requisition>,
+    @InjectRepository(RequisitionItem)
+    private readonly requisitionItemRepo: Repository<RequisitionItem>,
+    @Inject(forwardRef(() => CoatingAnalysisService))
+    private readonly coatingAnalysisService: CoatingAnalysisService,
+    private readonly notificationService: WorkflowNotificationService,
   ) {}
 
   async findAll(companyId: number, status?: string): Promise<CustomerPurchaseOrder[]> {
@@ -196,6 +214,11 @@ export class CpoService {
 
         result.created++;
         result.createdCpoIds.push(saved.id);
+
+        this.initialiseCpoCoatingAndRequisition(companyId, saved, createdBy).catch((err) => {
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          this.logger.error(`Failed post-creation tasks for CPO ${saved.cpoNumber}: ${msg}`);
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         this.logger.error(`Failed to create CPO for row ${i + 1}: ${message}`);
@@ -342,6 +365,166 @@ export class CpoService {
     }
 
     return noMatch;
+  }
+
+  async initialiseCpoCoatingAndRequisition(
+    companyId: number,
+    cpo: CustomerPurchaseOrder,
+    createdBy: string | null,
+  ): Promise<Requisition | null> {
+    const existingReq = await this.requisitionRepo.findOne({
+      where: { cpoId: cpo.id, companyId },
+    });
+
+    if (existingReq) {
+      this.logger.log(`Call-off requisition already exists for CPO ${cpo.cpoNumber}, skipping`);
+      return existingReq;
+    }
+
+    const linkedJobCards = await this.jobCardRepo.find({
+      where: { cpoId: cpo.id, companyId },
+    });
+
+    const analysisResults = await Promise.all(
+      linkedJobCards.map(async (jc) => {
+        try {
+          return await this.coatingAnalysisService.analyseJobCard(jc.id, companyId);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          this.logger.warn(
+            `Coating analysis failed for JC ${jc.id} (CPO ${cpo.cpoNumber}): ${msg}`,
+          );
+          return null;
+        }
+      }),
+    );
+
+    const allCoats = analysisResults
+      .filter((a): a is NonNullable<typeof a> => a !== null && a.coats.length > 0)
+      .flatMap((a) => a.coats);
+
+    if (allCoats.length === 0) {
+      this.logger.log(`No coating data found for CPO ${cpo.cpoNumber}, skipping requisition`);
+      return null;
+    }
+
+    const requisition = this.requisitionRepo.create({
+      requisitionNumber: `CALLOFF-${cpo.cpoNumber}`,
+      jobCardId: null,
+      cpoId: cpo.id,
+      source: RequisitionSource.CPO,
+      isCalloffOrder: true,
+      companyId,
+      status: RequisitionStatus.PENDING,
+      createdBy,
+      notes: `Auto-generated call-off requisition for CPO ${cpo.cpoNumber}`,
+    });
+    const savedReq = await this.requisitionRepo.save(requisition);
+
+    const items = allCoats.map((coat) =>
+      this.requisitionItemRepo.create({
+        requisitionId: savedReq.id,
+        productName: coat.product,
+        area: coat.area,
+        litresRequired: coat.litersRequired,
+        packSizeLitres: 20,
+        packsToOrder: Math.ceil(coat.litersRequired / 20),
+        companyId,
+      }),
+    );
+    await this.requisitionItemRepo.save(items);
+
+    this.logger.log(
+      `Created call-off requisition ${savedReq.requisitionNumber} with ${items.length} item(s) for CPO ${cpo.cpoNumber}`,
+    );
+
+    return savedReq;
+  }
+
+  async createCalloffRecords(companyId: number, jobCardId: number): Promise<CpoCalloffRecord[]> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+    });
+
+    if (!jobCard || !jobCard.cpoId) {
+      return [];
+    }
+
+    const cpo = await this.cpoRepo.findOne({
+      where: { id: jobCard.cpoId, companyId },
+    });
+
+    if (!cpo) {
+      return [];
+    }
+
+    const existing = await this.calloffRepo.find({
+      where: { jobCardId, companyId },
+    });
+
+    if (existing.length > 0) {
+      this.logger.log(`Calloff records already exist for JC ${jobCardId}, skipping`);
+      return existing;
+    }
+
+    const calloffRequisition = await this.requisitionRepo.findOne({
+      where: { cpoId: cpo.id, companyId, isCalloffOrder: true },
+    });
+
+    const records = [CalloffType.RUBBER, CalloffType.PAINT, CalloffType.SOLUTION].map((type) =>
+      this.calloffRepo.create({
+        companyId,
+        cpoId: cpo.id,
+        jobCardId,
+        requisitionId: calloffRequisition?.id ?? null,
+        calloffType: type,
+        status: CalloffStatus.PENDING,
+      }),
+    );
+
+    const saved = await this.calloffRepo.save(records);
+
+    this.logger.log(
+      `Created ${saved.length} calloff records for JC ${jobCard.jobNumber} / CPO ${cpo.cpoNumber}`,
+    );
+
+    await this.notificationService.notifyCpoCalloffNeeded(companyId, jobCard, cpo);
+
+    return saved;
+  }
+
+  async calloffRecordsForCpo(companyId: number, cpoId: number): Promise<CpoCalloffRecord[]> {
+    return this.calloffRepo.find({
+      where: { cpoId, companyId },
+      relations: ["jobCard"],
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async updateCalloffStatus(
+    companyId: number,
+    recordId: number,
+    status: CalloffStatus,
+  ): Promise<CpoCalloffRecord> {
+    const record = await this.calloffRepo.findOne({
+      where: { id: recordId, companyId },
+    });
+
+    if (!record) {
+      throw new NotFoundException(`Calloff record ${recordId} not found`);
+    }
+
+    record.status = status;
+
+    if (status === CalloffStatus.CALLED_OFF && !record.calledOffAt) {
+      record.calledOffAt = new Date();
+    } else if (status === CalloffStatus.DELIVERED && !record.deliveredAt) {
+      record.deliveredAt = new Date();
+    } else if (status === CalloffStatus.INVOICED && !record.invoicedAt) {
+      record.invoicedAt = new Date();
+    }
+
+    return this.calloffRepo.save(record);
   }
 
   private generateCpoNumber(jobNumber: string, jcNumber?: string): string {

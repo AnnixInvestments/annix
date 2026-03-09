@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
 import { JobCard } from "./job-card.entity";
 import { RequisitionItem } from "./requisition-item.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
@@ -23,6 +24,7 @@ export enum RequisitionStatus {
 export enum RequisitionSource {
   JOB_CARD = "job_card",
   REORDER = "reorder",
+  CPO = "cpo",
 }
 
 @Entity("requisitions")
@@ -58,6 +60,16 @@ export class Requisition {
 
   @Column({ name: "company_id" })
   companyId: number;
+
+  @ManyToOne(() => CustomerPurchaseOrder, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "cpo_id" })
+  cpo: CustomerPurchaseOrder | null;
+
+  @Column({ name: "cpo_id", nullable: true })
+  cpoId: number | null;
+
+  @Column({ name: "is_calloff_order", type: "boolean", default: false })
+  isCalloffOrder: boolean;
 
   @OneToMany(
     () => RequisitionItem,

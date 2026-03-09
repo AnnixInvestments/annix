@@ -188,14 +188,7 @@ export class SearchService {
   ): Promise<SearchResultItem[]> {
     const qb = this.staffRepo
       .createQueryBuilder("s")
-      .select([
-        "s.id",
-        "s.name",
-        "s.employeeNumber",
-        "s.department",
-        "s.active",
-        "s.updatedAt",
-      ])
+      .select(["s.id", "s.name", "s.employeeNumber", "s.department", "s.active", "s.updatedAt"])
       .where("s.companyId = :companyId", { companyId })
       .andWhere(
         "(s.name ILIKE :pattern OR s.employeeNumber ILIKE :pattern OR s.department ILIKE :pattern)",
@@ -211,8 +204,7 @@ export class SearchService {
       id: s.id,
       type: "staff" as const,
       title: s.name,
-      subtitle:
-        [s.employeeNumber, s.department].filter(Boolean).join(" · ") || null,
+      subtitle: [s.employeeNumber, s.department].filter(Boolean).join(" · ") || null,
       status: s.active ? "active" : "inactive",
       href: `/stock-control/portal/staff/${s.id}`,
       updatedAt: s.updatedAt?.toISOString() ?? null,
@@ -228,13 +220,7 @@ export class SearchService {
   ): Promise<SearchResultItem[]> {
     const qb = this.deliveryNoteRepo
       .createQueryBuilder("dn")
-      .select([
-        "dn.id",
-        "dn.deliveryNumber",
-        "dn.supplierName",
-        "dn.notes",
-        "dn.createdAt",
-      ])
+      .select(["dn.id", "dn.deliveryNumber", "dn.supplierName", "dn.notes", "dn.createdAt"])
       .where("dn.companyId = :companyId", { companyId })
       .andWhere(
         "(dn.deliveryNumber ILIKE :pattern OR dn.supplierName ILIKE :pattern OR dn.notes ILIKE :pattern)",
@@ -275,10 +261,9 @@ export class SearchService {
         "inv.updatedAt",
       ])
       .where("inv.companyId = :companyId", { companyId })
-      .andWhere(
-        "(inv.invoiceNumber ILIKE :pattern OR inv.supplierName ILIKE :pattern)",
-        { pattern },
-      )
+      .andWhere("(inv.invoiceNumber ILIKE :pattern OR inv.supplierName ILIKE :pattern)", {
+        pattern,
+      })
       .orderBy("inv.updatedAt", "DESC")
       .take(limit);
 
@@ -341,8 +326,7 @@ export class SearchService {
       href: `/stock-control/portal/purchase-orders/${cpo.id}`,
       updatedAt: cpo.updatedAt?.toISOString() ?? null,
       matchRank:
-        cpo.cpoNumber?.toLowerCase() === lowerExact ||
-        cpo.jobNumber?.toLowerCase() === lowerExact
+        cpo.cpoNumber?.toLowerCase() === lowerExact || cpo.jobNumber?.toLowerCase() === lowerExact
           ? 1
           : 2,
     }));

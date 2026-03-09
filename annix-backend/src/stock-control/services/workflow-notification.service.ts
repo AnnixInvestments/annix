@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
@@ -471,6 +472,60 @@ export class WorkflowNotificationService {
     );
   }
 
+  async notifyCpoCalloffNeeded(
+    companyId: number,
+    jobCard: JobCard,
+    cpo: CustomerPurchaseOrder,
+  ): Promise<void> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const actionUrl = `${frontendUrl}/stock-control/portal/purchase-orders/${cpo.id}`;
+
+    const managers = await this.userRepo.find({
+      where: [
+        { companyId, role: StockControlRole.MANAGER },
+        { companyId, role: StockControlRole.ADMIN },
+      ],
+    });
+
+    const title = `CPO Call-Off Needed: ${jobCard.jobNumber}`;
+    const message = `JC ${jobCard.jobNumber} (${jobCard.jobName}) arrived for CPO ${cpo.cpoNumber} — call-off needed for rubber, paint, and solution.`;
+
+    const notifications = managers.map((user) =>
+      this.notificationRepo.create({
+        companyId,
+        userId: user.id,
+        jobCardId: jobCard.id,
+        title,
+        message,
+        actionType: NotificationActionType.CPO_CALLOFF_NEEDED,
+        actionUrl,
+      }),
+    );
+
+    await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        managers.map((u) => u.id),
+        {
+          title,
+          body: message,
+          tag: `cpo-calloff-${cpo.id}-${jobCard.id}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+
+    this.logger.log(
+      `Created ${notifications.length} CPO call-off notifications for JC ${jobCard.jobNumber} / CPO ${cpo.cpoNumber}`,
+    );
+
+    await Promise.all(
+      managers.map((user) =>
+        this.sendCpoCalloffEmail(companyId, user.email, user.name, jobCard, cpo, actionUrl),
+      ),
+    );
+  }
+
   private rolesForStep(step: WorkflowStep): StockControlRole[] {
     const roleMap: Record<WorkflowStep, StockControlRole[]> = {
       [WorkflowStep.DOCUMENT_UPLOAD]: [StockControlRole.ACCOUNTS],
@@ -750,5 +805,60 @@ export class WorkflowNotificationService {
         : `${jobCards.length} New Job Cards Imported`;
 
     return this.companyEmailService.sendEmail(companyId, { to: email, subject, html });
+  }
+
+  private async sendCpoCalloffEmail(
+    companyId: number,
+    email: string,
+    recipientName: string,
+    jobCard: JobCard,
+    cpo: CustomerPurchaseOrder,
+    actionUrl: string,
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>CPO Call-Off Needed - Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #7c3aed;">CPO Call-Off Needed</h1>
+          <p>Hello ${recipientName},</p>
+          <p>A job card has arrived that is linked to a Customer Purchase Order and requires call-off action.</p>
+
+          <div style="background-color: #f5f3ff; border-left: 4px solid #7c3aed; padding: 15px; margin: 20px 0;">
+            <strong>Details:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Job Card:</strong> ${jobCard.jobNumber} (${jobCard.jobName})<br/>
+              <strong>CPO:</strong> ${cpo.cpoNumber}<br/>
+              <strong>Customer:</strong> ${cpo.customerName || "-"}
+            </p>
+          </div>
+
+          <p>Call-off records have been created for rubber, paint, and solution. Please review and action.</p>
+
+          <p style="margin: 30px 0;">
+            <a href="${actionUrl}"
+               style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View Purchase Order
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated notification from Stock Control.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.companyEmailService.sendEmail(companyId, {
+      to: email,
+      subject: `CPO Call-Off Needed: JC ${jobCard.jobNumber} for ${cpo.cpoNumber}`,
+      html,
+    });
   }
 }

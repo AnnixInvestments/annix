@@ -145,20 +145,34 @@ export default function RequisitionsPage() {
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {req.source === "reorder" ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
-                        Low Stock Reorder
-                      </span>
-                    ) : req.jobCard ? (
-                      <Link
-                        href={`/stock-control/portal/job-cards/${req.jobCardId}`}
-                        className="text-teal-700 hover:text-teal-900"
-                      >
-                        {req.jobCard.jobNumber}
-                      </Link>
-                    ) : (
-                      "-"
-                    )}
+                    <div className="flex items-center space-x-2">
+                      {req.source === "reorder" ? (
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                          Low Stock Reorder
+                        </span>
+                      ) : req.source === "cpo" ? (
+                        <Link
+                          href={`/stock-control/portal/purchase-orders/${req.cpoId}`}
+                          className="text-purple-700 hover:text-purple-900"
+                        >
+                          CPO Call-Off
+                        </Link>
+                      ) : req.jobCard ? (
+                        <Link
+                          href={`/stock-control/portal/job-cards/${req.jobCardId}`}
+                          className="text-teal-700 hover:text-teal-900"
+                        >
+                          {req.jobCard.jobNumber}
+                        </Link>
+                      ) : (
+                        "-"
+                      )}
+                      {req.isCalloffOrder ? (
+                        <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                          Call-Off
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span

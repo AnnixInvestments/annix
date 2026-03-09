@@ -25,6 +25,7 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
+import { CpoService } from "../services/cpo.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
 import { JobCardService } from "../services/job-card.service";
 import { JobCardVersionService } from "../services/job-card-version.service";
@@ -44,6 +45,7 @@ export class JobCardsController {
     private readonly versionService: JobCardVersionService,
     private readonly drawingExtractionService: DrawingExtractionService,
     private readonly workflowService: JobCardWorkflowService,
+    private readonly cpoService: CpoService,
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(RubberDimensionOverride)
@@ -133,6 +135,13 @@ export class JobCardsController {
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         this.logger.error(`Failed to create requisition for job card ${id}: ${message}`);
+      }
+
+      try {
+        await this.cpoService.createCalloffRecords(req.user.companyId, id);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        this.logger.error(`Failed to create CPO calloff records for job card ${id}: ${message}`);
       }
     }
 

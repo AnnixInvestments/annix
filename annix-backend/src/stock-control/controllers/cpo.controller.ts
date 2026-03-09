@@ -16,6 +16,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { CalloffStatus } from "../entities/cpo-calloff-record.entity";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
@@ -82,6 +83,23 @@ export class CpoController {
     @Body() body: { status: CpoStatus },
   ) {
     return this.cpoService.updateStatus(req.user.companyId, id, body.status);
+  }
+
+  @Get(":id/calloff-records")
+  @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
+  @ApiOperation({ summary: "List call-off records for a CPO" })
+  async calloffRecords(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
+    return this.cpoService.calloffRecordsForCpo(req.user.companyId, id);
+  }
+
+  @Put("calloff-records/:recordId/status")
+  @ApiOperation({ summary: "Update call-off record status" })
+  async updateCalloffStatus(
+    @Req() req: any,
+    @Param("recordId", ParseIntPipe) recordId: number,
+    @Body() body: { status: CalloffStatus },
+  ) {
+    return this.cpoService.updateCalloffStatus(req.user.companyId, recordId, body.status);
   }
 
   @Delete(":id")
