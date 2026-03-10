@@ -306,4 +306,51 @@ export class QcMeasurementController {
     await this.qcService.deleteReleaseCertificate(req.user.companyId, id);
     return { deleted: true };
   }
+
+  // ── Items Release ──────────────────────────────────────────────────
+
+  @Get("items-releases")
+  @ApiOperation({ summary: "Items releases for a job card" })
+  async itemsReleasesList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.itemsReleasesForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("items-releases/:id")
+  @ApiOperation({ summary: "Single items release" })
+  async itemsReleaseById(@Req() req: any, @Param("id") id: number) {
+    return this.qcService.itemsReleaseById(req.user.companyId, id);
+  }
+
+  @Post("items-releases")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Create items release" })
+  async createItemsRelease(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: any,
+  ) {
+    return this.qcService.createItemsRelease(req.user.companyId, jobCardId, body, req.user);
+  }
+
+  @Post("items-releases/auto-populate")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Auto-populate items release from job card line items" })
+  async autoPopulateItemsRelease(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.autoPopulateItemsRelease(req.user.companyId, jobCardId, req.user);
+  }
+
+  @Patch("items-releases/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Update items release" })
+  async updateItemsRelease(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    return this.qcService.updateItemsRelease(req.user.companyId, id, body);
+  }
+
+  @Delete("items-releases/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Delete items release" })
+  async deleteItemsRelease(@Req() req: any, @Param("id") id: number) {
+    await this.qcService.deleteItemsRelease(req.user.companyId, id);
+    return { deleted: true };
+  }
 }

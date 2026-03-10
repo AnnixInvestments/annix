@@ -640,14 +640,100 @@ export interface QcReleaseCertificateRecord {
   updatedAt: string;
 }
 
+export type QcpPlanType = "paint_external" | "paint_internal" | "rubber" | "hdpe";
+
+export type InterventionType = "H" | "I" | "W" | "R" | "S" | "V";
+
+export interface QcpPartySignOff {
+  interventionType: InterventionType | null;
+  name: string | null;
+  signatureUrl: string | null;
+  date: string | null;
+}
+
+export interface QcpActivity {
+  operationNumber: number;
+  description: string;
+  specification: string | null;
+  procedureRequired: string | null;
+  pls: QcpPartySignOff;
+  mps: QcpPartySignOff;
+  client: QcpPartySignOff;
+  remarks: string | null;
+}
+
+export interface QcpApprovalSignature {
+  party: string;
+  name: string | null;
+  signatureUrl: string | null;
+  date: string | null;
+}
+
+export interface QcControlPlanRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  planType: QcpPlanType;
+  qcpNumber: string | null;
+  documentRef: string | null;
+  revision: string | null;
+  customerName: string | null;
+  orderNumber: string | null;
+  jobName: string | null;
+  specification: string | null;
+  itemDescription: string | null;
+  activities: QcpActivity[];
+  approvalSignatures: QcpApprovalSignature[];
+  createdByName: string;
+  createdById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface QcMeasurementsAggregate {
   shoreHardness: QcShoreHardnessRecord[];
   dftReadings: QcDftReadingRecord[];
   blastProfiles: QcBlastProfileRecord[];
   dustDebrisTests: QcDustDebrisRecord[];
   pullTests: QcPullTestRecord[];
-  controlPlans: unknown[];
+  controlPlans: QcControlPlanRecord[];
   releaseCertificates: QcReleaseCertificateRecord[];
+}
+
+export type ItemReleaseResult = "pass" | "fail";
+
+export interface ReleaseLineItem {
+  itemCode: string;
+  description: string;
+  jtNumber: string | null;
+  rubberSpec: string | null;
+  paintingSpec: string | null;
+  quantity: number;
+  result: ItemReleaseResult;
+}
+
+export interface ReleasePartySignOff {
+  name: string | null;
+  date: string | null;
+  signatureUrl: string | null;
+}
+
+export interface QcItemsReleaseRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  items: ReleaseLineItem[];
+  totalQuantity: number;
+  checkedByName: string | null;
+  checkedByDate: string | null;
+  plsSignOff: ReleasePartySignOff;
+  mpsSignOff: ReleasePartySignOff;
+  clientSignOff: ReleasePartySignOff;
+  comments: string | null;
+  createdByName: string;
+  createdById: number | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CalibrationCertificate {
@@ -725,6 +811,15 @@ export interface PositectorBatchDetail {
   readings: PositectorReading[];
   statistics: Record<string, string> | null;
   suggestedEntityType: string;
+  suggestedCoatType?: string | null;
+}
+
+export interface PositectorImportResult {
+  entityType: string;
+  recordId: number;
+  readingsImported: number;
+  average: number | null;
+  duplicateWarning: boolean;
 }
 
 export interface DeliveryNote {
@@ -4042,6 +4137,45 @@ class StockControlApiClient {
     });
   }
 
+  // ── QC Control Plans ──────────────────────────────────────────────
+
+  async controlPlansForJobCard(jobCardId: number): Promise<QcControlPlanRecord[]> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/control-plans`);
+  }
+
+  async controlPlanById(jobCardId: number, id: number): Promise<QcControlPlanRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/control-plans/${id}`);
+  }
+
+  async createControlPlan(
+    jobCardId: number,
+    data: Partial<QcControlPlanRecord>,
+  ): Promise<QcControlPlanRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/control-plans`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateControlPlan(
+    jobCardId: number,
+    id: number,
+    data: Partial<QcControlPlanRecord>,
+  ): Promise<QcControlPlanRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/control-plans/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteControlPlan(jobCardId: number, id: number): Promise<void> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/control-plans/${id}`, {
+      method: "DELETE",
+    });
+  }
+
   async positectorDevices(filters?: { active?: boolean }): Promise<PositectorDevice[]> {
     const params = new URLSearchParams();
     if (filters?.active !== undefined) params.set("active", String(filters.active));
@@ -4103,6 +4237,71 @@ class StockControlApiClient {
 
   async positectorBatch(deviceId: number, buid: string): Promise<PositectorBatchDetail> {
     return this.request(`/stock-control/positector-devices/${deviceId}/batches/${buid}`);
+  }
+
+  async importPositectorBatch(
+    deviceId: number,
+    buid: string,
+    data: {
+      jobCardId: number;
+      entityType: string;
+      coatType?: string;
+      paintProduct?: string;
+      batchNumber?: string | null;
+      specMinMicrons?: number;
+      specMaxMicrons?: number;
+      specMicrons?: number;
+      temperature?: number | null;
+      humidity?: number | null;
+      rubberSpec?: string;
+      rubberBatchNumber?: string | null;
+      requiredShore?: number;
+    },
+  ): Promise<PositectorImportResult> {
+    return this.request(`/stock-control/positector-devices/${deviceId}/batches/${buid}/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async itemsReleasesForJobCard(jobCardId: number): Promise<QcItemsReleaseRecord[]> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases`);
+  }
+
+  async autoPopulateItemsRelease(jobCardId: number): Promise<QcItemsReleaseRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/auto-populate`, {
+      method: "POST",
+    });
+  }
+
+  async createItemsRelease(
+    jobCardId: number,
+    data: Partial<QcItemsReleaseRecord>,
+  ): Promise<QcItemsReleaseRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateItemsRelease(
+    jobCardId: number,
+    id: number,
+    data: Partial<QcItemsReleaseRecord>,
+  ): Promise<QcItemsReleaseRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteItemsRelease(jobCardId: number, id: number): Promise<void> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/${id}`, {
+      method: "DELETE",
+    });
   }
 }
 

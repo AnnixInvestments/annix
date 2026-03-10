@@ -18,7 +18,9 @@ import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import BlastProfileForm from "./BlastProfileForm";
 import DftReadingForm from "./DftReadingForm";
 import DustDebrisForm from "./DustDebrisForm";
+import { ItemsReleaseSection } from "./ItemsReleaseSection";
 import { PullTestForm } from "./PullTestForm";
+import { QcpSection } from "./QcpSection";
 import { QcReleaseCertificateSection } from "./QcReleaseCertificateSection";
 import { ShoreHardnessForm } from "./ShoreHardnessForm";
 
@@ -39,7 +41,9 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [activeForm, setActiveForm] = useState<QcFormType>(null);
-  const [editingShoreHardness, setEditingShoreHardness] = useState<QcShoreHardnessRecord | null>(null);
+  const [editingShoreHardness, setEditingShoreHardness] = useState<QcShoreHardnessRecord | null>(
+    null,
+  );
   const [editingDft, setEditingDft] = useState<QcDftReadingRecord | null>(null);
   const [editingBlast, setEditingBlast] = useState<QcBlastProfileRecord | null>(null);
   const [editingDust, setEditingDust] = useState<QcDustDebrisRecord | null>(null);
@@ -198,7 +202,9 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
               {totalQcRecords > 0 && (
                 <>
                   <span className="text-gray-300">|</span>
-                  <span>{totalQcRecords} QC record{totalQcRecords !== 1 ? "s" : ""}</span>
+                  <span>
+                    {totalQcRecords} QC record{totalQcRecords !== 1 ? "s" : ""}
+                  </span>
                 </>
               )}
             </div>
@@ -284,7 +290,10 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         ) : (
           <div className="divide-y divide-gray-200">
             {(qcData?.shoreHardness ?? []).map((rec) => (
-              <div key={`sh-${rec.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+              <div
+                key={`sh-${rec.id}`}
+                className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+              >
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
                     Shore
@@ -293,16 +302,20 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                   <span className="text-sm text-gray-500">
                     Avg: {rec.averages.overall?.toFixed(1) ?? "-"} / Required: {rec.requiredShore}
                   </span>
-                  {rec.averages.overall !== null && Math.abs(rec.averages.overall - rec.requiredShore) > 5 && (
-                    <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
-                      Out of spec
-                    </span>
-                  )}
+                  {rec.averages.overall !== null &&
+                    Math.abs(rec.averages.overall - rec.requiredShore) > 5 && (
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                        Out of spec
+                      </span>
+                    )}
                   <span className="text-xs text-gray-400">{rec.readingDate}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => { setEditingShoreHardness(rec); setActiveForm("shore-hardness"); }}
+                    onClick={() => {
+                      setEditingShoreHardness(rec);
+                      setActiveForm("shore-hardness");
+                    }}
                     className="text-xs text-teal-600 hover:text-teal-800"
                   >
                     Edit
@@ -318,27 +331,40 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
             ))}
 
             {(qcData?.dftReadings ?? []).map((rec) => (
-              <div key={`dft-${rec.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+              <div
+                key={`dft-${rec.id}`}
+                className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+              >
                 <div className="flex items-center gap-3">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    rec.coatType === "primer" ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"
-                  }`}>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      rec.coatType === "primer"
+                        ? "bg-orange-100 text-orange-800"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
                     DFT {rec.coatType === "primer" ? "Primer" : "Final"}
                   </span>
                   <span className="text-sm font-medium text-gray-900">{rec.paintProduct}</span>
                   <span className="text-sm text-gray-500">
-                    Avg: {rec.averageMicrons?.toFixed(1) ?? "-"} μm ({rec.specMinMicrons}-{rec.specMaxMicrons})
+                    Avg: {rec.averageMicrons?.toFixed(1) ?? "-"} μm ({rec.specMinMicrons}-
+                    {rec.specMaxMicrons})
                   </span>
-                  {rec.averageMicrons !== null && (rec.averageMicrons < rec.specMinMicrons || rec.averageMicrons > rec.specMaxMicrons) && (
-                    <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
-                      Out of spec
-                    </span>
-                  )}
+                  {rec.averageMicrons !== null &&
+                    (rec.averageMicrons < rec.specMinMicrons ||
+                      rec.averageMicrons > rec.specMaxMicrons) && (
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                        Out of spec
+                      </span>
+                    )}
                   <span className="text-xs text-gray-400">{rec.readingDate}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => { setEditingDft(rec); setActiveForm("dft"); }}
+                    onClick={() => {
+                      setEditingDft(rec);
+                      setActiveForm("dft");
+                    }}
                     className="text-xs text-teal-600 hover:text-teal-800"
                   >
                     Edit
@@ -354,7 +380,10 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
             ))}
 
             {(qcData?.blastProfiles ?? []).map((rec) => (
-              <div key={`bp-${rec.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+              <div
+                key={`bp-${rec.id}`}
+                className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+              >
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
                     Blast
@@ -362,13 +391,20 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                   <span className="text-sm text-gray-500">
                     Avg: {rec.averageMicrons?.toFixed(1) ?? "-"} μm / Spec: {rec.specMicrons} μm
                   </span>
-                  {rec.temperature !== null && <span className="text-xs text-gray-400">{rec.temperature}°C</span>}
-                  {rec.humidity !== null && <span className="text-xs text-gray-400">{rec.humidity}% RH</span>}
+                  {rec.temperature !== null && (
+                    <span className="text-xs text-gray-400">{rec.temperature}°C</span>
+                  )}
+                  {rec.humidity !== null && (
+                    <span className="text-xs text-gray-400">{rec.humidity}% RH</span>
+                  )}
                   <span className="text-xs text-gray-400">{rec.readingDate}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => { setEditingBlast(rec); setActiveForm("blast-profile"); }}
+                    onClick={() => {
+                      setEditingBlast(rec);
+                      setActiveForm("blast-profile");
+                    }}
                     className="text-xs text-teal-600 hover:text-teal-800"
                   >
                     Edit
@@ -387,7 +423,10 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
               const passCount = rec.tests.filter((t) => t.result === "pass").length;
               const failCount = rec.tests.filter((t) => t.result === "fail").length;
               return (
-                <div key={`dd-${rec.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                <div
+                  key={`dd-${rec.id}`}
+                  className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                >
                   <div className="flex items-center gap-3">
                     <span className="inline-flex items-center rounded-full bg-cyan-100 px-2.5 py-0.5 text-xs font-medium text-cyan-800">
                       Dust
@@ -405,7 +444,10 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => { setEditingDust(rec); setActiveForm("dust-debris"); }}
+                      onClick={() => {
+                        setEditingDust(rec);
+                        setActiveForm("dust-debris");
+                      }}
                       className="text-xs text-teal-600 hover:text-teal-800"
                     >
                       Edit
@@ -422,12 +464,17 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
             })}
 
             {(qcData?.pullTests ?? []).map((rec) => (
-              <div key={`pt-${rec.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+              <div
+                key={`pt-${rec.id}`}
+                className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+              >
                 <div className="flex items-center gap-3">
                   <span className="inline-flex items-center rounded-full bg-pink-100 px-2.5 py-0.5 text-xs font-medium text-pink-800">
                     Pull Test
                   </span>
-                  <span className="text-sm font-medium text-gray-900">{rec.itemDescription ?? "-"}</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {rec.itemDescription ?? "-"}
+                  </span>
                   <span className="text-sm text-gray-500">
                     {rec.areaReadings.length} reading{rec.areaReadings.length !== 1 ? "s" : ""}
                   </span>
@@ -440,7 +487,10 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => { setEditingPull(rec); setActiveForm("pull-test"); }}
+                    onClick={() => {
+                      setEditingPull(rec);
+                      setActiveForm("pull-test");
+                    }}
                     className="text-xs text-teal-600 hover:text-teal-800"
                   >
                     Edit
@@ -459,6 +509,10 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
       </div>
 
       <QcReleaseCertificateSection jobCardId={jobCardId} />
+
+      <ItemsReleaseSection jobCardId={jobCardId} />
+
+      <QcpSection jobCardId={jobCardId} />
 
       {batchRecords.length > 0 && (
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -614,14 +668,17 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         </div>
       )}
 
-      {certificates.length === 0 && batchRecords.length === 0 && calibrationCerts.length === 0 && totalQcRecords === 0 && (
-        <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
-          <p className="text-gray-500">No quality records for this job card yet</p>
-          <p className="mt-1 text-sm text-gray-400">
-            Batch records are created when stock is issued with batch numbers
-          </p>
-        </div>
-      )}
+      {certificates.length === 0 &&
+        batchRecords.length === 0 &&
+        calibrationCerts.length === 0 &&
+        totalQcRecords === 0 && (
+          <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
+            <p className="text-gray-500">No quality records for this job card yet</p>
+            <p className="mt-1 text-sm text-gray-400">
+              Batch records are created when stock is issued with batch numbers
+            </p>
+          </div>
+        )}
 
       <ShoreHardnessForm
         isOpen={activeForm === "shore-hardness"}

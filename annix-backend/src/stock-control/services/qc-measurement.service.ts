@@ -1,10 +1,12 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { JobCard } from "../entities/job-card.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
 import { QcDftReading } from "../entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "../entities/qc-dust-debris-test.entity";
+import { ItemReleaseResult, QcItemsRelease, ReleaseLineItem } from "../entities/qc-items-release.entity";
 import { QcPullTest } from "../entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";
@@ -16,7 +18,8 @@ type QcEntity =
   | QcDustDebrisTest
   | QcPullTest
   | QcControlPlan
-  | QcReleaseCertificate;
+  | QcReleaseCertificate
+  | QcItemsRelease;
 
 interface UserContext {
   id: number;
@@ -43,6 +46,10 @@ export class QcMeasurementService {
     private readonly controlPlanRepo: Repository<QcControlPlan>,
     @InjectRepository(QcReleaseCertificate)
     private readonly releaseCertRepo: Repository<QcReleaseCertificate>,
+    @InjectRepository(QcItemsRelease)
+    private readonly itemsReleaseRepo: Repository<QcItemsRelease>,
+    @InjectRepository(JobCard)
+    private readonly jobCardRepo: Repository<JobCard>,
   ) {}
 
   // ── Shore Hardness ──────────────────────────────────────────────────
@@ -377,6 +384,91 @@ export class QcMeasurementService {
       "Release certificate",
     );
     await this.releaseCertRepo.remove(record);
+  }
+
+  // ── Items Release ──────────────────────────────────────────────────
+
+  async itemsReleasesForJobCard(companyId: number, jobCardId: number): Promise<QcItemsRelease[]> {
+    return this.itemsReleaseRepo.find({
+      where: { companyId, jobCardId },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async itemsReleaseById(companyId: number, id: number): Promise<QcItemsRelease> {
+    return this.findOrFail(this.itemsReleaseRepo, companyId, id, "Items release");
+  }
+
+  async createItemsRelease(
+    companyId: number,
+    jobCardId: number,
+    data: Partial<QcItemsRelease>,
+    user: UserContext,
+  ): Promise<QcItemsRelease> {
+    const record = this.itemsReleaseRepo.create({
+      ...data,
+      companyId,
+      jobCardId,
+      createdByName: user.name,
+      createdById: user.id,
+    });
+    return this.itemsReleaseRepo.save(record);
+  }
+
+  async updateItemsRelease(
+    companyId: number,
+    id: number,
+    data: Partial<QcItemsRelease>,
+  ): Promise<QcItemsRelease> {
+    const record = await this.findOrFail(this.itemsReleaseRepo, companyId, id, "Items release");
+    Object.assign(record, data);
+    return this.itemsReleaseRepo.save(record);
+  }
+
+  async deleteItemsRelease(companyId: number, id: number): Promise<void> {
+    const record = await this.findOrFail(this.itemsReleaseRepo, companyId, id, "Items release");
+    await this.itemsReleaseRepo.remove(record);
+  }
+
+  async autoPopulateItemsRelease(
+    companyId: number,
+    jobCardId: number,
+    user: UserContext,
+  ): Promise<QcItemsRelease> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+      relations: ["lineItems"],
+    });
+
+    if (!jobCard) {
+      throw new NotFoundException(`Job card #${jobCardId} not found`);
+    }
+
+    const items: ReleaseLineItem[] = (jobCard.lineItems ?? []).map((li) => ({
+      itemCode: li.itemCode ?? "",
+      description: li.itemDescription ?? "",
+      jtNumber: li.jtNo ?? null,
+      rubberSpec: null,
+      paintingSpec: null,
+      quantity: Number(li.quantity) || 0,
+      result: ItemReleaseResult.PASS,
+    }));
+
+    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+
+    const record = this.itemsReleaseRepo.create({
+      companyId,
+      jobCardId,
+      items,
+      totalQuantity,
+      createdByName: user.name,
+      createdById: user.id,
+      plsSignOff: { name: null, date: null, signatureUrl: null },
+      mpsSignOff: { name: null, date: null, signatureUrl: null },
+      clientSignOff: { name: null, date: null, signatureUrl: null },
+    });
+
+    return this.itemsReleaseRepo.save(record);
   }
 
   // ── Aggregate ──────────────────────────────────────────────────────
