@@ -5,10 +5,24 @@ import type {
   CalibrationCertificate,
   DataBookStatus,
   IssuanceBatchRecord,
+  QcBlastProfileRecord,
+  QcDftReadingRecord,
+  QcDustDebrisRecord,
+  QcMeasurementsAggregate,
+  QcPullTestRecord,
+  QcShoreHardnessRecord,
   SupplierCertificate,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
+import BlastProfileForm from "./BlastProfileForm";
+import DftReadingForm from "./DftReadingForm";
+import DustDebrisForm from "./DustDebrisForm";
+import { PullTestForm } from "./PullTestForm";
+import { QcReleaseCertificateSection } from "./QcReleaseCertificateSection";
+import { ShoreHardnessForm } from "./ShoreHardnessForm";
+
+type QcFormType = "shore-hardness" | "dft" | "blast-profile" | "dust-debris" | "pull-test" | null;
 
 interface QualityTabProps {
   jobCardId: number;
@@ -19,25 +33,34 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
   const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
   const [dataBookStatus, setDataBookStatus] = useState<DataBookStatus | null>(null);
+  const [qcData, setQcData] = useState<QcMeasurementsAggregate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCompiling, setIsCompiling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [activeForm, setActiveForm] = useState<QcFormType>(null);
+  const [editingShoreHardness, setEditingShoreHardness] = useState<QcShoreHardnessRecord | null>(null);
+  const [editingDft, setEditingDft] = useState<QcDftReadingRecord | null>(null);
+  const [editingBlast, setEditingBlast] = useState<QcBlastProfileRecord | null>(null);
+  const [editingDust, setEditingDust] = useState<QcDustDebrisRecord | null>(null);
+  const [editingPull, setEditingPull] = useState<QcPullTestRecord | null>(null);
 
   const fetchQualityData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const [certsRes, calCertsRes, recordsRes, statusRes] = await Promise.all([
+      const [certsRes, calCertsRes, recordsRes, statusRes, qcRes] = await Promise.all([
         stockControlApiClient.certificatesForJobCard(jobCardId),
         stockControlApiClient.calibrationCertificates({ active: true }),
         stockControlApiClient.batchRecordsForJobCard(jobCardId),
         stockControlApiClient.dataBookStatus(jobCardId),
+        stockControlApiClient.qcMeasurementsForJobCard(jobCardId),
       ]);
       setCertificates(Array.isArray(certsRes) ? certsRes : []);
       setCalibrationCerts(Array.isArray(calCertsRes) ? calCertsRes : []);
       setBatchRecords(Array.isArray(recordsRes) ? recordsRes : []);
       setDataBookStatus(statusRes);
+      setQcData(qcRes);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load quality data");
     } finally {
@@ -84,12 +107,52 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
     }
   };
 
+  const handleFormClose = useCallback(() => {
+    setActiveForm(null);
+    setEditingShoreHardness(null);
+    setEditingDft(null);
+    setEditingBlast(null);
+    setEditingDust(null);
+    setEditingPull(null);
+  }, []);
+
+  const handleFormSaved = useCallback(() => {
+    handleFormClose();
+    fetchQualityData();
+  }, [handleFormClose, fetchQualityData]);
+
+  const handleDeleteQc = async (type: string, id: number) => {
+    try {
+      setError(null);
+      if (type === "shore-hardness") {
+        await stockControlApiClient.deleteShoreHardness(jobCardId, id);
+      } else if (type === "dft") {
+        await stockControlApiClient.deleteDftReading(jobCardId, id);
+      } else if (type === "blast-profile") {
+        await stockControlApiClient.deleteBlastProfile(jobCardId, id);
+      } else if (type === "dust-debris") {
+        await stockControlApiClient.deleteDustDebrisTest(jobCardId, id);
+      } else if (type === "pull-test") {
+        await stockControlApiClient.deletePullTest(jobCardId, id);
+      }
+      fetchQualityData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete record");
+    }
+  };
+
   if (isLoading) {
     return <div className="py-12 text-center text-gray-500">Loading quality data...</div>;
   }
 
   const linkedCount = batchRecords.filter((r) => r.supplierCertificate).length;
   const unlinkedCount = batchRecords.length - linkedCount;
+  const totalQcRecords =
+    (qcData?.shoreHardness.length ?? 0) +
+    (qcData?.dftReadings.length ?? 0) +
+    (qcData?.blastProfiles.length ?? 0) +
+    (qcData?.dustDebrisTests.length ?? 0) +
+    (qcData?.pullTests.length ?? 0);
 
   return (
     <div className="space-y-6">
@@ -132,6 +195,12 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                   )}
                 </>
               )}
+              {totalQcRecords > 0 && (
+                <>
+                  <span className="text-gray-300">|</span>
+                  <span>{totalQcRecords} QC record{totalQcRecords !== 1 ? "s" : ""}</span>
+                </>
+              )}
             </div>
             {dataBookStatus?.exists && (
               <p className="mt-1 text-xs text-gray-500">
@@ -170,6 +239,226 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
           </div>
         </div>
       </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+          <h3 className="text-sm font-semibold text-gray-900">QC Measurements</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setActiveForm("shore-hardness")}
+              className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+            >
+              + Shore Hardness
+            </button>
+            <button
+              onClick={() => setActiveForm("dft")}
+              className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+            >
+              + DFT
+            </button>
+            <button
+              onClick={() => setActiveForm("blast-profile")}
+              className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+            >
+              + Blast Profile
+            </button>
+            <button
+              onClick={() => setActiveForm("dust-debris")}
+              className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+            >
+              + Dust & Debris
+            </button>
+            <button
+              onClick={() => setActiveForm("pull-test")}
+              className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+            >
+              + Pull Test
+            </button>
+          </div>
+        </div>
+
+        {totalQcRecords === 0 ? (
+          <div className="py-8 text-center text-sm text-gray-500">
+            No QC measurements recorded yet. Use the buttons above to add records.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {(qcData?.shoreHardness ?? []).map((rec) => (
+              <div key={`sh-${rec.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
+                    Shore
+                  </span>
+                  <span className="text-sm font-medium text-gray-900">{rec.rubberSpec}</span>
+                  <span className="text-sm text-gray-500">
+                    Avg: {rec.averages.overall?.toFixed(1) ?? "-"} / Required: {rec.requiredShore}
+                  </span>
+                  {rec.averages.overall !== null && Math.abs(rec.averages.overall - rec.requiredShore) > 5 && (
+                    <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                      Out of spec
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setEditingShoreHardness(rec); setActiveForm("shore-hardness"); }}
+                    className="text-xs text-teal-600 hover:text-teal-800"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteQc("shore-hardness", rec.id)}
+                    className="text-xs text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {(qcData?.dftReadings ?? []).map((rec) => (
+              <div key={`dft-${rec.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    rec.coatType === "primer" ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"
+                  }`}>
+                    DFT {rec.coatType === "primer" ? "Primer" : "Final"}
+                  </span>
+                  <span className="text-sm font-medium text-gray-900">{rec.paintProduct}</span>
+                  <span className="text-sm text-gray-500">
+                    Avg: {rec.averageMicrons?.toFixed(1) ?? "-"} μm ({rec.specMinMicrons}-{rec.specMaxMicrons})
+                  </span>
+                  {rec.averageMicrons !== null && (rec.averageMicrons < rec.specMinMicrons || rec.averageMicrons > rec.specMaxMicrons) && (
+                    <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                      Out of spec
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setEditingDft(rec); setActiveForm("dft"); }}
+                    className="text-xs text-teal-600 hover:text-teal-800"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteQc("dft", rec.id)}
+                    className="text-xs text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {(qcData?.blastProfiles ?? []).map((rec) => (
+              <div key={`bp-${rec.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                    Blast
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    Avg: {rec.averageMicrons?.toFixed(1) ?? "-"} μm / Spec: {rec.specMicrons} μm
+                  </span>
+                  {rec.temperature !== null && <span className="text-xs text-gray-400">{rec.temperature}°C</span>}
+                  {rec.humidity !== null && <span className="text-xs text-gray-400">{rec.humidity}% RH</span>}
+                  <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setEditingBlast(rec); setActiveForm("blast-profile"); }}
+                    className="text-xs text-teal-600 hover:text-teal-800"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteQc("blast-profile", rec.id)}
+                    className="text-xs text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {(qcData?.dustDebrisTests ?? []).map((rec) => {
+              const passCount = rec.tests.filter((t) => t.result === "pass").length;
+              const failCount = rec.tests.filter((t) => t.result === "fail").length;
+              return (
+                <div key={`dd-${rec.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center rounded-full bg-cyan-100 px-2.5 py-0.5 text-xs font-medium text-cyan-800">
+                      Dust
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {rec.tests.length} test{rec.tests.length !== 1 ? "s" : ""}
+                    </span>
+                    <span className="text-xs text-green-600">{passCount} pass</span>
+                    {failCount > 0 && (
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                        {failCount} fail
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setEditingDust(rec); setActiveForm("dust-debris"); }}
+                      className="text-xs text-teal-600 hover:text-teal-800"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteQc("dust-debris", rec.id)}
+                      className="text-xs text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {(qcData?.pullTests ?? []).map((rec) => (
+              <div key={`pt-${rec.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center rounded-full bg-pink-100 px-2.5 py-0.5 text-xs font-medium text-pink-800">
+                    Pull Test
+                  </span>
+                  <span className="text-sm font-medium text-gray-900">{rec.itemDescription ?? "-"}</span>
+                  <span className="text-sm text-gray-500">
+                    {rec.areaReadings.length} reading{rec.areaReadings.length !== 1 ? "s" : ""}
+                  </span>
+                  {rec.areaReadings.some((r) => r.result === "fail") && (
+                    <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                      Has failures
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setEditingPull(rec); setActiveForm("pull-test"); }}
+                    className="text-xs text-teal-600 hover:text-teal-800"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteQc("pull-test", rec.id)}
+                    className="text-xs text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <QcReleaseCertificateSection jobCardId={jobCardId} />
 
       {batchRecords.length > 0 && (
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -325,7 +614,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         </div>
       )}
 
-      {certificates.length === 0 && batchRecords.length === 0 && calibrationCerts.length === 0 && (
+      {certificates.length === 0 && batchRecords.length === 0 && calibrationCerts.length === 0 && totalQcRecords === 0 && (
         <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
           <p className="text-gray-500">No quality records for this job card yet</p>
           <p className="mt-1 text-sm text-gray-400">
@@ -333,6 +622,42 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
           </p>
         </div>
       )}
+
+      <ShoreHardnessForm
+        isOpen={activeForm === "shore-hardness"}
+        onClose={handleFormClose}
+        jobCardId={jobCardId}
+        existing={editingShoreHardness}
+        onSaved={handleFormSaved}
+      />
+      <DftReadingForm
+        isOpen={activeForm === "dft"}
+        onClose={handleFormClose}
+        jobCardId={jobCardId}
+        existing={editingDft}
+        onSaved={handleFormSaved}
+      />
+      <BlastProfileForm
+        isOpen={activeForm === "blast-profile"}
+        onClose={handleFormClose}
+        jobCardId={jobCardId}
+        existing={editingBlast}
+        onSaved={handleFormSaved}
+      />
+      <DustDebrisForm
+        isOpen={activeForm === "dust-debris"}
+        onClose={handleFormClose}
+        jobCardId={jobCardId}
+        existing={editingDust}
+        onSaved={handleFormSaved}
+      />
+      <PullTestForm
+        isOpen={activeForm === "pull-test"}
+        onClose={handleFormClose}
+        jobCardId={jobCardId}
+        existing={editingPull}
+        onSaved={handleFormSaved}
+      />
     </div>
   );
 }

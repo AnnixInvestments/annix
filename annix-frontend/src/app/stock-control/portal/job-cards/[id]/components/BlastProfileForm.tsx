@@ -1,0 +1,255 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import {
+  type QcBlastProfileRecord,
+  type QcBlastProfileEntry,
+  stockControlApiClient,
+} from "@/app/lib/api/stockControlApi";
+import { now, nowISO } from "@/app/lib/datetime";
+
+interface BlastProfileFormProps {
+  isOpen: boolean;
+  onClose: () => void;
+  jobCardId: number;
+  existing?: QcBlastProfileRecord | null;
+  onSaved: () => void;
+}
+
+const READING_ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
+
+export default function BlastProfileForm({
+  isOpen,
+  onClose,
+  jobCardId,
+  existing = null,
+  onSaved,
+}: BlastProfileFormProps) {
+  const defaultDate = now().toISODate() || "";
+
+  const [specMicrons, setSpecMicrons] = useState<string>(
+    existing?.specMicrons?.toString() ?? ""
+  );
+  const [temperature, setTemperature] = useState<string>(
+    existing?.temperature?.toString() ?? ""
+  );
+  const [humidity, setHumidity] = useState<string>(
+    existing?.humidity?.toString() ?? ""
+  );
+  const [readingDate, setReadingDate] = useState<string>(
+    existing?.readingDate ? existing.readingDate.slice(0, 10) : defaultDate
+  );
+  const [readings, setReadings] = useState<Record<number, string>>(() =>
+    existing?.readings
+      ? existing.readings.reduce(
+          (acc, entry) => ({
+            ...acc,
+            [entry.itemNumber]: entry.reading.toString(),
+          }),
+          {} as Record<number, string>
+        )
+      : {}
+  );
+  const [saving, setSaving] = useState(false);
+
+  const specValue = parseFloat(specMicrons) || 0;
+
+  const filledReadings = useMemo(
+    () =>
+      READING_ROWS.map((rowNum) => ({
+        itemNumber: rowNum,
+        value: readings[rowNum] ?? "",
+        numeric: parseFloat(readings[rowNum] ?? ""),
+      })).filter((r) => !isNaN(r.numeric)),
+    [readings]
+  );
+
+  const average = useMemo(() => {
+    if (filledReadings.length === 0) {
+      return null;
+    }
+    const sum = filledReadings.reduce((acc, r) => acc + r.numeric, 0);
+    return Math.round((sum / filledReadings.length) * 100) / 100;
+  }, [filledReadings]);
+
+  const updateReading = (rowNum: number, value: string) => {
+    setReadings((prev) => ({ ...prev, [rowNum]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!specMicrons || !readingDate) {
+      return;
+    }
+
+    setSaving(true);
+
+    const entries: QcBlastProfileEntry[] = READING_ROWS.map((rowNum) => ({
+      itemNumber: rowNum,
+      reading: parseFloat(readings[rowNum] ?? ""),
+    })).filter((entry) => !isNaN(entry.reading));
+
+    const calculatedAverage =
+      entries.length > 0
+        ? Math.round(
+            (entries.reduce((acc, e) => acc + e.reading, 0) / entries.length) *
+              100
+          ) / 100
+        : null;
+
+    const payload: Partial<QcBlastProfileRecord> = {
+      specMicrons: parseFloat(specMicrons),
+      temperature: temperature ? parseFloat(temperature) : null,
+      humidity: humidity ? parseFloat(humidity) : null,
+      readingDate: readingDate,
+      readings: entries,
+      averageMicrons: calculatedAverage,
+    };
+
+    try {
+      if (existing) {
+        await stockControlApiClient.updateBlastProfile(
+          jobCardId,
+          existing.id,
+          payload
+        );
+      } else {
+        await stockControlApiClient.createBlastProfile(jobCardId, payload);
+      }
+      onSaved();
+      onClose();
+    } catch {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <h2 className="text-lg font-semibold mb-4">
+          {existing ? "Edit Blast Profile" : "New Blast Profile"}
+        </h2>
+
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Spec Target (μm) *
+            </label>
+            <input
+              type="number"
+              value={specMicrons}
+              onChange={(e) => setSpecMicrons(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Reading Date *
+            </label>
+            <input
+              type="date"
+              value={readingDate}
+              onChange={(e) => setReadingDate(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Temperature (°C)
+            </label>
+            <input
+              type="number"
+              value={temperature}
+              onChange={(e) => setTemperature(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Humidity (%)
+            </label>
+            <input
+              type="number"
+              value={humidity}
+              onChange={(e) => setHumidity(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+
+        {specValue > 0 && (
+          <p className="text-sm font-medium text-teal-700 mb-3">
+            Spec Target: {specValue} μm
+          </p>
+        )}
+
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            Readings
+          </h3>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+            {READING_ROWS.map((rowNum) => {
+              const val = readings[rowNum] ?? "";
+              const numeric = parseFloat(val);
+              const isBelowSpec =
+                val !== "" && !isNaN(numeric) && specValue > 0 && numeric < specValue;
+
+              return (
+                <div key={rowNum} className="flex items-center gap-2">
+                  <span className="w-6 text-right text-xs text-gray-500">
+                    {rowNum}
+                  </span>
+                  <input
+                    type="number"
+                    value={val}
+                    onChange={(e) => updateReading(rowNum, e.target.value)}
+                    className={`flex-1 rounded-md border px-3 py-1.5 text-sm ${
+                      isBelowSpec
+                        ? "border-red-400 bg-red-50 text-red-700"
+                        : "border-gray-300"
+                    }`}
+                    placeholder="μm"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-md bg-gray-50 px-4 py-3">
+          <span className="text-sm font-medium text-gray-700">Average: </span>
+          <span className="text-sm font-semibold">
+            {average !== null ? `${average} μm` : "—"}
+          </span>
+          <span className="text-xs text-gray-500 ml-2">
+            ({filledReadings.length} reading{filledReadings.length !== 1 ? "s" : ""})
+          </span>
+        </div>
+
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !specMicrons || !readingDate}
+            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -446,6 +446,210 @@ export interface DataBookStatus {
   dataBookId: number | null;
 }
 
+export interface QcShoreHardnessRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  rubberSpec: string;
+  rubberBatchNumber: string | null;
+  requiredShore: number;
+  readings: { column1: number[]; column2: number[]; column3: number[]; column4: number[] };
+  averages: {
+    column1: number | null;
+    column2: number | null;
+    column3: number | null;
+    column4: number | null;
+    overall: number | null;
+  };
+  readingDate: string;
+  capturedByName: string;
+  capturedById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QcDftReadingEntry {
+  itemNumber: number;
+  reading: number;
+}
+
+export interface QcDftReadingRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  coatType: "primer" | "final";
+  paintProduct: string;
+  batchNumber: string | null;
+  specMinMicrons: number;
+  specMaxMicrons: number;
+  readings: QcDftReadingEntry[];
+  averageMicrons: number | null;
+  readingDate: string;
+  capturedByName: string;
+  capturedById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QcBlastProfileEntry {
+  itemNumber: number;
+  reading: number;
+}
+
+export interface QcBlastProfileRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  specMicrons: number;
+  readings: QcBlastProfileEntry[];
+  averageMicrons: number | null;
+  temperature: number | null;
+  humidity: number | null;
+  readingDate: string;
+  capturedByName: string;
+  capturedById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QcDustDebrisTestEntry {
+  testNumber: number;
+  quantity: number | null;
+  coatingType: string | null;
+  itemNumber: string | null;
+  result: "pass" | "fail";
+  testedAt: string | null;
+}
+
+export interface QcDustDebrisRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  tests: QcDustDebrisTestEntry[];
+  readingDate: string;
+  capturedByName: string;
+  capturedById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QcPullTestSolution {
+  product: string;
+  batchNumber: string | null;
+  result: "pass" | "fail";
+}
+
+export interface QcPullTestForceGauge {
+  make: string;
+  certificateNumber: string | null;
+  expiryDate: string | null;
+}
+
+export interface QcPullTestAreaReading {
+  area: string;
+  result: "pass" | "fail";
+  reading: string;
+}
+
+export interface QcPullTestRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  itemDescription: string | null;
+  quantity: number | null;
+  solutions: QcPullTestSolution[];
+  forceGauge: QcPullTestForceGauge;
+  areaReadings: QcPullTestAreaReading[];
+  comments: string | null;
+  readingDate: string;
+  finalApprovalName: string | null;
+  finalApprovalDate: string | null;
+  capturedByName: string;
+  capturedById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type QcCheckResult = "pass" | "fail";
+
+export interface QcBlastingCheck {
+  blastProfileBatchNo: string | null;
+  contaminationFree: QcCheckResult | null;
+  sa25Grade: QcCheckResult | null;
+  inspectorName: string | null;
+}
+
+export interface QcSolutionUsed {
+  productName: string;
+  typeBatch: string | null;
+  result: QcCheckResult;
+  inspectorName: string | null;
+}
+
+export interface QcLiningCheck {
+  preCureLinedAsPerDrawing: QcCheckResult | null;
+  preCureInspectorName: string | null;
+  visualDefectInspection: QcCheckResult | null;
+  visualDefectInspectorName: string | null;
+}
+
+export interface QcCureCycleRecord {
+  cycleNumber: number;
+  timeIn: string | null;
+  timeOut: string | null;
+  pressureBar: number | null;
+}
+
+export interface QcPaintingCheck {
+  coat: "primer" | "intermediate" | "final";
+  batchNumber: string | null;
+  dftMicrons: number | null;
+  result: QcCheckResult | null;
+  inspectorName: string | null;
+}
+
+export interface QcFinalInspection {
+  linedAsPerDrawing: QcCheckResult | null;
+  visualInspection: QcCheckResult | null;
+  testPlate: QcCheckResult | null;
+  shoreHardness: number | null;
+  sparkTest: QcCheckResult | null;
+  sparkTestVoltagePerMm: number | null;
+  inspectorName: string | null;
+}
+
+export interface QcReleaseCertificateRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  certificateNumber: string | null;
+  blastingCheck: QcBlastingCheck | null;
+  solutionsUsed: QcSolutionUsed[];
+  liningCheck: QcLiningCheck | null;
+  cureCycles: QcCureCycleRecord[];
+  paintingChecks: QcPaintingCheck[];
+  finalInspection: QcFinalInspection | null;
+  comments: string | null;
+  certificateDate: string | null;
+  finalApprovalName: string | null;
+  finalApprovalSignatureUrl: string | null;
+  finalApprovalDate: string | null;
+  capturedByName: string;
+  capturedById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QcMeasurementsAggregate {
+  shoreHardness: QcShoreHardnessRecord[];
+  dftReadings: QcDftReadingRecord[];
+  blastProfiles: QcBlastProfileRecord[];
+  dustDebrisTests: QcDustDebrisRecord[];
+  pullTests: QcPullTestRecord[];
+  controlPlans: unknown[];
+  releaseCertificates: QcReleaseCertificateRecord[];
+}
+
 export interface CalibrationCertificate {
   id: number;
   companyId: number;
@@ -3587,6 +3791,196 @@ class StockControlApiClient {
 
   async deleteCalibrationCertificate(id: number): Promise<{ deleted: boolean }> {
     return this.request(`/stock-control/calibration-certificates/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // ── QC Measurements ──────────────────────────────────────────────
+
+  async qcMeasurementsForJobCard(jobCardId: number): Promise<QcMeasurementsAggregate> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc`);
+  }
+
+  async createShoreHardness(
+    jobCardId: number,
+    data: Partial<QcShoreHardnessRecord>,
+  ): Promise<QcShoreHardnessRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/shore-hardness`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateShoreHardness(
+    jobCardId: number,
+    id: number,
+    data: Partial<QcShoreHardnessRecord>,
+  ): Promise<QcShoreHardnessRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/shore-hardness/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteShoreHardness(jobCardId: number, id: number): Promise<void> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/shore-hardness/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async createDftReading(
+    jobCardId: number,
+    data: Partial<QcDftReadingRecord>,
+  ): Promise<QcDftReadingRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/dft-readings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateDftReading(
+    jobCardId: number,
+    id: number,
+    data: Partial<QcDftReadingRecord>,
+  ): Promise<QcDftReadingRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/dft-readings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteDftReading(jobCardId: number, id: number): Promise<void> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/dft-readings/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async createBlastProfile(
+    jobCardId: number,
+    data: Partial<QcBlastProfileRecord>,
+  ): Promise<QcBlastProfileRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/blast-profiles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateBlastProfile(
+    jobCardId: number,
+    id: number,
+    data: Partial<QcBlastProfileRecord>,
+  ): Promise<QcBlastProfileRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/blast-profiles/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteBlastProfile(jobCardId: number, id: number): Promise<void> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/blast-profiles/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async createDustDebrisTest(
+    jobCardId: number,
+    data: Partial<QcDustDebrisRecord>,
+  ): Promise<QcDustDebrisRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/dust-debris`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateDustDebrisTest(
+    jobCardId: number,
+    id: number,
+    data: Partial<QcDustDebrisRecord>,
+  ): Promise<QcDustDebrisRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/dust-debris/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteDustDebrisTest(jobCardId: number, id: number): Promise<void> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/dust-debris/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async createPullTest(
+    jobCardId: number,
+    data: Partial<QcPullTestRecord>,
+  ): Promise<QcPullTestRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/pull-tests`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePullTest(
+    jobCardId: number,
+    id: number,
+    data: Partial<QcPullTestRecord>,
+  ): Promise<QcPullTestRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/pull-tests/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deletePullTest(jobCardId: number, id: number): Promise<void> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/pull-tests/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // ── QC Release Certificates ──────────────────────────────────────
+
+  async releaseCertificatesForJobCard(jobCardId: number): Promise<QcReleaseCertificateRecord[]> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/release-certificates`);
+  }
+
+  async releaseCertificateById(jobCardId: number, id: number): Promise<QcReleaseCertificateRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/release-certificates/${id}`);
+  }
+
+  async createReleaseCertificate(
+    jobCardId: number,
+    data: Partial<QcReleaseCertificateRecord>,
+  ): Promise<QcReleaseCertificateRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/release-certificates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateReleaseCertificate(
+    jobCardId: number,
+    id: number,
+    data: Partial<QcReleaseCertificateRecord>,
+  ): Promise<QcReleaseCertificateRecord> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/release-certificates/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteReleaseCertificate(jobCardId: number, id: number): Promise<void> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/qc/release-certificates/${id}`, {
       method: "DELETE",
     });
   }
