@@ -1468,7 +1468,12 @@ ${truncatedText}`;
 
   private matchGraphByCertFilename(
     graphFilename: string,
-    certRecords: Array<{ cocId: number; batchNumbers: string[]; companyId: number; filename: string }>,
+    certRecords: Array<{
+      cocId: number;
+      batchNumbers: string[];
+      companyId: number;
+      filename: string;
+    }>,
   ): { cocId: number; batchNumbers: string[]; companyId: number; filename: string } | undefined {
     const graphBase = graphFilename
       .replace(/\.pdf$/i, "")
