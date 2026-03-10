@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   forwardRef,
   Inject,
   Injectable,
@@ -55,6 +56,15 @@ export class DeliveryService {
       items: { stockItemId: number; quantityReceived: number; photoUrl?: string }[];
     },
   ): Promise<DeliveryNote> {
+    const existingNote = await this.deliveryNoteRepo.findOne({
+      where: { companyId, deliveryNumber: data.deliveryNumber },
+    });
+    if (existingNote) {
+      throw new ConflictException(
+        `Delivery note ${data.deliveryNumber} has already been uploaded`,
+      );
+    }
+
     const deliveryNote = this.deliveryNoteRepo.create({
       deliveryNumber: data.deliveryNumber,
       supplierName: data.supplierName,
@@ -374,9 +384,8 @@ export class DeliveryService {
     });
 
     if (existingNote) {
-      deliveryNumber = `${deliveryNumber}-${nowMillis()}`;
-      this.logger.log(
-        `Delivery note ${analyzedData.deliveryNoteNumber} already exists, using ${deliveryNumber}`,
+      throw new ConflictException(
+        `Delivery note ${deliveryNumber} has already been uploaded`,
       );
     }
 

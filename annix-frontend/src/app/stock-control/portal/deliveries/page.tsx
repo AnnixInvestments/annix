@@ -16,6 +16,13 @@ function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boole
   return { count: extractedCount, isExtracted: extractedCount > 0 };
 }
 
+function needsStockLink(delivery: DeliveryNote): boolean {
+  const linkedCount = delivery.items ? delivery.items.length : 0;
+  if (linkedCount > 0) return false;
+  const extractedData = delivery.extractedData as { lineItems?: unknown[] } | null;
+  return (extractedData?.lineItems?.length ?? 0) > 0;
+}
+
 interface DeliveryFormItem {
   stockItemId: number;
   quantityReceived: number;
@@ -38,6 +45,10 @@ export default function DeliveriesPage() {
     { stockItemId: 0, quantityReceived: 1 },
   ]);
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBulkAdding, setIsBulkAdding] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DeliveryNote | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchDeliveries = useCallback(async () => {
     try {
@@ -114,6 +125,56 @@ export default function DeliveriesPage() {
     }
   };
 
+  const toggleSelection = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const needsLink = deliveries.filter(needsStockLink);
+    const allSelected = needsLink.every((d) => selectedIds.has(d.id));
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(needsLink.map((d) => d.id)));
+    }
+  };
+
+  const handleBulkAddToStock = async () => {
+    setIsBulkAdding(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await Promise.all(ids.map((id) => stockControlApiClient.linkDeliveryNoteToStock(id)));
+      setSelectedIds(new Set());
+      fetchDeliveries();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to add items to stock"));
+    } finally {
+      setIsBulkAdding(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await stockControlApiClient.deleteDeliveryNote(deleteTarget.id);
+      setDeleteTarget(null);
+      fetchDeliveries();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to delete delivery note"));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading && deliveries.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -144,6 +205,32 @@ export default function DeliveriesPage() {
           <p className="mt-1 text-sm text-gray-600">Track incoming stock deliveries</p>
         </div>
         <div className="flex gap-3">
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBulkAddToStock}
+              disabled={isBulkAdding}
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+            >
+              {isBulkAdding ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Bulk Add to Stock ({selectedIds.size})
+                </>
+              )}
+            </button>
+          )}
           <Link
             href="/stock-control/portal/deliveries/scan"
             className="inline-flex items-center px-4 py-2 border border-teal-600 rounded-md shadow-sm text-sm font-medium text-teal-700 bg-white hover:bg-teal-50"
@@ -204,6 +291,17 @@ export default function DeliveriesPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th scope="col" className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={
+                      deliveries.filter(needsStockLink).length > 0 &&
+                      deliveries.filter(needsStockLink).every((d) => selectedIds.has(d.id))
+                    }
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                  />
+                </th>
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -234,11 +332,33 @@ export default function DeliveriesPage() {
                 >
                   Items
                 </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Stock Status
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {deliveries.map((delivery) => (
                 <tr key={delivery.id} className="hover:bg-gray-50 cursor-pointer">
+                  <td className="px-4 py-4 w-10">
+                    {needsStockLink(delivery) ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(delivery.id)}
+                        onChange={() => toggleSelection(delivery.id)}
+                        className="h-4 w-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                      />
+                    ) : null}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link
                       href={`/stock-control/portal/deliveries/${delivery.id}`}
@@ -271,12 +391,102 @@ export default function DeliveriesPage() {
                       );
                     })()}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {(() => {
+                      const linkedCount = delivery.items ? delivery.items.length : 0;
+                      if (linkedCount > 0) {
+                        return (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            In Stock
+                          </span>
+                        );
+                      } else if (needsStockLink(delivery)) {
+                        return (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Not in Stock
+                          </span>
+                        );
+                      } else {
+                        return <span className="text-gray-400">-</span>;
+                      }
+                    })()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteTarget(delivery);
+                      }}
+                      className="text-gray-400 hover:text-red-600"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => setDeleteTarget(null)}
+            />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <svg
+                    className="w-5 h-5 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900">Delete Delivery Note</h3>
+              </div>
+              <p className="text-sm text-gray-500 mb-2">
+                Are you sure you want to delete delivery note{" "}
+                <span className="font-medium text-gray-900">{deleteTarget.deliveryNumber}</span>?
+              </p>
+              <p className="text-sm text-gray-500 mb-4">This action cannot be undone.</p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
