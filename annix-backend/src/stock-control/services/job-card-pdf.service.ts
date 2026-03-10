@@ -1200,7 +1200,11 @@ export class JobCardPdfService {
 
     Array.from({ length: totalPages }, (_, i) => i).forEach((i) => {
       doc.switchToPage(i);
+
+      const savedBottom = doc.page.margins.bottom;
+      doc.page.margins.bottom = 0;
       doc.y = 0;
+
       doc.fontSize(8).font("Helvetica").fillColor("#666666");
       doc.text(generatedText, 50, pageHeight - 40, {
         align: "center",
@@ -1213,6 +1217,8 @@ export class JobCardPdfService {
         width: 495,
         lineBreak: false,
       });
+
+      doc.page.margins.bottom = savedBottom;
       doc.y = 0;
     });
 
