@@ -57,7 +57,6 @@ export default function CustomerDeliveryNotesPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeCustomerDnsResult | null>(null);
   const [analysisFiles, setAnalysisFiles] = useState<File[]>([]);
-  const [generatingCocForId, setGeneratingCocForId] = useState<number | null>(null);
   const [reanalyzingId, setReanalyzingId] = useState<number | null>(null);
 
   const fetchData = async () => {
@@ -257,19 +256,6 @@ export default function CustomerDeliveryNotesPage() {
       showToast(err instanceof Error ? err.message : "Failed to re-analyze delivery note", "error");
     } finally {
       setReanalyzingId(null);
-    }
-  };
-
-  const handleGenerateCoc = async (noteId: number) => {
-    try {
-      setGeneratingCocForId(noteId);
-      const coc = await auRubberApiClient.createAuCocFromDeliveryNote(noteId);
-      showToast(`AU Certificate ${coc.cocNumber} created — generating PDF...`, "success");
-      await auRubberApiClient.generateAuCocPdf(coc.id);
-      router.push(`/au-rubber/portal/au-cocs/${coc.id}`);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create certificate", "error");
-      setGeneratingCocForId(null);
     }
   };
 
@@ -574,21 +560,6 @@ export default function CustomerDeliveryNotesPage() {
                       >
                         View CoC
                       </Link>
-                    ) : note.extractedData ? (
-                      <button
-                        onClick={() => handleGenerateCoc(note.id)}
-                        disabled={generatingCocForId === note.id}
-                        className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {generatingCocForId === note.id ? (
-                          <>
-                            <Loader2 className="animate-spin h-3 w-3 mr-1" />
-                            Creating...
-                          </>
-                        ) : (
-                          "Auto Gen COC"
-                        )}
-                      </button>
                     ) : (
                       <span className="text-gray-400">Not linked</span>
                     )}

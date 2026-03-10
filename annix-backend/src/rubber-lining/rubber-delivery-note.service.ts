@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { formatISODate, generateUniqueId } from "../lib/datetime";
 import {
   CreateDeliveryNoteDto,
@@ -686,5 +686,51 @@ export class RubberDeliveryNoteService {
       `Auto-linked supplier DN ${deliveryNoteId} to CoC ${matched.id} (${matched.cocType})`,
     );
     return matched.id;
+  }
+
+  async autoLinkUnlinkedDnsToSupplierCoc(supplierCocId: number): Promise<number[]> {
+    const coc = await this.supplierCocRepository.findOne({
+      where: { id: supplierCocId },
+    });
+
+    if (!coc) return [];
+
+    const unlinkedNotes = await this.deliveryNoteRepository.find({
+      where: {
+        supplierCompanyId: coc.supplierCompanyId,
+        linkedCocId: IsNull(),
+        status: DeliveryNoteStatus.PENDING,
+      },
+    });
+
+    if (unlinkedNotes.length === 0) return [];
+
+    const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
+      .trim()
+      .toUpperCase();
+    const cocBatches = [
+      ...(coc.extractedData?.batchNumbers || []),
+      ...(coc.extractedData?.batches || []).map((b: any) => b.batchNumber),
+    ];
+
+    const linkedIds: number[] = [];
+
+    for (const note of unlinkedNotes) {
+      const batchRange = note.extractedData?.batchRange;
+      const dnNumber = note.deliveryNoteNumber;
+
+      const batchMatch = batchRange && cocBatches.some((b: string) => batchRange.includes(b));
+      const orderMatch = cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber);
+
+      if (batchMatch || orderMatch) {
+        await this.linkToCoc(note.id, supplierCocId);
+        linkedIds.push(note.id);
+        this.logger.log(
+          `Auto-linked unlinked DN ${note.id} (${dnNumber}) to CoC ${supplierCocId}`,
+        );
+      }
+    }
+
+    return linkedIds;
   }
 }

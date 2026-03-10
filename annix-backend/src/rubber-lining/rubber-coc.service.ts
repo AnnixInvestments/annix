@@ -20,6 +20,7 @@ import {
   SupplierCocType,
 } from "./entities/rubber-supplier-coc.entity";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
+import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { DEFAULT_SUPPLIER_NAMES } from "./rubber-lining.constants";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 
@@ -56,6 +57,7 @@ export class RubberCocService {
     @Inject(forwardRef(() => RubberQualityTrackingService))
     private qualityTrackingService: RubberQualityTrackingService,
     private auCocReadinessService: RubberAuCocReadinessService,
+    private deliveryNoteService: RubberDeliveryNoteService,
   ) {}
 
   private normalizeCocNumber(cocNumber: string): string {
@@ -189,6 +191,8 @@ export class RubberCocService {
       this.autoLinkCalendererToCompounder(coc);
     }
 
+    this.triggerAutoLinkDnsForCoc(coc);
+
     return this.mapSupplierCocToDto(coc);
   }
 
@@ -241,7 +245,7 @@ export class RubberCocService {
       this.triggerQualityCheck(coc.compoundCode);
     }
 
-    this.triggerReadinessCheckForApprovedCoc(coc);
+    this.autoLinkAndCheckReadiness(coc);
 
     return this.mapSupplierCocToDto(coc);
   }
@@ -340,6 +344,25 @@ export class RubberCocService {
       });
   }
 
+  private autoLinkAndCheckReadiness(coc: RubberSupplierCoc): void {
+    this.deliveryNoteService
+      .autoLinkUnlinkedDnsToSupplierCoc(coc.id)
+      .then((linkedDnIds) => {
+        if (linkedDnIds.length > 0) {
+          this.logger.log(
+            `Auto-linked ${linkedDnIds.length} supplier DN(s) to approved CoC ${coc.id}`,
+          );
+        }
+      })
+      .catch((error) => {
+        this.logger.error(
+          `Auto-link DNs to CoC ${coc.id} failed: ${error.message}`,
+        );
+      });
+
+    this.triggerReadinessCheckForApprovedCoc(coc);
+  }
+
   private triggerReadinessCheckForApprovedCoc(coc: RubberSupplierCoc): void {
     const orderNumber = coc.orderNumber || coc.extractedData?.orderNumber || null;
 
@@ -354,6 +377,21 @@ export class RubberCocService {
       )
       .catch((error) => {
         this.logger.error(`Readiness check after CoC ${coc.id} approval failed: ${error.message}`);
+      });
+  }
+
+  private triggerAutoLinkDnsForCoc(coc: RubberSupplierCoc): void {
+    this.deliveryNoteService
+      .autoLinkUnlinkedDnsToSupplierCoc(coc.id)
+      .then((linkedDnIds) => {
+        if (linkedDnIds.length > 0) {
+          this.logger.log(
+            `Auto-linked ${linkedDnIds.length} supplier DN(s) to CoC ${coc.id} after extraction`,
+          );
+        }
+      })
+      .catch((error) => {
+        this.logger.error(`Auto-link DNs to CoC ${coc.id} failed: ${error.message}`);
       });
   }
 
@@ -433,6 +471,7 @@ export class RubberCocService {
       if (!refreshed) {
         throw new BadRequestException("Failed to retrieve updated supplier CoC");
       }
+      this.triggerAutoLinkDnsForCoc(refreshed);
       return { coc: this.mapSupplierCocToDto(refreshed), wasUpdated: true };
     }
 
@@ -460,6 +499,7 @@ export class RubberCocService {
     if (!result) {
       throw new BadRequestException("Failed to retrieve created supplier CoC");
     }
+    this.triggerAutoLinkDnsForCoc(result);
     return { coc: this.mapSupplierCocToDto(result), wasUpdated: false };
   }
 
