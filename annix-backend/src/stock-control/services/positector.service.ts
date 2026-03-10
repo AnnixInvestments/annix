@@ -1,12 +1,6 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  BadRequestException,
-} from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { nowISO } from "../../lib/datetime";
 import { PositectorDevice } from "../entities/positector-device.entity";
 
 export interface RegisterDeviceDto {
@@ -88,9 +82,7 @@ export class PositectorService {
     });
 
     if (existing) {
-      throw new BadRequestException(
-        `A device is already registered at ${dto.ipAddress}`,
-      );
+      throw new BadRequestException(`A device is already registered at ${dto.ipAddress}`);
     }
 
     const device = this.deviceRepo.create({
@@ -108,10 +100,7 @@ export class PositectorService {
     return this.deviceRepo.save(device);
   }
 
-  async findAll(
-    companyId: number,
-    filters?: { active?: boolean },
-  ): Promise<PositectorDevice[]> {
+  async findAll(companyId: number, filters?: { active?: boolean }): Promise<PositectorDevice[]> {
     const qb = this.deviceRepo
       .createQueryBuilder("d")
       .where("d.companyId = :companyId", { companyId })
@@ -158,10 +147,7 @@ export class PositectorService {
     await this.deviceRepo.remove(device);
   }
 
-  async checkConnection(
-    companyId: number,
-    id: number,
-  ): Promise<DeviceConnectionStatus> {
+  async checkConnection(companyId: number, id: number): Promise<DeviceConnectionStatus> {
     const device = await this.findById(companyId, id);
     const baseUrl = this.deviceBaseUrl(device);
 
@@ -221,10 +207,7 @@ export class PositectorService {
     };
   }
 
-  async listBatches(
-    companyId: number,
-    deviceId: number,
-  ): Promise<PositectorBatchSummary[]> {
+  async listBatches(companyId: number, deviceId: number): Promise<PositectorBatchSummary[]> {
     const device = await this.findById(companyId, deviceId);
     const baseUrl = this.deviceBaseUrl(device);
 
@@ -252,19 +235,12 @@ export class PositectorService {
       }),
     );
 
-    await this.deviceRepo.update(
-      { id: device.id },
-      { lastConnectedAt: new Date() },
-    );
+    await this.deviceRepo.update({ id: device.id }, { lastConnectedAt: new Date() });
 
     return summaries;
   }
 
-  async fetchBatch(
-    companyId: number,
-    deviceId: number,
-    buid: string,
-  ): Promise<PositectorBatch> {
+  async fetchBatch(companyId: number, deviceId: number, buid: string): Promise<PositectorBatch> {
     const device = await this.findById(companyId, deviceId);
     const baseUrl = this.deviceBaseUrl(device);
 
@@ -282,10 +258,7 @@ export class PositectorService {
       this.logger.debug(`No statistics.txt found for batch ${buid}`);
     }
 
-    await this.deviceRepo.update(
-      { id: device.id },
-      { lastConnectedAt: new Date() },
-    );
+    await this.deviceRepo.update({ id: device.id }, { lastConnectedAt: new Date() });
 
     return { buid, header, readings, statistics };
   }
@@ -336,10 +309,7 @@ export class PositectorService {
     return `http://${device.ipAddress}:${device.port}`;
   }
 
-  private async fetchFromDevice(
-    url: string,
-    timeoutMs: number,
-  ): Promise<string> {
+  private async fetchFromDevice(url: string, timeoutMs: number): Promise<string> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -372,48 +342,29 @@ export class PositectorService {
         return match ? match[1] : null;
       })
       .filter(
-        (dir): dir is string =>
-          dir !== null && dir !== ".." && dir !== "." && !dir.startsWith("/"),
+        (dir): dir is string => dir !== null && dir !== ".." && dir !== "." && !dir.startsWith("/"),
       );
   }
 
-  private async fetchBatchHeader(
-    baseUrl: string,
-    buid: string,
-  ): Promise<PositectorBatchHeader> {
+  private async fetchBatchHeader(baseUrl: string, buid: string): Promise<PositectorBatchHeader> {
     try {
-      const jsonText = await this.fetchFromDevice(
-        `${baseUrl}/usbms/${buid}/${buid}.json`,
-        10000,
-      );
+      const jsonText = await this.fetchFromDevice(`${baseUrl}/usbms/${buid}/${buid}.json`, 10000);
       const batch = this.parseJsonBatch(jsonText);
       return batch.header;
     } catch {
-      const headerText = await this.fetchFromDevice(
-        `${baseUrl}/usbms/${buid}/header.txt`,
-        10000,
-      );
+      const headerText = await this.fetchFromDevice(`${baseUrl}/usbms/${buid}/header.txt`, 10000);
       const raw = this.parseHeaderTxt(headerText);
       return this.parseHeaderToStruct(raw);
     }
   }
 
-  private async fetchBatchReadings(
-    baseUrl: string,
-    buid: string,
-  ): Promise<PositectorReading[]> {
+  private async fetchBatchReadings(baseUrl: string, buid: string): Promise<PositectorReading[]> {
     try {
-      const jsonText = await this.fetchFromDevice(
-        `${baseUrl}/usbms/${buid}/${buid}.json`,
-        10000,
-      );
+      const jsonText = await this.fetchFromDevice(`${baseUrl}/usbms/${buid}/${buid}.json`, 10000);
       const batch = this.parseJsonBatch(jsonText);
       return batch.readings;
     } catch {
-      const csvText = await this.fetchFromDevice(
-        `${baseUrl}/usbms/${buid}/readings.txt`,
-        10000,
-      );
+      const csvText = await this.fetchFromDevice(`${baseUrl}/usbms/${buid}/readings.txt`, 10000);
       return this.parseCsvReadings(csvText);
     }
   }
@@ -435,12 +386,8 @@ export class PositectorService {
     return result;
   }
 
-  private parseHeaderToStruct(
-    raw: Record<string, string>,
-  ): PositectorBatchHeader {
-    const serialKey = Object.keys(raw).find((k) =>
-      k.toLowerCase().includes("serial"),
-    );
+  private parseHeaderToStruct(raw: Record<string, string>): PositectorBatchHeader {
+    const serialKey = Object.keys(raw).find((k) => k.toLowerCase().includes("serial"));
     const probeKey = Object.keys(raw).find(
       (k) =>
         k.toLowerCase().includes("probe") ||
@@ -448,17 +395,11 @@ export class PositectorService {
         k.toLowerCase().includes("type"),
     );
     const batchKey = Object.keys(raw).find(
-      (k) =>
-        k.toLowerCase().includes("batch") ||
-        k.toLowerCase().includes("name"),
+      (k) => k.toLowerCase().includes("batch") || k.toLowerCase().includes("name"),
     );
-    const unitsKey = Object.keys(raw).find((k) =>
-      k.toLowerCase().includes("units"),
-    );
+    const unitsKey = Object.keys(raw).find((k) => k.toLowerCase().includes("units"));
     const countKey = Object.keys(raw).find(
-      (k) =>
-        k.toLowerCase().includes("count") ||
-        k.toLowerCase().includes("readings"),
+      (k) => k.toLowerCase().includes("count") || k.toLowerCase().includes("readings"),
     );
 
     return {
@@ -490,9 +431,7 @@ export class PositectorService {
         h.includes("measurement"),
     );
     const unitsIdx = headers.findIndex((h) => h.includes("units"));
-    const timeIdx = headers.findIndex(
-      (h) => h.includes("time") || h.includes("date"),
-    );
+    const timeIdx = headers.findIndex((h) => h.includes("time") || h.includes("date"));
 
     const readingColumnIdx = valueIdx >= 0 ? valueIdx : 0;
 
@@ -511,7 +450,7 @@ export class PositectorService {
 
       return {
         index: index + 1,
-        value: isNaN(parsed) ? 0 : parsed,
+        value: Number.isNaN(parsed) ? 0 : parsed,
         units: unitsIdx >= 0 && cols[unitsIdx] ? cols[unitsIdx] : null,
         timestamp: timeIdx >= 0 && cols[timeIdx] ? cols[timeIdx] : null,
         raw: rawRecord,
@@ -522,39 +461,32 @@ export class PositectorService {
   private parseJsonBatch(jsonText: string): PositectorBatch {
     const data = JSON.parse(jsonText);
 
-    const probeType =
-      data.ProbeType ?? data.probeType ?? data.Model ?? data.model ?? null;
+    const probeType = data.ProbeType ?? data.probeType ?? data.Model ?? data.model ?? null;
     const serialNumber =
       data.SerialNumber ?? data.serialNumber ?? data.Serial ?? data.serial ?? null;
-    const batchName =
-      data.BatchName ?? data.batchName ?? data.Name ?? data.name ?? null;
+    const batchName = data.BatchName ?? data.batchName ?? data.Name ?? data.name ?? null;
     const units = data.Units ?? data.units ?? null;
 
-    const rawReadings: any[] =
-      data.Readings ?? data.readings ?? data.Data ?? data.data ?? [];
+    const rawReadings: any[] = data.Readings ?? data.readings ?? data.Data ?? data.data ?? [];
 
-    const readings: PositectorReading[] = rawReadings.map(
-      (r: any, index: number) => {
-        const value =
-          r.Value ?? r.value ?? r.Reading ?? r.reading ?? r.Thickness ?? r.thickness ?? 0;
-        const readingUnits = r.Units ?? r.units ?? units;
-        const timestamp =
-          r.Timestamp ?? r.timestamp ?? r.DateTime ?? r.dateTime ?? null;
+    const readings: PositectorReading[] = rawReadings.map((r: any, index: number) => {
+      const value = r.Value ?? r.value ?? r.Reading ?? r.reading ?? r.Thickness ?? r.thickness ?? 0;
+      const readingUnits = r.Units ?? r.units ?? units;
+      const timestamp = r.Timestamp ?? r.timestamp ?? r.DateTime ?? r.dateTime ?? null;
 
-        const raw: Record<string, string> = {};
-        Object.entries(r).forEach(([k, v]) => {
-          raw[k] = String(v);
-        });
+      const raw: Record<string, string> = {};
+      Object.entries(r).forEach(([k, v]) => {
+        raw[k] = String(v);
+      });
 
-        return {
-          index: index + 1,
-          value: typeof value === "number" ? value : parseFloat(String(value)) || 0,
-          units: readingUnits,
-          timestamp,
-          raw,
-        };
-      },
-    );
+      return {
+        index: index + 1,
+        value: typeof value === "number" ? value : parseFloat(String(value)) || 0,
+        units: readingUnits,
+        timestamp,
+        raw,
+      };
+    });
 
     return {
       buid: data.BUID ?? data.buid ?? "json",

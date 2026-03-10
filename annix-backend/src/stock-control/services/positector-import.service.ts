@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-} from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { nowISO } from "../../lib/datetime";
@@ -230,9 +226,10 @@ export class PositectorImportService {
     return null;
   }
 
-  private distributeToShoreGrid(
-    rawReadings: PositectorReading[],
-  ): { readings: ShoreHardnessReadings; averages: ShoreHardnessAverages } {
+  private distributeToShoreGrid(rawReadings: PositectorReading[]): {
+    readings: ShoreHardnessReadings;
+    averages: ShoreHardnessAverages;
+  } {
     const perColumn = Math.ceil(rawReadings.length / 4);
 
     const column1 = rawReadings.slice(0, perColumn).map((r) => r.value);
@@ -252,9 +249,7 @@ export class PositectorImportService {
 
     const allValues = [...column1, ...column2, ...column3, ...column4];
     const overall =
-      allValues.length > 0
-        ? allValues.reduce((a, b) => a + b, 0) / allValues.length
-        : null;
+      allValues.length > 0 ? allValues.reduce((a, b) => a + b, 0) / allValues.length : null;
 
     return {
       readings: { column1, column2, column3, column4 },
@@ -262,9 +257,10 @@ export class PositectorImportService {
     };
   }
 
-  private extractEnvironmentalData(
-    batch: PositectorBatch,
-  ): { temperature: number | null; humidity: number | null } {
+  private extractEnvironmentalData(batch: PositectorBatch): {
+    temperature: number | null;
+    humidity: number | null;
+  } {
     const headerRaw = batch.header.raw;
     let temperature: number | null = null;
     let humidity: number | null = null;
@@ -278,12 +274,12 @@ export class PositectorImportService {
 
     if (tempKey) {
       const parsed = parseFloat(headerRaw[tempKey]);
-      if (!isNaN(parsed)) temperature = parsed;
+      if (!Number.isNaN(parsed)) temperature = parsed;
     }
 
     if (humidityKey) {
       const parsed = parseFloat(headerRaw[humidityKey]);
-      if (!isNaN(parsed)) humidity = parsed;
+      if (!Number.isNaN(parsed)) humidity = parsed;
     }
 
     return { temperature, humidity };

@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type {
+  ItemReleaseResult,
   QcItemsReleaseRecord,
   ReleaseLineItem,
   ReleasePartySignOff,
-  ItemReleaseResult,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { formatDateZA, nowISO } from "@/app/lib/datetime";
+import { nowISO } from "@/app/lib/datetime";
 
 interface ItemsReleaseSectionProps {
   jobCardId: number;
@@ -143,8 +143,11 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
           {releases.map((release) => {
             const passCount = release.items.filter((i) => i.result === "pass").length;
             const failCount = release.items.filter((i) => i.result === "fail").length;
-            const hasSignOffs = [release.plsSignOff, release.mpsSignOff, release.clientSignOff]
-              .filter((s) => s.name !== null).length;
+            const hasSignOffs = [
+              release.plsSignOff,
+              release.mpsSignOff,
+              release.clientSignOff,
+            ].filter((s) => s.name !== null).length;
 
             return (
               <div
@@ -242,7 +245,13 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
     setItems(
       items.map((item, i) =>
         i === index
-          ? { ...item, result: item.result === "pass" ? "fail" as ItemReleaseResult : "pass" as ItemReleaseResult }
+          ? {
+              ...item,
+              result:
+                item.result === "pass"
+                  ? ("fail" as ItemReleaseResult)
+                  : ("pass" as ItemReleaseResult),
+            }
           : item,
       ),
     );
@@ -257,9 +266,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
   };
 
   const updateItem = (index: number, field: keyof ReleaseLineItem, value: string | number) => {
-    setItems(
-      items.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
-    );
+    setItems(items.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
   };
 
   const updateSignOff = (
@@ -336,9 +343,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
         </button>
         <span className="text-sm text-gray-500">
           <span className="text-green-600 font-medium">{passCount} pass</span>
-          {failCount > 0 && (
-            <span className="ml-2 text-red-600 font-medium">{failCount} fail</span>
-          )}
+          {failCount > 0 && <span className="ml-2 text-red-600 font-medium">{failCount} fail</span>}
         </span>
       </div>
 
@@ -346,9 +351,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                #
-              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">#</th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Item Code
               </th>
@@ -375,9 +378,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
           <tbody className="divide-y divide-gray-200 bg-white">
             {items.map((item, index) => (
               <tr key={index} className="hover:bg-gray-50">
-                <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">
-                  {index + 1}
-                </td>
+                <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">{index + 1}</td>
                 <td className="px-3 py-2">
                   <input
                     type="text"
@@ -495,9 +496,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     <input
                       type="text"
                       value={signOff.name ?? ""}
-                      onChange={(e) =>
-                        updateSignOff(party, "name", e.target.value || null)
-                      }
+                      onChange={(e) => updateSignOff(party, "name", e.target.value || null)}
                       className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
                     />
                   </div>
@@ -506,9 +505,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     <input
                       type="date"
                       value={signOff.date ?? ""}
-                      onChange={(e) =>
-                        updateSignOff(party, "date", e.target.value || null)
-                      }
+                      onChange={(e) => updateSignOff(party, "date", e.target.value || null)}
                       className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
                     />
                   </div>

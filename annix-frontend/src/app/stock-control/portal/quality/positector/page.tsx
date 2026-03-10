@@ -216,9 +216,7 @@ export default function PositectorPage() {
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {status.online
-                            ? `Online (${status.batchCount} batches)`
-                            : "Offline"}
+                          {status.online ? `Online (${status.batchCount} batches)` : "Offline"}
                         </span>
                       ) : (
                         <span className="text-xs text-gray-400">Not checked</span>
@@ -310,22 +308,14 @@ export default function PositectorPage() {
                       }`}
                       onClick={() => handleSelectBatch(batch.buid)}
                     >
-                      <td className="px-4 py-3 text-sm font-mono text-gray-900">
-                        {batch.buid}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {batch.name ?? "-"}
-                      </td>
+                      <td className="px-4 py-3 text-sm font-mono text-gray-900">{batch.buid}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{batch.name ?? "-"}</td>
                       <td className="px-4 py-3 text-sm text-gray-500">
                         {probeTypeLabel(batch.probeType)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {batch.readingCount}
-                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{batch.readingCount}</td>
                       <td className="px-4 py-3 text-right text-sm">
-                        <button className="text-blue-600 hover:text-blue-800">
-                          View
-                        </button>
+                        <button className="text-blue-600 hover:text-blue-800">View</button>
                       </td>
                     </tr>
                   ))}
@@ -354,8 +344,7 @@ export default function PositectorPage() {
                       : "bg-gray-100 text-gray-800"
                   }`}
                 >
-                  Maps to:{" "}
-                  {ENTITY_TYPE_LABELS[selectedBatch.suggestedEntityType] ?? "Unknown"}
+                  Maps to: {ENTITY_TYPE_LABELS[selectedBatch.suggestedEntityType] ?? "Unknown"}
                 </span>
               </div>
             </div>
@@ -402,9 +391,7 @@ export default function PositectorPage() {
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {selectedBatch.readings.map((reading) => (
                       <tr key={reading.index} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-sm text-gray-500">
-                          {reading.index}
-                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-500">{reading.index}</td>
                         <td className="px-4 py-2 text-sm font-medium text-gray-900">
                           {reading.value}
                         </td>
@@ -477,13 +464,7 @@ export default function PositectorPage() {
   );
 }
 
-function AddDeviceModal({
-  onClose,
-  onAdded,
-}: {
-  onClose: () => void;
-  onAdded: () => void;
-}) {
+function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const [deviceName, setDeviceName] = useState("");
   const [ipAddress, setIpAddress] = useState("");
   const [port, setPort] = useState("8080");
@@ -520,21 +501,13 @@ function AddDeviceModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
-          Register PosiTector Device
-        </h2>
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Register PosiTector Device</h2>
 
-        {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Device Name
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Device Name</label>
             <input
               type="text"
               value={deviceName}
@@ -546,9 +519,7 @@ function AddDeviceModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700">
-                IP Address
-              </label>
+              <label className="block text-sm font-medium text-gray-700">IP Address</label>
               <input
                 type="text"
                 value={ipAddress}
@@ -662,43 +633,23 @@ function ImportWizardModal({
       setIsImporting(true);
       setError(null);
 
-      const result = await stockControlApiClient.importPositectorBatch(
-        device.id,
-        batch.buid,
-        {
-          jobCardId: parseInt(jobCardId, 10),
-          entityType,
-          coatType: entityType === "dft" ? coatType : undefined,
-          paintProduct: entityType === "dft" ? paintProduct || "Unknown" : undefined,
-          batchNumber: entityType === "dft" && batchNumber ? batchNumber : null,
-          specMinMicrons:
-            entityType === "dft" ? parseFloat(specMin) || 0 : undefined,
-          specMaxMicrons:
-            entityType === "dft" ? parseFloat(specMax) || 0 : undefined,
-          specMicrons:
-            entityType === "blast_profile"
-              ? parseFloat(specMicrons) || 0
-              : undefined,
-          temperature:
-            entityType === "blast_profile" && temperature
-              ? parseFloat(temperature)
-              : null,
-          humidity:
-            entityType === "blast_profile" && humidity
-              ? parseFloat(humidity)
-              : null,
-          rubberSpec:
-            entityType === "shore_hardness" ? rubberSpec || "Unknown" : undefined,
-          rubberBatchNumber:
-            entityType === "shore_hardness" && rubberBatchNumber
-              ? rubberBatchNumber
-              : null,
-          requiredShore:
-            entityType === "shore_hardness"
-              ? parseInt(requiredShore, 10) || 0
-              : undefined,
-        },
-      );
+      const result = await stockControlApiClient.importPositectorBatch(device.id, batch.buid, {
+        jobCardId: parseInt(jobCardId, 10),
+        entityType,
+        coatType: entityType === "dft" ? coatType : undefined,
+        paintProduct: entityType === "dft" ? paintProduct || "Unknown" : undefined,
+        batchNumber: entityType === "dft" && batchNumber ? batchNumber : null,
+        specMinMicrons: entityType === "dft" ? parseFloat(specMin) || 0 : undefined,
+        specMaxMicrons: entityType === "dft" ? parseFloat(specMax) || 0 : undefined,
+        specMicrons: entityType === "blast_profile" ? parseFloat(specMicrons) || 0 : undefined,
+        temperature: entityType === "blast_profile" && temperature ? parseFloat(temperature) : null,
+        humidity: entityType === "blast_profile" && humidity ? parseFloat(humidity) : null,
+        rubberSpec: entityType === "shore_hardness" ? rubberSpec || "Unknown" : undefined,
+        rubberBatchNumber:
+          entityType === "shore_hardness" && rubberBatchNumber ? rubberBatchNumber : null,
+        requiredShore:
+          entityType === "shore_hardness" ? parseInt(requiredShore, 10) || 0 : undefined,
+      });
 
       onImported(result);
     } catch (err) {
@@ -711,25 +662,17 @@ function ImportWizardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="mb-1 text-lg font-semibold text-gray-900">
-          Import Batch to Job Card
-        </h2>
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">Import Batch to Job Card</h2>
         <p className="mb-4 text-sm text-gray-500">
           {batch.readings.length} readings from {batch.header.batchName ?? batch.buid}
         </p>
 
-        {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
         <form onSubmit={handleImport} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Job Card ID
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Job Card ID</label>
               <input
                 type="number"
                 value={jobCardId}
@@ -739,9 +682,7 @@ function ImportWizardModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Measurement Type
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Measurement Type</label>
               <select
                 value={entityType}
                 onChange={(e) => setEntityType(e.target.value)}
@@ -758,9 +699,7 @@ function ImportWizardModal({
             <div className="space-y-3 rounded-md bg-gray-50 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Coat Type
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Coat Type</label>
                   <select
                     value={coatType}
                     onChange={(e) => setCoatType(e.target.value)}
@@ -771,9 +710,7 @@ function ImportWizardModal({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Paint Product
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Paint Product</label>
                   <input
                     type="text"
                     value={paintProduct}
@@ -785,9 +722,7 @@ function ImportWizardModal({
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Batch No
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Batch No</label>
                   <input
                     type="text"
                     value={batchNumber}
@@ -796,9 +731,7 @@ function ImportWizardModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Spec Min (um)
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Spec Min (um)</label>
                   <input
                     type="number"
                     value={specMin}
@@ -808,9 +741,7 @@ function ImportWizardModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Spec Max (um)
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Spec Max (um)</label>
                   <input
                     type="number"
                     value={specMax}
@@ -827,9 +758,7 @@ function ImportWizardModal({
             <div className="space-y-3 rounded-md bg-gray-50 p-3">
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Spec (um)
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Spec (um)</label>
                   <input
                     type="number"
                     value={specMicrons}
@@ -839,9 +768,7 @@ function ImportWizardModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Temp (C)
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Temp (C)</label>
                   <input
                     type="number"
                     value={temperature}
@@ -851,9 +778,7 @@ function ImportWizardModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Humidity (%)
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Humidity (%)</label>
                   <input
                     type="number"
                     value={humidity}
@@ -870,9 +795,7 @@ function ImportWizardModal({
             <div className="space-y-3 rounded-md bg-gray-50 p-3">
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Rubber Spec
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Rubber Spec</label>
                   <input
                     type="text"
                     value={rubberSpec}
@@ -882,9 +805,7 @@ function ImportWizardModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Batch No
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Batch No</label>
                   <input
                     type="text"
                     value={rubberBatchNumber}
@@ -893,9 +814,7 @@ function ImportWizardModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600">
-                    Required Shore
-                  </label>
+                  <label className="block text-xs font-medium text-gray-600">Required Shore</label>
                   <input
                     type="number"
                     value={requiredShore}

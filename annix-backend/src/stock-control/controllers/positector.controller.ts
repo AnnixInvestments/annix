@@ -13,16 +13,13 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import {
-  StockControlRoleGuard,
-  StockControlRoles,
-} from "../guards/stock-control-role.guard";
-import { PositectorImportService } from "../services/positector-import.service";
+import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import {
   PositectorService,
   type RegisterDeviceDto,
   type UpdateDeviceDto,
 } from "../services/positector.service";
+import { PositectorImportService } from "../services/positector-import.service";
 
 @ApiTags("Stock Control - PosiTector Devices")
 @Controller("stock-control/positector-devices")
@@ -39,11 +36,7 @@ export class PositectorController {
   @StockControlRoles("manager", "admin")
   @ApiOperation({ summary: "Register a PosiTector device" })
   async registerDevice(@Req() req: any, @Body() body: RegisterDeviceDto) {
-    return this.positectorService.registerDevice(
-      req.user.companyId,
-      body,
-      req.user,
-    );
+    return this.positectorService.registerDevice(req.user.companyId, body, req.user);
   }
 
   @Get()
@@ -66,11 +59,7 @@ export class PositectorController {
   @Patch(":id")
   @StockControlRoles("manager", "admin")
   @ApiOperation({ summary: "Update a PosiTector device" })
-  async updateDevice(
-    @Req() req: any,
-    @Param("id") id: number,
-    @Body() body: UpdateDeviceDto,
-  ) {
+  async updateDevice(@Req() req: any, @Param("id") id: number, @Body() body: UpdateDeviceDto) {
     return this.positectorService.updateDevice(req.user.companyId, id, body);
   }
 
@@ -96,19 +85,9 @@ export class PositectorController {
 
   @Get(":id/batches/:buid")
   @ApiOperation({ summary: "Fetch a specific batch from a PosiTector device" })
-  async fetchBatch(
-    @Req() req: any,
-    @Param("id") id: number,
-    @Param("buid") buid: string,
-  ) {
-    const batch = await this.positectorService.fetchBatch(
-      req.user.companyId,
-      id,
-      buid,
-    );
-    const entityType = this.positectorService.detectQcEntityType(
-      batch.header.probeType,
-    );
+  async fetchBatch(@Req() req: any, @Param("id") id: number, @Param("buid") buid: string) {
+    const batch = await this.positectorService.fetchBatch(req.user.companyId, id, buid);
+    const entityType = this.positectorService.detectQcEntityType(batch.header.probeType);
     const suggestedCoatType = this.importService.detectCoatTypeFromBatchName(
       batch.header.batchName,
     );
@@ -139,11 +118,7 @@ export class PositectorController {
       requiredShore?: number;
     },
   ) {
-    const batch = await this.positectorService.fetchBatch(
-      req.user.companyId,
-      id,
-      buid,
-    );
+    const batch = await this.positectorService.fetchBatch(req.user.companyId, id, buid);
 
     if (body.entityType === "dft") {
       return this.importService.importDftReadings(
@@ -151,7 +126,7 @@ export class PositectorController {
         batch,
         {
           jobCardId: body.jobCardId,
-          coatType: body.coatType === "final" ? "final" as any : "primer" as any,
+          coatType: body.coatType === "final" ? ("final" as any) : ("primer" as any),
           paintProduct: body.paintProduct ?? "Unknown",
           batchNumber: body.batchNumber ?? null,
           specMinMicrons: body.specMinMicrons ?? 0,
