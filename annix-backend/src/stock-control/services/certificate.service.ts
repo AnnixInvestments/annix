@@ -7,6 +7,7 @@ import {
   STORAGE_SERVICE,
   StorageArea,
 } from "../../storage/storage.interface";
+import { CalibrationCertificate } from "../entities/calibration-certificate.entity";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
@@ -60,6 +61,8 @@ export class CertificateService {
     private readonly supplierRepo: Repository<StockControlSupplier>,
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
+    @InjectRepository(CalibrationCertificate)
+    private readonly calCertRepo: Repository<CalibrationCertificate>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -284,8 +287,12 @@ export class CertificateService {
     user: UserContext,
   ): Promise<JobCardDataBook> {
     const certs = await this.certificatesForJobCard(companyId, jobCardId);
+    const calCerts = await this.calCertRepo.find({
+      where: { companyId, isActive: true },
+      order: { equipmentName: "ASC" },
+    });
 
-    if (certs.length === 0) {
+    if (certs.length === 0 && calCerts.length === 0) {
       throw new BadRequestException("No certificates linked to this job card");
     }
 
@@ -306,7 +313,8 @@ export class CertificateService {
     coverDoc.moveDown(2);
     coverDoc.fontSize(14).font("Helvetica").text(`Job Card: ${jobCardId}`, { align: "center" });
     coverDoc.moveDown(1);
-    coverDoc.fontSize(12).text(`Certificates: ${certs.length}`, { align: "center" });
+    const totalCertCount = certs.length + calCerts.length;
+    coverDoc.fontSize(12).text(`Certificates: ${totalCertCount}`, { align: "center" });
     coverDoc.moveDown(1);
     coverDoc
       .fontSize(10)
@@ -325,6 +333,20 @@ export class CertificateService {
         `${idx + 1}. ${cert.certificateType} - Batch: ${cert.batchNumber} - ${supplierName} - ${cert.originalFilename}`,
       );
     });
+
+    if (calCerts.length > 0) {
+      coverDoc.moveDown(1);
+      coverDoc.fontSize(11).font("Helvetica-Bold").text("Calibration Certificates:");
+      coverDoc.moveDown(0.5);
+      coverDoc.fontSize(9).font("Helvetica");
+
+      calCerts.forEach((cal, idx) => {
+        const identifier = cal.equipmentIdentifier ? ` (${cal.equipmentIdentifier})` : "";
+        coverDoc.text(
+          `${certs.length + idx + 1}. ${cal.equipmentName}${identifier} - Expires: ${cal.expiryDate} - ${cal.originalFilename}`,
+        );
+      });
+    }
 
     coverDoc.end();
     const coverBuffer = await coverDone;
@@ -363,6 +385,40 @@ export class CertificateService {
       } catch (err) {
         this.logger.warn(
           `Failed to include certificate ${cert.id} (${cert.originalFilename}) in data book: ${err}`,
+        );
+      }
+    }
+
+    for (const cal of calCerts) {
+      try {
+        const calBuffer = await this.storageService.download(cal.filePath);
+
+        if (cal.mimeType === "application/pdf") {
+          const calPdf = await pdfLib.PDFDocument.load(calBuffer);
+          const calPages = await mergedPdf.copyPages(calPdf, calPdf.getPageIndices());
+          calPages.forEach((page) => mergedPdf.addPage(page));
+        } else {
+          const imagePage = mergedPdf.addPage();
+          let image: Awaited<ReturnType<typeof mergedPdf.embedJpg>>;
+
+          if (cal.mimeType === "image/png") {
+            image = await mergedPdf.embedPng(calBuffer);
+          } else {
+            image = await mergedPdf.embedJpg(calBuffer);
+          }
+
+          const { width, height } = imagePage.getSize();
+          const imgDims = image.scaleToFit(width - 100, height - 100);
+          imagePage.drawImage(image, {
+            x: (width - imgDims.width) / 2,
+            y: (height - imgDims.height) / 2,
+            width: imgDims.width,
+            height: imgDims.height,
+          });
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Failed to include calibration cert ${cal.id} (${cal.originalFilename}) in data book: ${err}`,
         );
       }
     }
@@ -409,13 +465,13 @@ export class CertificateService {
       fileSizeBytes: mergedBuffer.length,
       generatedAt: now().toJSDate(),
       generatedByName: user.name,
-      certificateCount: certs.length,
+      certificateCount: totalCertCount,
       isStale: false,
     });
 
     const saved = await this.dataBookRepo.save(dataBook);
     this.logger.log(
-      `Data book compiled for job card ${jobCardId}: ${certs.length} certificates, ${mergedBuffer.length} bytes`,
+      `Data book compiled for job card ${jobCardId}: ${totalCertCount} certificates (${certs.length} supplier + ${calCerts.length} calibration), ${mergedBuffer.length} bytes`,
     );
 
     return saved;

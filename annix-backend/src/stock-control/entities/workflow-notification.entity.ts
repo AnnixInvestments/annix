@@ -21,6 +21,8 @@ export enum NotificationActionType {
   JOB_CARDS_IMPORTED = "job_cards_imported",
   CPO_CALLOFF_NEEDED = "cpo_calloff_needed",
   CPO_INVOICE_OVERDUE = "cpo_invoice_overdue",
+  CALIBRATION_EXPIRY_WARNING = "calibration_expiry_warning",
+  CALIBRATION_EXPIRED = "calibration_expired",
 }
 
 @Entity("workflow_notifications")

@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type {
+  CalibrationCertificate,
   DataBookStatus,
   IssuanceBatchRecord,
   SupplierCertificate,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 
 interface QualityTabProps {
   jobCardId: number;
@@ -15,6 +16,7 @@ interface QualityTabProps {
 
 export function QualityTab({ jobCardId }: QualityTabProps) {
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
+  const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
   const [dataBookStatus, setDataBookStatus] = useState<DataBookStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,12 +28,14 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
     try {
       setIsLoading(true);
       setError(null);
-      const [certsRes, recordsRes, statusRes] = await Promise.all([
+      const [certsRes, calCertsRes, recordsRes, statusRes] = await Promise.all([
         stockControlApiClient.certificatesForJobCard(jobCardId),
+        stockControlApiClient.calibrationCertificates({ active: true }),
         stockControlApiClient.batchRecordsForJobCard(jobCardId),
         stockControlApiClient.dataBookStatus(jobCardId),
       ]);
       setCertificates(Array.isArray(certsRes) ? certsRes : []);
+      setCalibrationCerts(Array.isArray(calCertsRes) ? calCertsRes : []);
       setBatchRecords(Array.isArray(recordsRes) ? recordsRes : []);
       setDataBookStatus(statusRes);
     } catch (err) {
@@ -267,7 +271,61 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         </div>
       )}
 
-      {certificates.length === 0 && batchRecords.length === 0 && (
+      {calibrationCerts.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-200 px-5 py-3">
+            <h3 className="text-sm font-semibold text-gray-900">
+              Calibration Certificates
+              <span className="ml-2 text-xs font-normal text-gray-500">
+                (included in data book)
+              </span>
+            </h3>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {calibrationCerts.map((cal) => {
+              const expiry = fromISO(cal.expiryDate);
+              const daysUntil = expiry.diff(now().startOf("day"), "days").days;
+              const isExpired = daysUntil < 0;
+              const isExpiringSoon = daysUntil >= 0 && daysUntil <= 30;
+
+              return (
+                <div
+                  key={cal.id}
+                  className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                      CAL
+                    </span>
+                    <span className="text-sm font-medium text-gray-900">{cal.equipmentName}</span>
+                    {cal.equipmentIdentifier && (
+                      <span className="text-xs text-gray-500">({cal.equipmentIdentifier})</span>
+                    )}
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        isExpired
+                          ? "bg-red-100 text-red-800"
+                          : isExpiringSoon
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {isExpired
+                        ? "Expired"
+                        : isExpiringSoon
+                          ? `${Math.ceil(daysUntil)}d left`
+                          : `Expires ${cal.expiryDate}`}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-400">{cal.originalFilename}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {certificates.length === 0 && batchRecords.length === 0 && calibrationCerts.length === 0 && (
         <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
           <p className="text-gray-500">No quality records for this job card yet</p>
           <p className="mt-1 text-sm text-gray-400">

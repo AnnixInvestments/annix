@@ -12,6 +12,7 @@ import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
 import { StockControlAuthController } from "./controllers/auth.controller";
+import { CalibrationCertificateController } from "./controllers/calibration-certificate.controller";
 import { CertificateController } from "./controllers/certificate.controller";
 import { CpoController } from "./controllers/cpo.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
@@ -34,6 +35,7 @@ import { SignatureController } from "./controllers/signature.controller";
 import { StaffController } from "./controllers/staff.controller";
 import { SupplierController } from "./controllers/supplier.controller";
 import { WorkflowController } from "./controllers/workflow.controller";
+import { CalibrationCertificate } from "./entities/calibration-certificate.entity";
 import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
 import { CpoCalloffRecord } from "./entities/cpo-calloff-record.entity";
 import { CustomerPurchaseOrder } from "./entities/customer-purchase-order.entity";
@@ -82,6 +84,7 @@ import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { StockControlAuthService } from "./services/auth.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
+import { CalibrationCertificateService } from "./services/calibration-certificate.service";
 import { CertificateService } from "./services/certificate.service";
 import { CoatingAnalysisService } from "./services/coating-analysis.service";
 import { CompanyEmailService } from "./services/company-email.service";
@@ -167,6 +170,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       SupplierCertificate,
       IssuanceBatchRecord,
       JobCardDataBook,
+      CalibrationCertificate,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -214,6 +218,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CpoController,
     GlossaryController,
     CertificateController,
+    CalibrationCertificateController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -257,6 +262,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CpoService,
     GlossaryService,
     CertificateService,
+    CalibrationCertificateService,
   ],
 })
 export class StockControlModule {}

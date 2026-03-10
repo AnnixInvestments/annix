@@ -446,6 +446,26 @@ export interface DataBookStatus {
   dataBookId: number | null;
 }
 
+export interface CalibrationCertificate {
+  id: number;
+  companyId: number;
+  equipmentName: string;
+  equipmentIdentifier: string | null;
+  certificateNumber: string | null;
+  filePath: string;
+  originalFilename: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  description: string | null;
+  expiryDate: string;
+  isActive: boolean;
+  uploadedById: number | null;
+  uploadedByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  downloadUrl?: string;
+}
+
 export interface DeliveryNote {
   id: number;
   deliveryNumber: string;
@@ -3450,6 +3470,78 @@ class StockControlApiClient {
 
   async recentBatches(stockItemId: number): Promise<string[]> {
     return this.request(`/stock-control/certificates/recent-batches/${stockItemId}`);
+  }
+
+  async uploadCalibrationCertificate(
+    file: File,
+    data: {
+      equipmentName: string;
+      equipmentIdentifier?: string | null;
+      certificateNumber?: string | null;
+      description?: string | null;
+      expiryDate: string;
+    },
+  ): Promise<CalibrationCertificate> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("equipmentName", data.equipmentName);
+    if (data.equipmentIdentifier) formData.append("equipmentIdentifier", data.equipmentIdentifier);
+    if (data.certificateNumber) formData.append("certificateNumber", data.certificateNumber);
+    if (data.description) formData.append("description", data.description);
+    formData.append("expiryDate", data.expiryDate);
+
+    const url = `${this.baseURL}/stock-control/calibration-certificates`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.accessToken}` },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "Upload failed");
+      throw new Error(errorText);
+    }
+
+    return response.json();
+  }
+
+  async calibrationCertificates(filters?: { active?: boolean }): Promise<CalibrationCertificate[]> {
+    const params = new URLSearchParams();
+    if (filters?.active !== undefined) params.set("active", String(filters.active));
+    const query = params.toString();
+    return this.request(`/stock-control/calibration-certificates${query ? `?${query}` : ""}`);
+  }
+
+  async calibrationCertificateById(id: number): Promise<CalibrationCertificate> {
+    return this.request(`/stock-control/calibration-certificates/${id}`);
+  }
+
+  async updateCalibrationCertificate(
+    id: number,
+    data: {
+      equipmentName?: string;
+      equipmentIdentifier?: string | null;
+      certificateNumber?: string | null;
+      description?: string | null;
+      expiryDate?: string;
+    },
+  ): Promise<CalibrationCertificate> {
+    return this.request(`/stock-control/calibration-certificates/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deactivateCalibrationCertificate(id: number): Promise<CalibrationCertificate> {
+    return this.request(`/stock-control/calibration-certificates/${id}/deactivate`, {
+      method: "POST",
+    });
+  }
+
+  async deleteCalibrationCertificate(id: number): Promise<{ deleted: boolean }> {
+    return this.request(`/stock-control/calibration-certificates/${id}`, {
+      method: "DELETE",
+    });
   }
 }
 
