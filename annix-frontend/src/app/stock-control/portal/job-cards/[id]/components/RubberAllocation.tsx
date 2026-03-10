@@ -1465,7 +1465,9 @@ function RubberAllocationSection({
 export function RubberAllocationGuard({ jobCard }: { jobCard: JobCard }) {
   const allText = [
     jobCard.notes || "",
-    ...(jobCard.lineItems || []).map((li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`),
+    ...(jobCard.lineItems || []).map(
+      (li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`,
+    ),
   ]
     .join(" ")
     .toLowerCase();

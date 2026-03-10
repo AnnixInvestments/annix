@@ -207,7 +207,9 @@ export class JobCardPdfService {
 
     const nonRubberNotes = (noteItems || [])
       .map((item) => (item.itemCode || "").trim())
-      .filter((text) => text && !/^r\/l\b/i.test(text) && !/rubber\s+(lining|sheet|lagging)/i.test(text));
+      .filter(
+        (text) => text && !/^r\/l\b/i.test(text) && !/rubber\s+(lining|sheet|lagging)/i.test(text),
+      );
     const combinedNotes = [jobCard.notes, ...nonRubberNotes].filter(Boolean).join("\n\n");
 
     if (combinedNotes) {
@@ -371,7 +373,9 @@ export class JobCardPdfService {
   }> {
     const allText = [
       jobCard.notes || "",
-      ...(jobCard.lineItems || []).map((li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`),
+      ...(jobCard.lineItems || []).map(
+        (li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`,
+      ),
     ]
       .join(" ")
       .toLowerCase();

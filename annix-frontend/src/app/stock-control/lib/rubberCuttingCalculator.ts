@@ -836,7 +836,8 @@ export function calculateCuttingPlan(
       const parsed = parsePipeItem(String(item.id || Math.random()), desc, Number(qty), m2, itemNo);
 
       if (parsed.isValidPipe) {
-        const specFromNotes = !acc.rubberSpec && item.notes ? parseRubberSpecNote(item.notes) : null;
+        const specFromNotes =
+          !acc.rubberSpec && item.notes ? parseRubberSpecNote(item.notes) : null;
         return {
           ...acc,
           parsedItems: [...acc.parsedItems, parsed],
