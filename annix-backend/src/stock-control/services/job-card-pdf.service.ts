@@ -1207,10 +1207,12 @@ export class JobCardPdfService {
         .text(generatedText, 50, pageHeight - 40, {
           align: "center",
           width: 495,
+          lineBreak: false,
         })
         .text(`Page ${i + 1} of ${totalPages}`, 50, pageHeight - 28, {
           align: "center",
           width: 495,
+          lineBreak: false,
         });
     });
 
