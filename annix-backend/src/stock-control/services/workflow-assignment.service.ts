@@ -192,7 +192,11 @@ export class WorkflowAssignmentService {
       ],
       [WorkflowStep.ADMIN_APPROVAL]: [StockControlRole.ADMIN],
       [WorkflowStep.MANAGER_APPROVAL]: [StockControlRole.MANAGER, StockControlRole.ADMIN],
-      [WorkflowStep.REQUISITION_SENT]: [StockControlRole.MANAGER, StockControlRole.ADMIN],
+      [WorkflowStep.REQUISITION_SENT]: [
+        StockControlRole.STOREMAN,
+        StockControlRole.MANAGER,
+        StockControlRole.ADMIN,
+      ],
       [WorkflowStep.STOCK_ALLOCATION]: [
         StockControlRole.STOREMAN,
         StockControlRole.MANAGER,
