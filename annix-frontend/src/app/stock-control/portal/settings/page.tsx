@@ -16,9 +16,9 @@ import {
   WorkflowStepAssignment,
 } from "@/app/lib/api/stockControlApi";
 import { syncStatus } from "../../lib/offline/syncManager";
+import { ROLE_LABELS } from "../../lib/roleLabels";
 import { AppPermissionsSection } from "./AppPermissionsSection";
 import { SmtpConfigSection } from "./SmtpConfigSection";
-import { ROLE_LABELS } from "../../lib/roleLabels";
 
 type BrandingSelection = "annix" | "custom";
 
