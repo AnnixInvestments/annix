@@ -46,7 +46,6 @@ interface DocNumberEntry {
 }
 
 const DOC_NUMBERS: Record<string, DocNumberEntry> = {
-  file_front: { docNumber: "QD_PLS_01", title: "QC File Data Book", edition: "01", revision: "00" },
   toc: { docNumber: "QD_PLS_02", title: "Table of Contents", edition: "01", revision: "00" },
   rubber_index: {
     docNumber: "QD_PLS_03",
@@ -241,10 +240,7 @@ export class DataBookPdfService {
 
     const tocEntries: TocEntry[] = [];
 
-    this.renderFileFront(doc, ctx);
-
-    const tocPageIndex = doc.bufferedPageRange().count;
-    doc.addPage();
+    const tocPageIndex = 0;
 
     this.renderRubberIndex(doc, ctx, tocEntries);
     this.renderPaintIndex(doc, ctx, tocEntries);
@@ -432,48 +428,6 @@ export class DataBookPdfService {
     if (result === "pass") return "PASS";
     if (result === "fail") return "FAIL";
     return "-";
-  }
-
-  private renderFileFront(doc: PDFDoc, ctx: DataBookContext): void {
-    const centerX = 595.28 / 2;
-
-    doc
-      .fontSize(12)
-      .font(FONT.BOLD)
-      .text(ctx.company?.name ?? "", A4.margin, 120, { align: "center" });
-    doc.moveDown(2);
-
-    doc.fontSize(28).font(FONT.BOLD).text("QC FILE", A4.margin, 180, { align: "center" });
-    doc.moveDown(0.5);
-    doc.fontSize(20).text("DATA BOOK", A4.margin, 220, { align: "center" });
-
-    doc.moveDown(3);
-
-    const detailY = 300;
-    const labelX = 160;
-    const valueX = 310;
-    const details: Array<[string, string]> = [
-      ["Job Card Number", ctx.jobCard.jobNumber || String(ctx.jobCard.id)],
-      ["Customer", ctx.jobCard.customerName ?? "-"],
-      ["Order Number", ctx.jobCard.poNumber ?? "-"],
-      ["Job Name", ctx.jobCard.jobName ?? "-"],
-      ["Date", now().toFormat("dd MMM yyyy")],
-    ];
-
-    details.forEach(([label, value], idx) => {
-      const rowY = detailY + idx * 28;
-      doc.fontSize(10).font(FONT.BOLD).text(`${label}:`, labelX, rowY, { width: 140 });
-      doc.fontSize(10).font(FONT.REGULAR).text(value, valueX, rowY, { width: 200 });
-    });
-
-    doc
-      .moveTo(A4.margin + 40, detailY - 10)
-      .lineTo(A4.margin + A4.contentWidth - 40, detailY - 10)
-      .stroke();
-    doc
-      .moveTo(A4.margin + 40, detailY + details.length * 28 + 5)
-      .lineTo(A4.margin + A4.contentWidth - 40, detailY + details.length * 28 + 5)
-      .stroke();
   }
 
   private renderRubberIndex(doc: PDFDoc, ctx: DataBookContext, tocEntries: TocEntry[]): void {
