@@ -71,7 +71,7 @@ export class SupplierCertificate {
   @Column({ name: "expiry_date", type: "date", nullable: true })
   expiryDate: string | null;
 
-  @Column({ name: "uploaded_by_id", nullable: true })
+  @Column({ name: "uploaded_by_id", type: "integer", nullable: true })
   uploadedById: number | null;
 
   @Column({ name: "uploaded_by_name", type: "varchar", length: 255, nullable: true })
