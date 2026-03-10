@@ -1,0 +1,309 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Logger,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
+import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { QcMeasurementService } from "../services/qc-measurement.service";
+
+@ApiTags("Stock Control - QC Measurements")
+@Controller("stock-control/job-cards/:jobCardId/qc")
+@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+export class QcMeasurementController {
+  private readonly logger = new Logger(QcMeasurementController.name);
+
+  constructor(private readonly qcService: QcMeasurementService) {}
+
+  // ── Aggregate ──────────────────────────────────────────────────────
+
+  @Get()
+  @ApiOperation({ summary: "All QC measurements for a job card" })
+  async allMeasurements(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.allMeasurementsForJobCard(req.user.companyId, jobCardId);
+  }
+
+  // ── Shore Hardness ─────────────────────────────────────────────────
+
+  @Get("shore-hardness")
+  @ApiOperation({ summary: "Shore hardness records for a job card" })
+  async shoreHardnessList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.shoreHardnessForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("shore-hardness/:id")
+  @ApiOperation({ summary: "Single shore hardness record" })
+  async shoreHardnessById(@Req() req: any, @Param("id") id: number) {
+    return this.qcService.shoreHardnessById(req.user.companyId, id);
+  }
+
+  @Post("shore-hardness")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Create shore hardness record" })
+  async createShoreHardness(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: any,
+  ) {
+    return this.qcService.createShoreHardness(req.user.companyId, jobCardId, body, req.user);
+  }
+
+  @Patch("shore-hardness/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Update shore hardness record" })
+  async updateShoreHardness(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    return this.qcService.updateShoreHardness(req.user.companyId, id, body);
+  }
+
+  @Delete("shore-hardness/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Delete shore hardness record" })
+  async deleteShoreHardness(@Req() req: any, @Param("id") id: number) {
+    await this.qcService.deleteShoreHardness(req.user.companyId, id);
+    return { deleted: true };
+  }
+
+  // ── DFT Readings ──────────────────────────────────────────────────
+
+  @Get("dft-readings")
+  @ApiOperation({ summary: "DFT readings for a job card" })
+  async dftReadingsList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.dftReadingsForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("dft-readings/:id")
+  @ApiOperation({ summary: "Single DFT reading" })
+  async dftReadingById(@Req() req: any, @Param("id") id: number) {
+    return this.qcService.dftReadingById(req.user.companyId, id);
+  }
+
+  @Post("dft-readings")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Create DFT reading" })
+  async createDftReading(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: any,
+  ) {
+    return this.qcService.createDftReading(req.user.companyId, jobCardId, body, req.user);
+  }
+
+  @Patch("dft-readings/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Update DFT reading" })
+  async updateDftReading(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    return this.qcService.updateDftReading(req.user.companyId, id, body);
+  }
+
+  @Delete("dft-readings/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Delete DFT reading" })
+  async deleteDftReading(@Req() req: any, @Param("id") id: number) {
+    await this.qcService.deleteDftReading(req.user.companyId, id);
+    return { deleted: true };
+  }
+
+  // ── Blast Profiles ────────────────────────────────────────────────
+
+  @Get("blast-profiles")
+  @ApiOperation({ summary: "Blast profiles for a job card" })
+  async blastProfilesList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.blastProfilesForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("blast-profiles/:id")
+  @ApiOperation({ summary: "Single blast profile" })
+  async blastProfileById(@Req() req: any, @Param("id") id: number) {
+    return this.qcService.blastProfileById(req.user.companyId, id);
+  }
+
+  @Post("blast-profiles")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Create blast profile" })
+  async createBlastProfile(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: any,
+  ) {
+    return this.qcService.createBlastProfile(req.user.companyId, jobCardId, body, req.user);
+  }
+
+  @Patch("blast-profiles/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Update blast profile" })
+  async updateBlastProfile(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    return this.qcService.updateBlastProfile(req.user.companyId, id, body);
+  }
+
+  @Delete("blast-profiles/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Delete blast profile" })
+  async deleteBlastProfile(@Req() req: any, @Param("id") id: number) {
+    await this.qcService.deleteBlastProfile(req.user.companyId, id);
+    return { deleted: true };
+  }
+
+  // ── Dust & Debris Tests ───────────────────────────────────────────
+
+  @Get("dust-debris")
+  @ApiOperation({ summary: "Dust/debris tests for a job card" })
+  async dustDebrisTestsList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.dustDebrisTestsForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("dust-debris/:id")
+  @ApiOperation({ summary: "Single dust/debris test" })
+  async dustDebrisTestById(@Req() req: any, @Param("id") id: number) {
+    return this.qcService.dustDebrisTestById(req.user.companyId, id);
+  }
+
+  @Post("dust-debris")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Create dust/debris test" })
+  async createDustDebrisTest(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: any,
+  ) {
+    return this.qcService.createDustDebrisTest(req.user.companyId, jobCardId, body, req.user);
+  }
+
+  @Patch("dust-debris/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Update dust/debris test" })
+  async updateDustDebrisTest(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    return this.qcService.updateDustDebrisTest(req.user.companyId, id, body);
+  }
+
+  @Delete("dust-debris/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Delete dust/debris test" })
+  async deleteDustDebrisTest(@Req() req: any, @Param("id") id: number) {
+    await this.qcService.deleteDustDebrisTest(req.user.companyId, id);
+    return { deleted: true };
+  }
+
+  // ── Pull Tests ────────────────────────────────────────────────────
+
+  @Get("pull-tests")
+  @ApiOperation({ summary: "Pull tests for a job card" })
+  async pullTestsList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.pullTestsForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("pull-tests/:id")
+  @ApiOperation({ summary: "Single pull test" })
+  async pullTestById(@Req() req: any, @Param("id") id: number) {
+    return this.qcService.pullTestById(req.user.companyId, id);
+  }
+
+  @Post("pull-tests")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Create pull test" })
+  async createPullTest(@Req() req: any, @Param("jobCardId") jobCardId: number, @Body() body: any) {
+    return this.qcService.createPullTest(req.user.companyId, jobCardId, body, req.user);
+  }
+
+  @Patch("pull-tests/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Update pull test" })
+  async updatePullTest(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    return this.qcService.updatePullTest(req.user.companyId, id, body);
+  }
+
+  @Delete("pull-tests/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Delete pull test" })
+  async deletePullTest(@Req() req: any, @Param("id") id: number) {
+    await this.qcService.deletePullTest(req.user.companyId, id);
+    return { deleted: true };
+  }
+
+  // ── Control Plans ─────────────────────────────────────────────────
+
+  @Get("control-plans")
+  @ApiOperation({ summary: "Control plans for a job card" })
+  async controlPlansList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.controlPlansForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("control-plans/:id")
+  @ApiOperation({ summary: "Single control plan" })
+  async controlPlanById(@Req() req: any, @Param("id") id: number) {
+    return this.qcService.controlPlanById(req.user.companyId, id);
+  }
+
+  @Post("control-plans")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Create control plan" })
+  async createControlPlan(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: any,
+  ) {
+    return this.qcService.createControlPlan(req.user.companyId, jobCardId, body, req.user);
+  }
+
+  @Patch("control-plans/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Update control plan" })
+  async updateControlPlan(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    return this.qcService.updateControlPlan(req.user.companyId, id, body);
+  }
+
+  @Delete("control-plans/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Delete control plan" })
+  async deleteControlPlan(@Req() req: any, @Param("id") id: number) {
+    await this.qcService.deleteControlPlan(req.user.companyId, id);
+    return { deleted: true };
+  }
+
+  // ── Release Certificates ──────────────────────────────────────────
+
+  @Get("release-certificates")
+  @ApiOperation({ summary: "Release certificates for a job card" })
+  async releaseCertificatesList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.releaseCertificatesForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("release-certificates/:id")
+  @ApiOperation({ summary: "Single release certificate" })
+  async releaseCertificateById(@Req() req: any, @Param("id") id: number) {
+    return this.qcService.releaseCertificateById(req.user.companyId, id);
+  }
+
+  @Post("release-certificates")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Create release certificate" })
+  async createReleaseCertificate(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: any,
+  ) {
+    return this.qcService.createReleaseCertificate(req.user.companyId, jobCardId, body, req.user);
+  }
+
+  @Patch("release-certificates/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Update release certificate" })
+  async updateReleaseCertificate(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    return this.qcService.updateReleaseCertificate(req.user.companyId, id, body);
+  }
+
+  @Delete("release-certificates/:id")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Delete release certificate" })
+  async deleteReleaseCertificate(@Req() req: any, @Param("id") id: number) {
+    await this.qcService.deleteReleaseCertificate(req.user.companyId, id);
+    return { deleted: true };
+  }
+}

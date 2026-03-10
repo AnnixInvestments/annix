@@ -38,6 +38,6 @@ export class AddQcReleaseCertificatesTable1804700000000 implements MigrationInte
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS qc_release_certificates`);
+    await queryRunner.query("DROP TABLE IF EXISTS qc_release_certificates");
   }
 }

@@ -56,6 +56,8 @@ import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity"
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { JobCardVersion } from "./entities/job-card-version.entity";
 import { PushSubscription } from "./entities/push-subscription.entity";
+import { QcItemsRelease } from "./entities/qc-items-release.entity";
+import { QcReleaseCertificate } from "./entities/qc-release-certificate.entity";
 import { Requisition } from "./entities/requisition.entity";
 import { RequisitionItem } from "./entities/requisition-item.entity";
 import { RubberDimensionOverride } from "./entities/rubber-dimension-override.entity";
@@ -78,7 +80,6 @@ import { SupplierInvoice } from "./entities/supplier-invoice.entity";
 import { SupplierInvoiceItem } from "./entities/supplier-invoice-item.entity";
 import { UserLocationAssignment } from "./entities/user-location-assignment.entity";
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
-import { QcReleaseCertificate } from "./entities/qc-release-certificate.entity";
 import { WorkflowNotificationRecipient } from "./entities/workflow-notification-recipient.entity";
 import { WorkflowStepAssignment } from "./entities/workflow-step-assignment.entity";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
@@ -174,6 +175,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       JobCardDataBook,
       CalibrationCertificate,
       QcReleaseCertificate,
+      QcItemsRelease,
     ]),
     EmailModule,
     JwtModule.registerAsync({
