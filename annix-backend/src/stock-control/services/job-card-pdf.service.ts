@@ -96,7 +96,7 @@ export class JobCardPdfService {
     const rubberAllocationResult = await this.prepareRubberAllocation(jobCard);
 
     return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A4", margin: 50 });
+      const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
       const chunks: Buffer[] = [];
 
       doc.on("data", (chunk) => chunks.push(chunk));
