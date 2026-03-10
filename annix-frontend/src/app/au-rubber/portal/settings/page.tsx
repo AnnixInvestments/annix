@@ -15,6 +15,7 @@ import { Breadcrumb } from "../../components/Breadcrumb";
 import { RequirePermission } from "../../components/RequirePermission";
 import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 import { SageConfigSection } from "./SageConfigSection";
+import { SageContactSyncSection } from "./SageContactSyncSection";
 
 const SOURCE_LABELS: Record<string, string> = {
   "logo-attr": "Logo element",
@@ -1104,6 +1105,7 @@ export default function SettingsPage() {
         </div>
 
         <SageConfigSection />
+        <SageContactSyncSection />
 
         {activeTab === "branding" && <BrandingTab />}
         {activeTab === "access" && canManageAccess && <AccessControlTab />}

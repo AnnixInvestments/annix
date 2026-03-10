@@ -153,6 +153,11 @@ import { RubberQualityTrackingService } from "./rubber-quality-tracking.service"
 import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberSageCocAdapterService } from "./rubber-sage-coc-adapter.service";
+import {
+  RubberSageContactSyncService,
+  type SageContactMappingStatus,
+  type SageContactSyncResult,
+} from "./rubber-sage-contact-sync.service";
 import { RubberSageInvoiceAdapterService } from "./rubber-sage-invoice-adapter.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService, StockLocationDto } from "./rubber-stock-location.service";
@@ -193,6 +198,7 @@ export class RubberLiningController {
     private readonly rubberSageCocAdapterService: RubberSageCocAdapterService,
     private readonly sageExportService: SageExportService,
     private readonly sageConnectionService: SageConnectionService,
+    private readonly rubberSageContactSyncService: RubberSageContactSyncService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -3064,6 +3070,45 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiOperation({ summary: "List Sage tax types" })
   async sageTaxTypes() {
     return this.sageConnectionService.sageTaxTypes("au-rubber");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/sage/contact-sync")
+  @ApiOperation({ summary: "Sync contacts from Sage (auto-match by name)" })
+  async syncSageContacts(): Promise<SageContactSyncResult> {
+    return this.rubberSageContactSyncService.syncContacts("au-rubber");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/sage/contact-mappings")
+  @ApiOperation({ summary: "View Sage contact mapping status" })
+  async sageContactMappings(): Promise<SageContactMappingStatus> {
+    return this.rubberSageContactSyncService.mappingStatus("au-rubber");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Patch("portal/sage/contact-mappings/:companyId")
+  @ApiOperation({ summary: "Manually map a company to a Sage contact" })
+  async mapSageContact(
+    @Param("companyId") companyId: string,
+    @Body() body: { sageContactId: number; sageContactType: string },
+  ) {
+    return this.rubberSageContactSyncService.manualMap(
+      Number(companyId),
+      body.sageContactId,
+      body.sageContactType,
+    );
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/sage/contact-mappings/:companyId")
+  @ApiOperation({ summary: "Remove Sage contact mapping" })
+  async unmapSageContact(@Param("companyId") companyId: string) {
+    return this.rubberSageContactSyncService.unmap(Number(companyId));
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

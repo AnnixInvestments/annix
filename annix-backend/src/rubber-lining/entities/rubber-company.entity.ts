@@ -78,6 +78,12 @@ export class RubberCompany {
   @Column({ name: "notes", type: "text", nullable: true })
   notes: string | null;
 
+  @Column({ name: "sage_contact_id", type: "int", nullable: true })
+  sageContactId: number | null;
+
+  @Column({ name: "sage_contact_type", type: "varchar", length: 20, nullable: true })
+  sageContactType: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

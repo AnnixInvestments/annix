@@ -1054,6 +1054,38 @@ export interface AuRubberInviteUserResponse {
   message: string;
 }
 
+export interface SageContactSyncResult {
+  matched: number;
+  unmatched: number;
+  alreadyMapped: number;
+  newMappings: Array<{
+    companyId: number;
+    companyName: string;
+    sageContactId: number;
+    sageContactName: string;
+  }>;
+}
+
+export interface SageContactMappingStatus {
+  companies: Array<{
+    id: number;
+    name: string;
+    companyType: string;
+    sageContactId: number | null;
+    sageContactName: string | null;
+    suggestedMatches: Array<{
+      sageId: number;
+      sageName: string;
+      confidence: number;
+    }>;
+  }>;
+  summary: {
+    total: number;
+    mapped: number;
+    unmapped: number;
+  };
+}
+
 const TOKEN_KEYS = {
   accessToken: "auRubberAccessToken",
   refreshToken: "auRubberRefreshToken",
@@ -3045,6 +3077,33 @@ class AuRubberApiClient {
     return this.request("/rubber-lining/portal/sage/test", {
       method: "POST",
       body: JSON.stringify({ username, password }),
+    });
+  }
+
+  async sageContactSync(): Promise<SageContactSyncResult> {
+    return this.request("/rubber-lining/portal/sage/contact-sync", {
+      method: "POST",
+    });
+  }
+
+  async sageContactMappings(): Promise<SageContactMappingStatus> {
+    return this.request("/rubber-lining/portal/sage/contact-mappings");
+  }
+
+  async mapSageContact(
+    companyId: number,
+    sageContactId: number,
+    sageContactType: string,
+  ): Promise<unknown> {
+    return this.request(`/rubber-lining/portal/sage/contact-mappings/${companyId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ sageContactId, sageContactType }),
+    });
+  }
+
+  async unmapSageContact(companyId: number): Promise<unknown> {
+    return this.request(`/rubber-lining/portal/sage/contact-mappings/${companyId}`, {
+      method: "DELETE",
     });
   }
 }
