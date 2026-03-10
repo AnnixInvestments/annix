@@ -98,6 +98,7 @@ describe("Data Book Compilation (E2E smoke test)", () => {
       name: "PLS Coatings (Pty) Ltd",
       primaryColor: "#0d9488",
       logoUrl: null,
+      qcEnabled: true,
     };
 
     const shoreHardnessRecords = [

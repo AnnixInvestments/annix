@@ -202,6 +202,10 @@ export class DataBookPdfService {
       return null;
     }
 
+    if (!company?.qcEnabled) {
+      return null;
+    }
+
     const hasAnyData =
       shoreHardness.length > 0 ||
       dftReadings.length > 0 ||

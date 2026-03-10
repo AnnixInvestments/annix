@@ -45,6 +45,7 @@ function makeCompany(overrides: Record<string, any> = {}) {
     name: "PLS Coatings",
     primaryColor: "#0d9488",
     logoUrl: null,
+    qcEnabled: true,
     ...overrides,
   };
 }
@@ -336,15 +337,24 @@ describe("DataBookPdfService", () => {
       expect(result!.subarray(0, 5).toString()).toBe("%PDF-");
     });
 
-    it("handles null company gracefully", async () => {
+    it("returns null when company is null (QC disabled)", async () => {
       jobCardRepo.findOne.mockResolvedValue(makeJobCard());
       companyRepo.findOne.mockResolvedValue(null);
       shoreHardnessRepo.find.mockResolvedValue([makeShoreHardness()]);
 
       const result = await service.generateStructuredSections(COMPANY_ID, JOB_CARD_ID);
 
-      expect(result).not.toBeNull();
-      expect(Buffer.isBuffer(result)).toBe(true);
+      expect(result).toBeNull();
+    });
+
+    it("returns null when QC is disabled for company", async () => {
+      jobCardRepo.findOne.mockResolvedValue(makeJobCard());
+      companyRepo.findOne.mockResolvedValue(makeCompany({ qcEnabled: false }));
+      shoreHardnessRepo.find.mockResolvedValue([makeShoreHardness()]);
+
+      const result = await service.generateStructuredSections(COMPANY_ID, JOB_CARD_ID);
+
+      expect(result).toBeNull();
     });
 
     it("generates TOC entries matching rendered sections", async () => {

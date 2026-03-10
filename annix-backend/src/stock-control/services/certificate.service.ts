@@ -339,19 +339,31 @@ export class CertificateService {
       }
     }
 
-    const [certs, calCerts, jobCard, company, coatingAnalysis, controlPlans, releaseCerts] =
-      await Promise.all([
-        this.certificatesForJobCard(companyId, jobCardId),
-        this.calCertRepo.find({
-          where: { companyId, isActive: true },
-          order: { equipmentName: "ASC" },
-        }),
-        this.jobCardRepo.findOne({ where: { id: jobCardId, companyId } }),
-        this.companyRepo.findOne({ where: { id: companyId } }),
-        this.coatingRepo.findOne({ where: { companyId, jobCardId } }),
-        this.controlPlanRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
-        this.releaseCertRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
-      ]);
+    const [certs, calCerts, jobCard, company, coatingAnalysis] = await Promise.all([
+      this.certificatesForJobCard(companyId, jobCardId),
+      this.calCertRepo.find({
+        where: { companyId, isActive: true },
+        order: { equipmentName: "ASC" },
+      }),
+      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId } }),
+      this.companyRepo.findOne({ where: { id: companyId } }),
+      this.coatingRepo.findOne({ where: { companyId, jobCardId } }),
+    ]);
+
+    const qcEnabled = company?.qcEnabled ?? false;
+
+    const [controlPlans, releaseCerts] = qcEnabled
+      ? await Promise.all([
+          this.controlPlanRepo.find({
+            where: { companyId, jobCardId },
+            order: { createdAt: "ASC" },
+          }),
+          this.releaseCertRepo.find({
+            where: { companyId, jobCardId },
+            order: { createdAt: "ASC" },
+          }),
+        ])
+      : [[], []];
 
     const structuredBuffer = await this.dataBookPdfService.generateStructuredSections(
       companyId,
@@ -617,17 +629,106 @@ export class CertificateService {
   }
 
   async dataBookCompleteness(companyId: number, jobCardId: number): Promise<DataBookCompleteness> {
-    const [qcData, certs, calCerts, batchRecords, itemsReleases] = await Promise.all([
-      this.qcMeasurementService.allMeasurementsForJobCard(companyId, jobCardId),
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const qcEnabled = company?.qcEnabled ?? false;
+
+    const [certs, calCerts, batchRecords] = await Promise.all([
       this.certificatesForJobCard(companyId, jobCardId),
       this.calCertRepo.find({ where: { companyId, isActive: true } }),
       this.batchRecordsForJobCard(companyId, jobCardId),
-      this.qcMeasurementService.itemsReleasesForJobCard(companyId, jobCardId),
     ]);
 
     const sections: SectionStatus[] = [];
     const warnings: string[] = [];
 
+    if (qcEnabled) {
+      const [qcData, itemsReleases] = await Promise.all([
+        this.qcMeasurementService.allMeasurementsForJobCard(companyId, jobCardId),
+        this.qcMeasurementService.itemsReleasesForJobCard(companyId, jobCardId),
+      ]);
+
+      this.appendQcSections(sections, warnings, qcData, itemsReleases);
+    }
+
+    sections.push(this.sectionFromCount("supplierCerts", "Supplier Certificates", certs.length));
+
+    const unlinkedBatches = batchRecords.filter((r) => !r.supplierCertificate);
+    if (unlinkedBatches.length > 0) {
+      const msg = `${unlinkedBatches.length} batch record(s) without linked certificate`;
+      sections[sections.length - 1].warnings = [msg];
+      warnings.push(msg);
+    }
+
+    sections.push(
+      this.sectionFromCount("calibrationCerts", "Calibration Certificates", calCerts.length),
+    );
+
+    const expiredCals = calCerts.filter((c) => {
+      const expiryMs = new Date(c.expiryDate).getTime();
+      return expiryMs < Date.now();
+    });
+    if (expiredCals.length > 0) {
+      const msg = `${expiredCals.length} calibration certificate(s) expired`;
+      sections[sections.length - 1].warnings = [msg];
+      warnings.push(msg);
+    }
+
+    const completeSections = sections.filter((s) => s.status === "complete").length;
+    const overallPercent = Math.round((completeSections / sections.length) * 100);
+
+    const blockingReasons: string[] = [];
+    const hasAnyCerts = certs.length > 0 || calCerts.length > 0;
+
+    if (!hasAnyCerts && !qcEnabled) {
+      blockingReasons.push("No certificates found");
+    }
+
+    if (qcEnabled) {
+      const qcSectionKeys = [
+        "controlPlans",
+        "itemsRelease",
+        "releaseCertificates",
+        "shoreHardness",
+        "primerDft",
+        "finalDft",
+        "blastProfiles",
+        "dustDebris",
+        "pullTests",
+      ];
+      const hasAnyQcData = sections
+        .filter((s) => qcSectionKeys.includes(s.key))
+        .some((s) => s.count > 0);
+
+      if (!hasAnyCerts && !hasAnyQcData) {
+        blockingReasons.push("No certificates or QC data found");
+      }
+
+      const releaseCertSection = sections.find((s) => s.key === "releaseCertificates");
+      if (!releaseCertSection || releaseCertSection.count === 0) {
+        blockingReasons.push("No QC Release Certificate created");
+      }
+
+      const itemsReleaseSection = sections.find((s) => s.key === "itemsRelease");
+      if (!itemsReleaseSection || itemsReleaseSection.count === 0) {
+        blockingReasons.push("No Items Release created");
+      }
+    }
+
+    return {
+      overallPercent,
+      readyToCompile: blockingReasons.length === 0,
+      blockingReasons,
+      sections,
+      warnings,
+    };
+  }
+
+  private appendQcSections(
+    sections: SectionStatus[],
+    warnings: string[],
+    qcData: Awaited<ReturnType<QcMeasurementService["allMeasurementsForJobCard"]>>,
+    itemsReleases: Awaited<ReturnType<QcMeasurementService["itemsReleasesForJobCard"]>>,
+  ): void {
     sections.push(
       this.sectionFromCount("controlPlans", "Quality Control Plans", qcData.controlPlans.length),
     );
@@ -784,64 +885,6 @@ export class CertificateService {
       sections[sections.length - 1].warnings = pullWarnings;
       warnings.push(...pullWarnings);
     }
-
-    sections.push(this.sectionFromCount("supplierCerts", "Supplier Certificates", certs.length));
-
-    const unlinkedBatches = batchRecords.filter((r) => !r.supplierCertificate);
-    if (unlinkedBatches.length > 0) {
-      const msg = `${unlinkedBatches.length} batch record(s) without linked certificate`;
-      sections[sections.length - 1].warnings = [msg];
-      warnings.push(msg);
-    }
-
-    sections.push(
-      this.sectionFromCount("calibrationCerts", "Calibration Certificates", calCerts.length),
-    );
-
-    const expiredCals = calCerts.filter((c) => {
-      const expiryMs = new Date(c.expiryDate).getTime();
-      return expiryMs < Date.now();
-    });
-    if (expiredCals.length > 0) {
-      const msg = `${expiredCals.length} calibration certificate(s) expired`;
-      sections[sections.length - 1].warnings = [msg];
-      warnings.push(msg);
-    }
-
-    const completeSections = sections.filter((s) => s.status === "complete").length;
-    const overallPercent = Math.round((completeSections / sections.length) * 100);
-
-    const blockingReasons: string[] = [];
-    const hasAnyCerts = certs.length > 0 || calCerts.length > 0;
-    const hasAnyQcData =
-      qcData.shoreHardness.length > 0 ||
-      qcData.dftReadings.length > 0 ||
-      qcData.blastProfiles.length > 0 ||
-      qcData.dustDebrisTests.length > 0 ||
-      qcData.pullTests.length > 0 ||
-      qcData.controlPlans.length > 0 ||
-      qcData.releaseCertificates.length > 0 ||
-      itemsReleases.length > 0;
-
-    if (!hasAnyCerts && !hasAnyQcData) {
-      blockingReasons.push("No certificates or QC data found");
-    }
-
-    if (qcData.releaseCertificates.length === 0) {
-      blockingReasons.push("No QC Release Certificate created");
-    }
-
-    if (itemsReleases.length === 0) {
-      blockingReasons.push("No Items Release created");
-    }
-
-    return {
-      overallPercent,
-      readyToCompile: blockingReasons.length === 0,
-      blockingReasons,
-      sections,
-      warnings,
-    };
   }
 
   private sectionFromCount(key: string, label: string, count: number): SectionStatus {
