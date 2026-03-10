@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type {
+  IssuanceBatchRecord,
   QcPullTestAreaReading,
   QcPullTestForceGauge,
   QcPullTestRecord,
@@ -16,6 +17,7 @@ interface PullTestFormProps {
   jobCardId: number;
   existing?: QcPullTestRecord | null;
   onSaved: () => void;
+  batchRecords?: IssuanceBatchRecord[];
 }
 
 interface SolutionRow {
@@ -70,8 +72,29 @@ const parseForceGauge = (fg: QcPullTestForceGauge): ForceGaugeState => ({
   expiryDate: fg.expiryDate ? fg.expiryDate.slice(0, 10) : "",
 });
 
-const initialSolutions = (existing: QcPullTestRecord | null | undefined): SolutionRow[] =>
-  existing ? parseSolutions(existing.solutions) : [emptySolution()];
+const solutionsFromBatchRecords = (records: IssuanceBatchRecord[]): SolutionRow[] => {
+  const adhesiveRecords = records.filter(
+    (r) => r.stockItem?.name && /adhesive|primer|chemosil|cilbond|megum/i.test(r.stockItem.name),
+  );
+  if (adhesiveRecords.length === 0) {
+    return [emptySolution()];
+  }
+  return adhesiveRecords.map((r) => ({
+    product: r.stockItem?.name ?? "",
+    batchNumber: r.batchNumber,
+    result: "pass" as const,
+  }));
+};
+
+const initialSolutions = (
+  existing: QcPullTestRecord | null | undefined,
+  batchRecords: IssuanceBatchRecord[],
+): SolutionRow[] => {
+  if (existing) {
+    return parseSolutions(existing.solutions);
+  }
+  return solutionsFromBatchRecords(batchRecords);
+};
 
 const initialAreaReadings = (existing: QcPullTestRecord | null | undefined): AreaReadingRow[] =>
   existing
@@ -83,19 +106,25 @@ const initialForceGauge = (existing: QcPullTestRecord | null | undefined): Force
     ? parseForceGauge(existing.forceGauge)
     : { make: "", certificateNumber: "", expiryDate: "" };
 
+const DEFAULT_MIN_FORCE_MPA = 3.5;
+
 export function PullTestForm({
   isOpen,
   onClose,
   jobCardId,
   existing = null,
   onSaved,
+  batchRecords = [],
 }: PullTestFormProps) {
   const [itemDescription, setItemDescription] = useState(existing?.itemDescription ?? "");
   const [quantity, setQuantity] = useState<number | null>(existing?.quantity ?? null);
+  const [minForceMpa, setMinForceMpa] = useState<string>(String(DEFAULT_MIN_FORCE_MPA));
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString(),
   );
-  const [solutions, setSolutions] = useState<SolutionRow[]>(initialSolutions(existing));
+  const [solutions, setSolutions] = useState<SolutionRow[]>(
+    initialSolutions(existing, batchRecords),
+  );
   const [forceGauge, setForceGauge] = useState<ForceGaugeState>(initialForceGauge(existing));
   const [areaReadings, setAreaReadings] = useState<AreaReadingRow[]>(initialAreaReadings(existing));
   const [comments, setComments] = useState(existing?.comments ?? "");
@@ -227,7 +256,7 @@ export function PullTestForm({
           <h3 className="mb-3 text-sm font-semibold text-gray-800 uppercase tracking-wide">
             General Info
           </h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 Item Description
@@ -246,6 +275,19 @@ export function PullTestForm({
                 type="number"
                 value={quantity ?? ""}
                 onChange={(e) => setQuantity(e.target.value === "" ? null : Number(e.target.value))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Min Force (MPa)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                value={minForceMpa}
+                onChange={(e) => setMinForceMpa(e.target.value)}
+                placeholder="3.5"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
@@ -385,58 +427,84 @@ export function PullTestForm({
             </button>
           </div>
           <div className="space-y-3">
-            {areaReadings.map((reading, idx) => (
-              <div key={idx} className="flex items-end gap-3 rounded-md border border-gray-200 p-3">
-                <div className="flex-1">
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Area <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={reading.area}
-                    onChange={(e) => updateAreaReading(idx, "area", e.target.value)}
-                    placeholder="e.g. Area 1, Flange Face"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Reading <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={reading.reading}
-                    onChange={(e) => updateAreaReading(idx, "reading", e.target.value)}
-                    placeholder="e.g. 15.2 kg"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateAreaReading(idx, "result", reading.result === "pass" ? "fail" : "pass")
-                    }
-                    className={`rounded-md px-3 py-2 text-xs font-semibold ${
-                      reading.result === "pass"
-                        ? "bg-green-600 text-white"
-                        : "bg-red-600 text-white"
-                    }`}
-                  >
-                    {reading.result === "pass" ? "PASS" : "FAIL"}
-                  </button>
-                  {areaReadings.length > 1 && (
+            {areaReadings.map((reading, idx) => {
+              const numericReading = parseFloat(reading.reading);
+              const threshold = parseFloat(minForceMpa);
+              const isBelowThreshold =
+                !Number.isNaN(numericReading) &&
+                !Number.isNaN(threshold) &&
+                threshold > 0 &&
+                numericReading < threshold;
+
+              return (
+                <div
+                  key={idx}
+                  className="flex items-end gap-3 rounded-md border border-gray-200 p-3"
+                >
+                  <div className="flex-1">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Area <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={reading.area}
+                      onChange={(e) => updateAreaReading(idx, "area", e.target.value)}
+                      placeholder="e.g. Area 1, Flange Face"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Reading (MPa) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={reading.reading}
+                      onChange={(e) => updateAreaReading(idx, "reading", e.target.value)}
+                      placeholder="e.g. 4.5"
+                      className={`w-full rounded-md border px-3 py-2 text-sm ${
+                        isBelowThreshold
+                          ? "border-red-400 bg-red-50 text-red-700"
+                          : "border-gray-300"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => removeAreaReading(idx)}
-                      className="rounded-md px-2 py-2 text-sm text-red-500 hover:bg-red-50"
+                      onClick={() =>
+                        updateAreaReading(
+                          idx,
+                          "result",
+                          reading.result === "pass" ? "fail" : "pass",
+                        )
+                      }
+                      className={`rounded-md px-3 py-2 text-xs font-semibold ${
+                        reading.result === "pass"
+                          ? "bg-green-600 text-white"
+                          : "bg-red-600 text-white"
+                      }`}
                     >
-                      ✕
+                      {reading.result === "pass" ? "PASS" : "FAIL"}
                     </button>
-                  )}
+                    {isBelowThreshold && (
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                        Below min
+                      </span>
+                    )}
+                    {areaReadings.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeAreaReading(idx)}
+                        className="rounded-md px-2 py-2 text-sm text-red-500 hover:bg-red-50"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

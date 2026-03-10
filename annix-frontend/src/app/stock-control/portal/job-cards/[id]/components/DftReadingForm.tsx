@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { QcDftReadingEntry, QcDftReadingRecord } from "@/app/lib/api/stockControlApi";
+import type {
+  CoatingAnalysis,
+  IssuanceBatchRecord,
+  QcDftReadingEntry,
+  QcDftReadingRecord,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { now } from "@/app/lib/datetime";
 
@@ -11,6 +16,8 @@ interface DftReadingFormProps {
   jobCardId: number;
   existing?: QcDftReadingRecord | null;
   onSaved: () => void;
+  coatingAnalysis?: CoatingAnalysis | null;
+  batchRecords?: IssuanceBatchRecord[];
 }
 
 const READING_ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -27,21 +34,56 @@ const initialReadings = (existing: QcDftReadingRecord | null): Record<number, st
   );
 };
 
+const coatDefaults = (
+  coatingAnalysis: CoatingAnalysis | null | undefined,
+  coatType: "primer" | "final",
+  batchRecords: IssuanceBatchRecord[],
+): { product: string; batchNumber: string; minUm: string; maxUm: string } => {
+  if (!coatingAnalysis) {
+    return { product: "", batchNumber: "", minUm: "", maxUm: "" };
+  }
+  const coatIndex = coatType === "primer" ? 0 : 1;
+  const extCoats = coatingAnalysis.coats.filter((c) => c.area === "external");
+  const coat = extCoats[coatIndex] ?? extCoats[0] ?? coatingAnalysis.coats[coatIndex] ?? null;
+  const paintRecord = batchRecords.find(
+    (r) =>
+      r.stockItem?.name &&
+      coat?.product &&
+      r.stockItem.name.toLowerCase().includes(coat.product.toLowerCase()),
+  );
+  if (coat) {
+    return {
+      product: coat.product,
+      batchNumber: paintRecord?.batchNumber ?? "",
+      minUm: String(coat.minDftUm),
+      maxUm: String(coat.maxDftUm),
+    };
+  }
+  return { product: "", batchNumber: "", minUm: "", maxUm: "" };
+};
+
 export default function DftReadingForm({
   isOpen,
   onClose,
   jobCardId,
   existing = null,
   onSaved,
+  coatingAnalysis = null,
+  batchRecords = [],
 }: DftReadingFormProps) {
   const [coatType, setCoatType] = useState<"primer" | "final">(existing?.coatType ?? "primer");
-  const [paintProduct, setPaintProduct] = useState(existing?.paintProduct ?? "");
-  const [batchNumber, setBatchNumber] = useState(existing?.batchNumber ?? "");
+  const defaults = existing ? null : coatDefaults(coatingAnalysis, coatType, batchRecords);
+  const [paintProduct, setPaintProduct] = useState(
+    existing?.paintProduct ?? defaults?.product ?? "",
+  );
+  const [batchNumber, setBatchNumber] = useState(
+    existing?.batchNumber ?? defaults?.batchNumber ?? "",
+  );
   const [specMinMicrons, setSpecMinMicrons] = useState(
-    existing?.specMinMicrons != null ? String(existing.specMinMicrons) : "",
+    existing?.specMinMicrons != null ? String(existing.specMinMicrons) : (defaults?.minUm ?? ""),
   );
   const [specMaxMicrons, setSpecMaxMicrons] = useState(
-    existing?.specMaxMicrons != null ? String(existing.specMaxMicrons) : "",
+    existing?.specMaxMicrons != null ? String(existing.specMaxMicrons) : (defaults?.maxUm ?? ""),
   );
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayDateString(),
@@ -257,13 +299,24 @@ export default function DftReadingForm({
 
         <div className="mb-6 flex items-center gap-2 text-sm">
           <span className="font-medium text-gray-700">Average:</span>
-          <span className="font-semibold text-gray-900">
+          <span
+            className={`font-semibold ${
+              average !== null && hasValidSpec && (average < parsedMin || average > parsedMax)
+                ? "text-red-700"
+                : "text-gray-900"
+            }`}
+          >
             {average != null ? `${average} μm` : "—"}
           </span>
           <span className="text-gray-500">
             ({filledReadings.length} reading
             {filledReadings.length !== 1 ? "s" : ""})
           </span>
+          {average !== null && hasValidSpec && (average < parsedMin || average > parsedMax) && (
+            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+              Out of spec
+            </span>
+          )}
         </div>
 
         <div className="flex justify-end gap-3">

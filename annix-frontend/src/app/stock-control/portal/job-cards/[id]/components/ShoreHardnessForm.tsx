@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { QcShoreHardnessRecord } from "@/app/lib/api/stockControlApi";
+import type { IssuanceBatchRecord, QcShoreHardnessRecord } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { now } from "@/app/lib/datetime";
 
@@ -11,6 +11,7 @@ interface ShoreHardnessFormProps {
   jobCardId: number;
   existing?: QcShoreHardnessRecord | null;
   onSaved: () => void;
+  batchRecords?: IssuanceBatchRecord[];
 }
 
 type ColumnKey = "column1" | "column2" | "column3" | "column4";
@@ -45,15 +46,34 @@ const columnAverage = (values: (number | null)[]): number | null => {
 
 const todayString = (): string => now().toFormat("yyyy-MM-dd");
 
+const rubberBatchDefaults = (
+  records: IssuanceBatchRecord[],
+): { spec: string; batchNumber: string } => {
+  const rubberRecord = records.find(
+    (r) => r.stockItem?.name && /rubber|lining|nr\/sbr|neoprene|epdm/i.test(r.stockItem.name),
+  );
+  if (rubberRecord) {
+    return {
+      spec: rubberRecord.stockItem?.name ?? "",
+      batchNumber: rubberRecord.batchNumber,
+    };
+  }
+  return { spec: "", batchNumber: "" };
+};
+
 export function ShoreHardnessForm({
   isOpen,
   onClose,
   jobCardId,
   existing = null,
   onSaved,
+  batchRecords = [],
 }: ShoreHardnessFormProps) {
-  const [rubberSpec, setRubberSpec] = useState(existing?.rubberSpec ?? "");
-  const [rubberBatchNumber, setRubberBatchNumber] = useState(existing?.rubberBatchNumber ?? "");
+  const defaults = existing ? null : rubberBatchDefaults(batchRecords);
+  const [rubberSpec, setRubberSpec] = useState(existing?.rubberSpec ?? defaults?.spec ?? "");
+  const [rubberBatchNumber, setRubberBatchNumber] = useState(
+    existing?.rubberBatchNumber ?? defaults?.batchNumber ?? "",
+  );
   const [requiredShore, setRequiredShore] = useState<number | null>(
     existing?.requiredShore ?? null,
   );

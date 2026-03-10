@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { CoatingAnalysis } from "@/app/lib/api/stockControlApi";
 import {
   type QcBlastProfileEntry,
   type QcBlastProfileRecord,
@@ -14,9 +15,23 @@ interface BlastProfileFormProps {
   jobCardId: number;
   existing?: QcBlastProfileRecord | null;
   onSaved: () => void;
+  coatingAnalysis?: CoatingAnalysis | null;
 }
 
 const READING_ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
+
+const BLAST_PROFILE_DEFAULTS: Record<string, number> = {
+  sa3_blast: 75,
+  blast: 75,
+};
+
+const blastSpecDefault = (coatingAnalysis: CoatingAnalysis | null | undefined): string => {
+  if (!coatingAnalysis?.surfacePrep) {
+    return "";
+  }
+  const spec = BLAST_PROFILE_DEFAULTS[coatingAnalysis.surfacePrep];
+  return spec ? String(spec) : "";
+};
 
 export default function BlastProfileForm({
   isOpen,
@@ -24,10 +39,13 @@ export default function BlastProfileForm({
   jobCardId,
   existing = null,
   onSaved,
+  coatingAnalysis = null,
 }: BlastProfileFormProps) {
   const defaultDate = now().toISODate() || "";
 
-  const [specMicrons, setSpecMicrons] = useState<string>(existing?.specMicrons?.toString() ?? "");
+  const [specMicrons, setSpecMicrons] = useState<string>(
+    existing?.specMicrons?.toString() ?? blastSpecDefault(coatingAnalysis),
+  );
   const [temperature, setTemperature] = useState<string>(existing?.temperature?.toString() ?? "");
   const [humidity, setHumidity] = useState<string>(existing?.humidity?.toString() ?? "");
   const [readingDate, setReadingDate] = useState<string>(
@@ -194,12 +212,23 @@ export default function BlastProfileForm({
           </div>
         </div>
 
-        <div className="mb-6 rounded-md bg-gray-50 px-4 py-3">
+        <div className="mb-6 rounded-md bg-gray-50 px-4 py-3 flex items-center gap-2">
           <span className="text-sm font-medium text-gray-700">Average: </span>
-          <span className="text-sm font-semibold">{average !== null ? `${average} μm` : "—"}</span>
-          <span className="text-xs text-gray-500 ml-2">
+          <span
+            className={`text-sm font-semibold ${
+              average !== null && specValue > 0 && average < specValue ? "text-red-700" : ""
+            }`}
+          >
+            {average !== null ? `${average} μm` : "—"}
+          </span>
+          <span className="text-xs text-gray-500">
             ({filledReadings.length} reading{filledReadings.length !== 1 ? "s" : ""})
           </span>
+          {average !== null && specValue > 0 && average < specValue && (
+            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+              Below spec
+            </span>
+          )}
         </div>
 
         <div className="flex justify-end gap-3">
