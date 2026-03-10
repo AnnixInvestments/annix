@@ -1,5 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ChatMessage, ChatProviderConfig, StreamChunk } from "./claude-chat.provider";
+import {
+  ChatMessage,
+  ChatProviderConfig,
+  ImageContent,
+  StreamChunk,
+  TextContent,
+} from "./claude-chat.provider";
 
 @Injectable()
 export class GeminiChatProvider {
@@ -31,7 +37,7 @@ export class GeminiChatProvider {
       .filter((m) => m.role !== "system")
       .map((msg) => ({
         role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
+        parts: this.toGeminiParts(msg.content),
       }));
 
     try {
@@ -145,7 +151,7 @@ export class GeminiChatProvider {
       .filter((m) => m.role !== "system")
       .map((msg) => ({
         role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
+        parts: this.toGeminiParts(msg.content),
       }));
 
     const response = await fetch(
@@ -175,5 +181,24 @@ export class GeminiChatProvider {
       content: data.candidates?.[0]?.content?.parts?.[0]?.text || "",
       tokensUsed: data.usageMetadata?.totalTokenCount ?? undefined,
     };
+  }
+
+  private toGeminiParts(content: string | (TextContent | ImageContent)[]): Record<string, any>[] {
+    if (typeof content === "string") {
+      return [{ text: content }];
+    }
+
+    return content.map((part) => {
+      if (part.type === "text") {
+        return { text: part.text };
+      }
+
+      return {
+        inlineData: {
+          mimeType: part.source.media_type,
+          data: part.source.data,
+        },
+      };
+    });
   }
 }

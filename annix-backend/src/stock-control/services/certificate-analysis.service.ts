@@ -145,7 +145,7 @@ export class CertificateAnalysisService {
     const pages = await pdfToPng(pdfInput, {
       disableFontFace: true,
       useSystemFonts: true,
-      viewportScale: 1.5,
+      viewportScale: 1.0,
     });
     this.logger.log(`Converted PDF to ${pages.length} image(s)`);
 
@@ -153,17 +153,27 @@ export class CertificateAnalysisService {
       .filter((page) => page.content !== undefined)
       .map((page) => page.content as Buffer);
 
-    const totalBytes = allImages.reduce((sum, img) => sum + img.length, 0);
-    this.logger.log(
-      `Total image payload: ${(totalBytes / 1024 / 1024).toFixed(1)}MB across ${allImages.length} page(s)`,
-    );
+    const capped =
+      allImages.length <= 20
+        ? allImages
+        : [...allImages.slice(0, 10), ...allImages.slice(-10)];
 
-    if (allImages.length <= 20) {
-      return allImages;
+    if (capped.length < allImages.length) {
+      this.logger.warn(`PDF has ${allImages.length} pages, capped to 20 (first 10 + last 10)`);
     }
 
-    this.logger.warn(`PDF has ${allImages.length} pages, capping at 20 (first 10 + last 10)`);
-    return [...allImages.slice(0, 10), ...allImages.slice(-10)];
+    const MAX_PAYLOAD_BYTES = 18 * 1024 * 1024;
+    let totalBytes = 0;
+    const limited = capped.filter((img) => {
+      totalBytes += img.length;
+      return totalBytes <= MAX_PAYLOAD_BYTES;
+    });
+
+    this.logger.log(
+      `Image payload: ${(totalBytes / 1024 / 1024).toFixed(1)}MB across ${limited.length} page(s)${limited.length < capped.length ? ` (trimmed from ${capped.length} to stay under 18MB)` : ""}`,
+    );
+
+    return limited;
   }
 
   private parseResponse(response: string, totalPages: number): IdentifiedCertificate[] {

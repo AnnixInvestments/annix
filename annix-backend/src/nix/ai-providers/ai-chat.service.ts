@@ -124,7 +124,9 @@ export class AiChatService implements OnModuleInit {
           };
         } catch (fallbackError) {
           this.logger.error(`Fallback also failed: ${fallbackError.message}`);
-          throw new Error(`All AI providers failed. Last error: ${fallbackError.message}`);
+          throw new Error(
+            `All AI providers failed. ${provider.name}: ${error.message}; ${fallbackProvider.name}: ${fallbackError.message}`,
+          );
         }
       }
 
