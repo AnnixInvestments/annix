@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { DeliveryNote, SupplierInvoice } from "@/app/lib/api/stockControlApi";
@@ -27,7 +28,18 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "Failed",
 };
 
+const statusLabel = (invoice: SupplierInvoice): string => {
+  if (invoice.extractionStatus === "pending" && invoice.scanUrl) {
+    return "Pending Extraction";
+  }
+  if (invoice.extractionStatus === "pending") {
+    return "Pending Scan";
+  }
+  return STATUS_LABELS[invoice.extractionStatus] || invoice.extractionStatus;
+};
+
 export default function InvoicesPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const [invoices, setInvoices] = useState<SupplierInvoice[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
@@ -114,6 +126,17 @@ export default function InvoicesPage() {
   const handleInvoiceCreated = () => {
     setShowUploadModal(false);
     fetchInvoices();
+  };
+
+  const handleReExtract = async (invoiceId: number) => {
+    try {
+      showToast("Re-extracting invoice...", "info");
+      await stockControlApiClient.reExtractInvoice(invoiceId);
+      showToast("Extraction triggered successfully", "success");
+      fetchInvoices();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to re-extract", "error");
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -322,14 +345,15 @@ export default function InvoicesPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {invoices.map((invoice) => (
-                <tr key={invoice.id} className="hover:bg-gray-50 cursor-pointer">
+                <tr
+                  key={invoice.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => router.push(`/stock-control/portal/invoices/${invoice.id}`)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/stock-control/portal/invoices/${invoice.id}`}
-                      className="text-sm font-medium text-teal-700 hover:text-teal-900"
-                    >
+                    <span className="text-sm font-medium text-teal-700">
                       {invoice.invoiceNumber}
-                    </Link>
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {invoice.supplierName}
@@ -355,13 +379,28 @@ export default function InvoicesPage() {
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${STATUS_COLORS[invoice.extractionStatus] || "bg-gray-100 text-gray-800"}`}
                     >
-                      {STATUS_LABELS[invoice.extractionStatus] || invoice.extractionStatus}
+                      {statusLabel(invoice)}
                     </span>
                     {invoice.exportedToSageAt && (
                       <span className="ml-1 inline-flex px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">
                         Exported
                       </span>
                     )}
+                    {invoice.scanUrl &&
+                      (invoice.extractionStatus === "pending" ||
+                        invoice.extractionStatus === "failed") && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReExtract(invoice.id);
+                          }}
+                          className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium text-teal-700 bg-teal-50 rounded-full hover:bg-teal-100 transition-colors"
+                          title="Re-extract invoice data from scan"
+                        >
+                          Re-extract
+                        </button>
+                      )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <button

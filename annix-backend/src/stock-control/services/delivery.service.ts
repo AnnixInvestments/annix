@@ -723,6 +723,17 @@ export class DeliveryService {
     return descWords || `ITEM-${nowMillis()}`;
   }
 
+  private mimeToMediaType(mime: string): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
+    const mimeMap: Record<string, "image/jpeg" | "image/png" | "image/gif" | "image/webp"> = {
+      "image/jpeg": "image/jpeg",
+      "image/jpg": "image/jpeg",
+      "image/png": "image/png",
+      "image/gif": "image/gif",
+      "image/webp": "image/webp",
+    };
+    return mimeMap[mime] || "image/jpeg";
+  }
+
   async createInvoiceFromAnalyzedData(
     companyId: number,
     file: Express.Multer.File,
@@ -790,6 +801,14 @@ export class DeliveryService {
 
     const saved = await this.invoiceRepo.save(invoice);
     this.logger.log(`Created invoice ${saved.id} (${invoiceNumber}) from scan`);
+
+    const imageBase64 = file.buffer.toString("base64");
+    const mediaType = this.mimeToMediaType(file.mimetype);
+    this.extractionService
+      .extractFromImage(saved.id, imageBase64, mediaType)
+      .catch((err) =>
+        this.logger.error(`Background extraction failed for invoice ${saved.id}: ${err.message}`),
+      );
 
     return saved;
   }
