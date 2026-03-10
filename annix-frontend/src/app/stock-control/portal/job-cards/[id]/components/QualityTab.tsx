@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type {
   CalibrationCertificate,
+  CoatingAnalysis,
+  DataBookCompleteness,
   DataBookStatus,
   IssuanceBatchRecord,
   QcBlastProfileRecord,
@@ -16,6 +18,7 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import BlastProfileForm from "./BlastProfileForm";
+import { DataBookCompletenessPanel } from "./DataBookCompletenessPanel";
 import DftReadingForm from "./DftReadingForm";
 import DustDebrisForm from "./DustDebrisForm";
 import { ItemsReleaseSection } from "./ItemsReleaseSection";
@@ -35,7 +38,9 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
   const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
   const [dataBookStatus, setDataBookStatus] = useState<DataBookStatus | null>(null);
+  const [coatingAnalysis, setCoatingAnalysis] = useState<CoatingAnalysis | null>(null);
   const [qcData, setQcData] = useState<QcMeasurementsAggregate | null>(null);
+  const [completeness, setCompleteness] = useState<DataBookCompleteness | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCompiling, setIsCompiling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,18 +58,23 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
     try {
       setIsLoading(true);
       setError(null);
-      const [certsRes, calCertsRes, recordsRes, statusRes, qcRes] = await Promise.all([
-        stockControlApiClient.certificatesForJobCard(jobCardId),
-        stockControlApiClient.calibrationCertificates({ active: true }),
-        stockControlApiClient.batchRecordsForJobCard(jobCardId),
-        stockControlApiClient.dataBookStatus(jobCardId),
-        stockControlApiClient.qcMeasurementsForJobCard(jobCardId),
-      ]);
+      const [certsRes, calCertsRes, recordsRes, statusRes, qcRes, coatingRes, completenessRes] =
+        await Promise.all([
+          stockControlApiClient.certificatesForJobCard(jobCardId),
+          stockControlApiClient.calibrationCertificates({ active: true }),
+          stockControlApiClient.batchRecordsForJobCard(jobCardId),
+          stockControlApiClient.dataBookStatus(jobCardId),
+          stockControlApiClient.qcMeasurementsForJobCard(jobCardId),
+          stockControlApiClient.jobCardCoatingAnalysis(jobCardId),
+          stockControlApiClient.dataBookCompleteness(jobCardId),
+        ]);
       setCertificates(Array.isArray(certsRes) ? certsRes : []);
       setCalibrationCerts(Array.isArray(calCertsRes) ? calCertsRes : []);
       setBatchRecords(Array.isArray(recordsRes) ? recordsRes : []);
       setDataBookStatus(statusRes);
       setQcData(qcRes);
+      setCoatingAnalysis(coatingRes);
+      setCompleteness(completenessRes);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load quality data");
     } finally {
@@ -76,12 +86,12 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
     fetchQualityData();
   }, [fetchQualityData]);
 
-  const handleCompile = async () => {
+  const handleCompile = async (force = false) => {
     try {
       setIsCompiling(true);
       setError(null);
       setSuccess(null);
-      const result = await stockControlApiClient.compileDataBook(jobCardId);
+      const result = await stockControlApiClient.compileDataBook(jobCardId, force);
       setSuccess(`Data book compiled with ${result.certificateCount} certificates`);
       fetchQualityData();
     } catch (err) {
@@ -149,8 +159,6 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
     return <div className="py-12 text-center text-gray-500">Loading quality data...</div>;
   }
 
-  const linkedCount = batchRecords.filter((r) => r.supplierCertificate).length;
-  const unlinkedCount = batchRecords.length - linkedCount;
   const totalQcRecords =
     (qcData?.shoreHardness.length ?? 0) +
     (qcData?.dftReadings.length ?? 0) +
@@ -178,73 +186,13 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         </div>
       )}
 
-      <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-gray-900">Data Book</h3>
-            <div className="mt-1 flex items-center gap-3 text-sm text-gray-600">
-              <span>
-                {certificates.length} certificate{certificates.length !== 1 ? "s" : ""} linked
-              </span>
-              {batchRecords.length > 0 && (
-                <>
-                  <span className="text-gray-300">|</span>
-                  <span>
-                    {batchRecords.length} batch record{batchRecords.length !== 1 ? "s" : ""}
-                  </span>
-                  {unlinkedCount > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                      {unlinkedCount} missing cert{unlinkedCount !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                </>
-              )}
-              {totalQcRecords > 0 && (
-                <>
-                  <span className="text-gray-300">|</span>
-                  <span>
-                    {totalQcRecords} QC record{totalQcRecords !== 1 ? "s" : ""}
-                  </span>
-                </>
-              )}
-            </div>
-            {dataBookStatus?.exists && (
-              <p className="mt-1 text-xs text-gray-500">
-                Last compiled:{" "}
-                {dataBookStatus.generatedAt ? formatDateZA(dataBookStatus.generatedAt) : "-"}
-                {dataBookStatus.isStale && (
-                  <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                    Stale - recompile needed
-                  </span>
-                )}
-              </p>
-            )}
-          </div>
-          <div className="flex gap-2">
-            {certificates.length > 0 && (
-              <button
-                onClick={handleCompile}
-                disabled={isCompiling}
-                className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
-              >
-                {isCompiling
-                  ? "Compiling..."
-                  : dataBookStatus?.exists
-                    ? "Recompile"
-                    : "Compile Data Book"}
-              </button>
-            )}
-            {dataBookStatus?.exists && (
-              <button
-                onClick={handleDownload}
-                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Download PDF
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <DataBookCompletenessPanel
+        completeness={completeness}
+        dataBookStatus={dataBookStatus}
+        isCompiling={isCompiling}
+        onCompile={handleCompile}
+        onDownload={handleDownload}
+      />
 
       <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
@@ -686,6 +634,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         jobCardId={jobCardId}
         existing={editingShoreHardness}
         onSaved={handleFormSaved}
+        batchRecords={batchRecords}
       />
       <DftReadingForm
         isOpen={activeForm === "dft"}
@@ -693,6 +642,8 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         jobCardId={jobCardId}
         existing={editingDft}
         onSaved={handleFormSaved}
+        coatingAnalysis={coatingAnalysis}
+        batchRecords={batchRecords}
       />
       <BlastProfileForm
         isOpen={activeForm === "blast-profile"}
@@ -700,6 +651,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         jobCardId={jobCardId}
         existing={editingBlast}
         onSaved={handleFormSaved}
+        coatingAnalysis={coatingAnalysis}
       />
       <DustDebrisForm
         isOpen={activeForm === "dust-debris"}
@@ -714,6 +666,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         jobCardId={jobCardId}
         existing={editingPull}
         onSaved={handleFormSaved}
+        batchRecords={batchRecords}
       />
     </div>
   );

@@ -21,6 +21,7 @@ import { StockItem } from "../entities/stock-item.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
 import { generateBrandedCoverPage } from "./branded-cover-page";
 import { DataBookPdfService } from "./data-book-pdf.service";
+import { QcMeasurementService } from "./qc-measurement.service";
 
 interface UserContext {
   id: number;
@@ -55,6 +56,22 @@ export interface DataBookStatus {
   dataBookId: number | null;
 }
 
+export interface SectionStatus {
+  key: string;
+  label: string;
+  status: "complete" | "partial" | "missing";
+  count: number;
+  warnings: string[];
+}
+
+export interface DataBookCompleteness {
+  overallPercent: number;
+  readyToCompile: boolean;
+  blockingReasons: string[];
+  sections: SectionStatus[];
+  warnings: string[];
+}
+
 @Injectable()
 export class CertificateService {
   private readonly logger = new Logger(CertificateService.name);
@@ -85,6 +102,7 @@ export class CertificateService {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly dataBookPdfService: DataBookPdfService,
+    private readonly qcMeasurementService: QcMeasurementService,
   ) {}
 
   async uploadCertificate(
@@ -310,7 +328,17 @@ export class CertificateService {
     companyId: number,
     jobCardId: number,
     user: UserContext,
+    force = false,
   ): Promise<JobCardDataBook> {
+    if (!force) {
+      const completeness = await this.dataBookCompleteness(companyId, jobCardId);
+      if (!completeness.readyToCompile) {
+        throw new BadRequestException(
+          `Data book not ready: ${completeness.blockingReasons.join("; ")}`,
+        );
+      }
+    }
+
     const [certs, calCerts, jobCard, company, coatingAnalysis, controlPlans, releaseCerts] =
       await Promise.all([
         this.certificatesForJobCard(companyId, jobCardId),
@@ -586,6 +614,247 @@ export class CertificateService {
       .getRawMany<{ batchNumber: string }>();
 
     return records.map((r) => r.batchNumber);
+  }
+
+  async dataBookCompleteness(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<DataBookCompleteness> {
+    const [qcData, certs, calCerts, batchRecords, itemsReleases] = await Promise.all([
+      this.qcMeasurementService.allMeasurementsForJobCard(companyId, jobCardId),
+      this.certificatesForJobCard(companyId, jobCardId),
+      this.calCertRepo.find({ where: { companyId, isActive: true } }),
+      this.batchRecordsForJobCard(companyId, jobCardId),
+      this.qcMeasurementService.itemsReleasesForJobCard(companyId, jobCardId),
+    ]);
+
+    const sections: SectionStatus[] = [];
+    const warnings: string[] = [];
+
+    sections.push(
+      this.sectionFromCount("controlPlans", "Quality Control Plans", qcData.controlPlans.length),
+    );
+
+    const qcpWarnings = qcData.controlPlans.flatMap((plan) => {
+      const unsigned = plan.approvalSignatures
+        .filter((sig) => !sig.name)
+        .map((sig) => `${plan.planType} QCP: ${sig.party} signature missing`);
+      return unsigned;
+    });
+    if (qcpWarnings.length > 0) {
+      sections[sections.length - 1].warnings = qcpWarnings;
+      warnings.push(...qcpWarnings);
+    }
+
+    sections.push(this.sectionFromCount("itemsRelease", "Items Release", itemsReleases.length));
+
+    const releaseWarnings = itemsReleases.flatMap((release) => {
+      const result: string[] = [];
+      const failItems = release.items.filter((i) => i.result === "fail");
+      if (failItems.length > 0) {
+        result.push(`Items Release: ${failItems.length} item(s) marked FAIL`);
+      }
+      const missingSignOff = [
+        { label: "PLS", signOff: release.plsSignOff },
+        { label: "MPS", signOff: release.mpsSignOff },
+        { label: "Client", signOff: release.clientSignOff },
+      ]
+        .filter((p) => !p.signOff?.name)
+        .map((p) => `Items Release: ${p.label} sign-off missing`);
+      result.push(...missingSignOff);
+      return result;
+    });
+    if (releaseWarnings.length > 0) {
+      sections[sections.length - 1].warnings = releaseWarnings;
+      warnings.push(...releaseWarnings);
+    }
+
+    sections.push(
+      this.sectionFromCount(
+        "releaseCertificates",
+        "QC Release Certificates",
+        qcData.releaseCertificates.length,
+      ),
+    );
+
+    const releaseCertWarnings = qcData.releaseCertificates.flatMap((cert) => {
+      const result: string[] = [];
+      if (!cert.finalApprovalName) {
+        result.push("Release Certificate: final approval signature missing");
+      }
+      if (
+        cert.finalInspection &&
+        [
+          cert.finalInspection.linedAsPerDrawing,
+          cert.finalInspection.visualInspection,
+          cert.finalInspection.testPlate,
+          cert.finalInspection.sparkTest,
+        ].some((r) => r === "fail")
+      ) {
+        result.push("Release Certificate: final inspection has failure(s)");
+      }
+      return result;
+    });
+    if (releaseCertWarnings.length > 0) {
+      sections[sections.length - 1].warnings = releaseCertWarnings;
+      warnings.push(...releaseCertWarnings);
+    }
+
+    sections.push(
+      this.sectionFromCount("shoreHardness", "Shore Hardness Reports", qcData.shoreHardness.length),
+    );
+
+    const shoreWarnings = qcData.shoreHardness
+      .filter(
+        (rec) =>
+          rec.averages.overall !== null && Math.abs(rec.averages.overall - rec.requiredShore) > 5,
+      )
+      .map(
+        (rec) =>
+          `Shore Hardness: avg ${rec.averages.overall?.toFixed(1)} vs required ${rec.requiredShore} (out of spec)`,
+      );
+    if (shoreWarnings.length > 0) {
+      sections[sections.length - 1].warnings = shoreWarnings;
+      warnings.push(...shoreWarnings);
+    }
+
+    const primerDft = qcData.dftReadings.filter((r) => r.coatType === "primer");
+    const finalDft = qcData.dftReadings.filter((r) => r.coatType === "final");
+
+    sections.push(this.sectionFromCount("primerDft", "Primer DFT Reports", primerDft.length));
+    sections.push(this.sectionFromCount("finalDft", "Final DFT Reports", finalDft.length));
+
+    const dftWarnings = qcData.dftReadings
+      .filter(
+        (rec) =>
+          rec.averageMicrons !== null &&
+          (Number(rec.averageMicrons) < Number(rec.specMinMicrons) ||
+            Number(rec.averageMicrons) > Number(rec.specMaxMicrons)),
+      )
+      .map(
+        (rec) =>
+          `${rec.coatType === "primer" ? "Primer" : "Final"} DFT: avg ${Number(rec.averageMicrons).toFixed(1)} μm outside spec ${rec.specMinMicrons}-${rec.specMaxMicrons} μm`,
+      );
+    if (dftWarnings.length > 0) {
+      warnings.push(...dftWarnings);
+    }
+
+    sections.push(
+      this.sectionFromCount("blastProfiles", "Blast Profile Reports", qcData.blastProfiles.length),
+    );
+
+    const blastWarnings = qcData.blastProfiles
+      .filter(
+        (rec) =>
+          rec.averageMicrons !== null &&
+          Number(rec.averageMicrons) < Number(rec.specMicrons),
+      )
+      .map(
+        (rec) =>
+          `Blast Profile: avg ${Number(rec.averageMicrons).toFixed(1)} μm below spec ${rec.specMicrons} μm`,
+      );
+    if (blastWarnings.length > 0) {
+      sections[sections.length - 1].warnings = blastWarnings;
+      warnings.push(...blastWarnings);
+    }
+
+    sections.push(
+      this.sectionFromCount(
+        "dustDebris",
+        "Dust & Debris Test Reports",
+        qcData.dustDebrisTests.length,
+      ),
+    );
+
+    const dustFailures = qcData.dustDebrisTests
+      .filter((rec) => rec.tests.some((t) => t.result === "fail"))
+      .map((rec) => {
+        const failCount = rec.tests.filter((t) => t.result === "fail").length;
+        return `Dust & Debris: ${failCount} test(s) failed`;
+      });
+    if (dustFailures.length > 0) {
+      sections[sections.length - 1].warnings = dustFailures;
+      warnings.push(...dustFailures);
+    }
+
+    sections.push(
+      this.sectionFromCount("pullTests", "Pull Test Certificates", qcData.pullTests.length),
+    );
+
+    const pullWarnings = qcData.pullTests
+      .filter((rec) => rec.areaReadings.some((r) => r.result === "fail"))
+      .map(() => "Pull Test: has failed area readings");
+    if (pullWarnings.length > 0) {
+      sections[sections.length - 1].warnings = pullWarnings;
+      warnings.push(...pullWarnings);
+    }
+
+    sections.push(
+      this.sectionFromCount("supplierCerts", "Supplier Certificates", certs.length),
+    );
+
+    const unlinkedBatches = batchRecords.filter((r) => !r.supplierCertificate);
+    if (unlinkedBatches.length > 0) {
+      const msg = `${unlinkedBatches.length} batch record(s) without linked certificate`;
+      sections[sections.length - 1].warnings = [msg];
+      warnings.push(msg);
+    }
+
+    sections.push(
+      this.sectionFromCount("calibrationCerts", "Calibration Certificates", calCerts.length),
+    );
+
+    const expiredCals = calCerts.filter((c) => {
+      const expiryMs = new Date(c.expiryDate).getTime();
+      return expiryMs < Date.now();
+    });
+    if (expiredCals.length > 0) {
+      const msg = `${expiredCals.length} calibration certificate(s) expired`;
+      sections[sections.length - 1].warnings = [msg];
+      warnings.push(msg);
+    }
+
+    const completeSections = sections.filter((s) => s.status === "complete").length;
+    const overallPercent = Math.round((completeSections / sections.length) * 100);
+
+    const blockingReasons: string[] = [];
+    const hasAnyCerts = certs.length > 0 || calCerts.length > 0;
+    const hasAnyQcData =
+      qcData.shoreHardness.length > 0 ||
+      qcData.dftReadings.length > 0 ||
+      qcData.blastProfiles.length > 0 ||
+      qcData.dustDebrisTests.length > 0 ||
+      qcData.pullTests.length > 0 ||
+      qcData.controlPlans.length > 0 ||
+      qcData.releaseCertificates.length > 0 ||
+      itemsReleases.length > 0;
+
+    if (!hasAnyCerts && !hasAnyQcData) {
+      blockingReasons.push("No certificates or QC data found");
+    }
+
+    if (qcData.releaseCertificates.length === 0) {
+      blockingReasons.push("No QC Release Certificate created");
+    }
+
+    if (itemsReleases.length === 0) {
+      blockingReasons.push("No Items Release created");
+    }
+
+    return {
+      overallPercent,
+      readyToCompile: blockingReasons.length === 0,
+      blockingReasons,
+      sections,
+      warnings,
+    };
+  }
+
+  private sectionFromCount(key: string, label: string, count: number): SectionStatus {
+    if (count === 0) {
+      return { key, label, status: "missing", count, warnings: [] };
+    }
+    return { key, label, status: "complete", count, warnings: [] };
   }
 
   private async extractPdfPages(

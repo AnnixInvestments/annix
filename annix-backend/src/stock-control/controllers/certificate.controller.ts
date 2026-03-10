@@ -116,11 +116,26 @@ export class CertificateController {
     return this.certificateService.dataBookStatus(req.user.companyId, jobCardId);
   }
 
+  @Get("job-card/:jobCardId/data-book/completeness")
+  @ApiOperation({ summary: "Data book completeness tracking for a job card" })
+  async dataBookCompleteness(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.certificateService.dataBookCompleteness(req.user.companyId, jobCardId);
+  }
+
   @Post("job-card/:jobCardId/data-book")
   @StockControlRoles("manager", "admin")
   @ApiOperation({ summary: "Compile data book for a job card" })
-  async compileDataBook(@Req() req: any, @Param("jobCardId") jobCardId: number) {
-    return this.certificateService.compileDataBook(req.user.companyId, jobCardId, req.user);
+  async compileDataBook(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body?: { force?: boolean },
+  ) {
+    return this.certificateService.compileDataBook(
+      req.user.companyId,
+      jobCardId,
+      req.user,
+      body?.force ?? false,
+    );
   }
 
   @Get("job-card/:jobCardId/data-book")
