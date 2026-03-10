@@ -9,8 +9,11 @@ import {
   Post,
   Query,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
@@ -165,5 +168,94 @@ export class PositectorController {
     }
 
     return { error: `Unsupported entity type: ${body.entityType}` };
+  }
+
+  @Post("upload")
+  @StockControlRoles("manager", "admin")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({
+    summary: "Upload a PosiTector batch file (JSON, CSV, or PosiSoft Desktop CSV)",
+  })
+  async uploadBatchFile(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    const content = file.buffer.toString("utf-8");
+    const format = this.positectorService.detectFileFormat(content, file.originalname);
+    const batch = this.positectorService.parseFileUpload(content, file.originalname);
+    const entityType = this.positectorService.detectQcEntityType(batch.header.probeType);
+    const suggestedCoatType = this.importService.detectCoatTypeFromBatchName(
+      batch.header.batchName,
+    );
+
+    return {
+      ...batch,
+      detectedFormat: format,
+      suggestedEntityType: entityType,
+      suggestedCoatType,
+      filename: file.originalname,
+    };
+  }
+
+  @Post("upload/import")
+  @StockControlRoles("manager", "admin")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({
+    summary: "Upload and directly import a PosiTector batch file into a QC entity",
+  })
+  async uploadAndImport(
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+    @Body()
+    body: Record<string, string>,
+  ) {
+    const content = file.buffer.toString("utf-8");
+    const batch = this.positectorService.parseFileUpload(content, file.originalname);
+
+    const entityType =
+      body.entityType ?? this.positectorService.detectQcEntityType(batch.header.probeType);
+
+    if (entityType === "dft") {
+      return this.importService.importDftReadings(
+        req.user.companyId,
+        batch,
+        {
+          jobCardId: parseInt(body.jobCardId, 10),
+          coatType: body.coatType === "final" ? ("final" as any) : ("primer" as any),
+          paintProduct: body.paintProduct ?? "Unknown",
+          batchNumber: body.batchNumber ?? null,
+          specMinMicrons: parseFloat(body.specMinMicrons) || 0,
+          specMaxMicrons: parseFloat(body.specMaxMicrons) || 0,
+        },
+        req.user,
+      );
+    }
+
+    if (entityType === "blast_profile") {
+      return this.importService.importBlastProfile(
+        req.user.companyId,
+        batch,
+        {
+          jobCardId: parseInt(body.jobCardId, 10),
+          specMicrons: parseFloat(body.specMicrons) || 0,
+          temperature: body.temperature ? parseFloat(body.temperature) : null,
+          humidity: body.humidity ? parseFloat(body.humidity) : null,
+        },
+        req.user,
+      );
+    }
+
+    if (entityType === "shore_hardness") {
+      return this.importService.importShoreHardness(
+        req.user.companyId,
+        batch,
+        {
+          jobCardId: parseInt(body.jobCardId, 10),
+          rubberSpec: body.rubberSpec ?? "Unknown",
+          rubberBatchNumber: body.rubberBatchNumber ?? null,
+          requiredShore: parseInt(body.requiredShore, 10) || 0,
+        },
+        req.user,
+      );
+    }
+
+    return { error: `Unsupported entity type: ${entityType}` };
   }
 }

@@ -446,6 +446,22 @@ export interface DataBookStatus {
   dataBookId: number | null;
 }
 
+export interface SectionStatus {
+  key: string;
+  label: string;
+  status: "complete" | "partial" | "missing";
+  count: number;
+  warnings: string[];
+}
+
+export interface DataBookCompleteness {
+  overallPercent: number;
+  readyToCompile: boolean;
+  blockingReasons: string[];
+  sections: SectionStatus[];
+  warnings: string[];
+}
+
 export interface QcShoreHardnessRecord {
   id: number;
   companyId: number;
@@ -3542,8 +3558,16 @@ class StockControlApiClient {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to create delivery note: ${errorText}`);
+      const errorText = await response.text().catch(() => "Unknown error");
+      try {
+        const parsed = JSON.parse(errorText);
+        throw new Error(parsed.message || errorText);
+      } catch (parseErr) {
+        if (parseErr instanceof Error && parseErr.message !== errorText) {
+          throw parseErr;
+        }
+        throw new Error(errorText);
+      }
     }
 
     return response.json();
@@ -3568,8 +3592,16 @@ class StockControlApiClient {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to create invoice: ${errorText}`);
+      const errorText = await response.text().catch(() => "Unknown error");
+      try {
+        const parsed = JSON.parse(errorText);
+        throw new Error(parsed.message || errorText);
+      } catch (parseErr) {
+        if (parseErr instanceof Error && parseErr.message !== errorText) {
+          throw parseErr;
+        }
+        throw new Error(errorText);
+      }
     }
 
     return response.json();
@@ -3886,9 +3918,17 @@ class StockControlApiClient {
     return this.request(`/stock-control/certificates/job-card/${jobCardId}/data-book/status`);
   }
 
-  async compileDataBook(jobCardId: number): Promise<{ id: number; certificateCount: number }> {
+  async dataBookCompleteness(jobCardId: number): Promise<DataBookCompleteness> {
+    return this.request(`/stock-control/certificates/job-card/${jobCardId}/data-book/completeness`);
+  }
+
+  async compileDataBook(
+    jobCardId: number,
+    force = false,
+  ): Promise<{ id: number; certificateCount: number }> {
     return this.request(`/stock-control/certificates/job-card/${jobCardId}/data-book`, {
       method: "POST",
+      body: JSON.stringify({ force }),
     });
   }
 
@@ -4305,6 +4345,86 @@ class StockControlApiClient {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+  }
+
+  // ── PosiTector File Upload ───────────────────────────────────────
+
+  async uploadPositectorFile(file: File): Promise<
+    PositectorBatchDetail & {
+      detectedFormat: string;
+      filename: string;
+    }
+  > {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/positector-devices/upload`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.accessToken}` },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      throw new Error(errorBody?.message ?? `Upload failed: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async uploadAndImportPositectorFile(
+    file: File,
+    data: {
+      jobCardId: number;
+      entityType: string;
+      coatType?: string;
+      paintProduct?: string;
+      batchNumber?: string | null;
+      specMinMicrons?: number;
+      specMaxMicrons?: number;
+      specMicrons?: number;
+      temperature?: number | null;
+      humidity?: number | null;
+      rubberSpec?: string;
+      rubberBatchNumber?: string | null;
+      requiredShore?: number;
+    },
+  ): Promise<PositectorImportResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("jobCardId", String(data.jobCardId));
+    formData.append("entityType", data.entityType);
+    if (data.coatType) formData.append("coatType", data.coatType);
+    if (data.paintProduct) formData.append("paintProduct", data.paintProduct);
+    if (data.batchNumber) formData.append("batchNumber", data.batchNumber);
+    if (data.specMinMicrons !== undefined)
+      formData.append("specMinMicrons", String(data.specMinMicrons));
+    if (data.specMaxMicrons !== undefined)
+      formData.append("specMaxMicrons", String(data.specMaxMicrons));
+    if (data.specMicrons !== undefined) formData.append("specMicrons", String(data.specMicrons));
+    if (data.temperature !== undefined && data.temperature !== null)
+      formData.append("temperature", String(data.temperature));
+    if (data.humidity !== undefined && data.humidity !== null)
+      formData.append("humidity", String(data.humidity));
+    if (data.rubberSpec) formData.append("rubberSpec", data.rubberSpec);
+    if (data.rubberBatchNumber) formData.append("rubberBatchNumber", data.rubberBatchNumber);
+    if (data.requiredShore !== undefined)
+      formData.append("requiredShore", String(data.requiredShore));
+
+    const url = `${this.baseURL}/stock-control/positector-devices/upload/import`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.accessToken}` },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      throw new Error(errorBody?.message ?? `Import failed: ${response.status}`);
+    }
+
+    return response.json();
   }
 
   // ── PosiTector Live Streaming ─────────────────────────────────────

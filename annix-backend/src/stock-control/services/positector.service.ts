@@ -289,6 +289,182 @@ export class PositectorService {
     };
   }
 
+  detectFileFormat(
+    content: string,
+    filename: string | null,
+  ): "positector_json" | "positector_csv" | "posisoft_csv" | "unknown" {
+    const trimmed = content.trim();
+
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try {
+        JSON.parse(trimmed);
+        return "positector_json";
+      } catch {
+        // Not valid JSON
+      }
+    }
+
+    const lines = trimmed
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    if (lines.length < 2) return "unknown";
+
+    const firstLine = lines[0].toLowerCase();
+
+    if (this.isPosiSoftDesktopCsv(lines)) {
+      return "posisoft_csv";
+    }
+
+    if (
+      firstLine.includes("reading") ||
+      firstLine.includes("thickness") ||
+      firstLine.includes("value") ||
+      firstLine.includes("hardness") ||
+      firstLine.includes("profile") ||
+      firstLine.includes("measurement")
+    ) {
+      return "positector_csv";
+    }
+
+    const ext = filename?.toLowerCase().split(".").pop() ?? "";
+    if (ext === "json") return "positector_json";
+    if (ext === "csv" || ext === "txt") return "positector_csv";
+
+    return "unknown";
+  }
+
+  parseFileUpload(content: string, filename: string | null): PositectorBatch {
+    const format = this.detectFileFormat(content, filename);
+
+    if (format === "positector_json") {
+      return this.parseJsonBatch(content);
+    }
+
+    if (format === "posisoft_csv") {
+      return this.parsePosiSoftDesktopCsv(content);
+    }
+
+    if (format === "positector_csv") {
+      const readings = this.parseCsvReadings(content);
+      return {
+        buid: "upload",
+        header: {
+          serialNumber: null,
+          probeType: null,
+          batchName: filename?.replace(/\.[^.]+$/, "") ?? null,
+          model: null,
+          units: null,
+          readingCount: readings.length,
+          raw: {},
+        },
+        readings,
+        statistics: null,
+      };
+    }
+
+    throw new BadRequestException(
+      "Unrecognized file format. Expected PosiTector JSON, PosiTector CSV, or PosiSoft Desktop CSV.",
+    );
+  }
+
+  private isPosiSoftDesktopCsv(lines: string[]): boolean {
+    const headerPatterns = [
+      "gage s/n",
+      "gage serial",
+      "probe type",
+      "probe s/n",
+      "batch name",
+      "cal date",
+      "statistics",
+    ];
+
+    const firstFewLines = lines.slice(0, 15).map((l) => l.toLowerCase());
+
+    const metadataMatches = headerPatterns.filter((pattern) =>
+      firstFewLines.some((line) => line.includes(pattern)),
+    );
+
+    return metadataMatches.length >= 2;
+  }
+
+  private parsePosiSoftDesktopCsv(content: string): PositectorBatch {
+    const lines = content
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    const metadata: Record<string, string> = {};
+    let dataStartIdx = -1;
+
+    lines.forEach((line, idx) => {
+      if (dataStartIdx >= 0) return;
+
+      const lower = line.toLowerCase();
+      if (
+        lower.startsWith("#") ||
+        lower.startsWith("reading") ||
+        lower.startsWith("id,") ||
+        lower.startsWith("no,") ||
+        lower.startsWith("no.,")
+      ) {
+        dataStartIdx = idx;
+        return;
+      }
+
+      const commaIdx = line.indexOf(",");
+      if (commaIdx > 0) {
+        const key = line.substring(0, commaIdx).trim();
+        const value = line
+          .substring(commaIdx + 1)
+          .trim()
+          .replace(/^"|"$/g, "");
+
+        if (key.length > 0 && key.length < 50) {
+          metadata[key] = value;
+        }
+      }
+    });
+
+    const serialKey = Object.keys(metadata).find(
+      (k) => k.toLowerCase().includes("gage s/n") || k.toLowerCase().includes("gage serial"),
+    );
+    const probeKey = Object.keys(metadata).find(
+      (k) => k.toLowerCase().includes("probe type") || k.toLowerCase().includes("probe"),
+    );
+    const batchKey = Object.keys(metadata).find(
+      (k) => k.toLowerCase().includes("batch name") || k.toLowerCase().includes("batch"),
+    );
+    const unitsKey = Object.keys(metadata).find((k) => k.toLowerCase().includes("units"));
+
+    const serialNumber = serialKey ? metadata[serialKey] : null;
+    const probeType = probeKey ? metadata[probeKey] : null;
+    const batchName = batchKey ? metadata[batchKey] : null;
+    const units = unitsKey ? metadata[unitsKey] : null;
+
+    let readings: PositectorReading[] = [];
+
+    if (dataStartIdx >= 0) {
+      const dataLines = lines.slice(dataStartIdx);
+      readings = this.parseCsvReadings(dataLines.join("\n"));
+    }
+
+    return {
+      buid: "upload",
+      header: {
+        serialNumber,
+        probeType,
+        batchName,
+        model: probeType,
+        units,
+        readingCount: readings.length,
+        raw: metadata,
+      },
+      readings,
+      statistics: null,
+    };
+  }
+
   detectQcEntityType(
     probeType: string | null,
   ): "dft" | "blast_profile" | "shore_hardness" | "environmental" | "pull_test" | "unknown" {
