@@ -94,44 +94,6 @@ export interface SmtpConfigUpdate {
   notificationEmails?: string[];
 }
 
-export interface SageConnectionStatus {
-  connected: boolean;
-  sageUsername: string | null;
-  sagePasswordSet: boolean;
-  sageCompanyId: number | null;
-  sageCompanyName: string | null;
-  sageConnectedAt: string | null;
-}
-
-export interface SageCompany {
-  ID: number;
-  Name: string;
-  CurrencySymbol: string;
-  TaxNumber: string;
-}
-
-export interface SageSupplier {
-  ID: number;
-  Name: string;
-  Category: { ID: number; Description: string } | null;
-  TaxReference: string;
-  ContactName: string;
-  Telephone: string;
-  Email: string;
-  Active: boolean;
-}
-
-export interface SageCustomer {
-  ID: number;
-  Name: string;
-  Category: { ID: number; Description: string } | null;
-  TaxReference: string;
-  ContactName: string;
-  Telephone: string;
-  Email: string;
-  Active: boolean;
-}
-
 export interface StockControlCompany {
   id: number;
   name: string;
@@ -3206,61 +3168,6 @@ class StockControlApiClient {
     return this.request("/stock-control/auth/smtp-config/test", {
       method: "POST",
     });
-  }
-
-  async sageConnectionStatus(): Promise<SageConnectionStatus> {
-    return this.request("/stock-control/auth/sage-config");
-  }
-
-  async updateSageConfig(dto: {
-    sageUsername: string | null;
-    sagePassword: string | null;
-    sageCompanyId: number | null;
-    sageCompanyName: string | null;
-  }): Promise<{ message: string }> {
-    return this.request("/stock-control/auth/sage-config", {
-      method: "PATCH",
-      body: JSON.stringify(dto),
-    });
-  }
-
-  async disconnectSage(): Promise<{ message: string }> {
-    return this.request("/stock-control/auth/sage-config", {
-      method: "DELETE",
-    });
-  }
-
-  async testSageConnection(
-    username?: string,
-    password?: string,
-  ): Promise<{
-    success: boolean;
-    companies: SageCompany[];
-  }> {
-    return this.request("/stock-control/auth/sage-config/test", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    });
-  }
-
-  async sageCompanies(username?: string, password?: string): Promise<SageCompany[]> {
-    const params = new URLSearchParams();
-    if (username) {
-      params.set("username", username);
-    }
-    if (password) {
-      params.set("password", password);
-    }
-    const query = params.toString();
-    return this.request(`/stock-control/auth/sage-companies${query ? `?${query}` : ""}`);
-  }
-
-  async sageSuppliers(): Promise<SageSupplier[]> {
-    return this.request("/stock-control/auth/sage-suppliers");
-  }
-
-  async sageCustomers(): Promise<SageCustomer[]> {
-    return this.request("/stock-control/auth/sage-customers");
   }
 
   async navRbacConfig(): Promise<Record<string, string[]>> {

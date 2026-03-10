@@ -8,6 +8,7 @@ import {
   Inject,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -33,6 +34,7 @@ import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
 import { nowMillis } from "../lib/datetime";
 import { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
+import { type SageConfigDto, SageConnectionService } from "../sage-export/sage-connection.service";
 import { SageExportService } from "../sage-export/sage-export.service";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import {
@@ -190,6 +192,7 @@ export class RubberLiningController {
     private readonly rubberSageAdapterService: RubberSageInvoiceAdapterService,
     private readonly rubberSageCocAdapterService: RubberSageCocAdapterService,
     private readonly sageExportService: SageExportService,
+    private readonly sageConnectionService: SageConnectionService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -2997,5 +3000,123 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!updated) throw new NotFoundException("Failed to update tax invoice");
 
     return updated;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/sage/status")
+  @ApiOperation({ summary: "Sage connection status" })
+  async sageStatus() {
+    return this.sageConnectionService.connectionStatus("au-rubber");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Patch("portal/sage/config")
+  @ApiOperation({ summary: "Update Sage connection credentials" })
+  async updateSageConfig(@Body() body: SageConfigDto) {
+    return this.sageConnectionService.saveCredentials("au-rubber", body);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/sage/config")
+  @ApiOperation({ summary: "Disconnect from Sage" })
+  async disconnectSage() {
+    return this.sageConnectionService.disconnect("au-rubber");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/sage/test")
+  @ApiOperation({ summary: "Test Sage connection" })
+  async testSageConnection(@Body() body: { username?: string; password?: string }) {
+    return this.sageConnectionService.testConnection("au-rubber", body.username, body.password);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/sage/companies")
+  @ApiOperation({ summary: "List Sage companies" })
+  async sageCompanies(@Query("username") username?: string, @Query("password") password?: string) {
+    return this.sageConnectionService.sageCompanies("au-rubber", username, password);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/sage/suppliers")
+  @ApiOperation({ summary: "List Sage suppliers" })
+  async sageSuppliers() {
+    return this.sageConnectionService.sageSuppliers("au-rubber");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/sage/customers")
+  @ApiOperation({ summary: "List Sage customers" })
+  async sageCustomers() {
+    return this.sageConnectionService.sageCustomers("au-rubber");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/sage/tax-types")
+  @ApiOperation({ summary: "List Sage tax types" })
+  async sageTaxTypes() {
+    return this.sageConnectionService.sageTaxTypes("au-rubber");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/tax-invoices/export/customer-sage-preview")
+  @ApiOperation({ summary: "Preview customer invoice Sage CSV export" })
+  @ApiQuery({ name: "dateFrom", required: false })
+  @ApiQuery({ name: "dateTo", required: false })
+  @ApiQuery({ name: "excludeExported", required: false })
+  async customerSageExportPreview(
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string,
+    @Query("excludeExported") excludeExported?: string,
+  ): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
+    return this.rubberSageAdapterService.previewCount({
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      excludeExported: excludeExported !== "false",
+      invoiceType: "CUSTOMER",
+    });
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/tax-invoices/export/customer-sage-csv")
+  @ApiOperation({ summary: "Download customer invoice Sage CSV export" })
+  @ApiQuery({ name: "dateFrom", required: false })
+  @ApiQuery({ name: "dateTo", required: false })
+  @ApiQuery({ name: "excludeExported", required: false })
+  async customerSageExportCsv(
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string,
+    @Query("excludeExported") excludeExported?: string,
+    @Res() res?: Response,
+  ): Promise<void> {
+    const filters: SageExportFilterDto = {
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+      excludeExported: excludeExported !== "false",
+      invoiceType: "CUSTOMER",
+    };
+
+    const { invoices, invoiceIds } =
+      await this.rubberSageAdapterService.exportableInvoices(filters);
+    const csvBuffer = this.sageExportService.generateCsv(invoices);
+
+    await this.rubberSageAdapterService.markExported(invoiceIds);
+
+    res!.set({
+      "Content-Type": "text/csv",
+      "Content-Disposition": "attachment; filename=sage-customer-invoices.csv",
+      "Content-Length": csvBuffer.length,
+    });
+    res!.send(csvBuffer);
   }
 }

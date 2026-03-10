@@ -2968,6 +2968,85 @@ class AuRubberApiClient {
     }
     return response.blob();
   }
+
+  async customerSageExportPreview(params: {
+    dateFrom?: string;
+    dateTo?: string;
+    excludeExported?: boolean;
+  }): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
+    const query = new URLSearchParams();
+    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params.dateTo) query.set("dateTo", params.dateTo);
+    if (params.excludeExported !== undefined) {
+      query.set("excludeExported", String(params.excludeExported));
+    }
+    return this.request(
+      `/rubber-lining/portal/tax-invoices/export/customer-sage-preview?${query.toString()}`,
+    );
+  }
+
+  async customerSageExportCsv(params: {
+    dateFrom?: string;
+    dateTo?: string;
+    excludeExported?: boolean;
+  }): Promise<Blob> {
+    const query = new URLSearchParams();
+    if (params.dateFrom) query.set("dateFrom", params.dateFrom);
+    if (params.dateTo) query.set("dateTo", params.dateTo);
+    if (params.excludeExported !== undefined) {
+      query.set("excludeExported", String(params.excludeExported));
+    }
+    const url = `${this.baseURL}/rubber-lining/portal/tax-invoices/export/customer-sage-csv?${query.toString()}`;
+    const headers = this.authHeaders();
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      throw new Error(`Failed to download CSV: ${response.statusText}`);
+    }
+    return response.blob();
+  }
+
+  async sageConnectionStatus(): Promise<{
+    connected: boolean;
+    enabled: boolean;
+    sageUsername: string | null;
+    sagePasswordSet: boolean;
+    sageCompanyId: number | null;
+    sageCompanyName: string | null;
+    connectedAt: string | null;
+  }> {
+    return this.request("/rubber-lining/portal/sage/status");
+  }
+
+  async updateSageConfig(dto: {
+    sageUsername: string | null;
+    sagePassword: string | null;
+    sageCompanyId: number | null;
+    sageCompanyName: string | null;
+  }): Promise<{ message: string }> {
+    return this.request("/rubber-lining/portal/sage/config", {
+      method: "PATCH",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async disconnectSage(): Promise<{ message: string }> {
+    return this.request("/rubber-lining/portal/sage/config", {
+      method: "DELETE",
+    });
+  }
+
+  async testSageConnection(
+    username?: string,
+    password?: string,
+  ): Promise<{
+    success: boolean;
+    companies: Array<{ ID: number; Name: string; TaxNumber: string }>;
+  }> {
+    return this.request("/rubber-lining/portal/sage/test", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+  }
 }
 
 export const auRubberApiClient = new AuRubberApiClient();

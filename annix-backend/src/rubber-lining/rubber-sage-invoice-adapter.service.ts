@@ -23,10 +23,14 @@ export class RubberSageInvoiceAdapterService {
   async exportableInvoices(
     filters: SageExportFilterDto,
   ): Promise<{ invoices: SageExportInvoice[]; invoiceIds: number[] }> {
+    const invoiceType = filters.invoiceType === "CUSTOMER"
+      ? TaxInvoiceType.CUSTOMER
+      : TaxInvoiceType.SUPPLIER;
+
     const qb = this.invoiceRepo
       .createQueryBuilder("invoice")
       .leftJoinAndSelect("invoice.company", "company")
-      .where("invoice.invoice_type = :type", { type: TaxInvoiceType.SUPPLIER })
+      .where("invoice.invoice_type = :type", { type: invoiceType })
       .andWhere("invoice.status = :status", { status: TaxInvoiceStatus.APPROVED });
 
     if (filters.dateFrom) {

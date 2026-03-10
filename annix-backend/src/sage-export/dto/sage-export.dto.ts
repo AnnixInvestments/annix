@@ -14,4 +14,8 @@ export class SageExportFilterDto {
   @IsBoolean()
   @Transform(({ value }) => value === "true" || value === true)
   excludeExported?: boolean;
+
+  @IsOptional()
+  @IsString()
+  invoiceType?: string;
 }

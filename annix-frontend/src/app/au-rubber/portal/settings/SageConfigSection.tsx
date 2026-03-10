@@ -1,11 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  SageCompany,
-  SageConnectionStatus,
-  stockControlApiClient,
-} from "@/app/lib/api/stockControlApi";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+
+interface SageCompany {
+  ID: number;
+  Name: string;
+  TaxNumber: string;
+}
+
+interface SageConnectionStatus {
+  connected: boolean;
+  enabled: boolean;
+  sageUsername: string | null;
+  sagePasswordSet: boolean;
+  sageCompanyId: number | null;
+  sageCompanyName: string | null;
+  connectedAt: string | null;
+}
 
 export function SageConfigSection() {
   const [status, setStatus] = useState<SageConnectionStatus | null>(null);
@@ -23,7 +35,7 @@ export function SageConfigSection() {
 
   const loadStatus = useCallback(async () => {
     try {
-      const config = await stockControlApiClient.sageConnectionStatus();
+      const config = await auRubberApiClient.sageConnectionStatus();
       setStatus(config);
       if (config.connected) {
         setStep("connected");
@@ -41,12 +53,16 @@ export function SageConfigSection() {
     loadStatus();
   }, [loadStatus]);
 
+  if (status !== null && !status.enabled) {
+    return null;
+  }
+
   const handleTestConnection = async () => {
     setTesting(true);
     setError("");
     setSuccess("");
     try {
-      const result = await stockControlApiClient.testSageConnection(username, password);
+      const result = await auRubberApiClient.testSageConnection(username, password);
       if (result.success && result.companies.length > 0) {
         setCompanies(result.companies);
         setSelectedCompanyId(result.companies[0].ID);
@@ -73,7 +89,7 @@ export function SageConfigSection() {
     setSuccess("");
     try {
       const selected = companies.find((c) => c.ID === selectedCompanyId);
-      await stockControlApiClient.updateSageConfig({
+      await auRubberApiClient.updateSageConfig({
         sageUsername: username,
         sagePassword: password,
         sageCompanyId: selectedCompanyId,
@@ -94,7 +110,7 @@ export function SageConfigSection() {
     setError("");
     setSuccess("");
     try {
-      await stockControlApiClient.disconnectSage();
+      await auRubberApiClient.disconnectSage();
       setSuccess("Sage connection removed.");
       setUsername("");
       setPassword("");
@@ -141,8 +157,7 @@ export function SageConfigSection() {
       {expanded && (
         <div className="mt-4">
           <p className="text-sm text-gray-500 mb-4">
-            Connect your Sage One accounting to sync suppliers, customers, and post invoices
-            directly from Stock Control.
+            Connect your Sage One accounting to export supplier and customer invoices directly.
           </p>
 
           {step === "connected" && status?.connected && (
@@ -157,11 +172,11 @@ export function SageConfigSection() {
                     <span className="font-medium text-gray-700">Company:</span>{" "}
                     <span className="text-gray-900">{status.sageCompanyName}</span>
                   </div>
-                  {status.sageConnectedAt && (
+                  {status.connectedAt && (
                     <div>
                       <span className="font-medium text-gray-700">Connected:</span>{" "}
                       <span className="text-gray-900">
-                        {new Date(status.sageConnectedAt).toLocaleDateString("en-ZA")}
+                        {new Date(status.connectedAt).toLocaleDateString("en-ZA")}
                       </span>
                     </div>
                   )}
@@ -177,7 +192,7 @@ export function SageConfigSection() {
                     setSuccess("");
                     setError("");
                   }}
-                  className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+                  className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 transition-colors"
                 >
                   Reconfigure
                 </button>
@@ -209,7 +224,7 @@ export function SageConfigSection() {
                       setSuccess("");
                     }}
                     placeholder="info@company.co.za"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-orange-500 focus:border-orange-500 text-sm"
                   />
                 </div>
                 <div>
@@ -228,7 +243,7 @@ export function SageConfigSection() {
                       setSuccess("");
                     }}
                     placeholder={status?.sagePasswordSet ? "********" : "Enter password"}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-orange-500 focus:border-orange-500 text-sm"
                   />
                 </div>
               </div>
@@ -237,7 +252,7 @@ export function SageConfigSection() {
                   type="button"
                   onClick={handleTestConnection}
                   disabled={testing || !username || !password}
-                  className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {testing ? "Connecting..." : "Connect to Sage"}
                 </button>
@@ -271,7 +286,7 @@ export function SageConfigSection() {
                   id="sageCompany"
                   value={selectedCompanyId ?? ""}
                   onChange={(e) => setSelectedCompanyId(Number(e.target.value))}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500 text-sm"
                 >
                   {companies.map((c) => (
                     <option key={c.ID} value={c.ID}>
@@ -286,7 +301,7 @@ export function SageConfigSection() {
                   type="button"
                   onClick={handleSave}
                   disabled={saving || !selectedCompanyId}
-                  className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {saving ? "Saving..." : "Save Connection"}
                 </button>

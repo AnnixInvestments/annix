@@ -1,8 +1,8 @@
 "use client";
 
-import { CheckCircle, FileText, Trash2, X } from "lucide-react";
+import { CheckCircle, Download, FileText, Trash2, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
@@ -21,6 +21,8 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
+
+const CustomerSageExportModal = lazy(() => import("../CustomerSageExportModal"));
 
 type SortColumn = "invoiceNumber" | "companyName" | "status" | "invoiceDate" | "totalAmount";
 
@@ -44,6 +46,7 @@ export default function CustomerTaxInvoicesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
   const [isBulkApproving, setIsBulkApproving] = useState(false);
+  const [showSageExportModal, setShowSageExportModal] = useState(false);
 
   const handleDelete = async (id: number, invoiceNumber: string) => {
     if (!window.confirm(`Delete tax invoice ${invoiceNumber}? This cannot be undone.`)) return;
@@ -310,6 +313,13 @@ export default function CustomerTaxInvoicesPage() {
             </button>
           )}
           <button
+            onClick={() => setShowSageExportModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export to Sage
+          </button>
+          <button
             onClick={() => setShowUploadModal(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700"
           >
@@ -517,7 +527,16 @@ export default function CustomerTaxInvoicesPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{statusBadge(inv.status)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="flex items-center gap-1.5">
+                      {statusBadge(inv.status)}
+                      {inv.exportedToSageAt && (
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                          Exported
+                        </span>
+                      )}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
                     {formatCurrency(inv.totalAmount)}
                   </td>
@@ -661,6 +680,15 @@ export default function CustomerTaxInvoicesPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showSageExportModal && (
+        <Suspense fallback={null}>
+          <CustomerSageExportModal
+            onClose={() => setShowSageExportModal(false)}
+            onSuccess={() => fetchData()}
+          />
+        </Suspense>
       )}
     </div>
   );

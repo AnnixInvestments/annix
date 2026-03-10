@@ -8,7 +8,6 @@ import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
 import { RubberLiningModule } from "../rubber-lining/rubber-lining.module";
-import { SageConnectionService } from "../sage-export/sage-connection.service";
 import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
@@ -244,7 +243,6 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     InvoiceService,
     PriceHistoryService,
     RbacConfigService,
-    SageConnectionService,
     SageInvoiceAdapterService,
     SearchService,
     CpoService,

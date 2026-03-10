@@ -1,5 +1,4 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { SageConnectionService } from "../../sage-export/sage-connection.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { StockControlAuthService } from "../services/auth.service";
@@ -45,10 +44,6 @@ describe("StockControlAuthController - RBAC endpoints", () => {
         {
           provide: RbacConfigService,
           useValue: rbacConfigService,
-        },
-        {
-          provide: SageConnectionService,
-          useValue: {},
         },
       ],
     })

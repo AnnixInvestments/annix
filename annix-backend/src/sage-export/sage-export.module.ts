@@ -1,12 +1,12 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { StockControlCompany } from "../stock-control/entities/stock-control-company.entity";
+import { SageConnection } from "./entities/sage-connection.entity";
 import { SageApiService } from "./sage-api.service";
 import { SageConnectionService } from "./sage-connection.service";
 import { SageExportService } from "./sage-export.service";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([StockControlCompany])],
+  imports: [TypeOrmModule.forFeature([SageConnection])],
   providers: [SageExportService, SageApiService, SageConnectionService],
   exports: [SageExportService, SageApiService, SageConnectionService],
 })

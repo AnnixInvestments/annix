@@ -3,13 +3,13 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { decrypt, encrypt } from "../secure-documents/crypto.util";
-import { StockControlCompany } from "../stock-control/entities/stock-control-company.entity";
+import { SageConnection } from "./entities/sage-connection.entity";
 import {
   SageApiService,
-  SageCompany,
-  SageCustomer,
-  SageSupplier,
-  SageTaxType,
+  type SageCompany,
+  type SageCustomer,
+  type SageSupplier,
+  type SageTaxType,
 } from "./sage-api.service";
 
 export interface SageConfigDto {
@@ -21,11 +21,12 @@ export interface SageConfigDto {
 
 export interface SageConnectionStatus {
   connected: boolean;
+  enabled: boolean;
   sageUsername: string | null;
   sagePasswordSet: boolean;
   sageCompanyId: number | null;
   sageCompanyName: string | null;
-  sageConnectedAt: Date | null;
+  connectedAt: Date | null;
 }
 
 @Injectable()
@@ -33,130 +34,150 @@ export class SageConnectionService {
   private readonly logger = new Logger(SageConnectionService.name);
 
   constructor(
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
+    @InjectRepository(SageConnection)
+    private readonly connectionRepo: Repository<SageConnection>,
     private readonly configService: ConfigService,
     private readonly sageApiService: SageApiService,
   ) {}
 
-  async connectionStatus(companyId: number): Promise<SageConnectionStatus> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+  async connectionStatus(appKey: string): Promise<SageConnectionStatus> {
+    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+
+    if (!conn) {
+      return {
+        connected: false,
+        enabled: false,
+        sageUsername: null,
+        sagePasswordSet: false,
+        sageCompanyId: null,
+        sageCompanyName: null,
+        connectedAt: null,
+      };
+    }
 
     return {
       connected:
-        company?.sageUsername !== null &&
-        company?.sagePassEncrypted !== null &&
-        company?.sageCompanyId !== null,
-      sageUsername: company?.sageUsername ?? null,
-      sagePasswordSet:
-        company?.sagePassEncrypted !== null && company?.sagePassEncrypted !== undefined,
-      sageCompanyId: company?.sageCompanyId ?? null,
-      sageCompanyName: company?.sageCompanyName ?? null,
-      sageConnectedAt: company?.sageConnectedAt ?? null,
+        conn.sageUsername !== null &&
+        conn.sagePassEncrypted !== null &&
+        conn.sageCompanyId !== null,
+      enabled: conn.enabled,
+      sageUsername: conn.sageUsername,
+      sagePasswordSet: conn.sagePassEncrypted !== null,
+      sageCompanyId: conn.sageCompanyId,
+      sageCompanyName: conn.sageCompanyName,
+      connectedAt: conn.connectedAt,
     };
   }
 
-  async saveCredentials(companyId: number, dto: SageConfigDto): Promise<{ message: string }> {
+  async addonEnabled(appKey: string): Promise<boolean> {
+    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    return conn?.enabled ?? false;
+  }
+
+  async saveCredentials(appKey: string, dto: SageConfigDto): Promise<{ message: string }> {
     const encryptionKey = this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY");
 
-    const update: Partial<StockControlCompany> = {
-      sageUsername: dto.sageUsername,
-      sageCompanyId: dto.sageCompanyId,
-      sageCompanyName: dto.sageCompanyName,
-    };
+    let conn = await this.connectionRepo.findOne({ where: { appKey } });
+    if (!conn) {
+      conn = this.connectionRepo.create({ appKey, enabled: false });
+    }
+
+    conn.sageUsername = dto.sageUsername;
+    conn.sageCompanyId = dto.sageCompanyId;
+    conn.sageCompanyName = dto.sageCompanyName;
 
     if (dto.sagePassword !== null && dto.sagePassword !== undefined && encryptionKey) {
-      update.sagePassEncrypted = encrypt(dto.sagePassword, encryptionKey);
+      conn.sagePassEncrypted = encrypt(dto.sagePassword, encryptionKey);
     } else if (dto.sageUsername === null) {
-      update.sagePassEncrypted = null;
-      update.sageConnectedAt = null;
+      conn.sagePassEncrypted = null;
+      conn.connectedAt = null;
     }
 
     if (dto.sageCompanyId !== null) {
-      update.sageConnectedAt = new Date();
+      conn.connectedAt = new Date();
     }
 
-    await this.companyRepo.update(companyId, update);
+    await this.connectionRepo.save(conn);
     return { message: "Sage configuration updated" };
   }
 
-  async disconnect(companyId: number): Promise<{ message: string }> {
-    await this.companyRepo.update(companyId, {
-      sageUsername: null,
-      sagePassEncrypted: null,
-      sageCompanyId: null,
-      sageCompanyName: null,
-      sageConnectedAt: null,
-    });
+  async disconnect(appKey: string): Promise<{ message: string }> {
+    await this.connectionRepo.update(
+      { appKey },
+      {
+        sageUsername: null,
+        sagePassEncrypted: null,
+        sageCompanyId: null,
+        sageCompanyName: null,
+        connectedAt: null,
+      },
+    );
     return { message: "Sage connection removed" };
   }
 
   async testConnection(
-    companyId: number,
+    appKey: string,
     username?: string,
     password?: string,
   ): Promise<{ success: boolean; companies: SageCompany[] }> {
-    const resolvedCredentials = await this.resolveCredentials(companyId, username, password);
-    return this.sageApiService.testConnection(
-      resolvedCredentials.username,
-      resolvedCredentials.password,
-    );
+    const creds = await this.resolveCredentials(appKey, username, password);
+    return this.sageApiService.testConnection(creds.username, creds.password);
   }
 
   async sageCompanies(
-    companyId: number,
+    appKey: string,
     username?: string,
     password?: string,
   ): Promise<SageCompany[]> {
-    const creds = await this.resolveCredentials(companyId, username, password);
+    const creds = await this.resolveCredentials(appKey, username, password);
     return this.sageApiService.companies(creds.username, creds.password);
   }
 
-  async sageSuppliers(companyId: number): Promise<SageSupplier[]> {
-    const creds = await this.storedCredentials(companyId);
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
-    if (!company?.sageCompanyId) {
+  async sageSuppliers(appKey: string): Promise<SageSupplier[]> {
+    const creds = await this.storedCredentials(appKey);
+    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    if (!conn?.sageCompanyId) {
       throw new Error("No Sage company selected");
     }
-    return this.sageApiService.suppliers(creds.username, creds.password, company.sageCompanyId);
+    return this.sageApiService.suppliers(creds.username, creds.password, conn.sageCompanyId);
   }
 
-  async sageCustomers(companyId: number): Promise<SageCustomer[]> {
-    const creds = await this.storedCredentials(companyId);
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
-    if (!company?.sageCompanyId) {
+  async sageCustomers(appKey: string): Promise<SageCustomer[]> {
+    const creds = await this.storedCredentials(appKey);
+    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    if (!conn?.sageCompanyId) {
       throw new Error("No Sage company selected");
     }
-    return this.sageApiService.customers(creds.username, creds.password, company.sageCompanyId);
+    return this.sageApiService.customers(creds.username, creds.password, conn.sageCompanyId);
   }
 
-  async sageTaxTypes(companyId: number): Promise<SageTaxType[]> {
-    const creds = await this.storedCredentials(companyId);
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
-    if (!company?.sageCompanyId) {
+  async sageTaxTypes(appKey: string): Promise<SageTaxType[]> {
+    const creds = await this.storedCredentials(appKey);
+    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    if (!conn?.sageCompanyId) {
       throw new Error("No Sage company selected");
     }
-    return this.sageApiService.taxTypes(creds.username, creds.password, company.sageCompanyId);
+    return this.sageApiService.taxTypes(creds.username, creds.password, conn.sageCompanyId);
   }
 
   private async resolveCredentials(
-    companyId: number,
+    appKey: string,
     username?: string,
     password?: string,
   ): Promise<{ username: string; password: string }> {
     if (username && password) {
       return { username, password };
     }
-    return this.storedCredentials(companyId);
+    return this.storedCredentials(appKey);
   }
 
   private async storedCredentials(
-    companyId: number,
+    appKey: string,
   ): Promise<{ username: string; password: string }> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const conn = await this.connectionRepo.findOne({ where: { appKey } });
 
-    if (!company?.sageUsername || !company?.sagePassEncrypted) {
-      throw new Error("Sage credentials not configured for this company");
+    if (!conn?.sageUsername || !conn?.sagePassEncrypted) {
+      throw new Error("Sage credentials not configured");
     }
 
     const encryptionKey = this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY");
@@ -164,7 +185,7 @@ export class SageConnectionService {
       throw new Error("DOCUMENT_ENCRYPTION_KEY not configured");
     }
 
-    const password = decrypt(company.sagePassEncrypted, encryptionKey);
-    return { username: company.sageUsername, password };
+    const password = decrypt(conn.sagePassEncrypted, encryptionKey);
+    return { username: conn.sageUsername, password };
   }
 }

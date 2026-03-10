@@ -44,6 +44,7 @@ export const FEATURE_FLAGS = {
   RFQ_PRODUCT_TRANSPORT_INSTALL: "RFQ_PRODUCT_TRANSPORT_INSTALL",
   RFQ_PRODUCT_PIPE_STEEL_WORK: "RFQ_PRODUCT_PIPE_STEEL_WORK",
   RFQ_RESTRICT_UNREGISTERED: "RFQ_RESTRICT_UNREGISTERED",
+  SAGE_INTEGRATION: "SAGE_INTEGRATION",
 } as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
@@ -94,6 +95,7 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
   RFQ_PRODUCT_TRANSPORT_INSTALL: "Transport/Install",
   RFQ_PRODUCT_PIPE_STEEL_WORK: "Pipe Brackets & Steel Work",
   RFQ_RESTRICT_UNREGISTERED: "Restrict RFQ options for unregistered customers",
+  SAGE_INTEGRATION: "Sage Accounting integration addon (paid feature)",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
@@ -142,6 +144,7 @@ export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
   RFQ_PRODUCT_TRANSPORT_INSTALL: true,
   RFQ_PRODUCT_PIPE_STEEL_WORK: true,
   RFQ_RESTRICT_UNREGISTERED: true,
+  SAGE_INTEGRATION: false,
 };
 
 export type FeatureFlagCategory =
@@ -198,4 +201,5 @@ export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory
   RFQ_PRODUCT_TRANSPORT_INSTALL: "rfq",
   RFQ_PRODUCT_PIPE_STEEL_WORK: "rfq",
   RFQ_RESTRICT_UNREGISTERED: "rfq",
+  SAGE_INTEGRATION: "system",
 };

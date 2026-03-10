@@ -15,7 +15,6 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
-import { SageConfigDto, SageConnectionService } from "../../sage-export/sage-connection.service";
 import { ProcessBrandingSelectionDto } from "../dto/process-branding-selection.dto";
 import { SetBrandingDto } from "../dto/set-branding.dto";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
@@ -36,7 +35,6 @@ export class StockControlAuthController {
     private readonly companyEmailService: CompanyEmailService,
     private readonly lookupService: LookupService,
     private readonly rbacConfigService: RbacConfigService,
-    private readonly sageConnectionService: SageConnectionService,
   ) {}
 
   @Post("register")
@@ -346,78 +344,4 @@ export class StockControlAuthController {
     return this.rbacConfigService.updateNavConfig(req.user.companyId, body.config);
   }
 
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
-  @StockControlRoles("admin")
-  @Get("sage-config")
-  @ApiOperation({ summary: "Sage connection status for company" })
-  async sageConfig(@Req() req: any) {
-    return this.sageConnectionService.connectionStatus(req.user.companyId);
-  }
-
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
-  @StockControlRoles("admin")
-  @Patch("sage-config")
-  @ApiOperation({ summary: "Update Sage connection credentials" })
-  async updateSageConfig(@Req() req: any, @Body() body: SageConfigDto) {
-    return this.sageConnectionService.saveCredentials(req.user.companyId, body);
-  }
-
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
-  @StockControlRoles("admin")
-  @Delete("sage-config")
-  @ApiOperation({ summary: "Disconnect from Sage" })
-  async disconnectSage(@Req() req: any) {
-    return this.sageConnectionService.disconnect(req.user.companyId);
-  }
-
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
-  @StockControlRoles("admin")
-  @Post("sage-config/test")
-  @ApiOperation({ summary: "Test Sage connection with provided or stored credentials" })
-  async testSageConnection(
-    @Req() req: any,
-    @Body() body: { username?: string; password?: string },
-  ) {
-    return this.sageConnectionService.testConnection(
-      req.user.companyId,
-      body.username,
-      body.password,
-    );
-  }
-
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
-  @StockControlRoles("admin")
-  @Get("sage-companies")
-  @ApiOperation({ summary: "List Sage companies for connected account" })
-  async sageCompanies(
-    @Req() req: any,
-    @Query("username") username?: string,
-    @Query("password") password?: string,
-  ) {
-    return this.sageConnectionService.sageCompanies(req.user.companyId, username, password);
-  }
-
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
-  @StockControlRoles("admin")
-  @Get("sage-suppliers")
-  @ApiOperation({ summary: "List suppliers from connected Sage company" })
-  async sageSuppliers(@Req() req: any) {
-    return this.sageConnectionService.sageSuppliers(req.user.companyId);
-  }
-
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
-  @StockControlRoles("admin")
-  @Get("sage-customers")
-  @ApiOperation({ summary: "List customers from connected Sage company" })
-  async sageCustomers(@Req() req: any) {
-    return this.sageConnectionService.sageCustomers(req.user.companyId);
-  }
-
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
-  @StockControlRoles("admin")
-  @Get("sage-tax-types")
-  @ApiOperation({ summary: "List tax types from connected Sage company" })
-  async sageTaxTypes(@Req() req: any) {
-    return this.sageConnectionService.sageTaxTypes(req.user.companyId);
-  }
 }
