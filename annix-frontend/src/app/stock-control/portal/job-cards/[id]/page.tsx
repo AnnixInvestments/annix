@@ -825,7 +825,6 @@ export default function JobCardDetailPage() {
         onClose={() => setShowApprovalModal(false)}
         onApprove={handleApprove}
         onReject={handleReject}
-        existingSignature={null}
         jobNumber={jobCard.jobNumber}
         stepName={currentApprovalStep.replace(/_/g, " ")}
       />

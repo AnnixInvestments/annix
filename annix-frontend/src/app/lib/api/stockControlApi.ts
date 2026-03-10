@@ -400,6 +400,52 @@ export interface StockControlSupplierDto {
   updatedAt: string;
 }
 
+export interface SupplierCertificate {
+  id: number;
+  companyId: number;
+  supplierId: number;
+  stockItemId: number | null;
+  jobCardId: number | null;
+  certificateType: string;
+  batchNumber: string;
+  filePath: string;
+  originalFilename: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  description: string | null;
+  expiryDate: string | null;
+  uploadedById: number | null;
+  uploadedByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  supplier?: StockControlSupplierDto;
+  stockItem?: StockItem | null;
+  jobCard?: { id: number; jobNumber: string; jobName: string } | null;
+  downloadUrl?: string;
+}
+
+export interface IssuanceBatchRecord {
+  id: number;
+  companyId: number;
+  stockIssuanceId: number;
+  stockItemId: number;
+  jobCardId: number | null;
+  batchNumber: string;
+  quantity: number;
+  supplierCertificateId: number | null;
+  createdAt: string;
+  stockItem?: StockItem;
+  supplierCertificate?: SupplierCertificate | null;
+}
+
+export interface DataBookStatus {
+  exists: boolean;
+  isStale: boolean;
+  certificateCount: number;
+  generatedAt: string | null;
+  dataBookId: number | null;
+}
+
 export interface DeliveryNote {
   id: number;
   deliveryNumber: string;
@@ -3293,6 +3339,116 @@ class StockControlApiClient {
       method: "PATCH",
       body: JSON.stringify({ hideTooltips }),
     });
+  }
+
+  async uploadCertificate(
+    file: File,
+    data: {
+      supplierId: number;
+      stockItemId?: number | null;
+      jobCardId?: number | null;
+      certificateType: string;
+      batchNumber: string;
+      description?: string | null;
+      expiryDate?: string | null;
+    },
+  ): Promise<SupplierCertificate> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("supplierId", String(data.supplierId));
+    formData.append("certificateType", data.certificateType);
+    formData.append("batchNumber", data.batchNumber);
+    if (data.stockItemId) formData.append("stockItemId", String(data.stockItemId));
+    if (data.jobCardId) formData.append("jobCardId", String(data.jobCardId));
+    if (data.description) formData.append("description", data.description);
+    if (data.expiryDate) formData.append("expiryDate", data.expiryDate);
+
+    const url = `${this.baseURL}/stock-control/certificates`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.accessToken}` },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "Upload failed");
+      throw new Error(errorText);
+    }
+
+    return response.json();
+  }
+
+  async certificates(filters?: {
+    supplierId?: number;
+    stockItemId?: number;
+    jobCardId?: number;
+    batchNumber?: string;
+    certificateType?: string;
+  }): Promise<SupplierCertificate[]> {
+    const params = new URLSearchParams();
+    if (filters?.supplierId) params.set("supplierId", String(filters.supplierId));
+    if (filters?.stockItemId) params.set("stockItemId", String(filters.stockItemId));
+    if (filters?.jobCardId) params.set("jobCardId", String(filters.jobCardId));
+    if (filters?.batchNumber) params.set("batchNumber", filters.batchNumber);
+    if (filters?.certificateType) params.set("certificateType", filters.certificateType);
+
+    const qs = params.toString();
+    return this.request(`/stock-control/certificates${qs ? `?${qs}` : ""}`);
+  }
+
+  async certificateById(id: number): Promise<SupplierCertificate> {
+    return this.request(`/stock-control/certificates/${id}`);
+  }
+
+  async deleteCertificate(id: number): Promise<void> {
+    return this.request(`/stock-control/certificates/${id}`, { method: "DELETE" });
+  }
+
+  async certificatesByBatchNumber(batchNumber: string): Promise<SupplierCertificate[]> {
+    return this.request(`/stock-control/certificates/batch/${encodeURIComponent(batchNumber)}`);
+  }
+
+  async certificatesForJobCard(jobCardId: number): Promise<SupplierCertificate[]> {
+    return this.request(`/stock-control/certificates/job-card/${jobCardId}`);
+  }
+
+  async batchRecordsForJobCard(jobCardId: number): Promise<IssuanceBatchRecord[]> {
+    return this.request(`/stock-control/certificates/job-card/${jobCardId}/batch-records`);
+  }
+
+  async dataBookStatus(jobCardId: number): Promise<DataBookStatus> {
+    return this.request(`/stock-control/certificates/job-card/${jobCardId}/data-book/status`);
+  }
+
+  async compileDataBook(jobCardId: number): Promise<{ id: number; certificateCount: number }> {
+    return this.request(`/stock-control/certificates/job-card/${jobCardId}/data-book`, {
+      method: "POST",
+    });
+  }
+
+  async downloadDataBook(jobCardId: number): Promise<void> {
+    const url = `${this.baseURL}/stock-control/certificates/job-card/${jobCardId}/data-book`;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${this.accessToken}` },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to download data book");
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = `DataBook-JC${jobCardId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  }
+
+  async recentBatches(stockItemId: number): Promise<string[]> {
+    return this.request(`/stock-control/certificates/recent-batches/${stockItemId}`);
   }
 }
 

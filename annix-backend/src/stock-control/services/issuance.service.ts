@@ -2,12 +2,14 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from "@nes
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, MoreThanOrEqual, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { SupplierCertificate } from "../entities/supplier-certificate.entity";
 
 interface UserContext {
   id: number;
@@ -28,11 +30,13 @@ export interface CreateIssuanceDto {
   jobCardId?: number | null;
   quantity: number;
   notes?: string | null;
+  batchNumber?: string | null;
 }
 
 export interface IssuanceItemDto {
   stockItemId: number;
   quantity: number;
+  batchNumber?: string | null;
 }
 
 export interface BatchIssuanceDto {
@@ -74,6 +78,10 @@ export class IssuanceService {
     private readonly movementRepo: Repository<StockMovement>,
     @InjectRepository(StockAllocation)
     private readonly allocationRepo: Repository<StockAllocation>,
+    @InjectRepository(IssuanceBatchRecord)
+    private readonly batchRecordRepo: Repository<IssuanceBatchRecord>,
+    @InjectRepository(SupplierCertificate)
+    private readonly certRepo: Repository<SupplierCertificate>,
   ) {}
 
   async parseAndValidateQr(companyId: number, rawQr: string): Promise<ScanResult> {
@@ -328,6 +336,17 @@ export class IssuanceService {
       this.logger.log(`Stock allocation auto-created for job card ${jobCard.jobNumber}`);
     }
 
+    if (dto.batchNumber) {
+      await this.createBatchRecord(
+        companyId,
+        savedIssuance.id,
+        dto.stockItemId,
+        dto.jobCardId ?? null,
+        dto.batchNumber,
+        dto.quantity,
+      );
+    }
+
     this.logger.log(
       `Stock issuance created: ${dto.quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
     );
@@ -454,6 +473,17 @@ export class IssuanceService {
           pendingApproval: false,
         });
         await this.allocationRepo.save(allocation);
+      }
+
+      if (item.batchNumber) {
+        await this.createBatchRecord(
+          companyId,
+          savedIssuance.id,
+          item.stockItemId,
+          dto.jobCardId ?? null,
+          item.batchNumber,
+          item.quantity,
+        );
       }
 
       const fullIssuance = await this.issuanceRepo.findOne({
@@ -609,5 +639,36 @@ export class IssuanceService {
       order: { issuedAt: "DESC" },
       take: limit,
     });
+  }
+
+  private async createBatchRecord(
+    companyId: number,
+    issuanceId: number,
+    stockItemId: number,
+    jobCardId: number | null,
+    batchNumber: string,
+    quantity: number,
+  ): Promise<void> {
+    const trimmedBatch = batchNumber.trim();
+
+    const matchingCert = await this.certRepo.findOne({
+      where: { companyId, batchNumber: trimmedBatch },
+    });
+
+    const batchRecord = this.batchRecordRepo.create({
+      companyId,
+      stockIssuanceId: issuanceId,
+      stockItemId,
+      jobCardId,
+      batchNumber: trimmedBatch,
+      quantity,
+      supplierCertificateId: matchingCert?.id ?? null,
+    });
+
+    await this.batchRecordRepo.save(batchRecord);
+
+    this.logger.log(
+      `Batch record created: batch=${trimmedBatch} issuance=${issuanceId} cert=${matchingCert?.id ?? "none"}`,
+    );
   }
 }

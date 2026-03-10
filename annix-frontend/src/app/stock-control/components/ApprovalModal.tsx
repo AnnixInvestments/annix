@@ -1,7 +1,8 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { SignaturePad } from "./SignaturePad";
 
 interface ApprovalModalProps {
@@ -9,17 +10,35 @@ interface ApprovalModalProps {
   onClose: () => void;
   onApprove: (signatureDataUrl?: string, comments?: string) => Promise<void>;
   onReject: (reason: string) => Promise<void>;
-  existingSignature?: string | null;
   jobNumber: string;
   stepName: string;
 }
 
 export function ApprovalModal(props: ApprovalModalProps) {
-  const { isOpen, onClose, onApprove, onReject, existingSignature, jobNumber, stepName } = props;
+  const { isOpen, onClose, onApprove, onReject, jobNumber, stepName } = props;
   const [mode, setMode] = useState<"choice" | "approve" | "reject">("choice");
   const [comments, setComments] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savedSignature, setSavedSignature] = useState<string | null>(null);
+  const [isLoadingSignature, setIsLoadingSignature] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setIsLoadingSignature(true);
+    stockControlApiClient
+      .mySignature()
+      .then((result) => {
+        setSavedSignature(result.signatureUrl);
+      })
+      .catch(() => {
+        setSavedSignature(null);
+      })
+      .finally(() => {
+        setIsLoadingSignature(false);
+      });
+  }, [isOpen]);
 
   const handleApprove = useCallback(
     async (signatureDataUrl?: string) => {
@@ -102,7 +121,9 @@ export function ApprovalModal(props: ApprovalModalProps) {
             {mode === "approve" && (
               <div className="space-y-4">
                 <p className="text-gray-600">
-                  Please sign below to approve this step. You can also add optional comments.
+                  {savedSignature
+                    ? "Your saved signature is shown below. You can use it or draw a new one."
+                    : "Please sign below to approve this step. Your signature will be saved for future approvals."}
                 </p>
 
                 <div>
@@ -120,11 +141,15 @@ export function ApprovalModal(props: ApprovalModalProps) {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Signature</label>
-                  <SignaturePad
-                    onSave={handleApprove}
-                    onCancel={() => setMode("choice")}
-                    existingSignature={existingSignature}
-                  />
+                  {isLoadingSignature ? (
+                    <div className="text-center text-gray-500 py-8">Loading signature...</div>
+                  ) : (
+                    <SignaturePad
+                      onSave={handleApprove}
+                      onCancel={() => setMode("choice")}
+                      existingSignature={savedSignature}
+                    />
+                  )}
                 </div>
 
                 {isSubmitting && (

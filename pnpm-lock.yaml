@@ -131,6 +131,9 @@ importers:
       passport-jwt:
         specifier: ^4.0.1
         version: 4.0.1
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
       pdf-merger-js:
         specifier: ^5.1.2
         version: 5.1.2

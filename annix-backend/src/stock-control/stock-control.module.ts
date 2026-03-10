@@ -12,6 +12,7 @@ import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
 import { StockControlAuthController } from "./controllers/auth.controller";
+import { CertificateController } from "./controllers/certificate.controller";
 import { CpoController } from "./controllers/cpo.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
@@ -43,9 +44,11 @@ import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
 import { DispatchScan } from "./entities/dispatch-scan.entity";
 import { GlossaryTerm } from "./entities/glossary-term.entity";
 import { InvoiceClarification } from "./entities/invoice-clarification.entity";
+import { IssuanceBatchRecord } from "./entities/issuance-batch-record.entity";
 import { JobCard } from "./entities/job-card.entity";
 import { JobCardApproval } from "./entities/job-card-approval.entity";
 import { JobCardAttachment } from "./entities/job-card-attachment.entity";
+import { JobCardDataBook } from "./entities/job-card-data-book.entity";
 import { JobCardDocument } from "./entities/job-card-document.entity";
 import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity";
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
@@ -68,6 +71,7 @@ import { StockIssuance } from "./entities/stock-issuance.entity";
 import { StockItem } from "./entities/stock-item.entity";
 import { StockMovement } from "./entities/stock-movement.entity";
 import { StockPriceHistory } from "./entities/stock-price-history.entity";
+import { SupplierCertificate } from "./entities/supplier-certificate.entity";
 import { SupplierInvoice } from "./entities/supplier-invoice.entity";
 import { SupplierInvoiceItem } from "./entities/supplier-invoice-item.entity";
 import { UserLocationAssignment } from "./entities/user-location-assignment.entity";
@@ -78,6 +82,7 @@ import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { StockControlAuthService } from "./services/auth.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
+import { CertificateService } from "./services/certificate.service";
 import { CoatingAnalysisService } from "./services/coating-analysis.service";
 import { CompanyEmailService } from "./services/company-email.service";
 import { CpoService } from "./services/cpo.service";
@@ -159,6 +164,9 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       GlossaryTerm,
       WorkflowNotificationRecipient,
       UserLocationAssignment,
+      SupplierCertificate,
+      IssuanceBatchRecord,
+      JobCardDataBook,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -205,6 +213,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     SupplierController,
     CpoController,
     GlossaryController,
+    CertificateController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -247,6 +256,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     SearchService,
     CpoService,
     GlossaryService,
+    CertificateService,
   ],
 })
 export class StockControlModule {}

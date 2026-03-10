@@ -1,0 +1,465 @@
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { now } from "../../lib/datetime";
+import {
+  type IStorageService,
+  STORAGE_SERVICE,
+  StorageArea,
+} from "../../storage/storage.interface";
+import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
+import { JobCardDataBook } from "../entities/job-card-data-book.entity";
+import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
+import { StockItem } from "../entities/stock-item.entity";
+import { SupplierCertificate } from "../entities/supplier-certificate.entity";
+
+interface UserContext {
+  id: number;
+  companyId: number;
+  name: string;
+}
+
+export interface UploadCertificateDto {
+  supplierId: number;
+  stockItemId?: number | null;
+  jobCardId?: number | null;
+  certificateType: string;
+  batchNumber: string;
+  description?: string | null;
+  expiryDate?: string | null;
+}
+
+export interface CertificateFilters {
+  supplierId?: number;
+  stockItemId?: number;
+  jobCardId?: number;
+  batchNumber?: string;
+  certificateType?: string;
+}
+
+export interface DataBookStatus {
+  exists: boolean;
+  isStale: boolean;
+  certificateCount: number;
+  generatedAt: Date | null;
+  dataBookId: number | null;
+}
+
+@Injectable()
+export class CertificateService {
+  private readonly logger = new Logger(CertificateService.name);
+
+  constructor(
+    @InjectRepository(SupplierCertificate)
+    private readonly certRepo: Repository<SupplierCertificate>,
+    @InjectRepository(IssuanceBatchRecord)
+    private readonly batchRecordRepo: Repository<IssuanceBatchRecord>,
+    @InjectRepository(JobCardDataBook)
+    private readonly dataBookRepo: Repository<JobCardDataBook>,
+    @InjectRepository(StockControlSupplier)
+    private readonly supplierRepo: Repository<StockControlSupplier>,
+    @InjectRepository(StockItem)
+    private readonly stockItemRepo: Repository<StockItem>,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
+  ) {}
+
+  async uploadCertificate(
+    companyId: number,
+    dto: UploadCertificateDto,
+    file: Express.Multer.File,
+    user: UserContext,
+  ): Promise<SupplierCertificate> {
+    const supplier = await this.supplierRepo.findOne({
+      where: { id: dto.supplierId, companyId },
+    });
+
+    if (!supplier) {
+      throw new NotFoundException("Supplier not found");
+    }
+
+    if (!["COA", "COC"].includes(dto.certificateType.toUpperCase())) {
+      throw new BadRequestException("Certificate type must be COA or COC");
+    }
+
+    if (!dto.batchNumber || dto.batchNumber.trim().length === 0) {
+      throw new BadRequestException("Batch number is required");
+    }
+
+    if (dto.stockItemId) {
+      const stockItem = await this.stockItemRepo.findOne({
+        where: { id: dto.stockItemId, companyId },
+      });
+
+      if (!stockItem) {
+        throw new NotFoundException("Stock item not found");
+      }
+    }
+
+    const existing = await this.certRepo.findOne({
+      where: {
+        companyId,
+        supplierId: dto.supplierId,
+        batchNumber: dto.batchNumber.trim(),
+        certificateType: dto.certificateType.toUpperCase(),
+      },
+    });
+
+    if (existing) {
+      throw new BadRequestException(
+        `A ${dto.certificateType.toUpperCase()} already exists for batch ${dto.batchNumber} from this supplier`,
+      );
+    }
+
+    const subPath = `${StorageArea.STOCK_CONTROL}/certificates/${companyId}/${dto.supplierId}/${dto.batchNumber.trim()}`;
+    const storageResult = await this.storageService.upload(file, subPath);
+
+    const certificate = this.certRepo.create({
+      companyId,
+      supplierId: dto.supplierId,
+      stockItemId: dto.stockItemId ?? null,
+      jobCardId: dto.jobCardId ?? null,
+      certificateType: dto.certificateType.toUpperCase(),
+      batchNumber: dto.batchNumber.trim(),
+      filePath: storageResult.path,
+      originalFilename: storageResult.originalFilename,
+      fileSizeBytes: storageResult.size,
+      mimeType: storageResult.mimeType,
+      description: dto.description ?? null,
+      expiryDate: dto.expiryDate ?? null,
+      uploadedById: user.id,
+      uploadedByName: user.name,
+    });
+
+    const saved = await this.certRepo.save(certificate);
+    this.logger.log(
+      `Certificate uploaded: ${dto.certificateType} batch=${dto.batchNumber} supplier=${supplier.name} by ${user.name}`,
+    );
+
+    return this.findById(companyId, saved.id);
+  }
+
+  async findAll(companyId: number, filters?: CertificateFilters): Promise<SupplierCertificate[]> {
+    const qb = this.certRepo
+      .createQueryBuilder("cert")
+      .leftJoinAndSelect("cert.supplier", "supplier")
+      .leftJoinAndSelect("cert.stockItem", "stockItem")
+      .leftJoinAndSelect("cert.jobCard", "jobCard")
+      .where("cert.companyId = :companyId", { companyId })
+      .orderBy("cert.createdAt", "DESC");
+
+    if (filters?.supplierId) {
+      qb.andWhere("cert.supplierId = :supplierId", { supplierId: filters.supplierId });
+    }
+
+    if (filters?.stockItemId) {
+      qb.andWhere("cert.stockItemId = :stockItemId", { stockItemId: filters.stockItemId });
+    }
+
+    if (filters?.jobCardId) {
+      qb.andWhere("cert.jobCardId = :jobCardId", { jobCardId: filters.jobCardId });
+    }
+
+    if (filters?.batchNumber) {
+      qb.andWhere("LOWER(cert.batchNumber) LIKE LOWER(:batchNumber)", {
+        batchNumber: `%${filters.batchNumber}%`,
+      });
+    }
+
+    if (filters?.certificateType) {
+      qb.andWhere("cert.certificateType = :certificateType", {
+        certificateType: filters.certificateType.toUpperCase(),
+      });
+    }
+
+    return qb.getMany();
+  }
+
+  async findById(companyId: number, id: number): Promise<SupplierCertificate> {
+    const cert = await this.certRepo.findOne({
+      where: { id, companyId },
+      relations: ["supplier", "stockItem", "jobCard"],
+    });
+
+    if (!cert) {
+      throw new NotFoundException("Certificate not found");
+    }
+
+    return cert;
+  }
+
+  async presignedUrl(companyId: number, id: number): Promise<string> {
+    const cert = await this.findById(companyId, id);
+    return this.storageService.getPresignedUrl(cert.filePath, 3600);
+  }
+
+  async deleteCertificate(companyId: number, id: number): Promise<void> {
+    const cert = await this.findById(companyId, id);
+
+    await this.storageService.delete(cert.filePath);
+    await this.certRepo.remove(cert);
+
+    this.logger.log(`Certificate deleted: id=${id} batch=${cert.batchNumber}`);
+  }
+
+  async findByBatchNumber(companyId: number, batchNumber: string): Promise<SupplierCertificate[]> {
+    return this.certRepo.find({
+      where: { companyId, batchNumber: batchNumber.trim() },
+      relations: ["supplier", "stockItem"],
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async certificatesForJobCard(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<SupplierCertificate[]> {
+    const directCerts = await this.certRepo.find({
+      where: { companyId, jobCardId },
+      relations: ["supplier", "stockItem"],
+    });
+
+    const batchRecords = await this.batchRecordRepo.find({
+      where: { companyId, jobCardId },
+      relations: [
+        "supplierCertificate",
+        "supplierCertificate.supplier",
+        "supplierCertificate.stockItem",
+      ],
+    });
+
+    const linkedCerts = batchRecords
+      .filter((br) => br.supplierCertificate !== null)
+      .map((br) => br.supplierCertificate as SupplierCertificate);
+
+    const certMap = new Map<number, SupplierCertificate>();
+    [...directCerts, ...linkedCerts].forEach((cert) => {
+      certMap.set(cert.id, cert);
+    });
+
+    return Array.from(certMap.values());
+  }
+
+  async batchRecordsForJobCard(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<IssuanceBatchRecord[]> {
+    return this.batchRecordRepo.find({
+      where: { companyId, jobCardId },
+      relations: ["stockItem", "supplierCertificate", "supplierCertificate.supplier"],
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async dataBookStatus(companyId: number, jobCardId: number): Promise<DataBookStatus> {
+    const dataBook = await this.dataBookRepo.findOne({
+      where: { companyId, jobCardId },
+      order: { generatedAt: "DESC" },
+    });
+
+    const certs = await this.certificatesForJobCard(companyId, jobCardId);
+
+    if (!dataBook) {
+      return {
+        exists: false,
+        isStale: false,
+        certificateCount: certs.length,
+        generatedAt: null,
+        dataBookId: null,
+      };
+    }
+
+    return {
+      exists: true,
+      isStale: dataBook.isStale,
+      certificateCount: certs.length,
+      generatedAt: dataBook.generatedAt,
+      dataBookId: dataBook.id,
+    };
+  }
+
+  async compileDataBook(
+    companyId: number,
+    jobCardId: number,
+    user: UserContext,
+  ): Promise<JobCardDataBook> {
+    const certs = await this.certificatesForJobCard(companyId, jobCardId);
+
+    if (certs.length === 0) {
+      throw new BadRequestException("No certificates linked to this job card");
+    }
+
+    const PDFDocument = (await import("pdfkit")).default;
+    const { default: pdfLib } = await import("pdf-lib");
+
+    const mergedPdf = await pdfLib.PDFDocument.create();
+
+    const coverDoc = new PDFDocument({ size: "A4", margin: 50 });
+    const coverChunks: Buffer[] = [];
+    coverDoc.on("data", (chunk: Buffer) => coverChunks.push(chunk));
+
+    const coverDone = new Promise<Buffer>((resolve) => {
+      coverDoc.on("end", () => resolve(Buffer.concat(coverChunks)));
+    });
+
+    coverDoc.fontSize(24).font("Helvetica-Bold").text("Quality Data Book", { align: "center" });
+    coverDoc.moveDown(2);
+    coverDoc.fontSize(14).font("Helvetica").text(`Job Card: ${jobCardId}`, { align: "center" });
+    coverDoc.moveDown(1);
+    coverDoc.fontSize(12).text(`Certificates: ${certs.length}`, { align: "center" });
+    coverDoc.moveDown(1);
+    coverDoc
+      .fontSize(10)
+      .text(`Generated: ${now().toFormat("dd MMM yyyy HH:mm")}`, { align: "center" });
+    coverDoc.moveDown(1);
+    coverDoc.text(`Compiled by: ${user.name}`, { align: "center" });
+
+    coverDoc.moveDown(2);
+    coverDoc.fontSize(11).font("Helvetica-Bold").text("Included Certificates:");
+    coverDoc.moveDown(0.5);
+    coverDoc.fontSize(9).font("Helvetica");
+
+    certs.forEach((cert, idx) => {
+      const supplierName = cert.supplier?.name ?? "Unknown Supplier";
+      coverDoc.text(
+        `${idx + 1}. ${cert.certificateType} - Batch: ${cert.batchNumber} - ${supplierName} - ${cert.originalFilename}`,
+      );
+    });
+
+    coverDoc.end();
+    const coverBuffer = await coverDone;
+
+    const coverPdf = await pdfLib.PDFDocument.load(coverBuffer);
+    const coverPages = await mergedPdf.copyPages(coverPdf, coverPdf.getPageIndices());
+    coverPages.forEach((page) => mergedPdf.addPage(page));
+
+    for (const cert of certs) {
+      try {
+        const certBuffer = await this.storageService.download(cert.filePath);
+
+        if (cert.mimeType === "application/pdf") {
+          const certPdf = await pdfLib.PDFDocument.load(certBuffer);
+          const certPages = await mergedPdf.copyPages(certPdf, certPdf.getPageIndices());
+          certPages.forEach((page) => mergedPdf.addPage(page));
+        } else {
+          const imagePage = mergedPdf.addPage();
+          let image: Awaited<ReturnType<typeof mergedPdf.embedJpg>>;
+
+          if (cert.mimeType === "image/png") {
+            image = await mergedPdf.embedPng(certBuffer);
+          } else {
+            image = await mergedPdf.embedJpg(certBuffer);
+          }
+
+          const { width, height } = imagePage.getSize();
+          const imgDims = image.scaleToFit(width - 100, height - 100);
+          imagePage.drawImage(image, {
+            x: (width - imgDims.width) / 2,
+            y: (height - imgDims.height) / 2,
+            width: imgDims.width,
+            height: imgDims.height,
+          });
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Failed to include certificate ${cert.id} (${cert.originalFilename}) in data book: ${err}`,
+        );
+      }
+    }
+
+    const mergedBuffer = Buffer.from(await mergedPdf.save());
+
+    const filename = `DataBook-JC${jobCardId}-${now().toFormat("yyyyMMdd-HHmmss")}.pdf`;
+    const subPath = `${StorageArea.STOCK_CONTROL}/data-books/${companyId}/${jobCardId}`;
+
+    const multerFile = {
+      buffer: mergedBuffer,
+      originalname: filename,
+      mimetype: "application/pdf",
+      size: mergedBuffer.length,
+      fieldname: "file",
+      encoding: "7bit",
+      stream: null as any,
+      destination: "",
+      filename,
+      path: "",
+    } as Express.Multer.File;
+
+    const storageResult = await this.storageService.upload(multerFile, subPath);
+
+    const existing = await this.dataBookRepo.findOne({
+      where: { companyId, jobCardId },
+      order: { generatedAt: "DESC" },
+    });
+
+    if (existing) {
+      try {
+        await this.storageService.delete(existing.filePath);
+      } catch (err) {
+        this.logger.warn(`Failed to delete old data book: ${err}`);
+      }
+      await this.dataBookRepo.remove(existing);
+    }
+
+    const dataBook = this.dataBookRepo.create({
+      companyId,
+      jobCardId,
+      filePath: storageResult.path,
+      originalFilename: filename,
+      fileSizeBytes: mergedBuffer.length,
+      generatedAt: now().toJSDate(),
+      generatedByName: user.name,
+      certificateCount: certs.length,
+      isStale: false,
+    });
+
+    const saved = await this.dataBookRepo.save(dataBook);
+    this.logger.log(
+      `Data book compiled for job card ${jobCardId}: ${certs.length} certificates, ${mergedBuffer.length} bytes`,
+    );
+
+    return saved;
+  }
+
+  async downloadDataBook(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    const dataBook = await this.dataBookRepo.findOne({
+      where: { companyId, jobCardId },
+      order: { generatedAt: "DESC" },
+    });
+
+    if (!dataBook) {
+      throw new NotFoundException("No data book has been compiled for this job card");
+    }
+
+    const buffer = await this.storageService.download(dataBook.filePath);
+    return { buffer, filename: dataBook.originalFilename };
+  }
+
+  async markDataBookStale(companyId: number, jobCardId: number): Promise<void> {
+    const dataBook = await this.dataBookRepo.findOne({
+      where: { companyId, jobCardId },
+      order: { generatedAt: "DESC" },
+    });
+
+    if (dataBook && !dataBook.isStale) {
+      dataBook.isStale = true;
+      await this.dataBookRepo.save(dataBook);
+    }
+  }
+
+  async recentBatches(companyId: number, stockItemId: number, limit = 10): Promise<string[]> {
+    const records = await this.batchRecordRepo
+      .createQueryBuilder("br")
+      .select("DISTINCT br.batch_number", "batchNumber")
+      .where("br.company_id = :companyId", { companyId })
+      .andWhere("br.stock_item_id = :stockItemId", { stockItemId })
+      .orderBy("br.batch_number", "ASC")
+      .limit(limit)
+      .getRawMany<{ batchNumber: string }>();
+
+    return records.map((r) => r.batchNumber);
+  }
+}

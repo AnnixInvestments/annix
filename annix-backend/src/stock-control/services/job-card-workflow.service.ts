@@ -134,7 +134,8 @@ export class JobCardWorkflowService {
       );
       signatureUrl = sig.signatureUrl;
     } else {
-      signatureUrl = await this.signatureService.signatureUrl(user.id);
+      const existing = await this.signatureService.findByUser(user.id);
+      signatureUrl = existing?.signatureUrl ?? null;
     }
 
     await this.createApprovalRecord(

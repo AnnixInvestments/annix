@@ -15,8 +15,8 @@ export class SignatureController {
   @Get()
   @ApiOperation({ summary: "Current user signature" })
   async mySignature(@Req() req: any) {
-    const signature = await this.signatureService.findByUser(req.user.id);
-    return signature ? { signatureUrl: signature.signatureUrl } : { signatureUrl: null };
+    const signatureUrl = await this.signatureService.signatureUrl(req.user.id);
+    return { signatureUrl };
   }
 
   @Post()

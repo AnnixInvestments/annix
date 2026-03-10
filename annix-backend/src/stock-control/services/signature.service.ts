@@ -51,14 +51,14 @@ export class SignatureService {
     const existing = await this.findByUser(userId);
 
     if (existing) {
-      existing.signatureUrl = result.url;
+      existing.signatureUrl = result.path;
       return this.signatureRepo.save(existing);
     }
 
     const signature = this.signatureRepo.create({
       companyId,
       userId,
-      signatureUrl: result.url,
+      signatureUrl: result.path,
     });
 
     return this.signatureRepo.save(signature);
@@ -66,7 +66,23 @@ export class SignatureService {
 
   async signatureUrl(userId: number): Promise<string | null> {
     const signature = await this.findByUser(userId);
-    return signature?.signatureUrl ?? null;
+    if (!signature) return null;
+    return this.presignedUrl(signature.signatureUrl);
+  }
+
+  async presignedUrl(storedUrl: string): Promise<string> {
+    const isPresigned = storedUrl.includes("X-Amz-Signature") || storedUrl.startsWith("http");
+    const path = isPresigned ? this.extractS3Key(storedUrl) : storedUrl;
+    return this.storageService.getPresignedUrl(path);
+  }
+
+  private extractS3Key(url: string): string {
+    try {
+      const parsed = new URL(url);
+      return decodeURIComponent(parsed.pathname.replace(/^\/[^/]+\//, ""));
+    } catch {
+      return url;
+    }
   }
 
   async deleteSignature(userId: number): Promise<void> {
