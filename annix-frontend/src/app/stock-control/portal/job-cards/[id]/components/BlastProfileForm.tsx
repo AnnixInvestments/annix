@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { CoatingAnalysis } from "@/app/lib/api/stockControlApi";
+import type { CoatingAnalysis, IssuanceBatchRecord } from "@/app/lib/api/stockControlApi";
 import {
   type QcBlastProfileEntry,
   type QcBlastProfileRecord,
@@ -16,6 +16,7 @@ interface BlastProfileFormProps {
   existing?: QcBlastProfileRecord | null;
   onSaved: () => void;
   coatingAnalysis?: CoatingAnalysis | null;
+  batchRecords?: IssuanceBatchRecord[];
 }
 
 const READING_ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -33,6 +34,18 @@ const blastSpecDefault = (coatingAnalysis: CoatingAnalysis | null | undefined): 
   return spec ? String(spec) : "";
 };
 
+const ABRASIVE_PATTERN = /abrasive|grit|garnet|steel shot|blast media|blasting/i;
+
+const abrasiveBatchRecords = (records: IssuanceBatchRecord[]): IssuanceBatchRecord[] =>
+  records.filter(
+    (r) =>
+      (r.stockItem?.category && ABRASIVE_PATTERN.test(r.stockItem.category)) ||
+      (r.stockItem?.name && ABRASIVE_PATTERN.test(r.stockItem.name)),
+  );
+
+const abrasiveBatchDefault = (records: IssuanceBatchRecord[]): string =>
+  abrasiveBatchRecords(records)[0]?.batchNumber ?? "";
+
 export default function BlastProfileForm({
   isOpen,
   onClose,
@@ -40,11 +53,15 @@ export default function BlastProfileForm({
   existing = null,
   onSaved,
   coatingAnalysis = null,
+  batchRecords = [],
 }: BlastProfileFormProps) {
   const defaultDate = now().toISODate() || "";
 
   const [specMicrons, setSpecMicrons] = useState<string>(
     existing?.specMicrons?.toString() ?? blastSpecDefault(coatingAnalysis),
+  );
+  const [abrasiveBatchNumber, setAbrasiveBatchNumber] = useState<string>(
+    existing?.abrasiveBatchNumber ?? (existing ? "" : abrasiveBatchDefault(batchRecords)),
   );
   const [temperature, setTemperature] = useState<string>(existing?.temperature?.toString() ?? "");
   const [humidity, setHumidity] = useState<string>(existing?.humidity?.toString() ?? "");
@@ -107,6 +124,7 @@ export default function BlastProfileForm({
 
     const payload: Partial<QcBlastProfileRecord> = {
       specMicrons: parseFloat(specMicrons),
+      abrasiveBatchNumber: abrasiveBatchNumber.trim() || null,
       temperature: temperature ? parseFloat(temperature) : null,
       humidity: humidity ? parseFloat(humidity) : null,
       readingDate: readingDate,
@@ -150,6 +168,27 @@ export default function BlastProfileForm({
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               required
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Abrasive Batch Number
+            </label>
+            <input
+              type="text"
+              list="blast-batch-options"
+              value={abrasiveBatchNumber}
+              onChange={(e) => setAbrasiveBatchNumber(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+            {batchRecords.length > 0 && (
+              <datalist id="blast-batch-options">
+                {abrasiveBatchRecords(batchRecords).map((r) => (
+                  <option key={r.id} value={r.batchNumber}>
+                    {r.stockItem?.name ?? r.batchNumber}
+                  </option>
+                ))}
+              </datalist>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Reading Date *</label>

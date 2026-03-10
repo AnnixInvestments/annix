@@ -339,6 +339,9 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                   <span className="text-sm text-gray-500">
                     Avg: {rec.averageMicrons?.toFixed(1) ?? "-"} μm / Spec: {rec.specMicrons} μm
                   </span>
+                  {rec.abrasiveBatchNumber && (
+                    <span className="text-xs text-gray-500">Batch: {rec.abrasiveBatchNumber}</span>
+                  )}
                   {rec.temperature !== null && (
                     <span className="text-xs text-gray-400">{rec.temperature}°C</span>
                   )}
@@ -652,6 +655,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         existing={editingBlast}
         onSaved={handleFormSaved}
         coatingAnalysis={coatingAnalysis}
+        batchRecords={batchRecords}
       />
       <DustDebrisForm
         isOpen={activeForm === "dust-debris"}

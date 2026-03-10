@@ -517,6 +517,7 @@ export interface QcBlastProfileRecord {
   companyId: number;
   jobCardId: number;
   specMicrons: number;
+  abrasiveBatchNumber: string | null;
   readings: QcBlastProfileEntry[];
   averageMicrons: number | null;
   temperature: number | null;

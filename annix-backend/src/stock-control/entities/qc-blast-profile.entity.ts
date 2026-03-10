@@ -37,6 +37,9 @@ export class QcBlastProfile {
   @Column({ name: "spec_microns", type: "numeric", precision: 8, scale: 2 })
   specMicrons: number;
 
+  @Column({ name: "abrasive_batch_number", type: "varchar", length: 255, nullable: true })
+  abrasiveBatchNumber: string | null;
+
   @Column({ name: "readings", type: "jsonb" })
   readings: BlastProfileReadingEntry[];
 
