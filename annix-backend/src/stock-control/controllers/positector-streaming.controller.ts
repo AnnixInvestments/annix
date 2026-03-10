@@ -15,9 +15,9 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import type { Observable } from "rxjs";
+import { DftCoatType } from "../entities/qc-dft-reading.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
-import { DftCoatType } from "../entities/qc-dft-reading.entity";
 import type { StreamingSessionConfig } from "../services/positector-streaming.service";
 import { PositectorStreamingService } from "../services/positector-streaming.service";
 
@@ -53,7 +53,12 @@ export class PositectorStreamingController {
     const config: StreamingSessionConfig = {
       jobCardId: body.jobCardId,
       entityType: body.entityType,
-      coatType: body.coatType === "final" ? DftCoatType.FINAL : body.coatType === "primer" ? DftCoatType.PRIMER : undefined,
+      coatType:
+        body.coatType === "final"
+          ? DftCoatType.FINAL
+          : body.coatType === "primer"
+            ? DftCoatType.PRIMER
+            : undefined,
       paintProduct: body.paintProduct,
       batchNumber: body.batchNumber ?? null,
       specMinMicrons: body.specMinMicrons,

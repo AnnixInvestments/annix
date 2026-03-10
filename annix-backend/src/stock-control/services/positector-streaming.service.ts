@@ -3,10 +3,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { filter, map, Observable, Subject } from "rxjs";
 import { Repository } from "typeorm";
 import { nowISO } from "../../lib/datetime";
-import type { DftReadingEntry } from "../entities/qc-dft-reading.entity";
-import { DftCoatType, QcDftReading } from "../entities/qc-dft-reading.entity";
 import type { BlastProfileReadingEntry } from "../entities/qc-blast-profile.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
+import type { DftReadingEntry } from "../entities/qc-dft-reading.entity";
+import { DftCoatType, QcDftReading } from "../entities/qc-dft-reading.entity";
 import type {
   ShoreHardnessAverages,
   ShoreHardnessReadings,
@@ -141,9 +141,7 @@ export class PositectorStreamingService implements OnModuleDestroy {
   }
 
   activeSessionsForCompany(companyId: number): StreamingSession[] {
-    return Array.from(this.activeSessions.values()).filter(
-      (s) => s.companyId === companyId,
-    );
+    return Array.from(this.activeSessions.values()).filter((s) => s.companyId === companyId);
   }
 
   receiveReading(sessionId: string, reading: StreamingReading): boolean {
@@ -406,8 +404,7 @@ export class PositectorStreamingService implements OnModuleDestroy {
     const avg3 = columnAverage(column3);
     const avg4 = columnAverage(column4);
 
-    const overall =
-      values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+    const overall = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
 
     const shoreReadings: ShoreHardnessReadings = { column1, column2, column3, column4 };
     const averages: ShoreHardnessAverages = {

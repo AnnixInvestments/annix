@@ -174,9 +174,7 @@ export default function PositectorLiveStreamingPage() {
 
   const specLimits = session?.specLimits ?? { min: null, max: null };
   const average =
-    readings.length > 0
-      ? readings.reduce((sum, r) => sum + r.value, 0) / readings.length
-      : null;
+    readings.length > 0 ? readings.reduce((sum, r) => sum + r.value, 0) / readings.length : null;
   const outOfSpecCount = readings.filter(
     (r) => specStatus(r.value, specLimits) === "out-of-spec",
   ).length;
@@ -253,8 +251,7 @@ export default function PositectorLiveStreamingPage() {
                 </div>
                 {average !== null && (
                   <div className="text-sm text-gray-600">
-                    Avg:{" "}
-                    <span className="font-medium text-gray-900">{average.toFixed(1)}</span>
+                    Avg: <span className="font-medium text-gray-900">{average.toFixed(1)}</span>
                   </div>
                 )}
                 {outOfSpecCount > 0 && (
@@ -273,9 +270,7 @@ export default function PositectorLiveStreamingPage() {
                 <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
                   {ENTITY_TYPE_LABELS[session.config.entityType] ?? session.config.entityType}
                 </span>
-                <span className="text-xs text-gray-500">
-                  Job Card #{session.config.jobCardId}
-                </span>
+                <span className="text-xs text-gray-500">Job Card #{session.config.jobCardId}</span>
               </div>
             </div>
           </div>
@@ -328,9 +323,7 @@ export default function PositectorLiveStreamingPage() {
                         <span className="min-w-[80px] font-mono text-sm font-medium text-gray-900">
                           {reading.value.toFixed(1)}
                         </span>
-                        <span className="text-xs text-gray-500">
-                          {reading.units ?? ""}
-                        </span>
+                        <span className="text-xs text-gray-500">{reading.units ?? ""}</span>
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs font-medium ${specStatusColor(status)}`}
                         >
@@ -351,9 +344,7 @@ export default function PositectorLiveStreamingPage() {
             </div>
           </div>
 
-          {readings.length > 0 && (
-            <ReadingSummaryBar readings={readings} specLimits={specLimits} />
-          )}
+          {readings.length > 0 && <ReadingSummaryBar readings={readings} specLimits={specLimits} />}
 
           <div className="flex items-center justify-end gap-3">
             <button
@@ -409,12 +400,8 @@ function ReadingSummaryBar({
   const min = Math.min(...values);
   const max = Math.max(...values);
   const avg = values.reduce((a, b) => a + b, 0) / values.length;
-  const inSpecCount = readings.filter(
-    (r) => specStatus(r.value, specLimits) === "in-spec",
-  ).length;
-  const outCount = readings.filter(
-    (r) => specStatus(r.value, specLimits) === "out-of-spec",
-  ).length;
+  const inSpecCount = readings.filter((r) => specStatus(r.value, specLimits) === "in-spec").length;
+  const outCount = readings.filter((r) => specStatus(r.value, specLimits) === "out-of-spec").length;
 
   return (
     <div className="grid grid-cols-5 gap-4 rounded-lg border border-gray-200 bg-white p-4">
@@ -507,9 +494,7 @@ function StartSessionForm({
     <div className="rounded-lg border border-gray-200 bg-white p-6">
       <h2 className="mb-4 text-lg font-semibold text-gray-900">Start Live Streaming Session</h2>
 
-      {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
-      )}
+      {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-3 gap-4">

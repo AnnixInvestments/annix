@@ -4338,9 +4338,7 @@ class StockControlApiClient {
     return this.request(`/stock-control/positector-streaming/sessions/${sessionId}`);
   }
 
-  async endPositectorStreamingSession(
-    sessionId: string,
-  ): Promise<PositectorStreamingSaveResult> {
+  async endPositectorStreamingSession(sessionId: string): Promise<PositectorStreamingSaveResult> {
     return this.request(`/stock-control/positector-streaming/sessions/${sessionId}/end`, {
       method: "POST",
     });
@@ -4356,14 +4354,11 @@ class StockControlApiClient {
     sessionId: string,
     data: { value: number; units?: string | null },
   ): Promise<{ received: boolean; readingCount: number }> {
-    return this.request(
-      `/stock-control/positector-streaming/sessions/${sessionId}/readings`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      },
-    );
+    return this.request(`/stock-control/positector-streaming/sessions/${sessionId}/readings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
   }
 
   positectorStreamingEventsUrl(sessionId: string): string {
