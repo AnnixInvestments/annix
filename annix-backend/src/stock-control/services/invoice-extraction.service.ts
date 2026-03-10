@@ -5,13 +5,13 @@ import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { fromJSDate, now } from "../../lib/datetime";
 import { ClaudeChatProvider } from "../../nix/ai-providers/claude-chat.provider";
+import { DeliveryNote } from "../entities/delivery-note.entity";
 import {
   ClarificationStatus,
   ClarificationType,
   InvoiceClarification,
   SuggestedMatch,
 } from "../entities/invoice-clarification.entity";
-import { DeliveryNote } from "../entities/delivery-note.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { PriceChangeReason, StockPriceHistory } from "../entities/stock-price-history.entity";
 import {
@@ -297,17 +297,11 @@ export class InvoiceExtractionService {
     let linked = 0;
 
     for (const invoice of unlinked) {
-      const match = this.findDeliveryNoteMatch(
-        invoice,
-        invoice.extractedData || {},
-        candidates,
-      );
+      const match = this.findDeliveryNoteMatch(invoice, invoice.extractedData || {}, candidates);
       if (match) {
         invoice.deliveryNoteId = match.id;
         await this.invoiceRepo.save(invoice);
-        details.push(
-          `Invoice ${invoice.invoiceNumber} → DN ${match.deliveryNumber}`,
-        );
+        details.push(`Invoice ${invoice.invoiceNumber} → DN ${match.deliveryNumber}`);
         linked++;
       }
     }

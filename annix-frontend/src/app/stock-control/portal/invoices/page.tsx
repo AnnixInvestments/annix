@@ -252,11 +252,7 @@ export default function InvoicesPage() {
               className="inline-flex items-center px-4 py-2 border border-amber-500 rounded-md shadow-sm text-sm font-medium text-amber-700 bg-white hover:bg-amber-50 disabled:opacity-50"
             >
               {isAutoLinking ? (
-                <svg
-                  className="w-4 h-4 mr-2 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle
                     className="opacity-25"
                     cx="12"
