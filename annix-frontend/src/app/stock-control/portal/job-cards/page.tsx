@@ -311,7 +311,7 @@ export default function JobCardsPage() {
         </nav>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         {jobCards.length === 0 ? (
           <div className="text-center py-12">
             <svg

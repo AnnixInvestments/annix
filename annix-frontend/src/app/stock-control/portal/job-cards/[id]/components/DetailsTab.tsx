@@ -89,7 +89,7 @@ export function DetailsTab({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         <div className="px-4 py-3 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Job Card Details</h3>
         </div>
@@ -193,7 +193,7 @@ export function DetailsTab({
       </div>
 
       {versions.length > 0 && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white shadow rounded-lg overflow-x-auto">
           <button
             onClick={onToggleVersionHistory}
             className="w-full px-4 py-4 sm:px-6 border-b border-gray-200 flex items-center justify-between hover:bg-gray-50"
@@ -261,7 +261,7 @@ export function DetailsTab({
         </div>
       )}
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Drawing Attachments</h3>
           <div className="flex items-center space-x-3">

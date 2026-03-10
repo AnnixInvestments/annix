@@ -204,7 +204,7 @@ export default function PurchaseOrdersPage() {
         ))}
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         {cpos.length === 0 ? (
           <div className="text-center py-12">
             <svg

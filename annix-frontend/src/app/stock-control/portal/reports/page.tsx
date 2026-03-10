@@ -1072,7 +1072,7 @@ export default function ReportsPage() {
         </nav>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         {!isLoading && !error && hasExportData && (
           <div className="flex justify-end px-6 pt-4">
             <button

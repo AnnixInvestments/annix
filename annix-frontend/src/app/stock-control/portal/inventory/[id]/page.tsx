@@ -261,7 +261,7 @@ export default function InventoryDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="bg-white shadow rounded-lg overflow-x-auto">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg leading-6 font-medium text-gray-900">Item Details</h3>
             </div>
@@ -335,7 +335,7 @@ export default function InventoryDetailPage() {
         </div>
 
         <div>
-          <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
+          <div className="bg-white shadow rounded-lg overflow-x-auto mb-6">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg leading-6 font-medium text-gray-900">Photo</h3>
             </div>
@@ -358,7 +358,7 @@ export default function InventoryDetailPage() {
             </div>
           </div>
 
-          <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="bg-white shadow rounded-lg overflow-x-auto">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg leading-6 font-medium text-gray-900">Quick Stats</h3>
             </div>
@@ -388,7 +388,7 @@ export default function InventoryDetailPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Movement History</h3>
         </div>

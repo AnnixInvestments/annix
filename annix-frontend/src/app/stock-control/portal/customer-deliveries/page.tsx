@@ -95,7 +95,7 @@ export default function CustomerDeliveriesPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         {deliveries.length === 0 ? (
           <div className="text-center py-12">
             <svg

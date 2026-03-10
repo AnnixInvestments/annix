@@ -18,7 +18,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
 
   return (
     <main
-      className="flex-1 overflow-y-auto p-3 sm:p-6 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+      className="flex-1 overflow-y-auto px-4 py-3 sm:p-6 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
       style={
         heroImageUrl
           ? {

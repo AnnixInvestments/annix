@@ -231,7 +231,7 @@ export default function DispatchTab({
         </form>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h3 className="text-lg leading-6 font-medium text-gray-900">Dispatch Progress</h3>
@@ -311,7 +311,7 @@ export default function DispatchTab({
       </div>
 
       {history.length > 0 && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white shadow rounded-lg overflow-x-auto">
           <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
             <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
               <Truck className="w-5 h-5 mr-2 text-gray-400" />

@@ -704,7 +704,7 @@ export default function JobCardDetailPage() {
         jobCardId={jobId}
       />
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         <JobCardTabs tabs={tabDefinitions} activeTab={activeTab} onTabChange={handleTabChange} />
 
         <div className="px-4 sm:px-6">

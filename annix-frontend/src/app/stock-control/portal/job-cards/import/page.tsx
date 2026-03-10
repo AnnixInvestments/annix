@@ -990,7 +990,7 @@ export default function JobCardImportPage() {
       )}
 
       {step === "upload" && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="bg-white shadow rounded-lg overflow-x-auto">
           <div className="p-6">
             <div
               onDrop={handleDrop}
@@ -1561,7 +1561,7 @@ export default function JobCardImportPage() {
 
       {step === "preview" && (
         <div className="space-y-4">
-          <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="bg-white shadow rounded-lg overflow-x-auto">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
               <div>
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -1901,7 +1901,7 @@ export default function JobCardImportPage() {
 
       {step === "result" && result && (
         <div className="space-y-4">
-          <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="bg-white shadow rounded-lg overflow-x-auto">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg leading-6 font-medium text-gray-900">Import Results</h3>
             </div>

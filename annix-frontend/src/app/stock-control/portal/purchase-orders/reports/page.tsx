@@ -137,7 +137,7 @@ export default function CpoReportsPage() {
       ) : (
         <>
           {activeTab === "fulfillment" && (
-            <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="bg-white shadow rounded-lg overflow-x-auto">
               {fulfillment.length === 0 ? (
                 <div className="p-8 text-center text-sm text-gray-500">No CPOs found</div>
               ) : (
@@ -258,7 +258,7 @@ export default function CpoReportsPage() {
                 ))}
               </div>
 
-              <div className="bg-white shadow rounded-lg overflow-hidden">
+              <div className="bg-white shadow rounded-lg overflow-x-auto">
                 {calloffBreakdown.byCpo.length === 0 ? (
                   <div className="p-8 text-center text-sm text-gray-500">
                     No call-off records found
@@ -311,7 +311,7 @@ export default function CpoReportsPage() {
           )}
 
           {activeTab === "overdue" && (
-            <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="bg-white shadow rounded-lg overflow-x-auto">
               {overdueItems.length === 0 ? (
                 <div className="p-8 text-center text-sm text-gray-500">
                   No overdue invoices found

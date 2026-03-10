@@ -338,7 +338,7 @@ export default function RequisitionDetailPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Details</h3>
         </div>
@@ -364,7 +364,7 @@ export default function RequisitionDetailPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Requisition Items</h3>
           <span className="text-sm text-gray-500">{requisition.items.length} item(s)</span>
