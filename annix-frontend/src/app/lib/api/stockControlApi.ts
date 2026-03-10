@@ -822,6 +822,45 @@ export interface PositectorImportResult {
   duplicateWarning: boolean;
 }
 
+export interface PositectorStreamingSession {
+  sessionId: string;
+  deviceId: number;
+  config: {
+    jobCardId: number;
+    entityType: "dft" | "blast_profile" | "shore_hardness";
+    coatType?: string;
+    paintProduct?: string;
+    batchNumber?: string | null;
+    specMinMicrons?: number;
+    specMaxMicrons?: number;
+    specMicrons?: number;
+    rubberSpec?: string;
+    rubberBatchNumber?: string | null;
+    requiredShore?: number;
+  };
+  readingCount: number;
+  readings: PositectorStreamingReading[];
+  specLimits: { min: number | null; max: number | null };
+  startedAt: string;
+  startedByName?: string;
+}
+
+export interface PositectorStreamingReading {
+  value: number;
+  units: string | null;
+  probeType: string | null;
+  serialNumber: string | null;
+  timestamp: string;
+}
+
+export interface PositectorStreamingSaveResult {
+  sessionId: string;
+  entityType: string;
+  recordId: number;
+  readingsImported: number;
+  average: number | null;
+}
+
 export interface DeliveryNote {
   id: number;
   deliveryNumber: string;
@@ -4263,6 +4302,69 @@ class StockControlApiClient {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+  }
+
+  // ── PosiTector Live Streaming ─────────────────────────────────────
+
+  async startPositectorStreamingSession(data: {
+    deviceId: number;
+    jobCardId: number;
+    entityType: "dft" | "blast_profile" | "shore_hardness";
+    coatType?: string;
+    paintProduct?: string;
+    batchNumber?: string | null;
+    specMinMicrons?: number;
+    specMaxMicrons?: number;
+    specMicrons?: number;
+    rubberSpec?: string;
+    rubberBatchNumber?: string | null;
+    requiredShore?: number;
+  }): Promise<PositectorStreamingSession> {
+    return this.request("/stock-control/positector-streaming/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async positectorStreamingSessions(): Promise<PositectorStreamingSession[]> {
+    return this.request("/stock-control/positector-streaming/sessions");
+  }
+
+  async positectorStreamingSession(sessionId: string): Promise<PositectorStreamingSession> {
+    return this.request(`/stock-control/positector-streaming/sessions/${sessionId}`);
+  }
+
+  async endPositectorStreamingSession(
+    sessionId: string,
+  ): Promise<PositectorStreamingSaveResult> {
+    return this.request(`/stock-control/positector-streaming/sessions/${sessionId}/end`, {
+      method: "POST",
+    });
+  }
+
+  async discardPositectorStreamingSession(sessionId: string): Promise<{ discarded: boolean }> {
+    return this.request(`/stock-control/positector-streaming/sessions/${sessionId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async addPositectorStreamingReading(
+    sessionId: string,
+    data: { value: number; units?: string | null },
+  ): Promise<{ received: boolean; readingCount: number }> {
+    return this.request(
+      `/stock-control/positector-streaming/sessions/${sessionId}/readings`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      },
+    );
+  }
+
+  positectorStreamingEventsUrl(sessionId: string): string {
+    return `${this.baseURL}/stock-control/positector-streaming/sessions/${sessionId}/events`;
   }
 
   async itemsReleasesForJobCard(jobCardId: number): Promise<QcItemsReleaseRecord[]> {

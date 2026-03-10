@@ -27,6 +27,7 @@ import { JobCardImportController } from "./controllers/job-card-import.controlle
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
 import { PositectorController } from "./controllers/positector.controller";
+import { PositectorStreamingController } from "./controllers/positector-streaming.controller";
 import { PublicBrandingController } from "./controllers/public-branding.controller";
 import { QcMeasurementController } from "./controllers/qc-measurement.controller";
 import { QrCodeController } from "./controllers/qr-code.controller";
@@ -102,6 +103,7 @@ import { CoatingAnalysisService } from "./services/coating-analysis.service";
 import { CompanyEmailService } from "./services/company-email.service";
 import { CpoService } from "./services/cpo.service";
 import { DashboardService } from "./services/dashboard.service";
+import { DataBookPdfService } from "./services/data-book-pdf.service";
 import { DeliveryService } from "./services/delivery.service";
 import { DispatchService } from "./services/dispatch.service";
 import { DrawingExtractionService } from "./services/drawing-extraction.service";
@@ -123,6 +125,7 @@ import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
 import { PositectorService } from "./services/positector.service";
 import { PositectorImportService } from "./services/positector-import.service";
+import { PositectorStreamingService } from "./services/positector-streaming.service";
 import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
 import { QcMeasurementService } from "./services/qc-measurement.service";
@@ -245,6 +248,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CalibrationCertificateController,
     QcMeasurementController,
     PositectorController,
+    PositectorStreamingController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -290,9 +294,11 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CertificateService,
     CertificateAnalysisService,
     CalibrationCertificateService,
+    DataBookPdfService,
     QcMeasurementService,
     PositectorService,
     PositectorImportService,
+    PositectorStreamingService,
   ],
 })
 export class StockControlModule {}
