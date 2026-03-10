@@ -1708,11 +1708,7 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
     setSuccess(false);
 
     try {
-      await stockControlApiClient.updateWorkflowAssignments(
-        step,
-        newIds,
-        newPrimary ?? undefined,
-      );
+      await stockControlApiClient.updateWorkflowAssignments(step, newIds, newPrimary ?? undefined);
       await loadData();
       setSuccess(true);
     } catch (e) {
@@ -1823,9 +1819,7 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
       </div>
 
       {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
-      {success && (
-        <p className="text-sm text-green-600 mb-3">Updated successfully.</p>
-      )}
+      {success && <p className="text-sm text-green-600 mb-3">Updated successfully.</p>}
 
       {loading ? (
         <div className="text-center py-8 text-gray-500">Loading workflow configuration...</div>
@@ -1900,12 +1894,32 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                             }
                           >
                             {primary ? (
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={3}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+                                />
                               </svg>
                             ) : assigned ? (
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M4.5 12.75l6 6 9-13.5"
+                                />
                               </svg>
                             ) : null}
                           </button>
@@ -1997,9 +2011,7 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                     {editEmails.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {editEmails.map((email) => {
-                          const member = teamMembers.find(
-                            (m) => m.email.toLowerCase() === email,
-                          );
+                          const member = teamMembers.find((m) => m.email.toLowerCase() === email);
                           return (
                             <span
                               key={email}
@@ -2134,9 +2146,7 @@ function UserLocationAssignmentsSection({
       </p>
 
       {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
-      {success && (
-        <p className="text-sm text-green-600 mb-3">Updated successfully.</p>
-      )}
+      {success && <p className="text-sm text-green-600 mb-3">Updated successfully.</p>}
 
       {activeLocations.length === 0 ? (
         <p className="text-sm text-gray-500 italic">
@@ -2173,9 +2183,7 @@ function UserLocationAssignmentsSection({
                       <div className="font-medium text-gray-900 text-sm">{member.name}</div>
                       <div className="text-xs text-gray-400">
                         {ROLE_LABELS[member.role] ?? member.role}
-                        {!hasAny && (
-                          <span className="ml-1 text-amber-500">(all locations)</span>
-                        )}
+                        {!hasAny && <span className="ml-1 text-amber-500">(all locations)</span>}
                       </div>
                     </td>
                     {activeLocations.map((loc) => {
@@ -2198,8 +2206,18 @@ function UserLocationAssignmentsSection({
                             }
                           >
                             {assigned && (
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M4.5 12.75l6 6 9-13.5"
+                                />
                               </svg>
                             )}
                           </button>
