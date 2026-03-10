@@ -7,6 +7,7 @@ type SortField = "name" | "quantity" | "stockLevel" | "updatedAt";
 type SortDirection = "asc" | "desc";
 type GroupByOption = "location" | "category" | "stockLevel" | "none";
 type StockLevelStatus = "critical" | "low" | "healthy";
+type ThumbnailSize = "S" | "M" | "L" | "XL";
 
 interface InventoryCardViewProps {
   items: StockItem[];
@@ -20,6 +21,7 @@ interface InventoryCardViewProps {
   onEdit: (item: StockItem) => void;
   onDelete: (id: number) => void;
   canEditPrices: boolean;
+  thumbnailSize: ThumbnailSize;
 }
 
 const AMBER_THRESHOLD_PCT = 20;
@@ -149,6 +151,20 @@ function groupItems(
     });
 }
 
+function gridClassForSize(size: ThumbnailSize): string {
+  if (size === "S") return "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3";
+  if (size === "L") return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4";
+  if (size === "XL") return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4";
+  return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4";
+}
+
+function thumbnailClasses(size: ThumbnailSize): { image: string; placeholder: string; icon: string } {
+  if (size === "S") return { image: "h-10 w-10 rounded object-cover", placeholder: "h-10 w-10 rounded bg-gray-100 flex items-center justify-center", icon: "h-5 w-5 text-gray-400" };
+  if (size === "L") return { image: "h-24 w-24 rounded-lg object-cover", placeholder: "h-24 w-24 rounded-lg bg-gray-100 flex items-center justify-center", icon: "h-10 w-10 text-gray-400" };
+  if (size === "XL") return { image: "h-40 w-full rounded-t-lg object-cover", placeholder: "h-40 w-full rounded-t-lg bg-gray-100 flex items-center justify-center", icon: "h-12 w-12 text-gray-400" };
+  return { image: "h-16 w-16 rounded-lg object-cover", placeholder: "h-16 w-16 rounded-lg bg-gray-100 flex items-center justify-center", icon: "h-8 w-8 text-gray-400" };
+}
+
 function StockLevelBar(props: { item: StockItem }) {
   const { item } = props;
   const status = stockLevelStatus(item);
@@ -183,10 +199,113 @@ function ItemCard(props: {
   onEdit: (item: StockItem) => void;
   onDelete: (id: number) => void;
   canEditPrices: boolean;
+  thumbnailSize: ThumbnailSize;
 }) {
-  const { item, selected, onToggleSelect, onEdit, onDelete, canEditPrices } = props;
+  const { item, selected, onToggleSelect, onEdit, onDelete, canEditPrices, thumbnailSize } = props;
   const status = stockLevelStatus(item);
   const colors = stockLevelColor(status);
+  const thumb = thumbnailClasses(thumbnailSize);
+
+  const thumbnailElement = item.photoUrl ? (
+    <img src={item.photoUrl} alt={item.name} className={thumb.image} loading="lazy" />
+  ) : (
+    <div className={thumb.placeholder}>
+      <svg className={thumb.icon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+        />
+      </svg>
+    </div>
+  );
+
+  if (thumbnailSize === "S") {
+    return (
+      <div
+        className={`rounded-lg border p-2 transition-shadow hover:shadow-md ${colors.bg} ${selected ? "ring-2 ring-teal-500" : ""}`}
+      >
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(item.id)}
+            className="h-3.5 w-3.5 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+          />
+          <div className="flex-shrink-0">{thumbnailElement}</div>
+          <div className="flex-1 min-w-0 flex items-center gap-1.5">
+            <Link
+              href={`/stock-control/portal/inventory/${item.id}`}
+              className="text-xs font-semibold text-gray-900 hover:text-teal-700 truncate"
+            >
+              {item.name}
+            </Link>
+            <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${colors.dot}`} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (thumbnailSize === "XL") {
+    return (
+      <div
+        className={`rounded-lg border overflow-hidden transition-shadow hover:shadow-md ${colors.bg} ${selected ? "ring-2 ring-teal-500" : ""}`}
+      >
+        <div className="relative">
+          {thumbnailElement}
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(item.id)}
+            className="absolute top-2 left-2 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+          />
+        </div>
+        <div className="p-4">
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/stock-control/portal/inventory/${item.id}`}
+              className="text-sm font-semibold text-gray-900 hover:text-teal-700 truncate"
+            >
+              {item.name}
+            </Link>
+            {item.needsQrPrint && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 flex-shrink-0">
+                NEW
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 font-mono">{item.sku}</p>
+          {item.category && <p className="text-xs text-gray-500 mt-0.5">{item.category}</p>}
+          <StockLevelBar item={item} />
+          {canEditPrices && (
+            <p className="text-xs text-gray-500 mt-1">{formatZAR(item.costPerUnit)} / unit</p>
+          )}
+          <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
+            <Link
+              href={`/stock-control/portal/inventory/${item.id}`}
+              className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+            >
+              View
+            </Link>
+            <button
+              onClick={() => onEdit(item)}
+              className="text-xs text-gray-600 hover:text-gray-800 font-medium"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => onDelete(item.id)}
+              className="text-xs text-red-600 hover:text-red-800 font-medium"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -199,32 +318,7 @@ function ItemCard(props: {
           onChange={() => onToggleSelect(item.id)}
           className="mt-1 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
         />
-        <div className="flex-shrink-0">
-          {item.photoUrl ? (
-            <img
-              src={item.photoUrl}
-              alt={item.name}
-              className="h-16 w-16 rounded-lg object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="h-16 w-16 rounded-lg bg-gray-100 flex items-center justify-center">
-              <svg
-                className="h-8 w-8 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                />
-              </svg>
-            </div>
-          )}
-        </div>
+        <div className="flex-shrink-0">{thumbnailElement}</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <Link
@@ -284,6 +378,7 @@ export function InventoryCardView(props: InventoryCardViewProps) {
     onEdit,
     onDelete,
     canEditPrices,
+    thumbnailSize,
   } = props;
 
   const filteredItems = lowStockOnly
@@ -336,7 +431,7 @@ export function InventoryCardView(props: InventoryCardViewProps) {
               </span>
             </div>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className={gridClassForSize(thumbnailSize)}>
             {group.items.map((item) => (
               <ItemCard
                 key={item.id}
@@ -346,6 +441,7 @@ export function InventoryCardView(props: InventoryCardViewProps) {
                 onEdit={onEdit}
                 onDelete={onDelete}
                 canEditPrices={canEditPrices}
+                thumbnailSize={thumbnailSize}
               />
             ))}
           </div>
@@ -356,4 +452,4 @@ export function InventoryCardView(props: InventoryCardViewProps) {
 }
 
 export { stockLevelStatus, stockLevelColor, stockLevelLabel, AMBER_THRESHOLD_PCT };
-export type { SortField, SortDirection, GroupByOption, StockLevelStatus };
+export type { SortField, SortDirection, GroupByOption, StockLevelStatus, ThumbnailSize };

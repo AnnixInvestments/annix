@@ -162,6 +162,10 @@ export default function IssueStockPage() {
   const [undoingId, setUndoingId] = useState<number | null>(null);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [showLinkStaffModal, setShowLinkStaffModal] = useState(false);
+  const [showBrowseItems, setShowBrowseItems] = useState(false);
+  const [browseSearch, setBrowseSearch] = useState("");
+  const [browseItems, setBrowseItems] = useState<StockItem[]>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
 
   useEffect(() => {
     setQuickIssueMode(localStorage.getItem(QUICK_ISSUE_KEY) === "true");
@@ -190,6 +194,46 @@ export default function IssueStockPage() {
       .then(setRecentIssuances)
       .catch(() => setRecentIssuances([]));
   }, []);
+
+  const fetchBrowseItems = useCallback(async (search: string) => {
+    try {
+      setBrowseLoading(true);
+      const result = await stockControlApiClient.stockItems({
+        search: search || undefined,
+        limit: "20",
+      });
+      setBrowseItems(result.items);
+    } catch (err) {
+      console.error("Failed to fetch browse items:", err);
+      setBrowseItems([]);
+    } finally {
+      setBrowseLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!showBrowseItems) return;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    timeoutId = setTimeout(() => {
+      fetchBrowseItems(browseSearch);
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [browseSearch, showBrowseItems, fetchBrowseItems]);
+
+  const handleBrowseItemSelect = (stockItem: StockItem) => {
+    const alreadyAdded = items.some((i) => i.stockItem.id === stockItem.id);
+    if (alreadyAdded) {
+      setError(`${stockItem.name} is already in your list`);
+      return;
+    }
+    if (stockItem.quantity <= 0) {
+      setError(`${stockItem.name} has no available stock`);
+      return;
+    }
+    setItems([...items, { stockItem, quantity: 1 }]);
+    triggerHaptic();
+    playSuccessSound();
+  };
 
   const currentStepIndex = STEPS.findIndex((s) => s.key === currentStep);
 
@@ -1166,6 +1210,120 @@ export default function IssueStockPage() {
                     )}
                   </button>
                 </div>
+
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-sm text-gray-400 font-medium">OR</span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowBrowseItems(!showBrowseItems);
+                    if (!showBrowseItems) {
+                      setBrowseSearch("");
+                    }
+                  }}
+                  className="w-full px-4 py-3 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-300 rounded-md hover:bg-gray-100 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  {showBrowseItems ? "Hide Browse Panel" : "Browse Items Manually"}
+                </button>
+
+                {showBrowseItems && (
+                  <div className="mt-4 border border-gray-200 rounded-lg p-4">
+                    <input
+                      type="text"
+                      value={browseSearch}
+                      onChange={(e) => setBrowseSearch(e.target.value)}
+                      placeholder="Search items by name or SKU..."
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2 mb-3"
+                    />
+
+                    {browseLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-600" />
+                      </div>
+                    ) : browseItems.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-8">No items found</p>
+                    ) : (
+                      <div className="max-h-80 overflow-y-auto space-y-2">
+                        {browseItems.map((stockItem) => {
+                          const alreadyAdded = items.some((i) => i.stockItem.id === stockItem.id);
+                          const outOfStock = stockItem.quantity <= 0;
+                          return (
+                            <button
+                              key={stockItem.id}
+                              onClick={() => handleBrowseItemSelect(stockItem)}
+                              disabled={alreadyAdded || outOfStock}
+                              className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+                                alreadyAdded
+                                  ? "border-green-200 bg-green-50 cursor-not-allowed opacity-60"
+                                  : outOfStock
+                                    ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                                    : "border-gray-200 hover:bg-teal-50 hover:border-teal-300"
+                              }`}
+                            >
+                              <div className="flex-shrink-0">
+                                {stockItem.photoUrl ? (
+                                  <img
+                                    src={stockItem.photoUrl}
+                                    alt={stockItem.name}
+                                    className="h-10 w-10 rounded-lg object-cover"
+                                  />
+                                ) : (
+                                  <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                    <svg
+                                      className="h-5 w-5 text-blue-600"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                                      />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {stockItem.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  SKU: {stockItem.sku}
+                                </p>
+                              </div>
+                              <div className="flex-shrink-0 text-right">
+                                {alreadyAdded ? (
+                                  <span className="text-xs font-medium text-green-600">Added</span>
+                                ) : outOfStock ? (
+                                  <span className="text-xs font-medium text-red-500">
+                                    Out of stock
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-500">
+                                    {stockItem.quantity} {stockItem.unitOfMeasure}
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between pt-4 border-t">
