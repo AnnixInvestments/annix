@@ -78,6 +78,7 @@ import { SupplierInvoice } from "./entities/supplier-invoice.entity";
 import { SupplierInvoiceItem } from "./entities/supplier-invoice-item.entity";
 import { UserLocationAssignment } from "./entities/user-location-assignment.entity";
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
+import { QcReleaseCertificate } from "./entities/qc-release-certificate.entity";
 import { WorkflowNotificationRecipient } from "./entities/workflow-notification-recipient.entity";
 import { WorkflowStepAssignment } from "./entities/workflow-step-assignment.entity";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
@@ -172,6 +173,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       IssuanceBatchRecord,
       JobCardDataBook,
       CalibrationCertificate,
+      QcReleaseCertificate,
     ]),
     EmailModule,
     JwtModule.registerAsync({
