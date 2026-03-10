@@ -124,6 +124,11 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
         selectedFile,
         analysisResult.data,
       );
+
+      if (form.deliveryNoteId && invoice.id) {
+        await stockControlApiClient.linkInvoiceToDeliveryNote(invoice.id, form.deliveryNoteId);
+      }
+
       showToast(`Invoice ${invoice.invoiceNumber || ""} created successfully`, "success");
       onSuccess();
     } catch (err) {

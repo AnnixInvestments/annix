@@ -58,6 +58,7 @@ export default function InvoiceDetailPage() {
   const [allDeliveryNotes, setAllDeliveryNotes] = useState<DeliveryNote[]>([]);
   const [selectedDeliveryNoteId, setSelectedDeliveryNoteId] = useState<number | null>(null);
   const [isLinking, setIsLinking] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [currentClarificationIndex, setCurrentClarificationIndex] = useState(0);
@@ -124,15 +125,18 @@ export default function InvoiceDetailPage() {
     }
   }, []);
 
-  const handleLinkDeliveryNote = async () => {
-    if (!selectedDeliveryNoteId) return;
+  const handleLinkDeliveryNote = async (deliveryNoteId?: number) => {
+    const idToLink = deliveryNoteId || selectedDeliveryNoteId;
+    if (!idToLink) return;
     try {
       setIsLinking(true);
-      await stockControlApiClient.linkInvoiceToDeliveryNote(invoiceId, selectedDeliveryNoteId);
+      setLinkError(null);
+      setSelectedDeliveryNoteId(idToLink);
+      await stockControlApiClient.linkInvoiceToDeliveryNote(invoiceId, idToLink);
       await fetchInvoice();
       setSelectedDeliveryNoteId(null);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to link delivery note"));
+      setLinkError(err instanceof Error ? err.message : "Failed to link delivery note");
     } finally {
       setIsLinking(false);
     }
@@ -433,7 +437,38 @@ export default function InvoiceDetailPage() {
                 This invoice is not linked to a delivery note. Link it to match stock deliveries.
               </p>
 
-              {suggestedDeliveryNotes.length > 0 && (
+              {linkError && (
+                <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-xs text-red-600">{linkError}</p>
+                </div>
+              )}
+
+              {isLinking && (
+                <div className="mb-3 flex items-center justify-center py-2">
+                  <svg
+                    className="animate-spin h-5 w-5 text-teal-600 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <span className="text-sm text-teal-700">Linking delivery note...</span>
+                </div>
+              )}
+
+              {suggestedDeliveryNotes.length > 0 && !isLinking && (
                 <div className="mb-4">
                   <h4 className="text-xs font-medium text-gray-700 mb-2">Suggested Matches</h4>
                   <div className="space-y-2">
@@ -441,51 +476,63 @@ export default function InvoiceDetailPage() {
                       <button
                         key={dn.id}
                         type="button"
-                        onClick={() => setSelectedDeliveryNoteId(dn.id)}
-                        className={`w-full text-left p-2 rounded border text-xs ${
-                          selectedDeliveryNoteId === dn.id
-                            ? "border-teal-500 bg-teal-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
+                        onClick={() => handleLinkDeliveryNote(dn.id)}
+                        disabled={isLinking}
+                        className="w-full text-left p-2 rounded border text-xs border-gray-200 hover:border-teal-500 hover:bg-teal-50 transition-colors disabled:opacity-50"
                       >
-                        <div className="font-medium">{dn.deliveryNumber}</div>
-                        <div className="text-gray-500">{dn.supplierName}</div>
-                        <div className="text-gray-400 text-[10px]">{dn.matchReason}</div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{dn.deliveryNumber}</div>
+                            <div className="text-gray-500">{dn.supplierName}</div>
+                            <div className="text-gray-400 text-[10px]">{dn.matchReason}</div>
+                          </div>
+                          <svg
+                            className="w-4 h-4 text-teal-600 flex-shrink-0"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                            />
+                          </svg>
+                        </div>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="mb-4">
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  {suggestedDeliveryNotes.length > 0
-                    ? "Or select from all delivery notes:"
-                    : "Select delivery note:"}
-                </label>
-                <select
-                  value={selectedDeliveryNoteId || ""}
-                  onChange={(e) =>
-                    setSelectedDeliveryNoteId(e.target.value ? parseInt(e.target.value, 10) : null)
-                  }
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm"
-                >
-                  <option value="">Select delivery note...</option>
-                  {allDeliveryNotes.map((dn) => (
-                    <option key={dn.id} value={dn.id}>
-                      {dn.deliveryNumber} - {dn.supplierName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                onClick={handleLinkDeliveryNote}
-                disabled={!selectedDeliveryNoteId || isLinking}
-                className="w-full px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isLinking ? "Linking..." : "Link to Delivery Note"}
-              </button>
+              {!isLinking && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    {suggestedDeliveryNotes.length > 0
+                      ? "Or select from all delivery notes:"
+                      : "Select delivery note:"}
+                  </label>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const dnId = parseInt(e.target.value, 10);
+                      if (dnId) {
+                        handleLinkDeliveryNote(dnId);
+                      }
+                    }}
+                    disabled={isLinking}
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm"
+                  >
+                    <option value="">Select delivery note...</option>
+                    {allDeliveryNotes.map((dn) => (
+                      <option key={dn.id} value={dn.id}>
+                        {dn.deliveryNumber} - {dn.supplierName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
 
