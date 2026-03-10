@@ -161,7 +161,12 @@ export class CoatingAnalysisService {
           return hasNoData && code.length > 60;
         })
         .map((li) => (li.itemCode || "").trim());
-      const combinedNotes = [jobCard.notes || "", ...noteLineItems].filter(Boolean).join("\n");
+      const lineItemNotes = lineItems
+        .map((li) => (li.notes || "").trim())
+        .filter((n) => n.length > 0);
+      const combinedNotes = [jobCard.notes || "", ...noteLineItems, ...lineItemNotes]
+        .filter(Boolean)
+        .join("\n");
       analysis.rawNotes = combinedNotes || jobCard.notes;
 
       if (!combinedNotes.trim()) {
