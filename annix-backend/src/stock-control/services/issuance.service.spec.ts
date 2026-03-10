@@ -1,12 +1,14 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { SupplierCertificate } from "../entities/supplier-certificate.entity";
 import { IssuanceService } from "./issuance.service";
 
 describe("IssuanceService", () => {
@@ -43,6 +45,17 @@ describe("IssuanceService", () => {
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
   };
 
+  const mockBatchRecordRepo = {
+    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    find: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockCertRepo = {
+    find: jest.fn().mockResolvedValue([]),
+    findOne: jest.fn(),
+  };
+
   const mockUser = { id: 1, companyId: 1, name: "Test User" };
 
   beforeEach(async () => {
@@ -55,6 +68,8 @@ describe("IssuanceService", () => {
         { provide: getRepositoryToken(JobCard), useValue: mockJobCardRepo },
         { provide: getRepositoryToken(StockMovement), useValue: mockMovementRepo },
         { provide: getRepositoryToken(StockAllocation), useValue: mockAllocationRepo },
+        { provide: getRepositoryToken(IssuanceBatchRecord), useValue: mockBatchRecordRepo },
+        { provide: getRepositoryToken(SupplierCertificate), useValue: mockCertRepo },
       ],
     }).compile();
 
