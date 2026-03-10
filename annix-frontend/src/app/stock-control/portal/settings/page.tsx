@@ -16,7 +16,7 @@ import {
   WorkflowStepAssignment,
 } from "@/app/lib/api/stockControlApi";
 import { syncStatus } from "../../lib/offline/syncManager";
-import { ROLE_LABELS } from "../../lib/roleLabels";
+import { roleLabel } from "../../lib/roleLabels";
 import { AppPermissionsSection } from "./AppPermissionsSection";
 import { SmtpConfigSection } from "./SmtpConfigSection";
 
@@ -1849,7 +1849,7 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                     <td className="py-2.5 pr-4 pl-1 sticky left-0 bg-inherit">
                       <div className="font-medium text-gray-900 text-sm">{user.name}</div>
                       <div className="text-xs text-gray-400">
-                        {ROLE_LABELS[user.role] ?? user.role}
+                        {roleLabel(user.role)}
                       </div>
                     </td>
                     {WORKFLOW_STEPS.map((step) => {
@@ -2176,7 +2176,7 @@ function UserLocationAssignmentsSection({
                     <td className="py-2.5 pr-4 pl-1 sticky left-0 bg-inherit">
                       <div className="font-medium text-gray-900 text-sm">{member.name}</div>
                       <div className="text-xs text-gray-400">
-                        {ROLE_LABELS[member.role] ?? member.role}
+                        {roleLabel(member.role)}
                         {!hasAny && <span className="ml-1 text-amber-500">(all locations)</span>}
                       </div>
                     </td>
