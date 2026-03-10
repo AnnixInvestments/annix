@@ -5,7 +5,7 @@ export class AddQualityManagementTables1804300000000 implements MigrationInterfa
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS supplier_certificates (
         id SERIAL PRIMARY KEY,
-        company_id integer NOT NULL REFERENCES stock_control_company(id) ON DELETE CASCADE,
+        company_id integer NOT NULL REFERENCES stock_control_companies(id) ON DELETE CASCADE,
         supplier_id integer NOT NULL REFERENCES stock_control_supplier(id) ON DELETE CASCADE,
         stock_item_id integer REFERENCES stock_items(id) ON DELETE SET NULL,
         job_card_id integer REFERENCES job_cards(id) ON DELETE SET NULL,
@@ -44,7 +44,7 @@ export class AddQualityManagementTables1804300000000 implements MigrationInterfa
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS issuance_batch_records (
         id SERIAL PRIMARY KEY,
-        company_id integer NOT NULL REFERENCES stock_control_company(id) ON DELETE CASCADE,
+        company_id integer NOT NULL REFERENCES stock_control_companies(id) ON DELETE CASCADE,
         stock_issuance_id integer NOT NULL REFERENCES stock_issuances(id) ON DELETE CASCADE,
         stock_item_id integer NOT NULL REFERENCES stock_items(id) ON DELETE CASCADE,
         job_card_id integer REFERENCES job_cards(id) ON DELETE SET NULL,
@@ -69,7 +69,7 @@ export class AddQualityManagementTables1804300000000 implements MigrationInterfa
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS job_card_data_books (
         id SERIAL PRIMARY KEY,
-        company_id integer NOT NULL REFERENCES stock_control_company(id) ON DELETE CASCADE,
+        company_id integer NOT NULL REFERENCES stock_control_companies(id) ON DELETE CASCADE,
         job_card_id integer NOT NULL REFERENCES job_cards(id) ON DELETE CASCADE,
         file_path varchar(500) NOT NULL,
         original_filename varchar(255) NOT NULL,
