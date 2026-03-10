@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import type { DeliveryNote, StockItem } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -29,6 +30,7 @@ interface DeliveryFormItem {
 }
 
 export default function DeliveriesPage() {
+  const { showToast } = useToast();
   const [deliveries, setDeliveries] = useState<DeliveryNote[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -149,16 +151,23 @@ export default function DeliveriesPage() {
 
   const handleBulkAddToStock = async () => {
     setIsBulkAdding(true);
-    try {
-      const ids = Array.from(selectedIds);
-      await Promise.all(ids.map((id) => stockControlApiClient.linkDeliveryNoteToStock(id)));
-      setSelectedIds(new Set());
-      fetchDeliveries();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to add items to stock"));
-    } finally {
-      setIsBulkAdding(false);
+    const ids = Array.from(selectedIds);
+    const results = await Promise.allSettled(
+      ids.map((id) => stockControlApiClient.linkDeliveryNoteToStock(id)),
+    );
+    const successCount = results.filter((r) => r.status === "fulfilled").length;
+    const failCount = results.filter((r) => r.status === "rejected").length;
+
+    if (successCount > 0) {
+      showToast(`${successCount} delivery note(s) added to stock`, "success");
     }
+    if (failCount > 0) {
+      showToast(`${failCount} delivery note(s) failed to add to stock`, "error");
+    }
+
+    setSelectedIds(new Set());
+    setIsBulkAdding(false);
+    fetchDeliveries();
   };
 
   const handleDelete = async () => {

@@ -111,15 +111,18 @@ export default function ScanDeliveryNotePage() {
           selectedFile,
           result.data,
         );
-        showToast("Invoice created successfully", "success");
-        router.push(`/stock-control/portal/invoices/${invoice.id}`);
+        showToast(`Invoice ${invoice.invoiceNumber || ""} created successfully`, "success");
+        router.push("/stock-control/portal/invoices");
       } else {
         const deliveryNote = await stockControlApiClient.acceptAnalyzedDeliveryNote(
           selectedFile,
           result.data,
         );
-        showToast("Delivery note created successfully", "success");
-        router.push(`/stock-control/portal/deliveries/${deliveryNote.id}`);
+        showToast(
+          `Delivery note ${deliveryNote.deliveryNumber || ""} created successfully`,
+          "success",
+        );
+        router.push("/stock-control/portal/deliveries");
       }
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create record", "error");

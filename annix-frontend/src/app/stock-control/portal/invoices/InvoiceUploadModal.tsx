@@ -124,8 +124,8 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
         selectedFile,
         analysisResult.data,
       );
-      showToast("Invoice created successfully", "success");
-      router.push(`/stock-control/portal/invoices/${invoice.id}`);
+      showToast(`Invoice ${invoice.invoiceNumber || ""} created successfully`, "success");
+      onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create invoice");
     } finally {

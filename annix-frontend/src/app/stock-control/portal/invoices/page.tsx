@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { DeliveryNote, SupplierInvoice } from "@/app/lib/api/stockControlApi";
@@ -29,7 +28,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function InvoicesPage() {
-  const router = useRouter();
   const { showToast } = useToast();
   const [invoices, setInvoices] = useState<SupplierInvoice[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
@@ -42,6 +40,19 @@ export default function InvoicesPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const fetchInvoices = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await stockControlApiClient.supplierInvoices();
+      setInvoices(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load invoices"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -75,29 +86,16 @@ export default function InvoicesPage() {
         showToast("Analyzing document...", "info");
         const result = await stockControlApiClient.analyzeDeliveryNotePhoto(file);
         const invoice = await stockControlApiClient.acceptAnalyzedInvoice(file, result.data);
-        showToast("Invoice created successfully", "success");
-        router.push(`/stock-control/portal/invoices/${invoice.id}`);
+        showToast(`Invoice ${invoice.invoiceNumber || ""} created successfully`, "success");
+        fetchInvoices();
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Failed to analyze document", "error");
       } finally {
         setIsAnalyzing(false);
       }
     },
-    [router, showToast],
+    [showToast, fetchInvoices],
   );
-
-  const fetchInvoices = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.supplierInvoices();
-      setInvoices(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load invoices"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   const fetchDeliveryNotes = useCallback(async () => {
     try {

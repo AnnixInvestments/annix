@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
@@ -19,13 +18,29 @@ function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boole
 }
 
 export default function CustomerDeliveriesPage() {
-  const router = useRouter();
   const { showToast } = useToast();
   const [deliveries, setDeliveries] = useState<DeliveryNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const fetchDeliveries = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await stockControlApiClient.deliveryNotes();
+      const customerDeliveries = (Array.isArray(data) ? data : []).filter((dn) => {
+        const extracted = dn.extractedData as { documentType?: string } | null;
+        return extracted?.documentType === "CUSTOMER_DELIVERY";
+      });
+      setDeliveries(customerDeliveries);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load customer delivery notes"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -62,33 +77,19 @@ export default function CustomerDeliveriesPage() {
           file,
           result.data,
         );
-        showToast("Delivery note created successfully", "success");
-        router.push(`/stock-control/portal/deliveries/${deliveryNote.id}`);
+        showToast(
+          `Delivery note ${deliveryNote.deliveryNumber || ""} created successfully`,
+          "success",
+        );
+        fetchDeliveries();
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Failed to analyze document", "error");
       } finally {
         setIsAnalyzing(false);
       }
     },
-    [router, showToast],
+    [showToast, fetchDeliveries],
   );
-
-  const fetchDeliveries = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.deliveryNotes();
-      const customerDeliveries = (Array.isArray(data) ? data : []).filter((dn) => {
-        const extracted = dn.extractedData as { documentType?: string } | null;
-        return extracted?.documentType === "CUSTOMER_DELIVERY";
-      });
-      setDeliveries(customerDeliveries);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load customer delivery notes"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
     fetchDeliveries();
