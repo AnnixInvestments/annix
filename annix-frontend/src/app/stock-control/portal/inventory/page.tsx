@@ -100,6 +100,7 @@ export default function InventoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState<number | "">("");
   const [currentPage, setCurrentPage] = useState(0);
@@ -154,6 +155,13 @@ export default function InventoryPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const changeViewMode = (mode: ViewMode) => {
     setViewMode(mode);
@@ -266,7 +274,7 @@ export default function InventoryPage() {
 
       if (viewMode === "grouped" || viewMode === "cards") {
         const [grouped, cats, locs] = await Promise.all([
-          stockControlApiClient.stockItemsGrouped(search || undefined, locationFilter || undefined),
+          stockControlApiClient.stockItemsGrouped(debouncedSearch || undefined, locationFilter || undefined),
           stockControlApiClient.categories(),
           stockControlApiClient.locations(),
         ]);
@@ -308,7 +316,7 @@ export default function InventoryPage() {
           page: String(currentPage + 1),
           limit: String(ITEMS_PER_PAGE),
         };
-        if (search) params.search = search;
+        if (debouncedSearch) params.search = debouncedSearch;
         if (categoryFilter) params.category = categoryFilter;
         if (locationFilter) params.locationId = String(locationFilter);
 
@@ -329,7 +337,7 @@ export default function InventoryPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, search, categoryFilter, locationFilter, viewMode]);
+  }, [currentPage, debouncedSearch, categoryFilter, locationFilter, viewMode]);
 
   useEffect(() => {
     fetchItems();
@@ -1211,7 +1219,7 @@ export default function InventoryPage() {
               placeholder="Search items..."
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
-              className="block w-full pl-10 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+              className="block w-full pl-10 rounded-md bg-white border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
             />
           </div>
         </div>

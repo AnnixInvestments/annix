@@ -1200,20 +1200,20 @@ export class JobCardPdfService {
 
     Array.from({ length: totalPages }, (_, i) => i).forEach((i) => {
       doc.switchToPage(i);
-      doc
-        .fontSize(8)
-        .font("Helvetica")
-        .fillColor("#666666")
-        .text(generatedText, 50, pageHeight - 40, {
-          align: "center",
-          width: 495,
-          lineBreak: false,
-        })
-        .text(`Page ${i + 1} of ${totalPages}`, 50, pageHeight - 28, {
-          align: "center",
-          width: 495,
-          lineBreak: false,
-        });
+      doc.y = 0;
+      doc.fontSize(8).font("Helvetica").fillColor("#666666");
+      doc.text(generatedText, 50, pageHeight - 40, {
+        align: "center",
+        width: 495,
+        lineBreak: false,
+      });
+      doc.y = 0;
+      doc.text(`Page ${i + 1} of ${totalPages}`, 50, pageHeight - 28, {
+        align: "center",
+        width: 495,
+        lineBreak: false,
+      });
+      doc.y = 0;
     });
 
     doc.fillColor("black");
