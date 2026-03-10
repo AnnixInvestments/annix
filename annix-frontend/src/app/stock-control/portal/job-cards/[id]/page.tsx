@@ -223,12 +223,15 @@ export default function JobCardDetailPage() {
     }
   };
 
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
   const handlePrintQr = async () => {
     try {
       setIsDownloadingQr(true);
+      setDownloadError(null);
       await stockControlApiClient.downloadJobCardQrPdf(jobId);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to download job card PDF"));
+      setDownloadError(err instanceof Error ? err.message : "Failed to download job card PDF");
     } finally {
       setIsDownloadingQr(false);
     }
@@ -306,9 +309,10 @@ export default function JobCardDetailPage() {
 
   const handlePrintSignedPdf = async () => {
     try {
+      setDownloadError(null);
       await stockControlApiClient.downloadSignedJobCardPdf(jobId);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to download signed PDF"));
+      setDownloadError(err instanceof Error ? err.message : "Failed to download signed PDF");
     }
   };
 
@@ -636,6 +640,25 @@ export default function JobCardDetailPage() {
           )}
         </div>
       </div>
+
+      {downloadError && (
+        <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-md px-4 py-3">
+          <p className="text-sm text-red-700">{downloadError}</p>
+          <button
+            onClick={() => setDownloadError(null)}
+            className="text-red-500 hover:text-red-700 ml-4"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {workflowStatus && currentStatus !== "draft" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
