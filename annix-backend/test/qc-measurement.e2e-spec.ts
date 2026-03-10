@@ -4,7 +4,6 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
 import { StockControlAuthGuard } from "../src/stock-control/guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../src/stock-control/guards/stock-control-role.guard";
-import { QcEnabledGuard } from "../src/stock-control/qc/guards/qc-enabled.guard";
 import { QcMeasurementController } from "../src/stock-control/qc/controllers/qc-measurement.controller";
 import { QcBlastProfile } from "../src/stock-control/qc/entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../src/stock-control/qc/entities/qc-control-plan.entity";
@@ -17,6 +16,7 @@ import {
 import { QcPullTest } from "../src/stock-control/qc/entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "../src/stock-control/qc/entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../src/stock-control/qc/entities/qc-shore-hardness.entity";
+import { QcEnabledGuard } from "../src/stock-control/qc/guards/qc-enabled.guard";
 import { QcMeasurementService } from "../src/stock-control/qc/services/qc-measurement.service";
 import { WORK_ITEM_PROVIDER } from "../src/stock-control/qc/work-item-provider.interface";
 

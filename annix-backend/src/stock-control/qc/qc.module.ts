@@ -13,7 +13,6 @@ import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { CompanyEmailService } from "../services/company-email.service";
 import { JobCardWorkItemProvider } from "../services/job-card-work-item-provider";
 import { WebPushService } from "../services/web-push.service";
-import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
 import { CalibrationCertificateController } from "./controllers/calibration-certificate.controller";
 import { PositectorController } from "./controllers/positector.controller";
 import { PositectorStreamingController } from "./controllers/positector-streaming.controller";
@@ -34,6 +33,7 @@ import { PositectorService } from "./services/positector.service";
 import { PositectorImportService } from "./services/positector-import.service";
 import { PositectorStreamingService } from "./services/positector-streaming.service";
 import { QcMeasurementService } from "./services/qc-measurement.service";
+import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
 
 @Module({
   imports: [
