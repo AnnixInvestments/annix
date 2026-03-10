@@ -5,7 +5,7 @@ import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
 import { DftCoatType, QcDftReading } from "../entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "../entities/qc-dust-debris-test.entity";
-import { QcItemsRelease, ItemReleaseResult } from "../entities/qc-items-release.entity";
+import { ItemReleaseResult, QcItemsRelease } from "../entities/qc-items-release.entity";
 import { QcPullTest } from "../entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";

@@ -86,8 +86,6 @@ export class RubberSageInvoicePostService {
       ? new Date(invoice.invoiceDate).toISOString().split("T")[0]
       : (now().toISODate() ?? "");
 
-    const accessToken = await this.sageConnectionService.validAccessToken(appKey);
-
     if (invoice.invoiceType === TaxInvoiceType.SUPPLIER) {
       const payload: SagePurchaseInvoicePayload = {
         SupplierId: company.sageContactId,
@@ -102,7 +100,8 @@ export class RubberSageInvoicePostService {
       );
 
       const result = await this.sageApiService.savePurchaseInvoice(
-        accessToken,
+        status.sageUsername!,
+        await this.decryptedPassword(appKey),
         status.sageCompanyId,
         payload,
       );
@@ -128,7 +127,8 @@ export class RubberSageInvoicePostService {
       );
 
       const result = await this.sageApiService.saveSalesInvoice(
-        accessToken,
+        status.sageUsername!,
+        await this.decryptedPassword(appKey),
         status.sageCompanyId,
         payload,
       );
@@ -204,5 +204,10 @@ export class RubberSageInvoicePostService {
       sageInvoiceId,
       postedToSageAt: now().toJSDate(),
     } as unknown as RubberTaxInvoice);
+  }
+
+  private async decryptedPassword(appKey: string): Promise<string> {
+    const creds = await this.sageConnectionService.credentials(appKey);
+    return creds.password;
   }
 }

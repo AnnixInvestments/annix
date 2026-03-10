@@ -3050,10 +3050,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiBearerAuth()
   @Get("portal/sage/companies")
   @ApiOperation({ summary: "List Sage companies" })
-  async sageCompanies(
-    @Query("username") username?: string,
-    @Query("password") password?: string,
-  ) {
+  async sageCompanies(@Query("username") username?: string, @Query("password") password?: string) {
     return this.sageConnectionService.sageCompanies("au-rubber", username, password);
   }
 

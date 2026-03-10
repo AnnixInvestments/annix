@@ -1,13 +1,14 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { DftCoatType } from "../src/stock-control/entities/qc-dft-reading.entity";
-import { ItemReleaseResult } from "../src/stock-control/entities/qc-items-release.entity";
 import { JobCard } from "../src/stock-control/entities/job-card.entity";
 import { QcBlastProfile } from "../src/stock-control/entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../src/stock-control/entities/qc-control-plan.entity";
-import { QcDftReading } from "../src/stock-control/entities/qc-dft-reading.entity";
+import { DftCoatType, QcDftReading } from "../src/stock-control/entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "../src/stock-control/entities/qc-dust-debris-test.entity";
-import { QcItemsRelease } from "../src/stock-control/entities/qc-items-release.entity";
+import {
+  ItemReleaseResult,
+  QcItemsRelease,
+} from "../src/stock-control/entities/qc-items-release.entity";
 import { QcPullTest } from "../src/stock-control/entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "../src/stock-control/entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../src/stock-control/entities/qc-shore-hardness.entity";
@@ -87,8 +88,8 @@ describe("Data Book Compilation (E2E smoke test)", () => {
       dueDate: "2026-04-30",
       createdAt: new Date("2026-01-15"),
       lineItems: [
-        { itemCode: "VLV-001", itemDescription: "Gate Valve 6\"", jtNo: "JT-01", quantity: 4 },
-        { itemCode: "VLV-002", itemDescription: "Ball Valve 4\"", jtNo: "JT-02", quantity: 2 },
+        { itemCode: "VLV-001", itemDescription: 'Gate Valve 6"', jtNo: "JT-01", quantity: 4 },
+        { itemCode: "VLV-002", itemDescription: 'Ball Valve 4"', jtNo: "JT-02", quantity: 2 },
       ],
     };
 
@@ -107,7 +108,12 @@ describe("Data Book Compilation (E2E smoke test)", () => {
         rubberSpec: "NR 40 Shore A",
         rubberBatchNumber: "RB-2026-001",
         requiredShore: 40,
-        readings: { column1: [40, 41, 39, 40], column2: [41, 40, 42, 39], column3: [], column4: [] },
+        readings: {
+          column1: [40, 41, 39, 40],
+          column2: [41, 40, 42, 39],
+          column3: [],
+          column4: [],
+        },
         averages: { column1: 40, column2: 40.5, column3: null, column4: null, overall: 40.25 },
         readingDate: "2026-03-01",
         capturedByName: "QC Inspector",
@@ -190,8 +196,22 @@ describe("Data Book Compilation (E2E smoke test)", () => {
         companyId: COMPANY_ID,
         jobCardId: JOB_CARD_ID,
         tests: [
-          { testNumber: 1, quantity: 4, coatingType: "rubber", itemNumber: "VLV-001", result: "pass", testedAt: "2026-03-01 08:00" },
-          { testNumber: 2, quantity: 2, coatingType: "rubber", itemNumber: "VLV-002", result: "pass", testedAt: "2026-03-01 09:00" },
+          {
+            testNumber: 1,
+            quantity: 4,
+            coatingType: "rubber",
+            itemNumber: "VLV-001",
+            result: "pass",
+            testedAt: "2026-03-01 08:00",
+          },
+          {
+            testNumber: 2,
+            quantity: 2,
+            coatingType: "rubber",
+            itemNumber: "VLV-002",
+            result: "pass",
+            testedAt: "2026-03-01 09:00",
+          },
         ],
         readingDate: "2026-03-01",
         capturedByName: "QC Inspector",
@@ -206,13 +226,17 @@ describe("Data Book Compilation (E2E smoke test)", () => {
         id: 1,
         companyId: COMPANY_ID,
         jobCardId: JOB_CARD_ID,
-        itemDescription: "Gate Valve 6\"",
+        itemDescription: 'Gate Valve 6"',
         quantity: 4,
         solutions: [
           { product: "Chemosil 211", batchNumber: "CS-001", result: "pass" },
           { product: "Chemosil 411", batchNumber: "CS-002", result: "pass" },
         ],
-        forceGauge: { make: "Elcometer", certificateNumber: "CAL-2026-001", expiryDate: "2027-06-15" },
+        forceGauge: {
+          make: "Elcometer",
+          certificateNumber: "CAL-2026-001",
+          expiryDate: "2027-06-15",
+        },
         areaReadings: [
           { area: "Inside flange", result: "pass", reading: "4.2 MPa" },
           { area: "Body", result: "pass", reading: "3.8 MPa" },
@@ -329,8 +353,20 @@ describe("Data Book Compilation (E2E smoke test)", () => {
           { cycleNumber: 2, timeIn: "13:00", timeOut: "17:00", pressureBar: 3.5 },
         ],
         paintingChecks: [
-          { coat: "primer", batchNumber: "PB-001", dftMicrons: 65, result: "pass", inspectorName: "QC" },
-          { coat: "final", batchNumber: "PB-002", dftMicrons: 155, result: "pass", inspectorName: "QC" },
+          {
+            coat: "primer",
+            batchNumber: "PB-001",
+            dftMicrons: 65,
+            result: "pass",
+            inspectorName: "QC",
+          },
+          {
+            coat: "final",
+            batchNumber: "PB-002",
+            dftMicrons: 155,
+            result: "pass",
+            inspectorName: "QC",
+          },
         ],
         finalInspection: {
           linedAsPerDrawing: "pass",
@@ -361,7 +397,7 @@ describe("Data Book Compilation (E2E smoke test)", () => {
         items: [
           {
             itemCode: "VLV-001",
-            description: "Gate Valve 6\"",
+            description: 'Gate Valve 6"',
             jtNumber: "JT-01",
             rubberSpec: "NR 40",
             paintingSpec: "Interthane 990",
@@ -370,7 +406,7 @@ describe("Data Book Compilation (E2E smoke test)", () => {
           },
           {
             itemCode: "VLV-002",
-            description: "Ball Valve 4\"",
+            description: 'Ball Valve 4"',
             jtNumber: "JT-02",
             rubberSpec: "NR 40",
             paintingSpec: "Interthane 990",

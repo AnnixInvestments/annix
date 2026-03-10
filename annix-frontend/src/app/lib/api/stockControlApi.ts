@@ -469,7 +469,13 @@ export interface QcShoreHardnessRecord {
   rubberSpec: string;
   rubberBatchNumber: string | null;
   requiredShore: number;
-  readings: { column1: number[]; column2: number[]; column3: number[]; column4: number[]; itemLabels?: string[] };
+  readings: {
+    column1: number[];
+    column2: number[];
+    column3: number[];
+    column4: number[];
+    itemLabels?: string[];
+  };
   averages: {
     column1: number | null;
     column2: number | null;

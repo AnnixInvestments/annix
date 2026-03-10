@@ -3042,29 +3042,43 @@ class AuRubberApiClient {
   async sageConnectionStatus(): Promise<{
     connected: boolean;
     enabled: boolean;
+    sageUsername: string | null;
+    sagePasswordSet: boolean;
     sageCompanyId: number | null;
     sageCompanyName: string | null;
     connectedAt: string | null;
-    tokenExpiresAt: string | null;
-    refreshTokenExpiresAt: string | null;
   }> {
     return this.request("/rubber-lining/portal/sage/status");
   }
 
-  async sageAuthorizeUrl(): Promise<{ url: string }> {
-    return this.request("/rubber-lining/portal/sage/authorize");
-  }
-
-  async selectSageCompany(companyId: number, companyName: string): Promise<{ message: string }> {
-    return this.request("/rubber-lining/portal/sage/select-company", {
-      method: "POST",
-      body: JSON.stringify({ companyId, companyName }),
+  async updateSageConfig(dto: {
+    sageUsername: string | null;
+    sagePassword: string | null;
+    sageCompanyId: number | null;
+    sageCompanyName: string | null;
+  }): Promise<{ message: string }> {
+    return this.request("/rubber-lining/portal/sage/config", {
+      method: "PATCH",
+      body: JSON.stringify(dto),
     });
   }
 
   async disconnectSage(): Promise<{ message: string }> {
     return this.request("/rubber-lining/portal/sage/config", {
       method: "DELETE",
+    });
+  }
+
+  async testSageConnection(
+    username?: string,
+    password?: string,
+  ): Promise<{
+    success: boolean;
+    companies: Array<{ ID: number; Name: string; TaxNumber: string }>;
+  }> {
+    return this.request("/rubber-lining/portal/sage/test", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
     });
   }
 

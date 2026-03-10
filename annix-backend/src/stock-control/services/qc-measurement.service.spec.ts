@@ -23,7 +23,9 @@ function mockRepo() {
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn().mockResolvedValue(null),
     create: jest.fn().mockImplementation((data: any) => ({ ...data })),
-    save: jest.fn().mockImplementation((entity: any) => Promise.resolve({ id: RECORD_ID, ...entity })),
+    save: jest
+      .fn()
+      .mockImplementation((entity: any) => Promise.resolve({ id: RECORD_ID, ...entity })),
     remove: jest.fn().mockResolvedValue(undefined),
   };
 }
@@ -152,9 +154,7 @@ describe("QcMeasurementService", () => {
     it("throws NotFoundException for missing record", async () => {
       shoreHardnessRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.deleteShoreHardness(COMPANY_ID, 999)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.deleteShoreHardness(COMPANY_ID, 999)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -362,9 +362,9 @@ describe("QcMeasurementService", () => {
     it("throws NotFoundException when job card does not exist", async () => {
       jobCardRepo.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.autoPopulateItemsRelease(COMPANY_ID, 999, mockUser),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.autoPopulateItemsRelease(COMPANY_ID, 999, mockUser)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("creates items release with empty items when job card has no line items", async () => {

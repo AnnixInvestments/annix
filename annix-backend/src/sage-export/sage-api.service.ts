@@ -2,8 +2,6 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 const SAGE_BASE_URL = "https://accounting.sageone.co.za/api/2.0.0";
-const SAGE_TOKEN_URL = "https://oauth.accounting.sage.com/token";
-const SAGE_AUTH_URL = "https://www.sageone.com/oauth2/auth/central";
 
 export interface SageCompany {
   ID: number;
@@ -72,103 +70,39 @@ export interface SageSavedInvoiceResponse {
   Total: number;
 }
 
-export interface SageTokenResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  token_type: string;
-}
-
 @Injectable()
 export class SageApiService {
   private readonly logger = new Logger(SageApiService.name);
 
   constructor(private readonly configService: ConfigService) {}
 
-  private clientId(): string {
-    const id = this.configService.get<string>("SAGE_CLIENT_ID") ?? null;
-    if (!id) {
-      throw new BadRequestException("SAGE_CLIENT_ID not configured");
-    }
-    return id;
+  private apiKey(): string | null {
+    return this.configService.get<string>("SAGE_API_KEY") ?? null;
   }
 
-  private clientSecret(): string {
-    const secret = this.configService.get<string>("SAGE_CLIENT_SECRET") ?? null;
-    if (!secret) {
-      throw new BadRequestException("SAGE_CLIENT_SECRET not configured");
-    }
-    return secret;
-  }
-
-  authorizationUrl(redirectUri: string, state: string): string {
-    const params = new URLSearchParams({
-      client_id: this.clientId(),
-      redirect_uri: redirectUri,
-      response_type: "code",
-      scope: "full_access",
-      state,
-    });
-    return `${SAGE_AUTH_URL}?${params.toString()}`;
-  }
-
-  async exchangeCode(code: string, redirectUri: string): Promise<SageTokenResponse> {
-    const body = new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      client_id: this.clientId(),
-      client_secret: this.clientSecret(),
-      redirect_uri: redirectUri,
-    });
-
-    const response = await fetch(SAGE_TOKEN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      this.logger.error(`Sage token exchange failed (${response.status}): ${text}`);
-      throw new BadRequestException(`Sage token exchange failed: ${text}`);
-    }
-
-    return response.json() as Promise<SageTokenResponse>;
-  }
-
-  async refreshToken(refreshToken: string): Promise<SageTokenResponse> {
-    const body = new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-      client_id: this.clientId(),
-      client_secret: this.clientSecret(),
-    });
-
-    const response = await fetch(SAGE_TOKEN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString(),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      this.logger.error(`Sage token refresh failed (${response.status}): ${text}`);
-      throw new BadRequestException(`Sage token refresh failed: ${text}`);
-    }
-
-    return response.json() as Promise<SageTokenResponse>;
+  private authHeader(username: string, password: string): string {
+    return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
   }
 
   private async request<T>(
     path: string,
-    accessToken: string,
+    username: string,
+    password: string,
     options?: { method?: string; body?: unknown },
   ): Promise<T> {
+    const key = this.apiKey();
+    if (!key) {
+      throw new BadRequestException(
+        "SAGE_API_KEY not configured — request an API key from Sage and set it as a Fly.io secret",
+      );
+    }
+
     const method = options?.method ?? "GET";
-    const url = `${SAGE_BASE_URL}/${path}`;
+    const separator = path.includes("?") ? "&" : "?";
+    const url = `${SAGE_BASE_URL}/${path}${separator}apikey=${encodeURIComponent(key)}`;
 
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: this.authHeader(username, password),
       Accept: "application/json",
     };
 
@@ -190,42 +124,78 @@ export class SageApiService {
     return response.json() as Promise<T>;
   }
 
-  async companies(accessToken: string): Promise<SageCompany[]> {
-    return this.request<SageCompany[]>("Company/Get", accessToken);
+  async companies(username: string, password: string): Promise<SageCompany[]> {
+    return this.request<SageCompany[]>("Company/Get", username, password);
   }
 
-  async suppliers(accessToken: string, sageCompanyId: number): Promise<SageSupplier[]> {
-    return this.request<SageSupplier[]>(`Supplier/Get?companyid=${sageCompanyId}`, accessToken);
+  async suppliers(
+    username: string,
+    password: string,
+    sageCompanyId: number,
+  ): Promise<SageSupplier[]> {
+    return this.request<SageSupplier[]>(
+      `Supplier/Get?companyid=${sageCompanyId}`,
+      username,
+      password,
+    );
   }
 
-  async customers(accessToken: string, sageCompanyId: number): Promise<SageCustomer[]> {
-    return this.request<SageCustomer[]>(`Customer/Get?companyid=${sageCompanyId}`, accessToken);
+  async customers(
+    username: string,
+    password: string,
+    sageCompanyId: number,
+  ): Promise<SageCustomer[]> {
+    return this.request<SageCustomer[]>(
+      `Customer/Get?companyid=${sageCompanyId}`,
+      username,
+      password,
+    );
   }
 
-  async taxTypes(accessToken: string, sageCompanyId: number): Promise<SageTaxType[]> {
-    return this.request<SageTaxType[]>(`TaxType/Get?companyid=${sageCompanyId}`, accessToken);
+  async taxTypes(
+    username: string,
+    password: string,
+    sageCompanyId: number,
+  ): Promise<SageTaxType[]> {
+    return this.request<SageTaxType[]>(
+      `TaxType/Get?companyid=${sageCompanyId}`,
+      username,
+      password,
+    );
+  }
+
+  async testConnection(
+    username: string,
+    password: string,
+  ): Promise<{ success: boolean; companies: SageCompany[] }> {
+    const result = await this.companies(username, password);
+    return { success: true, companies: result };
   }
 
   async savePurchaseInvoice(
-    accessToken: string,
+    username: string,
+    password: string,
     sageCompanyId: number,
     payload: SagePurchaseInvoicePayload,
   ): Promise<SageSavedInvoiceResponse> {
     return this.request<SageSavedInvoiceResponse>(
       `SupplierInvoice/Save?companyid=${sageCompanyId}`,
-      accessToken,
+      username,
+      password,
       { method: "POST", body: payload },
     );
   }
 
   async saveSalesInvoice(
-    accessToken: string,
+    username: string,
+    password: string,
     sageCompanyId: number,
     payload: SageSalesInvoicePayload,
   ): Promise<SageSavedInvoiceResponse> {
     return this.request<SageSavedInvoiceResponse>(
       `TaxInvoice/Save?companyid=${sageCompanyId}`,
-      accessToken,
+      username,
+      password,
       { method: "POST", body: payload },
     );
   }
