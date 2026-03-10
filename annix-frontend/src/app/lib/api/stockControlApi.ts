@@ -42,6 +42,7 @@ export interface StockControlUserProfile {
   pipingLossFactorPct: number;
   flatPlateLossFactorPct: number;
   structuralSteelLossFactorPct: number;
+  qcEnabled: boolean;
   linkedStaffId: number | null;
   createdAt: string;
   companyUpdatedAt: string | null;

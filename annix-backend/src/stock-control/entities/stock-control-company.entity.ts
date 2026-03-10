@@ -94,6 +94,9 @@ export class StockControlCompany {
   @Column({ name: "structural_steel_loss_factor_pct", type: "int", default: 30 })
   structuralSteelLossFactorPct: number;
 
+  @Column({ name: "qc_enabled", type: "boolean", default: false })
+  qcEnabled: boolean;
+
   @Column({ name: "sage_username", type: "varchar", length: 255, nullable: true })
   sageUsername: string | null;
 

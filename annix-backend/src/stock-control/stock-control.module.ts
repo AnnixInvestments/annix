@@ -92,6 +92,7 @@ import { UserLocationAssignment } from "./entities/user-location-assignment.enti
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
 import { WorkflowNotificationRecipient } from "./entities/workflow-notification-recipient.entity";
 import { WorkflowStepAssignment } from "./entities/workflow-step-assignment.entity";
+import { QcEnabledGuard } from "./guards/qc-enabled.guard";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { StockControlAuthService } from "./services/auth.service";
@@ -253,6 +254,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
   providers: [
     StockControlAuthGuard,
     StockControlRoleGuard,
+    QcEnabledGuard,
     StockControlAuthService,
     PublicBrandingService,
     BrandingScraperService,

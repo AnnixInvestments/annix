@@ -314,6 +314,7 @@ export class StockControlAuthService {
       pipingLossFactorPct: user.company?.pipingLossFactorPct ?? 45,
       flatPlateLossFactorPct: user.company?.flatPlateLossFactorPct ?? 20,
       structuralSteelLossFactorPct: user.company?.structuralSteelLossFactorPct ?? 30,
+      qcEnabled: user.company?.qcEnabled ?? false,
       linkedStaffId: user.linkedStaffId ?? null,
       createdAt: user.createdAt,
       companyUpdatedAt: user.company?.updatedAt ?? null,

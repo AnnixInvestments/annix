@@ -16,6 +16,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import type { Observable } from "rxjs";
 import { DftCoatType } from "../entities/qc-dft-reading.entity";
+import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import type { StreamingSessionConfig } from "../services/positector-streaming.service";
@@ -29,7 +30,7 @@ export class PositectorStreamingController {
   constructor(private readonly streamingService: PositectorStreamingService) {}
 
   @Post("sessions")
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
   @StockControlRoles("manager", "admin")
   @ApiOperation({ summary: "Start or resume a live streaming session for a device" })
   startSession(
@@ -90,7 +91,7 @@ export class PositectorStreamingController {
   }
 
   @Get("sessions")
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
   @ApiOperation({ summary: "List active streaming sessions for company" })
   activeSessions(@Req() req: any) {
     const sessions = this.streamingService.activeSessionsForCompany(req.user.companyId);
@@ -105,7 +106,7 @@ export class PositectorStreamingController {
   }
 
   @Get("sessions/:sessionId")
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
   @ApiOperation({ summary: "Get streaming session details" })
   sessionDetails(@Param("sessionId") sessionId: string) {
     const session = this.streamingService.findSessionById(sessionId);
@@ -128,7 +129,7 @@ export class PositectorStreamingController {
   }
 
   @Sse("sessions/:sessionId/events")
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
   @ApiOperation({ summary: "Subscribe to live streaming events via SSE" })
   subscribeToSession(
     @Req() req: any,
@@ -145,7 +146,7 @@ export class PositectorStreamingController {
   }
 
   @Post("sessions/:sessionId/end")
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
   @StockControlRoles("manager", "admin")
   @ApiOperation({ summary: "End a streaming session and save readings to QC entity" })
   async endSession(@Param("sessionId") sessionId: string) {
@@ -157,7 +158,7 @@ export class PositectorStreamingController {
   }
 
   @Delete("sessions/:sessionId")
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
   @StockControlRoles("manager", "admin")
   @ApiOperation({ summary: "Discard a streaming session without saving" })
   discardSession(@Param("sessionId") sessionId: string) {
@@ -237,7 +238,7 @@ export class PositectorStreamingController {
   }
 
   @Post("sessions/:sessionId/readings")
-  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
   @ApiOperation({ summary: "Manually add a reading to an active streaming session" })
   addReading(
     @Param("sessionId") sessionId: string,

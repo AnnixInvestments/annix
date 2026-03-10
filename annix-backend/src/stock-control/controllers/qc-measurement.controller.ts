@@ -11,13 +11,14 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { QcMeasurementService } from "../services/qc-measurement.service";
 
 @ApiTags("Stock Control - QC Measurements")
 @Controller("stock-control/job-cards/:jobCardId/qc")
-@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
 export class QcMeasurementController {
   private readonly logger = new Logger(QcMeasurementController.name);
 
