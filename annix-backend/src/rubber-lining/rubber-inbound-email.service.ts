@@ -253,7 +253,12 @@ export class RubberInboundEmailService {
     const certs = classified.filter((c) => !c.isGraph);
     const graphs = classified.filter((c) => c.isGraph);
 
-    const certRecords: Array<{ cocId: number; batchNumbers: string[]; companyId: number }> = [];
+    const certRecords: Array<{
+      cocId: number;
+      batchNumbers: string[];
+      companyId: number;
+      filename: string;
+    }> = [];
 
     for (const cert of certs) {
       try {
@@ -311,6 +316,7 @@ export class RubberInboundEmailService {
           cocId: coc.id,
           batchNumbers: cert.batchNumbers,
           companyId: cert.supplierMapping.company.id,
+          filename: cert.attachment.filename,
         });
         this.logger.log(`Created Supplier CoC ${coc.id} from email attachment`);
 
@@ -326,9 +332,10 @@ export class RubberInboundEmailService {
       try {
         const normalizedGraphBatches = graph.batchNumbers.map((b) => b.replace(/^[Bb]/, ""));
 
-        const matchingCert = certRecords.find((cert) =>
-          normalizedGraphBatches.some((gb) => cert.batchNumbers.includes(gb)),
-        );
+        const matchingCert =
+          certRecords.find((cert) =>
+            normalizedGraphBatches.some((gb) => cert.batchNumbers.includes(gb)),
+          ) || this.matchGraphByCertFilename(graph.attachment.filename, certRecords);
 
         const multerFile: Express.Multer.File = {
           fieldname: "file",
@@ -969,27 +976,56 @@ ${truncatedText}`;
 
     for (const graphIdx of graphPdfs) {
       const graphFile = analyzedFiles[graphIdx];
-      if (graphFile.batchNumbers.length === 0) {
-        continue;
+
+      let matched = false;
+
+      if (graphFile.batchNumbers.length > 0) {
+        for (const dataIdx of dataPdfs) {
+          const dataFile = analyzedFiles[dataIdx];
+          const normalizedGraphBatches = graphFile.batchNumbers.map((b) => b.replace(/^B/i, ""));
+          const normalizedDataBatches = dataFile.batchNumbers.map((b) => b.replace(/^B/i, ""));
+          const hasMatchingBatch = normalizedGraphBatches.some((gbn) =>
+            normalizedDataBatches.includes(gbn),
+          );
+
+          if (hasMatchingBatch) {
+            graphFile.linkedToIndex = dataIdx;
+            graphFile.cocType = dataFile.cocType;
+            graphFile.companyId = dataFile.companyId;
+            graphFile.companyName = dataFile.companyName;
+            matched = true;
+            this.logger.log(
+              `Linked graph ${graphFile.filename} to data PDF ${dataFile.filename} via batch numbers`,
+            );
+            break;
+          }
+        }
       }
 
-      for (const dataIdx of dataPdfs) {
-        const dataFile = analyzedFiles[dataIdx];
-        const normalizedGraphBatches = graphFile.batchNumbers.map((b) => b.replace(/^B/i, ""));
-        const normalizedDataBatches = dataFile.batchNumbers.map((b) => b.replace(/^B/i, ""));
-        const hasMatchingBatch = normalizedGraphBatches.some((gbn) =>
-          normalizedDataBatches.includes(gbn),
-        );
+      if (!matched) {
+        const graphBase = graphFile.filename
+          .replace(/\.pdf$/i, "")
+          .replace(/[-_]?GRAPH$/i, "")
+          .trim()
+          .toLowerCase();
 
-        if (hasMatchingBatch) {
-          graphFile.linkedToIndex = dataIdx;
+        const filenameMatch = dataPdfs.find((dataIdx) => {
+          const dataBase = analyzedFiles[dataIdx].filename
+            .replace(/\.pdf$/i, "")
+            .trim()
+            .toLowerCase();
+          return dataBase === graphBase;
+        });
+
+        if (filenameMatch !== undefined) {
+          const dataFile = analyzedFiles[filenameMatch];
+          graphFile.linkedToIndex = filenameMatch;
           graphFile.cocType = dataFile.cocType;
           graphFile.companyId = dataFile.companyId;
           graphFile.companyName = dataFile.companyName;
           this.logger.log(
-            `Linked graph ${graphFile.filename} to data PDF ${dataFile.filename} via batch numbers`,
+            `Linked graph ${graphFile.filename} to data PDF ${dataFile.filename} via filename similarity`,
           );
-          break;
         }
       }
     }
@@ -1340,6 +1376,15 @@ ${truncatedText}`;
       rangeNumbers.push(`${rangeMatch[1]}-${rangeMatch[2]}`);
     }
 
+    if (rangeNumbers.length === 0) {
+      const noPrefixRangePattern =
+        /(?:batch|lot|no\.?|nos\.?|number)\s*[:.]?\s*(\d{1,4})\s*[-–]\s*(\d{1,4})\b/gi;
+      let noPrefixMatch;
+      while ((noPrefixMatch = noPrefixRangePattern.exec(pdfText)) !== null) {
+        rangeNumbers.push(`${noPrefixMatch[1]}-${noPrefixMatch[2]}`);
+      }
+    }
+
     const singleMatches = pdfText.match(/\b[Bb]?(\d{3,4})\b/g);
     const singleNumbers: string[] = (singleMatches || [])
       .map((m) => m.replace(/^[Bb]/, ""))
@@ -1419,6 +1464,33 @@ ${truncatedText}`;
 
     this.logger.log(`Detected graph PDF: ${filename}, batch numbers: ${batchNumbers.join(", ")}`);
     return { isGraph: true, batchNumbers };
+  }
+
+  private matchGraphByCertFilename(
+    graphFilename: string,
+    certRecords: Array<{ cocId: number; batchNumbers: string[]; companyId: number; filename: string }>,
+  ): { cocId: number; batchNumbers: string[]; companyId: number; filename: string } | undefined {
+    const graphBase = graphFilename
+      .replace(/\.pdf$/i, "")
+      .replace(/[-_]?GRAPH$/i, "")
+      .trim()
+      .toLowerCase();
+
+    const match = certRecords.find((cr) => {
+      const certBase = cr.filename
+        .replace(/\.pdf$/i, "")
+        .trim()
+        .toLowerCase();
+      return certBase === graphBase;
+    });
+
+    if (match) {
+      this.logger.log(
+        `Matched graph "${graphFilename}" to cert "${match.filename}" via filename similarity`,
+      );
+    }
+
+    return match;
   }
 
   private async linkGraphToExistingCoc(
