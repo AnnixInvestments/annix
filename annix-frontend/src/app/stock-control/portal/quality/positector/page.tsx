@@ -6,6 +6,7 @@ import type {
   PositectorBatchSummary,
   PositectorConnectionStatus,
   PositectorDevice,
+  PositectorImportResult,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
@@ -47,6 +48,8 @@ export default function PositectorPage() {
   const [loadingBatches, setLoadingBatches] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<PositectorBatchDetail | null>(null);
   const [loadingBatch, setLoadingBatch] = useState(false);
+  const [showImportWizard, setShowImportWizard] = useState(false);
+  const [lastImportResult, setLastImportResult] = useState<PositectorImportResult | null>(null);
 
   const fetchDevices = useCallback(async () => {
     try {
@@ -356,12 +359,22 @@ export default function PositectorPage() {
                 </span>
               </div>
             </div>
-            <button
-              onClick={() => setSelectedBatch(null)}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Close
-            </button>
+            <div className="flex items-center gap-3">
+              {selectedBatch.suggestedEntityType !== "unknown" && (
+                <button
+                  onClick={() => setShowImportWizard(true)}
+                  className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+                >
+                  Import to Job Card
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedBatch(null)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Close
+              </button>
+            </div>
           </div>
 
           {loadingBatch ? (
@@ -409,6 +422,46 @@ export default function PositectorPage() {
             </div>
           )}
         </div>
+      )}
+
+      {lastImportResult && (
+        <div
+          className={`rounded-md p-4 ${lastImportResult.duplicateWarning ? "bg-amber-50" : "bg-green-50"}`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-800">
+                Imported {lastImportResult.readingsImported} readings as{" "}
+                {ENTITY_TYPE_LABELS[lastImportResult.entityType] ?? lastImportResult.entityType}
+                {lastImportResult.average !== null &&
+                  ` (avg: ${lastImportResult.average.toFixed(1)})`}
+              </p>
+              {lastImportResult.duplicateWarning && (
+                <p className="mt-1 text-xs text-amber-700">
+                  Warning: Readings for this type and date already exist on this job card
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setLastImportResult(null)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showImportWizard && selectedBatch && selectedDevice && (
+        <ImportWizardModal
+          device={selectedDevice}
+          batch={selectedBatch}
+          onClose={() => setShowImportWizard(false)}
+          onImported={(result) => {
+            setShowImportWizard(false);
+            setLastImportResult(result);
+          }}
+        />
       )}
 
       {showAddModal && (
@@ -562,6 +615,313 @@ function AddDeviceModal({
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
               {isSaving ? "Registering..." : "Register Device"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ImportWizardModal({
+  device,
+  batch,
+  onClose,
+  onImported,
+}: {
+  device: PositectorDevice;
+  batch: PositectorBatchDetail;
+  onClose: () => void;
+  onImported: (result: PositectorImportResult) => void;
+}) {
+  const [jobCardId, setJobCardId] = useState("");
+  const [entityType, setEntityType] = useState(batch.suggestedEntityType);
+  const [coatType, setCoatType] = useState(batch.suggestedCoatType ?? "primer");
+  const [paintProduct, setPaintProduct] = useState("");
+  const [batchNumber, setBatchNumber] = useState("");
+  const [specMin, setSpecMin] = useState("");
+  const [specMax, setSpecMax] = useState("");
+  const [specMicrons, setSpecMicrons] = useState("");
+  const [temperature, setTemperature] = useState("");
+  const [humidity, setHumidity] = useState("");
+  const [rubberSpec, setRubberSpec] = useState("");
+  const [rubberBatchNumber, setRubberBatchNumber] = useState("");
+  const [requiredShore, setRequiredShore] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!jobCardId.trim()) {
+      setError("Job Card ID is required");
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      setError(null);
+
+      const result = await stockControlApiClient.importPositectorBatch(
+        device.id,
+        batch.buid,
+        {
+          jobCardId: parseInt(jobCardId, 10),
+          entityType,
+          coatType: entityType === "dft" ? coatType : undefined,
+          paintProduct: entityType === "dft" ? paintProduct || "Unknown" : undefined,
+          batchNumber: entityType === "dft" && batchNumber ? batchNumber : null,
+          specMinMicrons:
+            entityType === "dft" ? parseFloat(specMin) || 0 : undefined,
+          specMaxMicrons:
+            entityType === "dft" ? parseFloat(specMax) || 0 : undefined,
+          specMicrons:
+            entityType === "blast_profile"
+              ? parseFloat(specMicrons) || 0
+              : undefined,
+          temperature:
+            entityType === "blast_profile" && temperature
+              ? parseFloat(temperature)
+              : null,
+          humidity:
+            entityType === "blast_profile" && humidity
+              ? parseFloat(humidity)
+              : null,
+          rubberSpec:
+            entityType === "shore_hardness" ? rubberSpec || "Unknown" : undefined,
+          rubberBatchNumber:
+            entityType === "shore_hardness" && rubberBatchNumber
+              ? rubberBatchNumber
+              : null,
+          requiredShore:
+            entityType === "shore_hardness"
+              ? parseInt(requiredShore, 10) || 0
+              : undefined,
+        },
+      );
+
+      onImported(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">
+          Import Batch to Job Card
+        </h2>
+        <p className="mb-4 text-sm text-gray-500">
+          {batch.readings.length} readings from {batch.header.batchName ?? batch.buid}
+        </p>
+
+        {error && (
+          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleImport} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Job Card ID
+              </label>
+              <input
+                type="number"
+                value={jobCardId}
+                onChange={(e) => setJobCardId(e.target.value)}
+                placeholder="Enter job card ID"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Measurement Type
+              </label>
+              <select
+                value={entityType}
+                onChange={(e) => setEntityType(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="dft">DFT Reading</option>
+                <option value="blast_profile">Blast Profile</option>
+                <option value="shore_hardness">Shore Hardness</option>
+              </select>
+            </div>
+          </div>
+
+          {entityType === "dft" && (
+            <div className="space-y-3 rounded-md bg-gray-50 p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Coat Type
+                  </label>
+                  <select
+                    value={coatType}
+                    onChange={(e) => setCoatType(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  >
+                    <option value="primer">Primer</option>
+                    <option value="final">Final</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Paint Product
+                  </label>
+                  <input
+                    type="text"
+                    value={paintProduct}
+                    onChange={(e) => setPaintProduct(e.target.value)}
+                    placeholder="e.g. Penguard Express"
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Batch No
+                  </label>
+                  <input
+                    type="text"
+                    value={batchNumber}
+                    onChange={(e) => setBatchNumber(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Spec Min (um)
+                  </label>
+                  <input
+                    type="number"
+                    value={specMin}
+                    onChange={(e) => setSpecMin(e.target.value)}
+                    placeholder="e.g. 240"
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Spec Max (um)
+                  </label>
+                  <input
+                    type="number"
+                    value={specMax}
+                    onChange={(e) => setSpecMax(e.target.value)}
+                    placeholder="e.g. 250"
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {entityType === "blast_profile" && (
+            <div className="space-y-3 rounded-md bg-gray-50 p-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Spec (um)
+                  </label>
+                  <input
+                    type="number"
+                    value={specMicrons}
+                    onChange={(e) => setSpecMicrons(e.target.value)}
+                    placeholder="e.g. 75"
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Temp (C)
+                  </label>
+                  <input
+                    type="number"
+                    value={temperature}
+                    onChange={(e) => setTemperature(e.target.value)}
+                    placeholder="Auto if DPM"
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Humidity (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={humidity}
+                    onChange={(e) => setHumidity(e.target.value)}
+                    placeholder="Auto if DPM"
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {entityType === "shore_hardness" && (
+            <div className="space-y-3 rounded-md bg-gray-50 p-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Rubber Spec
+                  </label>
+                  <input
+                    type="text"
+                    value={rubberSpec}
+                    onChange={(e) => setRubberSpec(e.target.value)}
+                    placeholder="e.g. AU 40 SHORE"
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Batch No
+                  </label>
+                  <input
+                    type="text"
+                    value={rubberBatchNumber}
+                    onChange={(e) => setRubberBatchNumber(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Required Shore
+                  </label>
+                  <input
+                    type="number"
+                    value={requiredShore}
+                    onChange={(e) => setRequiredShore(e.target.value)}
+                    placeholder="e.g. 40"
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isImporting}
+              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {isImporting ? "Importing..." : `Import ${batch.readings.length} Readings`}
             </button>
           </div>
         </form>

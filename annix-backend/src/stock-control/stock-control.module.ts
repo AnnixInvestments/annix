@@ -123,6 +123,7 @@ import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
 import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
+import { PositectorImportService } from "./services/positector-import.service";
 import { PositectorService } from "./services/positector.service";
 import { QcMeasurementService } from "./services/qc-measurement.service";
 import { QrCodeService } from "./services/qr-code.service";
@@ -291,6 +292,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CalibrationCertificateService,
     QcMeasurementService,
     PositectorService,
+    PositectorImportService,
   ],
 })
 export class StockControlModule {}

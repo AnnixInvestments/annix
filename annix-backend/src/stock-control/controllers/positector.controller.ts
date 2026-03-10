@@ -17,6 +17,7 @@ import {
   StockControlRoleGuard,
   StockControlRoles,
 } from "../guards/stock-control-role.guard";
+import { PositectorImportService } from "../services/positector-import.service";
 import {
   PositectorService,
   type RegisterDeviceDto,
@@ -29,7 +30,10 @@ import {
 export class PositectorController {
   private readonly logger = new Logger(PositectorController.name);
 
-  constructor(private readonly positectorService: PositectorService) {}
+  constructor(
+    private readonly positectorService: PositectorService,
+    private readonly importService: PositectorImportService,
+  ) {}
 
   @Post()
   @StockControlRoles("manager", "admin")
@@ -105,6 +109,86 @@ export class PositectorController {
     const entityType = this.positectorService.detectQcEntityType(
       batch.header.probeType,
     );
-    return { ...batch, suggestedEntityType: entityType };
+    const suggestedCoatType = this.importService.detectCoatTypeFromBatchName(
+      batch.header.batchName,
+    );
+    return { ...batch, suggestedEntityType: entityType, suggestedCoatType };
+  }
+
+  @Post(":id/batches/:buid/import")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Import a batch from a PosiTector device into a QC entity" })
+  async importBatch(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("buid") buid: string,
+    @Body()
+    body: {
+      jobCardId: number;
+      entityType: string;
+      coatType?: string;
+      paintProduct?: string;
+      batchNumber?: string | null;
+      specMinMicrons?: number;
+      specMaxMicrons?: number;
+      specMicrons?: number;
+      temperature?: number | null;
+      humidity?: number | null;
+      rubberSpec?: string;
+      rubberBatchNumber?: string | null;
+      requiredShore?: number;
+    },
+  ) {
+    const batch = await this.positectorService.fetchBatch(
+      req.user.companyId,
+      id,
+      buid,
+    );
+
+    if (body.entityType === "dft") {
+      return this.importService.importDftReadings(
+        req.user.companyId,
+        batch,
+        {
+          jobCardId: body.jobCardId,
+          coatType: body.coatType === "final" ? "final" as any : "primer" as any,
+          paintProduct: body.paintProduct ?? "Unknown",
+          batchNumber: body.batchNumber ?? null,
+          specMinMicrons: body.specMinMicrons ?? 0,
+          specMaxMicrons: body.specMaxMicrons ?? 0,
+        },
+        req.user,
+      );
+    }
+
+    if (body.entityType === "blast_profile") {
+      return this.importService.importBlastProfile(
+        req.user.companyId,
+        batch,
+        {
+          jobCardId: body.jobCardId,
+          specMicrons: body.specMicrons ?? 0,
+          temperature: body.temperature ?? null,
+          humidity: body.humidity ?? null,
+        },
+        req.user,
+      );
+    }
+
+    if (body.entityType === "shore_hardness") {
+      return this.importService.importShoreHardness(
+        req.user.companyId,
+        batch,
+        {
+          jobCardId: body.jobCardId,
+          rubberSpec: body.rubberSpec ?? "Unknown",
+          rubberBatchNumber: body.rubberBatchNumber ?? null,
+          requiredShore: body.requiredShore ?? 0,
+        },
+        req.user,
+      );
+    }
+
+    return { error: `Unsupported entity type: ${body.entityType}` };
   }
 }
