@@ -15,6 +15,7 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
+import { SageConfigDto, SageConnectionService } from "../../sage-export/sage-connection.service";
 import { ProcessBrandingSelectionDto } from "../dto/process-branding-selection.dto";
 import { SetBrandingDto } from "../dto/set-branding.dto";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
@@ -22,7 +23,6 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { StockControlAuthService } from "../services/auth.service";
 import { BrandingScraperService } from "../services/branding-scraper.service";
-import { SageConfigDto, SageConnectionService } from "../../sage-export/sage-connection.service";
 import { CompanyEmailService, SmtpConfigDto } from "../services/company-email.service";
 import { LookupService } from "../services/lookup.service";
 import { RbacConfigService } from "../services/rbac-config.service";

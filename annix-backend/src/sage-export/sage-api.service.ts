@@ -53,11 +53,7 @@ export class SageApiService {
     return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
   }
 
-  private async request<T>(
-    path: string,
-    username: string,
-    password: string,
-  ): Promise<T> {
+  private async request<T>(path: string, username: string, password: string): Promise<T> {
     const key = this.apiKey();
     if (!key) {
       throw new Error("SAGE_CLIENT_ID not configured");

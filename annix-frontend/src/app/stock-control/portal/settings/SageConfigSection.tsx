@@ -51,7 +51,9 @@ export function SageConfigSection() {
         setCompanies(result.companies);
         setSelectedCompanyId(result.companies[0].ID);
         setStep("company");
-        setSuccess(`Connected successfully. Found ${result.companies.length} Sage ${result.companies.length === 1 ? "company" : "companies"}.`);
+        setSuccess(
+          `Connected successfully. Found ${result.companies.length} Sage ${result.companies.length === 1 ? "company" : "companies"}.`,
+        );
       } else {
         setError("Connection succeeded but no companies found on this Sage account.");
       }
@@ -107,10 +109,9 @@ export function SageConfigSection() {
     }
   };
 
-  const connectedSummary =
-    status?.connected
-      ? `Connected to ${status.sageCompanyName ?? "Sage"} as ${status.sageUsername}`
-      : "Not connected";
+  const connectedSummary = status?.connected
+    ? `Connected to ${status.sageCompanyName ?? "Sage"} as ${status.sageUsername}`
+    : "Not connected";
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -136,9 +137,7 @@ export function SageConfigSection() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {!expanded && (
-        <p className="mt-1 text-sm text-gray-500">{connectedSummary}</p>
-      )}
+      {!expanded && <p className="mt-1 text-sm text-gray-500">{connectedSummary}</p>}
       {expanded && (
         <div className="mt-4">
           <p className="text-sm text-gray-500 mb-4">
@@ -262,7 +261,10 @@ export function SageConfigSection() {
           {step === "company" && (
             <div>
               <div className="mb-4">
-                <label htmlFor="sageCompany" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="sageCompany"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Select Sage Company
                 </label>
                 <select

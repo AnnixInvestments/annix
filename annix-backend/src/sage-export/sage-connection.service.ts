@@ -43,9 +43,13 @@ export class SageConnectionService {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
 
     return {
-      connected: company?.sageUsername !== null && company?.sagePassEncrypted !== null && company?.sageCompanyId !== null,
+      connected:
+        company?.sageUsername !== null &&
+        company?.sagePassEncrypted !== null &&
+        company?.sageCompanyId !== null,
       sageUsername: company?.sageUsername ?? null,
-      sagePasswordSet: company?.sagePassEncrypted !== null && company?.sagePassEncrypted !== undefined,
+      sagePasswordSet:
+        company?.sagePassEncrypted !== null && company?.sagePassEncrypted !== undefined,
       sageCompanyId: company?.sageCompanyId ?? null,
       sageCompanyName: company?.sageCompanyName ?? null,
       sageConnectedAt: company?.sageConnectedAt ?? null,
