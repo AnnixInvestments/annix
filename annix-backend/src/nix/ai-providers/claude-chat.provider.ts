@@ -9,12 +9,21 @@ export interface ImageContent {
   };
 }
 
+export interface DocumentContent {
+  type: "document";
+  source: {
+    type: "base64";
+    media_type: "application/pdf";
+    data: string;
+  };
+}
+
 export interface TextContent {
   type: "text";
   text: string;
 }
 
-export type MessageContent = string | (TextContent | ImageContent)[];
+export type MessageContent = string | (TextContent | ImageContent | DocumentContent)[];
 
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
@@ -75,18 +84,28 @@ export class ClaudeChatProvider {
       }));
 
     const hasVision = messages.some(
-      (m) => Array.isArray(m.content) && m.content.some((c) => c.type === "image"),
+      (m) =>
+        Array.isArray(m.content) &&
+        m.content.some((c) => c.type === "image" || c.type === "document"),
+    );
+    const hasPdf = messages.some(
+      (m) => Array.isArray(m.content) && m.content.some((c) => c.type === "document"),
     );
     const model = hasVision ? "claude-sonnet-4-6" : this.model;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-api-key": this.apiKey,
+      "anthropic-version": "2023-06-01",
+    };
+    if (hasPdf) {
+      headers["anthropic-beta"] = "pdfs-2024-09-25";
+    }
 
     try {
       const response = await fetch(`${this.baseUrl}/messages`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": this.apiKey,
-          "anthropic-version": "2023-06-01",
-        },
+        headers,
         body: JSON.stringify({
           model,
           max_tokens: this.maxTokens,
@@ -203,21 +222,33 @@ export class ClaudeChatProvider {
 
   async chatWithImage(
     imageBase64: string,
-    mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+    mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf",
     prompt: string,
     systemPrompt?: string,
   ): Promise<{ content: string; tokensUsed?: number }> {
+    const fileContent: ImageContent | DocumentContent =
+      mediaType === "application/pdf"
+        ? {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: imageBase64,
+            },
+          }
+        : {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: mediaType,
+              data: imageBase64,
+            },
+          };
+
     const message: ChatMessage = {
       role: "user",
       content: [
-        {
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: mediaType,
-            data: imageBase64,
-          },
-        },
+        fileContent,
         {
           type: "text",
           text: prompt,
