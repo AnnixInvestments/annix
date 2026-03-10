@@ -109,6 +109,8 @@ export interface RubberTaxInvoiceDto {
   totalAmount: number | null;
   vatAmount: number | null;
   exportedToSageAt: string | null;
+  sageInvoiceId: number | null;
+  postedToSageAt: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -3104,6 +3106,24 @@ class AuRubberApiClient {
   async unmapSageContact(companyId: number): Promise<unknown> {
     return this.request(`/rubber-lining/portal/sage/contact-mappings/${companyId}`, {
       method: "DELETE",
+    });
+  }
+
+  async postInvoiceToSage(
+    invoiceId: number,
+  ): Promise<{ sageInvoiceId: number; invoiceId: number; invoiceNumber: string }> {
+    return this.request(`/rubber-lining/portal/tax-invoices/${invoiceId}/post-to-sage`, {
+      method: "POST",
+    });
+  }
+
+  async postInvoicesToSageBulk(invoiceIds: number[]): Promise<{
+    successful: Array<{ sageInvoiceId: number; invoiceId: number; invoiceNumber: string }>;
+    failed: Array<{ invoiceId: number; invoiceNumber: string; error: string }>;
+  }> {
+    return this.request("/rubber-lining/portal/tax-invoices/post-to-sage/bulk", {
+      method: "POST",
+      body: JSON.stringify({ invoiceIds }),
     });
   }
 }

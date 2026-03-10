@@ -159,6 +159,11 @@ import {
   type SageContactSyncResult,
 } from "./rubber-sage-contact-sync.service";
 import { RubberSageInvoiceAdapterService } from "./rubber-sage-invoice-adapter.service";
+import {
+  type BulkPostResult,
+  type PostToSageResult,
+  RubberSageInvoicePostService,
+} from "./rubber-sage-invoice-post.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService, StockLocationDto } from "./rubber-stock-location.service";
 import {
@@ -199,6 +204,7 @@ export class RubberLiningController {
     private readonly sageExportService: SageExportService,
     private readonly sageConnectionService: SageConnectionService,
     private readonly rubberSageContactSyncService: RubberSageContactSyncService,
+    private readonly rubberSageInvoicePostService: RubberSageInvoicePostService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -3109,6 +3115,23 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiOperation({ summary: "Remove Sage contact mapping" })
   async unmapSageContact(@Param("companyId") companyId: string) {
     return this.rubberSageContactSyncService.unmap(Number(companyId));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/tax-invoices/:id/post-to-sage")
+  @ApiOperation({ summary: "Post a single invoice directly to Sage" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async postInvoiceToSage(@Param("id") id: string): Promise<PostToSageResult> {
+    return this.rubberSageInvoicePostService.postInvoice(Number(id), "au-rubber");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/tax-invoices/post-to-sage/bulk")
+  @ApiOperation({ summary: "Post multiple invoices to Sage" })
+  async postInvoicesToSageBulk(@Body() body: { invoiceIds: number[] }): Promise<BulkPostResult> {
+    return this.rubberSageInvoicePostService.postBulk(body.invoiceIds, "au-rubber");
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

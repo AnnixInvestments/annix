@@ -19,6 +19,7 @@ type Step = "issuer" | "recipient" | "stock_items" | "job_card" | "confirm";
 interface IssuanceItem {
   stockItem: StockItem;
   quantity: number;
+  batchNumber: string;
 }
 
 interface SessionIssuance {
@@ -230,7 +231,7 @@ export default function IssueStockPage() {
       setError(`${stockItem.name} has no available stock`);
       return;
     }
-    setItems([...items, { stockItem, quantity: 1 }]);
+    setItems([...items, { stockItem, quantity: 1, batchNumber: "" }]);
     triggerHaptic();
     playSuccessSound();
   };
@@ -300,7 +301,7 @@ export default function IssueStockPage() {
           setError(`${stockItem.name} is already in your list`);
           return;
         }
-        setItems([...items, { stockItem, quantity: 1 }]);
+        setItems([...items, { stockItem, quantity: 1, batchNumber: "" }]);
       } else if (currentStep === "job_card") {
         if (result.type !== "job_card") {
           setError("Please scan a job card QR code or click Skip");
@@ -325,6 +326,10 @@ export default function IssueStockPage() {
 
   const handleUpdateQuantity = (index: number, quantity: number) => {
     setItems(items.map((item, i) => (i === index ? { ...item, quantity } : item)));
+  };
+
+  const handleUpdateBatchNumber = (index: number, batchNumber: string) => {
+    setItems(items.map((item, i) => (i === index ? { ...item, batchNumber } : item)));
   };
 
   const handleContinueToJobCard = () => {
@@ -407,6 +412,7 @@ export default function IssueStockPage() {
         items: items.map((item) => ({
           stockItemId: item.stockItem.id,
           quantity: item.quantity,
+          batchNumber: item.batchNumber.trim() || null,
         })),
         notes: notes.trim() || null,
       };
@@ -1004,6 +1010,11 @@ export default function IssueStockPage() {
                             SKU: {item.stockItem.sku} | Available: {item.stockItem.quantity}{" "}
                             {item.stockItem.unitOfMeasure}
                           </p>
+                          {item.batchNumber && (
+                            <p className="text-xs text-teal-600 font-medium">
+                              Batch: {item.batchNumber}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1147,6 +1158,16 @@ export default function IssueStockPage() {
                                 ? "border-red-300 bg-red-50"
                                 : "border-gray-300"
                             }`}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-500">Batch:</label>
+                          <input
+                            type="text"
+                            value={item.batchNumber}
+                            onChange={(e) => handleUpdateBatchNumber(index, e.target.value)}
+                            placeholder="Optional"
+                            className="w-24 rounded-md border border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-1 px-2"
                           />
                         </div>
                         <button

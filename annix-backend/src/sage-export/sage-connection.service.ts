@@ -160,6 +160,10 @@ export class SageConnectionService {
     return this.sageApiService.taxTypes(creds.username, creds.password, conn.sageCompanyId);
   }
 
+  async credentials(appKey: string): Promise<{ username: string; password: string }> {
+    return this.storedCredentials(appKey);
+  }
+
   private async resolveCredentials(
     appKey: string,
     username?: string,

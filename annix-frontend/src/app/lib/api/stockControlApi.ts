@@ -914,6 +914,7 @@ export interface IssuanceFilters {
 export interface IssuanceItemDto {
   stockItemId: number;
   quantity: number;
+  batchNumber?: string | null;
 }
 
 export interface BatchIssuanceDto {

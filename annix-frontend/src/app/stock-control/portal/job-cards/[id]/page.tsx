@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   CoatingAnalysis,
+  DataBookStatus,
+  IssuanceBatchRecord,
   JobCard,
   JobCardApproval,
   JobCardAttachment,
@@ -14,6 +16,7 @@ import type {
   StaffMember,
   StockAllocation,
   StockItem,
+  SupplierCertificate,
   UnverifiedProduct,
   WorkflowStatus as WorkflowStatusData,
 } from "@/app/lib/api/stockControlApi";
@@ -482,6 +485,7 @@ export default function JobCardDetailPage() {
         label: "Allocations",
         badge: allocations.length > 0 ? allocations.length : null,
       },
+      { id: "quality", label: "Quality" },
       {
         id: "dispatch",
         label: "Dispatch",
@@ -807,6 +811,10 @@ export default function JobCardDetailPage() {
                 onRejectAllocation={handleRejectAllocation}
               />
             </div>
+          </TabPanel>
+
+          <TabPanel tabId="quality" activeTab={activeTab} visited={visitedTabs.has("quality")}>
+            <QualityTab jobCardId={jobId} />
           </TabPanel>
 
           <TabPanel tabId="dispatch" activeTab={activeTab} visited={visitedTabs.has("dispatch")}>

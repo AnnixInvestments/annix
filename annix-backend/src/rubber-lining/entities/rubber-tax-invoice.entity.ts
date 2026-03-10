@@ -96,6 +96,12 @@ export class RubberTaxInvoice {
   @Column({ name: "exported_to_sage_at", type: "timestamp", nullable: true })
   exportedToSageAt: Date | null;
 
+  @Column({ name: "sage_invoice_id", type: "int", nullable: true })
+  sageInvoiceId: number | null;
+
+  @Column({ name: "posted_to_sage_at", type: "timestamp", nullable: true })
+  postedToSageAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

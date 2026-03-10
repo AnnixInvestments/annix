@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Download, FileText, Trash2, X } from "lucide-react";
+import { CheckCircle, Download, FileText, Send, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -47,6 +47,53 @@ export default function CustomerTaxInvoicesPage() {
   const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
   const [isBulkApproving, setIsBulkApproving] = useState(false);
   const [showSageExportModal, setShowSageExportModal] = useState(false);
+  const [postingToSageId, setPostingToSageId] = useState<number | null>(null);
+  const [isBulkPostingToSage, setIsBulkPostingToSage] = useState(false);
+
+  const handlePostToSage = async (inv: RubberTaxInvoiceDto) => {
+    try {
+      setPostingToSageId(inv.id);
+      await auRubberApiClient.postInvoiceToSage(inv.id);
+      showToast(`Invoice ${inv.invoiceNumber} posted to Sage`, "success");
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to post to Sage", "error");
+    } finally {
+      setPostingToSageId(null);
+    }
+  };
+
+  const handleBulkPostToSage = async () => {
+    const approvedIds = filteredInvoices
+      .filter((inv) => inv.status === "APPROVED" && inv.sageInvoiceId === null)
+      .map((inv) => inv.id);
+    if (approvedIds.length === 0) {
+      showToast("No approved invoices to post", "error");
+      return;
+    }
+    try {
+      setIsBulkPostingToSage(true);
+      const result = await auRubberApiClient.postInvoicesToSageBulk(approvedIds);
+      const successCount = result.successful.length;
+      const failCount = result.failed.length;
+      if (failCount === 0) {
+        showToast(
+          `${successCount} invoice${successCount > 1 ? "s" : ""} posted to Sage`,
+          "success",
+        );
+      } else {
+        showToast(
+          `${successCount} posted, ${failCount} failed: ${result.failed[0].error}`,
+          failCount === approvedIds.length ? "error" : "warning",
+        );
+      }
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to post to Sage", "error");
+    } finally {
+      setIsBulkPostingToSage(false);
+    }
+  };
 
   const handleDelete = async (id: number, invoiceNumber: string) => {
     if (!window.confirm(`Delete tax invoice ${invoiceNumber}? This cannot be undone.`)) return;
@@ -313,6 +360,14 @@ export default function CustomerTaxInvoicesPage() {
             </button>
           )}
           <button
+            onClick={handleBulkPostToSage}
+            disabled={isBulkPostingToSage}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+          >
+            <Send className="w-4 h-4 mr-2" />
+            {isBulkPostingToSage ? "Posting..." : "Post All to Sage"}
+          </button>
+          <button
             onClick={() => setShowSageExportModal(true)}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
@@ -530,11 +585,15 @@ export default function CustomerTaxInvoicesPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="flex items-center gap-1.5">
                       {statusBadge(inv.status)}
-                      {inv.exportedToSageAt && (
+                      {inv.postedToSageAt ? (
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
+                          Posted
+                        </span>
+                      ) : inv.exportedToSageAt ? (
                         <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
                           Exported
                         </span>
-                      )}
+                      ) : null}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
@@ -544,18 +603,34 @@ export default function CustomerTaxInvoicesPage() {
                     {formatCurrency(inv.vatAmount)}
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-right">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(inv.id, inv.invoiceNumber);
-                      }}
-                      disabled={deletingId === inv.id}
-                      className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-                      title="Delete invoice"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <span className="flex items-center justify-end gap-1">
+                      {inv.status === "APPROVED" && inv.sageInvoiceId === null && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePostToSage(inv);
+                          }}
+                          disabled={postingToSageId === inv.id}
+                          className="text-gray-400 hover:text-indigo-600 disabled:opacity-50"
+                          title="Post to Sage"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(inv.id, inv.invoiceNumber);
+                        }}
+                        disabled={deletingId === inv.id}
+                        className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                        title="Delete invoice"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </span>
                   </td>
                 </tr>
               ))}
