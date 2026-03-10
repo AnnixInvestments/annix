@@ -6,7 +6,7 @@ import {
   type QcDustDebrisTestEntry,
   stockControlApiClient,
 } from "@/app/lib/api/stockControlApi";
-import { now, nowISO } from "@/app/lib/datetime";
+import { now } from "@/app/lib/datetime";
 
 interface DustDebrisFormProps {
   isOpen: boolean;
@@ -46,7 +46,7 @@ export default function DustDebrisForm({
   const defaultDate = now().toISODate() || "";
 
   const [readingDate, setReadingDate] = useState<string>(
-    existing?.readingDate ? existing.readingDate.slice(0, 10) : defaultDate
+    existing?.readingDate ? existing.readingDate.slice(0, 10) : defaultDate,
   );
   const [rows, setRows] = useState<TestEntryRow[]>(() => {
     if (existing?.tests && existing.tests.length > 0) {
@@ -64,26 +64,15 @@ export default function DustDebrisForm({
   const [saving, setSaving] = useState(false);
 
   const updateRow = (index: number, field: keyof TestEntryRow, value: string) => {
-    setRows((prev) =>
-      prev.map((row, i) =>
-        i === index ? { ...row, [field]: value } : row
-      )
-    );
+    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
   };
 
   const toggleResult = (index: number, value: "pass" | "fail") => {
-    setRows((prev) =>
-      prev.map((row, i) =>
-        i === index ? { ...row, result: value } : row
-      )
-    );
+    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, result: value } : row)));
   };
 
   const addRow = () => {
-    const nextNumber =
-      rows.length > 0
-        ? Math.max(...rows.map((r) => r.testNumber)) + 1
-        : 1;
+    const nextNumber = rows.length > 0 ? Math.max(...rows.map((r) => r.testNumber)) + 1 : 1;
     setRows((prev) => [...prev, emptyRow(nextNumber)]);
   };
 
@@ -92,10 +81,7 @@ export default function DustDebrisForm({
   };
 
   const rowIsEmpty = (row: TestEntryRow): boolean =>
-    row.quantity === "" &&
-    row.coatingType === "" &&
-    row.itemNumber === "" &&
-    row.testedAt === "";
+    row.quantity === "" && row.coatingType === "" && row.itemNumber === "" && row.testedAt === "";
 
   const handleSave = async () => {
     if (!readingDate) {
@@ -122,11 +108,7 @@ export default function DustDebrisForm({
 
     try {
       if (existing) {
-        await stockControlApiClient.updateDustDebrisTest(
-          jobCardId,
-          existing.id,
-          payload
-        );
+        await stockControlApiClient.updateDustDebrisTest(jobCardId, existing.id, payload);
       } else {
         await stockControlApiClient.createDustDebrisTest(jobCardId, payload);
       }
@@ -149,9 +131,7 @@ export default function DustDebrisForm({
         </h2>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Reading Date *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Reading Date *</label>
           <input
             type="date"
             value={readingDate}
@@ -163,9 +143,7 @@ export default function DustDebrisForm({
 
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-700">
-              Test Entries
-            </h3>
+            <h3 className="text-sm font-semibold text-gray-700">Test Entries</h3>
             <button
               type="button"
               onClick={addRow}

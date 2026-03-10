@@ -27,7 +27,7 @@ const emptyReadings = (): Record<ColumnKey, (number | null)[]> => ({
 });
 
 const parseExistingReadings = (
-  readings: QcShoreHardnessRecord["readings"]
+  readings: QcShoreHardnessRecord["readings"],
 ): Record<ColumnKey, (number | null)[]> => ({
   column1: ROW_INDICES.map((i) => readings.column1[i] ?? null),
   column2: ROW_INDICES.map((i) => readings.column2[i] ?? null),
@@ -54,12 +54,14 @@ export function ShoreHardnessForm({
 }: ShoreHardnessFormProps) {
   const [rubberSpec, setRubberSpec] = useState(existing?.rubberSpec ?? "");
   const [rubberBatchNumber, setRubberBatchNumber] = useState(existing?.rubberBatchNumber ?? "");
-  const [requiredShore, setRequiredShore] = useState<number | null>(existing?.requiredShore ?? null);
+  const [requiredShore, setRequiredShore] = useState<number | null>(
+    existing?.requiredShore ?? null,
+  );
   const [readingDate, setReadingDate] = useState(
-    existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString()
+    existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString(),
   );
   const [readings, setReadings] = useState<Record<ColumnKey, (number | null)[]>>(
-    existing ? parseExistingReadings(existing.readings) : emptyReadings()
+    existing ? parseExistingReadings(existing.readings) : emptyReadings(),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,10 +76,10 @@ export function ShoreHardnessForm({
   const averages = useMemo(() => {
     const colAverages = COLUMNS.reduce(
       (acc, col) => ({ ...acc, [col]: columnAverage(readings[col]) }),
-      {} as Record<ColumnKey, number | null>
+      {} as Record<ColumnKey, number | null>,
     );
     const validAverages = COLUMNS.map((col) => colAverages[col]).filter(
-      (v): v is number => v !== null
+      (v): v is number => v !== null,
     );
     const overall =
       validAverages.length > 0
@@ -93,7 +95,7 @@ export function ShoreHardnessForm({
       }
       return Math.abs(value - requiredShore) > 5;
     },
-    [requiredShore]
+    [requiredShore],
   );
 
   const handleSave = useCallback(async () => {
@@ -117,7 +119,7 @@ export function ShoreHardnessForm({
         ...acc,
         [col]: readings[col].filter((v): v is number => v !== null),
       }),
-      {} as Record<ColumnKey, number[]>
+      {} as Record<ColumnKey, number[]>,
     );
 
     const payload = {
@@ -149,7 +151,18 @@ export function ShoreHardnessForm({
     } finally {
       setIsSaving(false);
     }
-  }, [rubberSpec, rubberBatchNumber, requiredShore, readingDate, readings, averages, existing, jobCardId, onSaved, onClose]);
+  }, [
+    rubberSpec,
+    rubberBatchNumber,
+    requiredShore,
+    readingDate,
+    readings,
+    averages,
+    existing,
+    jobCardId,
+    onSaved,
+    onClose,
+  ]);
 
   if (!isOpen) {
     return null;
@@ -162,9 +175,7 @@ export function ShoreHardnessForm({
           {existing ? "Edit Shore Hardness Record" : "New Shore Hardness Record"}
         </h2>
 
-        {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
-        )}
+        {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
         <div className="mb-4 grid grid-cols-2 gap-4">
           <div>
@@ -175,7 +186,7 @@ export function ShoreHardnessForm({
               type="text"
               value={rubberSpec}
               onChange={(e) => setRubberSpec(e.target.value)}
-              placeholder='e.g. NR/SBR 60 Shore'
+              placeholder="e.g. NR/SBR 60 Shore"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>

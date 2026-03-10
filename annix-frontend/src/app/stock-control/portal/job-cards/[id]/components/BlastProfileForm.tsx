@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
-  type QcBlastProfileRecord,
   type QcBlastProfileEntry,
+  type QcBlastProfileRecord,
   stockControlApiClient,
 } from "@/app/lib/api/stockControlApi";
-import { now, nowISO } from "@/app/lib/datetime";
+import { now } from "@/app/lib/datetime";
 
 interface BlastProfileFormProps {
   isOpen: boolean;
@@ -27,17 +27,11 @@ export default function BlastProfileForm({
 }: BlastProfileFormProps) {
   const defaultDate = now().toISODate() || "";
 
-  const [specMicrons, setSpecMicrons] = useState<string>(
-    existing?.specMicrons?.toString() ?? ""
-  );
-  const [temperature, setTemperature] = useState<string>(
-    existing?.temperature?.toString() ?? ""
-  );
-  const [humidity, setHumidity] = useState<string>(
-    existing?.humidity?.toString() ?? ""
-  );
+  const [specMicrons, setSpecMicrons] = useState<string>(existing?.specMicrons?.toString() ?? "");
+  const [temperature, setTemperature] = useState<string>(existing?.temperature?.toString() ?? "");
+  const [humidity, setHumidity] = useState<string>(existing?.humidity?.toString() ?? "");
   const [readingDate, setReadingDate] = useState<string>(
-    existing?.readingDate ? existing.readingDate.slice(0, 10) : defaultDate
+    existing?.readingDate ? existing.readingDate.slice(0, 10) : defaultDate,
   );
   const [readings, setReadings] = useState<Record<number, string>>(() =>
     existing?.readings
@@ -46,9 +40,9 @@ export default function BlastProfileForm({
             ...acc,
             [entry.itemNumber]: entry.reading.toString(),
           }),
-          {} as Record<number, string>
+          {} as Record<number, string>,
         )
-      : {}
+      : {},
   );
   const [saving, setSaving] = useState(false);
 
@@ -60,8 +54,8 @@ export default function BlastProfileForm({
         itemNumber: rowNum,
         value: readings[rowNum] ?? "",
         numeric: parseFloat(readings[rowNum] ?? ""),
-      })).filter((r) => !isNaN(r.numeric)),
-    [readings]
+      })).filter((r) => !Number.isNaN(r.numeric)),
+    [readings],
   );
 
   const average = useMemo(() => {
@@ -86,14 +80,11 @@ export default function BlastProfileForm({
     const entries: QcBlastProfileEntry[] = READING_ROWS.map((rowNum) => ({
       itemNumber: rowNum,
       reading: parseFloat(readings[rowNum] ?? ""),
-    })).filter((entry) => !isNaN(entry.reading));
+    })).filter((entry) => !Number.isNaN(entry.reading));
 
     const calculatedAverage =
       entries.length > 0
-        ? Math.round(
-            (entries.reduce((acc, e) => acc + e.reading, 0) / entries.length) *
-              100
-          ) / 100
+        ? Math.round((entries.reduce((acc, e) => acc + e.reading, 0) / entries.length) * 100) / 100
         : null;
 
     const payload: Partial<QcBlastProfileRecord> = {
@@ -107,11 +98,7 @@ export default function BlastProfileForm({
 
     try {
       if (existing) {
-        await stockControlApiClient.updateBlastProfile(
-          jobCardId,
-          existing.id,
-          payload
-        );
+        await stockControlApiClient.updateBlastProfile(jobCardId, existing.id, payload);
       } else {
         await stockControlApiClient.createBlastProfile(jobCardId, payload);
       }
@@ -147,9 +134,7 @@ export default function BlastProfileForm({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Reading Date *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Reading Date *</label>
             <input
               type="date"
               value={readingDate}
@@ -159,9 +144,7 @@ export default function BlastProfileForm({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Temperature (°C)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Temperature (°C)</label>
             <input
               type="number"
               value={temperature}
@@ -170,9 +153,7 @@ export default function BlastProfileForm({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Humidity (%)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Humidity (%)</label>
             <input
               type="number"
               value={humidity}
@@ -183,35 +164,27 @@ export default function BlastProfileForm({
         </div>
 
         {specValue > 0 && (
-          <p className="text-sm font-medium text-teal-700 mb-3">
-            Spec Target: {specValue} μm
-          </p>
+          <p className="text-sm font-medium text-teal-700 mb-3">Spec Target: {specValue} μm</p>
         )}
 
         <div className="mb-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">
-            Readings
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Readings</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-1">
             {READING_ROWS.map((rowNum) => {
               const val = readings[rowNum] ?? "";
               const numeric = parseFloat(val);
               const isBelowSpec =
-                val !== "" && !isNaN(numeric) && specValue > 0 && numeric < specValue;
+                val !== "" && !Number.isNaN(numeric) && specValue > 0 && numeric < specValue;
 
               return (
                 <div key={rowNum} className="flex items-center gap-2">
-                  <span className="w-6 text-right text-xs text-gray-500">
-                    {rowNum}
-                  </span>
+                  <span className="w-6 text-right text-xs text-gray-500">{rowNum}</span>
                   <input
                     type="number"
                     value={val}
                     onChange={(e) => updateReading(rowNum, e.target.value)}
                     className={`flex-1 rounded-md border px-3 py-1.5 text-sm ${
-                      isBelowSpec
-                        ? "border-red-400 bg-red-50 text-red-700"
-                        : "border-gray-300"
+                      isBelowSpec ? "border-red-400 bg-red-50 text-red-700" : "border-gray-300"
                     }`}
                     placeholder="μm"
                   />
@@ -223,9 +196,7 @@ export default function BlastProfileForm({
 
         <div className="mb-6 rounded-md bg-gray-50 px-4 py-3">
           <span className="text-sm font-medium text-gray-700">Average: </span>
-          <span className="text-sm font-semibold">
-            {average !== null ? `${average} μm` : "—"}
-          </span>
+          <span className="text-sm font-semibold">{average !== null ? `${average} μm` : "—"}</span>
           <span className="text-xs text-gray-500 ml-2">
             ({filledReadings.length} reading{filledReadings.length !== 1 ? "s" : ""})
           </span>

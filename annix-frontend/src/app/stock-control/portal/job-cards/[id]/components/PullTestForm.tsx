@@ -2,10 +2,10 @@
 
 import { useCallback, useState } from "react";
 import type {
+  QcPullTestAreaReading,
+  QcPullTestForceGauge,
   QcPullTestRecord,
   QcPullTestSolution,
-  QcPullTestForceGauge,
-  QcPullTestAreaReading,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { now } from "@/app/lib/datetime";
@@ -93,7 +93,7 @@ export function PullTestForm({
   const [itemDescription, setItemDescription] = useState(existing?.itemDescription ?? "");
   const [quantity, setQuantity] = useState<number | null>(existing?.quantity ?? null);
   const [readingDate, setReadingDate] = useState(
-    existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString()
+    existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString(),
   );
   const [solutions, setSolutions] = useState<SolutionRow[]>(initialSolutions(existing));
   const [forceGauge, setForceGauge] = useState<ForceGaugeState>(initialForceGauge(existing));
@@ -103,9 +103,7 @@ export function PullTestForm({
   const [error, setError] = useState<string | null>(null);
 
   const updateSolution = useCallback((index: number, field: keyof SolutionRow, value: string) => {
-    setSolutions((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
-    );
+    setSolutions((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
   }, []);
 
   const removeSolution = useCallback((index: number) => {
@@ -119,10 +117,10 @@ export function PullTestForm({
   const updateAreaReading = useCallback(
     (index: number, field: keyof AreaReadingRow, value: string) => {
       setAreaReadings((prev) =>
-        prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
+        prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
       );
     },
-    []
+    [],
   );
 
   const removeAreaReading = useCallback((index: number) => {
@@ -223,9 +221,7 @@ export function PullTestForm({
           {existing ? "Edit Pull Test (Adhesion)" : "New Pull Test (Adhesion)"}
         </h2>
 
-        {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
-        )}
+        {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
         <div className="mb-6">
           <h3 className="mb-3 text-sm font-semibold text-gray-800 uppercase tracking-wide">
@@ -249,9 +245,7 @@ export function PullTestForm({
               <input
                 type="number"
                 value={quantity ?? ""}
-                onChange={(e) =>
-                  setQuantity(e.target.value === "" ? null : Number(e.target.value))
-                }
+                onChange={(e) => setQuantity(e.target.value === "" ? null : Number(e.target.value))}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               />
             </div>

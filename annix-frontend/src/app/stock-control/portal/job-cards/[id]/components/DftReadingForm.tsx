@@ -1,10 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import type {
-  QcDftReadingRecord,
-  QcDftReadingEntry,
-} from "@/app/lib/api/stockControlApi";
+import { useMemo, useState } from "react";
+import type { QcDftReadingEntry, QcDftReadingRecord } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { now } from "@/app/lib/datetime";
 
@@ -20,15 +17,13 @@ const READING_ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
 
 const todayDateString = (): string => now().toFormat("yyyy-MM-dd");
 
-const initialReadings = (
-  existing: QcDftReadingRecord | null
-): Record<number, string> => {
+const initialReadings = (existing: QcDftReadingRecord | null): Record<number, string> => {
   if (!existing) {
     return {};
   }
   return existing.readings.reduce(
     (acc, entry) => ({ ...acc, [entry.itemNumber]: String(entry.reading) }),
-    {} as Record<number, string>
+    {} as Record<number, string>,
   );
 };
 
@@ -39,58 +34,47 @@ export default function DftReadingForm({
   existing = null,
   onSaved,
 }: DftReadingFormProps) {
-  const [coatType, setCoatType] = useState<"primer" | "final">(
-    existing?.coatType ?? "primer"
-  );
-  const [paintProduct, setPaintProduct] = useState(
-    existing?.paintProduct ?? ""
-  );
-  const [batchNumber, setBatchNumber] = useState(
-    existing?.batchNumber ?? ""
-  );
+  const [coatType, setCoatType] = useState<"primer" | "final">(existing?.coatType ?? "primer");
+  const [paintProduct, setPaintProduct] = useState(existing?.paintProduct ?? "");
+  const [batchNumber, setBatchNumber] = useState(existing?.batchNumber ?? "");
   const [specMinMicrons, setSpecMinMicrons] = useState(
-    existing?.specMinMicrons != null ? String(existing.specMinMicrons) : ""
+    existing?.specMinMicrons != null ? String(existing.specMinMicrons) : "",
   );
   const [specMaxMicrons, setSpecMaxMicrons] = useState(
-    existing?.specMaxMicrons != null ? String(existing.specMaxMicrons) : ""
+    existing?.specMaxMicrons != null ? String(existing.specMaxMicrons) : "",
   );
   const [readingDate, setReadingDate] = useState(
-    existing?.readingDate
-      ? existing.readingDate.slice(0, 10)
-      : todayDateString()
+    existing?.readingDate ? existing.readingDate.slice(0, 10) : todayDateString(),
   );
   const [readings, setReadings] = useState<Record<number, string>>(
-    initialReadings(existing ?? null)
+    initialReadings(existing ?? null),
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const parsedMin = Number(specMinMicrons);
   const parsedMax = Number(specMaxMicrons);
-  const hasValidSpec = !isNaN(parsedMin) && !isNaN(parsedMax) && parsedMin > 0;
+  const hasValidSpec = !Number.isNaN(parsedMin) && !Number.isNaN(parsedMax) && parsedMin > 0;
 
   const filledReadings = useMemo(
     () =>
       READING_ROWS.map((num) => ({
         itemNumber: num,
         value: readings[num] ?? "",
-      })).filter((r) => r.value !== "" && !isNaN(Number(r.value))),
-    [readings]
+      })).filter((r) => r.value !== "" && !Number.isNaN(Number(r.value))),
+    [readings],
   );
 
   const average = useMemo(() => {
     if (filledReadings.length === 0) {
       return null;
     }
-    const sum = filledReadings.reduce(
-      (acc, r) => acc + Number(r.value),
-      0
-    );
+    const sum = filledReadings.reduce((acc, r) => acc + Number(r.value), 0);
     return Math.round((sum / filledReadings.length) * 10) / 10;
   }, [filledReadings]);
 
   const readingOutOfSpec = (value: string): boolean => {
-    if (!hasValidSpec || value === "" || isNaN(Number(value))) {
+    if (!hasValidSpec || value === "" || Number.isNaN(Number(value))) {
       return false;
     }
     const num = Number(value);
@@ -106,11 +90,11 @@ export default function DftReadingForm({
       setError("Paint product is required.");
       return;
     }
-    if (!specMinMicrons || isNaN(parsedMin)) {
+    if (!specMinMicrons || Number.isNaN(parsedMin)) {
       setError("Spec min microns is required.");
       return;
     }
-    if (!specMaxMicrons || isNaN(parsedMax)) {
+    if (!specMaxMicrons || Number.isNaN(parsedMax)) {
       setError("Spec max microns is required.");
       return;
     }
@@ -140,20 +124,14 @@ export default function DftReadingForm({
 
     try {
       if (existing) {
-        await stockControlApiClient.updateDftReading(
-          jobCardId,
-          existing.id,
-          payload
-        );
+        await stockControlApiClient.updateDftReading(jobCardId, existing.id, payload);
       } else {
         await stockControlApiClient.createDftReading(jobCardId, payload);
       }
       onSaved();
       onClose();
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Failed to save DFT reading."
-      );
+      setError(e instanceof Error ? e.message : "Failed to save DFT reading.");
     } finally {
       setSaving(false);
     }
@@ -170,11 +148,7 @@ export default function DftReadingForm({
           {existing ? "Edit DFT Reading" : "New DFT Reading"}
         </h2>
 
-        {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
         <div className="mb-4 flex rounded-md border border-gray-300 overflow-hidden">
           <button
@@ -203,9 +177,7 @@ export default function DftReadingForm({
 
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Paint Product
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Paint Product</label>
             <input
               type="text"
               value={paintProduct}
@@ -216,9 +188,7 @@ export default function DftReadingForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Batch Number
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Batch Number</label>
             <input
               type="text"
               value={batchNumber}
@@ -228,9 +198,7 @@ export default function DftReadingForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Reading Date
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Reading Date</label>
             <input
               type="date"
               value={readingDate}
@@ -240,9 +208,7 @@ export default function DftReadingForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Spec Min (μm)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Spec Min (μm)</label>
             <input
               type="number"
               value={specMinMicrons}
@@ -253,9 +219,7 @@ export default function DftReadingForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Spec Max (μm)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Spec Max (μm)</label>
             <input
               type="number"
               value={specMaxMicrons}
@@ -275,9 +239,7 @@ export default function DftReadingForm({
         <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1">
           {READING_ROWS.map((num) => (
             <div key={num} className="flex items-center gap-2">
-              <span className="w-6 text-right text-sm text-gray-500">
-                {num}
-              </span>
+              <span className="w-6 text-right text-sm text-gray-500">{num}</span>
               <input
                 type="number"
                 value={readings[num] ?? ""}
