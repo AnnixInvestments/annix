@@ -21,6 +21,13 @@ import { SmtpConfigSection } from "./SmtpConfigSection";
 
 type BrandingSelection = "annix" | "custom";
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  manager: "Manager",
+  accounts: "Accounts",
+  storeman: "Storeman",
+};
+
 const SOURCE_LABELS: Record<string, string> = {
   "logo-attr": "Logo element",
   "header-img": "Header image",
@@ -1607,13 +1614,6 @@ const WORKFLOW_STEPS = [
   { key: "READY_FOR_DISPATCH", label: "Ready" },
   { key: "DISPATCHED", label: "Dispatched" },
 ];
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  manager: "Manager",
-  accounts: "Accounts",
-  storeman: "Storeman",
-};
 
 type WorkflowTab = "assignments" | "notifications";
 
