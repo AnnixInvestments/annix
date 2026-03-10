@@ -8,13 +8,18 @@ import {
   StorageArea,
 } from "../../storage/storage.interface";
 import { CalibrationCertificate } from "../entities/calibration-certificate.entity";
+import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
+import { QcControlPlan } from "../entities/qc-control-plan.entity";
+import { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
+import { generateBrandedCoverPage } from "./branded-cover-page";
+import { DataBookPdfService } from "./data-book-pdf.service";
 
 interface UserContext {
   id: number;
@@ -69,8 +74,15 @@ export class CertificateService {
     private readonly jobCardRepo: Repository<JobCard>,
     @InjectRepository(StockControlCompany)
     private readonly companyRepo: Repository<StockControlCompany>,
+    @InjectRepository(JobCardCoatingAnalysis)
+    private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
+    @InjectRepository(QcControlPlan)
+    private readonly controlPlanRepo: Repository<QcControlPlan>,
+    @InjectRepository(QcReleaseCertificate)
+    private readonly releaseCertRepo: Repository<QcReleaseCertificate>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    private readonly dataBookPdfService: DataBookPdfService,
   ) {}
 
   async uploadCertificate(
@@ -292,18 +304,27 @@ export class CertificateService {
     jobCardId: number,
     user: UserContext,
   ): Promise<JobCardDataBook> {
-    const [certs, calCerts, jobCard, company] = await Promise.all([
-      this.certificatesForJobCard(companyId, jobCardId),
-      this.calCertRepo.find({
-        where: { companyId, isActive: true },
-        order: { equipmentName: "ASC" },
-      }),
-      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId } }),
-      this.companyRepo.findOne({ where: { id: companyId } }),
-    ]);
+    const [certs, calCerts, jobCard, company, coatingAnalysis, controlPlans, releaseCerts] =
+      await Promise.all([
+        this.certificatesForJobCard(companyId, jobCardId),
+        this.calCertRepo.find({
+          where: { companyId, isActive: true },
+          order: { equipmentName: "ASC" },
+        }),
+        this.jobCardRepo.findOne({ where: { id: jobCardId, companyId } }),
+        this.companyRepo.findOne({ where: { id: companyId } }),
+        this.coatingRepo.findOne({ where: { companyId, jobCardId } }),
+        this.controlPlanRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
+        this.releaseCertRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
+      ]);
 
-    if (certs.length === 0 && calCerts.length === 0) {
-      throw new BadRequestException("No certificates linked to this job card");
+    const structuredBuffer = await this.dataBookPdfService.generateStructuredSections(
+      companyId,
+      jobCardId,
+    );
+
+    if (certs.length === 0 && calCerts.length === 0 && !structuredBuffer) {
+      throw new BadRequestException("No certificates or QC data found for this job card");
     }
 
     const PDFDocument = (await import("pdfkit")).default;
@@ -311,118 +332,40 @@ export class CertificateService {
 
     const mergedPdf = await pdfLib.PDFDocument.create();
 
-    const coverDoc = new PDFDocument({ size: "A4", margin: 50 });
-    const coverChunks: Buffer[] = [];
-    coverDoc.on("data", (chunk: Buffer) => coverChunks.push(chunk));
-
-    const coverDone = new Promise<Buffer>((resolve) => {
-      coverDoc.on("end", () => resolve(Buffer.concat(coverChunks)));
-    });
-
-    let logoEmbedded = false;
-    if (company?.logoUrl) {
-      try {
-        const logoBuffer = company.logoUrl.startsWith("http")
-          ? Buffer.from(await (await fetch(company.logoUrl)).arrayBuffer())
-          : await this.storageService.download(company.logoUrl);
-
-        coverDoc.image(logoBuffer, (coverDoc.page.width - 120) / 2, 50, {
-          fit: [120, 80],
-          align: "center",
-        });
-        coverDoc.moveDown(5);
-        logoEmbedded = true;
-      } catch (err) {
-        this.logger.warn(`Failed to embed company logo in data book cover: ${err}`);
+    const fetchLogo = async (logoUrl: string): Promise<Buffer> => {
+      if (logoUrl.startsWith("http")) {
+        return Buffer.from(await (await fetch(logoUrl)).arrayBuffer());
       }
-    }
+      return this.storageService.download(logoUrl);
+    };
 
-    if (!logoEmbedded) {
-      coverDoc.moveDown(1);
-    }
-
-    if (company?.name) {
-      coverDoc.fontSize(16).font("Helvetica-Bold").text(company.name, { align: "center" });
-      coverDoc.moveDown(0.5);
-    }
-
-    coverDoc.fontSize(24).font("Helvetica-Bold").text("Quality Data Book", { align: "center" });
-    coverDoc.moveDown(1.5);
-
-    coverDoc.fontSize(11).font("Helvetica");
     const totalCertCount = certs.length + calCerts.length;
 
-    const detailRows: Array<[string, string]> = [["Job Card #", String(jobCardId)]];
-
-    if (jobCard?.jobNumber) {
-      detailRows.push(["Job Number", jobCard.jobNumber]);
-    }
-    if (jobCard?.jobName) {
-      detailRows.push(["Job Name", jobCard.jobName]);
-    }
-    if (jobCard?.customerName) {
-      detailRows.push(["Customer", jobCard.customerName]);
-    }
-    if (jobCard?.reference) {
-      detailRows.push(["Reference", jobCard.reference]);
-    }
-    if (jobCard?.poNumber) {
-      detailRows.push(["PO Number", jobCard.poNumber]);
-    }
-    if (jobCard?.siteLocation) {
-      detailRows.push(["Site / Location", jobCard.siteLocation]);
-    }
-    if (jobCard?.dueDate) {
-      detailRows.push(["Due Date", jobCard.dueDate]);
-    }
-
-    detailRows.push(["Certificates", String(totalCertCount)]);
-    detailRows.push(["Generated", now().toFormat("dd MMM yyyy HH:mm")]);
-    detailRows.push(["Compiled by", user.name]);
-
-    const labelX = 140;
-    const valueX = 280;
-    detailRows.forEach(([label, value]) => {
-      coverDoc
-        .font("Helvetica-Bold")
-        .text(`${label}:`, labelX, coverDoc.y, { continued: false, width: 130 });
-      coverDoc
-        .font("Helvetica")
-        .text(value, valueX, coverDoc.y - coverDoc.currentLineHeight(), { width: 250 });
-    });
-
-    coverDoc.moveDown(2);
-    coverDoc.fontSize(11).font("Helvetica-Bold").text("Included Certificates:");
-    coverDoc.moveDown(0.5);
-    coverDoc.fontSize(9).font("Helvetica");
-
-    certs.forEach((cert, idx) => {
-      const supplierName = cert.supplier?.name ?? "Unknown Supplier";
-      coverDoc.text(
-        `${idx + 1}. ${cert.certificateType} - Batch: ${cert.batchNumber} - ${supplierName} - ${cert.originalFilename}`,
-      );
-    });
-
-    if (calCerts.length > 0) {
-      coverDoc.moveDown(1);
-      coverDoc.fontSize(11).font("Helvetica-Bold").text("Calibration Certificates:");
-      coverDoc.moveDown(0.5);
-      coverDoc.fontSize(9).font("Helvetica");
-
-      calCerts.forEach((cal, idx) => {
-        const identifier = cal.equipmentIdentifier ? ` (${cal.equipmentIdentifier})` : "";
-        coverDoc.text(
-          `${certs.length + idx + 1}. ${cal.equipmentName}${identifier} - Expires: ${cal.expiryDate} - ${cal.originalFilename}`,
-        );
-      });
-    }
-
-    coverDoc.end();
-    const coverBuffer = await coverDone;
+    const coverBuffer = await generateBrandedCoverPage(
+      PDFDocument,
+      company ?? null,
+      jobCard ?? null,
+      coatingAnalysis ?? null,
+      controlPlans,
+      releaseCerts,
+      certs,
+      calCerts,
+      user,
+      { fetchLogo },
+    );
 
     const coverPdf = await pdfLib.PDFDocument.load(coverBuffer);
     const coverPages = await mergedPdf.copyPages(coverPdf, coverPdf.getPageIndices());
     coverPages.forEach((page) => mergedPdf.addPage(page));
+
+    if (structuredBuffer) {
+      const structuredPdf = await pdfLib.PDFDocument.load(structuredBuffer);
+      const structuredPages = await mergedPdf.copyPages(
+        structuredPdf,
+        structuredPdf.getPageIndices(),
+      );
+      structuredPages.forEach((page) => mergedPdf.addPage(page));
+    }
 
     for (const cert of certs) {
       try {
