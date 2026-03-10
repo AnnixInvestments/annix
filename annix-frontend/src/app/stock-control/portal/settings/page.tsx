@@ -1848,9 +1848,7 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                   >
                     <td className="py-2.5 pr-4 pl-1 sticky left-0 bg-inherit">
                       <div className="font-medium text-gray-900 text-sm">{user.name}</div>
-                      <div className="text-xs text-gray-400">
-                        {roleLabel(user.role)}
-                      </div>
+                      <div className="text-xs text-gray-400">{roleLabel(user.role)}</div>
                     </td>
                     {WORKFLOW_STEPS.map((step) => {
                       const assigned = isUserAssigned(user.id, step.key);
