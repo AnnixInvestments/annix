@@ -34,6 +34,54 @@ const initialReadings = (existing: QcDftReadingRecord | null): Record<number, st
   );
 };
 
+const PAINT_CATEGORY_PATTERN = /paint|primer|coat|epoxy|polyurethane|topcoat|finish/i;
+
+const paintBatchRecords = (records: IssuanceBatchRecord[]): IssuanceBatchRecord[] =>
+  records.filter(
+    (r) =>
+      (r.stockItem?.category && PAINT_CATEGORY_PATTERN.test(r.stockItem.category)) ||
+      (r.stockItem?.name && PAINT_CATEGORY_PATTERN.test(r.stockItem.name)),
+  );
+
+const significantWords = (text: string): string[] =>
+  text
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
+    .filter((w) => !PAINT_CATEGORY_PATTERN.test(w));
+
+const matchBatchByProduct = (records: IssuanceBatchRecord[], product: string): string => {
+  const productLower = product.toLowerCase();
+  const paintRecords = paintBatchRecords(records);
+
+  const byExactSubstring = paintRecords.find((r) =>
+    r.stockItem?.name?.toLowerCase().includes(productLower),
+  );
+  if (byExactSubstring) {
+    return byExactSubstring.batchNumber;
+  }
+
+  const byReverseSubstring = paintRecords.find(
+    (r) => r.stockItem?.name && productLower.includes(r.stockItem.name.toLowerCase()),
+  );
+  if (byReverseSubstring) {
+    return byReverseSubstring.batchNumber;
+  }
+
+  const productWords = significantWords(product);
+  if (productWords.length > 0) {
+    const byWordMatch = paintRecords.find((r) => {
+      const itemName = r.stockItem?.name?.toLowerCase() ?? "";
+      return productWords.some((word) => itemName.includes(word));
+    });
+    if (byWordMatch) {
+      return byWordMatch.batchNumber;
+    }
+  }
+
+  return paintRecords[0]?.batchNumber ?? "";
+};
+
 const coatDefaults = (
   coatingAnalysis: CoatingAnalysis | null | undefined,
   coatType: "primer" | "final",
@@ -45,16 +93,14 @@ const coatDefaults = (
   const coatIndex = coatType === "primer" ? 0 : 1;
   const extCoats = coatingAnalysis.coats.filter((c) => c.area === "external");
   const coat = extCoats[coatIndex] ?? extCoats[0] ?? coatingAnalysis.coats[coatIndex] ?? null;
-  const paintRecord = batchRecords.find(
-    (r) =>
-      r.stockItem?.name &&
-      coat?.product &&
-      r.stockItem.name.toLowerCase().includes(coat.product.toLowerCase()),
-  );
   if (coat) {
+    const batchByProduct = matchBatchByProduct(batchRecords, coat.product);
+    const batchNumber =
+      batchByProduct ||
+      (coat.genericType ? matchBatchByProduct(batchRecords, coat.genericType) : "");
     return {
       product: coat.product,
-      batchNumber: paintRecord?.batchNumber ?? "",
+      batchNumber,
       minUm: String(coat.minDftUm),
       maxUm: String(coat.maxDftUm),
     };
@@ -233,10 +279,20 @@ export default function DftReadingForm({
             <label className="block text-sm font-medium text-gray-700 mb-1">Batch Number</label>
             <input
               type="text"
+              list="dft-batch-options"
               value={batchNumber}
               onChange={(e) => setBatchNumber(e.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
+            {batchRecords.length > 0 && (
+              <datalist id="dft-batch-options">
+                {paintBatchRecords(batchRecords).map((r) => (
+                  <option key={r.id} value={r.batchNumber}>
+                    {r.stockItem?.name ?? r.batchNumber}
+                  </option>
+                ))}
+              </datalist>
+            )}
           </div>
 
           <div>

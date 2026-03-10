@@ -49,7 +49,10 @@ export class DocumentAnnotationService {
 
       this.logger.log("Running Ghostscript command");
 
-      await execAsync(command, { timeout: 60000 });
+      const { stderr: gsStderr } = await execAsync(command, { timeout: 60000 });
+      if (gsStderr) {
+        this.logger.warn(`Ghostscript stderr: ${gsStderr.substring(0, 500)}`);
+      }
 
       const files = await fs.readdir(tempDir);
       const pngFiles = files

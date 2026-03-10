@@ -42,6 +42,7 @@ FROM node:22-slim AS runner
 RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates \
   chromium \
+  ghostscript \
   fonts-liberation \
   libappindicator3-1 \
   libasound2 \

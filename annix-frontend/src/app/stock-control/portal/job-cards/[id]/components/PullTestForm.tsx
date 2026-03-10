@@ -59,10 +59,15 @@ const parseSolutions = (solutions: QcPullTestSolution[]): SolutionRow[] =>
     result: s.result,
   }));
 
+const numericPartOfReading = (raw: string): string => {
+  const match = raw.trim().match(/^[\d.]+/);
+  return match ? match[0] : raw;
+};
+
 const parseAreaReadings = (readings: QcPullTestAreaReading[]): AreaReadingRow[] =>
   readings.map((r) => ({
     area: r.area,
-    reading: r.reading,
+    reading: numericPartOfReading(r.reading),
     result: r.result,
   }));
 
@@ -458,7 +463,8 @@ export function PullTestForm({
                       Reading (MPa) <span className="text-red-500">*</span>
                     </label>
                     <input
-                      type="text"
+                      type="number"
+                      step="0.1"
                       value={reading.reading}
                       onChange={(e) => updateAreaReading(idx, "reading", e.target.value)}
                       placeholder="e.g. 4.5"
