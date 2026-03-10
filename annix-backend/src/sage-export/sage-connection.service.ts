@@ -171,9 +171,7 @@ export class SageConnectionService {
     return this.storedCredentials(appKey);
   }
 
-  private async storedCredentials(
-    appKey: string,
-  ): Promise<{ username: string; password: string }> {
+  private async storedCredentials(appKey: string): Promise<{ username: string; password: string }> {
     const conn = await this.connectionRepo.findOne({ where: { appKey } });
 
     if (!conn?.sageUsername || !conn?.sagePassEncrypted) {

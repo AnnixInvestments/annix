@@ -274,7 +274,10 @@ export default function InventoryPage() {
 
       if (viewMode === "grouped" || viewMode === "cards") {
         const [grouped, cats, locs] = await Promise.all([
-          stockControlApiClient.stockItemsGrouped(debouncedSearch || undefined, locationFilter || undefined),
+          stockControlApiClient.stockItemsGrouped(
+            debouncedSearch || undefined,
+            locationFilter || undefined,
+          ),
           stockControlApiClient.categories(),
           stockControlApiClient.locations(),
         ]);

@@ -343,5 +343,4 @@ export class StockControlAuthController {
   async updateRbacConfig(@Req() req: any, @Body() body: { config: Record<string, string[]> }) {
     return this.rbacConfigService.updateNavConfig(req.user.companyId, body.config);
   }
-
 }

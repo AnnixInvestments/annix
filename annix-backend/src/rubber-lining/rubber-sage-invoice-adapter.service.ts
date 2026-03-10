@@ -23,9 +23,8 @@ export class RubberSageInvoiceAdapterService {
   async exportableInvoices(
     filters: SageExportFilterDto,
   ): Promise<{ invoices: SageExportInvoice[]; invoiceIds: number[] }> {
-    const invoiceType = filters.invoiceType === "CUSTOMER"
-      ? TaxInvoiceType.CUSTOMER
-      : TaxInvoiceType.SUPPLIER;
+    const invoiceType =
+      filters.invoiceType === "CUSTOMER" ? TaxInvoiceType.CUSTOMER : TaxInvoiceType.SUPPLIER;
 
     const qb = this.invoiceRepo
       .createQueryBuilder("invoice")
