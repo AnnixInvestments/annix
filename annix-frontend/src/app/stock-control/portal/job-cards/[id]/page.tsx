@@ -480,7 +480,7 @@ export default function JobCardDetailPage() {
         label: "Rubber Analysis",
         badge: allocations.length > 0 ? allocations.length : null,
       },
-      { id: "quality", label: "Quality" },
+      { id: "quality", label: "Quality", hidden: !profile?.qcEnabled },
       {
         id: "dispatch",
         label: "Dispatch",

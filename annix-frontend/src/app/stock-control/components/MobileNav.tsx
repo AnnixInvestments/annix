@@ -18,13 +18,14 @@ interface MobileNavProps {
 export function MobileNav(props: MobileNavProps) {
   const { isOpen, onClose } = props;
   const pathname = usePathname();
-  const { user, logout } = useStockControlAuth();
+  const { user, logout, profile } = useStockControlAuth();
   const { colors } = useStockControlBranding();
   const { count: notificationCount } = useNotificationCount();
   const { rbacConfig } = useStockControlRbac();
   const [rbacPanelOpen, setRbacPanelOpen] = useState(false);
 
   const visibleNavItems = ALL_NAV_ITEMS.filter((item) => {
+    if (item.requiresQc && !profile?.qcEnabled) return false;
     const allowedRoles = rbacConfig[item.key] ?? item.defaultRoles;
     return user?.role ? allowedRoles.includes(user.role) : false;
   });

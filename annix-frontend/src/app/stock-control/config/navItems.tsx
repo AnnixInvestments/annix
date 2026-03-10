@@ -6,6 +6,7 @@ export interface NavItemDef {
   defaultRoles: string[];
   immutable?: boolean;
   group?: string;
+  requiresQc?: boolean;
 }
 
 export const NAV_GROUP_ORDER = ["Supplier", "Customer", "Operations", "Quality", "Admin"] as const;
@@ -202,6 +203,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Certificates",
     defaultRoles: ["manager", "admin"],
     group: "Quality",
+    requiresQc: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -219,6 +221,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Calibration",
     defaultRoles: ["manager", "admin"],
     group: "Quality",
+    requiresQc: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -236,6 +239,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "PosiTector",
     defaultRoles: ["manager", "admin"],
     group: "Quality",
+    requiresQc: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -253,6 +257,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "File Upload",
     defaultRoles: ["manager", "admin"],
     group: "Quality",
+    requiresQc: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -270,6 +275,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Live Streaming",
     defaultRoles: ["manager", "admin"],
     group: "Quality",
+    requiresQc: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -287,6 +293,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Bluetooth",
     defaultRoles: ["manager", "admin"],
     group: "Quality",
+    requiresQc: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -304,6 +311,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Data Books",
     defaultRoles: ["manager", "admin"],
     group: "Quality",
+    requiresQc: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -321,6 +329,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     label: "Batch Lookup",
     defaultRoles: ["manager", "admin"],
     group: "Quality",
+    requiresQc: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
