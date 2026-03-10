@@ -7,16 +7,21 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { JobCard } from "./job-card.entity";
-import { StockControlCompany } from "./stock-control-company.entity";
+import { JobCard } from "../../entities/job-card.entity";
+import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
-export interface BlastProfileReadingEntry {
+export enum DftCoatType {
+  PRIMER = "primer",
+  FINAL = "final",
+}
+
+export interface DftReadingEntry {
   itemNumber: number;
   reading: number;
 }
 
-@Entity("qc_blast_profiles")
-export class QcBlastProfile {
+@Entity("qc_dft_readings")
+export class QcDftReading {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -34,23 +39,26 @@ export class QcBlastProfile {
   @Column({ name: "job_card_id" })
   jobCardId: number;
 
-  @Column({ name: "spec_microns", type: "numeric", precision: 8, scale: 2 })
-  specMicrons: number;
+  @Column({ name: "coat_type", type: "varchar", length: 20 })
+  coatType: DftCoatType;
 
-  @Column({ name: "abrasive_batch_number", type: "varchar", length: 255, nullable: true })
-  abrasiveBatchNumber: string | null;
+  @Column({ name: "paint_product", type: "varchar", length: 255 })
+  paintProduct: string;
+
+  @Column({ name: "batch_number", type: "varchar", length: 255, nullable: true })
+  batchNumber: string | null;
+
+  @Column({ name: "spec_min_microns", type: "numeric", precision: 8, scale: 2 })
+  specMinMicrons: number;
+
+  @Column({ name: "spec_max_microns", type: "numeric", precision: 8, scale: 2 })
+  specMaxMicrons: number;
 
   @Column({ name: "readings", type: "jsonb" })
-  readings: BlastProfileReadingEntry[];
+  readings: DftReadingEntry[];
 
   @Column({ name: "average_microns", type: "numeric", precision: 8, scale: 2, nullable: true })
   averageMicrons: number | null;
-
-  @Column({ name: "temperature", type: "numeric", precision: 5, scale: 1, nullable: true })
-  temperature: number | null;
-
-  @Column({ name: "humidity", type: "numeric", precision: 5, scale: 1, nullable: true })
-  humidity: number | null;
 
   @Column({ name: "reading_date", type: "date" })
   readingDate: string;

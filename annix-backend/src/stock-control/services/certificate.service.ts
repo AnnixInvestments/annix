@@ -8,20 +8,20 @@ import {
   STORAGE_SERVICE,
   StorageArea,
 } from "../../storage/storage.interface";
-import { CalibrationCertificate } from "../entities/calibration-certificate.entity";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
-import { QcControlPlan } from "../entities/qc-control-plan.entity";
-import { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
+import { CalibrationCertificate } from "../qc/entities/calibration-certificate.entity";
+import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
+import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
+import { QcMeasurementService } from "../qc/services/qc-measurement.service";
 import { generateBrandedCoverPage } from "./branded-cover-page";
 import { DataBookPdfService } from "./data-book-pdf.service";
-import { QcMeasurementService } from "./qc-measurement.service";
 
 interface UserContext {
   id: number;

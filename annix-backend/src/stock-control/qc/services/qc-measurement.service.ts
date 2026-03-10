@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { JobCard } from "../entities/job-card.entity";
+import { JobCard } from "../../entities/job-card.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
 import { QcDftReading } from "../entities/qc-dft-reading.entity";

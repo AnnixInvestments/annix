@@ -15,10 +15,10 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import type { Observable } from "rxjs";
+import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
+import { StockControlRoleGuard, StockControlRoles } from "../../guards/stock-control-role.guard";
 import { DftCoatType } from "../entities/qc-dft-reading.entity";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
-import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import type { StreamingSessionConfig } from "../services/positector-streaming.service";
 import { PositectorStreamingService } from "../services/positector-streaming.service";
 

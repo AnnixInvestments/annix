@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { nowISO } from "../../lib/datetime";
+import { nowISO } from "../../../lib/datetime";
 import type { BlastProfileReadingEntry } from "../entities/qc-blast-profile.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import type { DftReadingEntry } from "../entities/qc-dft-reading.entity";

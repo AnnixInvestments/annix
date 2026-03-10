@@ -11,9 +11,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
+import { StockControlRoleGuard, StockControlRoles } from "../../guards/stock-control-role.guard";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
-import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { QcMeasurementService } from "../services/qc-measurement.service";
 
 @ApiTags("Stock Control - QC Measurements")

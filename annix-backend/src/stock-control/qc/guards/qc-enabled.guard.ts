@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
 @Injectable()
 export class QcEnabledGuard implements CanActivate {

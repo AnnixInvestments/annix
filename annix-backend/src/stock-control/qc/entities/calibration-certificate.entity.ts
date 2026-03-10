@@ -7,7 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { StockControlCompany } from "./stock-control-company.entity";
+import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
 @Entity("calibration_certificates")
 export class CalibrationCertificate {

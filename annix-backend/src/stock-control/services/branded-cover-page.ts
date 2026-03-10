@@ -1,11 +1,11 @@
 import { now } from "../../lib/datetime";
-import type { CalibrationCertificate } from "../entities/calibration-certificate.entity";
 import type { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import type { JobCard } from "../entities/job-card.entity";
-import type { QcControlPlan } from "../entities/qc-control-plan.entity";
-import type { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
 import type { StockControlCompany } from "../entities/stock-control-company.entity";
 import type { SupplierCertificate } from "../entities/supplier-certificate.entity";
+import type { CalibrationCertificate } from "../qc/entities/calibration-certificate.entity";
+import type { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
+import type { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
 
 interface CoverPageUser {
   name: string;

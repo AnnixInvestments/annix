@@ -1,18 +1,18 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { JobCard } from "../src/stock-control/entities/job-card.entity";
-import { QcBlastProfile } from "../src/stock-control/entities/qc-blast-profile.entity";
-import { QcControlPlan } from "../src/stock-control/entities/qc-control-plan.entity";
-import { DftCoatType, QcDftReading } from "../src/stock-control/entities/qc-dft-reading.entity";
-import { QcDustDebrisTest } from "../src/stock-control/entities/qc-dust-debris-test.entity";
+import { StockControlCompany } from "../src/stock-control/entities/stock-control-company.entity";
+import { QcBlastProfile } from "../src/stock-control/qc/entities/qc-blast-profile.entity";
+import { QcControlPlan } from "../src/stock-control/qc/entities/qc-control-plan.entity";
+import { DftCoatType, QcDftReading } from "../src/stock-control/qc/entities/qc-dft-reading.entity";
+import { QcDustDebrisTest } from "../src/stock-control/qc/entities/qc-dust-debris-test.entity";
 import {
   ItemReleaseResult,
   QcItemsRelease,
-} from "../src/stock-control/entities/qc-items-release.entity";
-import { QcPullTest } from "../src/stock-control/entities/qc-pull-test.entity";
-import { QcReleaseCertificate } from "../src/stock-control/entities/qc-release-certificate.entity";
-import { QcShoreHardness } from "../src/stock-control/entities/qc-shore-hardness.entity";
-import { StockControlCompany } from "../src/stock-control/entities/stock-control-company.entity";
+} from "../src/stock-control/qc/entities/qc-items-release.entity";
+import { QcPullTest } from "../src/stock-control/qc/entities/qc-pull-test.entity";
+import { QcReleaseCertificate } from "../src/stock-control/qc/entities/qc-release-certificate.entity";
+import { QcShoreHardness } from "../src/stock-control/qc/entities/qc-shore-hardness.entity";
 import { DataBookPdfService } from "../src/stock-control/services/data-book-pdf.service";
 
 const COMPANY_ID = 1;

@@ -8,7 +8,7 @@ import {
   Unique,
   UpdateDateColumn,
 } from "typeorm";
-import { StockControlCompany } from "./stock-control-company.entity";
+import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
 export enum PositectorProbeType {
   DFT_6000 = "6000",

@@ -7,8 +7,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { JobCard } from "./job-card.entity";
-import { StockControlCompany } from "./stock-control-company.entity";
+import { JobCard } from "../../entities/job-card.entity";
+import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
 export enum PullTestResult {
   PASS = "pass",

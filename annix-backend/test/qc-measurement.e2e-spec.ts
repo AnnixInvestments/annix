@@ -2,22 +2,22 @@ import { INestApplication } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
-import { QcMeasurementController } from "../src/stock-control/controllers/qc-measurement.controller";
 import { JobCard } from "../src/stock-control/entities/job-card.entity";
-import { QcBlastProfile } from "../src/stock-control/entities/qc-blast-profile.entity";
-import { QcControlPlan } from "../src/stock-control/entities/qc-control-plan.entity";
-import { QcDftReading } from "../src/stock-control/entities/qc-dft-reading.entity";
-import { QcDustDebrisTest } from "../src/stock-control/entities/qc-dust-debris-test.entity";
+import { StockControlAuthGuard } from "../src/stock-control/guards/stock-control-auth.guard";
+import { StockControlRoleGuard } from "../src/stock-control/guards/stock-control-role.guard";
+import { QcMeasurementController } from "../src/stock-control/qc/controllers/qc-measurement.controller";
+import { QcBlastProfile } from "../src/stock-control/qc/entities/qc-blast-profile.entity";
+import { QcControlPlan } from "../src/stock-control/qc/entities/qc-control-plan.entity";
+import { QcDftReading } from "../src/stock-control/qc/entities/qc-dft-reading.entity";
+import { QcDustDebrisTest } from "../src/stock-control/qc/entities/qc-dust-debris-test.entity";
 import {
   ItemReleaseResult,
   QcItemsRelease,
-} from "../src/stock-control/entities/qc-items-release.entity";
-import { QcPullTest } from "../src/stock-control/entities/qc-pull-test.entity";
-import { QcReleaseCertificate } from "../src/stock-control/entities/qc-release-certificate.entity";
-import { QcShoreHardness } from "../src/stock-control/entities/qc-shore-hardness.entity";
-import { StockControlAuthGuard } from "../src/stock-control/guards/stock-control-auth.guard";
-import { StockControlRoleGuard } from "../src/stock-control/guards/stock-control-role.guard";
-import { QcMeasurementService } from "../src/stock-control/services/qc-measurement.service";
+} from "../src/stock-control/qc/entities/qc-items-release.entity";
+import { QcPullTest } from "../src/stock-control/qc/entities/qc-pull-test.entity";
+import { QcReleaseCertificate } from "../src/stock-control/qc/entities/qc-release-certificate.entity";
+import { QcShoreHardness } from "../src/stock-control/qc/entities/qc-shore-hardness.entity";
+import { QcMeasurementService } from "../src/stock-control/qc/services/qc-measurement.service";
 
 const COMPANY_ID = 1;
 const JOB_CARD_ID = 10;

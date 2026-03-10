@@ -7,15 +7,15 @@ type PDFDoc = InstanceType<typeof PDFDocument>;
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { JobCard } from "../entities/job-card.entity";
-import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
-import { QcControlPlan } from "../entities/qc-control-plan.entity";
-import { DftCoatType, QcDftReading } from "../entities/qc-dft-reading.entity";
-import { QcDustDebrisTest } from "../entities/qc-dust-debris-test.entity";
-import { QcItemsRelease } from "../entities/qc-items-release.entity";
-import { QcPullTest } from "../entities/qc-pull-test.entity";
-import { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
-import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { QcBlastProfile } from "../qc/entities/qc-blast-profile.entity";
+import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
+import { DftCoatType, QcDftReading } from "../qc/entities/qc-dft-reading.entity";
+import { QcDustDebrisTest } from "../qc/entities/qc-dust-debris-test.entity";
+import { QcItemsRelease } from "../qc/entities/qc-items-release.entity";
+import { QcPullTest } from "../qc/entities/qc-pull-test.entity";
+import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
+import { QcShoreHardness } from "../qc/entities/qc-shore-hardness.entity";
 
 interface PageLayout {
   margin: number;

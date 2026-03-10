@@ -12,7 +12,6 @@ import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
 import { StockControlAuthController } from "./controllers/auth.controller";
-import { CalibrationCertificateController } from "./controllers/calibration-certificate.controller";
 import { CertificateController } from "./controllers/certificate.controller";
 import { CpoController } from "./controllers/cpo.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
@@ -26,10 +25,7 @@ import { IssuanceController } from "./controllers/issuance.controller";
 import { JobCardImportController } from "./controllers/job-card-import.controller";
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
-import { PositectorController } from "./controllers/positector.controller";
-import { PositectorStreamingController } from "./controllers/positector-streaming.controller";
 import { PublicBrandingController } from "./controllers/public-branding.controller";
-import { QcMeasurementController } from "./controllers/qc-measurement.controller";
 import { QrCodeController } from "./controllers/qr-code.controller";
 import { ReportsController } from "./controllers/reports.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
@@ -38,7 +34,6 @@ import { SignatureController } from "./controllers/signature.controller";
 import { StaffController } from "./controllers/staff.controller";
 import { SupplierController } from "./controllers/supplier.controller";
 import { WorkflowController } from "./controllers/workflow.controller";
-import { CalibrationCertificate } from "./entities/calibration-certificate.entity";
 import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
 import { CpoCalloffRecord } from "./entities/cpo-calloff-record.entity";
 import { CustomerPurchaseOrder } from "./entities/customer-purchase-order.entity";
@@ -58,16 +53,7 @@ import { JobCardDocument } from "./entities/job-card-document.entity";
 import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity";
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { JobCardVersion } from "./entities/job-card-version.entity";
-import { PositectorDevice } from "./entities/positector-device.entity";
 import { PushSubscription } from "./entities/push-subscription.entity";
-import { QcBlastProfile } from "./entities/qc-blast-profile.entity";
-import { QcControlPlan } from "./entities/qc-control-plan.entity";
-import { QcDftReading } from "./entities/qc-dft-reading.entity";
-import { QcDustDebrisTest } from "./entities/qc-dust-debris-test.entity";
-import { QcItemsRelease } from "./entities/qc-items-release.entity";
-import { QcPullTest } from "./entities/qc-pull-test.entity";
-import { QcReleaseCertificate } from "./entities/qc-release-certificate.entity";
-import { QcShoreHardness } from "./entities/qc-shore-hardness.entity";
 import { Requisition } from "./entities/requisition.entity";
 import { RequisitionItem } from "./entities/requisition-item.entity";
 import { RubberDimensionOverride } from "./entities/rubber-dimension-override.entity";
@@ -92,12 +78,11 @@ import { UserLocationAssignment } from "./entities/user-location-assignment.enti
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
 import { WorkflowNotificationRecipient } from "./entities/workflow-notification-recipient.entity";
 import { WorkflowStepAssignment } from "./entities/workflow-step-assignment.entity";
-import { QcEnabledGuard } from "./guards/qc-enabled.guard";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
+import { QcModule } from "./qc/qc.module";
 import { StockControlAuthService } from "./services/auth.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
-import { CalibrationCertificateService } from "./services/calibration-certificate.service";
 import { CertificateService } from "./services/certificate.service";
 import { CertificateAnalysisService } from "./services/certificate-analysis.service";
 import { CoatingAnalysisService } from "./services/coating-analysis.service";
@@ -124,12 +109,8 @@ import { JobCardWorkflowService } from "./services/job-card-workflow.service";
 import { LookupService } from "./services/lookup.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
-import { PositectorService } from "./services/positector.service";
-import { PositectorImportService } from "./services/positector-import.service";
-import { PositectorStreamingService } from "./services/positector-streaming.service";
 import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
-import { QcMeasurementService } from "./services/qc-measurement.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { RbacConfigService } from "./services/rbac-config.service";
 import { ReportsService } from "./services/reports.service";
@@ -189,16 +170,6 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       SupplierCertificate,
       IssuanceBatchRecord,
       JobCardDataBook,
-      CalibrationCertificate,
-      QcReleaseCertificate,
-      QcItemsRelease,
-      QcShoreHardness,
-      QcDftReading,
-      QcBlastProfile,
-      QcDustDebrisTest,
-      QcPullTest,
-      QcControlPlan,
-      PositectorDevice,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -214,6 +185,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
         fileSize: 10 * 1024 * 1024,
       },
     }),
+    QcModule,
     NixModule,
     NbOdLookupModule,
     PipeScheduleModule,
@@ -246,15 +218,10 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CpoController,
     GlossaryController,
     CertificateController,
-    CalibrationCertificateController,
-    QcMeasurementController,
-    PositectorController,
-    PositectorStreamingController,
   ],
   providers: [
     StockControlAuthGuard,
     StockControlRoleGuard,
-    QcEnabledGuard,
     StockControlAuthService,
     PublicBrandingService,
     BrandingScraperService,
@@ -295,12 +262,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     GlossaryService,
     CertificateService,
     CertificateAnalysisService,
-    CalibrationCertificateService,
     DataBookPdfService,
-    QcMeasurementService,
-    PositectorService,
-    PositectorImportService,
-    PositectorStreamingService,
   ],
 })
 export class StockControlModule {}
