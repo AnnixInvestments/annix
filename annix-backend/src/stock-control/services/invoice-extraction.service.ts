@@ -105,7 +105,7 @@ export class InvoiceExtractionService {
   async extractFromImage(
     invoiceId: number,
     imageBase64: string,
-    mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+    mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf",
   ): Promise<SupplierInvoice> {
     const invoice = await this.invoiceRepo.findOne({ where: { id: invoiceId } });
     if (!invoice) {
@@ -188,7 +188,7 @@ export class InvoiceExtractionService {
 
   async extractDeliveryNoteFromImage(
     imageBase64: string,
-    mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+    mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf",
   ): Promise<{
     deliveryNumber?: string;
     supplierName?: string;

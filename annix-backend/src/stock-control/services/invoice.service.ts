@@ -137,14 +137,20 @@ export class InvoiceService {
     return scanUrl;
   }
 
-  private mimeFromPath(path: string): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
+  private mimeFromPath(
+    path: string,
+  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf" {
     const ext = path.split(".").pop()?.toLowerCase();
-    const mimeMap: Record<string, "image/jpeg" | "image/png" | "image/gif" | "image/webp"> = {
+    const mimeMap: Record<
+      string,
+      "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf"
+    > = {
       jpg: "image/jpeg",
       jpeg: "image/jpeg",
       png: "image/png",
       gif: "image/gif",
       webp: "image/webp",
+      pdf: "application/pdf",
     };
     return mimeMap[ext || ""] || "image/jpeg";
   }
@@ -179,13 +185,19 @@ export class InvoiceService {
     return this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
   }
 
-  private mimeToMediaType(mime: string): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
-    const mimeMap: Record<string, "image/jpeg" | "image/png" | "image/gif" | "image/webp"> = {
+  private mimeToMediaType(
+    mime: string,
+  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf" {
+    const mimeMap: Record<
+      string,
+      "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf"
+    > = {
       "image/jpeg": "image/jpeg",
       "image/jpg": "image/jpeg",
       "image/png": "image/png",
       "image/gif": "image/gif",
       "image/webp": "image/webp",
+      "application/pdf": "application/pdf",
     };
     return mimeMap[mime] || "image/jpeg";
   }

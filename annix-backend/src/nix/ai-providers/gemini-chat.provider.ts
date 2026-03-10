@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import {
   ChatMessage,
   ChatProviderConfig,
+  DocumentContent,
   ImageContent,
   StreamChunk,
   TextContent,
@@ -183,7 +184,9 @@ export class GeminiChatProvider {
     };
   }
 
-  private toGeminiParts(content: string | (TextContent | ImageContent)[]): Record<string, any>[] {
+  private toGeminiParts(
+    content: string | (TextContent | ImageContent | DocumentContent)[],
+  ): Record<string, any>[] {
     if (typeof content === "string") {
       return [{ text: content }];
     }

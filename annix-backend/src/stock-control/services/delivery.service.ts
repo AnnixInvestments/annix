@@ -231,8 +231,9 @@ export class DeliveryService {
 
   private inferMediaTypeFromUrl(
     url: string,
-  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
+  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf" {
     const lower = url.toLowerCase();
+    if (lower.includes(".pdf")) return "application/pdf";
     if (lower.includes(".png")) return "image/png";
     if (lower.includes(".gif")) return "image/gif";
     if (lower.includes(".webp")) return "image/webp";
@@ -723,13 +724,19 @@ export class DeliveryService {
     return descWords || `ITEM-${nowMillis()}`;
   }
 
-  private mimeToMediaType(mime: string): "image/jpeg" | "image/png" | "image/gif" | "image/webp" {
-    const mimeMap: Record<string, "image/jpeg" | "image/png" | "image/gif" | "image/webp"> = {
+  private mimeToMediaType(
+    mime: string,
+  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf" {
+    const mimeMap: Record<
+      string,
+      "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf"
+    > = {
       "image/jpeg": "image/jpeg",
       "image/jpg": "image/jpeg",
       "image/png": "image/png",
       "image/gif": "image/gif",
       "image/webp": "image/webp",
+      "application/pdf": "application/pdf",
     };
     return mimeMap[mime] || "image/jpeg";
   }
