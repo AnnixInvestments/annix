@@ -1,0 +1,1511 @@
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import PDFDocument from "pdfkit";
+
+type PDFDoc = InstanceType<typeof PDFDocument>;
+
+import { Repository } from "typeorm";
+import { now } from "../../lib/datetime";
+import { JobCard } from "../entities/job-card.entity";
+import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
+import { QcControlPlan } from "../entities/qc-control-plan.entity";
+import { DftCoatType, QcDftReading } from "../entities/qc-dft-reading.entity";
+import { QcDustDebrisTest } from "../entities/qc-dust-debris-test.entity";
+import { QcItemsRelease } from "../entities/qc-items-release.entity";
+import { QcPullTest } from "../entities/qc-pull-test.entity";
+import { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
+import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";
+import { StockControlCompany } from "../entities/stock-control-company.entity";
+
+interface PageLayout {
+  margin: number;
+  contentWidth: number;
+  headerHeight: number;
+  pageHeight: number;
+  pageWidth: number;
+}
+
+const A4: PageLayout = {
+  margin: 40,
+  contentWidth: 595.28 - 80,
+  headerHeight: 70,
+  pageHeight: 841.89,
+  pageWidth: 595.28,
+};
+
+const FONT = {
+  BOLD: "Helvetica-Bold",
+  REGULAR: "Helvetica",
+};
+
+interface DocNumberEntry {
+  docNumber: string;
+  title: string;
+  edition: string;
+  revision: string;
+}
+
+const DOC_NUMBERS: Record<string, DocNumberEntry> = {
+  file_front: { docNumber: "QD_PLS_01", title: "QC File Data Book", edition: "01", revision: "00" },
+  toc: { docNumber: "QD_PLS_02", title: "Table of Contents", edition: "01", revision: "00" },
+  rubber_index: {
+    docNumber: "QD_PLS_03",
+    title: "Rubber Section Index",
+    edition: "01",
+    revision: "00",
+  },
+  paint_index: {
+    docNumber: "QD_PLS_04",
+    title: "Paint Section Index",
+    edition: "01",
+    revision: "00",
+  },
+  qcp_paint_ext: {
+    docNumber: "QD_PLS_05",
+    title: "QCP - Paint External",
+    edition: "01",
+    revision: "00",
+  },
+  qcp_paint_int: {
+    docNumber: "QD_PLS_06",
+    title: "QCP - Paint Internal",
+    edition: "01",
+    revision: "00",
+  },
+  qcp_rubber: { docNumber: "QD_PLS_07", title: "QCP - Rubber", edition: "01", revision: "00" },
+  qcp_hdpe: { docNumber: "QD_PLS_08", title: "QCP - HDPE", edition: "01", revision: "00" },
+  items_release: { docNumber: "QD_PLS_09", title: "Items Release", edition: "01", revision: "00" },
+  release_cert: {
+    docNumber: "QD_PLS_10",
+    title: "QC Release Certificate",
+    edition: "01",
+    revision: "00",
+  },
+  shore_hardness: {
+    docNumber: "QD_PLS_11",
+    title: "Shore Hardness Test Report",
+    edition: "01",
+    revision: "00",
+  },
+  primer_dft: { docNumber: "QD_PLS_12", title: "Primer DFT Report", edition: "01", revision: "00" },
+  final_dft: { docNumber: "QD_PLS_13", title: "Final DFT Report", edition: "01", revision: "00" },
+  blast_profile: {
+    docNumber: "QD_PLS_14",
+    title: "Blast Profile Report",
+    edition: "01",
+    revision: "00",
+  },
+  dust_debris: {
+    docNumber: "QD_PLS_15",
+    title: "Dust and Debris Test Report",
+    edition: "01",
+    revision: "00",
+  },
+  pull_test: {
+    docNumber: "QD_PLS_16",
+    title: "Pull Test Certificate",
+    edition: "01",
+    revision: "00",
+  },
+};
+
+const QCP_PLAN_TYPE_DOC_KEYS: Record<string, string> = {
+  paint_external: "qcp_paint_ext",
+  paint_internal: "qcp_paint_int",
+  rubber: "qcp_rubber",
+  hdpe: "qcp_hdpe",
+};
+
+interface TocEntry {
+  title: string;
+  docNumber: string;
+  pageIndex: number;
+  revision: string;
+  edition: string;
+}
+
+interface DataBookContext {
+  jobCard: JobCard;
+  company: StockControlCompany | null;
+  shoreHardness: QcShoreHardness[];
+  primerDft: QcDftReading[];
+  finalDft: QcDftReading[];
+  blastProfiles: QcBlastProfile[];
+  dustDebrisTests: QcDustDebrisTest[];
+  pullTests: QcPullTest[];
+  controlPlans: QcControlPlan[];
+  releaseCertificates: QcReleaseCertificate[];
+  itemsReleases: QcItemsRelease[];
+}
+
+@Injectable()
+export class DataBookPdfService {
+  private readonly logger = new Logger(DataBookPdfService.name);
+
+  constructor(
+    @InjectRepository(QcShoreHardness)
+    private readonly shoreHardnessRepo: Repository<QcShoreHardness>,
+    @InjectRepository(QcDftReading)
+    private readonly dftReadingRepo: Repository<QcDftReading>,
+    @InjectRepository(QcBlastProfile)
+    private readonly blastProfileRepo: Repository<QcBlastProfile>,
+    @InjectRepository(QcDustDebrisTest)
+    private readonly dustDebrisRepo: Repository<QcDustDebrisTest>,
+    @InjectRepository(QcPullTest)
+    private readonly pullTestRepo: Repository<QcPullTest>,
+    @InjectRepository(QcControlPlan)
+    private readonly controlPlanRepo: Repository<QcControlPlan>,
+    @InjectRepository(QcReleaseCertificate)
+    private readonly releaseCertRepo: Repository<QcReleaseCertificate>,
+    @InjectRepository(QcItemsRelease)
+    private readonly itemsReleaseRepo: Repository<QcItemsRelease>,
+    @InjectRepository(JobCard)
+    private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(StockControlCompany)
+    private readonly companyRepo: Repository<StockControlCompany>,
+  ) {}
+
+  async generateStructuredSections(companyId: number, jobCardId: number): Promise<Buffer | null> {
+    const [
+      jobCard,
+      company,
+      shoreHardness,
+      dftReadings,
+      blastProfiles,
+      dustDebrisTests,
+      pullTests,
+      controlPlans,
+      releaseCertificates,
+      itemsReleases,
+    ] = await Promise.all([
+      this.jobCardRepo.findOne({
+        where: { id: jobCardId, companyId },
+        relations: ["lineItems"],
+      }),
+      this.companyRepo.findOne({ where: { id: companyId } }),
+      this.shoreHardnessRepo.find({
+        where: { companyId, jobCardId },
+        order: { readingDate: "ASC" },
+      }),
+      this.dftReadingRepo.find({ where: { companyId, jobCardId }, order: { readingDate: "ASC" } }),
+      this.blastProfileRepo.find({
+        where: { companyId, jobCardId },
+        order: { readingDate: "ASC" },
+      }),
+      this.dustDebrisRepo.find({ where: { companyId, jobCardId }, order: { readingDate: "ASC" } }),
+      this.pullTestRepo.find({ where: { companyId, jobCardId }, order: { readingDate: "ASC" } }),
+      this.controlPlanRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
+      this.releaseCertRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
+      this.itemsReleaseRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
+    ]);
+
+    if (!jobCard) {
+      return null;
+    }
+
+    const hasAnyData =
+      shoreHardness.length > 0 ||
+      dftReadings.length > 0 ||
+      blastProfiles.length > 0 ||
+      dustDebrisTests.length > 0 ||
+      pullTests.length > 0 ||
+      controlPlans.length > 0 ||
+      releaseCertificates.length > 0 ||
+      itemsReleases.length > 0;
+
+    if (!hasAnyData) {
+      return null;
+    }
+
+    const ctx: DataBookContext = {
+      jobCard,
+      company,
+      shoreHardness,
+      primerDft: dftReadings.filter((d) => d.coatType === DftCoatType.PRIMER),
+      finalDft: dftReadings.filter((d) => d.coatType === DftCoatType.FINAL),
+      blastProfiles,
+      dustDebrisTests,
+      pullTests,
+      controlPlans,
+      releaseCertificates,
+      itemsReleases,
+    };
+
+    const doc = new PDFDocument({ size: "A4", margin: A4.margin, bufferPages: true });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+
+    const done = new Promise<Buffer>((resolve) => {
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+    });
+
+    const tocEntries: TocEntry[] = [];
+
+    this.renderFileFront(doc, ctx);
+
+    const tocPageIndex = doc.bufferedPageRange().count;
+    doc.addPage();
+
+    this.renderRubberIndex(doc, ctx, tocEntries);
+    this.renderPaintIndex(doc, ctx, tocEntries);
+
+    ctx.controlPlans.forEach((plan) => {
+      this.renderControlPlan(doc, ctx, plan, tocEntries);
+    });
+
+    ctx.itemsReleases.forEach((release) => {
+      this.renderItemsRelease(doc, ctx, release, tocEntries);
+    });
+
+    ctx.releaseCertificates.forEach((cert) => {
+      this.renderReleaseCertificate(doc, ctx, cert, tocEntries);
+    });
+
+    ctx.shoreHardness.forEach((rec) => {
+      this.renderShoreHardness(doc, ctx, rec, tocEntries);
+    });
+
+    ctx.primerDft.forEach((rec) => {
+      this.renderDftReport(doc, ctx, rec, "Primer", tocEntries);
+    });
+
+    ctx.finalDft.forEach((rec) => {
+      this.renderDftReport(doc, ctx, rec, "Final", tocEntries);
+    });
+
+    ctx.blastProfiles.forEach((rec) => {
+      this.renderBlastProfile(doc, ctx, rec, tocEntries);
+    });
+
+    ctx.dustDebrisTests.forEach((rec) => {
+      this.renderDustDebris(doc, ctx, rec, tocEntries);
+    });
+
+    ctx.pullTests.forEach((rec) => {
+      this.renderPullTest(doc, ctx, rec, tocEntries);
+    });
+
+    this.renderTocPage(doc, ctx, tocPageIndex, tocEntries);
+
+    this.renderPageFooters(doc, ctx);
+
+    doc.end();
+    return done;
+  }
+
+  private sectionHeader(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    title: string,
+    docEntry: DocNumberEntry | null,
+    tocEntries: TocEntry[],
+    docRef?: string,
+  ): void {
+    doc.addPage();
+    const y = A4.margin;
+
+    const pageIndex = doc.bufferedPageRange().count - 1;
+    if (docEntry) {
+      tocEntries.push({
+        title,
+        docNumber: docEntry.docNumber,
+        pageIndex,
+        revision: docEntry.revision,
+        edition: docEntry.edition,
+      });
+    }
+
+    if (ctx.company?.name) {
+      doc
+        .fontSize(10)
+        .font(FONT.BOLD)
+        .fillColor("#000000")
+        .text(ctx.company.name, A4.margin, y, { width: A4.contentWidth / 2 });
+    }
+
+    const rightInfo = [
+      docEntry ? `Doc: ${docEntry.docNumber}` : null,
+      docEntry ? `Ed: ${docEntry.edition} Rev: ${docEntry.revision}` : null,
+      docRef ?? null,
+    ]
+      .filter(Boolean)
+      .join("  |  ");
+
+    if (rightInfo) {
+      doc
+        .fontSize(7)
+        .font(FONT.REGULAR)
+        .fillColor("#6b7280")
+        .text(rightInfo, A4.margin, y + 2, { align: "right", width: A4.contentWidth });
+    }
+
+    const brandColor = ctx.company?.primaryColor ?? "#0d9488";
+    doc.rect(A4.margin, y + 16, A4.contentWidth, 2).fill(brandColor);
+
+    doc
+      .fontSize(13)
+      .font(FONT.BOLD)
+      .fillColor("#111827")
+      .text(title, A4.margin, y + 24, { align: "center", width: A4.contentWidth });
+
+    const jobInfo = [
+      `Job Card: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`,
+      ctx.jobCard.customerName ? `Customer: ${ctx.jobCard.customerName}` : null,
+      ctx.jobCard.poNumber ? `PO: ${ctx.jobCard.poNumber}` : null,
+    ]
+      .filter(Boolean)
+      .join("  |  ");
+
+    doc
+      .fontSize(7)
+      .font(FONT.REGULAR)
+      .fillColor("#6b7280")
+      .text(jobInfo, A4.margin, y + 42, { align: "center", width: A4.contentWidth });
+    doc.fillColor("#000000");
+
+    doc
+      .moveTo(A4.margin, y + 54)
+      .lineTo(A4.margin + A4.contentWidth, y + 54)
+      .lineWidth(0.5)
+      .stroke("#d1d5db");
+    doc.lineWidth(1);
+
+    doc.y = y + A4.headerHeight + 10;
+  }
+
+  private tableHeader(
+    doc: PDFDoc,
+    columns: Array<{
+      label: string;
+      x: number;
+      width: number;
+      align?: "left" | "right" | "center";
+    }>,
+  ): number {
+    const y = doc.y;
+    doc.fontSize(7).font(FONT.BOLD);
+
+    doc.rect(A4.margin, y - 2, A4.contentWidth, 14).fill("#f3f4f6");
+    doc.fillColor("#000000");
+
+    columns.forEach((col) => {
+      doc.text(col.label, col.x, y, {
+        width: col.width,
+        align: col.align ?? "left",
+      });
+    });
+
+    return y + 16;
+  }
+
+  private tableRow(
+    doc: PDFDoc,
+    y: number,
+    columns: Array<{
+      text: string;
+      x: number;
+      width: number;
+      align?: "left" | "right" | "center";
+      bold?: boolean;
+      color?: string;
+    }>,
+  ): number {
+    doc.fontSize(7).font(FONT.REGULAR);
+
+    columns.forEach((col) => {
+      doc.fillColor(col.color ?? "#000000");
+      if (col.bold) {
+        doc.font(FONT.BOLD);
+      }
+      doc.text(col.text, col.x, y, {
+        width: col.width,
+        align: col.align ?? "left",
+      });
+      doc.font(FONT.REGULAR);
+    });
+
+    doc.fillColor("#000000");
+    return y + 12;
+  }
+
+  private passFailBadge(result: string | null): string {
+    if (result === "pass") return "PASS";
+    if (result === "fail") return "FAIL";
+    return "-";
+  }
+
+  private renderFileFront(doc: PDFDoc, ctx: DataBookContext): void {
+    const centerX = 595.28 / 2;
+
+    doc
+      .fontSize(12)
+      .font(FONT.BOLD)
+      .text(ctx.company?.name ?? "", A4.margin, 120, { align: "center" });
+    doc.moveDown(2);
+
+    doc.fontSize(28).font(FONT.BOLD).text("QC FILE", A4.margin, 180, { align: "center" });
+    doc.moveDown(0.5);
+    doc.fontSize(20).text("DATA BOOK", A4.margin, 220, { align: "center" });
+
+    doc.moveDown(3);
+
+    const detailY = 300;
+    const labelX = 160;
+    const valueX = 310;
+    const details: Array<[string, string]> = [
+      ["Job Card Number", ctx.jobCard.jobNumber || String(ctx.jobCard.id)],
+      ["Customer", ctx.jobCard.customerName ?? "-"],
+      ["Order Number", ctx.jobCard.poNumber ?? "-"],
+      ["Job Name", ctx.jobCard.jobName ?? "-"],
+      ["Date", now().toFormat("dd MMM yyyy")],
+    ];
+
+    details.forEach(([label, value], idx) => {
+      const rowY = detailY + idx * 28;
+      doc.fontSize(10).font(FONT.BOLD).text(`${label}:`, labelX, rowY, { width: 140 });
+      doc.fontSize(10).font(FONT.REGULAR).text(value, valueX, rowY, { width: 200 });
+    });
+
+    doc
+      .moveTo(A4.margin + 40, detailY - 10)
+      .lineTo(A4.margin + A4.contentWidth - 40, detailY - 10)
+      .stroke();
+    doc
+      .moveTo(A4.margin + 40, detailY + details.length * 28 + 5)
+      .lineTo(A4.margin + A4.contentWidth - 40, detailY + details.length * 28 + 5)
+      .stroke();
+  }
+
+  private renderRubberIndex(doc: PDFDoc, ctx: DataBookContext, tocEntries: TocEntry[]): void {
+    this.sectionHeader(
+      doc,
+      ctx,
+      "Rubber Section - Table of Contents",
+      DOC_NUMBERS.rubber_index,
+      tocEntries,
+    );
+
+    doc.fontSize(9).font(FONT.REGULAR);
+    const entries: Array<[string, string]> = [];
+
+    if (ctx.controlPlans.some((p) => p.planType === "rubber")) {
+      entries.push(["Quality Control Plan - Rubber", "QCP"]);
+    }
+    if (ctx.shoreHardness.length > 0) {
+      entries.push(["Shore Hardness Test Report", `${ctx.shoreHardness.length} record(s)`]);
+    }
+    if (ctx.blastProfiles.length > 0) {
+      entries.push(["Blast Profile Report", `${ctx.blastProfiles.length} record(s)`]);
+    }
+    if (ctx.dustDebrisTests.length > 0) {
+      entries.push(["Dust and Debris Test Report", `${ctx.dustDebrisTests.length} record(s)`]);
+    }
+    if (ctx.pullTests.length > 0) {
+      entries.push(["Pull Test Certificate", `${ctx.pullTests.length} record(s)`]);
+    }
+    if (ctx.releaseCertificates.length > 0) {
+      entries.push(["QC Release Certificate", `${ctx.releaseCertificates.length} record(s)`]);
+    }
+    if (ctx.itemsReleases.length > 0) {
+      entries.push(["Items Release", `${ctx.itemsReleases.length} record(s)`]);
+    }
+
+    if (entries.length === 0) {
+      doc.text("No rubber section documents available.", A4.margin, doc.y);
+      return;
+    }
+
+    const cols = [
+      { label: "#", x: A4.margin, width: 30, align: "left" as const },
+      { label: "Document", x: A4.margin + 30, width: 350, align: "left" as const },
+      { label: "Reference", x: A4.margin + 380, width: 130, align: "left" as const },
+    ];
+
+    let y = this.tableHeader(doc, cols);
+
+    entries.forEach(([docName, ref], idx) => {
+      y = this.tableRow(doc, y, [
+        { text: String(idx + 1), x: A4.margin, width: 30 },
+        { text: docName, x: A4.margin + 30, width: 350 },
+        { text: ref, x: A4.margin + 380, width: 130 },
+      ]);
+    });
+  }
+
+  private renderPaintIndex(doc: PDFDoc, ctx: DataBookContext, tocEntries: TocEntry[]): void {
+    this.sectionHeader(
+      doc,
+      ctx,
+      "Paint Section - Table of Contents",
+      DOC_NUMBERS.paint_index,
+      tocEntries,
+    );
+
+    doc.fontSize(9).font(FONT.REGULAR);
+    const entries: Array<[string, string]> = [];
+
+    if (
+      ctx.controlPlans.some(
+        (p) => p.planType === "paint_external" || p.planType === "paint_internal",
+      )
+    ) {
+      entries.push(["Quality Control Plan - Paint", "QCP"]);
+    }
+    if (ctx.primerDft.length > 0) {
+      entries.push(["Primer DFT Report", `${ctx.primerDft.length} record(s)`]);
+    }
+    if (ctx.finalDft.length > 0) {
+      entries.push(["Final DFT Report", `${ctx.finalDft.length} record(s)`]);
+    }
+    if (ctx.blastProfiles.length > 0) {
+      entries.push(["Blast Profile Report", `${ctx.blastProfiles.length} record(s)`]);
+    }
+    if (ctx.dustDebrisTests.length > 0) {
+      entries.push(["Dust and Debris Test Report", `${ctx.dustDebrisTests.length} record(s)`]);
+    }
+
+    if (entries.length === 0) {
+      doc.text("No paint section documents available.", A4.margin, doc.y);
+      return;
+    }
+
+    const cols = [
+      { label: "#", x: A4.margin, width: 30, align: "left" as const },
+      { label: "Document", x: A4.margin + 30, width: 350, align: "left" as const },
+      { label: "Reference", x: A4.margin + 380, width: 130, align: "left" as const },
+    ];
+
+    let y = this.tableHeader(doc, cols);
+
+    entries.forEach(([docName, ref], idx) => {
+      y = this.tableRow(doc, y, [
+        { text: String(idx + 1), x: A4.margin, width: 30 },
+        { text: docName, x: A4.margin + 30, width: 350 },
+        { text: ref, x: A4.margin + 380, width: 130 },
+      ]);
+    });
+  }
+
+  private renderControlPlan(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    plan: QcControlPlan,
+    tocEntries: TocEntry[],
+  ): void {
+    const planLabels: Record<string, string> = {
+      paint_external: "Paint External",
+      paint_internal: "Paint Internal",
+      rubber: "Rubber",
+      hdpe: "HDPE",
+    };
+    const label = planLabels[plan.planType] ?? plan.planType;
+    const docKey = QCP_PLAN_TYPE_DOC_KEYS[plan.planType] ?? "qcp_paint_ext";
+    const docEntry = {
+      ...DOC_NUMBERS[docKey],
+      revision: plan.revision ?? DOC_NUMBERS[docKey].revision,
+    };
+    this.sectionHeader(
+      doc,
+      ctx,
+      `Quality Control Plan - ${label}`,
+      docEntry,
+      tocEntries,
+      plan.documentRef ?? undefined,
+    );
+
+    doc.fontSize(8).font(FONT.REGULAR);
+
+    const infoRows: Array<[string, string]> = [
+      ["QCP Number", plan.qcpNumber ?? "-"],
+      ["Revision", plan.revision ?? "-"],
+      ["Customer", plan.customerName ?? "-"],
+      ["Order Number", plan.orderNumber ?? "-"],
+      ["Specification", plan.specification ?? "-"],
+    ];
+
+    infoRows.forEach(([lbl, val]) => {
+      doc.font(FONT.BOLD).text(`${lbl}: `, A4.margin, doc.y, { continued: true });
+      doc.font(FONT.REGULAR).text(val);
+    });
+
+    doc.moveDown(1);
+
+    const cols = [
+      { label: "Op #", x: A4.margin, width: 30, align: "center" as const },
+      { label: "Description", x: A4.margin + 30, width: 140, align: "left" as const },
+      { label: "Spec Ref", x: A4.margin + 170, width: 70, align: "left" as const },
+      { label: "PLS", x: A4.margin + 240, width: 60, align: "center" as const },
+      { label: "MPS", x: A4.margin + 300, width: 60, align: "center" as const },
+      { label: "Client", x: A4.margin + 360, width: 60, align: "center" as const },
+      { label: "Remarks", x: A4.margin + 420, width: 95, align: "left" as const },
+    ];
+
+    let y = this.tableHeader(doc, cols);
+
+    plan.activities.forEach((activity) => {
+      if (y > 750) {
+        doc.addPage();
+        y = A4.margin + 20;
+        y = this.tableHeader(doc, cols);
+      }
+
+      const plsInfo = activity.pls.interventionType ?? "-";
+      const mpsInfo = activity.mps.interventionType ?? "-";
+      const clientInfo = activity.client.interventionType ?? "-";
+
+      y = this.tableRow(doc, y, [
+        { text: String(activity.operationNumber), x: A4.margin, width: 30, align: "center" },
+        { text: activity.description, x: A4.margin + 30, width: 140 },
+        { text: activity.specification ?? "-", x: A4.margin + 170, width: 70 },
+        { text: plsInfo, x: A4.margin + 240, width: 60, align: "center" },
+        { text: mpsInfo, x: A4.margin + 300, width: 60, align: "center" },
+        { text: clientInfo, x: A4.margin + 360, width: 60, align: "center" },
+        { text: activity.remarks ?? "", x: A4.margin + 420, width: 95 },
+      ]);
+    });
+
+    if (plan.approvalSignatures.length > 0) {
+      doc.moveDown(1);
+      doc.y = y + 10;
+      doc.fontSize(9).font(FONT.BOLD).text("Approval Signatures", A4.margin, doc.y);
+      doc.moveDown(0.5);
+
+      plan.approvalSignatures.forEach((sig) => {
+        doc.fontSize(8).font(FONT.REGULAR);
+        doc.text(`${sig.party}: ${sig.name ?? "-"}  |  Date: ${sig.date ?? "-"}`, A4.margin, doc.y);
+      });
+    }
+  }
+
+  private renderItemsRelease(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    release: QcItemsRelease,
+    tocEntries: TocEntry[],
+  ): void {
+    this.sectionHeader(doc, ctx, "Items Release", DOC_NUMBERS.items_release, tocEntries);
+
+    const cols = [
+      { label: "#", x: A4.margin, width: 25, align: "center" as const },
+      { label: "Item Code", x: A4.margin + 25, width: 65, align: "left" as const },
+      { label: "Description", x: A4.margin + 90, width: 150, align: "left" as const },
+      { label: "JT No", x: A4.margin + 240, width: 50, align: "left" as const },
+      { label: "Rubber Spec", x: A4.margin + 290, width: 65, align: "left" as const },
+      { label: "Paint Spec", x: A4.margin + 355, width: 65, align: "left" as const },
+      { label: "Qty", x: A4.margin + 420, width: 35, align: "right" as const },
+      { label: "Result", x: A4.margin + 455, width: 60, align: "center" as const },
+    ];
+
+    let y = this.tableHeader(doc, cols);
+
+    release.items.forEach((item, idx) => {
+      if (y > 750) {
+        doc.addPage();
+        y = A4.margin + 20;
+        y = this.tableHeader(doc, cols);
+      }
+
+      const resultColor = item.result === "pass" ? "#166534" : "#991b1b";
+      y = this.tableRow(doc, y, [
+        { text: String(idx + 1), x: A4.margin, width: 25, align: "center" },
+        { text: item.itemCode, x: A4.margin + 25, width: 65 },
+        { text: item.description, x: A4.margin + 90, width: 150 },
+        { text: item.jtNumber ?? "-", x: A4.margin + 240, width: 50 },
+        { text: item.rubberSpec ?? "-", x: A4.margin + 290, width: 65 },
+        { text: item.paintingSpec ?? "-", x: A4.margin + 355, width: 65 },
+        { text: String(item.quantity), x: A4.margin + 420, width: 35, align: "right" },
+        {
+          text: this.passFailBadge(item.result),
+          x: A4.margin + 455,
+          width: 60,
+          align: "center",
+          bold: true,
+          color: resultColor,
+        },
+      ]);
+    });
+
+    y += 5;
+    doc.fontSize(8).font(FONT.BOLD);
+    doc.text(`Total Quantity: ${release.totalQuantity}`, A4.margin, y);
+    y += 15;
+
+    if (release.checkedByName) {
+      doc
+        .font(FONT.REGULAR)
+        .text(
+          `Checked by: ${release.checkedByName}  |  Date: ${release.checkedByDate ?? "-"}`,
+          A4.margin,
+          y,
+        );
+      y += 15;
+    }
+
+    y += 5;
+    doc.fontSize(9).font(FONT.BOLD).text("Sign-Off", A4.margin, y);
+    y += 14;
+
+    const parties = [
+      { label: "PLS", signOff: release.plsSignOff },
+      { label: "MPS", signOff: release.mpsSignOff },
+      { label: "Client", signOff: release.clientSignOff },
+    ];
+
+    doc.fontSize(8).font(FONT.REGULAR);
+    parties.forEach((p) => {
+      doc.text(
+        `${p.label}: ${p.signOff.name ?? "-"}  |  Date: ${p.signOff.date ?? "-"}`,
+        A4.margin,
+        y,
+      );
+      y += 12;
+    });
+  }
+
+  private renderReleaseCertificate(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    cert: QcReleaseCertificate,
+    tocEntries: TocEntry[],
+  ): void {
+    this.sectionHeader(
+      doc,
+      ctx,
+      "QC Release Certificate",
+      DOC_NUMBERS.release_cert,
+      tocEntries,
+      cert.certificateNumber ?? undefined,
+    );
+
+    doc.fontSize(8).font(FONT.REGULAR);
+    let y = doc.y;
+
+    if (cert.certificateDate) {
+      doc.text(`Date: ${cert.certificateDate}`, A4.margin, y);
+      y += 14;
+    }
+
+    if (cert.blastingCheck) {
+      doc.fontSize(9).font(FONT.BOLD).text("Blasting", A4.margin, y);
+      y += 14;
+      doc.fontSize(8).font(FONT.REGULAR);
+      doc.text(`Batch No: ${cert.blastingCheck.blastProfileBatchNo ?? "-"}`, A4.margin, y);
+      y += 12;
+      doc.text(
+        `Contamination Free: ${this.passFailBadge(cert.blastingCheck.contaminationFree)}`,
+        A4.margin,
+        y,
+      );
+      y += 12;
+      doc.text(`SA 2.5 Grade: ${this.passFailBadge(cert.blastingCheck.sa25Grade)}`, A4.margin, y);
+      y += 12;
+      doc.text(`Inspector: ${cert.blastingCheck.inspectorName ?? "-"}`, A4.margin, y);
+      y += 16;
+    }
+
+    if (cert.solutionsUsed.length > 0) {
+      doc.fontSize(9).font(FONT.BOLD).text("Solutions Used", A4.margin, y);
+      y += 14;
+      doc.fontSize(8).font(FONT.REGULAR);
+      cert.solutionsUsed.forEach((sol) => {
+        doc.text(
+          `${sol.productName} | Batch: ${sol.typeBatch ?? "-"} | ${this.passFailBadge(sol.result)} | Inspector: ${sol.inspectorName ?? "-"}`,
+          A4.margin,
+          y,
+        );
+        y += 12;
+      });
+      y += 4;
+    }
+
+    if (cert.liningCheck) {
+      doc.fontSize(9).font(FONT.BOLD).text("Lining Check", A4.margin, y);
+      y += 14;
+      doc.fontSize(8).font(FONT.REGULAR);
+      doc.text(
+        `Pre-cure lined as per drawing: ${this.passFailBadge(cert.liningCheck.preCureLinedAsPerDrawing)}`,
+        A4.margin,
+        y,
+      );
+      y += 12;
+      doc.text(
+        `Visual defect inspection: ${this.passFailBadge(cert.liningCheck.visualDefectInspection)}`,
+        A4.margin,
+        y,
+      );
+      y += 16;
+    }
+
+    if (cert.cureCycles.length > 0) {
+      doc.fontSize(9).font(FONT.BOLD).text("Cure Cycles", A4.margin, y);
+      y += 14;
+      doc.fontSize(8).font(FONT.REGULAR);
+      cert.cureCycles.forEach((cycle) => {
+        doc.text(
+          `Cycle ${cycle.cycleNumber}: In: ${cycle.timeIn ?? "-"} | Out: ${cycle.timeOut ?? "-"} | Pressure: ${cycle.pressureBar ?? "-"} BAR`,
+          A4.margin,
+          y,
+        );
+        y += 12;
+      });
+      y += 4;
+    }
+
+    if (cert.paintingChecks.length > 0) {
+      doc.fontSize(9).font(FONT.BOLD).text("Painting Checks", A4.margin, y);
+      y += 14;
+      doc.fontSize(8).font(FONT.REGULAR);
+      cert.paintingChecks.forEach((pc) => {
+        doc.text(
+          `${pc.coat}: Batch ${pc.batchNumber ?? "-"} | DFT: ${pc.dftMicrons ?? "-"} μm | ${this.passFailBadge(pc.result)} | Inspector: ${pc.inspectorName ?? "-"}`,
+          A4.margin,
+          y,
+        );
+        y += 12;
+      });
+      y += 4;
+    }
+
+    if (cert.finalInspection) {
+      if (y > 700) {
+        doc.addPage();
+        y = A4.margin + 20;
+      }
+      doc.fontSize(9).font(FONT.BOLD).text("Final Inspection", A4.margin, y);
+      y += 14;
+      doc.fontSize(8).font(FONT.REGULAR);
+      doc.text(
+        `Lined as per drawing: ${this.passFailBadge(cert.finalInspection.linedAsPerDrawing)}`,
+        A4.margin,
+        y,
+      );
+      y += 12;
+      doc.text(
+        `Visual inspection: ${this.passFailBadge(cert.finalInspection.visualInspection)}`,
+        A4.margin,
+        y,
+      );
+      y += 12;
+      doc.text(`Test plate: ${this.passFailBadge(cert.finalInspection.testPlate)}`, A4.margin, y);
+      y += 12;
+      doc.text(`Shore hardness: ${cert.finalInspection.shoreHardness ?? "-"}`, A4.margin, y);
+      y += 12;
+      doc.text(
+        `Spark test: ${this.passFailBadge(cert.finalInspection.sparkTest)} | ${cert.finalInspection.sparkTestVoltagePerMm ?? "-"} V/mm`,
+        A4.margin,
+        y,
+      );
+      y += 12;
+      doc.text(`Inspector: ${cert.finalInspection.inspectorName ?? "-"}`, A4.margin, y);
+      y += 16;
+    }
+
+    if (cert.comments) {
+      doc.fontSize(9).font(FONT.BOLD).text("Comments", A4.margin, y);
+      y += 14;
+      doc.fontSize(8).font(FONT.REGULAR).text(cert.comments, A4.margin, y);
+      y += 16;
+    }
+
+    if (cert.finalApprovalName) {
+      doc.fontSize(9).font(FONT.BOLD).text("Final Approval", A4.margin, y);
+      y += 14;
+      doc.fontSize(8).font(FONT.REGULAR);
+      doc.text(
+        `Name: ${cert.finalApprovalName}  |  Date: ${cert.finalApprovalDate ?? "-"}`,
+        A4.margin,
+        y,
+      );
+    }
+  }
+
+  private renderShoreHardness(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    rec: QcShoreHardness,
+    tocEntries: TocEntry[],
+  ): void {
+    this.sectionHeader(
+      doc,
+      ctx,
+      "Shore Hardness Test Report",
+      DOC_NUMBERS.shore_hardness,
+      tocEntries,
+    );
+
+    doc.fontSize(8).font(FONT.REGULAR);
+    doc.text(
+      `Rubber Spec: ${rec.rubberSpec}  |  Batch: ${rec.rubberBatchNumber ?? "-"}  |  Required Shore: ${rec.requiredShore}`,
+      A4.margin,
+      doc.y,
+    );
+    doc.text(
+      `Date: ${rec.readingDate}  |  Captured by: ${rec.capturedByName}`,
+      A4.margin,
+      doc.y + 12,
+    );
+    doc.moveDown(1.5);
+
+    const columns = ["column1", "column2", "column3", "column4"] as const;
+    const maxRows = Math.max(...columns.map((col) => rec.readings[col]?.length ?? 0));
+
+    const cols = [
+      { label: "Item", x: A4.margin, width: 40, align: "center" as const },
+      { label: "Col 1", x: A4.margin + 40, width: 80, align: "center" as const },
+      { label: "Col 2", x: A4.margin + 120, width: 80, align: "center" as const },
+      { label: "Col 3", x: A4.margin + 200, width: 80, align: "center" as const },
+      { label: "Col 4", x: A4.margin + 280, width: 80, align: "center" as const },
+    ];
+
+    let y = this.tableHeader(doc, cols);
+
+    Array.from({ length: maxRows }).forEach((_, rowIdx) => {
+      if (y > 750) {
+        doc.addPage();
+        y = A4.margin + 20;
+        y = this.tableHeader(doc, cols);
+      }
+
+      const rowCols = columns.map((col) => {
+        const val = rec.readings[col]?.[rowIdx];
+        const outOfSpec =
+          val !== null && val !== undefined && Math.abs(val - rec.requiredShore) > 5;
+        return {
+          text: val !== null && val !== undefined ? String(val) : "",
+          x: cols[columns.indexOf(col) + 1].x,
+          width: 80,
+          align: "center" as const,
+          color: outOfSpec ? "#991b1b" : "#000000",
+        };
+      });
+
+      y = this.tableRow(doc, y, [
+        { text: String(rowIdx + 1), x: A4.margin, width: 40, align: "center" },
+        ...rowCols,
+      ]);
+    });
+
+    y += 5;
+    doc.fontSize(8).font(FONT.BOLD);
+
+    const avgRow = columns.map((col) => {
+      const avg = rec.averages[col];
+      const outOfSpec = avg !== null && Math.abs(avg - rec.requiredShore) > 5;
+      return {
+        text: avg !== null ? avg.toFixed(1) : "-",
+        x: cols[columns.indexOf(col) + 1].x,
+        width: 80,
+        align: "center" as const,
+        bold: true,
+        color: outOfSpec ? "#991b1b" : "#000000",
+      };
+    });
+
+    y = this.tableRow(doc, y, [
+      { text: "Average", x: A4.margin, width: 40, align: "center", bold: true },
+      ...avgRow,
+    ]);
+
+    y += 5;
+    const overallColor =
+      rec.averages.overall !== null && Math.abs(rec.averages.overall - rec.requiredShore) > 5
+        ? "#991b1b"
+        : "#166534";
+    doc
+      .fontSize(9)
+      .font(FONT.BOLD)
+      .fillColor(overallColor)
+      .text(
+        `Overall Average: ${rec.averages.overall !== null ? rec.averages.overall.toFixed(1) : "-"}  |  Required: ${rec.requiredShore}`,
+        A4.margin,
+        y,
+      );
+    doc.fillColor("#000000");
+  }
+
+  private renderDftReport(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    rec: QcDftReading,
+    label: string,
+    tocEntries: TocEntry[],
+  ): void {
+    const docEntry = label === "Primer" ? DOC_NUMBERS.primer_dft : DOC_NUMBERS.final_dft;
+    this.sectionHeader(doc, ctx, `${label} Coat DFT Report`, docEntry, tocEntries);
+
+    doc.fontSize(8).font(FONT.REGULAR);
+    doc.text(
+      `Paint Product: ${rec.paintProduct}  |  Batch: ${rec.batchNumber ?? "-"}`,
+      A4.margin,
+      doc.y,
+    );
+    doc.text(
+      `Spec Range: ${rec.specMinMicrons}-${rec.specMaxMicrons} μm  |  Date: ${rec.readingDate}  |  Captured by: ${rec.capturedByName}`,
+      A4.margin,
+      doc.y + 12,
+    );
+    doc.moveDown(1.5);
+
+    const cols = [
+      { label: "Item #", x: A4.margin, width: 60, align: "center" as const },
+      { label: "Reading (μm)", x: A4.margin + 60, width: 100, align: "center" as const },
+      { label: "Status", x: A4.margin + 160, width: 80, align: "center" as const },
+    ];
+
+    let y = this.tableHeader(doc, cols);
+
+    rec.readings.forEach((entry) => {
+      if (y > 750) {
+        doc.addPage();
+        y = A4.margin + 20;
+        y = this.tableHeader(doc, cols);
+      }
+
+      const outOfSpec =
+        entry.reading < Number(rec.specMinMicrons) || entry.reading > Number(rec.specMaxMicrons);
+      y = this.tableRow(doc, y, [
+        { text: String(entry.itemNumber), x: A4.margin, width: 60, align: "center" },
+        {
+          text: String(entry.reading),
+          x: A4.margin + 60,
+          width: 100,
+          align: "center",
+          color: outOfSpec ? "#991b1b" : "#000000",
+        },
+        {
+          text: outOfSpec ? "OUT OF SPEC" : "OK",
+          x: A4.margin + 160,
+          width: 80,
+          align: "center",
+          bold: true,
+          color: outOfSpec ? "#991b1b" : "#166534",
+        },
+      ]);
+    });
+
+    y += 10;
+    const avgOutOfSpec =
+      rec.averageMicrons !== null &&
+      (Number(rec.averageMicrons) < Number(rec.specMinMicrons) ||
+        Number(rec.averageMicrons) > Number(rec.specMaxMicrons));
+    doc
+      .fontSize(9)
+      .font(FONT.BOLD)
+      .fillColor(avgOutOfSpec ? "#991b1b" : "#166534")
+      .text(
+        `Average: ${rec.averageMicrons !== null ? Number(rec.averageMicrons).toFixed(1) : "-"} μm  |  Spec: ${rec.specMinMicrons}-${rec.specMaxMicrons} μm`,
+        A4.margin,
+        y,
+      );
+    doc.fillColor("#000000");
+  }
+
+  private renderBlastProfile(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    rec: QcBlastProfile,
+    tocEntries: TocEntry[],
+  ): void {
+    this.sectionHeader(doc, ctx, "Blast Profile Report", DOC_NUMBERS.blast_profile, tocEntries);
+
+    doc.fontSize(8).font(FONT.REGULAR);
+    doc.text(
+      `Spec Target: ${rec.specMicrons} μm  |  Date: ${rec.readingDate}  |  Captured by: ${rec.capturedByName}`,
+      A4.margin,
+      doc.y,
+    );
+
+    const envLine = [
+      rec.temperature !== null ? `Temperature: ${rec.temperature}°C` : null,
+      rec.humidity !== null ? `Humidity: ${rec.humidity}%` : null,
+    ]
+      .filter(Boolean)
+      .join("  |  ");
+
+    if (envLine) {
+      doc.text(envLine, A4.margin, doc.y + 12);
+    }
+    doc.moveDown(1.5);
+
+    const cols = [
+      { label: "Item #", x: A4.margin, width: 60, align: "center" as const },
+      { label: "Reading (μm)", x: A4.margin + 60, width: 100, align: "center" as const },
+      { label: "Status", x: A4.margin + 160, width: 80, align: "center" as const },
+    ];
+
+    let y = this.tableHeader(doc, cols);
+
+    rec.readings.forEach((entry) => {
+      if (y > 750) {
+        doc.addPage();
+        y = A4.margin + 20;
+        y = this.tableHeader(doc, cols);
+      }
+
+      const belowSpec = entry.reading < Number(rec.specMicrons);
+      y = this.tableRow(doc, y, [
+        { text: String(entry.itemNumber), x: A4.margin, width: 60, align: "center" },
+        {
+          text: String(entry.reading),
+          x: A4.margin + 60,
+          width: 100,
+          align: "center",
+          color: belowSpec ? "#991b1b" : "#000000",
+        },
+        {
+          text: belowSpec ? "BELOW SPEC" : "OK",
+          x: A4.margin + 160,
+          width: 80,
+          align: "center",
+          bold: true,
+          color: belowSpec ? "#991b1b" : "#166534",
+        },
+      ]);
+    });
+
+    y += 10;
+    const avgBelowSpec =
+      rec.averageMicrons !== null && Number(rec.averageMicrons) < Number(rec.specMicrons);
+    doc
+      .fontSize(9)
+      .font(FONT.BOLD)
+      .fillColor(avgBelowSpec ? "#991b1b" : "#166534")
+      .text(
+        `Average: ${rec.averageMicrons !== null ? Number(rec.averageMicrons).toFixed(1) : "-"} μm  |  Spec: ${rec.specMicrons} μm`,
+        A4.margin,
+        y,
+      );
+    doc.fillColor("#000000");
+  }
+
+  private renderDustDebris(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    rec: QcDustDebrisTest,
+    tocEntries: TocEntry[],
+  ): void {
+    this.sectionHeader(
+      doc,
+      ctx,
+      "Dust and Debris Test Report",
+      DOC_NUMBERS.dust_debris,
+      tocEntries,
+    );
+
+    doc.fontSize(8).font(FONT.REGULAR);
+    doc.text(`Date: ${rec.readingDate}  |  Captured by: ${rec.capturedByName}`, A4.margin, doc.y);
+    doc.moveDown(1);
+
+    const cols = [
+      { label: "Test #", x: A4.margin, width: 40, align: "center" as const },
+      { label: "Item", x: A4.margin + 40, width: 70, align: "left" as const },
+      { label: "Qty", x: A4.margin + 110, width: 50, align: "center" as const },
+      { label: "Coating Type", x: A4.margin + 160, width: 120, align: "left" as const },
+      { label: "Tested At", x: A4.margin + 280, width: 100, align: "left" as const },
+      { label: "Result", x: A4.margin + 380, width: 60, align: "center" as const },
+    ];
+
+    let y = this.tableHeader(doc, cols);
+
+    rec.tests.forEach((test) => {
+      if (y > 750) {
+        doc.addPage();
+        y = A4.margin + 20;
+        y = this.tableHeader(doc, cols);
+      }
+
+      const resultColor = test.result === "pass" ? "#166534" : "#991b1b";
+      y = this.tableRow(doc, y, [
+        { text: String(test.testNumber), x: A4.margin, width: 40, align: "center" },
+        { text: test.itemNumber ?? "-", x: A4.margin + 40, width: 70 },
+        {
+          text: test.quantity !== null ? String(test.quantity) : "-",
+          x: A4.margin + 110,
+          width: 50,
+          align: "center",
+        },
+        { text: test.coatingType ?? "-", x: A4.margin + 160, width: 120 },
+        { text: test.testedAt ?? "-", x: A4.margin + 280, width: 100 },
+        {
+          text: this.passFailBadge(test.result),
+          x: A4.margin + 380,
+          width: 60,
+          align: "center",
+          bold: true,
+          color: resultColor,
+        },
+      ]);
+    });
+
+    y += 10;
+    const passCount = rec.tests.filter((t) => t.result === "pass").length;
+    const failCount = rec.tests.filter((t) => t.result === "fail").length;
+    doc
+      .fontSize(9)
+      .font(FONT.BOLD)
+      .text(
+        `Summary: ${passCount} pass, ${failCount} fail out of ${rec.tests.length} tests`,
+        A4.margin,
+        y,
+      );
+  }
+
+  private renderPullTest(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    rec: QcPullTest,
+    tocEntries: TocEntry[],
+  ): void {
+    this.sectionHeader(doc, ctx, "Pull Test Certificate", DOC_NUMBERS.pull_test, tocEntries);
+
+    doc.fontSize(8).font(FONT.REGULAR);
+    let y = doc.y;
+
+    if (rec.itemDescription) {
+      doc.text(`Item: ${rec.itemDescription}`, A4.margin, y);
+      y += 12;
+    }
+    if (rec.quantity !== null) {
+      doc.text(`Quantity: ${rec.quantity}`, A4.margin, y);
+      y += 12;
+    }
+    doc.text(`Date: ${rec.readingDate}  |  Captured by: ${rec.capturedByName}`, A4.margin, y);
+    y += 16;
+
+    doc.fontSize(9).font(FONT.BOLD).text("Force Gauge", A4.margin, y);
+    y += 14;
+    doc.fontSize(8).font(FONT.REGULAR);
+    doc.text(`Make: ${rec.forceGauge.make}`, A4.margin, y);
+    y += 12;
+    doc.text(`Certificate Number: ${rec.forceGauge.certificateNumber ?? "-"}`, A4.margin, y);
+    y += 12;
+    doc.text(`Expiry Date: ${rec.forceGauge.expiryDate ?? "-"}`, A4.margin, y);
+    y += 16;
+
+    if (rec.solutions.length > 0) {
+      doc.fontSize(9).font(FONT.BOLD).text("Solutions Tested", A4.margin, y);
+      y += 14;
+
+      const solCols = [
+        { label: "Product", x: A4.margin, width: 180, align: "left" as const },
+        { label: "Batch", x: A4.margin + 180, width: 120, align: "left" as const },
+        { label: "Result", x: A4.margin + 300, width: 60, align: "center" as const },
+      ];
+
+      doc.y = y;
+      y = this.tableHeader(doc, solCols);
+
+      rec.solutions.forEach((sol) => {
+        const resultColor = sol.result === "pass" ? "#166534" : "#991b1b";
+        y = this.tableRow(doc, y, [
+          { text: sol.product, x: A4.margin, width: 180 },
+          { text: sol.batchNumber ?? "-", x: A4.margin + 180, width: 120 },
+          {
+            text: this.passFailBadge(sol.result),
+            x: A4.margin + 300,
+            width: 60,
+            align: "center",
+            bold: true,
+            color: resultColor,
+          },
+        ]);
+      });
+
+      y += 8;
+    }
+
+    if (rec.areaReadings.length > 0) {
+      doc.fontSize(9).font(FONT.BOLD).text("Area Readings", A4.margin, y);
+      y += 14;
+
+      const areaCols = [
+        { label: "Area", x: A4.margin, width: 150, align: "left" as const },
+        { label: "Reading (kg)", x: A4.margin + 150, width: 100, align: "center" as const },
+        { label: "Result", x: A4.margin + 250, width: 60, align: "center" as const },
+      ];
+
+      doc.y = y;
+      y = this.tableHeader(doc, areaCols);
+
+      rec.areaReadings.forEach((ar) => {
+        const resultColor = ar.result === "pass" ? "#166534" : "#991b1b";
+        y = this.tableRow(doc, y, [
+          { text: ar.area, x: A4.margin, width: 150 },
+          { text: ar.reading, x: A4.margin + 150, width: 100, align: "center" },
+          {
+            text: this.passFailBadge(ar.result),
+            x: A4.margin + 250,
+            width: 60,
+            align: "center",
+            bold: true,
+            color: resultColor,
+          },
+        ]);
+      });
+
+      y += 8;
+    }
+
+    if (rec.comments) {
+      doc.fontSize(9).font(FONT.BOLD).text("Comments", A4.margin, y);
+      y += 14;
+      doc.fontSize(8).font(FONT.REGULAR).text(rec.comments, A4.margin, y);
+      y += 16;
+    }
+
+    if (rec.finalApprovalName) {
+      doc.fontSize(9).font(FONT.BOLD).text("Approval", A4.margin, y);
+      y += 14;
+      doc
+        .fontSize(8)
+        .font(FONT.REGULAR)
+        .text(
+          `Name: ${rec.finalApprovalName}  |  Date: ${rec.finalApprovalDate ?? "-"}`,
+          A4.margin,
+          y,
+        );
+    }
+  }
+
+  private renderTocPage(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    tocPageIndex: number,
+    tocEntries: TocEntry[],
+  ): void {
+    doc.switchToPage(tocPageIndex);
+    const brandColor = ctx.company?.primaryColor ?? "#0d9488";
+
+    let y = A4.margin;
+
+    if (ctx.company?.name) {
+      doc
+        .fontSize(10)
+        .font(FONT.BOLD)
+        .fillColor("#000000")
+        .text(ctx.company.name, A4.margin, y, { width: A4.contentWidth / 2 });
+    }
+
+    doc
+      .fontSize(7)
+      .font(FONT.REGULAR)
+      .fillColor("#6b7280")
+      .text(
+        `Doc: ${DOC_NUMBERS.toc.docNumber}  |  Ed: ${DOC_NUMBERS.toc.edition} Rev: ${DOC_NUMBERS.toc.revision}`,
+        A4.margin,
+        y + 2,
+        { align: "right", width: A4.contentWidth },
+      );
+
+    doc.rect(A4.margin, y + 16, A4.contentWidth, 2).fill(brandColor);
+
+    doc
+      .fontSize(16)
+      .font(FONT.BOLD)
+      .fillColor("#111827")
+      .text("Table of Contents", A4.margin, y + 26, { align: "center", width: A4.contentWidth });
+
+    doc
+      .moveTo(A4.margin, y + 48)
+      .lineTo(A4.margin + A4.contentWidth, y + 48)
+      .lineWidth(0.5)
+      .stroke("#d1d5db");
+    doc.lineWidth(1);
+
+    y = A4.margin + 60;
+
+    const totalPages = doc.bufferedPageRange().count;
+
+    const cols = [
+      { label: "#", x: A4.margin, width: 25 },
+      { label: "Document No.", x: A4.margin + 25, width: 85 },
+      { label: "Title", x: A4.margin + 110, width: 240 },
+      { label: "Ed.", x: A4.margin + 350, width: 30 },
+      { label: "Rev.", x: A4.margin + 380, width: 30 },
+      { label: "Page", x: A4.margin + 410, width: 50 },
+    ];
+
+    doc.rect(A4.margin, y - 2, A4.contentWidth, 14).fill("#f3f4f6");
+    doc.fillColor("#000000").fontSize(7).font(FONT.BOLD);
+
+    cols.forEach((col) => {
+      doc.text(col.label, col.x, y, { width: col.width, align: "left" });
+    });
+
+    y += 16;
+
+    doc.fontSize(7).font(FONT.REGULAR).fillColor("#000000");
+
+    tocEntries.forEach((entry, idx) => {
+      const pageNum = entry.pageIndex + 1;
+
+      doc.font(FONT.REGULAR).fillColor("#000000");
+      doc.text(String(idx + 1), cols[0].x, y, { width: cols[0].width });
+      doc.font(FONT.BOLD).fillColor(brandColor);
+      doc.text(entry.docNumber, cols[1].x, y, { width: cols[1].width });
+      doc.font(FONT.REGULAR).fillColor("#000000");
+      doc.text(entry.title, cols[2].x, y, { width: cols[2].width });
+      doc.text(entry.edition, cols[3].x, y, { width: cols[3].width });
+      doc.text(entry.revision, cols[4].x, y, { width: cols[4].width });
+      doc.text(String(pageNum), cols[5].x, y, { width: cols[5].width });
+
+      y += 14;
+    });
+
+    y += 10;
+    doc
+      .moveTo(A4.margin, y)
+      .lineTo(A4.margin + A4.contentWidth, y)
+      .lineWidth(0.5)
+      .stroke("#d1d5db");
+    doc.lineWidth(1);
+
+    y += 8;
+    doc.fontSize(7).font(FONT.REGULAR).fillColor("#6b7280");
+    doc.text(`Total sections: ${tocEntries.length}  |  Total pages: ${totalPages}`, A4.margin, y, {
+      align: "center",
+      width: A4.contentWidth,
+    });
+    doc.text(`Generated: ${now().toFormat("dd MMM yyyy HH:mm")}`, A4.margin, y + 10, {
+      align: "center",
+      width: A4.contentWidth,
+    });
+    doc.fillColor("#000000");
+  }
+
+  private renderPageFooters(doc: PDFDoc, ctx: DataBookContext): void {
+    const brandColor = ctx.company?.primaryColor ?? "#0d9488";
+    const totalPages = doc.bufferedPageRange().count;
+    const companyName = ctx.company?.name ?? "PLS";
+
+    Array.from({ length: totalPages }).forEach((_, i) => {
+      doc.switchToPage(i);
+
+      const footerY = A4.pageHeight - 28;
+
+      doc
+        .moveTo(A4.margin, footerY - 4)
+        .lineTo(A4.margin + A4.contentWidth, footerY - 4)
+        .lineWidth(0.5)
+        .stroke("#d1d5db");
+
+      doc.fontSize(6).font(FONT.REGULAR).fillColor("#9ca3af");
+      doc.text(companyName, A4.margin, footerY, { width: A4.contentWidth / 3, align: "left" });
+      doc.text(
+        `Job: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`,
+        A4.margin + A4.contentWidth / 3,
+        footerY,
+        { width: A4.contentWidth / 3, align: "center" },
+      );
+      doc.text(`Page ${i + 1} of ${totalPages}`, A4.margin + (A4.contentWidth * 2) / 3, footerY, {
+        width: A4.contentWidth / 3,
+        align: "right",
+      });
+
+      doc.rect(0, A4.pageHeight - 4, A4.pageWidth, 4).fill(brandColor);
+    });
+
+    doc.fillColor("#000000");
+    doc.lineWidth(1);
+  }
+}
