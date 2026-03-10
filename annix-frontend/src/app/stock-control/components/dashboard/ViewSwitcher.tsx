@@ -8,13 +8,21 @@ interface ViewSwitcherProps {
   onSwitch: (role: string) => void;
 }
 
-const AVAILABLE_ROLES = [
+const ROLE_HIERARCHY: { key: string; label: string }[] = [
+  { key: "viewer", label: "Viewer" },
   { key: "storeman", label: "Storeman" },
   { key: "accounts", label: "Accounts" },
   { key: "manager", label: "Manager" },
   { key: "admin", label: "Admin" },
-  { key: "viewer", label: "Viewer" },
 ];
+
+function rolesAtOrBelow(role: string): { key: string; label: string }[] {
+  const index = ROLE_HIERARCHY.findIndex((r) => r.key === role);
+  if (index < 0) {
+    return ROLE_HIERARCHY.slice(0, 1);
+  }
+  return ROLE_HIERARCHY.slice(0, index + 1);
+}
 
 function formatRole(role: string): string {
   return role.charAt(0).toUpperCase() + role.slice(1);
@@ -39,6 +47,10 @@ export function ViewSwitcher({ currentRole, activeView, onSwitch }: ViewSwitcher
   }, [isOpen, handleClickOutside]);
 
   const isViewingOwnDashboard = activeView === currentRole;
+
+  if (currentRole === "viewer") {
+    return null;
+  }
 
   return (
     <div className="relative" ref={containerRef}>
@@ -91,7 +103,7 @@ export function ViewSwitcher({ currentRole, activeView, onSwitch }: ViewSwitcher
               </button>
             )}
             {!isViewingOwnDashboard && <div className="border-t border-gray-200 my-1" />}
-            {AVAILABLE_ROLES.map((role) => (
+            {rolesAtOrBelow(currentRole).map((role) => (
               <button
                 key={role.key}
                 type="button"
