@@ -53,10 +53,6 @@ export function SageConfigSection() {
     loadStatus();
   }, [loadStatus]);
 
-  if (status !== null && !status.enabled) {
-    return null;
-  }
-
   const handleTestConnection = async () => {
     setTesting(true);
     setError("");
