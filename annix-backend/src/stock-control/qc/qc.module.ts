@@ -11,7 +11,9 @@ import { WorkflowNotification } from "../entities/workflow-notification.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { CompanyEmailService } from "../services/company-email.service";
+import { JobCardWorkItemProvider } from "../services/job-card-work-item-provider";
 import { WebPushService } from "../services/web-push.service";
+import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
 import { CalibrationCertificateController } from "./controllers/calibration-certificate.controller";
 import { PositectorController } from "./controllers/positector.controller";
 import { PositectorStreamingController } from "./controllers/positector-streaming.controller";
@@ -79,6 +81,7 @@ import { QcMeasurementService } from "./services/qc-measurement.service";
     PositectorImportService,
     PositectorStreamingService,
     WebPushService,
+    { provide: WORK_ITEM_PROVIDER, useClass: JobCardWorkItemProvider },
   ],
   exports: [QcMeasurementService, CalibrationCertificateService, TypeOrmModule],
 })

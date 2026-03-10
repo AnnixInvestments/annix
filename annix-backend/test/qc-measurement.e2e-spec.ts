@@ -2,9 +2,9 @@ import { INestApplication } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
-import { JobCard } from "../src/stock-control/entities/job-card.entity";
 import { StockControlAuthGuard } from "../src/stock-control/guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../src/stock-control/guards/stock-control-role.guard";
+import { QcEnabledGuard } from "../src/stock-control/qc/guards/qc-enabled.guard";
 import { QcMeasurementController } from "../src/stock-control/qc/controllers/qc-measurement.controller";
 import { QcBlastProfile } from "../src/stock-control/qc/entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../src/stock-control/qc/entities/qc-control-plan.entity";
@@ -18,6 +18,7 @@ import { QcPullTest } from "../src/stock-control/qc/entities/qc-pull-test.entity
 import { QcReleaseCertificate } from "../src/stock-control/qc/entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../src/stock-control/qc/entities/qc-shore-hardness.entity";
 import { QcMeasurementService } from "../src/stock-control/qc/services/qc-measurement.service";
+import { WORK_ITEM_PROVIDER } from "../src/stock-control/qc/work-item-provider.interface";
 
 const COMPANY_ID = 1;
 const JOB_CARD_ID = 10;
@@ -44,7 +45,9 @@ describe("QcMeasurementController (e2e)", () => {
   const controlPlanRepo = mockRepo();
   const releaseCertRepo = mockRepo();
   const itemsReleaseRepo = mockRepo();
-  const jobCardRepo = mockRepo();
+  const mockWorkItemProvider = {
+    lineItemsForWorkItem: jest.fn().mockResolvedValue([]),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -59,7 +62,7 @@ describe("QcMeasurementController (e2e)", () => {
         { provide: getRepositoryToken(QcControlPlan), useValue: controlPlanRepo },
         { provide: getRepositoryToken(QcReleaseCertificate), useValue: releaseCertRepo },
         { provide: getRepositoryToken(QcItemsRelease), useValue: itemsReleaseRepo },
-        { provide: getRepositoryToken(JobCard), useValue: jobCardRepo },
+        { provide: WORK_ITEM_PROVIDER, useValue: mockWorkItemProvider },
       ],
     })
       .overrideGuard(StockControlAuthGuard)
@@ -71,6 +74,8 @@ describe("QcMeasurementController (e2e)", () => {
         },
       })
       .overrideGuard(StockControlRoleGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(QcEnabledGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -265,16 +270,12 @@ describe("QcMeasurementController (e2e)", () => {
   // ── Items Release ─────────────────────────────────────────────────
 
   describe("POST /qc/items-releases/auto-populate", () => {
-    it("auto-populates items release from job card line items", async () => {
-      jobCardRepo.findOne.mockResolvedValue({
-        id: JOB_CARD_ID,
-        companyId: COMPANY_ID,
-        lineItems: [
-          { itemCode: "VLV-001", itemDescription: "Gate Valve", jtNo: "JT-01", quantity: 3 },
-        ],
-      });
+    it("auto-populates items release from work item line items", async () => {
+      mockWorkItemProvider.lineItemsForWorkItem.mockResolvedValue([
+        { itemCode: "VLV-001", description: "Gate Valve", jtNumber: "JT-01", quantity: 3 },
+      ]);
 
-      const response = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post(`${basePath}/items-releases/auto-populate`)
         .expect(201);
 
@@ -288,8 +289,8 @@ describe("QcMeasurementController (e2e)", () => {
       );
     });
 
-    it("returns 404 when job card does not exist", async () => {
-      jobCardRepo.findOne.mockResolvedValue(null);
+    it("returns 404 when work item has no line items", async () => {
+      mockWorkItemProvider.lineItemsForWorkItem.mockResolvedValue([]);
 
       await request(app.getHttpServer())
         .post(`${basePath}/items-releases/auto-populate`)

@@ -1,7 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { JobCard } from "../../entities/job-card.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
 import { QcDftReading } from "../entities/qc-dft-reading.entity";
@@ -10,6 +9,7 @@ import { ItemReleaseResult, QcItemsRelease } from "../entities/qc-items-release.
 import { QcPullTest } from "../entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";
+import { WORK_ITEM_PROVIDER } from "../work-item-provider.interface";
 import { QcMeasurementService } from "./qc-measurement.service";
 
 const COMPANY_ID = 1;
@@ -41,7 +41,9 @@ describe("QcMeasurementService", () => {
   const controlPlanRepo = mockRepo();
   const releaseCertRepo = mockRepo();
   const itemsReleaseRepo = mockRepo();
-  const jobCardRepo = mockRepo();
+  const mockWorkItemProvider = {
+    lineItemsForWorkItem: jest.fn().mockResolvedValue([]),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -55,7 +57,7 @@ describe("QcMeasurementService", () => {
         { provide: getRepositoryToken(QcControlPlan), useValue: controlPlanRepo },
         { provide: getRepositoryToken(QcReleaseCertificate), useValue: releaseCertRepo },
         { provide: getRepositoryToken(QcItemsRelease), useValue: itemsReleaseRepo },
-        { provide: getRepositoryToken(JobCard), useValue: jobCardRepo },
+        { provide: WORK_ITEM_PROVIDER, useValue: mockWorkItemProvider },
       ],
     }).compile();
 
@@ -332,19 +334,18 @@ describe("QcMeasurementService", () => {
   // ── Auto-populate Items Release ─────────────────────────────────────
 
   describe("autoPopulateItemsRelease", () => {
-    it("creates items release from job card line items", async () => {
-      const jobCard = {
-        id: JOB_CARD_ID,
-        companyId: COMPANY_ID,
-        lineItems: [
-          { itemCode: "VLV-001", itemDescription: "Gate Valve", jtNo: "JT-01", quantity: 3 },
-          { itemCode: "PIP-002", itemDescription: "Pipe Spool", jtNo: "JT-02", quantity: 5 },
-        ],
-      };
-      jobCardRepo.findOne.mockResolvedValue(jobCard);
+    it("creates items release from work item line items", async () => {
+      mockWorkItemProvider.lineItemsForWorkItem.mockResolvedValue([
+        { itemCode: "VLV-001", description: "Gate Valve", jtNumber: "JT-01", quantity: 3 },
+        { itemCode: "PIP-002", description: "Pipe Spool", jtNumber: "JT-02", quantity: 5 },
+      ]);
 
       await service.autoPopulateItemsRelease(COMPANY_ID, JOB_CARD_ID, mockUser);
 
+      expect(mockWorkItemProvider.lineItemsForWorkItem).toHaveBeenCalledWith(
+        COMPANY_ID,
+        JOB_CARD_ID,
+      );
       expect(itemsReleaseRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           companyId: COMPANY_ID,
@@ -359,34 +360,18 @@ describe("QcMeasurementService", () => {
       );
     });
 
-    it("throws NotFoundException when job card does not exist", async () => {
-      jobCardRepo.findOne.mockResolvedValue(null);
+    it("throws NotFoundException when work item has no line items", async () => {
+      mockWorkItemProvider.lineItemsForWorkItem.mockResolvedValue([]);
 
       await expect(service.autoPopulateItemsRelease(COMPANY_ID, 999, mockUser)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it("creates items release with empty items when job card has no line items", async () => {
-      jobCardRepo.findOne.mockResolvedValue({
-        id: JOB_CARD_ID,
-        companyId: COMPANY_ID,
-        lineItems: [],
-      });
-
-      await service.autoPopulateItemsRelease(COMPANY_ID, JOB_CARD_ID, mockUser);
-
-      expect(itemsReleaseRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ totalQuantity: 0, items: [] }),
-      );
-    });
-
     it("defaults item result to PASS", async () => {
-      jobCardRepo.findOne.mockResolvedValue({
-        id: JOB_CARD_ID,
-        companyId: COMPANY_ID,
-        lineItems: [{ itemCode: "X", itemDescription: "Y", jtNo: null, quantity: 1 }],
-      });
+      mockWorkItemProvider.lineItemsForWorkItem.mockResolvedValue([
+        { itemCode: "X", description: "Y", jtNumber: null, quantity: 1 },
+      ]);
 
       await service.autoPopulateItemsRelease(COMPANY_ID, JOB_CARD_ID, mockUser);
 

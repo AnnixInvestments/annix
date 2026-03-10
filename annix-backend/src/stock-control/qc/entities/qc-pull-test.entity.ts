@@ -7,7 +7,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { JobCard } from "../../entities/job-card.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
 export enum PullTestResult {
@@ -44,10 +43,6 @@ export class QcPullTest {
 
   @Column({ name: "company_id" })
   companyId: number;
-
-  @ManyToOne(() => JobCard, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "job_card_id" })
-  jobCard: JobCard;
 
   @Column({ name: "job_card_id" })
   jobCardId: number;

@@ -1,7 +1,6 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { JobCard } from "../../entities/job-card.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
 import { QcDftReading } from "../entities/qc-dft-reading.entity";
@@ -14,6 +13,7 @@ import {
 import { QcPullTest } from "../entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";
+import { type IWorkItemProvider, WORK_ITEM_PROVIDER } from "../work-item-provider.interface";
 
 type QcEntity =
   | QcShoreHardness
@@ -52,8 +52,8 @@ export class QcMeasurementService {
     private readonly releaseCertRepo: Repository<QcReleaseCertificate>,
     @InjectRepository(QcItemsRelease)
     private readonly itemsReleaseRepo: Repository<QcItemsRelease>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
+    @Inject(WORK_ITEM_PROVIDER)
+    private readonly workItemProvider: IWorkItemProvider,
   ) {}
 
   // ── Shore Hardness ──────────────────────────────────────────────────
@@ -439,22 +439,19 @@ export class QcMeasurementService {
     jobCardId: number,
     user: UserContext,
   ): Promise<QcItemsRelease> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-      relations: ["lineItems"],
-    });
+    const lineItems = await this.workItemProvider.lineItemsForWorkItem(companyId, jobCardId);
 
-    if (!jobCard) {
-      throw new NotFoundException(`Job card #${jobCardId} not found`);
+    if (lineItems.length === 0) {
+      throw new NotFoundException(`Work item #${jobCardId} not found or has no line items`);
     }
 
-    const items: ReleaseLineItem[] = (jobCard.lineItems ?? []).map((li) => ({
-      itemCode: li.itemCode ?? "",
-      description: li.itemDescription ?? "",
-      jtNumber: li.jtNo ?? null,
+    const items: ReleaseLineItem[] = lineItems.map((li) => ({
+      itemCode: li.itemCode,
+      description: li.description,
+      jtNumber: li.jtNumber,
       rubberSpec: null,
       paintingSpec: null,
-      quantity: Number(li.quantity) || 0,
+      quantity: li.quantity,
       result: ItemReleaseResult.PASS,
     }));
 

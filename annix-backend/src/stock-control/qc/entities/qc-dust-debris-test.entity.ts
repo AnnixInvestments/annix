@@ -7,7 +7,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { JobCard } from "../../entities/job-card.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 
 export enum DustDebrisResult {
@@ -35,10 +34,6 @@ export class QcDustDebrisTest {
 
   @Column({ name: "company_id" })
   companyId: number;
-
-  @ManyToOne(() => JobCard, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "job_card_id" })
-  jobCard: JobCard;
 
   @Column({ name: "job_card_id" })
   jobCardId: number;
