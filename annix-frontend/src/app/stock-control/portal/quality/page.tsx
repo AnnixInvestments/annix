@@ -19,6 +19,7 @@ interface IdentifiedCertificate {
   productInfo: string | null;
   pageNumbers: number[];
   confidence: number;
+  sourceFileIndex: number;
 }
 
 interface AnalysisResult {
@@ -85,7 +86,7 @@ function CertificatesTab() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-  const [analysisFile, setAnalysisFile] = useState<File | null>(null);
+  const [analysisFiles, setAnalysisFiles] = useState<File[] | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [savingCerts, setSavingCerts] = useState<Set<number>>(new Set());
   const [savedCerts, setSavedCerts] = useState<Set<number>>(new Set());
@@ -177,16 +178,27 @@ function CertificatesTab() {
     }
   }, []);
 
-  const handleAnalyzeFile = useCallback(async (file: File) => {
+  const handleAnalyzeFiles = useCallback(async (files: File[]) => {
     setViewMode("analyzing");
-    setAnalysisFile(file);
+    setAnalysisFiles(files);
     setAnalysisError(null);
     setAnalysisResult(null);
     setSavedCerts(new Set());
 
     try {
-      const result = await stockControlApiClient.analyzeCertificateDocument(file);
-      setAnalysisResult(result);
+      const allCertificates: IdentifiedCertificate[] = [];
+      let totalPages = 0;
+      let totalTime = 0;
+
+      for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
+        const result = await stockControlApiClient.analyzeCertificateDocument(files[fileIdx]);
+        const tagged = result.certificates.map((c) => ({ ...c, sourceFileIndex: fileIdx }));
+        allCertificates.push(...tagged);
+        totalPages += result.totalPages;
+        totalTime += result.processingTimeMs;
+      }
+
+      setAnalysisResult({ certificates: allCertificates, totalPages, processingTimeMs: totalTime });
       setViewMode("review");
     } catch (err) {
       setAnalysisError(err instanceof Error ? err.message : "Analysis failed");
@@ -202,40 +214,47 @@ function CertificatesTab() {
       setIsDragOver(false);
 
       const files = Array.from(e.dataTransfer.files);
-      const validFile = files.find((f) => {
+      const validFiles = files.filter((f) => {
         const validTypes = ["image/", "application/pdf"];
         return validTypes.some((t) => f.type.startsWith(t));
       });
 
-      if (!validFile) return;
+      if (validFiles.length === 0) return;
 
-      handleAnalyzeFile(validFile);
+      handleAnalyzeFiles(validFiles);
     },
-    [handleAnalyzeFile],
+    [handleAnalyzeFiles],
   );
 
   const handleSaveCertificate = async (cert: IdentifiedCertificate, index: number) => {
-    if (!analysisFile) return;
+    const sourceFile = analysisFiles?.[cert.sourceFileIndex] ?? null;
+    if (!sourceFile) return;
 
     const matchedSupplier = suppliers.find(
       (s) => cert.supplierName && s.name.toLowerCase().includes(cert.supplierName.toLowerCase()),
     );
 
     if (!matchedSupplier) {
-      setDroppedFile(analysisFile);
+      setDroppedFile(sourceFile);
       setShowUploadModal(true);
       return;
     }
 
+    const certsFromSameFile = analysisResult
+      ? analysisResult.certificates.filter((c) => c.sourceFileIndex === cert.sourceFileIndex)
+      : [];
+    const needsPageExtraction = certsFromSameFile.length > 1;
+
     try {
       setSavingCerts((prev) => new Set([...prev, index]));
-      await stockControlApiClient.uploadCertificate(analysisFile, {
+      await stockControlApiClient.uploadCertificate(sourceFile, {
         supplierId: matchedSupplier.id,
         certificateType: cert.certificateType || "COC",
         batchNumber: cert.batchNumber || `BATCH-${Date.now()}`,
         description: [cert.productInfo, `Pages: ${cert.pageNumbers.join(", ")}`]
           .filter(Boolean)
           .join(" | "),
+        pageNumbers: needsPageExtraction ? cert.pageNumbers : null,
       });
       setSavedCerts((prev) => new Set([...prev, index]));
       fetchCertificates();
@@ -276,14 +295,44 @@ function CertificatesTab() {
     : {};
 
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragOver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-600/20 backdrop-blur-sm pointer-events-none">
+          <div className="bg-white rounded-xl shadow-2xl p-8 text-center max-w-md mx-4">
+            <svg
+              className="mx-auto h-12 w-12 text-teal-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <p className="mt-4 text-lg font-medium text-gray-900">Drop to analyze with Nix</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Nix will auto-identify and separate COC/COA documents
+            </p>
+          </div>
+        </div>
+      )}
+
       {viewMode === "review" && (
         <div className="flex justify-end">
           <button
             onClick={() => {
               setViewMode("list");
               setAnalysisResult(null);
-              setAnalysisFile(null);
+              setAnalysisFiles(null);
             }}
             className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
@@ -319,7 +368,11 @@ function CertificatesTab() {
           <p className="mt-1 text-sm text-gray-500">
             Identifying individual certificates, suppliers, and batch numbers
           </p>
-          {analysisFile && <p className="mt-2 text-xs text-gray-400">{analysisFile.name}</p>}
+          {analysisFiles && (
+            <p className="mt-2 text-xs text-gray-400">
+              {analysisFiles.map((f) => f.name).join(", ")}
+            </p>
+          )}
         </div>
       )}
 
@@ -347,7 +400,7 @@ function CertificatesTab() {
               </div>
               <button
                 onClick={() => {
-                  setDroppedFile(analysisFile);
+                  setDroppedFile(analysisFiles?.[0] ?? null);
                   setShowUploadModal(true);
                 }}
                 className="rounded-md border border-green-600 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100"
@@ -425,37 +478,7 @@ function CertificatesTab() {
       )}
 
       {viewMode === "list" && (
-        <div
-          className="space-y-4 relative"
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          {isDragOver && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-600/20 backdrop-blur-sm pointer-events-none">
-              <div className="bg-white rounded-xl shadow-2xl p-8 text-center max-w-md mx-4">
-                <svg
-                  className="mx-auto h-12 w-12 text-teal-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-                <p className="mt-4 text-lg font-medium text-gray-900">Drop to analyze with Nix</p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Nix will auto-identify and separate COC/COA documents
-                </p>
-              </div>
-            </div>
-          )}
-
+        <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[200px]">
               <input

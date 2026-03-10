@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { PDFDocument } from "pdf-lib";
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import {
@@ -35,6 +36,7 @@ export interface UploadCertificateDto {
   batchNumber: string;
   description?: string | null;
   expiryDate?: string | null;
+  pageNumbers?: number[] | null;
 }
 
 export interface CertificateFilters {
@@ -132,8 +134,13 @@ export class CertificateService {
       );
     }
 
+    const uploadFile =
+      dto.pageNumbers && dto.pageNumbers.length > 0 && file.mimetype === "application/pdf"
+        ? await this.extractPdfPages(file, dto.pageNumbers)
+        : file;
+
     const subPath = `${StorageArea.STOCK_CONTROL}/certificates/${companyId}/${dto.supplierId}/${dto.batchNumber.trim()}`;
-    const storageResult = await this.storageService.upload(file, subPath);
+    const storageResult = await this.storageService.upload(uploadFile, subPath);
 
     const certificate = this.certRepo.create({
       companyId,
@@ -327,7 +334,7 @@ export class CertificateService {
       throw new BadRequestException("No certificates or QC data found for this job card");
     }
 
-    const PDFDocument = (await import("pdfkit")).default;
+    const PDFKit = (await import("pdfkit")).default;
     const { default: pdfLib } = await import("pdf-lib");
 
     const mergedPdf = await pdfLib.PDFDocument.create();
@@ -342,7 +349,7 @@ export class CertificateService {
     const totalCertCount = certs.length + calCerts.length;
 
     const coverBuffer = await generateBrandedCoverPage(
-      PDFDocument,
+      PDFKit,
       company ?? null,
       jobCard ?? null,
       coatingAnalysis ?? null,
@@ -579,5 +586,23 @@ export class CertificateService {
       .getRawMany<{ batchNumber: string }>();
 
     return records.map((r) => r.batchNumber);
+  }
+
+  private async extractPdfPages(
+    file: Express.Multer.File,
+    pageNumbers: number[],
+  ): Promise<Express.Multer.File> {
+    const srcDoc = await PDFDocument.load(file.buffer);
+    const newDoc = await PDFDocument.create();
+    const pageIndices = pageNumbers.map((p) => p - 1);
+    const copiedPages = await newDoc.copyPages(srcDoc, pageIndices);
+    copiedPages.forEach((page) => newDoc.addPage(page));
+    const pdfBytes = await newDoc.save();
+
+    return {
+      ...file,
+      buffer: Buffer.from(pdfBytes),
+      size: pdfBytes.byteLength,
+    };
   }
 }

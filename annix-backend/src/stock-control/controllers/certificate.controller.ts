@@ -53,6 +53,7 @@ export class CertificateController {
       batchNumber: body.batchNumber,
       description: body.description || null,
       expiryDate: body.expiryDate || null,
+      pageNumbers: body.pageNumbers ? (JSON.parse(body.pageNumbers) as number[]) : null,
     };
 
     return this.certificateService.uploadCertificate(req.user.companyId, dto, file, req.user);

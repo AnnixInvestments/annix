@@ -3767,6 +3767,7 @@ class StockControlApiClient {
       batchNumber: string;
       description?: string | null;
       expiryDate?: string | null;
+      pageNumbers?: number[] | null;
     },
   ): Promise<SupplierCertificate> {
     const formData = new FormData();
@@ -3778,6 +3779,8 @@ class StockControlApiClient {
     if (data.jobCardId) formData.append("jobCardId", String(data.jobCardId));
     if (data.description) formData.append("description", data.description);
     if (data.expiryDate) formData.append("expiryDate", data.expiryDate);
+    if (data.pageNumbers && data.pageNumbers.length > 0)
+      formData.append("pageNumbers", JSON.stringify(data.pageNumbers));
 
     const url = `${this.baseURL}/stock-control/certificates`;
     const response = await fetch(url, {
