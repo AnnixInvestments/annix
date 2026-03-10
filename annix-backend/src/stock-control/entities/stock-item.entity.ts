@@ -37,7 +37,7 @@ export class StockItem {
   @Column({ name: "cost_per_unit", type: "numeric", precision: 12, scale: 2, default: 0 })
   costPerUnit: number;
 
-  @Column({ type: "integer", default: 0 })
+  @Column({ type: "numeric", precision: 12, scale: 2, default: 0 })
   quantity: number;
 
   @Column({ name: "min_stock_level", type: "integer", default: 0 })

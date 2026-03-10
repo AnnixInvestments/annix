@@ -22,7 +22,7 @@ export class DeliveryNoteItem {
   @JoinColumn({ name: "stock_item_id" })
   stockItem: StockItem;
 
-  @Column({ name: "quantity_received", type: "integer" })
+  @Column({ name: "quantity_received", type: "numeric", precision: 12, scale: 2 })
   quantityReceived: number;
 
   @Column({ name: "photo_url", type: "text", nullable: true })

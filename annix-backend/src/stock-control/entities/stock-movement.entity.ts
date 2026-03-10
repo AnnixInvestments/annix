@@ -39,7 +39,7 @@ export class StockMovement {
   @Column({ name: "movement_type", type: "varchar", length: 50 })
   movementType: MovementType;
 
-  @Column({ type: "integer" })
+  @Column({ type: "numeric", precision: 12, scale: 2 })
   quantity: number;
 
   @Column({ name: "reference_type", type: "varchar", length: 50, nullable: true })

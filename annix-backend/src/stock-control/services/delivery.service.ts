@@ -659,8 +659,8 @@ export class DeliveryService {
         const supplierHistory = await this.deliveryNoteItemRepo
           .createQueryBuilder("dni")
           .innerJoin("dni.deliveryNote", "dn")
-          .where("dni.stockItemId = :stockItemId", { stockItemId: item.id })
-          .andWhere("dni.companyId = :companyId", { companyId })
+          .where("dni.stock_item_id = :stockItemId", { stockItemId: item.id })
+          .andWhere("dni.company_id = :companyId", { companyId })
           .select("DISTINCT dn.supplierName", "supplierName")
           .getRawMany();
 
