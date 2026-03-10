@@ -37,19 +37,31 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   return outputArray;
 }
 
+async function sendSubscriptionToBackend(subscription: PushSubscription): Promise<void> {
+  const json = subscription.toJSON();
+  await stockControlApiClient.subscribePush({
+    endpoint: json.endpoint!,
+    keys: {
+      p256dh: json.keys!.p256dh!,
+      auth: json.keys!.auth!,
+    },
+  });
+}
+
 async function ensurePushSubscription(registration: ServiceWorkerRegistration): Promise<void> {
   if (Notification.permission !== "granted") {
     return;
   }
 
   try {
-    const existingSub = await registration.pushManager.getSubscription();
-    if (existingSub) {
+    const { vapidPublicKey } = await stockControlApiClient.pushVapidKey();
+    if (!vapidPublicKey) {
       return;
     }
 
-    const { vapidPublicKey } = await stockControlApiClient.pushVapidKey();
-    if (!vapidPublicKey) {
+    const existingSub = await registration.pushManager.getSubscription();
+    if (existingSub) {
+      await sendSubscriptionToBackend(existingSub);
       return;
     }
 
@@ -58,14 +70,7 @@ async function ensurePushSubscription(registration: ServiceWorkerRegistration): 
       applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
     });
 
-    const subscriptionJson = subscription.toJSON();
-    await stockControlApiClient.subscribePush({
-      endpoint: subscriptionJson.endpoint!,
-      keys: {
-        p256dh: subscriptionJson.keys!.p256dh!,
-        auth: subscriptionJson.keys!.auth!,
-      },
-    });
+    await sendSubscriptionToBackend(subscription);
   } catch (error) {
     console.error("Auto push re-subscription failed:", error);
   }

@@ -48,8 +48,7 @@ function PushNotificationBanner() {
   if (
     isLoading ||
     dismissed ||
-    isSubscribed ||
-    permissionState === "granted" ||
+    (isSubscribed && permissionState === "granted") ||
     permissionState === "denied" ||
     permissionState === "unsupported"
   ) {
