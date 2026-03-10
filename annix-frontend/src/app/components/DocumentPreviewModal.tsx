@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import {
-  ImageViewerToolbar,
-  imageViewerTransform,
-  useImageViewer,
-} from "./ImageViewerToolbar";
+import { ImageViewerToolbar, imageViewerTransform, useImageViewer } from "./ImageViewerToolbar";
 
 export interface PreviewModalState {
   isOpen: boolean;
