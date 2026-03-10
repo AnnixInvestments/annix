@@ -253,6 +253,7 @@ function FieldComparisonRow({ comparison }: { comparison: FieldComparisonResult 
 function ImagePreviewViewer({ pages, presignedUrl }: { pages: string[]; presignedUrl: string }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);
+  const [rotation, setRotation] = useState(0);
 
   const goToPrevPage = () => {
     if (currentPage > 1) setCurrentPage(currentPage - 1);
@@ -264,6 +265,7 @@ function ImagePreviewViewer({ pages, presignedUrl }: { pages: string[]; presigne
 
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3.0));
   const zoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5));
+  const rotate = () => setRotation((prev) => (prev + 90) % 360);
 
   return (
     <div className="flex flex-col h-full">
@@ -326,6 +328,20 @@ function ImagePreviewViewer({ pages, presignedUrl }: { pages: string[]; presigne
               />
             </svg>
           </button>
+          <button
+            onClick={rotate}
+            className="p-1 hover:bg-gray-700 rounded"
+            title="Rotate 90°"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </button>
         </div>
 
         <a
@@ -354,8 +370,9 @@ function ImagePreviewViewer({ pages, presignedUrl }: { pages: string[]; presigne
           style={{
             maxWidth: "100%",
             height: "auto",
-            transform: `scale(${scale})`,
-            transformOrigin: "top center",
+            transform: `scale(${scale}) rotate(${rotation}deg)`,
+            transformOrigin: "center center",
+            transition: "transform 0.2s ease",
           }}
         />
       </div>

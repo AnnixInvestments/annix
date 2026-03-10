@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import {
+  ImageViewerToolbar,
+  imageViewerTransform,
+  useImageViewer,
+} from "@/app/components/ImageViewerToolbar";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -65,6 +70,7 @@ export default function DeliveryNoteDetailPage() {
   const [podPageNumber, setPodPageNumber] = useState<number | null>(null);
   const [podPageUrl, setPodPageUrl] = useState<string | null>(null);
   const [isLoadingPod, setIsLoadingPod] = useState(false);
+  const podViewer = useImageViewer();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -267,6 +273,7 @@ export default function DeliveryNoteDetailPage() {
     setShowPodModal(false);
     setPodPageNumber(null);
     setPodPageUrl(null);
+    podViewer.reset();
   };
 
   const handleDelete = async () => {
@@ -1070,6 +1077,13 @@ export default function DeliveryNoteDetailPage() {
                   Proof of Delivery - Page {podPageNumber}
                 </h3>
                 <div className="flex items-center space-x-2">
+                  <ImageViewerToolbar
+                    state={podViewer.state}
+                    onZoomIn={podViewer.zoomIn}
+                    onZoomOut={podViewer.zoomOut}
+                    onRotate={podViewer.rotateClockwise}
+                    onReset={podViewer.reset}
+                  />
                   {podPageUrl && (
                     <>
                       <button
@@ -1152,6 +1166,7 @@ export default function DeliveryNoteDetailPage() {
                     src={podPageUrl}
                     alt={`POD Page ${podPageNumber}`}
                     className="max-w-full max-h-[calc(90vh-120px)] w-auto h-auto mx-auto object-contain"
+                    style={imageViewerTransform(podViewer.state)}
                   />
                 ) : (
                   <div className="text-center py-12 text-gray-500">Failed to load POD page</div>

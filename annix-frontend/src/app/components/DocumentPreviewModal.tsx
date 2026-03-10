@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import {
+  ImageViewerToolbar,
+  imageViewerTransform,
+  useImageViewer,
+} from "./ImageViewerToolbar";
 
 export interface PreviewModalState {
   isOpen: boolean;
@@ -25,6 +30,14 @@ interface DocumentPreviewModalProps {
 
 export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
   const { state, onClose } = props;
+  const viewer = useImageViewer();
+
+  useEffect(() => {
+    if (!state.isOpen) {
+      viewer.reset();
+    }
+  }, [state.isOpen, viewer.reset]);
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && state.isOpen) {
@@ -60,6 +73,15 @@ export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
               {state.filename || "Document Preview"}
             </h2>
             <div className="flex items-center space-x-2">
+              {state.url && state.mimeType?.startsWith("image/") && (
+                <ImageViewerToolbar
+                  state={viewer.state}
+                  onZoomIn={viewer.zoomIn}
+                  onZoomOut={viewer.zoomOut}
+                  onRotate={viewer.rotateClockwise}
+                  onReset={viewer.reset}
+                />
+              )}
               {state.url && (
                 <button
                   onClick={handleDownload}
@@ -105,6 +127,7 @@ export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
                 src={state.url}
                 alt={state.filename || "Document"}
                 className="max-w-full max-h-[70vh] object-contain"
+                style={imageViewerTransform(viewer.state)}
               />
             ) : state.url && state.mimeType === "application/pdf" ? (
               <iframe
