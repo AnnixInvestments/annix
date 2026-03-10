@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { now } from "../lib/datetime";
 import { decrypt, encrypt } from "../secure-documents/crypto.util";
 import { SageConnection } from "./entities/sage-connection.entity";
 import {
@@ -12,26 +13,23 @@ import {
   type SageTaxType,
 } from "./sage-api.service";
 
-export interface SageConfigDto {
-  sageUsername: string | null;
-  sagePassword: string | null;
-  sageCompanyId: number | null;
-  sageCompanyName: string | null;
-}
-
 export interface SageConnectionStatus {
   connected: boolean;
   enabled: boolean;
-  sageUsername: string | null;
-  sagePasswordSet: boolean;
   sageCompanyId: number | null;
   sageCompanyName: string | null;
   connectedAt: Date | null;
+  tokenExpiresAt: Date | null;
+  refreshTokenExpiresAt: Date | null;
 }
+
+const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000;
+const REFRESH_TOKEN_LIFETIME_MS = 31 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class SageConnectionService {
   private readonly logger = new Logger(SageConnectionService.name);
+  private refreshingTokens = new Map<string, Promise<string>>();
 
   constructor(
     @InjectRepository(SageConnection)
@@ -47,25 +45,25 @@ export class SageConnectionService {
       return {
         connected: false,
         enabled: false,
-        sageUsername: null,
-        sagePasswordSet: false,
         sageCompanyId: null,
         sageCompanyName: null,
         connectedAt: null,
+        tokenExpiresAt: null,
+        refreshTokenExpiresAt: null,
       };
     }
 
     return {
       connected:
-        conn.sageUsername !== null &&
-        conn.sagePassEncrypted !== null &&
+        conn.accessTokenEncrypted !== null &&
+        conn.refreshTokenEncrypted !== null &&
         conn.sageCompanyId !== null,
       enabled: conn.enabled,
-      sageUsername: conn.sageUsername,
-      sagePasswordSet: conn.sagePassEncrypted !== null,
       sageCompanyId: conn.sageCompanyId,
       sageCompanyName: conn.sageCompanyName,
       connectedAt: conn.connectedAt,
+      tokenExpiresAt: conn.tokenExpiresAt,
+      refreshTokenExpiresAt: conn.refreshTokenExpiresAt,
     };
   }
 
@@ -74,31 +72,64 @@ export class SageConnectionService {
     return conn?.enabled ?? false;
   }
 
-  async saveCredentials(appKey: string, dto: SageConfigDto): Promise<{ message: string }> {
-    const encryptionKey = this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY");
+  authorizationUrl(appKey: string): string {
+    const redirectUri = this.callbackUrl();
+    return this.sageApiService.authorizationUrl(redirectUri, appKey);
+  }
+
+  async handleOAuthCallback(
+    code: string,
+    state: string,
+  ): Promise<{ appKey: string; companies: SageCompany[] }> {
+    const appKey = state;
+    const redirectUri = this.callbackUrl();
+    const tokenResponse = await this.sageApiService.exchangeCode(code, redirectUri);
+
+    const encryptionKey = this.encryptionKey();
+    const accessTokenBuf = encrypt(tokenResponse.access_token, encryptionKey);
+    const refreshTokenBuf = encrypt(tokenResponse.refresh_token, encryptionKey);
+
+    const tokenExpiresAt = now().plus({ seconds: tokenResponse.expires_in }).toJSDate();
+    const refreshTokenExpiresAt = now()
+      .plus({ milliseconds: REFRESH_TOKEN_LIFETIME_MS })
+      .toJSDate();
 
     let conn = await this.connectionRepo.findOne({ where: { appKey } });
     if (!conn) {
       conn = this.connectionRepo.create({ appKey, enabled: false });
     }
 
-    conn.sageUsername = dto.sageUsername;
-    conn.sageCompanyId = dto.sageCompanyId;
-    conn.sageCompanyName = dto.sageCompanyName;
-
-    if (dto.sagePassword !== null && dto.sagePassword !== undefined && encryptionKey) {
-      conn.sagePassEncrypted = encrypt(dto.sagePassword, encryptionKey);
-    } else if (dto.sageUsername === null) {
-      conn.sagePassEncrypted = null;
-      conn.connectedAt = null;
-    }
-
-    if (dto.sageCompanyId !== null) {
-      conn.connectedAt = new Date();
-    }
+    conn.accessTokenEncrypted = accessTokenBuf;
+    conn.refreshTokenEncrypted = refreshTokenBuf;
+    conn.tokenExpiresAt = tokenExpiresAt;
+    conn.refreshTokenExpiresAt = refreshTokenExpiresAt;
+    conn.sagePassEncrypted = null;
+    conn.sageUsername = null;
 
     await this.connectionRepo.save(conn);
-    return { message: "Sage configuration updated" };
+
+    const companies = await this.sageApiService.companies(tokenResponse.access_token);
+
+    return { appKey, companies };
+  }
+
+  async selectCompany(
+    appKey: string,
+    companyId: number,
+    companyName: string,
+  ): Promise<{ message: string }> {
+    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    if (!conn || !conn.accessTokenEncrypted) {
+      throw new BadRequestException("Sage not authenticated. Please connect to Sage first.");
+    }
+
+    conn.sageCompanyId = companyId;
+    conn.sageCompanyName = companyName;
+    conn.connectedAt = now().toJSDate();
+    conn.enabled = true;
+
+    await this.connectionRepo.save(conn);
+    return { message: "Sage company selected successfully" };
   }
 
   async disconnect(appKey: string): Promise<{ message: string }> {
@@ -107,87 +138,106 @@ export class SageConnectionService {
       {
         sageUsername: null,
         sagePassEncrypted: null,
+        accessTokenEncrypted: null,
+        refreshTokenEncrypted: null,
+        tokenExpiresAt: null,
+        refreshTokenExpiresAt: null,
         sageCompanyId: null,
         sageCompanyName: null,
         connectedAt: null,
+        enabled: false,
       },
     );
     return { message: "Sage connection removed" };
   }
 
-  async testConnection(
-    appKey: string,
-    username?: string,
-    password?: string,
-  ): Promise<{ success: boolean; companies: SageCompany[] }> {
-    const creds = await this.resolveCredentials(appKey, username, password);
-    return this.sageApiService.testConnection(creds.username, creds.password);
+  async validAccessToken(appKey: string): Promise<string> {
+    const existing = this.refreshingTokens.get(appKey);
+    if (existing) {
+      return existing;
+    }
+
+    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    if (!conn?.accessTokenEncrypted || !conn?.refreshTokenEncrypted) {
+      throw new BadRequestException("Sage not connected. Configure it in Settings first.");
+    }
+
+    const encryptionKey = this.encryptionKey();
+    const tokenExpiry = conn.tokenExpiresAt ? new Date(conn.tokenExpiresAt).getTime() : 0;
+    const isExpired = Date.now() >= tokenExpiry - TOKEN_EXPIRY_BUFFER_MS;
+
+    if (!isExpired) {
+      return decrypt(conn.accessTokenEncrypted, encryptionKey);
+    }
+
+    const refreshPromise = this.performTokenRefresh(conn, encryptionKey);
+    this.refreshingTokens.set(appKey, refreshPromise);
+
+    try {
+      return await refreshPromise;
+    } finally {
+      this.refreshingTokens.delete(appKey);
+    }
   }
 
-  async sageCompanies(
-    appKey: string,
-    username?: string,
-    password?: string,
-  ): Promise<SageCompany[]> {
-    const creds = await this.resolveCredentials(appKey, username, password);
-    return this.sageApiService.companies(creds.username, creds.password);
+  async sageCompanies(appKey: string): Promise<SageCompany[]> {
+    const token = await this.validAccessToken(appKey);
+    return this.sageApiService.companies(token);
   }
 
   async sageSuppliers(appKey: string): Promise<SageSupplier[]> {
-    const creds = await this.storedCredentials(appKey);
+    const token = await this.validAccessToken(appKey);
     const conn = await this.connectionRepo.findOne({ where: { appKey } });
     if (!conn?.sageCompanyId) {
       throw new BadRequestException("No Sage company selected");
     }
-    return this.sageApiService.suppliers(creds.username, creds.password, conn.sageCompanyId);
+    return this.sageApiService.suppliers(token, conn.sageCompanyId);
   }
 
   async sageCustomers(appKey: string): Promise<SageCustomer[]> {
-    const creds = await this.storedCredentials(appKey);
+    const token = await this.validAccessToken(appKey);
     const conn = await this.connectionRepo.findOne({ where: { appKey } });
     if (!conn?.sageCompanyId) {
       throw new BadRequestException("No Sage company selected");
     }
-    return this.sageApiService.customers(creds.username, creds.password, conn.sageCompanyId);
+    return this.sageApiService.customers(token, conn.sageCompanyId);
   }
 
   async sageTaxTypes(appKey: string): Promise<SageTaxType[]> {
-    const creds = await this.storedCredentials(appKey);
+    const token = await this.validAccessToken(appKey);
     const conn = await this.connectionRepo.findOne({ where: { appKey } });
     if (!conn?.sageCompanyId) {
       throw new BadRequestException("No Sage company selected");
     }
-    return this.sageApiService.taxTypes(creds.username, creds.password, conn.sageCompanyId);
+    return this.sageApiService.taxTypes(token, conn.sageCompanyId);
   }
 
-  async credentials(appKey: string): Promise<{ username: string; password: string }> {
-    return this.storedCredentials(appKey);
+  private async performTokenRefresh(conn: SageConnection, encryptionKey: string): Promise<string> {
+    const currentRefreshToken = decrypt(conn.refreshTokenEncrypted!, encryptionKey);
+
+    this.logger.log(`Refreshing Sage access token for ${conn.appKey}`);
+    const tokenResponse = await this.sageApiService.refreshToken(currentRefreshToken);
+
+    conn.accessTokenEncrypted = encrypt(tokenResponse.access_token, encryptionKey);
+    conn.refreshTokenEncrypted = encrypt(tokenResponse.refresh_token, encryptionKey);
+    conn.tokenExpiresAt = now().plus({ seconds: tokenResponse.expires_in }).toJSDate();
+    conn.refreshTokenExpiresAt = now().plus({ milliseconds: REFRESH_TOKEN_LIFETIME_MS }).toJSDate();
+
+    await this.connectionRepo.save(conn);
+
+    return tokenResponse.access_token;
   }
 
-  private async resolveCredentials(
-    appKey: string,
-    username?: string,
-    password?: string,
-  ): Promise<{ username: string; password: string }> {
-    if (username && password) {
-      return { username, password };
-    }
-    return this.storedCredentials(appKey);
+  private callbackUrl(): string {
+    const apiUrl = this.configService.get<string>("API_URL") ?? "http://localhost:4001/api";
+    return `${apiUrl}/sage/callback`;
   }
 
-  private async storedCredentials(appKey: string): Promise<{ username: string; password: string }> {
-    const conn = await this.connectionRepo.findOne({ where: { appKey } });
-
-    if (!conn?.sageUsername || !conn?.sagePassEncrypted) {
-      throw new BadRequestException("Sage credentials not configured");
-    }
-
-    const encryptionKey = this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY");
-    if (!encryptionKey) {
+  private encryptionKey(): string {
+    const key = this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY");
+    if (!key) {
       throw new BadRequestException("DOCUMENT_ENCRYPTION_KEY not configured");
     }
-
-    const password = decrypt(conn.sagePassEncrypted, encryptionKey);
-    return { username: conn.sageUsername, password };
+    return key;
   }
 }

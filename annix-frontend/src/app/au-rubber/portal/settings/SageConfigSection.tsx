@@ -12,26 +12,24 @@ interface SageCompany {
 interface SageConnectionStatus {
   connected: boolean;
   enabled: boolean;
-  sageUsername: string | null;
-  sagePasswordSet: boolean;
   sageCompanyId: number | null;
   sageCompanyName: string | null;
   connectedAt: string | null;
+  tokenExpiresAt: string | null;
+  refreshTokenExpiresAt: string | null;
 }
 
 export function SageConfigSection() {
   const [status, setStatus] = useState<SageConnectionStatus | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [companies, setCompanies] = useState<SageCompany[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [step, setStep] = useState<"credentials" | "company" | "connected">("credentials");
+  const [step, setStep] = useState<"connect" | "company" | "connected">("connect");
 
   const loadStatus = useCallback(async () => {
     try {
@@ -40,9 +38,8 @@ export function SageConfigSection() {
       if (config.connected) {
         setStep("connected");
         setExpanded(true);
-      } else if (config.sageUsername) {
-        setUsername(config.sageUsername);
-        setStep("credentials");
+      } else {
+        setStep("connect");
       }
     } catch {
       setStatus(null);
@@ -53,26 +50,45 @@ export function SageConfigSection() {
     loadStatus();
   }, [loadStatus]);
 
-  const handleTestConnection = async () => {
-    setTesting(true);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sageResult = params.get("sage");
+
+    if (sageResult === "connected") {
+      const companiesParam = params.get("companies");
+      if (companiesParam) {
+        try {
+          const parsed = JSON.parse(companiesParam) as SageCompany[];
+          setCompanies(parsed);
+          setSelectedCompanyId(parsed.length > 0 ? parsed[0].ID : null);
+          setStep("company");
+          setExpanded(true);
+          setSuccess(
+            `Authenticated successfully. Found ${parsed.length} Sage ${parsed.length === 1 ? "company" : "companies"}.`,
+          );
+        } catch {
+          setError("Failed to parse company data from Sage");
+        }
+      }
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (sageResult === "error") {
+      const message = params.get("message") ?? "Sage authentication failed";
+      setError(message);
+      setExpanded(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  const handleConnect = async () => {
+    setConnecting(true);
     setError("");
     setSuccess("");
     try {
-      const result = await auRubberApiClient.testSageConnection(username, password);
-      if (result.success && result.companies.length > 0) {
-        setCompanies(result.companies);
-        setSelectedCompanyId(result.companies[0].ID);
-        setStep("company");
-        setSuccess(
-          `Connected successfully. Found ${result.companies.length} Sage ${result.companies.length === 1 ? "company" : "companies"}.`,
-        );
-      } else {
-        setError("Connection succeeded but no companies found on this Sage account.");
-      }
+      const result = await auRubberApiClient.sageAuthorizeUrl();
+      window.location.href = result.url;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to connect to Sage");
-    } finally {
-      setTesting(false);
+      setError(e instanceof Error ? e.message : "Failed to initiate Sage connection");
+      setConnecting(false);
     }
   };
 
@@ -85,14 +101,8 @@ export function SageConfigSection() {
     setSuccess("");
     try {
       const selected = companies.find((c) => c.ID === selectedCompanyId);
-      await auRubberApiClient.updateSageConfig({
-        sageUsername: username,
-        sagePassword: password,
-        sageCompanyId: selectedCompanyId,
-        sageCompanyName: selected?.Name ?? null,
-      });
+      await auRubberApiClient.selectSageCompany(selectedCompanyId, selected?.Name ?? "");
       setSuccess("Sage connection saved successfully.");
-      setPassword("");
       await loadStatus();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save Sage configuration");
@@ -108,11 +118,9 @@ export function SageConfigSection() {
     try {
       await auRubberApiClient.disconnectSage();
       setSuccess("Sage connection removed.");
-      setUsername("");
-      setPassword("");
       setCompanies([]);
       setSelectedCompanyId(null);
-      setStep("credentials");
+      setStep("connect");
       await loadStatus();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to disconnect from Sage");
@@ -122,7 +130,7 @@ export function SageConfigSection() {
   };
 
   const connectedSummary = status?.connected
-    ? `Connected to ${status.sageCompanyName ?? "Sage"} as ${status.sageUsername}`
+    ? `Connected to ${status.sageCompanyName ?? "Sage"}`
     : "Not connected";
 
   return (
@@ -161,10 +169,6 @@ export function SageConfigSection() {
               <div className="rounded-lg bg-green-50 border border-green-200 p-4 mb-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700">Sage Account:</span>{" "}
-                    <span className="text-gray-900">{status.sageUsername}</span>
-                  </div>
-                  <div>
                     <span className="font-medium text-gray-700">Company:</span>{" "}
                     <span className="text-gray-900">{status.sageCompanyName}</span>
                   </div>
@@ -181,16 +185,11 @@ export function SageConfigSection() {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    setStep("credentials");
-                    setUsername(status.sageUsername ?? "");
-                    setPassword("");
-                    setSuccess("");
-                    setError("");
-                  }}
-                  className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 transition-colors"
+                  onClick={handleConnect}
+                  disabled={connecting}
+                  className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Reconfigure
+                  {connecting ? "Redirecting..." : "Reconnect"}
                 </button>
                 <button
                   type="button"
@@ -204,68 +203,19 @@ export function SageConfigSection() {
             </div>
           )}
 
-          {step === "credentials" && (
+          {step === "connect" && (
             <div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="sageUsername" className="block text-sm font-medium text-gray-700">
-                    Sage Email
-                  </label>
-                  <input
-                    id="sageUsername"
-                    type="email"
-                    value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value);
-                      setSuccess("");
-                    }}
-                    placeholder="info@company.co.za"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-orange-500 focus:border-orange-500 text-sm"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="sagePassword" className="block text-sm font-medium text-gray-700">
-                    Sage Password{" "}
-                    {status?.sagePasswordSet && (
-                      <span className="text-gray-400">(set, enter new to change)</span>
-                    )}
-                  </label>
-                  <input
-                    id="sagePassword"
-                    type="password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setSuccess("");
-                    }}
-                    placeholder={status?.sagePasswordSet ? "********" : "Enter password"}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-orange-500 focus:border-orange-500 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="mt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleTestConnection}
-                  disabled={testing || !username || !password}
-                  className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {testing ? "Connecting..." : "Connect to Sage"}
-                </button>
-                {status?.connected && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStep("connected");
-                      setError("");
-                      setSuccess("");
-                    }}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                )}
-              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Click below to sign in to your Sage account and authorize access.
+              </p>
+              <button
+                type="button"
+                onClick={handleConnect}
+                disabled={connecting}
+                className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {connecting ? "Redirecting to Sage..." : "Connect to Sage"}
+              </button>
             </div>
           )}
 
@@ -304,7 +254,7 @@ export function SageConfigSection() {
                 <button
                   type="button"
                   onClick={() => {
-                    setStep("credentials");
+                    setStep("connect");
                     setError("");
                     setSuccess("");
                   }}
