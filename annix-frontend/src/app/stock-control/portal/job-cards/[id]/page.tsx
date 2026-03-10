@@ -469,18 +469,15 @@ export default function JobCardDetailPage() {
   const tabDefinitions: TabDefinition[] = useMemo(() => {
     const status = jobCard?.status?.toLowerCase() || "draft";
     return [
-      { id: "details", label: "Details" },
       {
-        id: "line-items",
-        label: "Line Items",
+        id: "details",
+        label: "Details",
         badge: validLineItemCount > 0 ? validLineItemCount : null,
-        hidden: !jobCard?.lineItems || jobCard.lineItems.length === 0,
       },
       { id: "coating", label: "Coating Analysis" },
-      { id: "requisition", label: "Requisition" },
       {
-        id: "allocations",
-        label: "Allocations",
+        id: "rubber-analysis",
+        label: "Rubber Analysis",
         badge: allocations.length > 0 ? allocations.length : null,
       },
       { id: "quality", label: "Quality" },
@@ -489,6 +486,7 @@ export default function JobCardDetailPage() {
         label: "Dispatch",
         hidden: status === "draft" && currentStatus !== "ready_for_dispatch",
       },
+      { id: "requisition", label: "Requisition" },
     ];
   }, [jobCard, validLineItemCount, allocations.length, currentStatus]);
 
@@ -743,13 +741,6 @@ export default function JobCardDetailPage() {
               onExtractAll={handleExtractAll}
               onDeleteAttachment={handleDeleteAttachment}
             />
-          </TabPanel>
-
-          <TabPanel
-            tabId="line-items"
-            activeTab={activeTab}
-            visited={visitedTabs.has("line-items")}
-          >
             <LineItemsTab jobCard={jobCard} attachments={attachments} />
           </TabPanel>
 
@@ -773,17 +764,9 @@ export default function JobCardDetailPage() {
           </TabPanel>
 
           <TabPanel
-            tabId="requisition"
+            tabId="rubber-analysis"
             activeTab={activeTab}
-            visited={visitedTabs.has("requisition")}
-          >
-            <RequisitionTab requisition={requisition} jobId={jobId} />
-          </TabPanel>
-
-          <TabPanel
-            tabId="allocations"
-            activeTab={activeTab}
-            visited={visitedTabs.has("allocations")}
+            visited={visitedTabs.has("rubber-analysis")}
           >
             <div className="space-y-6">
               <RubberAllocationGuard jobCard={jobCard} />
@@ -822,6 +805,14 @@ export default function JobCardDetailPage() {
               jobName={jobCard.jobName}
               onRefreshParent={fetchData}
             />
+          </TabPanel>
+
+          <TabPanel
+            tabId="requisition"
+            activeTab={activeTab}
+            visited={visitedTabs.has("requisition")}
+          >
+            <RequisitionTab requisition={requisition} jobId={jobId} />
           </TabPanel>
         </div>
       </div>
