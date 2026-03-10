@@ -1,11 +1,11 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import type { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddCalibrationCertificatesTable1804500000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS calibration_certificates (
         id SERIAL PRIMARY KEY,
-        company_id integer NOT NULL REFERENCES stock_control_company(id) ON DELETE CASCADE,
+        company_id integer NOT NULL REFERENCES stock_control_companies(id) ON DELETE CASCADE,
         equipment_name varchar(255) NOT NULL,
         equipment_identifier varchar(255),
         certificate_number varchar(255),
