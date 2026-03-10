@@ -22,6 +22,7 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { StockControlAuthService } from "../services/auth.service";
 import { BrandingScraperService } from "../services/branding-scraper.service";
+import { SageConfigDto, SageConnectionService } from "../../sage-export/sage-connection.service";
 import { CompanyEmailService, SmtpConfigDto } from "../services/company-email.service";
 import { LookupService } from "../services/lookup.service";
 import { RbacConfigService } from "../services/rbac-config.service";
@@ -35,6 +36,7 @@ export class StockControlAuthController {
     private readonly companyEmailService: CompanyEmailService,
     private readonly lookupService: LookupService,
     private readonly rbacConfigService: RbacConfigService,
+    private readonly sageConnectionService: SageConnectionService,
   ) {}
 
   @Post("register")
@@ -342,5 +344,80 @@ export class StockControlAuthController {
   @ApiOperation({ summary: "Update nav RBAC configuration" })
   async updateRbacConfig(@Req() req: any, @Body() body: { config: Record<string, string[]> }) {
     return this.rbacConfigService.updateNavConfig(req.user.companyId, body.config);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Get("sage-config")
+  @ApiOperation({ summary: "Sage connection status for company" })
+  async sageConfig(@Req() req: any) {
+    return this.sageConnectionService.connectionStatus(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Patch("sage-config")
+  @ApiOperation({ summary: "Update Sage connection credentials" })
+  async updateSageConfig(@Req() req: any, @Body() body: SageConfigDto) {
+    return this.sageConnectionService.saveCredentials(req.user.companyId, body);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Delete("sage-config")
+  @ApiOperation({ summary: "Disconnect from Sage" })
+  async disconnectSage(@Req() req: any) {
+    return this.sageConnectionService.disconnect(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Post("sage-config/test")
+  @ApiOperation({ summary: "Test Sage connection with provided or stored credentials" })
+  async testSageConnection(
+    @Req() req: any,
+    @Body() body: { username?: string; password?: string },
+  ) {
+    return this.sageConnectionService.testConnection(
+      req.user.companyId,
+      body.username,
+      body.password,
+    );
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Get("sage-companies")
+  @ApiOperation({ summary: "List Sage companies for connected account" })
+  async sageCompanies(
+    @Req() req: any,
+    @Query("username") username?: string,
+    @Query("password") password?: string,
+  ) {
+    return this.sageConnectionService.sageCompanies(req.user.companyId, username, password);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Get("sage-suppliers")
+  @ApiOperation({ summary: "List suppliers from connected Sage company" })
+  async sageSuppliers(@Req() req: any) {
+    return this.sageConnectionService.sageSuppliers(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Get("sage-customers")
+  @ApiOperation({ summary: "List customers from connected Sage company" })
+  async sageCustomers(@Req() req: any) {
+    return this.sageConnectionService.sageCustomers(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Get("sage-tax-types")
+  @ApiOperation({ summary: "List tax types from connected Sage company" })
+  async sageTaxTypes(@Req() req: any) {
+    return this.sageConnectionService.sageTaxTypes(req.user.companyId);
   }
 }

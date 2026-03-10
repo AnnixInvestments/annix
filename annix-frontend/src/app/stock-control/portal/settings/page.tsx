@@ -16,6 +16,7 @@ import {
   WorkflowStepAssignment,
 } from "@/app/lib/api/stockControlApi";
 import { syncStatus } from "../../lib/offline/syncManager";
+import { SageConfigSection } from "./SageConfigSection";
 import { SmtpConfigSection } from "./SmtpConfigSection";
 
 type BrandingSelection = "annix" | "custom";
@@ -915,6 +916,8 @@ export default function StockControlSettingsPage() {
       </div>
 
       <SmtpConfigSection />
+
+      <SageConfigSection />
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Branding</h2>

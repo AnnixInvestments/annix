@@ -94,6 +94,21 @@ export class StockControlCompany {
   @Column({ name: "structural_steel_loss_factor_pct", type: "int", default: 30 })
   structuralSteelLossFactorPct: number;
 
+  @Column({ name: "sage_username", type: "varchar", length: 255, nullable: true })
+  sageUsername: string | null;
+
+  @Column({ name: "sage_pass_encrypted", type: "bytea", nullable: true })
+  sagePassEncrypted: Buffer | null;
+
+  @Column({ name: "sage_company_id", type: "int", nullable: true })
+  sageCompanyId: number | null;
+
+  @Column({ name: "sage_company_name", type: "varchar", length: 255, nullable: true })
+  sageCompanyName: string | null;
+
+  @Column({ name: "sage_connected_at", type: "timestamp", nullable: true })
+  sageConnectedAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

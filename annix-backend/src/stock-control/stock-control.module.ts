@@ -107,6 +107,7 @@ import { QrCodeService } from "./services/qr-code.service";
 import { RbacConfigService } from "./services/rbac-config.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
+import { SageConnectionService } from "../sage-export/sage-connection.service";
 import { SageInvoiceAdapterService } from "./services/sage-invoice-adapter.service";
 import { SearchService } from "./services/search.service";
 import { SignatureService } from "./services/signature.service";
@@ -243,6 +244,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     InvoiceService,
     PriceHistoryService,
     RbacConfigService,
+    SageConnectionService,
     SageInvoiceAdapterService,
     SearchService,
     CpoService,
