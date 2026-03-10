@@ -6,8 +6,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   CoatingAnalysis,
-  DataBookStatus,
-  IssuanceBatchRecord,
   JobCard,
   JobCardApproval,
   JobCardAttachment,
@@ -16,7 +14,6 @@ import type {
   StaffMember,
   StockAllocation,
   StockItem,
-  SupplierCertificate,
   UnverifiedProduct,
   WorkflowStatus as WorkflowStatusData,
 } from "@/app/lib/api/stockControlApi";
@@ -35,6 +32,7 @@ import {
   useJobCardTabs,
 } from "./components/JobCardTabs";
 import { LineItemsTab } from "./components/LineItemsTab";
+import { QualityTab } from "./components/QualityTab";
 import { RequisitionTab } from "./components/RequisitionTab";
 import { RubberAllocationGuard } from "./components/RubberAllocation";
 import { isValidLineItem, STATUS_TRANSITIONS, statusBadgeColor } from "./lib/helpers";
