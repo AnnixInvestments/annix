@@ -30,7 +30,11 @@ function MainContent({ children }: { children: React.ReactNode }) {
           : undefined
       }
     >
-      <div className="w-full">{children}</div>
+      <div
+        className={`w-full ${heroImageUrl ? "bg-white/95 rounded-lg p-4 sm:p-6 shadow-sm backdrop-blur-sm" : ""}`}
+      >
+        {children}
+      </div>
     </main>
   );
 }

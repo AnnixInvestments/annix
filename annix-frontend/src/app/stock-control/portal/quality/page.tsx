@@ -63,6 +63,8 @@ function CertificatesTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [droppedFile, setDroppedFile] = useState<File | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [filterSupplier, setFilterSupplier] = useState("");
   const [filterBatch, setFilterBatch] = useState("");
   const [filterType, setFilterType] = useState("");
@@ -132,8 +134,62 @@ function CertificatesTab() {
     }
   };
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+
+    const validTypes = ["image/", "application/pdf"];
+    if (!validTypes.some((t) => file.type.startsWith(t))) return;
+
+    setDroppedFile(file);
+    setShowUploadModal(true);
+  }, []);
+
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4 relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragOver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-600/20 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-8 text-center max-w-md mx-4">
+            <svg
+              className="mx-auto h-12 w-12 text-teal-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <p className="mt-4 text-lg font-medium text-gray-900">Drop certificate to upload</p>
+            <p className="mt-1 text-sm text-gray-500">PDF or image files accepted</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <select
           value={filterSupplier}
@@ -187,10 +243,26 @@ function CertificatesTab() {
         <div className="py-12 text-center text-gray-500">Loading certificates...</div>
       ) : certificates.length === 0 ? (
         <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
+          <svg
+            className="mx-auto h-10 w-10 text-gray-400 mb-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            />
+          </svg>
           <p className="text-gray-500">No certificates uploaded yet</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Drag and drop a certificate file here, or click below
+          </p>
           <button
             onClick={() => setShowUploadModal(true)}
-            className="mt-2 text-sm font-medium text-teal-600 hover:text-teal-700"
+            className="mt-3 text-sm font-medium text-teal-600 hover:text-teal-700"
           >
             Upload your first certificate
           </button>
@@ -283,9 +355,14 @@ function CertificatesTab() {
         <UploadCertificateModal
           suppliers={suppliers}
           stockItems={stockItems}
-          onClose={() => setShowUploadModal(false)}
+          initialFile={droppedFile}
+          onClose={() => {
+            setShowUploadModal(false);
+            setDroppedFile(null);
+          }}
           onUploaded={() => {
             setShowUploadModal(false);
+            setDroppedFile(null);
             fetchCertificates();
           }}
         />
@@ -297,15 +374,17 @@ function CertificatesTab() {
 function UploadCertificateModal({
   suppliers,
   stockItems,
+  initialFile,
   onClose,
   onUploaded,
 }: {
   suppliers: StockControlSupplierDto[];
   stockItems: StockItem[];
+  initialFile?: File | null;
   onClose: () => void;
   onUploaded: () => void;
 }) {
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(initialFile ?? null);
   const [supplierId, setSupplierId] = useState("");
   const [stockItemId, setStockItemId] = useState("");
   const [certificateType, setCertificateType] = useState("COC");
