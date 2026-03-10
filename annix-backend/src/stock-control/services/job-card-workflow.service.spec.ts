@@ -46,6 +46,7 @@ describe("JobCardWorkflowService", () => {
   const mockSignatureService = {
     uploadSignature: jest.fn().mockResolvedValue({ signatureUrl: "https://sig.url" }),
     signatureUrl: jest.fn().mockResolvedValue("https://existing-sig.url"),
+    findByUser: jest.fn().mockResolvedValue({ signatureUrl: "https://existing-sig.url" }),
   };
 
   const mockNotificationService = {
