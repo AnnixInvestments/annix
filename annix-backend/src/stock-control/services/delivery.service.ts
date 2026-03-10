@@ -60,9 +60,7 @@ export class DeliveryService {
       where: { companyId, deliveryNumber: data.deliveryNumber },
     });
     if (existingNote) {
-      throw new ConflictException(
-        `Delivery note ${data.deliveryNumber} has already been uploaded`,
-      );
+      throw new ConflictException(`Delivery note ${data.deliveryNumber} has already been uploaded`);
     }
 
     const deliveryNote = this.deliveryNoteRepo.create({
@@ -377,16 +375,14 @@ export class DeliveryService {
       ? fromISO(analyzedData.deliveryDate).toJSDate()
       : now().toJSDate();
 
-    let deliveryNumber = analyzedData.deliveryNoteNumber || `DN-${nowMillis()}`;
+    const deliveryNumber = analyzedData.deliveryNoteNumber || `DN-${nowMillis()}`;
 
     const existingNote = await this.deliveryNoteRepo.findOne({
       where: { companyId, deliveryNumber },
     });
 
     if (existingNote) {
-      throw new ConflictException(
-        `Delivery note ${deliveryNumber} has already been uploaded`,
-      );
+      throw new ConflictException(`Delivery note ${deliveryNumber} has already been uploaded`);
     }
 
     const supplierName = analyzedData.fromCompany?.name || "Unknown Supplier";
