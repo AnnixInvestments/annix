@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 const SAGE_BASE_URL = "https://accounting.sageone.co.za/api/2.0.0";
@@ -92,7 +92,7 @@ export class SageApiService {
   ): Promise<T> {
     const key = this.apiKey();
     if (!key) {
-      throw new Error("SAGE_CLIENT_ID not configured");
+      throw new BadRequestException("SAGE_CLIENT_ID not configured — set it as a Fly.io secret");
     }
 
     const method = options?.method ?? "GET";
@@ -116,7 +116,7 @@ export class SageApiService {
     if (!response.ok) {
       const body = await response.text();
       this.logger.error(`Sage API ${method} ${response.status}: ${body}`);
-      throw new Error(`Sage API error: ${response.status} ${response.statusText} - ${body}`);
+      throw new BadRequestException(`Sage API error (${response.status}): ${body}`);
     }
 
     return response.json() as Promise<T>;

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -137,7 +137,7 @@ export class SageConnectionService {
     const creds = await this.storedCredentials(appKey);
     const conn = await this.connectionRepo.findOne({ where: { appKey } });
     if (!conn?.sageCompanyId) {
-      throw new Error("No Sage company selected");
+      throw new BadRequestException("No Sage company selected");
     }
     return this.sageApiService.suppliers(creds.username, creds.password, conn.sageCompanyId);
   }
@@ -146,7 +146,7 @@ export class SageConnectionService {
     const creds = await this.storedCredentials(appKey);
     const conn = await this.connectionRepo.findOne({ where: { appKey } });
     if (!conn?.sageCompanyId) {
-      throw new Error("No Sage company selected");
+      throw new BadRequestException("No Sage company selected");
     }
     return this.sageApiService.customers(creds.username, creds.password, conn.sageCompanyId);
   }
@@ -155,7 +155,7 @@ export class SageConnectionService {
     const creds = await this.storedCredentials(appKey);
     const conn = await this.connectionRepo.findOne({ where: { appKey } });
     if (!conn?.sageCompanyId) {
-      throw new Error("No Sage company selected");
+      throw new BadRequestException("No Sage company selected");
     }
     return this.sageApiService.taxTypes(creds.username, creds.password, conn.sageCompanyId);
   }
@@ -179,12 +179,12 @@ export class SageConnectionService {
     const conn = await this.connectionRepo.findOne({ where: { appKey } });
 
     if (!conn?.sageUsername || !conn?.sagePassEncrypted) {
-      throw new Error("Sage credentials not configured");
+      throw new BadRequestException("Sage credentials not configured");
     }
 
     const encryptionKey = this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY");
     if (!encryptionKey) {
-      throw new Error("DOCUMENT_ENCRYPTION_KEY not configured");
+      throw new BadRequestException("DOCUMENT_ENCRYPTION_KEY not configured");
     }
 
     const password = decrypt(conn.sagePassEncrypted, encryptionKey);
