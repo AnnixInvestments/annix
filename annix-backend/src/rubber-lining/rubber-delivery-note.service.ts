@@ -745,7 +745,9 @@ export class RubberDeliveryNoteService {
       }
     }
 
-    this.logger.log(`Bulk auto-link complete: ${totalLinked} DN(s) linked across ${allCocs.length} CoC(s)`);
+    this.logger.log(
+      `Bulk auto-link complete: ${totalLinked} DN(s) linked across ${allCocs.length} CoC(s)`,
+    );
     return { linked: totalLinked, details };
   }
 }

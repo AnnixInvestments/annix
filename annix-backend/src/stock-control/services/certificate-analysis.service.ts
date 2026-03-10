@@ -154,9 +154,7 @@ export class CertificateAnalysisService {
       .map((page) => page.content as Buffer);
 
     const capped =
-      allImages.length <= 20
-        ? allImages
-        : [...allImages.slice(0, 10), ...allImages.slice(-10)];
+      allImages.length <= 20 ? allImages : [...allImages.slice(0, 10), ...allImages.slice(-10)];
 
     if (capped.length < allImages.length) {
       this.logger.warn(`PDF has ${allImages.length} pages, capped to 20 (first 10 + last 10)`);
