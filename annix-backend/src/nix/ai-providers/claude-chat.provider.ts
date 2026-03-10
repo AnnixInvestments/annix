@@ -53,7 +53,7 @@ export class ClaudeChatProvider {
 
   constructor(config?: ChatProviderConfig) {
     this.apiKey = config?.apiKey || process.env.ANTHROPIC_API_KEY || "";
-    this.model = config?.model || "claude-3-5-sonnet-20241022";
+    this.model = config?.model || "claude-sonnet-4-6";
     this.temperature = config?.temperature ?? 0.7;
     this.maxTokens = config?.maxTokens ?? 4096;
   }
@@ -77,7 +77,7 @@ export class ClaudeChatProvider {
     const hasVision = messages.some(
       (m) => Array.isArray(m.content) && m.content.some((c) => c.type === "image"),
     );
-    const model = hasVision ? "claude-sonnet-4-20250514" : this.model;
+    const model = hasVision ? "claude-sonnet-4-6" : this.model;
 
     try {
       const response = await fetch(`${this.baseUrl}/messages`, {
@@ -100,11 +100,7 @@ export class ClaudeChatProvider {
       if (!response.ok) {
         const errorText = await response.text();
         this.logger.error(`Claude API error: ${response.status} - ${errorText}`);
-        yield {
-          type: "error",
-          error: `API error: ${response.status}`,
-        };
-        return;
+        throw new Error(`API error: ${response.status} - ${errorText}`);
       }
 
       if (!response.body) {

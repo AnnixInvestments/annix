@@ -145,13 +145,18 @@ export class CertificateAnalysisService {
     const pages = await pdfToPng(pdfInput, {
       disableFontFace: true,
       useSystemFonts: true,
-      viewportScale: 2.0,
+      viewportScale: 1.5,
     });
     this.logger.log(`Converted PDF to ${pages.length} image(s)`);
 
     const allImages = pages
       .filter((page) => page.content !== undefined)
       .map((page) => page.content as Buffer);
+
+    const totalBytes = allImages.reduce((sum, img) => sum + img.length, 0);
+    this.logger.log(
+      `Total image payload: ${(totalBytes / 1024 / 1024).toFixed(1)}MB across ${allImages.length} page(s)`,
+    );
 
     if (allImages.length <= 20) {
       return allImages;
