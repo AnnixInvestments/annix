@@ -97,7 +97,9 @@ export function AppPermissionsSection() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">Camera</p>
-              <p className="text-xs text-gray-500">Required for taking photos of stock allocations</p>
+              <p className="text-xs text-gray-500">
+                Required for taking photos of stock allocations
+              </p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
@@ -156,8 +158,9 @@ export function AppPermissionsSection() {
         {showInstructions && cameraState !== "denied" && (
           <div className="rounded-md bg-blue-50 border border-blue-200 p-4">
             <p className="text-sm text-blue-700">
-              If the permission prompt did not appear, your browser may have blocked it. Tap the lock
-              icon in the address bar, go to &quot;Site settings&quot;, and allow Camera access.
+              If the permission prompt did not appear, your browser may have blocked it. Tap the
+              lock icon in the address bar, go to &quot;Site settings&quot;, and allow Camera
+              access.
             </p>
           </div>
         )}
