@@ -20,6 +20,18 @@ export class SageConnection {
   @Column({ name: "sage_pass_encrypted", type: "bytea", nullable: true })
   sagePassEncrypted: Buffer | null;
 
+  @Column({ name: "access_token_encrypted", type: "bytea", nullable: true })
+  accessTokenEncrypted: Buffer | null;
+
+  @Column({ name: "refresh_token_encrypted", type: "bytea", nullable: true })
+  refreshTokenEncrypted: Buffer | null;
+
+  @Column({ name: "token_expires_at", type: "timestamp", nullable: true })
+  tokenExpiresAt: Date | null;
+
+  @Column({ name: "refresh_token_expires_at", type: "timestamp", nullable: true })
+  refreshTokenExpiresAt: Date | null;
+
   @Column({ name: "sage_company_id", type: "int", nullable: true })
   sageCompanyId: number | null;
 

@@ -34,7 +34,7 @@ import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
 import { nowMillis } from "../lib/datetime";
 import { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
-import { type SageConfigDto, SageConnectionService } from "../sage-export/sage-connection.service";
+import { SageConnectionService } from "../sage-export/sage-connection.service";
 import { SageExportService } from "../sage-export/sage-export.service";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import {
@@ -3024,10 +3024,18 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @Patch("portal/sage/config")
-  @ApiOperation({ summary: "Update Sage connection credentials" })
-  async updateSageConfig(@Body() body: SageConfigDto) {
-    return this.sageConnectionService.saveCredentials("au-rubber", body);
+  @Get("portal/sage/authorize")
+  @ApiOperation({ summary: "Get Sage OAuth authorization URL" })
+  async sageAuthorize() {
+    return { url: this.sageConnectionService.authorizationUrl("au-rubber") };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/sage/select-company")
+  @ApiOperation({ summary: "Select Sage company after OAuth" })
+  async selectSageCompany(@Body() body: { companyId: number; companyName: string }) {
+    return this.sageConnectionService.selectCompany("au-rubber", body.companyId, body.companyName);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
@@ -3040,18 +3048,10 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
-  @Post("portal/sage/test")
-  @ApiOperation({ summary: "Test Sage connection" })
-  async testSageConnection(@Body() body: { username?: string; password?: string }) {
-    return this.sageConnectionService.testConnection("au-rubber", body.username, body.password);
-  }
-
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
-  @ApiBearerAuth()
   @Get("portal/sage/companies")
   @ApiOperation({ summary: "List Sage companies" })
-  async sageCompanies(@Query("username") username?: string, @Query("password") password?: string) {
-    return this.sageConnectionService.sageCompanies("au-rubber", username, password);
+  async sageCompanies() {
+    return this.sageConnectionService.sageCompanies("au-rubber");
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
