@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { DataBookCompleteness, DataBookStatus, SectionStatus } from "@/app/lib/api/stockControlApi";
+import type {
+  DataBookCompleteness,
+  DataBookStatus,
+  SectionStatus,
+} from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
 interface DataBookCompletenessPanelProps {
@@ -25,8 +29,7 @@ function ProgressRing({ percent }: { percent: number }) {
   const circumference = normalizedRadius * 2 * Math.PI;
   const strokeDashoffset = circumference - (percent / 100) * circumference;
 
-  const color =
-    percent === 100 ? "#059669" : percent >= 50 ? "#d97706" : "#dc2626";
+  const color = percent === 100 ? "#059669" : percent >= 50 ? "#d97706" : "#dc2626";
 
   return (
     <div className="relative inline-flex items-center justify-center">
@@ -73,7 +76,9 @@ function SectionRow({ section }: { section: SectionStatus }) {
         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${colors.dot}`} />
         <span className="flex-1 text-sm text-gray-700">{section.label}</span>
         {section.count > 0 && (
-          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${colors.bg} ${colors.text}`}>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${colors.bg} ${colors.text}`}
+          >
             {section.count}
           </span>
         )}

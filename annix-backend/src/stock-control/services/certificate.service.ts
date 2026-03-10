@@ -616,10 +616,7 @@ export class CertificateService {
     return records.map((r) => r.batchNumber);
   }
 
-  async dataBookCompleteness(
-    companyId: number,
-    jobCardId: number,
-  ): Promise<DataBookCompleteness> {
+  async dataBookCompleteness(companyId: number, jobCardId: number): Promise<DataBookCompleteness> {
     const [qcData, certs, calCerts, batchRecords, itemsReleases] = await Promise.all([
       this.qcMeasurementService.allMeasurementsForJobCard(companyId, jobCardId),
       this.certificatesForJobCard(companyId, jobCardId),
@@ -746,8 +743,7 @@ export class CertificateService {
     const blastWarnings = qcData.blastProfiles
       .filter(
         (rec) =>
-          rec.averageMicrons !== null &&
-          Number(rec.averageMicrons) < Number(rec.specMicrons),
+          rec.averageMicrons !== null && Number(rec.averageMicrons) < Number(rec.specMicrons),
       )
       .map(
         (rec) =>
@@ -789,9 +785,7 @@ export class CertificateService {
       warnings.push(...pullWarnings);
     }
 
-    sections.push(
-      this.sectionFromCount("supplierCerts", "Supplier Certificates", certs.length),
-    );
+    sections.push(this.sectionFromCount("supplierCerts", "Supplier Certificates", certs.length));
 
     const unlinkedBatches = batchRecords.filter((r) => !r.supplierCertificate);
     if (unlinkedBatches.length > 0) {
