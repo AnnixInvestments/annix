@@ -18,15 +18,9 @@ import {
 import { syncStatus } from "../../lib/offline/syncManager";
 import { AppPermissionsSection } from "./AppPermissionsSection";
 import { SmtpConfigSection } from "./SmtpConfigSection";
+import { ROLE_LABELS } from "../../lib/roleLabels";
 
 type BrandingSelection = "annix" | "custom";
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  manager: "Manager",
-  accounts: "Accounts",
-  storeman: "Storeman",
-};
 
 const SOURCE_LABELS: Record<string, string> = {
   "logo-attr": "Logo element",
