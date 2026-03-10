@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -17,9 +19,59 @@ function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boole
 }
 
 export default function CustomerDeliveriesPage() {
+  const router = useRouter();
+  const { showToast } = useToast();
   const [deliveries, setDeliveries] = useState<DeliveryNote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+
+      const validTypes = ["image/", "application/pdf"];
+      if (!validTypes.some((t) => file.type.startsWith(t))) {
+        showToast("Please drop an image or PDF file", "error");
+        return;
+      }
+
+      try {
+        setIsAnalyzing(true);
+        showToast("Analyzing document...", "info");
+        const result = await stockControlApiClient.analyzeDeliveryNotePhoto(file);
+        const deliveryNote = await stockControlApiClient.acceptAnalyzedDeliveryNote(
+          file,
+          result.data,
+        );
+        showToast("Delivery note created successfully", "success");
+        router.push(`/stock-control/portal/deliveries/${deliveryNote.id}`);
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : "Failed to analyze document", "error");
+      } finally {
+        setIsAnalyzing(false);
+      }
+    },
+    [router, showToast],
+  );
 
   const fetchDeliveries = useCallback(async () => {
     try {
@@ -65,7 +117,48 @@ export default function CustomerDeliveriesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6 relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {(isDragOver || isAnalyzing) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-600/20 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-8 text-center max-w-md mx-4">
+            {isAnalyzing ? (
+              <>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto" />
+                <p className="mt-4 text-lg font-medium text-gray-900">Analyzing document...</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Nix is extracting information from your document
+                </p>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="mx-auto h-12 w-12 text-teal-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+                <p className="mt-4 text-lg font-medium text-gray-900">Drop document to analyze</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  Nix will automatically extract delivery note information
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Customer Delivery Notes</h1>

@@ -25,18 +25,51 @@ export default function ScanDeliveryNotePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzedDeliveryNoteResult | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const processFile = (file: File) => {
+    setSelectedFile(file);
+    setResult(null);
+
+    if (file.type.startsWith("image/")) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
-      setResult(null);
+      processFile(file);
+    }
+  };
 
-      if (file.type.startsWith("image/")) {
-        const url = URL.createObjectURL(file);
-        setPreviewUrl(url);
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const validTypes = ["image/", "application/pdf"];
+      if (validTypes.some((t) => file.type.startsWith(t))) {
+        processFile(file);
       } else {
-        setPreviewUrl(null);
+        showToast("Please drop an image or PDF file", "error");
       }
     }
   };
@@ -129,8 +162,32 @@ export default function ScanDeliveryNotePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white shadow rounded-lg p-6">
+        <div
+          className="bg-white shadow rounded-lg p-6"
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <h2 className="text-lg font-medium text-gray-900 mb-4">Upload Document</h2>
+
+          {isDragOver && (
+            <div className="mb-4 p-6 border-2 border-dashed border-teal-500 bg-teal-50 rounded-lg text-center">
+              <svg
+                className="mx-auto h-10 w-10 text-teal-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+              <p className="mt-2 text-sm font-medium text-teal-700">Drop file here</p>
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-3">
