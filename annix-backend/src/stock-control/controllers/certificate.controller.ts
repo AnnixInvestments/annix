@@ -18,12 +18,12 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
-import { CertificateAnalysisService } from "../services/certificate-analysis.service";
 import {
   type CertificateFilters,
   CertificateService,
   type UploadCertificateDto,
 } from "../services/certificate.service";
+import { CertificateAnalysisService } from "../services/certificate-analysis.service";
 
 @ApiTags("Stock Control - Certificates")
 @Controller("stock-control/certificates")
@@ -152,7 +152,9 @@ export class CertificateController {
   @Post("analyze")
   @StockControlRoles("manager", "admin")
   @UseInterceptors(FileInterceptor("file"))
-  @ApiOperation({ summary: "Analyze a multi-page PDF/image to identify individual COC/COA certificates" })
+  @ApiOperation({
+    summary: "Analyze a multi-page PDF/image to identify individual COC/COA certificates",
+  })
   async analyzeCertificates(@UploadedFile() file: Express.Multer.File) {
     return this.certificateAnalysisService.analyze(file.buffer, file.mimetype);
   }

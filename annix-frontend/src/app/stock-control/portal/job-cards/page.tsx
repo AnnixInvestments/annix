@@ -50,6 +50,9 @@ export default function JobCardsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isModalDragging, setIsModalDragging] = useState(false);
   const modalFileInputRef = useRef<HTMLInputElement>(null);
+  const [dataBookStatuses, setDataBookStatuses] = useState<
+    Record<number, { exists: boolean; isStale: boolean; certificateCount: number }>
+  >({});
 
   const navigateWithFile = (file: File) => {
     setPendingImportFile(file);
@@ -152,6 +155,15 @@ export default function JobCardsPage() {
   useEffect(() => {
     fetchJobCards();
   }, [fetchJobCards]);
+
+  useEffect(() => {
+    if (jobCards.length === 0) return;
+    const ids = jobCards.map((jc) => jc.id);
+    stockControlApiClient
+      .dataBookStatusBulk(ids)
+      .then(setDataBookStatuses)
+      .catch(() => setDataBookStatuses({}));
+  }, [jobCards]);
 
   const handleCreate = async () => {
     try {
@@ -378,6 +390,12 @@ export default function JobCardsPage() {
                 </th>
                 <th
                   scope="col"
+                  className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Quality
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Created
@@ -428,6 +446,29 @@ export default function JobCardsPage() {
                   </td>
                   <td className="hidden xl:table-cell px-6 py-4 whitespace-nowrap">
                     <CompactWorkflowStepper workflowStatus={job.workflowStatus || job.status} />
+                  </td>
+                  <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap">
+                    {dataBookStatuses[job.id] ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        {dataBookStatuses[job.id].exists && !dataBookStatuses[job.id].isStale ? (
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Compiled
+                          </span>
+                        ) : dataBookStatuses[job.id].exists && dataBookStatuses[job.id].isStale ? (
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
+                            Stale
+                          </span>
+                        ) : null}
+                        {dataBookStatuses[job.id].certificateCount > 0 ? (
+                          <span className="px-2 inline-flex text-xs leading-5 font-medium rounded-full bg-blue-100 text-blue-700">
+                            {dataBookStatuses[job.id].certificateCount} cert
+                            {dataBookStatuses[job.id].certificateCount !== 1 ? "s" : ""}
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDateZA(job.createdAt)}

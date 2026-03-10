@@ -1,12 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { pdfToPng } from "pdf-to-png-converter";
+import { nowMillis } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import type {
   ChatMessage,
   ImageContent,
   TextContent,
 } from "../../nix/ai-providers/claude-chat.provider";
-import { nowMillis } from "../../lib/datetime";
 
 export interface IdentifiedCertificate {
   supplierName: string | null;
@@ -78,10 +78,7 @@ export class CertificateAnalysisService {
 
   constructor(private readonly aiChatService: AiChatService) {}
 
-  async analyze(
-    fileBuffer: Buffer,
-    mimeType: string,
-  ): Promise<CertificateAnalysisResult> {
+  async analyze(fileBuffer: Buffer, mimeType: string): Promise<CertificateAnalysisResult> {
     const startMs = nowMillis();
     const images = await this.imagePagesFromFile(fileBuffer, mimeType);
 
@@ -126,10 +123,7 @@ export class CertificateAnalysisService {
     };
   }
 
-  private async imagePagesFromFile(
-    fileBuffer: Buffer,
-    mimeType: string,
-  ): Promise<Buffer[]> {
+  private async imagePagesFromFile(fileBuffer: Buffer, mimeType: string): Promise<Buffer[]> {
     if (mimeType === "application/pdf") {
       return this.convertPdfToImages(fileBuffer);
     }
@@ -178,18 +172,23 @@ export class CertificateAnalysisService {
       const parsed = JSON.parse(jsonMatch[0]);
       const rawCertificates = Array.isArray(parsed.certificates) ? parsed.certificates : [];
 
-      return rawCertificates.map((cert: any): IdentifiedCertificate => ({
-        supplierName: cert.supplierName || null,
-        batchNumber: cert.batchNumber || null,
-        certificateType: cert.certificateType === "COA" || cert.certificateType === "COC"
-          ? cert.certificateType
-          : null,
-        productInfo: cert.productInfo || null,
-        pageNumbers: Array.isArray(cert.pageNumbers)
-          ? cert.pageNumbers.filter((n: any) => typeof n === "number" && n >= 1 && n <= totalPages)
-          : [],
-        confidence: typeof cert.confidence === "number" ? cert.confidence : 0.5,
-      }));
+      return rawCertificates.map(
+        (cert: any): IdentifiedCertificate => ({
+          supplierName: cert.supplierName || null,
+          batchNumber: cert.batchNumber || null,
+          certificateType:
+            cert.certificateType === "COA" || cert.certificateType === "COC"
+              ? cert.certificateType
+              : null,
+          productInfo: cert.productInfo || null,
+          pageNumbers: Array.isArray(cert.pageNumbers)
+            ? cert.pageNumbers.filter(
+                (n: any) => typeof n === "number" && n >= 1 && n <= totalPages,
+              )
+            : [],
+          confidence: typeof cert.confidence === "number" ? cert.confidence : 0.5,
+        }),
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       this.logger.warn(`Failed to parse certificate analysis response: ${message}`);

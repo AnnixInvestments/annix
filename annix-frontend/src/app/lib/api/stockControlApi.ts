@@ -3471,7 +3471,9 @@ class StockControlApiClient {
   }
 
   async batchRecordsByBatchNumber(batchNumber: string): Promise<IssuanceBatchRecord[]> {
-    return this.request(`/stock-control/certificates/batch/${encodeURIComponent(batchNumber)}/records`);
+    return this.request(
+      `/stock-control/certificates/batch/${encodeURIComponent(batchNumber)}/records`,
+    );
   }
 
   async certificatesForJobCard(jobCardId: number): Promise<SupplierCertificate[]> {

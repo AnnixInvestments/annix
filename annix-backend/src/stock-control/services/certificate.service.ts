@@ -352,9 +352,7 @@ export class CertificateService {
     coverDoc.fontSize(11).font("Helvetica");
     const totalCertCount = certs.length + calCerts.length;
 
-    const detailRows: Array<[string, string]> = [
-      ["Job Card #", String(jobCardId)],
-    ];
+    const detailRows: Array<[string, string]> = [["Job Card #", String(jobCardId)]];
 
     if (jobCard?.jobNumber) {
       detailRows.push(["Job Number", jobCard.jobNumber]);
@@ -385,8 +383,12 @@ export class CertificateService {
     const labelX = 140;
     const valueX = 280;
     detailRows.forEach(([label, value]) => {
-      coverDoc.font("Helvetica-Bold").text(`${label}:`, labelX, coverDoc.y, { continued: false, width: 130 });
-      coverDoc.font("Helvetica").text(value, valueX, coverDoc.y - coverDoc.currentLineHeight(), { width: 250 });
+      coverDoc
+        .font("Helvetica-Bold")
+        .text(`${label}:`, labelX, coverDoc.y, { continued: false, width: 130 });
+      coverDoc
+        .font("Helvetica")
+        .text(value, valueX, coverDoc.y - coverDoc.currentLineHeight(), { width: 250 });
     });
 
     coverDoc.moveDown(2);

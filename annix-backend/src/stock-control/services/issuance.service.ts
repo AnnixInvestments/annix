@@ -4,6 +4,7 @@ import { In, MoreThanOrEqual, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
+import { JobCardDataBook } from "../entities/job-card-data-book.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockIssuance } from "../entities/stock-issuance.entity";
@@ -82,6 +83,8 @@ export class IssuanceService {
     private readonly batchRecordRepo: Repository<IssuanceBatchRecord>,
     @InjectRepository(SupplierCertificate)
     private readonly certRepo: Repository<SupplierCertificate>,
+    @InjectRepository(JobCardDataBook)
+    private readonly dataBookRepo: Repository<JobCardDataBook>,
   ) {}
 
   async parseAndValidateQr(companyId: number, rawQr: string): Promise<ScanResult> {
@@ -347,6 +350,10 @@ export class IssuanceService {
       );
     }
 
+    if (dto.jobCardId) {
+      await this.markDataBookStale(companyId, dto.jobCardId);
+    }
+
     this.logger.log(
       `Stock issuance created: ${dto.quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
     );
@@ -499,6 +506,10 @@ export class IssuanceService {
       this.logger.log(
         `Stock issuance created: ${item.quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
       );
+    }
+
+    if (dto.jobCardId && result.created > 0) {
+      await this.markDataBookStale(companyId, dto.jobCardId);
     }
 
     return result;
@@ -670,5 +681,18 @@ export class IssuanceService {
     this.logger.log(
       `Batch record created: batch=${trimmedBatch} issuance=${issuanceId} cert=${matchingCert?.id ?? "none"}`,
     );
+  }
+
+  private async markDataBookStale(companyId: number, jobCardId: number): Promise<void> {
+    const dataBook = await this.dataBookRepo.findOne({
+      where: { companyId, jobCardId },
+      order: { generatedAt: "DESC" },
+    });
+
+    if (dataBook && !dataBook.isStale) {
+      dataBook.isStale = true;
+      await this.dataBookRepo.save(dataBook);
+      this.logger.log(`Data book marked stale for job card ${jobCardId}`);
+    }
   }
 }

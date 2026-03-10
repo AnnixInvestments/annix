@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  CalibrationCertificate,
+  IssuanceBatchRecord,
+  JobCard,
   StockControlSupplierDto,
   StockItem,
   SupplierCertificate,
@@ -25,8 +28,49 @@ interface AnalysisResult {
 }
 
 type ViewMode = "list" | "analyzing" | "review";
+type QualityTab = "certificates" | "calibration" | "data-books" | "batch-lookup";
 
-export default function CertificatesPage() {
+const QUALITY_TABS: { key: QualityTab; label: string }[] = [
+  { key: "certificates", label: "Supplier Certificates" },
+  { key: "calibration", label: "Calibration" },
+  { key: "data-books", label: "Data Books" },
+  { key: "batch-lookup", label: "Batch Lookup" },
+];
+
+export default function QualityPage() {
+  const [activeTab, setActiveTab] = useState<QualityTab>("certificates");
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-gray-900">Quality Management</h1>
+
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          {QUALITY_TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === tab.key
+                  ? "border-teal-500 text-teal-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {activeTab === "certificates" && <CertificatesTab />}
+      {activeTab === "calibration" && <CalibrationTab />}
+      {activeTab === "data-books" && <DataBooksTab />}
+      {activeTab === "batch-lookup" && <BatchLookupTab />}
+    </div>
+  );
+}
+
+function CertificatesTab() {
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
   const [suppliers, setSuppliers] = useState<StockControlSupplierDto[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
@@ -36,7 +80,6 @@ export default function CertificatesPage() {
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [filterSupplier, setFilterSupplier] = useState("");
-  const [filterBatch, setFilterBatch] = useState("");
   const [filterType, setFilterType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -54,7 +97,6 @@ export default function CertificatesPage() {
       setIsLoading(true);
       const filters: Record<string, string | number> = {};
       if (filterSupplier) filters.supplierId = parseInt(filterSupplier, 10);
-      if (filterBatch) filters.batchNumber = filterBatch;
       if (filterType) filters.certificateType = filterType;
 
       const data = await stockControlApiClient.certificates(filters);
@@ -65,7 +107,7 @@ export default function CertificatesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterSupplier, filterBatch, filterType]);
+  }, [filterSupplier, filterType]);
 
   const fetchSuppliers = useCallback(async () => {
     try {
@@ -152,22 +194,25 @@ export default function CertificatesPage() {
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter.current = 0;
-    setIsDragOver(false);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.current = 0;
+      setIsDragOver(false);
 
-    const files = Array.from(e.dataTransfer.files);
-    const validFile = files.find((f) => {
-      const validTypes = ["image/", "application/pdf"];
-      return validTypes.some((t) => f.type.startsWith(t));
-    });
+      const files = Array.from(e.dataTransfer.files);
+      const validFile = files.find((f) => {
+        const validTypes = ["image/", "application/pdf"];
+        return validTypes.some((t) => f.type.startsWith(t));
+      });
 
-    if (!validFile) return;
+      if (!validFile) return;
 
-    handleAnalyzeFile(validFile);
-  }, [handleAnalyzeFile]);
+      handleAnalyzeFile(validFile);
+    },
+    [handleAnalyzeFile],
+  );
 
   const handleSaveCertificate = async (cert: IdentifiedCertificate, index: number) => {
     if (!analysisFile) return;
@@ -219,23 +264,21 @@ export default function CertificatesPage() {
     : certificates;
 
   const supplierGroupedCerts = analysisResult
-    ? analysisResult.certificates.reduce<Record<string, { cert: IdentifiedCertificate; index: number }[]>>(
-        (groups, cert, index) => {
-          const key = cert.supplierName || "Unknown Supplier";
-          return {
-            ...groups,
-            [key]: [...(groups[key] || []), { cert, index }],
-          };
-        },
-        {},
-      )
+    ? analysisResult.certificates.reduce<
+        Record<string, { cert: IdentifiedCertificate; index: number }[]>
+      >((groups, cert, index) => {
+        const key = cert.supplierName || "Unknown Supplier";
+        return {
+          ...groups,
+          [key]: [...(groups[key] || []), { cert, index }],
+        };
+      }, {})
     : {};
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Certificates</h1>
-        {viewMode === "review" && (
+    <div className="space-y-4">
+      {viewMode === "review" && (
+        <div className="flex justify-end">
           <button
             onClick={() => {
               setViewMode("list");
@@ -246,8 +289,8 @@ export default function CertificatesPage() {
           >
             Back to List
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {viewMode === "analyzing" && (
         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
@@ -270,13 +313,13 @@ export default function CertificatesPage() {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          <p className="mt-4 text-lg font-medium text-gray-900">Nix is analyzing your document...</p>
+          <p className="mt-4 text-lg font-medium text-gray-900">
+            Nix is analyzing your document...
+          </p>
           <p className="mt-1 text-sm text-gray-500">
             Identifying individual certificates, suppliers, and batch numbers
           </p>
-          {analysisFile && (
-            <p className="mt-2 text-xs text-gray-400">{analysisFile.name}</p>
-          )}
+          {analysisFile && <p className="mt-2 text-xs text-gray-400">{analysisFile.name}</p>}
         </div>
       )}
 
@@ -314,121 +357,70 @@ export default function CertificatesPage() {
             </div>
           </div>
 
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search identified certificates..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-md border border-gray-300 pl-10 pr-4 py-2 text-sm"
-            />
-            <svg
-              className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          {Object.entries(supplierGroupedCerts).map(([supplierName, items]) => (
+            <div
+              key={supplierName}
+              className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-
-          {Object.entries(supplierGroupedCerts)
-            .filter(([supplierName, items]) => {
-              if (!searchQuery) return true;
-              const q = searchQuery.toLowerCase();
-              return (
-                supplierName.toLowerCase().includes(q) ||
-                items.some(
-                  ({ cert }) =>
-                    (cert.batchNumber ?? "").toLowerCase().includes(q) ||
-                    (cert.productInfo ?? "").toLowerCase().includes(q),
-                )
-              );
-            })
-            .map(([supplierName, items]) => (
-              <div
-                key={supplierName}
-                className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden"
-              >
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <svg
-                        className="h-5 w-5 text-gray-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                        />
-                      </svg>
-                      <h3 className="text-sm font-semibold text-gray-900">{supplierName}</h3>
-                      <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                        {items.length} cert(s)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="divide-y divide-gray-100">
-                  {items.map(({ cert, index }) => (
-                    <div key={index} className="px-4 py-3 flex items-center justify-between">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0 ${
-                            cert.certificateType === "COA"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-purple-100 text-purple-800"
-                          }`}
-                        >
-                          {cert.certificateType || "COC"}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {cert.productInfo || "Certificate"}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Batch: {cert.batchNumber || "Unknown"} | Pages:{" "}
-                            {cert.pageNumbers.join(", ")} | Confidence:{" "}
-                            {Math.round(cert.confidence * 100)}%
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-4">
-                        {savedCerts.has(index) ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
-                            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                            Saved
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleSaveCertificate(cert, index)}
-                            disabled={savingCerts.has(index)}
-                            className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
-                          >
-                            {savingCerts.has(index) ? "Saving..." : "Save"}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-900">{supplierName}</h3>
+                  <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
+                    {items.length} cert(s)
+                  </span>
                 </div>
               </div>
-            ))}
+              <div className="divide-y divide-gray-100">
+                {items.map(({ cert, index }) => (
+                  <div key={index} className="px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0 ${
+                          cert.certificateType === "COA"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-purple-100 text-purple-800"
+                        }`}
+                      >
+                        {cert.certificateType || "COC"}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {cert.productInfo || "Certificate"}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Batch: {cert.batchNumber || "Unknown"} | Pages:{" "}
+                          {cert.pageNumbers.join(", ")} | Confidence:{" "}
+                          {Math.round(cert.confidence * 100)}%
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-4">
+                      {savedCerts.has(index) ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          Saved
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleSaveCertificate(cert, index)}
+                          disabled={savingCerts.has(index)}
+                          className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                        >
+                          {savingCerts.has(index) ? "Saving..." : "Save"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -456,9 +448,7 @@ export default function CertificatesPage() {
                     d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                   />
                 </svg>
-                <p className="mt-4 text-lg font-medium text-gray-900">
-                  Drop to analyze with Nix
-                </p>
+                <p className="mt-4 text-lg font-medium text-gray-900">Drop to analyze with Nix</p>
                 <p className="mt-1 text-sm text-gray-500">
                   Nix will auto-identify and separate COC/COA documents
                 </p>
@@ -666,6 +656,645 @@ export default function CertificatesPage() {
             fetchCertificates();
           }}
         />
+      )}
+    </div>
+  );
+}
+
+function CalibrationTab() {
+  const [calCerts, setCalCerts] = useState<CalibrationCertificate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showActive, setShowActive] = useState(true);
+
+  const fetchCalCerts = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await stockControlApiClient.calibrationCertificates(
+        showActive ? { active: true } : undefined,
+      );
+      setCalCerts(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load calibration certificates");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showActive]);
+
+  useEffect(() => {
+    fetchCalCerts();
+  }, [fetchCalCerts]);
+
+  const handleView = async (id: number) => {
+    try {
+      const cert = await stockControlApiClient.calibrationCertificateById(id);
+      if (cert.downloadUrl) {
+        window.open(cert.downloadUrl, "_blank");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to get download URL");
+    }
+  };
+
+  const handleDeactivate = async (id: number) => {
+    try {
+      await stockControlApiClient.deactivateCalibrationCertificate(id);
+      fetchCalCerts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to deactivate certificate");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await stockControlApiClient.deleteCalibrationCertificate(id);
+      setCalCerts((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete certificate");
+    }
+  };
+
+  const isExpiringSoon = (expiryDate: string): boolean => {
+    const expiry = new Date(expiryDate);
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    return expiry <= thirtyDaysFromNow && expiry >= new Date();
+  };
+
+  const isExpired = (expiryDate: string): boolean => {
+    return new Date(expiryDate) < new Date();
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={showActive}
+              onChange={(e) => setShowActive(e.target.checked)}
+              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+            />
+            Active only
+          </label>
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+          {error}
+          <button onClick={() => setError(null)} className="ml-2 font-medium underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="py-12 text-center text-gray-500">Loading calibration certificates...</div>
+      ) : calCerts.length === 0 ? (
+        <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
+          <p className="text-gray-500">No calibration certificates found</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Upload calibration certificates from the Settings page
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  Equipment
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  Identifier
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  Certificate #
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  Expiry
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  File
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {calCerts.map((cert) => (
+                <tr key={cert.id} className="hover:bg-gray-50">
+                  <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                    {cert.equipmentName}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                    {cert.equipmentIdentifier ?? "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                    {cert.certificateNumber ?? "-"}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                    {formatDateZA(cert.expiryDate)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    {isExpired(cert.expiryDate) ? (
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+                        Expired
+                      </span>
+                    ) : isExpiringSoon(cert.expiryDate) ? (
+                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                        Expiring Soon
+                      </span>
+                    ) : cert.isActive ? (
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                        Inactive
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    <span className="max-w-[150px] truncate block" title={cert.originalFilename}>
+                      {cert.originalFilename}
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
+                    <button
+                      onClick={() => handleView(cert.id)}
+                      className="mr-2 text-teal-600 hover:text-teal-800"
+                    >
+                      View
+                    </button>
+                    {cert.isActive ? (
+                      <button
+                        onClick={() => handleDeactivate(cert.id)}
+                        className="mr-2 text-amber-600 hover:text-amber-800"
+                      >
+                        Deactivate
+                      </button>
+                    ) : null}
+                    <button
+                      onClick={() => handleDelete(cert.id)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DataBooksTab() {
+  const [jobCards, setJobCards] = useState<JobCard[]>([]);
+  const [statuses, setStatuses] = useState<
+    Record<number, { exists: boolean; isStale: boolean; certificateCount: number }>
+  >({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [compilingId, setCompilingId] = useState<number | null>(null);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+
+  const fetchJobCards = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await stockControlApiClient.jobCards("active");
+      setJobCards(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load job cards");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchJobCards();
+  }, [fetchJobCards]);
+
+  useEffect(() => {
+    if (jobCards.length === 0) return;
+    const ids = jobCards.map((jc) => jc.id);
+    stockControlApiClient
+      .dataBookStatusBulk(ids)
+      .then(setStatuses)
+      .catch(() => setStatuses({}));
+  }, [jobCards]);
+
+  const handleCompile = async (jobCardId: number) => {
+    try {
+      setCompilingId(jobCardId);
+      await stockControlApiClient.compileDataBook(jobCardId);
+      const ids = jobCards.map((jc) => jc.id);
+      const newStatuses = await stockControlApiClient.dataBookStatusBulk(ids);
+      setStatuses(newStatuses);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to compile data book");
+    } finally {
+      setCompilingId(null);
+    }
+  };
+
+  const handleDownload = async (jobCardId: number) => {
+    try {
+      setDownloadingId(jobCardId);
+      await stockControlApiClient.downloadDataBook(jobCardId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download data book");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+          {error}
+          <button onClick={() => setError(null)} className="ml-2 font-medium underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="py-12 text-center text-gray-500">Loading job cards...</div>
+      ) : jobCards.length === 0 ? (
+        <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
+          <p className="text-gray-500">No active job cards found</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Create a job card and link certificates to compile a data book
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  Job Number
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  Job Name
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  Customer
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  Certificates
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                  Data Book
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {jobCards.map((jc) => {
+                const status = statuses[jc.id];
+                return (
+                  <tr key={jc.id} className="hover:bg-gray-50">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-teal-700">
+                      {jc.jobNumber}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                      {jc.jobName}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                      {jc.customerName || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+                      {status?.certificateCount ? (
+                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                          {status.certificateCount} cert{status.certificateCount !== 1 ? "s" : ""}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">0</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      {status?.exists && !status.isStale ? (
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                          Compiled
+                        </span>
+                      ) : status?.exists && status.isStale ? (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                          Stale
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Not compiled</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
+                      <button
+                        onClick={() => handleCompile(jc.id)}
+                        disabled={compilingId === jc.id || !status?.certificateCount}
+                        className="mr-2 text-teal-600 hover:text-teal-800 disabled:text-gray-300 disabled:cursor-not-allowed"
+                      >
+                        {compilingId === jc.id
+                          ? "Compiling..."
+                          : status?.exists
+                            ? "Recompile"
+                            : "Compile"}
+                      </button>
+                      {status?.exists ? (
+                        <button
+                          onClick={() => handleDownload(jc.id)}
+                          disabled={downloadingId === jc.id}
+                          className="text-blue-600 hover:text-blue-800 disabled:text-gray-300"
+                        >
+                          {downloadingId === jc.id ? "Downloading..." : "Download"}
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BatchLookupTab() {
+  const [batchNumber, setBatchNumber] = useState("");
+  const [searchedBatch, setSearchedBatch] = useState<string | null>(null);
+  const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
+  const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSearch = async () => {
+    const trimmed = batchNumber.trim();
+    if (!trimmed) return;
+
+    try {
+      setIsSearching(true);
+      setError(null);
+      const [certs, records] = await Promise.all([
+        stockControlApiClient.certificatesByBatchNumber(trimmed),
+        stockControlApiClient.batchRecordsByBatchNumber(trimmed),
+      ]);
+      setCertificates(certs);
+      setBatchRecords(records);
+      setSearchedBatch(trimmed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Search failed");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
+  const handleViewCert = async (id: number) => {
+    try {
+      const cert = await stockControlApiClient.certificateById(id);
+      if (cert.downloadUrl) {
+        window.open(cert.downloadUrl, "_blank");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to get download URL");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-md">
+          <input
+            type="text"
+            placeholder="Enter batch number..."
+            value={batchNumber}
+            onChange={(e) => setBatchNumber(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="w-full rounded-md border border-gray-300 pl-10 pr-4 py-2 text-sm"
+          />
+          <svg
+            className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        </div>
+        <button
+          onClick={handleSearch}
+          disabled={isSearching || !batchNumber.trim()}
+          className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSearching ? "Searching..." : "Search"}
+        </button>
+      </div>
+
+      {error && (
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+          {error}
+          <button onClick={() => setError(null)} className="ml-2 font-medium underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {searchedBatch && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">
+              Certificates for batch &quot;{searchedBatch}&quot;
+            </h3>
+            {certificates.length === 0 ? (
+              <p className="text-sm text-gray-500">No certificates found for this batch number</p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Type
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Supplier
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Product
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        File
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Uploaded
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {certificates.map((cert) => (
+                      <tr key={cert.id} className="hover:bg-gray-50">
+                        <td className="whitespace-nowrap px-4 py-3">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              cert.certificateType === "COA"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-purple-100 text-purple-800"
+                            }`}
+                          >
+                            {cert.certificateType}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                          {cert.supplier?.name ?? "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {cert.stockItem?.name ?? "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <span
+                            className="max-w-[150px] truncate block"
+                            title={cert.originalFilename}
+                          >
+                            {cert.originalFilename}
+                          </span>
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                          {formatDateZA(cert.createdAt)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
+                          <button
+                            onClick={() => handleViewCert(cert.id)}
+                            className="text-teal-600 hover:text-teal-800"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">
+              Issuance history for batch &quot;{searchedBatch}&quot;
+            </h3>
+            {batchRecords.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No issuance records found for this batch number
+              </p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Stock Item
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Quantity
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Certificate
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Issued
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {batchRecords.map((record) => (
+                      <tr key={record.id} className="hover:bg-gray-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                          {record.stockItem?.name ?? "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                          {record.quantity}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm">
+                          {record.supplierCertificate ? (
+                            <span className="inline-flex items-center gap-1">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  record.supplierCertificate.certificateType === "COA"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-purple-100 text-purple-800"
+                                }`}
+                              >
+                                {record.supplierCertificate.certificateType}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {record.supplierCertificate.supplier?.name ?? ""}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">No cert linked</span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                          {formatDateZA(record.createdAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!searchedBatch && (
+        <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
+          <svg
+            className="mx-auto h-10 w-10 text-gray-400 mb-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <p className="text-gray-500">
+            Enter a batch number to find certificates and issuance history
+          </p>
+          <p className="mt-1 text-sm text-gray-400">
+            Trace material from supplier certificate through to job card issuance
+          </p>
+        </div>
       )}
     </div>
   );

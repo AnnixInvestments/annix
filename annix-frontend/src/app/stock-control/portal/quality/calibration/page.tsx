@@ -183,7 +183,10 @@ export default function CalibrationPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        <span className="max-w-[120px] truncate block" title={cert.originalFilename}>
+                        <span
+                          className="max-w-[120px] truncate block"
+                          title={cert.originalFilename}
+                        >
                           {cert.originalFilename}
                         </span>
                       </td>

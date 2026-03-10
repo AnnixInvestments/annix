@@ -1,10 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type {
-  IssuanceBatchRecord,
-  SupplierCertificate,
-} from "@/app/lib/api/stockControlApi";
+import type { IssuanceBatchRecord, SupplierCertificate } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
@@ -74,7 +71,9 @@ export default function BatchLookupPage() {
 
         {searched && certificates.length === 0 && batchRecords.length === 0 && (
           <div className="rounded-lg border-2 border-dashed border-gray-300 py-8 text-center">
-            <p className="text-gray-500">No certificates or issuance records found for batch &quot;{batchNumber}&quot;</p>
+            <p className="text-gray-500">
+              No certificates or issuance records found for batch &quot;{batchNumber}&quot;
+            </p>
           </div>
         )}
 
@@ -122,7 +121,9 @@ export default function BatchLookupPage() {
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                         {cert.supplier?.name ?? "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{cert.stockItem?.name ?? "-"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {cert.stockItem?.name ?? "-"}
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{cert.originalFilename}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                         {formatDateZA(cert.createdAt)}

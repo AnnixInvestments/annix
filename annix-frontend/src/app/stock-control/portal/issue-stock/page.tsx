@@ -10,6 +10,7 @@ import type {
   StaffMember,
   StockIssuance,
   StockItem,
+  SupplierCertificate,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { QrScanner } from "../../components/QrScanner";
@@ -167,6 +168,11 @@ export default function IssueStockPage() {
   const [browseSearch, setBrowseSearch] = useState("");
   const [browseItems, setBrowseItems] = useState<StockItem[]>([]);
   const [browseLoading, setBrowseLoading] = useState(false);
+  const [recentBatchesMap, setRecentBatchesMap] = useState<Record<number, string[]>>({});
+  const [certStatusMap, setCertStatusMap] = useState<Record<number, SupplierCertificate[] | null>>(
+    {},
+  );
+  const certCheckTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     setQuickIssueMode(localStorage.getItem(QUICK_ISSUE_KEY) === "true");
@@ -195,6 +201,35 @@ export default function IssueStockPage() {
       .then(setRecentIssuances)
       .catch(() => setRecentIssuances([]));
   }, []);
+
+  const fetchRecentBatches = useCallback(
+    async (stockItemIds: number[]) => {
+      const uniqueIds = stockItemIds.filter((id) => !(id in recentBatchesMap));
+      if (uniqueIds.length === 0) return;
+      const entries = await Promise.all(
+        uniqueIds.map(async (id) => {
+          try {
+            const batches = await stockControlApiClient.recentBatches(id);
+            return [id, batches] as const;
+          } catch {
+            return [id, []] as const;
+          }
+        }),
+      );
+      setRecentBatchesMap((prev) => ({
+        ...prev,
+        ...Object.fromEntries(entries),
+      }));
+    },
+    [recentBatchesMap],
+  );
+
+  useEffect(() => {
+    const ids = items.map((i) => i.stockItem.id);
+    if (ids.length > 0) {
+      fetchRecentBatches(ids);
+    }
+  }, [items.length]);
 
   const fetchBrowseItems = useCallback(async (search: string) => {
     try {
@@ -322,6 +357,11 @@ export default function IssueStockPage() {
 
   const handleRemoveItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
+    setCertStatusMap((prev) => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
   };
 
   const handleUpdateQuantity = (index: number, quantity: number) => {
@@ -330,6 +370,21 @@ export default function IssueStockPage() {
 
   const handleUpdateBatchNumber = (index: number, batchNumber: string) => {
     setItems(items.map((item, i) => (i === index ? { ...item, batchNumber } : item)));
+    if (certCheckTimers.current[index]) {
+      clearTimeout(certCheckTimers.current[index]);
+    }
+    if (batchNumber.trim().length >= 2) {
+      certCheckTimers.current[index] = setTimeout(async () => {
+        try {
+          const certs = await stockControlApiClient.certificatesByBatchNumber(batchNumber.trim());
+          setCertStatusMap((prev) => ({ ...prev, [index]: certs.length > 0 ? certs : null }));
+        } catch {
+          setCertStatusMap((prev) => ({ ...prev, [index]: null }));
+        }
+      }, 400);
+    } else {
+      setCertStatusMap((prev) => ({ ...prev, [index]: null }));
+    }
   };
 
   const handleContinueToJobCard = () => {
@@ -1164,11 +1219,37 @@ export default function IssueStockPage() {
                           <label className="text-xs text-gray-500">Batch:</label>
                           <input
                             type="text"
+                            list={`batches-${item.stockItem.id}`}
                             value={item.batchNumber}
                             onChange={(e) => handleUpdateBatchNumber(index, e.target.value)}
                             placeholder="Optional"
                             className="w-24 rounded-md border border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-1 px-2"
                           />
+                          <datalist id={`batches-${item.stockItem.id}`}>
+                            {(recentBatchesMap[item.stockItem.id] ?? []).map((b) => (
+                              <option key={b} value={b} />
+                            ))}
+                          </datalist>
+                          {certStatusMap[index] && (
+                            <span className="inline-flex items-center gap-1">
+                              <svg
+                                className="w-4 h-4 text-green-500"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              <span
+                                className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${certStatusMap[index]?.[0]?.certificateType === "COA" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}
+                              >
+                                {certStatusMap[index]?.[0]?.certificateType}
+                              </span>
+                            </span>
+                          )}
                         </div>
                         <button
                           onClick={() => handleRemoveItem(index)}

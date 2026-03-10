@@ -127,7 +127,11 @@ export default function DataBooksPage() {
                     disabled={isCompiling}
                     className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
                   >
-                    {isCompiling ? "Compiling..." : status.exists ? "Recompile" : "Compile Data Book"}
+                    {isCompiling
+                      ? "Compiling..."
+                      : status.exists
+                        ? "Recompile"
+                        : "Compile Data Book"}
                   </button>
                 )}
                 {status.exists && (
@@ -218,7 +222,9 @@ export default function DataBooksPage() {
                         >
                           {cert.certificateType}
                         </span>
-                        <span className="text-sm font-medium text-gray-900">{cert.batchNumber}</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {cert.batchNumber}
+                        </span>
                         <span className="text-sm text-gray-500">{cert.supplier?.name ?? ""}</span>
                       </div>
                       <span className="text-xs text-gray-400">{cert.originalFilename}</span>

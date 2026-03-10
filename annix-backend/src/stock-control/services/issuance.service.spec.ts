@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
+import { JobCardDataBook } from "../entities/job-card-data-book.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockIssuance } from "../entities/stock-issuance.entity";
@@ -56,6 +57,11 @@ describe("IssuanceService", () => {
     findOne: jest.fn(),
   };
 
+  const mockDataBookRepo = {
+    findOne: jest.fn().mockResolvedValue(null),
+    save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+  };
+
   const mockUser = { id: 1, companyId: 1, name: "Test User" };
 
   beforeEach(async () => {
@@ -70,6 +76,7 @@ describe("IssuanceService", () => {
         { provide: getRepositoryToken(StockAllocation), useValue: mockAllocationRepo },
         { provide: getRepositoryToken(IssuanceBatchRecord), useValue: mockBatchRecordRepo },
         { provide: getRepositoryToken(SupplierCertificate), useValue: mockCertRepo },
+        { provide: getRepositoryToken(JobCardDataBook), useValue: mockDataBookRepo },
       ],
     }).compile();
 
