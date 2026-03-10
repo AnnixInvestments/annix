@@ -282,6 +282,23 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     ),
   },
   {
+    key: "positector-ble",
+    href: "/stock-control/portal/quality/positector/ble",
+    label: "Bluetooth",
+    defaultRoles: ["manager", "admin"],
+    group: "Quality",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M7 8l5 4-5 4m5-12l5 4-5 4 5 4-5 4"
+        />
+      </svg>
+    ),
+  },
+  {
     key: "data-books",
     href: "/stock-control/portal/quality/data-books",
     label: "Data Books",
