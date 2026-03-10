@@ -820,6 +820,7 @@ export function calculateCuttingPlan(
     itemNo?: string | null;
     quantity: number | null;
     m2: number | null;
+    notes?: string | null;
   }>,
   stockQuery?: StockQuery | null,
   selectedPlyCombination?: number[] | null,
@@ -845,6 +846,10 @@ export function calculateCuttingPlan(
       }
     } else if (m2 && m2 > 0) {
       genericM2Items.push({ description: desc, m2 });
+    }
+
+    if (!rubberSpec && item.notes) {
+      rubberSpec = parseRubberSpecNote(item.notes);
     }
   }
 

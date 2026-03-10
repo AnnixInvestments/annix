@@ -112,21 +112,11 @@ function isNoteRow(li: LineItemImportRow): boolean {
 
 function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[] {
   const result: LineItemImportRow[] = [];
-  const pendingNotes: string[] = [];
 
   items.forEach((item) => {
     if (isNoteRow(item)) {
       const noteText = (item.itemCode || "").trim();
-      const precedingRealItems = result.filter(
-        (r) => !pendingNotes.includes(r.notes || "") || r.notes === undefined,
-      );
-      const lastNoteIdx = result.reduce((idx, r, i) => (r.notes ? i : idx), -1);
-      const itemsSinceLastNote = result.slice(lastNoteIdx + 1);
-      if (itemsSinceLastNote.length > 0) {
-        itemsSinceLastNote.forEach((r) => {
-          r.notes = r.notes ? `${r.notes}\n${noteText}` : noteText;
-        });
-      } else if (result.length > 0) {
+      if (result.length > 0) {
         const last = result[result.length - 1];
         last.notes = last.notes ? `${last.notes}\n${noteText}` : noteText;
       }
@@ -708,7 +698,8 @@ export class JobCardImportService {
           await this.lineItemRepo.delete({ jobCardId: saved.id });
 
           if (row.lineItems && row.lineItems.length > 0) {
-            const validLineItems = row.lineItems.filter(isValidLineItem);
+            const merged = mergeNoteRowsIntoItems(row.lineItems);
+            const validLineItems = merged.filter(isValidLineItem);
             const lineItemEntities = validLineItems.map((li, idx) =>
               this.lineItemRepo.create({
                 jobCardId: saved.id,
@@ -744,7 +735,8 @@ export class JobCardImportService {
           const saved = await this.jobCardRepo.save(jobCard);
 
           if (row.lineItems && row.lineItems.length > 0) {
-            const validLineItems = row.lineItems.filter(isValidLineItem);
+            const merged = mergeNoteRowsIntoItems(row.lineItems);
+            const validLineItems = merged.filter(isValidLineItem);
             const lineItemEntities = validLineItems.map((li, idx) =>
               this.lineItemRepo.create({
                 jobCardId: saved.id,

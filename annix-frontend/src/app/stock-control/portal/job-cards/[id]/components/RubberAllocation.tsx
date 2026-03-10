@@ -199,6 +199,7 @@ interface RubberAllocationProps {
     itemDescription: string | null;
     itemNo?: string | null;
     quantity: number | null;
+    notes?: string | null;
   }>;
   jobCardId: number;
   rubberPlanOverride: RubberPlanOverride | null;
@@ -897,6 +898,7 @@ function RubberSOHPanel({
     itemNo?: string | null;
     quantity: number | null;
     m2: number | null;
+    notes?: string | null;
   }>;
 }) {
   const [planDecision, setPlanDecision] = useState<"pending" | "accepted" | "rejected">(
@@ -1308,6 +1310,7 @@ function RubberAllocationSection({
       itemNo: li.itemNo,
       quantity: li.quantity,
       m2: li.m2,
+      notes: li.notes,
     })),
     stockQuery,
     selectedPly,
@@ -1327,6 +1330,7 @@ function RubberAllocationSection({
     itemNo: li.itemNo,
     quantity: li.quantity,
     m2: li.m2,
+    notes: li.notes,
   }));
 
   const plyCombos = stockOptions?.plyCombinations || [];
@@ -1461,7 +1465,7 @@ function RubberAllocationSection({
 export function RubberAllocationGuard({ jobCard }: { jobCard: JobCard }) {
   const allText = [
     jobCard.notes || "",
-    ...(jobCard.lineItems || []).map((li) => `${li.itemCode || ""} ${li.itemDescription || ""}`),
+    ...(jobCard.lineItems || []).map((li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`),
   ]
     .join(" ")
     .toLowerCase();

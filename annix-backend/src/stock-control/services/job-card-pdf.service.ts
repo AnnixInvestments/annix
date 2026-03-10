@@ -205,8 +205,10 @@ export class JobCardPdfService {
       y += 15 + descLines * 12;
     }
 
-    const noteTexts = (noteItems || []).map((item) => (item.itemCode || "").trim()).filter(Boolean);
-    const combinedNotes = [jobCard.notes, ...noteTexts].filter(Boolean).join("\n\n");
+    const nonRubberNotes = (noteItems || [])
+      .map((item) => (item.itemCode || "").trim())
+      .filter((text) => text && !/^r\/l\b/i.test(text) && !/rubber\s+(lining|sheet|lagging)/i.test(text));
+    const combinedNotes = [jobCard.notes, ...nonRubberNotes].filter(Boolean).join("\n\n");
 
     if (combinedNotes) {
       y += 10;
@@ -268,6 +270,14 @@ export class JobCardPdfService {
       doc.text(String(item.quantity || "-"), 470, y);
       doc.text(item.jtNo || "-", 510, y);
       y += 15;
+
+      if (item.notes) {
+        doc.fontSize(7).fillColor("#0d9488").font("Helvetica-Oblique");
+        doc.text(item.notes, 70, y, { width: 395 });
+        const noteLines = item.notes.split("\n").length;
+        y += noteLines * 10;
+        doc.fontSize(8).fillColor("black").font("Helvetica");
+      }
     });
 
     if (filteredItems.length > 15) {
@@ -361,7 +371,7 @@ export class JobCardPdfService {
   }> {
     const allText = [
       jobCard.notes || "",
-      ...(jobCard.lineItems || []).map((li) => `${li.itemCode || ""} ${li.itemDescription || ""}`),
+      ...(jobCard.lineItems || []).map((li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`),
     ]
       .join(" ")
       .toLowerCase();
@@ -417,6 +427,7 @@ export class JobCardPdfService {
       itemNo: li.itemNo,
       quantity: li.quantity,
       m2: li.m2,
+      notes: li.notes,
     }));
 
     calcItems.forEach((item, idx) => {
@@ -446,11 +457,19 @@ export class JobCardPdfService {
       selectedPly,
     );
 
-    if (!plan.rubberSpec && jobCard.notes) {
-      const specFromNotes = parseRubberSpecNote(jobCard.notes);
-      if (specFromNotes) {
-        plan.rubberSpec = specFromNotes;
-        plan.totalThicknessMm = specFromNotes.thicknessMm;
+    if (!plan.rubberSpec) {
+      const allNotes = [
+        jobCard.notes || "",
+        ...(jobCard.lineItems || []).map((li) => li.notes || ""),
+      ].filter(Boolean);
+
+      for (const noteText of allNotes) {
+        const specFromNotes = parseRubberSpecNote(noteText);
+        if (specFromNotes) {
+          plan.rubberSpec = specFromNotes;
+          plan.totalThicknessMm = specFromNotes.thicknessMm;
+          break;
+        }
       }
     }
 

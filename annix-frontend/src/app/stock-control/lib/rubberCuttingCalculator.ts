@@ -821,6 +821,7 @@ export function calculateCuttingPlan(
     itemNo?: string | null;
     quantity: number | null;
     m2: number | null;
+    notes?: string | null;
   }>,
   stockQuery?: StockQuery | null,
   selectedPlyCombination?: number[] | null,
@@ -835,7 +836,12 @@ export function calculateCuttingPlan(
       const parsed = parsePipeItem(String(item.id || Math.random()), desc, Number(qty), m2, itemNo);
 
       if (parsed.isValidPipe) {
-        return { ...acc, parsedItems: [...acc.parsedItems, parsed] };
+        const specFromNotes = !acc.rubberSpec && item.notes ? parseRubberSpecNote(item.notes) : null;
+        return {
+          ...acc,
+          parsedItems: [...acc.parsedItems, parsed],
+          rubberSpec: specFromNotes || acc.rubberSpec,
+        };
       } else if (/R\/L|rubber|lining|lagging/i.test(desc) && !acc.rubberSpec) {
         const spec = parseRubberSpecNote(desc);
         if (!spec && m2 && m2 > 0) {
@@ -845,6 +851,14 @@ export function calculateCuttingPlan(
       } else if (m2 && m2 > 0) {
         return { ...acc, genericM2Items: [...acc.genericM2Items, { description: desc, m2 }] };
       }
+
+      if (!acc.rubberSpec && item.notes) {
+        const specFromNotes = parseRubberSpecNote(item.notes);
+        if (specFromNotes) {
+          return { ...acc, rubberSpec: specFromNotes };
+        }
+      }
+
       return acc;
     },
     {

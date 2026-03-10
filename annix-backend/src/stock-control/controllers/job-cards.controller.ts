@@ -218,14 +218,19 @@ export class JobCardsController {
   async rubberStockOptions(@Req() req: any, @Param("id") id: number) {
     const jobCard = await this.jobCardService.findById(req.user.companyId, id);
 
-    const allText = [
+    const allNoteSources = [
       jobCard.notes || "",
+      ...(jobCard.lineItems || []).map((li: any) => li.notes || ""),
       ...(jobCard.lineItems || []).map(
         (li: any) => `${li.itemCode || ""} ${li.itemDescription || ""}`,
       ),
-    ].join(" ");
+    ].filter(Boolean);
 
-    const rubberSpec = parseRubberSpecNote(allText);
+    let rubberSpec: ReturnType<typeof parseRubberSpecNote> = null;
+    for (const text of allNoteSources) {
+      rubberSpec = parseRubberSpecNote(text);
+      if (rubberSpec) break;
+    }
 
     const rubberStock = await this.stockItemRepo.find({
       where: {
