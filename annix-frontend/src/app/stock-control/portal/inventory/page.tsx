@@ -734,7 +734,7 @@ export default function InventoryPage() {
     fetchItems();
   };
 
-  if (isLoading && items.length === 0) {
+  if (isLoading && items.length === 0 && groupedData.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -745,7 +745,7 @@ export default function InventoryPage() {
     );
   }
 
-  if (error && items.length === 0) {
+  if (error && items.length === 0 && groupedData.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">

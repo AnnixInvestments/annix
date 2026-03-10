@@ -23,6 +23,28 @@ export class InventoryService {
     return this.stockItemRepo.save(item);
   }
 
+  private async refreshPhotoUrls(items: StockItem[]): Promise<StockItem[]> {
+    return Promise.all(
+      items.map(async (item) => {
+        if (!item.photoUrl) {
+          return item;
+        }
+        if (item.photoUrl.includes("X-Amz-Signature") || item.photoUrl.includes("X-Amz-Expires")) {
+          const pathMatch = item.photoUrl.match(/\.com\/(.+?)(\?|$)/);
+          if (pathMatch) {
+            item.photoUrl = await this.storageService.getPresignedUrl(
+              decodeURIComponent(pathMatch[1]),
+              3600,
+            );
+          }
+        } else if (!item.photoUrl.startsWith("http://") && !item.photoUrl.startsWith("https://")) {
+          item.photoUrl = await this.storageService.getPresignedUrl(item.photoUrl, 3600);
+        }
+        return item;
+      }),
+    );
+  }
+
   async findAll(
     companyId: number,
     filters?: {
@@ -38,13 +60,14 @@ export class InventoryService {
     const skip = (page - 1) * limit;
 
     if (filters?.search) {
-      return this.searchItems(
+      const result = await this.searchItems(
         companyId,
         filters.search,
         skip,
         limit,
         filters?.belowMinStock === "true",
       );
+      return { items: await this.refreshPhotoUrls(result.items), total: result.total };
     }
 
     const qb = this.stockItemRepo
@@ -63,7 +86,7 @@ export class InventoryService {
 
     const [items, total] = await qb.getManyAndCount();
 
-    return { items, total };
+    return { items: await this.refreshPhotoUrls(items), total };
   }
 
   private async searchItems(
@@ -100,7 +123,8 @@ export class InventoryService {
     if (!item) {
       throw new NotFoundException("Stock item not found");
     }
-    return item;
+    const [refreshed] = await this.refreshPhotoUrls([item]);
+    return refreshed;
   }
 
   async findByIds(companyId: number, ids: number[]): Promise<StockItem[]> {
@@ -223,7 +247,9 @@ export class InventoryService {
   async uploadPhoto(companyId: number, id: number, file: Express.Multer.File): Promise<StockItem> {
     const item = await this.findById(companyId, id);
     const result = await this.storageService.upload(file, "stock-control/inventory");
-    item.photoUrl = result.url;
-    return this.stockItemRepo.save(item);
+    item.photoUrl = result.path;
+    const saved = await this.stockItemRepo.save(item);
+    const [refreshed] = await this.refreshPhotoUrls([saved]);
+    return refreshed;
   }
 }
