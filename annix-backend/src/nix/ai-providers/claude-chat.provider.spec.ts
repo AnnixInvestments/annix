@@ -81,7 +81,7 @@ describe("ClaudeChatProvider", () => {
 
       expect(results).toContainEqual({
         type: "error",
-        error: "API error: 429",
+        error: "API error: 429 - Rate limited",
       });
     });
 
@@ -202,7 +202,7 @@ describe("ClaudeChatProvider", () => {
       );
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.model).toBe("claude-3-5-sonnet-20241022");
+      expect(body.model).toBe("claude-sonnet-4-6");
       expect(body.max_tokens).toBe(4096);
       expect(body.temperature).toBe(0.7);
       expect(body.stream).toBe(true);
