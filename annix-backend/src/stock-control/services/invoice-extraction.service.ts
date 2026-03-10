@@ -1,9 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
-import { now } from "../../lib/datetime";
+import { fromJSDate, now } from "../../lib/datetime";
 import { ClaudeChatProvider } from "../../nix/ai-providers/claude-chat.provider";
 import {
   ClarificationStatus,
@@ -11,6 +11,7 @@ import {
   InvoiceClarification,
   SuggestedMatch,
 } from "../entities/invoice-clarification.entity";
+import { DeliveryNote } from "../entities/delivery-note.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { PriceChangeReason, StockPriceHistory } from "../entities/stock-price-history.entity";
 import {
@@ -33,6 +34,7 @@ Return JSON only:
   "invoiceDate": "2024-01-15",
   "totalAmount": 15000.00,
   "vatAmount": 2250.00,
+  "deliveryNoteNumber": "DN-12345",
   "lineItems": [
     {
       "lineNumber": 1,
@@ -45,6 +47,8 @@ Return JSON only:
     }
   ]
 }
+
+For deliveryNoteNumber: Look for "Delivery Note", "DN", "D/N", "Delivery No", "GRN", "Goods Received Note", or similar references on the invoice. This may appear in a reference field, header, or line item area. If not found, omit the field.
 
 For paint products, detect "Part A" or "Part B" in description. Common patterns:
 - "Part A", "Comp A", "Component A" -> isPaintPartA: true
@@ -91,6 +95,8 @@ export class InvoiceExtractionService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockPriceHistory)
     private readonly priceHistoryRepo: Repository<StockPriceHistory>,
+    @InjectRepository(DeliveryNote)
+    private readonly deliveryNoteRepo: Repository<DeliveryNote>,
     private readonly aiUsageService: AiUsageService,
   ) {
     this.claudeProvider = new ClaudeChatProvider();
@@ -151,6 +157,10 @@ export class InvoiceExtractionService {
 
       await this.invoiceRepo.save(invoice);
 
+      if (!invoice.deliveryNoteId) {
+        await this.autoLinkToDeliveryNote(invoice, extractedData);
+      }
+
       if (extractedData.lineItems && extractedData.lineItems.length > 0) {
         await this.createInvoiceItems(invoice, extractedData.lineItems);
         await this.matchItemsToStock(invoiceId);
@@ -206,6 +216,106 @@ export class InvoiceExtractionService {
     }
 
     return JSON.parse(jsonMatch[0]);
+  }
+
+  private async autoLinkToDeliveryNote(
+    invoice: SupplierInvoice,
+    extractedData: ExtractedInvoiceData,
+  ): Promise<void> {
+    const candidates = await this.deliveryNoteRepo.find({
+      where: { companyId: invoice.companyId },
+    });
+
+    if (candidates.length === 0) return;
+
+    const match = this.findDeliveryNoteMatch(invoice, extractedData, candidates);
+    if (match) {
+      invoice.deliveryNoteId = match.id;
+      await this.invoiceRepo.save(invoice);
+      this.logger.log(
+        `Auto-linked invoice ${invoice.id} (${invoice.invoiceNumber}) to DN ${match.id} (${match.deliveryNumber})`,
+      );
+    }
+  }
+
+  private findDeliveryNoteMatch(
+    invoice: SupplierInvoice,
+    extractedData: ExtractedInvoiceData,
+    candidates: DeliveryNote[],
+  ): DeliveryNote | null {
+    if (extractedData.deliveryNoteNumber) {
+      const dnNumber = extractedData.deliveryNoteNumber.trim().toLowerCase();
+      const exactMatch = candidates.find(
+        (dn) => dn.deliveryNumber.trim().toLowerCase() === dnNumber,
+      );
+      if (exactMatch) return exactMatch;
+
+      const partialMatch = candidates.find(
+        (dn) =>
+          dn.deliveryNumber.trim().toLowerCase().includes(dnNumber) ||
+          dnNumber.includes(dn.deliveryNumber.trim().toLowerCase()),
+      );
+      if (partialMatch) return partialMatch;
+    }
+
+    const supplierMatches = candidates.filter(
+      (dn) => dn.supplierName.toLowerCase() === invoice.supplierName.toLowerCase(),
+    );
+
+    if (supplierMatches.length === 1) {
+      return supplierMatches[0];
+    }
+
+    if (supplierMatches.length > 1 && invoice.invoiceDate) {
+      const invoiceDate = fromJSDate(invoice.invoiceDate);
+      const closestMatch = supplierMatches
+        .filter((dn) => dn.receivedDate !== null)
+        .map((dn) => ({
+          dn,
+          daysDiff: Math.abs(invoiceDate.diff(fromJSDate(dn.receivedDate as Date), "days").days),
+        }))
+        .filter((entry) => entry.daysDiff <= 14)
+        .sort((a, b) => a.daysDiff - b.daysDiff)[0];
+
+      if (closestMatch) return closestMatch.dn;
+    }
+
+    return null;
+  }
+
+  async autoLinkAllUnlinked(companyId: number): Promise<{ linked: number; details: string[] }> {
+    const unlinked = await this.invoiceRepo.find({
+      where: { companyId, deliveryNoteId: IsNull() },
+    });
+
+    if (unlinked.length === 0) {
+      return { linked: 0, details: [] };
+    }
+
+    const candidates = await this.deliveryNoteRepo.find({ where: { companyId } });
+    const details: string[] = [];
+    let linked = 0;
+
+    for (const invoice of unlinked) {
+      const match = this.findDeliveryNoteMatch(
+        invoice,
+        invoice.extractedData || {},
+        candidates,
+      );
+      if (match) {
+        invoice.deliveryNoteId = match.id;
+        await this.invoiceRepo.save(invoice);
+        details.push(
+          `Invoice ${invoice.invoiceNumber} → DN ${match.deliveryNumber}`,
+        );
+        linked++;
+      }
+    }
+
+    this.logger.log(
+      `Bulk auto-link complete for company ${companyId}: ${linked}/${unlinked.length} invoices linked`,
+    );
+    return { linked, details };
   }
 
   private async createInvoiceItems(

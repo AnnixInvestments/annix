@@ -294,6 +294,12 @@ export class InvoiceService {
     return this.invoiceRepo.save(invoice);
   }
 
+  async autoLinkAllUnlinked(
+    companyId: number,
+  ): Promise<{ linked: number; details: string[] }> {
+    return this.extractionService.autoLinkAllUnlinked(companyId);
+  }
+
   async suggestDeliveryNoteMatches(
     companyId: number,
     invoiceId: number,

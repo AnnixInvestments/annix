@@ -52,6 +52,7 @@ export default function InvoicesPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAutoLinking, setIsAutoLinking] = useState(false);
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -136,6 +137,23 @@ export default function InvoicesPage() {
       fetchInvoices();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to re-extract", "error");
+    }
+  };
+
+  const handleAutoLink = async () => {
+    try {
+      setIsAutoLinking(true);
+      const result = await stockControlApiClient.autoLinkInvoices();
+      if (result.linked > 0) {
+        showToast(`Auto-linked ${result.linked} invoice(s) to delivery notes`, "success");
+        fetchInvoices();
+      } else {
+        showToast("No matching delivery notes found for unlinked invoices", "info");
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Auto-link failed", "error");
+    } finally {
+      setIsAutoLinking(false);
     }
   };
 
@@ -227,6 +245,45 @@ export default function InvoicesPage() {
           </p>
         </div>
         <div className="flex gap-3">
+          {invoices.some((inv) => !inv.deliveryNoteId) && (
+            <button
+              onClick={handleAutoLink}
+              disabled={isAutoLinking}
+              className="inline-flex items-center px-4 py-2 border border-amber-500 rounded-md shadow-sm text-sm font-medium text-amber-700 bg-white hover:bg-amber-50 disabled:opacity-50"
+            >
+              {isAutoLinking ? (
+                <svg
+                  className="w-4 h-4 mr-2 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
+                </svg>
+              )}
+              {isAutoLinking ? "Linking..." : "Auto-Link"}
+            </button>
+          )}
           <Link
             href="/stock-control/portal/deliveries/scan"
             className="inline-flex items-center px-4 py-2 border border-teal-600 rounded-md shadow-sm text-sm font-medium text-teal-700 bg-white hover:bg-teal-50"

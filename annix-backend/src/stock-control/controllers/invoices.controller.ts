@@ -76,6 +76,12 @@ export class InvoicesController {
     res.send(csv);
   }
 
+  @Post("auto-link")
+  @ApiOperation({ summary: "Auto-link all unlinked invoices to matching delivery notes" })
+  async autoLinkAll(@Req() req: any) {
+    return this.invoiceService.autoLinkAllUnlinked(req.user.companyId);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Invoice by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {

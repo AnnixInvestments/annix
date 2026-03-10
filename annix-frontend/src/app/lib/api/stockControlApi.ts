@@ -3478,6 +3478,12 @@ class StockControlApiClient {
     });
   }
 
+  async autoLinkInvoices(): Promise<{ linked: number; details: string[] }> {
+    return this.request("/stock-control/invoices/auto-link", {
+      method: "POST",
+    });
+  }
+
   async sageExportPreview(params: {
     dateFrom?: string;
     dateTo?: string;

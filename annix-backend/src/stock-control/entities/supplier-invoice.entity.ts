@@ -30,6 +30,7 @@ export interface ExtractedInvoiceData {
   invoiceDate?: string;
   totalAmount?: number;
   vatAmount?: number;
+  deliveryNoteNumber?: string;
   lineItems?: ExtractedLineItem[];
   rawText?: string;
 }
