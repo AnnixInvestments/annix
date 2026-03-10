@@ -18,6 +18,7 @@ import {
   auRubberApiClient,
   type DeliveryNoteStatus,
   type DeliveryNoteType,
+  type ExtractedDeliveryNoteData,
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
@@ -137,10 +138,13 @@ export default function SupplierDeliveryNotesPage() {
 
   const filteredNotes = sortNotes(
     notes.filter((note) => {
+      if (searchQuery === "") return true;
+      const q = searchQuery.toLowerCase();
       const matchesSearch =
-        searchQuery === "" ||
-        note.deliveryNoteNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.supplierCompanyName?.toLowerCase().includes(searchQuery.toLowerCase());
+        note.deliveryNoteNumber?.toLowerCase().includes(q) ||
+        note.supplierCompanyName?.toLowerCase().includes(q) ||
+        notePoRef(note).toLowerCase().includes(q) ||
+        noteRollNumbers(note).some((r) => r.toLowerCase().includes(q));
       return matchesSearch;
     }),
   );
@@ -239,6 +243,22 @@ export default function SupplierDeliveryNotesPage() {
     );
   };
 
+  const extractedDataSingle = (
+    data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
+  ): ExtractedDeliveryNoteData | null => {
+    if (!data) return null;
+    if (Array.isArray(data)) return data[0] ?? null;
+    return data;
+  };
+
+  const notePoRef = (note: RubberDeliveryNoteDto): string =>
+    note.customerReference || extractedDataSingle(note.extractedData)?.customerReference || "";
+
+  const noteRollNumbers = (note: RubberDeliveryNoteDto): string[] => {
+    const ed = extractedDataSingle(note.extractedData);
+    return (ed?.rolls || []).map((r) => r.rollNumber).filter(Boolean);
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -327,7 +347,7 @@ export default function SupplierDeliveryNotesPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="DN number, supplier"
+              placeholder="DN number, supplier, PO, roll"
               className="block w-56 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm rounded-md border"
             />
           </div>
@@ -457,6 +477,18 @@ export default function SupplierDeliveryNotesPage() {
                 </th>
                 <th
                   scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  PO / Ref
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Roll Numbers
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort("deliveryDate")}
                 >
@@ -498,6 +530,12 @@ export default function SupplierDeliveryNotesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {typeBadge(note.deliveryNoteType)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {notePoRef(note) || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {noteRollNumbers(note).length > 0 ? noteRollNumbers(note).join(", ") : "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {note.deliveryDate ? formatDateZA(note.deliveryDate) : "-"}

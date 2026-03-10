@@ -22,6 +22,7 @@ import {
   type CustomerDnOverride,
   type DeliveryNoteStatus,
   type DeliveryNoteType,
+  type ExtractedDeliveryNoteData,
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
@@ -293,6 +294,19 @@ export default function CustomerDeliveryNotesPage() {
     );
   };
 
+  const extractedDataSingle = (
+    data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
+  ): ExtractedDeliveryNoteData | null => {
+    if (!data) return null;
+    if (Array.isArray(data)) return data[0] ?? null;
+    return data;
+  };
+
+  const noteRollNumbers = (note: RubberDeliveryNoteDto): string[] => {
+    const ed = extractedDataSingle(note.extractedData);
+    return (ed?.rolls || []).map((r) => r.rollNumber).filter(Boolean);
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -495,6 +509,12 @@ export default function CustomerDeliveryNotesPage() {
                 </th>
                 <th
                   scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Roll Numbers
+                </th>
+                <th
+                  scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort("deliveryNoteType")}
                 >
@@ -544,6 +564,9 @@ export default function CustomerDeliveryNotesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {note.customerReference || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {noteRollNumbers(note).length > 0 ? noteRollNumbers(note).join(", ") : "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {typeBadge(note.deliveryNoteType)}

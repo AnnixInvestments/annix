@@ -712,17 +712,35 @@ export class RubberDeliveryNoteService {
       ...(coc.extractedData?.batchNumbers || []),
       ...(coc.extractedData?.batches || []).map((b: any) => b.batchNumber),
     ];
+    const cocRollNumbers: string[] = [...(coc.extractedData?.rollNumbers || [])].filter(Boolean);
+    const cocRollParts = cocRollNumbers.flatMap((rn: string) => {
+      const parts = rn.split("-");
+      return parts.length >= 2 ? [parts[parts.length - 1]] : [rn];
+    });
 
     const linkedIds: number[] = [];
 
     for (const note of unlinkedNotes) {
       const batchRange = note.extractedData?.batchRange;
       const dnNumber = note.deliveryNoteNumber;
+      const dnCustomerRef = (note.customerReference || note.extractedData?.customerReference || "")
+        .trim()
+        .toUpperCase();
+      const dnRollNumbers = (note.extractedData?.rolls || [])
+        .map((r) => r.rollNumber)
+        .filter(Boolean);
 
       const batchMatch = batchRange && cocBatches.some((b: string) => batchRange.includes(b));
       const orderMatch = cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber);
+      const poMatch = cocOrderNumber && dnCustomerRef && cocOrderNumber === dnCustomerRef;
+      const rollMatch =
+        dnRollNumbers.length > 0 &&
+        cocRollParts.length > 0 &&
+        dnRollNumbers.some((dnRoll) =>
+          cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
+        );
 
-      if (batchMatch || orderMatch) {
+      if (batchMatch || orderMatch || (poMatch && rollMatch)) {
         await this.linkToCoc(note.id, supplierCocId);
         linkedIds.push(note.id);
         this.logger.log(`Auto-linked unlinked DN ${note.id} (${dnNumber}) to CoC ${supplierCocId}`);
