@@ -3230,7 +3230,10 @@ class StockControlApiClient {
     });
   }
 
-  async testSageConnection(username?: string, password?: string): Promise<{
+  async testSageConnection(
+    username?: string,
+    password?: string,
+  ): Promise<{
     success: boolean;
     companies: SageCompany[];
   }> {

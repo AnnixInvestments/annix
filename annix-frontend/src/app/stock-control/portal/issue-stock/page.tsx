@@ -1300,9 +1300,7 @@ export default function IssueStockPage() {
                                 <p className="text-sm font-medium text-gray-900 truncate">
                                   {stockItem.name}
                                 </p>
-                                <p className="text-xs text-gray-500">
-                                  SKU: {stockItem.sku}
-                                </p>
+                                <p className="text-xs text-gray-500">SKU: {stockItem.sku}</p>
                               </div>
                               <div className="flex-shrink-0 text-right">
                                 {alreadyAdded ? (

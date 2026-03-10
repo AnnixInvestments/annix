@@ -158,11 +158,34 @@ function gridClassForSize(size: ThumbnailSize): string {
   return "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4";
 }
 
-function thumbnailClasses(size: ThumbnailSize): { image: string; placeholder: string; icon: string } {
-  if (size === "S") return { image: "h-10 w-10 rounded object-cover", placeholder: "h-10 w-10 rounded bg-gray-100 flex items-center justify-center", icon: "h-5 w-5 text-gray-400" };
-  if (size === "L") return { image: "h-24 w-24 rounded-lg object-cover", placeholder: "h-24 w-24 rounded-lg bg-gray-100 flex items-center justify-center", icon: "h-10 w-10 text-gray-400" };
-  if (size === "XL") return { image: "h-40 w-full rounded-t-lg object-cover", placeholder: "h-40 w-full rounded-t-lg bg-gray-100 flex items-center justify-center", icon: "h-12 w-12 text-gray-400" };
-  return { image: "h-16 w-16 rounded-lg object-cover", placeholder: "h-16 w-16 rounded-lg bg-gray-100 flex items-center justify-center", icon: "h-8 w-8 text-gray-400" };
+function thumbnailClasses(size: ThumbnailSize): {
+  image: string;
+  placeholder: string;
+  icon: string;
+} {
+  if (size === "S")
+    return {
+      image: "h-10 w-10 rounded object-cover",
+      placeholder: "h-10 w-10 rounded bg-gray-100 flex items-center justify-center",
+      icon: "h-5 w-5 text-gray-400",
+    };
+  if (size === "L")
+    return {
+      image: "h-24 w-24 rounded-lg object-cover",
+      placeholder: "h-24 w-24 rounded-lg bg-gray-100 flex items-center justify-center",
+      icon: "h-10 w-10 text-gray-400",
+    };
+  if (size === "XL")
+    return {
+      image: "h-40 w-full rounded-t-lg object-cover",
+      placeholder: "h-40 w-full rounded-t-lg bg-gray-100 flex items-center justify-center",
+      icon: "h-12 w-12 text-gray-400",
+    };
+  return {
+    image: "h-16 w-16 rounded-lg object-cover",
+    placeholder: "h-16 w-16 rounded-lg bg-gray-100 flex items-center justify-center",
+    icon: "h-8 w-8 text-gray-400",
+  };
 }
 
 function StockLevelBar(props: { item: StockItem }) {
