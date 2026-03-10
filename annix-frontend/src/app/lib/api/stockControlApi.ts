@@ -670,6 +670,63 @@ export interface CalibrationCertificate {
   downloadUrl?: string;
 }
 
+export interface PositectorDevice {
+  id: number;
+  companyId: number;
+  deviceName: string;
+  ipAddress: string;
+  port: number;
+  probeType: string | null;
+  serialNumber: string | null;
+  isActive: boolean;
+  lastConnectedAt: string | null;
+  registeredByName: string;
+  registeredById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PositectorConnectionStatus {
+  id: number;
+  deviceName: string;
+  ipAddress: string;
+  port: number;
+  online: boolean;
+  probeType: string | null;
+  serialNumber: string | null;
+  batchCount: number | null;
+}
+
+export interface PositectorBatchSummary {
+  buid: string;
+  name: string | null;
+  probeType: string | null;
+  readingCount: number;
+}
+
+export interface PositectorReading {
+  index: number;
+  value: number;
+  units: string | null;
+  timestamp: string | null;
+  raw: Record<string, string>;
+}
+
+export interface PositectorBatchDetail {
+  buid: string;
+  header: {
+    serialNumber: string | null;
+    probeType: string | null;
+    batchName: string | null;
+    model: string | null;
+    units: string | null;
+    readingCount: number;
+  };
+  readings: PositectorReading[];
+  statistics: Record<string, string> | null;
+  suggestedEntityType: string;
+}
+
 export interface DeliveryNote {
   id: number;
   deliveryNumber: string;
@@ -3983,6 +4040,69 @@ class StockControlApiClient {
     return this.request(`/stock-control/job-cards/${jobCardId}/qc/release-certificates/${id}`, {
       method: "DELETE",
     });
+  }
+
+  async positectorDevices(filters?: { active?: boolean }): Promise<PositectorDevice[]> {
+    const params = new URLSearchParams();
+    if (filters?.active !== undefined) params.set("active", String(filters.active));
+    const query = params.toString();
+    return this.request(`/stock-control/positector-devices${query ? `?${query}` : ""}`);
+  }
+
+  async positectorDeviceById(id: number): Promise<PositectorDevice> {
+    return this.request(`/stock-control/positector-devices/${id}`);
+  }
+
+  async registerPositectorDevice(data: {
+    deviceName: string;
+    ipAddress: string;
+    port?: number;
+    probeType?: string | null;
+    serialNumber?: string | null;
+  }): Promise<PositectorDevice> {
+    return this.request("/stock-control/positector-devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePositectorDevice(
+    id: number,
+    data: Partial<{
+      deviceName: string;
+      ipAddress: string;
+      port: number;
+      probeType: string | null;
+      serialNumber: string | null;
+      isActive: boolean;
+    }>,
+  ): Promise<PositectorDevice> {
+    return this.request(`/stock-control/positector-devices/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deletePositectorDevice(id: number): Promise<void> {
+    return this.request(`/stock-control/positector-devices/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async checkPositectorConnection(id: number): Promise<PositectorConnectionStatus> {
+    return this.request(`/stock-control/positector-devices/${id}/check-connection`, {
+      method: "POST",
+    });
+  }
+
+  async positectorBatches(deviceId: number): Promise<PositectorBatchSummary[]> {
+    return this.request(`/stock-control/positector-devices/${deviceId}/batches`);
+  }
+
+  async positectorBatch(deviceId: number, buid: string): Promise<PositectorBatchDetail> {
+    return this.request(`/stock-control/positector-devices/${deviceId}/batches/${buid}`);
   }
 }
 

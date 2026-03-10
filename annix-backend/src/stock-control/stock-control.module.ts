@@ -27,6 +27,7 @@ import { JobCardImportController } from "./controllers/job-card-import.controlle
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
 import { PublicBrandingController } from "./controllers/public-branding.controller";
+import { PositectorController } from "./controllers/positector.controller";
 import { QcMeasurementController } from "./controllers/qc-measurement.controller";
 import { QrCodeController } from "./controllers/qr-code.controller";
 import { ReportsController } from "./controllers/reports.controller";
@@ -57,6 +58,7 @@ import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity"
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { JobCardVersion } from "./entities/job-card-version.entity";
 import { PushSubscription } from "./entities/push-subscription.entity";
+import { PositectorDevice } from "./entities/positector-device.entity";
 import { QcBlastProfile } from "./entities/qc-blast-profile.entity";
 import { QcControlPlan } from "./entities/qc-control-plan.entity";
 import { QcDftReading } from "./entities/qc-dft-reading.entity";
@@ -121,6 +123,7 @@ import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
 import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
+import { PositectorService } from "./services/positector.service";
 import { QcMeasurementService } from "./services/qc-measurement.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { RbacConfigService } from "./services/rbac-config.service";
@@ -190,6 +193,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       QcDustDebrisTest,
       QcPullTest,
       QcControlPlan,
+      PositectorDevice,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -239,6 +243,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CertificateController,
     CalibrationCertificateController,
     QcMeasurementController,
+    PositectorController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -285,6 +290,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CertificateAnalysisService,
     CalibrationCertificateService,
     QcMeasurementService,
+    PositectorService,
   ],
 })
 export class StockControlModule {}
