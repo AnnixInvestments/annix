@@ -725,9 +725,7 @@ export class RubberDeliveryNoteService {
       if (batchMatch || orderMatch) {
         await this.linkToCoc(note.id, supplierCocId);
         linkedIds.push(note.id);
-        this.logger.log(
-          `Auto-linked unlinked DN ${note.id} (${dnNumber}) to CoC ${supplierCocId}`,
-        );
+        this.logger.log(`Auto-linked unlinked DN ${note.id} (${dnNumber}) to CoC ${supplierCocId}`);
       }
     }
 

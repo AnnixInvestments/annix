@@ -355,9 +355,7 @@ export class RubberCocService {
         }
       })
       .catch((error) => {
-        this.logger.error(
-          `Auto-link DNs to CoC ${coc.id} failed: ${error.message}`,
-        );
+        this.logger.error(`Auto-link DNs to CoC ${coc.id} failed: ${error.message}`);
       });
 
     this.triggerReadinessCheckForApprovedCoc(coc);
