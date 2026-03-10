@@ -703,7 +703,16 @@ export class RubberDeliveryNoteService {
       },
     });
 
-    if (unlinkedNotes.length === 0) return [];
+    this.logger.log(
+      `CoC ${supplierCocId}: type=${coc.cocType}, supplierCompanyId=${coc.supplierCompanyId}, orderNumber=${coc.orderNumber}, extractedOrderNumber=${coc.extractedData?.orderNumber}, rollNumbers=${JSON.stringify(coc.extractedData?.rollNumbers)}`,
+    );
+
+    if (unlinkedNotes.length === 0) {
+      this.logger.log(
+        `CoC ${supplierCocId}: no unlinked notes found for supplierCompanyId=${coc.supplierCompanyId}`,
+      );
+      return [];
+    }
 
     const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
       .trim()
@@ -717,6 +726,10 @@ export class RubberDeliveryNoteService {
       const parts = rn.split("-");
       return parts.length >= 2 ? [parts[parts.length - 1]] : [rn];
     });
+
+    this.logger.log(
+      `CoC ${supplierCocId}: cocOrderNumber="${cocOrderNumber}", cocBatches=${JSON.stringify(cocBatches)}, cocRollParts=${JSON.stringify(cocRollParts)}, unlinkedNotes=${unlinkedNotes.length}`,
+    );
 
     const linkedIds: number[] = [];
 
@@ -739,6 +752,10 @@ export class RubberDeliveryNoteService {
         dnRollNumbers.some((dnRoll) =>
           cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
         );
+
+      this.logger.log(
+        `CoC ${supplierCocId} vs DN ${note.id} (${dnNumber}): customerRef="${dnCustomerRef}", dnRolls=${JSON.stringify(dnRollNumbers)}, batchRange="${batchRange}", batchMatch=${batchMatch}, orderMatch=${orderMatch}, poMatch=${poMatch}, rollMatch=${rollMatch}`,
+      );
 
       if (batchMatch || orderMatch || (poMatch && rollMatch)) {
         await this.linkToCoc(note.id, supplierCocId);
