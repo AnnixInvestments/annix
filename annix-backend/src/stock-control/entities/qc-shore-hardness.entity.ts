@@ -15,6 +15,7 @@ export interface ShoreHardnessReadings {
   column2: number[];
   column3: number[];
   column4: number[];
+  itemLabels?: string[];
 }
 
 export interface ShoreHardnessAverages {

@@ -933,8 +933,10 @@ export class DataBookPdfService {
         };
       });
 
+      const itemLabel = rec.readings.itemLabels?.[rowIdx]?.trim() || String(rowIdx + 1);
+
       y = this.tableRow(doc, y, [
-        { text: String(rowIdx + 1), x: A4.margin, width: 40, align: "center" },
+        { text: itemLabel, x: A4.margin, width: 40, align: "center" },
         ...rowCols,
       ]);
     });

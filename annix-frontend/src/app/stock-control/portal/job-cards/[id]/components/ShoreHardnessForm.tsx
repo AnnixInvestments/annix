@@ -20,6 +20,8 @@ const COLUMNS: ColumnKey[] = ["column1", "column2", "column3", "column4"];
 const COLUMN_LABELS = ["Col 1", "Col 2", "Col 3", "Col 4"];
 const ROW_INDICES = Array.from({ length: 12 }, (_, i) => i);
 
+const emptyItemLabels = (): string[] => Array.from({ length: 12 }, () => "");
+
 const emptyReadings = (): Record<ColumnKey, (number | null)[]> => ({
   column1: Array.from({ length: 12 }, () => null),
   column2: Array.from({ length: 12 }, () => null),
@@ -83,6 +85,11 @@ export function ShoreHardnessForm({
   const [readings, setReadings] = useState<Record<ColumnKey, (number | null)[]>>(
     existing ? parseExistingReadings(existing.readings) : emptyReadings(),
   );
+  const [itemLabels, setItemLabels] = useState<string[]>(
+    existing?.readings.itemLabels
+      ? ROW_INDICES.map((i) => existing.readings.itemLabels?.[i] ?? "")
+      : emptyItemLabels(),
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,6 +98,10 @@ export function ShoreHardnessForm({
       ...prev,
       [col]: prev[col].map((v, i) => (i === rowIndex ? (value === "" ? null : Number(value)) : v)),
     }));
+  }, []);
+
+  const updateItemLabel = useCallback((rowIndex: number, value: string) => {
+    setItemLabels((prev) => prev.map((v, i) => (i === rowIndex ? value : v)));
   }, []);
 
   const averages = useMemo(() => {
@@ -142,12 +153,17 @@ export function ShoreHardnessForm({
       {} as Record<ColumnKey, number[]>,
     );
 
+    const hasAnyLabel = itemLabels.some((l) => l.trim() !== "");
+
     const payload = {
       rubberSpec: rubberSpec.trim(),
       rubberBatchNumber: rubberBatchNumber.trim() || null,
       requiredShore,
       readingDate,
-      readings: filteredReadings,
+      readings: {
+        ...filteredReadings,
+        ...(hasAnyLabel ? { itemLabels: itemLabels.map((l) => l.trim()) } : {}),
+      },
       averages: {
         column1: averages.column1,
         column2: averages.column2,
@@ -262,7 +278,15 @@ export function ShoreHardnessForm({
             <tbody>
               {ROW_INDICES.map((rowIdx) => (
                 <tr key={rowIdx} className="border-b border-gray-100">
-                  <td className="px-2 py-1 text-center font-medium text-gray-500">{rowIdx + 1}</td>
+                  <td className="px-1 py-1">
+                    <input
+                      type="text"
+                      value={itemLabels[rowIdx]}
+                      onChange={(e) => updateItemLabel(rowIdx, e.target.value)}
+                      placeholder={String(rowIdx + 1)}
+                      className="w-full rounded-md border border-gray-200 px-2 py-2 text-sm text-center text-gray-600 placeholder:text-gray-400"
+                    />
+                  </td>
                   {COLUMNS.map((col) => (
                     <td key={col} className="px-2 py-1">
                       <input
