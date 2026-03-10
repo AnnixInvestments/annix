@@ -1250,18 +1250,26 @@ ${truncatedText}`;
     const batchNumbers: string[] = [];
     let compoundCode: string | null = null;
 
-    const batchPattern = /\bB(\d{3,4})\b/gi;
-    let match;
-    while ((match = batchPattern.exec(nameWithoutExt)) !== null) {
-      batchNumbers.push(`B${match[1]}`);
+    const batchRangePattern = /\bB(\d{1,4})-(\d{1,4})\b/gi;
+    let rangeMatch;
+    while ((rangeMatch = batchRangePattern.exec(nameWithoutExt)) !== null) {
+      batchNumbers.push(`${rangeMatch[1]}-${rangeMatch[2]}`);
     }
 
     if (batchNumbers.length === 0) {
-      const batchRangeMatch = nameWithoutExt.match(/[\s_](\d{1,4})-(\d{1,4})$/);
-      if (batchRangeMatch) {
-        batchNumbers.push(`${batchRangeMatch[1]}-${batchRangeMatch[2]}`);
+      const batchPattern = /\bB(\d{1,4})\b/gi;
+      let match;
+      while ((match = batchPattern.exec(nameWithoutExt)) !== null) {
+        batchNumbers.push(`B${match[1]}`);
+      }
+    }
+
+    if (batchNumbers.length === 0) {
+      const batchRangeFallback = nameWithoutExt.match(/[-\s_](\d{1,4})-(\d{1,4})$/);
+      if (batchRangeFallback) {
+        batchNumbers.push(`${batchRangeFallback[1]}-${batchRangeFallback[2]}`);
       } else {
-        const singleBatchMatch = nameWithoutExt.match(/[\s_](\d{1,4})$/);
+        const singleBatchMatch = nameWithoutExt.match(/[-\s_](\d{1,4})$/);
         if (singleBatchMatch) {
           batchNumbers.push(singleBatchMatch[1]);
         }
@@ -1325,20 +1333,22 @@ ${truncatedText}`;
   }
 
   private extractBatchNumbersFromText(pdfText: string): string[] {
-    const matches = pdfText.match(/\b[Bb]?(\d{3,4})\b/g);
-    if (!matches) {
-      return [];
+    const batchRangePattern = /\b[Bb](\d{1,4})\s*[-–]\s*(\d{1,4})\b/g;
+    const rangeNumbers: string[] = [];
+    let rangeMatch;
+    while ((rangeMatch = batchRangePattern.exec(pdfText)) !== null) {
+      rangeNumbers.push(`${rangeMatch[1]}-${rangeMatch[2]}`);
     }
-    return [
-      ...new Set(
-        matches
-          .map((m) => m.replace(/^[Bb]/, ""))
-          .filter((n) => {
-            const num = parseInt(n, 10);
-            return num >= 100 && num <= 9999;
-          }),
-      ),
-    ];
+
+    const singleMatches = pdfText.match(/\b[Bb]?(\d{3,4})\b/g);
+    const singleNumbers: string[] = (singleMatches || [])
+      .map((m) => m.replace(/^[Bb]/, ""))
+      .filter((n) => {
+        const num = parseInt(n, 10);
+        return num >= 100 && num <= 9999;
+      });
+
+    return [...new Set([...rangeNumbers, ...singleNumbers])];
   }
 
   private detectIfGraph(
@@ -1382,12 +1392,21 @@ ${truncatedText}`;
     }
 
     const batchNumbers: string[] = [];
-    const batchMatches = pdfText.match(/\b(\d{3})\b/g);
-    if (batchMatches) {
-      const uniqueBatches = [...new Set(batchMatches)].filter(
-        (b) => parseInt(b, 10) >= 100 && parseInt(b, 10) <= 999,
-      );
-      batchNumbers.push(...uniqueBatches);
+
+    const batchRangePattern = /\b[Bb](\d{1,4})\s*[-–]\s*(\d{1,4})\b/g;
+    let rangeMatch;
+    while ((rangeMatch = batchRangePattern.exec(pdfText)) !== null) {
+      batchNumbers.push(`${rangeMatch[1]}-${rangeMatch[2]}`);
+    }
+
+    if (batchNumbers.length === 0) {
+      const batchMatches = pdfText.match(/\b(\d{3})\b/g);
+      if (batchMatches) {
+        const uniqueBatches = [...new Set(batchMatches)].filter(
+          (b) => parseInt(b, 10) >= 100 && parseInt(b, 10) <= 999,
+        );
+        batchNumbers.push(...uniqueBatches);
+      }
     }
 
     if (batchNumbers.length === 0) {
