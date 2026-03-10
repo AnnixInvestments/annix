@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -172,7 +173,16 @@ export class CertificateController {
     summary: "Analyze a multi-page PDF/image to identify individual COC/COA certificates",
   })
   async analyzeCertificates(@UploadedFile() file: Express.Multer.File) {
-    return this.certificateAnalysisService.analyze(file.buffer, file.mimetype);
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+    try {
+      return await this.certificateAnalysisService.analyze(file.buffer, file.mimetype);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Certificate analysis failed";
+      this.logger.error(`Certificate analysis failed: ${message}`);
+      throw new BadRequestException(`Analysis failed: ${message}`);
+    }
   }
 
   @Get(":id")
