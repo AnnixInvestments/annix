@@ -111,11 +111,9 @@ describe("DeliveryService", () => {
     it("increments stock quantity for each delivered item", async () => {
       const stockItem = { id: 1, name: "Paint", quantity: 50 };
       mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockDeliveryNoteRepo.findOne.mockResolvedValue({
-        id: 1,
-        items: [],
-        photoUrl: null,
-      });
+      mockDeliveryNoteRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue({ id: 1, items: [], photoUrl: null });
 
       await service.create(1, {
         deliveryNumber: "DN-001",
@@ -131,11 +129,9 @@ describe("DeliveryService", () => {
     it("creates IN movement for each delivered item", async () => {
       const stockItem = { id: 1, name: "Paint", quantity: 50 };
       mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockDeliveryNoteRepo.findOne.mockResolvedValue({
-        id: 1,
-        items: [],
-        photoUrl: null,
-      });
+      mockDeliveryNoteRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue({ id: 1, items: [], photoUrl: null });
 
       await service.create(1, {
         deliveryNumber: "DN-001",
@@ -154,6 +150,7 @@ describe("DeliveryService", () => {
 
     it("throws NotFoundException for missing stock item", async () => {
       mockStockItemRepo.findOne.mockResolvedValue(null);
+      mockDeliveryNoteRepo.findOne.mockResolvedValueOnce(null);
 
       await expect(
         service.create(1, {
@@ -168,11 +165,9 @@ describe("DeliveryService", () => {
       const stockItem1 = { id: 1, name: "Paint A", quantity: 10 };
       const stockItem2 = { id: 2, name: "Paint B", quantity: 20 };
       mockStockItemRepo.findOne.mockResolvedValueOnce(stockItem1).mockResolvedValueOnce(stockItem2);
-      mockDeliveryNoteRepo.findOne.mockResolvedValue({
-        id: 1,
-        items: [],
-        photoUrl: null,
-      });
+      mockDeliveryNoteRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue({ id: 1, items: [], photoUrl: null });
 
       await service.create(1, {
         deliveryNumber: "DN-002",
