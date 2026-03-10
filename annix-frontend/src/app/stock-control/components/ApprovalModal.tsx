@@ -44,7 +44,8 @@ export function ApprovalModal(props: ApprovalModalProps) {
     async (signatureDataUrl?: string) => {
       setIsSubmitting(true);
       try {
-        await onApprove(signatureDataUrl, comments || undefined);
+        const dataUrl = signatureDataUrl || undefined;
+        await onApprove(dataUrl, comments || undefined);
         onClose();
       } catch (error) {
         console.error("Approval failed:", error);

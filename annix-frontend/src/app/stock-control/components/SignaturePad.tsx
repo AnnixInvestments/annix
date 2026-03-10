@@ -118,7 +118,7 @@ export function SignaturePad(props: SignaturePadProps) {
 
   const useExisting = useCallback(() => {
     if (existingSignature) {
-      onSave(existingSignature);
+      onSave("");
     }
   }, [existingSignature, onSave]);
 

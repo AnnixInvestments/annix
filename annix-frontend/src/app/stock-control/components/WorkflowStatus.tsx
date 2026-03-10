@@ -99,9 +99,15 @@ function StepPopover(props: StepPopoverProps) {
           </div>
         )}
         {approval.signatureUrl && (
-          <div className="flex justify-between gap-3">
-            <span className="text-gray-500">Signature</span>
-            <span className="font-medium text-teal-600">Signed</span>
+          <div className="pt-1.5 border-t border-gray-100">
+            <span className="text-gray-500 text-xs">Signature</span>
+            <div className="mt-1 bg-white rounded border border-gray-200 p-1.5">
+              <img
+                src={approval.signatureUrl}
+                alt={`Signature by ${approval.approvedByName}`}
+                className="max-h-12 w-full object-contain"
+              />
+            </div>
           </div>
         )}
         {approval.comments && (
@@ -351,7 +357,13 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
                           <span> - {formatDateLongZA(approval.approvedAt)}</span>
                         )}
                         {approval.signatureUrl && (
-                          <span className="ml-2 text-teal-600">(Signed)</span>
+                          <div className="mt-1 bg-white rounded border border-gray-200 p-1.5 inline-block">
+                            <img
+                              src={approval.signatureUrl}
+                              alt={`Signature by ${approval.approvedByName}`}
+                              className="max-h-10 object-contain"
+                            />
+                          </div>
                         )}
                       </div>
                     )}

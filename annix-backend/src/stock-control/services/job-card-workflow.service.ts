@@ -253,11 +253,25 @@ export class JobCardWorkflowService {
   }
 
   async approvalHistory(companyId: number, jobCardId: number): Promise<JobCardApproval[]> {
-    return this.approvalRepo.find({
+    const approvals = await this.approvalRepo.find({
       where: { jobCardId, companyId },
       relations: ["approvedBy"],
       order: { createdAt: "ASC" },
     });
+
+    const withPresignedUrls = await Promise.all(
+      approvals.map(async (approval) => {
+        if (approval.signatureUrl) {
+          const presigned = await this.signatureService
+            .presignedUrl(approval.signatureUrl)
+            .catch(() => null);
+          return { ...approval, signatureUrl: presigned };
+        }
+        return approval;
+      }),
+    );
+
+    return withPresignedUrls;
   }
 
   async pendingApprovalsForUser(user: UserContext): Promise<JobCard[]> {
