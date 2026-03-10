@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, X } from "lucide-react";
+import { FileText, Link2, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -50,6 +50,24 @@ export default function SupplierDeliveryNotesPage() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [customerCompanies, setCustomerCompanies] = useState<RubberCompanyDto[]>([]);
+  const [isAutoLinking, setIsAutoLinking] = useState(false);
+
+  const handleBulkAutoLink = async () => {
+    try {
+      setIsAutoLinking(true);
+      const result = await auRubberApiClient.bulkAutoLinkDeliveryNotes();
+      if (result.linked > 0) {
+        showToast(`Auto-linked ${result.linked} delivery note(s) to supplier CoCs`, "success");
+        await fetchData();
+      } else {
+        showToast("No matching delivery notes found to link", "info");
+      }
+    } catch (err) {
+      showToast("Failed to auto-link delivery notes", "error");
+    } finally {
+      setIsAutoLinking(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -272,6 +290,18 @@ export default function SupplierDeliveryNotesPage() {
             </svg>
             Scan & Analyze
           </Link>
+          <button
+            onClick={handleBulkAutoLink}
+            disabled={isAutoLinking}
+            className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 disabled:opacity-50"
+          >
+            {isAutoLinking ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Link2 className="w-4 h-4 mr-2" />
+            )}
+            {isAutoLinking ? "Linking..." : "Auto-Link All"}
+          </button>
           <button
             onClick={() => setShowUploadModal(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700"

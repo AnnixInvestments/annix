@@ -731,4 +731,21 @@ export class RubberDeliveryNoteService {
 
     return linkedIds;
   }
+
+  async bulkAutoLinkAllUnlinkedDns(): Promise<{ linked: number; details: string[] }> {
+    const allCocs = await this.supplierCocRepository.find();
+    const details: string[] = [];
+    let totalLinked = 0;
+
+    for (const coc of allCocs) {
+      const linkedIds = await this.autoLinkUnlinkedDnsToSupplierCoc(coc.id);
+      if (linkedIds.length > 0) {
+        details.push(`CoC ${coc.id}: linked ${linkedIds.length} DN(s) [${linkedIds.join(", ")}]`);
+        totalLinked += linkedIds.length;
+      }
+    }
+
+    this.logger.log(`Bulk auto-link complete: ${totalLinked} DN(s) linked across ${allCocs.length} CoC(s)`);
+    return { linked: totalLinked, details };
+  }
 }

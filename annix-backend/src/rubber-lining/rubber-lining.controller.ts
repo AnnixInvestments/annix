@@ -1595,6 +1595,14 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/delivery-notes/bulk-auto-link")
+  @ApiOperation({ summary: "Bulk auto-link all unlinked delivery notes to matching supplier CoCs" })
+  async bulkAutoLinkDns(): Promise<{ linked: number; details: string[] }> {
+    return this.rubberDeliveryNoteService.bulkAutoLinkAllUnlinkedDns();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/delivery-notes")
   @ApiOperation({ summary: "List delivery notes" })
   @ApiQuery({ name: "deliveryNoteType", required: false, enum: DeliveryNoteType })

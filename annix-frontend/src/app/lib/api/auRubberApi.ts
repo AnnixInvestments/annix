@@ -2141,6 +2141,12 @@ class AuRubberApiClient {
     });
   }
 
+  async bulkAutoLinkDeliveryNotes(): Promise<{ linked: number; details: string[] }> {
+    return this.request("/rubber-lining/portal/delivery-notes/bulk-auto-link", {
+      method: "POST",
+    });
+  }
+
   async extractDeliveryNote(id: number): Promise<RubberDeliveryNoteDto> {
     return this.request(`/rubber-lining/portal/delivery-notes/${id}/extract`, {
       method: "POST",
