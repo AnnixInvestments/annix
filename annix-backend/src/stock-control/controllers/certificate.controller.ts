@@ -18,6 +18,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { CertificateAnalysisService } from "../services/certificate-analysis.service";
 import {
   type CertificateFilters,
   CertificateService,
@@ -30,7 +31,10 @@ import {
 export class CertificateController {
   private readonly logger = new Logger(CertificateController.name);
 
-  constructor(private readonly certificateService: CertificateService) {}
+  constructor(
+    private readonly certificateService: CertificateService,
+    private readonly certificateAnalysisService: CertificateAnalysisService,
+  ) {}
 
   @Post()
   @StockControlRoles("manager", "admin")
@@ -75,10 +79,22 @@ export class CertificateController {
     return this.certificateService.findAll(req.user.companyId, filters);
   }
 
+  @Post("data-book-status-bulk")
+  @ApiOperation({ summary: "Data book status for multiple job cards" })
+  async dataBookStatusBulk(@Req() req: any, @Body() body: { jobCardIds: number[] }) {
+    return this.certificateService.dataBookStatusBulk(req.user.companyId, body.jobCardIds);
+  }
+
   @Get("batch/:batchNumber")
   @ApiOperation({ summary: "Find certificates by batch number" })
   async findByBatchNumber(@Req() req: any, @Param("batchNumber") batchNumber: string) {
     return this.certificateService.findByBatchNumber(req.user.companyId, batchNumber);
+  }
+
+  @Get("batch/:batchNumber/records")
+  @ApiOperation({ summary: "Find issuance batch records by batch number" })
+  async batchRecordsByBatchNumber(@Req() req: any, @Param("batchNumber") batchNumber: string) {
+    return this.certificateService.batchRecordsByBatchNumber(req.user.companyId, batchNumber);
   }
 
   @Get("job-card/:jobCardId")
@@ -131,6 +147,14 @@ export class CertificateController {
   @ApiOperation({ summary: "Recent batch numbers for a stock item" })
   async recentBatches(@Req() req: any, @Param("stockItemId") stockItemId: number) {
     return this.certificateService.recentBatches(req.user.companyId, stockItemId);
+  }
+
+  @Post("analyze")
+  @StockControlRoles("manager", "admin")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Analyze a multi-page PDF/image to identify individual COC/COA certificates" })
+  async analyzeCertificates(@UploadedFile() file: Express.Multer.File) {
+    return this.certificateAnalysisService.analyze(file.buffer, file.mimetype);
   }
 
   @Get(":id")

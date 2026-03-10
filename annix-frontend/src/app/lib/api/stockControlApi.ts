@@ -3399,6 +3399,47 @@ class StockControlApiClient {
     return response.json();
   }
 
+  async analyzeCertificateDocument(file: File): Promise<{
+    certificates: Array<{
+      supplierName: string | null;
+      batchNumber: string | null;
+      certificateType: "COA" | "COC" | null;
+      productInfo: string | null;
+      pageNumbers: number[];
+      confidence: number;
+    }>;
+    totalPages: number;
+    processingTimeMs: number;
+  }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/certificates/analyze`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "Analysis failed");
+      throw new Error(errorText);
+    }
+
+    return response.json();
+  }
+
+  async dataBookStatusBulk(
+    jobCardIds: number[],
+  ): Promise<Record<number, { exists: boolean; isStale: boolean; certificateCount: number }>> {
+    return this.request("/stock-control/certificates/data-book-status-bulk", {
+      method: "POST",
+      body: JSON.stringify({ jobCardIds }),
+    });
+  }
+
   async certificates(filters?: {
     supplierId?: number;
     stockItemId?: number;
@@ -3427,6 +3468,10 @@ class StockControlApiClient {
 
   async certificatesByBatchNumber(batchNumber: string): Promise<SupplierCertificate[]> {
     return this.request(`/stock-control/certificates/batch/${encodeURIComponent(batchNumber)}`);
+  }
+
+  async batchRecordsByBatchNumber(batchNumber: string): Promise<IssuanceBatchRecord[]> {
+    return this.request(`/stock-control/certificates/batch/${encodeURIComponent(batchNumber)}/records`);
   }
 
   async certificatesForJobCard(jobCardId: number): Promise<SupplierCertificate[]> {

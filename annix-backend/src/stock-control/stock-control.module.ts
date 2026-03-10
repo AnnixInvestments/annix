@@ -85,6 +85,7 @@ import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { StockControlAuthService } from "./services/auth.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
 import { CalibrationCertificateService } from "./services/calibration-certificate.service";
+import { CertificateAnalysisService } from "./services/certificate-analysis.service";
 import { CertificateService } from "./services/certificate.service";
 import { CoatingAnalysisService } from "./services/coating-analysis.service";
 import { CompanyEmailService } from "./services/company-email.service";
@@ -262,6 +263,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CpoService,
     GlossaryService,
     CertificateService,
+    CertificateAnalysisService,
     CalibrationCertificateService,
   ],
 })

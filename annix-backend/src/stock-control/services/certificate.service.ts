@@ -9,7 +9,9 @@ import {
 } from "../../storage/storage.interface";
 import { CalibrationCertificate } from "../entities/calibration-certificate.entity";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
+import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
+import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
@@ -63,6 +65,10 @@ export class CertificateService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(CalibrationCertificate)
     private readonly calCertRepo: Repository<CalibrationCertificate>,
+    @InjectRepository(JobCard)
+    private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(StockControlCompany)
+    private readonly companyRepo: Repository<StockControlCompany>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -286,11 +292,15 @@ export class CertificateService {
     jobCardId: number,
     user: UserContext,
   ): Promise<JobCardDataBook> {
-    const certs = await this.certificatesForJobCard(companyId, jobCardId);
-    const calCerts = await this.calCertRepo.find({
-      where: { companyId, isActive: true },
-      order: { equipmentName: "ASC" },
-    });
+    const [certs, calCerts, jobCard, company] = await Promise.all([
+      this.certificatesForJobCard(companyId, jobCardId),
+      this.calCertRepo.find({
+        where: { companyId, isActive: true },
+        order: { equipmentName: "ASC" },
+      }),
+      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId } }),
+      this.companyRepo.findOne({ where: { id: companyId } }),
+    ]);
 
     if (certs.length === 0 && calCerts.length === 0) {
       throw new BadRequestException("No certificates linked to this job card");
@@ -309,18 +319,75 @@ export class CertificateService {
       coverDoc.on("end", () => resolve(Buffer.concat(coverChunks)));
     });
 
+    let logoEmbedded = false;
+    if (company?.logoUrl) {
+      try {
+        const logoBuffer = company.logoUrl.startsWith("http")
+          ? Buffer.from(await (await fetch(company.logoUrl)).arrayBuffer())
+          : await this.storageService.download(company.logoUrl);
+
+        coverDoc.image(logoBuffer, (coverDoc.page.width - 120) / 2, 50, {
+          fit: [120, 80],
+          align: "center",
+        });
+        coverDoc.moveDown(5);
+        logoEmbedded = true;
+      } catch (err) {
+        this.logger.warn(`Failed to embed company logo in data book cover: ${err}`);
+      }
+    }
+
+    if (!logoEmbedded) {
+      coverDoc.moveDown(1);
+    }
+
+    if (company?.name) {
+      coverDoc.fontSize(16).font("Helvetica-Bold").text(company.name, { align: "center" });
+      coverDoc.moveDown(0.5);
+    }
+
     coverDoc.fontSize(24).font("Helvetica-Bold").text("Quality Data Book", { align: "center" });
-    coverDoc.moveDown(2);
-    coverDoc.fontSize(14).font("Helvetica").text(`Job Card: ${jobCardId}`, { align: "center" });
-    coverDoc.moveDown(1);
+    coverDoc.moveDown(1.5);
+
+    coverDoc.fontSize(11).font("Helvetica");
     const totalCertCount = certs.length + calCerts.length;
-    coverDoc.fontSize(12).text(`Certificates: ${totalCertCount}`, { align: "center" });
-    coverDoc.moveDown(1);
-    coverDoc
-      .fontSize(10)
-      .text(`Generated: ${now().toFormat("dd MMM yyyy HH:mm")}`, { align: "center" });
-    coverDoc.moveDown(1);
-    coverDoc.text(`Compiled by: ${user.name}`, { align: "center" });
+
+    const detailRows: Array<[string, string]> = [
+      ["Job Card #", String(jobCardId)],
+    ];
+
+    if (jobCard?.jobNumber) {
+      detailRows.push(["Job Number", jobCard.jobNumber]);
+    }
+    if (jobCard?.jobName) {
+      detailRows.push(["Job Name", jobCard.jobName]);
+    }
+    if (jobCard?.customerName) {
+      detailRows.push(["Customer", jobCard.customerName]);
+    }
+    if (jobCard?.reference) {
+      detailRows.push(["Reference", jobCard.reference]);
+    }
+    if (jobCard?.poNumber) {
+      detailRows.push(["PO Number", jobCard.poNumber]);
+    }
+    if (jobCard?.siteLocation) {
+      detailRows.push(["Site / Location", jobCard.siteLocation]);
+    }
+    if (jobCard?.dueDate) {
+      detailRows.push(["Due Date", jobCard.dueDate]);
+    }
+
+    detailRows.push(["Certificates", String(totalCertCount)]);
+    detailRows.push(["Generated", now().toFormat("dd MMM yyyy HH:mm")]);
+    detailRows.push(["Compiled by", user.name]);
+
+    const labelX = 140;
+    const valueX = 280;
+    detailRows.forEach(([label, value]) => {
+      coverDoc.font("Helvetica-Bold").text(`${label}:`, labelX, coverDoc.y, { continued: false, width: 130 });
+      coverDoc.font("Helvetica").text(value, valueX, coverDoc.y - coverDoc.currentLineHeight(), { width: 250 });
+    });
 
     coverDoc.moveDown(2);
     coverDoc.fontSize(11).font("Helvetica-Bold").text("Included Certificates:");
@@ -504,6 +571,56 @@ export class CertificateService {
       dataBook.isStale = true;
       await this.dataBookRepo.save(dataBook);
     }
+  }
+
+  async dataBookStatusBulk(
+    companyId: number,
+    jobCardIds: number[],
+  ): Promise<Record<number, { exists: boolean; isStale: boolean; certificateCount: number }>> {
+    if (jobCardIds.length === 0) return {};
+
+    const dataBooks = await this.dataBookRepo
+      .createQueryBuilder("db")
+      .where("db.companyId = :companyId", { companyId })
+      .andWhere("db.jobCardId IN (:...jobCardIds)", { jobCardIds })
+      .getMany();
+
+    const certCounts = await this.batchRecordRepo
+      .createQueryBuilder("br")
+      .select("br.job_card_id", "jobCardId")
+      .addSelect("COUNT(DISTINCT br.supplier_certificate_id)", "certCount")
+      .where("br.company_id = :companyId", { companyId })
+      .andWhere("br.job_card_id IN (:...jobCardIds)", { jobCardIds })
+      .andWhere("br.supplier_certificate_id IS NOT NULL")
+      .groupBy("br.job_card_id")
+      .getRawMany<{ jobCardId: number; certCount: string }>();
+
+    const certCountMap = new Map(certCounts.map((r) => [r.jobCardId, parseInt(r.certCount, 10)]));
+    const dataBookMap = new Map(dataBooks.map((db) => [db.jobCardId, db]));
+
+    return jobCardIds.reduce(
+      (acc, id) => {
+        const db = dataBookMap.get(id);
+        acc[id] = {
+          exists: !!db,
+          isStale: db?.isStale ?? false,
+          certificateCount: certCountMap.get(id) ?? 0,
+        };
+        return acc;
+      },
+      {} as Record<number, { exists: boolean; isStale: boolean; certificateCount: number }>,
+    );
+  }
+
+  async batchRecordsByBatchNumber(
+    companyId: number,
+    batchNumber: string,
+  ): Promise<IssuanceBatchRecord[]> {
+    return this.batchRecordRepo.find({
+      where: { companyId, batchNumber: batchNumber.trim() },
+      relations: ["stockItem", "supplierCertificate", "supplierCertificate.supplier"],
+      order: { createdAt: "DESC" },
+    });
   }
 
   async recentBatches(companyId: number, stockItemId: number, limit = 10): Promise<string[]> {
