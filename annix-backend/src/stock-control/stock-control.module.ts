@@ -27,6 +27,7 @@ import { JobCardImportController } from "./controllers/job-card-import.controlle
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
 import { PublicBrandingController } from "./controllers/public-branding.controller";
+import { QcMeasurementController } from "./controllers/qc-measurement.controller";
 import { QrCodeController } from "./controllers/qr-code.controller";
 import { ReportsController } from "./controllers/reports.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
@@ -56,8 +57,14 @@ import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity"
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { JobCardVersion } from "./entities/job-card-version.entity";
 import { PushSubscription } from "./entities/push-subscription.entity";
+import { QcBlastProfile } from "./entities/qc-blast-profile.entity";
+import { QcControlPlan } from "./entities/qc-control-plan.entity";
+import { QcDftReading } from "./entities/qc-dft-reading.entity";
+import { QcDustDebrisTest } from "./entities/qc-dust-debris-test.entity";
 import { QcItemsRelease } from "./entities/qc-items-release.entity";
+import { QcPullTest } from "./entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "./entities/qc-release-certificate.entity";
+import { QcShoreHardness } from "./entities/qc-shore-hardness.entity";
 import { Requisition } from "./entities/requisition.entity";
 import { RequisitionItem } from "./entities/requisition-item.entity";
 import { RubberDimensionOverride } from "./entities/rubber-dimension-override.entity";
@@ -114,6 +121,7 @@ import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
 import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
+import { QcMeasurementService } from "./services/qc-measurement.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { RbacConfigService } from "./services/rbac-config.service";
 import { ReportsService } from "./services/reports.service";
@@ -176,6 +184,12 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       CalibrationCertificate,
       QcReleaseCertificate,
       QcItemsRelease,
+      QcShoreHardness,
+      QcDftReading,
+      QcBlastProfile,
+      QcDustDebrisTest,
+      QcPullTest,
+      QcControlPlan,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -224,6 +238,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     GlossaryController,
     CertificateController,
     CalibrationCertificateController,
+    QcMeasurementController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -269,6 +284,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CertificateService,
     CertificateAnalysisService,
     CalibrationCertificateService,
+    QcMeasurementService,
   ],
 })
 export class StockControlModule {}
