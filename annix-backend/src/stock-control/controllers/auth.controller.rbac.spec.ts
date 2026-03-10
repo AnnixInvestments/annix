@@ -4,6 +4,7 @@ import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { StockControlAuthService } from "../services/auth.service";
 import { BrandingScraperService } from "../services/branding-scraper.service";
 import { CompanyEmailService } from "../services/company-email.service";
+import { SageConnectionService } from "../../sage-export/sage-connection.service";
 import { LookupService } from "../services/lookup.service";
 import { RbacConfigService } from "../services/rbac-config.service";
 import { StockControlAuthController } from "./auth.controller";
@@ -44,6 +45,10 @@ describe("StockControlAuthController - RBAC endpoints", () => {
         {
           provide: RbacConfigService,
           useValue: rbacConfigService,
+        },
+        {
+          provide: SageConnectionService,
+          useValue: {},
         },
       ],
     })
