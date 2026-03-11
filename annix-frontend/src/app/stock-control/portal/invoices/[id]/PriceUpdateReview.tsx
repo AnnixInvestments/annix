@@ -92,7 +92,9 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                 >
                   {item.stockItemName}
                 </td>
-                <td className="px-2 py-2 text-right text-gray-500">R{Number(item.oldPrice || 0).toFixed(2)}</td>
+                <td className="px-2 py-2 text-right text-gray-500">
+                  R{Number(item.oldPrice || 0).toFixed(2)}
+                </td>
                 <td className="px-2 py-2 text-right text-gray-900 font-medium">
                   R{Number(item.newPrice || 0).toFixed(2)}
                 </td>

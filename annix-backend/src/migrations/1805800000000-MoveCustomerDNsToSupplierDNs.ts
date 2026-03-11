@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class MoveCustomerDNsToSupplierDNs1805800000000
-  implements MigrationInterface
-{
+export class MoveCustomerDNsToSupplierDNs1805800000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const deliveryNumbers = [
       "SDHC3000000029790",
@@ -17,9 +15,7 @@ export class MoveCustomerDNsToSupplierDNs1805800000000
       "SDHC3000000029740",
     ];
 
-    const placeholders = deliveryNumbers
-      .map((_dn, i) => `$${i + 1}`)
-      .join(", ");
+    const placeholders = deliveryNumbers.map((_dn, i) => `$${i + 1}`).join(", ");
 
     await queryRunner.query(
       `UPDATE delivery_notes
@@ -48,9 +44,7 @@ export class MoveCustomerDNsToSupplierDNs1805800000000
       "SDHC3000000029740",
     ];
 
-    const placeholders = deliveryNumbers
-      .map((_dn, i) => `$${i + 1}`)
-      .join(", ");
+    const placeholders = deliveryNumbers.map((_dn, i) => `$${i + 1}`).join(", ");
 
     await queryRunner.query(
       `UPDATE delivery_notes
