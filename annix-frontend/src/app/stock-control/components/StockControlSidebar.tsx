@@ -19,7 +19,7 @@ export function StockControlSidebar() {
   const [rbacPanelOpen, setRbacPanelOpen] = useState(false);
 
   const visibleNavItems = ALL_NAV_ITEMS.filter((item) => {
-    if (item.requiresQc && !profile?.qcEnabled) return false;
+    if (item.requiresQc && !profile?.qcEnabled && user?.role !== "admin") return false;
     const allowedRoles = rbacConfig[item.key] ?? item.defaultRoles;
     return user?.role ? allowedRoles.includes(user.role) : false;
   });
