@@ -134,4 +134,31 @@ export class JobCardImportController {
 
     return result;
   }
+
+  @Post("confirm-delivery-matches")
+  @ApiOperation({ summary: "Confirm fuzzy-matched delivery line items against CPO" })
+  async confirmDeliveryMatches(
+    @Body()
+    body: {
+      jobCardId: number;
+      matches: { deliveryItemId: number; cpoItemId: number }[];
+    },
+    @Req() req: any,
+  ) {
+    await this.jobCardImportService.confirmDeliveryMatches(
+      req.user.companyId,
+      body.jobCardId,
+      body.matches,
+    );
+
+    const user = { id: req.user.id, name: req.user.name };
+    this.workflowService
+      .initializeWorkflow(req.user.companyId, body.jobCardId, user)
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        this.logger.error(`Workflow initialization failed for delivery JC: ${message}`);
+      });
+
+    return { success: true };
+  }
 }

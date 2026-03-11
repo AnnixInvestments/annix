@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type {
+  DeliveryMatchResult,
   ImportMappingConfig,
   JobCardImportMapping,
   JobCardImportResult,
@@ -12,7 +13,7 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { consumePendingImportFile } from "./pending-file";
 
-type ImportStep = "upload" | "mapping" | "preview" | "result";
+type ImportStep = "upload" | "mapping" | "preview" | "delivery-matching" | "result";
 
 interface FieldDef {
   key: string;
@@ -572,6 +573,11 @@ export default function JobCardImportPage() {
   const [isSavingMapping, setIsSavingMapping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<JobCardImportResult | null>(null);
+  const [pendingDeliveryMatches, setPendingDeliveryMatches] = useState<DeliveryMatchResult[]>([]);
+  const [deliverySelections, setDeliverySelections] = useState<
+    Record<number, Record<number, boolean>>
+  >({});
+  const [isConfirmingDelivery, setIsConfirmingDelivery] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [customFieldInput, setCustomFieldInput] = useState("");
@@ -901,7 +907,26 @@ export default function JobCardImportPage() {
       }));
       const importResult = await stockControlApiClient.confirmJobCardImport(rowsWithM2);
       setResult(importResult);
-      setStep("result");
+
+      if (importResult.deliveryMatches && importResult.deliveryMatches.length > 0) {
+        setPendingDeliveryMatches(importResult.deliveryMatches);
+        const initialSelections = importResult.deliveryMatches.reduce<
+          Record<number, Record<number, boolean>>
+        >((acc, dm) => {
+          const matchSelections = dm.matches.reduce<Record<number, boolean>>(
+            (mAcc, match) => ({
+              ...mAcc,
+              [match.deliveryItemId]: match.preSelected,
+            }),
+            {},
+          );
+          return { ...acc, [dm.jobCardId]: matchSelections };
+        }, {});
+        setDeliverySelections(initialSelections);
+        setStep("delivery-matching");
+      } else {
+        setStep("result");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to import job cards");
     } finally {
@@ -1912,6 +1937,159 @@ export default function JobCardImportPage() {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {step === "delivery-matching" && pendingDeliveryMatches.length > 0 && (
+        <div className="space-y-4">
+          <div className="bg-white shadow rounded-lg overflow-x-auto">
+            <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                Confirm Delivery Matches
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                The following delivery items were fuzzy-matched to CPO line items. Review and
+                adjust the selections, then confirm.
+              </p>
+            </div>
+            <div className="p-6 space-y-6">
+              {pendingDeliveryMatches.map((dm) => (
+                <div key={dm.jobCardId} className="border rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">
+                    Delivery: {dm.jtDnNumber}
+                  </h4>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                          Match
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                          Delivery Item
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                          CPO Item
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                          Similarity
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {dm.matches.map((match) => {
+                        const isSelected =
+                          deliverySelections[dm.jobCardId]?.[match.deliveryItemId] ?? false;
+                        return (
+                          <tr
+                            key={match.deliveryItemId}
+                            className={isSelected ? "bg-green-50" : ""}
+                          >
+                            <td className="px-3 py-2">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  setDeliverySelections((prev) => ({
+                                    ...prev,
+                                    [dm.jobCardId]: {
+                                      ...prev[dm.jobCardId],
+                                      [match.deliveryItemId]: !isSelected,
+                                    },
+                                  }));
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="font-medium text-gray-900">
+                                {match.deliveryItemCode || "-"}
+                              </div>
+                              <div className="text-gray-500">
+                                {match.deliveryItemDescription || "-"}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <div className="font-medium text-gray-900">
+                                {match.cpoItemCode || "-"}
+                              </div>
+                              <div className="text-gray-500">
+                                {match.cpoItemDescription || "-"}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  match.similarity >= 0.6
+                                    ? "bg-green-100 text-green-800"
+                                    : match.similarity >= 0.3
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {Math.round(match.similarity * 100)}%
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+
+              {error && (
+                <div className="bg-red-50 text-red-700 text-sm rounded-md p-3">{error}</div>
+              )}
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      setIsConfirmingDelivery(true);
+                      setError(null);
+
+                      await Promise.all(
+                        pendingDeliveryMatches.map((dm) => {
+                          const selections = deliverySelections[dm.jobCardId] || {};
+                          const confirmed = dm.matches
+                            .filter((m) => selections[m.deliveryItemId])
+                            .map((m) => ({
+                              deliveryItemId: m.deliveryItemId,
+                              cpoItemId: m.cpoItemId,
+                            }));
+
+                          if (confirmed.length === 0) return Promise.resolve();
+
+                          return stockControlApiClient.confirmDeliveryMatches(
+                            dm.jobCardId,
+                            confirmed,
+                          );
+                        }),
+                      );
+
+                      setStep("result");
+                    } catch (err) {
+                      setError(
+                        err instanceof Error ? err.message : "Failed to confirm delivery matches",
+                      );
+                    } finally {
+                      setIsConfirmingDelivery(false);
+                    }
+                  }}
+                  disabled={isConfirmingDelivery}
+                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {isConfirmingDelivery ? "Confirming..." : "Confirm Matches"}
+                </button>
+                <button
+                  onClick={() => setStep("result")}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Skip
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -418,7 +418,13 @@ export default function JobCardsPage() {
                       className="text-sm font-medium text-teal-700 hover:text-teal-900"
                     >
                       {job.jobNumber}
+                      {job.jtDnNumber ? ` / ${job.jtDnNumber}` : ""}
                     </Link>
+                    {job.parentJobCardId ? (
+                      <span className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-50 text-indigo-600">
+                        Delivery
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {job.jcNumber || "-"}

@@ -2,7 +2,8 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCard } from "../entities/job-card.entity";
+import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { JobCardApproval } from "../entities/job-card-approval.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { JobCardVersion } from "../entities/job-card-version.entity";
 
@@ -17,17 +18,18 @@ export class JobCardVersionService {
     private readonly versionRepo: Repository<JobCardVersion>,
     @InjectRepository(JobCardLineItem)
     private readonly lineItemRepo: Repository<JobCardLineItem>,
+    @InjectRepository(JobCardApproval)
+    private readonly approvalRepo: Repository<JobCardApproval>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
 
-  async createAmendment(
+  async archiveCurrentVersion(
     companyId: number,
     jobCardId: number,
-    file: Express.Multer.File,
-    notes: string | null,
+    amendmentNotes: string | null,
     createdBy: string | null,
-  ): Promise<JobCard> {
+  ): Promise<JobCardVersion> {
     const jobCard = await this.jobCardRepo.findOne({
       where: { id: jobCardId, companyId },
       relations: ["lineItems"],
@@ -46,7 +48,23 @@ export class JobCardVersionService {
         quantity: li.quantity,
         jtNo: li.jtNo,
         sortOrder: li.sortOrder,
+        notes: li.notes,
+        m2: li.m2,
       })) ?? [];
+
+    const approvals = await this.approvalRepo.find({
+      where: { jobCardId, companyId },
+      order: { createdAt: "ASC" },
+    });
+
+    const approvalsSnapshot = approvals.map((a) => ({
+      step: a.step,
+      status: a.status,
+      approvedByName: a.approvedByName,
+      approvedAt: a.approvedAt?.toISOString() ?? null,
+      comments: a.comments,
+      rejectedReason: a.rejectedReason,
+    }));
 
     const version = this.versionRepo.create({
       jobCardId: jobCard.id,
@@ -58,10 +76,48 @@ export class JobCardVersionService {
       customerName: jobCard.customerName,
       notes: jobCard.notes,
       lineItemsSnapshot,
-      amendmentNotes: notes,
+      workflowStatus: jobCard.workflowStatus,
+      approvalsSnapshot,
+      amendmentNotes,
       createdBy,
     });
-    await this.versionRepo.save(version);
+
+    const saved = await this.versionRepo.save(version);
+
+    this.logger.log(
+      `Archived v${jobCard.versionNumber} for job card ${jobCard.jobNumber}`,
+    );
+
+    return saved;
+  }
+
+  async resetWorkflow(companyId: number, jobCardId: number): Promise<void> {
+    await this.approvalRepo.delete({ jobCardId, companyId });
+
+    await this.jobCardRepo.update(
+      { id: jobCardId, companyId },
+      { workflowStatus: JobCardWorkflowStatus.DRAFT },
+    );
+
+    this.logger.log(`Reset workflow for job card ${jobCardId}`);
+  }
+
+  async createAmendment(
+    companyId: number,
+    jobCardId: number,
+    file: Express.Multer.File,
+    notes: string | null,
+    createdBy: string | null,
+  ): Promise<JobCard> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+    });
+
+    if (!jobCard) {
+      throw new NotFoundException("Job card not found");
+    }
+
+    await this.archiveCurrentVersion(companyId, jobCardId, notes, createdBy);
 
     const uploadResult = await this.storageService.upload(
       file,
@@ -73,6 +129,8 @@ export class JobCardVersionService {
     jobCard.sourceFileName = file.originalname;
 
     await this.jobCardRepo.save(jobCard);
+
+    await this.resetWorkflow(companyId, jobCardId);
 
     this.logger.log(
       `Created amendment v${jobCard.versionNumber} for job card ${jobCard.jobNumber}`,

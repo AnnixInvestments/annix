@@ -3,15 +3,17 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
-import { JobCard, JobCardStatus } from "../entities/job-card.entity";
+import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
 import {
   FieldMapping,
   ImportMappingConfig,
   JobCardImportMapping,
 } from "../entities/job-card-import-mapping.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { CpoService } from "./cpo.service";
 import { DrawingExtractionService } from "./drawing-extraction.service";
+import { JobCardVersionService } from "./job-card-version.service";
 
 export interface LineItemImportRow {
   itemCode?: string;
@@ -40,6 +42,23 @@ export interface JobCardImportRow {
   lineItems?: LineItemImportRow[];
 }
 
+export interface DeliveryLineMatch {
+  deliveryItemId: number;
+  deliveryItemDescription: string | null;
+  deliveryItemCode: string | null;
+  cpoItemId: number;
+  cpoItemDescription: string | null;
+  cpoItemCode: string | null;
+  similarity: number;
+  preSelected: boolean;
+}
+
+export interface DeliveryMatchResult {
+  jobCardId: number;
+  jtDnNumber: string;
+  matches: DeliveryLineMatch[];
+}
+
 export interface JobCardImportResult {
   totalRows: number;
   created: number;
@@ -47,6 +66,7 @@ export interface JobCardImportResult {
   skipped: number;
   errors: { row: number; message: string }[];
   createdJobCardIds: number[];
+  deliveryMatches: DeliveryMatchResult[];
 }
 
 const INVALID_LINE_ITEM_PATTERNS = [
@@ -128,6 +148,61 @@ function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[]
   return result;
 }
 
+const JT_DN_PATTERN = /(?:JT|DN|JT\/DN|JTDN)[\s\-#:]*([A-Z0-9\-]+)/i;
+
+function detectJtDnNumber(row: JobCardImportRow): string | null {
+  const fieldsToCheck = [
+    row.jcNumber,
+    row.reference,
+    row.notes,
+    row.description,
+  ].filter(Boolean) as string[];
+
+  const fieldMatch = fieldsToCheck.reduce<string | null>((found, field) => {
+    if (found) return found;
+    const match = field.match(JT_DN_PATTERN);
+    return match ? match[0].trim() : null;
+  }, null);
+
+  if (fieldMatch) return fieldMatch;
+
+  const lineItemJtNumbers = (row.lineItems || [])
+    .map((li) => (li.jtNo || "").trim())
+    .filter(Boolean);
+
+  const uniqueJtNumbers = [...new Set(lineItemJtNumbers)];
+
+  if (uniqueJtNumbers.length === 1) {
+    return uniqueJtNumbers[0];
+  }
+
+  if (uniqueJtNumbers.length > 1) {
+    return uniqueJtNumbers[0];
+  }
+
+  return null;
+}
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 1);
+}
+
+function jaccardSimilarity(textA: string, textB: string): number {
+  const tokensA = new Set(tokenize(textA));
+  const tokensB = new Set(tokenize(textB));
+
+  if (tokensA.size === 0 && tokensB.size === 0) return 0;
+
+  const intersection = [...tokensA].filter((t) => tokensB.has(t)).length;
+  const union = new Set([...tokensA, ...tokensB]).size;
+
+  return union > 0 ? intersection / union : 0;
+}
+
 const JOB_CARD_MAPPING_PROMPT = `You are an expert at reading job cards and work orders. Given a grid of text extracted from a PDF or spreadsheet, identify where the job card fields are located.
 
 Job cards typically have these fields:
@@ -194,10 +269,13 @@ export class JobCardImportService {
     private readonly lineItemRepo: Repository<JobCardLineItem>,
     @InjectRepository(JobCardImportMapping)
     private readonly mappingRepo: Repository<JobCardImportMapping>,
+    @InjectRepository(CustomerPurchaseOrderItem)
+    private readonly cpoItemRepo: Repository<CustomerPurchaseOrderItem>,
     private readonly aiChatService: AiChatService,
     private readonly drawingExtractionService: DrawingExtractionService,
     @Inject(forwardRef(() => CpoService))
     private readonly cpoService: CpoService,
+    private readonly versionService: JobCardVersionService,
   ) {}
 
   async parseFile(
@@ -650,6 +728,271 @@ export class JobCardImportService {
     };
   }
 
+  private buildLineItemEntities(
+    lineItems: LineItemImportRow[],
+    jobCardId: number,
+    companyId: number,
+  ): JobCardLineItem[] {
+    const merged = mergeNoteRowsIntoItems(lineItems);
+    const valid = merged.filter(isValidLineItem);
+    return valid.map((li, idx) =>
+      this.lineItemRepo.create({
+        jobCardId,
+        itemCode: li.itemCode || null,
+        itemDescription: li.itemDescription || null,
+        itemNo: li.itemNo || null,
+        quantity: li.quantity ? parseFloat(li.quantity) : null,
+        jtNo: li.jtNo || null,
+        m2: li.m2 ?? null,
+        notes: li.notes || null,
+        sortOrder: idx,
+        companyId,
+      }),
+    );
+  }
+
+  private async archiveAndOverwrite(
+    existing: JobCard,
+    row: JobCardImportRow,
+    companyId: number,
+  ): Promise<number> {
+    await this.versionService.archiveCurrentVersion(
+      companyId,
+      existing.id,
+      "Re-uploaded with same job number",
+      null,
+    );
+
+    const customFields =
+      row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
+
+    existing.jcNumber = row.jcNumber || null;
+    existing.pageNumber = row.pageNumber || null;
+    existing.jobName = row.jobName!;
+    existing.customerName = row.customerName || null;
+    existing.description = row.description || null;
+    existing.poNumber = row.poNumber || null;
+    existing.siteLocation = row.siteLocation || null;
+    existing.contactPerson = row.contactPerson || null;
+    existing.dueDate = row.dueDate || null;
+    existing.notes = row.notes || null;
+    existing.reference = row.reference || null;
+    existing.customFields = customFields;
+    existing.versionNumber = existing.versionNumber + 1;
+
+    const saved = await this.jobCardRepo.save(existing);
+
+    await this.lineItemRepo.delete({ jobCardId: saved.id });
+
+    if (row.lineItems && row.lineItems.length > 0) {
+      const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
+      await this.lineItemRepo.save(entities);
+    }
+
+    await this.versionService.resetWorkflow(companyId, saved.id);
+
+    this.logger.log(
+      `Archived and overwrote job card ${existing.jobNumber} as v${saved.versionNumber}`,
+    );
+
+    return saved.id;
+  }
+
+  private async createDeliveryJobCard(
+    parentJobCard: JobCard,
+    row: JobCardImportRow,
+    jtDnNumber: string,
+    companyId: number,
+  ): Promise<{ jobCardId: number; deliveryMatch: DeliveryMatchResult | null }> {
+    const customFields =
+      row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
+
+    const deliveryJc = this.jobCardRepo.create({
+      jobNumber: parentJobCard.jobNumber,
+      jcNumber: jtDnNumber,
+      pageNumber: row.pageNumber || null,
+      jobName: row.jobName || parentJobCard.jobName,
+      customerName: row.customerName || parentJobCard.customerName,
+      description: row.description || null,
+      poNumber: row.poNumber || parentJobCard.poNumber,
+      siteLocation: row.siteLocation || parentJobCard.siteLocation,
+      contactPerson: row.contactPerson || parentJobCard.contactPerson,
+      dueDate: row.dueDate || null,
+      notes: row.notes || null,
+      reference: row.reference || null,
+      customFields,
+      status: JobCardStatus.DRAFT,
+      workflowStatus: JobCardWorkflowStatus.DRAFT,
+      versionNumber: 1,
+      parentJobCardId: parentJobCard.id,
+      jtDnNumber,
+      workflowCeiling: JobCardWorkflowStatus.REQUISITION_SENT,
+      cpoId: parentJobCard.cpoId,
+      isCpoCalloff: true,
+      companyId,
+    });
+
+    const saved = await this.jobCardRepo.save(deliveryJc);
+
+    if (row.lineItems && row.lineItems.length > 0) {
+      const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
+      await this.lineItemRepo.save(entities);
+    }
+
+    this.logger.log(
+      `Created delivery JC ${parentJobCard.jobNumber} / ${jtDnNumber} linked to parent ${parentJobCard.id}`,
+    );
+
+    const deliveryMatch = await this.fuzzyMatchDeliveryItems(saved.id, parentJobCard, companyId);
+
+    return { jobCardId: saved.id, deliveryMatch };
+  }
+
+  private async fuzzyMatchDeliveryItems(
+    deliveryJobCardId: number,
+    parentJobCard: JobCard,
+    companyId: number,
+  ): Promise<DeliveryMatchResult | null> {
+    const deliveryLineItems = await this.lineItemRepo.find({
+      where: { jobCardId: deliveryJobCardId, companyId },
+      order: { sortOrder: "ASC" },
+    });
+
+    if (deliveryLineItems.length === 0 || !parentJobCard.cpoId) {
+      return null;
+    }
+
+    const cpoItems = await this.cpoItemRepo.find({
+      where: { cpoId: parentJobCard.cpoId, companyId },
+      order: { sortOrder: "ASC" },
+    });
+
+    if (cpoItems.length === 0) {
+      return null;
+    }
+
+    const deliveryJc = await this.jobCardRepo.findOne({
+      where: { id: deliveryJobCardId },
+    });
+
+    const matches: DeliveryLineMatch[] = deliveryLineItems.flatMap((dli) => {
+      const scored = cpoItems.map((cpoItem) => {
+        const descSimilarity = jaccardSimilarity(
+          dli.itemDescription || "",
+          cpoItem.itemDescription || "",
+        );
+
+        const codeMatch =
+          dli.itemCode &&
+          cpoItem.itemCode &&
+          dli.itemCode.trim().toLowerCase() === cpoItem.itemCode.trim().toLowerCase()
+            ? 0.3
+            : 0;
+
+        const itemNoMatch =
+          dli.itemNo &&
+          cpoItem.itemNo &&
+          dli.itemNo.trim().toLowerCase() === cpoItem.itemNo.trim().toLowerCase()
+            ? 0.2
+            : 0;
+
+        const totalSimilarity = Math.min(1, descSimilarity * 0.5 + codeMatch + itemNoMatch);
+
+        return { cpoItem, similarity: totalSimilarity };
+      });
+
+      const best = scored.reduce(
+        (top, current) => (current.similarity > top.similarity ? current : top),
+        scored[0],
+      );
+
+      if (best.similarity < 0.1) {
+        return [];
+      }
+
+      return [
+        {
+          deliveryItemId: dli.id,
+          deliveryItemDescription: dli.itemDescription,
+          deliveryItemCode: dli.itemCode,
+          cpoItemId: best.cpoItem.id,
+          cpoItemDescription: best.cpoItem.itemDescription,
+          cpoItemCode: best.cpoItem.itemCode,
+          similarity: Math.round(best.similarity * 100) / 100,
+          preSelected: best.similarity >= 0.4,
+        },
+      ];
+    });
+
+    if (matches.length === 0) {
+      return null;
+    }
+
+    return {
+      jobCardId: deliveryJobCardId,
+      jtDnNumber: deliveryJc?.jtDnNumber || "",
+      matches,
+    };
+  }
+
+  async confirmDeliveryMatches(
+    companyId: number,
+    deliveryJobCardId: number,
+    confirmedMatches: { deliveryItemId: number; cpoItemId: number }[],
+  ): Promise<void> {
+    const deliveryJc = await this.jobCardRepo.findOne({
+      where: { id: deliveryJobCardId, companyId },
+    });
+
+    if (!deliveryJc || !deliveryJc.cpoId) {
+      return;
+    }
+
+    await Promise.all(
+      confirmedMatches.map(async ({ deliveryItemId, cpoItemId }) => {
+        const deliveryItem = await this.lineItemRepo.findOne({
+          where: { id: deliveryItemId, jobCardId: deliveryJobCardId },
+        });
+        const cpoItem = await this.cpoItemRepo.findOne({
+          where: { id: cpoItemId, cpoId: deliveryJc.cpoId! },
+        });
+
+        if (!deliveryItem || !cpoItem) return;
+
+        const deliveredQty = deliveryItem.quantity || 0;
+        const newFulfilled = Math.min(
+          Number(cpoItem.quantityFulfilled) + deliveredQty,
+          Number(cpoItem.quantityOrdered),
+        );
+
+        await this.cpoItemRepo.update(cpoItemId, { quantityFulfilled: newFulfilled });
+      }),
+    );
+
+    const cpo = await this.cpoService.findById(companyId, deliveryJc.cpoId);
+    const totalFulfilled = (cpo.items || []).reduce(
+      (sum, item) => sum + Number(item.quantityFulfilled),
+      0,
+    );
+
+    const updateFields: Record<string, unknown> = { fulfilledQuantity: totalFulfilled };
+    if (totalFulfilled >= Number(cpo.totalQuantity) && Number(cpo.totalQuantity) > 0) {
+      updateFields.status = "fulfilled";
+    }
+
+    await this.cpoService.updateStatus(
+      companyId,
+      cpo.id,
+      totalFulfilled >= Number(cpo.totalQuantity) && Number(cpo.totalQuantity) > 0
+        ? ("fulfilled" as any)
+        : cpo.status,
+    );
+
+    this.logger.log(
+      `Confirmed ${confirmedMatches.length} delivery matches for JC ${deliveryJobCardId}`,
+    );
+  }
+
   async importJobCards(companyId: number, rows: JobCardImportRow[]): Promise<JobCardImportResult> {
     const result: JobCardImportResult = {
       totalRows: rows.length,
@@ -658,6 +1001,7 @@ export class JobCardImportService {
       skipped: 0,
       errors: [],
       createdJobCardIds: [],
+      deliveryMatches: [],
     };
 
     for (let i = 0; i < rows.length; i++) {
@@ -669,89 +1013,66 @@ export class JobCardImportService {
       }
 
       try {
-        const customFields =
-          row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
+        const jtDnNumber = detectJtDnNumber(row);
 
         const existing = await this.jobCardRepo.findOne({
-          where: { jobNumber: row.jobNumber, companyId },
+          where: { jobNumber: row.jobNumber, companyId, parentJobCardId: null as any },
+          relations: ["lineItems"],
         });
 
-        const fieldValues = {
-          jcNumber: row.jcNumber || null,
-          pageNumber: row.pageNumber || null,
-          jobName: row.jobName,
-          customerName: row.customerName || null,
-          description: row.description || null,
-          poNumber: row.poNumber || null,
-          siteLocation: row.siteLocation || null,
-          contactPerson: row.contactPerson || null,
-          dueDate: row.dueDate || null,
-          notes: row.notes || null,
-          reference: row.reference || null,
-          customFields,
-        };
+        if (existing && jtDnNumber) {
+          const { jobCardId, deliveryMatch } = await this.createDeliveryJobCard(
+            existing,
+            row,
+            jtDnNumber,
+            companyId,
+          );
 
-        if (existing) {
-          Object.assign(existing, fieldValues);
-          const saved = await this.jobCardRepo.save(existing);
-
-          await this.lineItemRepo.delete({ jobCardId: saved.id });
-
-          if (row.lineItems && row.lineItems.length > 0) {
-            const merged = mergeNoteRowsIntoItems(row.lineItems);
-            const validLineItems = merged.filter(isValidLineItem);
-            const lineItemEntities = validLineItems.map((li, idx) =>
-              this.lineItemRepo.create({
-                jobCardId: saved.id,
-                itemCode: li.itemCode || null,
-                itemDescription: li.itemDescription || null,
-                itemNo: li.itemNo || null,
-                quantity: li.quantity ? parseFloat(li.quantity) : null,
-                jtNo: li.jtNo || null,
-                m2: li.m2 ?? null,
-                notes: li.notes || null,
-                sortOrder: idx,
-                companyId,
-              }),
-            );
-            await this.lineItemRepo.save(lineItemEntities);
+          if (deliveryMatch) {
+            result.deliveryMatches.push(deliveryMatch);
           }
 
-          await this.cpoService.matchJobCardToCpo(companyId, saved.id).catch((err) => {
+          result.created++;
+          result.createdJobCardIds.push(jobCardId);
+        } else if (existing && !jtDnNumber) {
+          const savedId = await this.archiveAndOverwrite(existing, row, companyId);
+
+          await this.cpoService.matchJobCardToCpo(companyId, savedId).catch((err) => {
             this.logger.warn(
-              `CPO matching failed for JC ${saved.id}: ${err instanceof Error ? err.message : "Unknown"}`,
+              `CPO matching failed for JC ${savedId}: ${err instanceof Error ? err.message : "Unknown"}`,
             );
           });
 
           result.updated++;
-          result.createdJobCardIds.push(saved.id);
+          result.createdJobCardIds.push(savedId);
         } else {
+          const customFields =
+            row.customFields && Object.keys(row.customFields).length > 0
+              ? row.customFields
+              : null;
+
           const jobCard = this.jobCardRepo.create({
             jobNumber: row.jobNumber,
-            ...fieldValues,
+            jcNumber: row.jcNumber || null,
+            pageNumber: row.pageNumber || null,
+            jobName: row.jobName,
+            customerName: row.customerName || null,
+            description: row.description || null,
+            poNumber: row.poNumber || null,
+            siteLocation: row.siteLocation || null,
+            contactPerson: row.contactPerson || null,
+            dueDate: row.dueDate || null,
+            notes: row.notes || null,
+            reference: row.reference || null,
+            customFields,
             status: JobCardStatus.DRAFT,
             companyId,
           });
           const saved = await this.jobCardRepo.save(jobCard);
 
           if (row.lineItems && row.lineItems.length > 0) {
-            const merged = mergeNoteRowsIntoItems(row.lineItems);
-            const validLineItems = merged.filter(isValidLineItem);
-            const lineItemEntities = validLineItems.map((li, idx) =>
-              this.lineItemRepo.create({
-                jobCardId: saved.id,
-                itemCode: li.itemCode || null,
-                itemDescription: li.itemDescription || null,
-                itemNo: li.itemNo || null,
-                quantity: li.quantity ? parseFloat(li.quantity) : null,
-                jtNo: li.jtNo || null,
-                m2: li.m2 ?? null,
-                notes: li.notes || null,
-                sortOrder: idx,
-                companyId,
-              }),
-            );
-            await this.lineItemRepo.save(lineItemEntities);
+            const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
+            await this.lineItemRepo.save(entities);
           }
 
           await this.cpoService.matchJobCardToCpo(companyId, saved.id).catch((err) => {

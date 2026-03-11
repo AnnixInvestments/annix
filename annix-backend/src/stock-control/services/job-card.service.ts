@@ -68,6 +68,14 @@ export class JobCardService {
     return jobCard;
   }
 
+  async deliveryJobCards(companyId: number, parentJobCardId: number): Promise<JobCard[]> {
+    return this.jobCardRepo.find({
+      where: { companyId, parentJobCardId },
+      relations: ["lineItems"],
+      order: { createdAt: "DESC" },
+    });
+  }
+
   async update(companyId: number, id: number, data: Partial<JobCard>): Promise<JobCard> {
     const jobCard = await this.findById(companyId, id);
     Object.assign(jobCard, data);

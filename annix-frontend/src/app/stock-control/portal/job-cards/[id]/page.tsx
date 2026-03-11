@@ -87,6 +87,8 @@ export default function JobCardDetailPage() {
   const [unverifiedProducts, setUnverifiedProducts] = useState<UnverifiedProduct[]>([]);
   const [tdsFile, setTdsFile] = useState<File | null>(null);
   const [isUploadingTds, setIsUploadingTds] = useState(false);
+  const [deliveryJobCards, setDeliveryJobCards] = useState<JobCard[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -116,6 +118,11 @@ export default function JobCardDetailPage() {
         .jobCardVersionHistory(jobId)
         .then((data) => setVersions(data))
         .catch(() => setVersions([]));
+
+      stockControlApiClient
+        .deliveryJobCards(jobId)
+        .then((data) => setDeliveryJobCards(data))
+        .catch(() => setDeliveryJobCards([]));
 
       stockControlApiClient
         .jobCardAttachments(jobId)
@@ -552,6 +559,19 @@ export default function JobCardDetailPage() {
               >
                 {jobCard.status}
               </span>
+              {jobCard.jtDnNumber ? (
+                <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
+                  {jobCard.jtDnNumber}
+                </span>
+              ) : null}
+              {jobCard.parentJobCardId ? (
+                <Link
+                  href={`/stock-control/portal/job-cards/${jobCard.parentJobCardId}`}
+                  className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 hover:bg-amber-200"
+                >
+                  Parent JC
+                </Link>
+              ) : null}
               {jobCard.cpoId ? (
                 <Link
                   href={`/stock-control/portal/purchase-orders/${jobCard.cpoId}`}
@@ -559,6 +579,11 @@ export default function JobCardDetailPage() {
                 >
                   CPO Linked
                 </Link>
+              ) : null}
+              {jobCard.workflowCeiling ? (
+                <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                  Up to Requisition
+                </span>
               ) : null}
             </div>
             <p className="mt-1 text-sm text-gray-500">{jobCard.jobName}</p>
@@ -742,6 +767,142 @@ export default function JobCardDetailPage() {
               onExtractAll={handleExtractAll}
               onDeleteAttachment={handleDeleteAttachment}
             />
+
+            {versions.length > 0 && (
+              <div className="mt-6 border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Version History</h3>
+                <select
+                  value={selectedVersionId ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedVersionId(val ? Number(val) : null);
+                  }}
+                  className="w-full sm:w-auto rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">
+                    Current (v{jobCard.versionNumber})
+                  </option>
+                  {versions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      v{v.versionNumber} - {v.jobName}
+                      {v.amendmentNotes ? ` (${v.amendmentNotes})` : ""}
+                    </option>
+                  ))}
+                </select>
+
+                {selectedVersionId && (() => {
+                  const selectedVersion = versions.find((v) => v.id === selectedVersionId);
+                  if (!selectedVersion) return null;
+                  return (
+                    <div className="mt-4 bg-gray-50 rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium text-gray-900">
+                          Version {selectedVersion.versionNumber}
+                        </h4>
+                        {selectedVersion.filePath && (
+                          <a
+                            href={selectedVersion.filePath}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-teal-600 hover:text-teal-800 underline"
+                          >
+                            Download PDF
+                          </a>
+                        )}
+                      </div>
+                      {selectedVersion.workflowStatus && (
+                        <p className="text-sm text-gray-600">
+                          Workflow status: {selectedVersion.workflowStatus}
+                        </p>
+                      )}
+                      {selectedVersion.amendmentNotes && (
+                        <p className="text-sm text-gray-600">
+                          Notes: {selectedVersion.amendmentNotes}
+                        </p>
+                      )}
+                      {selectedVersion.createdBy && (
+                        <p className="text-sm text-gray-500">
+                          Archived by: {selectedVersion.createdBy} on{" "}
+                          {new Date(selectedVersion.createdAt).toLocaleDateString("en-ZA")}
+                        </p>
+                      )}
+                      {selectedVersion.lineItemsSnapshot &&
+                        selectedVersion.lineItemsSnapshot.length > 0 && (
+                          <div className="mt-2">
+                            <h5 className="text-xs font-medium text-gray-500 uppercase mb-2">
+                              Line Items
+                            </h5>
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
+                                    Code
+                                  </th>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
+                                    Description
+                                  </th>
+                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
+                                    Qty
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {selectedVersion.lineItemsSnapshot.map((li, idx) => (
+                                  <tr key={idx}>
+                                    <td className="px-3 py-1.5 text-gray-700">
+                                      {String(li.itemCode || "-")}
+                                    </td>
+                                    <td className="px-3 py-1.5 text-gray-700">
+                                      {String(li.itemDescription || "-")}
+                                    </td>
+                                    <td className="px-3 py-1.5 text-gray-700">
+                                      {String(li.quantity ?? "-")}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {deliveryJobCards.length > 0 && (
+              <div className="mt-6 border rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">
+                  Delivery Job Cards ({deliveryJobCards.length})
+                </h3>
+                <div className="space-y-2">
+                  {deliveryJobCards.map((djc) => (
+                    <Link
+                      key={djc.id}
+                      href={`/stock-control/portal/job-cards/${djc.id}`}
+                      className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50"
+                    >
+                      <div>
+                        <span className="font-medium text-gray-900">
+                          {djc.jobNumber} / {djc.jtDnNumber || djc.jcNumber}
+                        </span>
+                        <span className="ml-2 text-sm text-gray-500">{djc.jobName}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span
+                          className={`px-2 py-0.5 text-xs font-semibold rounded-full ${statusBadgeColor(djc.status)}`}
+                        >
+                          {djc.status}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {djc.workflowStatus}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </TabPanel>
 
           <TabPanel tabId="coating" activeTab={activeTab} visited={visitedTabs.has("coating")}>

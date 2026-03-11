@@ -96,6 +96,12 @@ export class JobCardsController {
     return this.jobCardService.findById(req.user.companyId, id);
   }
 
+  @Get(":id/delivery-job-cards")
+  @ApiOperation({ summary: "List delivery job cards linked to a parent JC" })
+  async deliveryJobCards(@Req() req: any, @Param("id") id: number) {
+    return this.jobCardService.deliveryJobCards(req.user.companyId, id);
+  }
+
   @StockControlRoles("manager", "admin")
   @Post()
   @ApiOperation({ summary: "Create a job card" })

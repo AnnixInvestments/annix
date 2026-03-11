@@ -53,6 +53,12 @@ export class JobCardVersion {
   @Column({ name: "line_items_snapshot", type: "jsonb", nullable: true })
   lineItemsSnapshot: Record<string, unknown>[] | null;
 
+  @Column({ name: "workflow_status", type: "varchar", length: 50, nullable: true })
+  workflowStatus: string | null;
+
+  @Column({ name: "approvals_snapshot", type: "jsonb", nullable: true })
+  approvalsSnapshot: Record<string, unknown>[] | null;
+
   @Column({ name: "amendment_notes", type: "text", nullable: true })
   amendmentNotes: string | null;
 

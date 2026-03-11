@@ -149,6 +149,13 @@ export class JobCardWorkflowService {
     );
 
     const nextStatus = this.nextStatus(jobCard.workflowStatus);
+
+    if (jobCard.workflowCeiling && this.exceedsCeiling(nextStatus, jobCard.workflowCeiling)) {
+      throw new BadRequestException(
+        `Workflow for this job card is capped at ${jobCard.workflowCeiling}`,
+      );
+    }
+
     jobCard.workflowStatus = nextStatus;
     await this.jobCardRepo.save(jobCard);
 
@@ -445,6 +452,29 @@ export class JobCardWorkflowService {
     };
 
     return transitionMap[current];
+  }
+
+  private exceedsCeiling(status: JobCardWorkflowStatus, ceiling: string): boolean {
+    const statusOrder: JobCardWorkflowStatus[] = [
+      JobCardWorkflowStatus.DRAFT,
+      JobCardWorkflowStatus.DOCUMENT_UPLOADED,
+      JobCardWorkflowStatus.ADMIN_APPROVED,
+      JobCardWorkflowStatus.MANAGER_APPROVED,
+      JobCardWorkflowStatus.REQUISITION_SENT,
+      JobCardWorkflowStatus.STOCK_ALLOCATED,
+      JobCardWorkflowStatus.MANAGER_FINAL,
+      JobCardWorkflowStatus.READY_FOR_DISPATCH,
+      JobCardWorkflowStatus.DISPATCHED,
+    ];
+
+    const statusIndex = statusOrder.indexOf(status);
+    const ceilingIndex = statusOrder.indexOf(ceiling as JobCardWorkflowStatus);
+
+    if (ceilingIndex === -1) {
+      return false;
+    }
+
+    return statusIndex > ceilingIndex;
   }
 
   private statusesForRole(role: StockControlRole): JobCardWorkflowStatus[] {

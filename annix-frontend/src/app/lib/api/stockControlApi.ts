@@ -205,6 +205,9 @@ export interface JobCard {
   updatedAt: string;
   cpoId: number | null;
   isCpoCalloff: boolean;
+  parentJobCardId: number | null;
+  jtDnNumber: string | null;
+  workflowCeiling: string | null;
   allocations?: StockAllocation[];
   lineItems?: JobCardLineItem[];
 }
@@ -220,6 +223,8 @@ export interface JobCardVersion {
   customerName: string | null;
   notes: string | null;
   lineItemsSnapshot: Record<string, unknown>[] | null;
+  workflowStatus: string | null;
+  approvalsSnapshot: Record<string, unknown>[] | null;
   amendmentNotes: string | null;
   createdBy: string | null;
   createdAt: string;
@@ -1476,12 +1481,30 @@ export interface JobCardImportRow {
   lineItems?: LineItemImportRow[];
 }
 
+export interface DeliveryLineMatch {
+  deliveryItemId: number;
+  deliveryItemDescription: string | null;
+  deliveryItemCode: string | null;
+  cpoItemId: number;
+  cpoItemDescription: string | null;
+  cpoItemCode: string | null;
+  similarity: number;
+  preSelected: boolean;
+}
+
+export interface DeliveryMatchResult {
+  jobCardId: number;
+  jtDnNumber: string;
+  matches: DeliveryLineMatch[];
+}
+
 export interface JobCardImportResult {
   totalRows: number;
   created: number;
   updated: number;
   skipped: number;
   errors: { row: number; message: string }[];
+  deliveryMatches: DeliveryMatchResult[];
 }
 
 export interface JobCardImportUploadResponse {
@@ -2773,6 +2796,20 @@ class StockControlApiClient {
       method: "POST",
       body: JSON.stringify({ rows }),
     });
+  }
+
+  async confirmDeliveryMatches(
+    jobCardId: number,
+    matches: { deliveryItemId: number; cpoItemId: number }[],
+  ): Promise<{ success: boolean }> {
+    return this.request("/stock-control/job-card-import/confirm-delivery-matches", {
+      method: "POST",
+      body: JSON.stringify({ jobCardId, matches }),
+    });
+  }
+
+  async deliveryJobCards(parentJobCardId: number): Promise<JobCard[]> {
+    return this.request(`/stock-control/job-cards/${parentJobCardId}/delivery-job-cards`);
   }
 
   async staffMembers(params?: { search?: string; active?: string }): Promise<StaffMember[]> {
