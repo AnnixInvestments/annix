@@ -1599,14 +1599,14 @@ export default function StockControlSettingsPage() {
 }
 
 const WORKFLOW_STEPS = [
-  { key: "DOCUMENT_UPLOAD", label: "Doc Upload" },
-  { key: "ADMIN_APPROVAL", label: "Admin" },
-  { key: "MANAGER_APPROVAL", label: "Manager" },
-  { key: "REQUISITION_SENT", label: "Requisition" },
-  { key: "STOCK_ALLOCATION", label: "Stock Alloc" },
-  { key: "MANAGER_FINAL", label: "Final Mgr" },
-  { key: "READY_FOR_DISPATCH", label: "Ready" },
-  { key: "DISPATCHED", label: "Dispatched" },
+  { key: "document_upload", label: "Doc Upload" },
+  { key: "admin_approval", label: "Admin" },
+  { key: "manager_approval", label: "Manager" },
+  { key: "requisition_sent", label: "Requisition" },
+  { key: "stock_allocation", label: "Stock Alloc" },
+  { key: "manager_final", label: "Final Mgr" },
+  { key: "ready_for_dispatch", label: "Ready" },
+  { key: "dispatched", label: "Dispatched" },
 ];
 
 type WorkflowTab = "assignments" | "notifications";
