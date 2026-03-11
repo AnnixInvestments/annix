@@ -19,9 +19,11 @@ import { SyncStatus } from "./SyncStatus";
 export function StockControlHeader() {
   const pathname = usePathname();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [rbacPanelOpen, setRbacPanelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileNavRef = useRef<HTMLDivElement>(null);
   const { colors, logoUrl } = useStockControlBranding();
   const { user, logout } = useStockControlAuth();
   const { rbacConfig } = useStockControlRbac();
@@ -90,22 +92,108 @@ export function StockControlHeader() {
         style={{ backgroundColor: colors.background }}
       >
         <div className="h-14 sm:h-16 flex items-center px-3 sm:px-6">
-          <div className="flex items-center shrink-0">
-            {logoUrl ? (
-              <div className="h-10 px-2 flex items-center bg-white rounded-md">
-                <img src={logoUrl} alt="Company logo" className="h-8 w-auto object-contain" />
-              </div>
-            ) : (
-              <div className="text-2xl font-bold" style={{ color: colors.accent }}>
-                ASCA
-              </div>
-            )}
+          <div className="relative flex items-center shrink-0" ref={mobileNavRef}>
+            <button
+              type="button"
+              className="md:hidden flex items-center"
+              onClick={() => setMobileNavOpen(!mobileNavOpen)}
+              aria-label="Toggle navigation menu"
+            >
+              {logoUrl ? (
+                <div className="h-10 px-2 flex items-center bg-white rounded-md">
+                  <img src={logoUrl} alt="Company logo" className="h-8 w-auto object-contain" />
+                </div>
+              ) : (
+                <div className="text-2xl font-bold" style={{ color: colors.accent }}>
+                  ASCA
+                </div>
+              )}
+              <svg
+                className={`ml-1 w-4 h-4 text-white/60 transition-transform ${mobileNavOpen ? "rotate-180" : ""}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            <div className="hidden md:flex items-center">
+              {logoUrl ? (
+                <div className="h-10 px-2 flex items-center bg-white rounded-md">
+                  <img src={logoUrl} alt="Company logo" className="h-8 w-auto object-contain" />
+                </div>
+              ) : (
+                <div className="text-2xl font-bold" style={{ color: colors.accent }}>
+                  ASCA
+                </div>
+              )}
+            </div>
             <span className="ml-2 text-white text-lg font-medium hidden sm:inline">
               Stock Control
             </span>
             <span className="ml-1.5 text-white/50 text-xs font-mono hidden sm:inline">
               v{STOCK_CONTROL_VERSION}
             </span>
+
+            {mobileNavOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setMobileNavOpen(false)} />
+                <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1">
+                  {(() => {
+                    const directItems = visibleNavItems
+                      .filter((item) => !item.group || item.group === "hidden")
+                      .filter((item) => item.group !== "hidden");
+                    const groups = NAV_GROUP_ORDER.map((groupName) => ({
+                      name: groupName,
+                      hubPath: NAV_GROUP_HUB_PATHS[groupName],
+                      items: visibleNavItems.filter((item) => item.group === groupName),
+                    })).filter((g) => g.items.length > 0);
+
+                    return (
+                      <>
+                        {directItems.map((item) => (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={() => setMobileNavOpen(false)}
+                            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium ${
+                              isActive(item.href)
+                                ? "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300"
+                                : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            }`}
+                          >
+                            <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
+                            {item.label}
+                          </Link>
+                        ))}
+                        {directItems.length > 0 && groups.length > 0 && (
+                          <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+                        )}
+                        {groups.map((group) => (
+                          <Link
+                            key={group.name}
+                            href={group.hubPath}
+                            onClick={() => setMobileNavOpen(false)}
+                            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium ${
+                              isGroupActive(group.name)
+                                ? "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300"
+                                : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            }`}
+                          >
+                            {group.name}
+                          </Link>
+                        ))}
+                      </>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
           </div>
 
           {(() => {
@@ -119,7 +207,7 @@ export function StockControlHeader() {
             })).filter((g) => g.items.length > 0);
 
             return (
-              <nav className="flex items-center mx-2 sm:mx-4 overflow-x-auto scrollbar-hide">
+              <nav className="hidden md:flex items-center mx-2 sm:mx-4 overflow-x-auto scrollbar-hide">
                 <div className="flex items-center gap-1">
                   {directItems.map((item) => (
                     <Link
@@ -131,7 +219,7 @@ export function StockControlHeader() {
                           : "text-white/70 hover:bg-black/10 hover:text-white"
                       }`}
                     >
-                      <span className="[&>svg]:w-4 [&>svg]:h-4 hidden sm:inline">{item.icon}</span>
+                      <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
                       {item.label}
                     </Link>
                   ))}
