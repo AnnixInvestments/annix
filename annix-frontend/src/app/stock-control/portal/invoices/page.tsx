@@ -53,6 +53,7 @@ export default function InvoicesPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAutoLinking, setIsAutoLinking] = useState(false);
+  const [isReExtractingAll, setIsReExtractingAll] = useState(false);
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -137,6 +138,27 @@ export default function InvoicesPage() {
       fetchInvoices();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to re-extract", "error");
+    }
+  };
+
+  const handleReExtractAllFailed = async () => {
+    try {
+      setIsReExtractingAll(true);
+      showToast("Re-extracting all failed invoices...", "info");
+      const result = await stockControlApiClient.reExtractAllFailed();
+      if (result.triggered > 0) {
+        showToast(`Re-extracted ${result.triggered} invoice(s) successfully`, "success");
+      } else {
+        showToast("No failed invoices with scans to re-extract", "info");
+      }
+      if (result.failed.length > 0) {
+        showToast(`${result.failed.length} invoice(s) failed again`, "error");
+      }
+      fetchInvoices();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Bulk re-extract failed", "error");
+    } finally {
+      setIsReExtractingAll(false);
     }
   };
 
@@ -245,6 +267,41 @@ export default function InvoicesPage() {
           </p>
         </div>
         <div className="flex gap-3">
+          {invoices.some((inv) => inv.extractionStatus === "failed" && inv.scanUrl) && (
+            <button
+              onClick={handleReExtractAllFailed}
+              disabled={isReExtractingAll}
+              className="inline-flex items-center px-4 py-2 border border-red-400 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 disabled:opacity-50"
+            >
+              {isReExtractingAll ? (
+                <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+              )}
+              {isReExtractingAll ? "Re-extracting..." : "Re-extract All Failed"}
+            </button>
+          )}
           {invoices.some((inv) => !inv.deliveryNoteId) && (
             <button
               onClick={handleAutoLink}

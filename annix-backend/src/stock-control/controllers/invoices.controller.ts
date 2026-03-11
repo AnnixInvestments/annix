@@ -82,6 +82,12 @@ export class InvoicesController {
     return this.invoiceService.autoLinkAllUnlinked(req.user.companyId);
   }
 
+  @Post("re-extract-all-failed")
+  @ApiOperation({ summary: "Re-trigger AI extraction on all failed invoices" })
+  async reExtractAllFailed(@Req() req: any) {
+    return this.invoiceService.reExtractAllFailed(req.user.companyId);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Invoice by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {

@@ -3485,6 +3485,12 @@ class StockControlApiClient {
     });
   }
 
+  async reExtractAllFailed(): Promise<{ triggered: number; failed: string[] }> {
+    return this.request("/stock-control/invoices/re-extract-all-failed", {
+      method: "POST",
+    });
+  }
+
   async sageExportPreview(params: {
     dateFrom?: string;
     dateTo?: string;

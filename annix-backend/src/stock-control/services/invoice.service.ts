@@ -278,6 +278,32 @@ export class InvoiceService {
     await this.invoiceRepo.remove(invoice);
   }
 
+  async reExtractAllFailed(companyId: number): Promise<{ triggered: number; failed: string[] }> {
+    const failedInvoices = await this.invoiceRepo.find({
+      where: { companyId, extractionStatus: InvoiceExtractionStatus.FAILED },
+    });
+
+    const results = await Promise.allSettled(
+      failedInvoices
+        .filter((inv) => inv.scanUrl)
+        .map(async (inv) => {
+          const s3Key = this.extractS3Key(inv.scanUrl!);
+          const fileBuffer = await this.storageService.download(s3Key);
+          const imageBase64 = fileBuffer.toString("base64");
+          const mediaType = this.mimeFromPath(s3Key);
+          await this.extractionService.extractFromImage(inv.id, imageBase64, mediaType);
+          return inv.invoiceNumber;
+        }),
+    );
+
+    const triggered = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results
+      .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+      .map((r) => String(r.reason?.message || r.reason));
+
+    return { triggered, failed };
+  }
+
   async findUnlinked(companyId: number): Promise<SupplierInvoice[]> {
     return this.invoiceRepo.find({
       where: { companyId, deliveryNoteId: IsNull() },

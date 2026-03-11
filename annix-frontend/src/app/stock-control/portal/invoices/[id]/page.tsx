@@ -546,6 +546,15 @@ export default function InvoiceDetailPage() {
                   className="w-full rounded-lg border border-gray-200 hover:opacity-80 transition-opacity"
                 />
               </a>
+              {invoice.extractionStatus === "failed" &&
+                invoice.extractedData?.rawText ? (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-xs font-medium text-red-800">Extraction Error</p>
+                    <p className="text-xs text-red-600 mt-1 break-words">
+                      {String(invoice.extractedData.rawText)}
+                    </p>
+                  </div>
+                ) : null}
               {(invoice.extractionStatus === "pending" ||
                 invoice.extractionStatus === "failed") && (
                 <button
