@@ -123,7 +123,12 @@ export class InventoryService {
     if (!item) {
       throw new NotFoundException("Stock item not found");
     }
-    const [refreshed] = await this.refreshPhotoUrls([item]);
+    return item;
+  }
+
+  async findByIdWithPhoto(companyId: number, id: number): Promise<StockItem> {
+    const item = await this.findById(companyId, id);
+    const [refreshed] = await this.refreshPhotoUrls([{ ...item }]);
     return refreshed;
   }
 
@@ -136,7 +141,11 @@ export class InventoryService {
 
   async update(companyId: number, id: number, data: Partial<StockItem>): Promise<StockItem> {
     const item = await this.findById(companyId, id);
+    const storedPhotoUrl = item.photoUrl;
     Object.assign(item, data);
+    if (!data.photoUrl) {
+      item.photoUrl = storedPhotoUrl;
+    }
     const saved = await this.stockItemRepo.save(item);
 
     if (saved.minStockLevel > 0 && saved.quantity < saved.minStockLevel) {
@@ -145,7 +154,8 @@ export class InventoryService {
         .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`));
     }
 
-    return saved;
+    const [refreshed] = await this.refreshPhotoUrls([{ ...saved }]);
+    return refreshed;
   }
 
   async remove(companyId: number, id: number): Promise<void> {
@@ -161,7 +171,7 @@ export class InventoryService {
       .orderBy("item.quantity", "ASC")
       .getMany();
 
-    return items;
+    return this.refreshPhotoUrls(items);
   }
 
   async categories(companyId: number): Promise<string[]> {
@@ -198,7 +208,8 @@ export class InventoryService {
 
     queryBuilder.orderBy("item.category", "ASC").addOrderBy("item.name", "ASC");
 
-    const allItems = await queryBuilder.getMany();
+    const rawItems = await queryBuilder.getMany();
+    const allItems = await this.refreshPhotoUrls(rawItems);
 
     const grouped = allItems.reduce(
       (acc, item) => {
@@ -236,7 +247,8 @@ export class InventoryService {
         .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`));
     }
 
-    return saved;
+    const [refreshed] = await this.refreshPhotoUrls([{ ...saved }]);
+    return refreshed;
   }
 
   async bulkCreate(companyId: number, items: Partial<StockItem>[]): Promise<StockItem[]> {
@@ -249,7 +261,7 @@ export class InventoryService {
     const result = await this.storageService.upload(file, "stock-control/inventory");
     item.photoUrl = result.path;
     const saved = await this.stockItemRepo.save(item);
-    const [refreshed] = await this.refreshPhotoUrls([saved]);
+    const [refreshed] = await this.refreshPhotoUrls([{ ...saved }]);
     return refreshed;
   }
 }

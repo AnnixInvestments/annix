@@ -78,7 +78,7 @@ export class InventoryController {
   @Get(":id")
   @ApiOperation({ summary: "Stock item by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {
-    return this.inventoryService.findById(req.user.companyId, id);
+    return this.inventoryService.findByIdWithPhoto(req.user.companyId, id);
   }
 
   @StockControlRoles("manager", "admin")
