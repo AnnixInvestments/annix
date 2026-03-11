@@ -271,9 +271,10 @@ export class PositectorStreamingService implements OnModuleDestroy {
     }
 
     if (config.entityType === "shore_hardness") {
+      const shore = config.requiredShore ?? null;
       return {
-        min: config.requiredShore ?? null,
-        max: null,
+        min: shore !== null ? shore - 5 : null,
+        max: shore !== null ? shore + 5 : null,
       };
     }
 

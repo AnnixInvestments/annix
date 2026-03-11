@@ -1,13 +1,18 @@
 "use client";
 
+import { Camera } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  CoatingAnalysis,
+  CoatDetail,
+  JobCard,
   PositectorDevice,
   PositectorStreamingReading,
   PositectorStreamingSaveResult,
   PositectorStreamingSession,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { QrScanner } from "@/app/stock-control/components/QrScanner";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
   dft: "DFT Reading",
@@ -429,6 +434,12 @@ function ReadingSummaryBar({
   );
 }
 
+function coatLabel(coat: CoatDetail): string {
+  const area = coat.area === "external" ? "Ext" : "Int";
+  const type = coat.genericType ?? coat.product;
+  return `${type} (${area}) — ${coat.minDftUm}–${coat.maxDftUm} µm`;
+}
+
 function StartSessionForm({
   devices,
   onStarted,
@@ -440,9 +451,18 @@ function StartSessionForm({
 }) {
   const [deviceId, setDeviceId] = useState("");
   const [jobCardId, setJobCardId] = useState("");
+  const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
+  const [jobCards, setJobCards] = useState<JobCard[]>([]);
+  const [isLoadingJobCards, setIsLoadingJobCards] = useState(true);
+  const [showQrScanner, setShowQrScanner] = useState(false);
+  const [coatingAnalysis, setCoatingAnalysis] = useState<CoatingAnalysis | null>(null);
+  const [rubberShore, setRubberShore] = useState<number | null>(null);
+  const [rubberCompound, setRubberCompound] = useState<string | null>(null);
+  const [isLoadingCoating, setIsLoadingCoating] = useState(false);
   const [entityType, setEntityType] = useState<"dft" | "blast_profile" | "shore_hardness">("dft");
-  const [coatType, setCoatType] = useState("primer");
+  const [selectedCoatIndex, setSelectedCoatIndex] = useState<string>("");
   const [paintProduct, setPaintProduct] = useState("");
+  const [coatType, setCoatType] = useState("primer");
   const [batchNumber, setBatchNumber] = useState("");
   const [specMin, setSpecMin] = useState("");
   const [specMax, setSpecMax] = useState("");
@@ -453,11 +473,130 @@ function StartSessionForm({
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const fetchJobCards = async () => {
+      try {
+        const data = await stockControlApiClient.jobCards("active");
+        setJobCards(Array.isArray(data) ? data : []);
+      } catch {
+        setJobCards([]);
+      } finally {
+        setIsLoadingJobCards(false);
+      }
+    };
+    fetchJobCards();
+  }, []);
+
+  const selectJobCard = useCallback(
+    async (id: number) => {
+      setJobCardId(String(id));
+      const jc = jobCards.find((j) => j.id === id) ?? null;
+      setSelectedJobCard(jc);
+      setCoatingAnalysis(null);
+      setSelectedCoatIndex("");
+      setPaintProduct("");
+      setSpecMin("");
+      setSpecMax("");
+      setRubberShore(null);
+      setRubberCompound(null);
+      setRubberSpec("");
+      setRequiredShore("");
+
+      try {
+        setIsLoadingCoating(true);
+        const [analysis, rubberOptions] = await Promise.all([
+          stockControlApiClient.jobCardCoatingAnalysis(id).catch(() => null),
+          stockControlApiClient.rubberStockOptions(id).catch(() => null),
+        ]);
+        setCoatingAnalysis(analysis);
+
+        if (rubberOptions?.rubberSpec) {
+          const spec = rubberOptions.rubberSpec;
+          setRubberShore(spec.shore);
+          setRubberCompound(spec.compound);
+          if (spec.shore !== null) {
+            setRequiredShore(String(spec.shore));
+          }
+          const specParts = [
+            spec.compound,
+            spec.shore !== null ? `${spec.shore} Shore` : null,
+            spec.color,
+          ]
+            .filter(Boolean)
+            .join(" ");
+          if (specParts) {
+            setRubberSpec(specParts);
+          }
+        }
+      } catch {
+        setCoatingAnalysis(null);
+      } finally {
+        setIsLoadingCoating(false);
+      }
+    },
+    [jobCards],
+  );
+
+  const handleJobCardDropdownChange = useCallback(
+    (value: string) => {
+      if (value) {
+        selectJobCard(parseInt(value, 10));
+      } else {
+        setJobCardId("");
+        setSelectedJobCard(null);
+        setCoatingAnalysis(null);
+        setSelectedCoatIndex("");
+      }
+    },
+    [selectJobCard],
+  );
+
+  const handleQrScan = useCallback(
+    async (result: string) => {
+      setShowQrScanner(false);
+      try {
+        const parsed = await stockControlApiClient.scanQrCode(result);
+        if (parsed.type === "job_card") {
+          selectJobCard(parsed.id);
+        } else {
+          setError("Scanned QR code is not a job card");
+        }
+      } catch {
+        const idMatch = result.match(/\d+/);
+        if (idMatch) {
+          selectJobCard(parseInt(idMatch[0], 10));
+        } else {
+          setError("Could not identify job card from QR code");
+        }
+      }
+    },
+    [selectJobCard],
+  );
+
+  const handleCoatSelection = useCallback(
+    (index: string) => {
+      setSelectedCoatIndex(index);
+      if (index && coatingAnalysis) {
+        const coat = coatingAnalysis.coats[parseInt(index, 10)];
+        if (coat) {
+          setPaintProduct(coat.product);
+          setSpecMin(String(coat.minDftUm));
+          setSpecMax(String(coat.maxDftUm));
+          const isPrimer =
+            coat.genericType?.toLowerCase().includes("primer") ??
+            coat.product.toLowerCase().includes("primer");
+          setCoatType(isPrimer ? "primer" : "final");
+        }
+      }
+    },
+    [coatingAnalysis],
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!deviceId || !jobCardId) {
-      setError("Device and Job Card ID are required");
+      setError("Device and Job Card are required");
       return;
     }
 
@@ -490,14 +629,20 @@ function StartSessionForm({
     }
   };
 
+  const availableCoats = coatingAnalysis?.coats ?? [];
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6">
       <h2 className="mb-4 text-lg font-semibold text-gray-900">Start Live Streaming Session</h2>
 
       {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
+      {showQrScanner && (
+        <QrScanner onScan={handleQrScan} onClose={() => setShowQrScanner(false)} />
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700">Device</label>
             <select
@@ -512,16 +657,6 @@ function StartSessionForm({
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Job Card ID</label>
-            <input
-              type="number"
-              value={jobCardId}
-              onChange={(e) => setJobCardId(e.target.value)}
-              placeholder="Enter job card ID"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Measurement Type</label>
@@ -539,8 +674,70 @@ function StartSessionForm({
           </div>
         </div>
 
-        {entityType === "dft" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Job Card</label>
+          <div className="mt-1 flex gap-2">
+            <select
+              value={jobCardId}
+              onChange={(e) => handleJobCardDropdownChange(e.target.value)}
+              className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">
+                {isLoadingJobCards ? "Loading job cards..." : "Select job card..."}
+              </option>
+              {jobCards.map((jc) => (
+                <option key={jc.id} value={jc.id}>
+                  {jc.jobNumber} — {jc.jobName}
+                  {jc.customerName ? ` (${jc.customerName})` : ""}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setShowQrScanner(true)}
+              className="flex items-center gap-1.5 rounded-md bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700"
+              title="Scan Job Card QR Code"
+            >
+              <Camera className="h-4 w-4" />
+              <span className="hidden sm:inline">Scan QR</span>
+            </button>
+          </div>
+          {selectedJobCard && (
+            <div className="mt-2 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              <span className="font-medium">{selectedJobCard.jobNumber}</span> —{" "}
+              {selectedJobCard.jobName}
+              {selectedJobCard.customerName && (
+                <span className="text-blue-600"> ({selectedJobCard.customerName})</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {isLoadingCoating && (
+          <div className="text-sm text-gray-500">Loading coating specifications...</div>
+        )}
+
+        {entityType === "dft" && jobCardId && (
           <div className="space-y-3 rounded-md bg-gray-50 p-3">
+            {availableCoats.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600">
+                  Select Coat (auto-fills specs)
+                </label>
+                <select
+                  value={selectedCoatIndex}
+                  onChange={(e) => handleCoatSelection(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                >
+                  <option value="">Choose a coat...</option>
+                  {availableCoats.map((coat, idx) => (
+                    <option key={`${coat.product}-${coat.area}-${idx}`} value={String(idx)}>
+                      {coatLabel(coat)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600">Coat Type</label>
@@ -575,7 +772,7 @@ function StartSessionForm({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600">Spec Min (um)</label>
+                <label className="block text-xs font-medium text-gray-600">Spec Min (µm)</label>
                 <input
                   type="number"
                   value={specMin}
@@ -585,7 +782,7 @@ function StartSessionForm({
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600">Spec Max (um)</label>
+                <label className="block text-xs font-medium text-gray-600">Spec Max (µm)</label>
                 <input
                   type="number"
                   value={specMax}
@@ -601,7 +798,7 @@ function StartSessionForm({
         {entityType === "blast_profile" && (
           <div className="rounded-md bg-gray-50 p-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600">Spec (um)</label>
+              <label className="block text-xs font-medium text-gray-600">Spec (µm)</label>
               <input
                 type="number"
                 value={specMicrons}
@@ -646,6 +843,15 @@ function StartSessionForm({
                 />
               </div>
             </div>
+            {requiredShore && (
+              <div className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                Tolerance per SANS 1198:2013 — ±5 Shore: acceptable range{" "}
+                <span className="font-semibold">
+                  {parseInt(requiredShore, 10) - 5} – {parseInt(requiredShore, 10) + 5}
+                </span>{" "}
+                Shore A
+              </div>
+            )}
           </div>
         )}
 
