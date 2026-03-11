@@ -33,16 +33,16 @@ export async function generateMetadata(): Promise<Metadata> {
   const companyName = branding?.companyName;
 
   const manifestUrl =
-    companyId && branding ? `/api/stock-control/${companyId}/manifest.json` : "/stock-control-manifest.json";
+    companyId && branding
+      ? `/api/stock-control/${companyId}/manifest.json`
+      : "/stock-control-manifest.json";
 
   const title = companyName ? `${companyName} Stock Control` : "Annix Stock Control";
 
   const icons =
     hasCustomIcon && companyId
       ? {
-          apple: [
-            { url: `/api/stock-control/${companyId}/icon/192`, sizes: "192x192" },
-          ],
+          apple: [{ url: `/api/stock-control/${companyId}/icon/192`, sizes: "192x192" }],
         }
       : {
           apple: [{ url: "/images/stock-control-icon-192.png", sizes: "192x192" }],

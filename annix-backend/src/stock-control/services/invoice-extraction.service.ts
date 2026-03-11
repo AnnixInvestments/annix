@@ -119,7 +119,11 @@ export class InvoiceExtractionService {
     await this.invoiceRepo.save(invoice);
 
     try {
-      const { content: response, providerUsed, tokensUsed } = await this.aiChatService.chatWithImage(
+      const {
+        content: response,
+        providerUsed,
+        tokensUsed,
+      } = await this.aiChatService.chatWithImage(
         imageBase64,
         mediaType,
         "Extract the invoice details from this scanned invoice image. Return JSON only.",
@@ -201,7 +205,11 @@ export class InvoiceExtractionService {
     receivedDate?: string;
     lineItems?: { description: string; quantity: number; sku?: string }[];
   }> {
-    const { content: response, providerUsed, tokensUsed } = await this.aiChatService.chatWithImage(
+    const {
+      content: response,
+      providerUsed,
+      tokensUsed,
+    } = await this.aiChatService.chatWithImage(
       imageBase64,
       mediaType,
       "Extract the delivery note details from this scanned delivery note image. Return JSON only.",

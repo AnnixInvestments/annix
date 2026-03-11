@@ -50,7 +50,9 @@ async function sendSubscriptionToBackend(subscription: PushSubscription): Promis
 
 async function ensurePushSubscription(registration: ServiceWorkerRegistration): Promise<void> {
   if (Notification.permission !== "granted") {
-    console.warn(`Push: Notification permission is "${Notification.permission}", skipping subscription`);
+    console.warn(
+      `Push: Notification permission is "${Notification.permission}", skipping subscription`,
+    );
     return;
   }
 

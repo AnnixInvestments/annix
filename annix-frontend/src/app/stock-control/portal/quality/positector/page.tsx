@@ -470,7 +470,11 @@ interface DiscoveredDevice {
   name: string | null;
 }
 
-async function probeAddress(ip: string, port: number, signal: AbortSignal): Promise<DiscoveredDevice | null> {
+async function probeAddress(
+  ip: string,
+  port: number,
+  signal: AbortSignal,
+): Promise<DiscoveredDevice | null> {
   try {
     const response = await fetch(`http://${ip}:${port}/api/batches`, {
       signal,
@@ -563,7 +567,9 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
 
   const handleBluetoothScan = async () => {
     if (!("bluetooth" in navigator)) {
-      setError("Bluetooth is not supported in this browser. Use Chrome or Edge on a device with Bluetooth.");
+      setError(
+        "Bluetooth is not supported in this browser. Use Chrome or Edge on a device with Bluetooth.",
+      );
       return;
     }
 
@@ -678,11 +684,7 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
               {scanStatus && (
                 <div className="flex items-center gap-2 text-xs text-blue-700">
                   {isScanning && (
-                    <svg
-                      className="h-3 w-3 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
+                    <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle
                         className="opacity-25"
                         cx="12"
@@ -725,8 +727,8 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
 
               {!isScanning && foundDevices.length === 0 && scanStatus === null && (
                 <p className="text-xs text-blue-600">
-                  WiFi scan probes your local network for PosiTector HTTP servers. Bluetooth
-                  opens the browser device picker.
+                  WiFi scan probes your local network for PosiTector HTTP servers. Bluetooth opens
+                  the browser device picker.
                 </p>
               )}
             </div>
