@@ -360,9 +360,19 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const admins = await this.userRepo.find({
-      where: { companyId, role: StockControlRole.ADMIN },
-    });
+    const recipientEmails = await this.assignmentService.notificationRecipientsForStep(
+      companyId,
+      WorkflowStep.DOCUMENT_UPLOAD,
+    );
+
+    if (recipientEmails.length === 0) {
+      this.logger.log("No notification recipients configured for Doc Upload step, skipping");
+      return;
+    }
+
+    const allUsers = await this.userRepo.find({ where: { companyId } });
+    const recipientSet = new Set(recipientEmails.map((e) => e.toLowerCase()));
+    const recipientUsers = allUsers.filter((u) => recipientSet.has(u.email.toLowerCase()));
 
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const actionUrl = `${frontendUrl}/stock-control/portal/job-cards`;
@@ -378,7 +388,12 @@ export class WorkflowNotificationService {
         ? `Job card ${jobCards[0].jobNumber} (${jobCards[0].jobName}) was imported${senderContext} and needs activation.`
         : `${jobCards.length} job cards were imported${senderContext} and need activation: ${jobNumbers}`;
 
-    const notifications = admins.map((user) =>
+    const detailUrl =
+      jobCards.length === 1
+        ? `${frontendUrl}/stock-control/portal/job-cards/${jobCards[0].id}`
+        : actionUrl;
+
+    const notifications = recipientUsers.map((user) =>
       this.notificationRepo.create({
         companyId,
         userId: user.id,
@@ -386,49 +401,42 @@ export class WorkflowNotificationService {
         title,
         message,
         actionType: NotificationActionType.JOB_CARDS_IMPORTED,
-        actionUrl:
-          jobCards.length === 1
-            ? `${frontendUrl}/stock-control/portal/job-cards/${jobCards[0].id}`
-            : actionUrl,
+        actionUrl: detailUrl,
         senderId: sender?.id ?? null,
         senderName: sender?.name ?? null,
       }),
     );
 
     await this.notificationRepo.save(notifications);
-    this.webPushService
-      .sendToUsers(
-        admins.map((u) => u.id),
-        {
-          title,
-          body: message,
-          tag: `import-${jobCardIds[0]}`,
-          data: {
-            url:
-              jobCards.length === 1
-                ? `${frontendUrl}/stock-control/portal/job-cards/${jobCards[0].id}`
-                : actionUrl,
+    if (recipientUsers.length > 0) {
+      this.webPushService
+        .sendToUsers(
+          recipientUsers.map((u) => u.id),
+          {
+            title,
+            body: message,
+            tag: `import-${jobCardIds[0]}`,
+            data: { url: detailUrl },
           },
-        },
-      )
-      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+        )
+        .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+    }
     this.logger.log(
       `Created ${notifications.length} import notifications for ${jobCards.length} job cards`,
     );
 
     await Promise.all(
-      admins.map((user) =>
-        this.sendJobCardsImportedEmail(
+      recipientEmails.map((email) => {
+        const user = recipientUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
+        return this.sendJobCardsImportedEmail(
           companyId,
-          user.email,
-          user.name,
+          email,
+          user?.name ?? email,
           jobCards,
-          jobCards.length === 1
-            ? `${frontendUrl}/stock-control/portal/job-cards/${jobCards[0].id}`
-            : actionUrl,
+          detailUrl,
           sender?.name,
-        ),
-      ),
+        );
+      }),
     );
   }
 
