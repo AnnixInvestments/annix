@@ -217,157 +217,171 @@ export default function PositectorLiveStreamingPage() {
         </div>
       )}
 
-      {saveResult && (
-        <div className="rounded-md bg-green-50 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-800">
-                Session saved: {saveResult.readingsImported} readings imported as{" "}
-                {ENTITY_TYPE_LABELS[saveResult.entityType] ?? saveResult.entityType}
-                {saveResult.average !== null && ` (avg: ${saveResult.average.toFixed(1)})`}
-              </p>
-              <p className="mt-1 text-xs text-green-600">Record ID: {saveResult.recordId}</p>
-            </div>
-            <button
-              onClick={() => setSaveResult(null)}
-              className="text-sm text-green-500 hover:text-green-700"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
-      {session && (
-        <>
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`h-2.5 w-2.5 rounded-full ${connected ? "animate-pulse bg-green-500" : "bg-gray-400"}`}
-                  />
-                  <span className="text-sm text-gray-600">
-                    {connected ? "Connected" : "Waiting for connection..."}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium text-gray-900">{readings.length}</span> readings
-                </div>
-                {average !== null && (
-                  <div className="text-sm text-gray-600">
-                    Avg: <span className="font-medium text-gray-900">{average.toFixed(1)}</span>
-                  </div>
-                )}
-                {outOfSpecCount > 0 && (
-                  <div className="text-sm text-red-600">
-                    <span className="font-medium">{outOfSpecCount}</span> out of spec
-                  </div>
-                )}
-                {specLimits.min !== null && (
-                  <div className="text-xs text-gray-500">
-                    Spec: {specLimits.min}
-                    {specLimits.max !== null ? ` – ${specLimits.max}` : "+"}
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
-                  {ENTITY_TYPE_LABELS[session.config.entityType] ?? session.config.entityType}
-                </span>
-                <span className="text-xs text-gray-500">Job Card #{session.config.jobCardId}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-gray-200 bg-white">
-            <div className="flex items-center justify-between border-b border-gray-200 p-4">
-              <span className="text-sm font-medium text-gray-700">Live Readings</span>
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={autoScroll}
-                  onChange={(e) => setAutoScroll(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                Auto-scroll
-              </label>
-            </div>
-
-            <div
-              ref={containerRef}
-              onScroll={handleScroll}
-              className="max-h-[500px] overflow-y-auto p-4"
-            >
-              {readings.length === 0 ? (
-                <div className="py-12 text-center text-gray-500">
-                  <p className="text-lg font-medium">Waiting for readings...</p>
-                  <p className="mt-2 text-sm">
-                    Take a measurement on the PosiTector device. Readings will appear here in
-                    real-time.
+      {saveResult &&
+        (() => {
+          const entityLabel = ENTITY_TYPE_LABELS[saveResult.entityType] ?? saveResult.entityType;
+          return (
+            <div className="rounded-md bg-green-50 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-800">
+                    Session saved: {saveResult.readingsImported} readings imported as {entityLabel}
+                    {saveResult.average !== null && ` (avg: ${saveResult.average.toFixed(1)})`}
                   </p>
-                  <div className="mt-4 rounded-md bg-gray-50 p-3 text-left text-xs text-gray-500">
-                    <p className="mb-1 font-medium">PosiTector WiFi Streaming URL:</p>
-                    <code className="break-all text-gray-700">
-                      {stockControlApiClient.positectorStreamingEventsUrl("webhook")}
-                      ?company=YOUR_COMPANY_ID&device=YOUR_DEVICE_ID&value=[thickness]&units=[units]&probe=[probetype]&serial=[serial]
-                    </code>
+                  <p className="mt-1 text-xs text-green-600">Record ID: {saveResult.recordId}</p>
+                </div>
+                <button
+                  onClick={() => setSaveResult(null)}
+                  className="text-sm text-green-500 hover:text-green-700"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+      {session &&
+        (() => {
+          const sessionConfig = session.config;
+          const sessionEntityType = sessionConfig.entityType;
+          const sessionEntityLabel = ENTITY_TYPE_LABELS[sessionEntityType] ?? sessionEntityType;
+          const sessionJobCardId = sessionConfig.jobCardId;
+          return (
+            <>
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`h-2.5 w-2.5 rounded-full ${connected ? "animate-pulse bg-green-500" : "bg-gray-400"}`}
+                      />
+                      <span className="text-sm text-gray-600">
+                        {connected ? "Connected" : "Waiting for connection..."}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium text-gray-900">{readings.length}</span> readings
+                    </div>
+                    {average !== null && (
+                      <div className="text-sm text-gray-600">
+                        Avg: <span className="font-medium text-gray-900">{average.toFixed(1)}</span>
+                      </div>
+                    )}
+                    {outOfSpecCount > 0 && (
+                      <div className="text-sm text-red-600">
+                        <span className="font-medium">{outOfSpecCount}</span> out of spec
+                      </div>
+                    )}
+                    {specLimits.min !== null && (
+                      <div className="text-xs text-gray-500">
+                        Spec: {specLimits.min}
+                        {specLimits.max !== null ? ` – ${specLimits.max}` : "+"}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                      {sessionEntityLabel}
+                    </span>
+                    <span className="text-xs text-gray-500">Job Card #{sessionJobCardId}</span>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-1">
-                  {readings.map((reading, index) => {
-                    const status = specStatus(reading.value, specLimits);
-                    return (
-                      <div
-                        key={`${reading.timestamp}-${index}`}
-                        className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-gray-50"
-                      >
-                        <span className="w-8 text-right text-xs text-gray-400">{index + 1}</span>
-                        <div className={`h-2 w-2 rounded-full ${specStatusDot(status)}`} />
-                        <span className="min-w-[80px] font-mono text-sm font-medium text-gray-900">
-                          {reading.value.toFixed(1)}
-                        </span>
-                        <span className="text-xs text-gray-500">{reading.units ?? ""}</span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${specStatusColor(status)}`}
-                        >
-                          {status === "in-spec"
-                            ? "In Spec"
-                            : status === "out-of-spec"
-                              ? "Out of Spec"
-                              : "-"}
-                        </span>
-                        <span className="ml-auto text-xs text-gray-400">
-                          {new Date(reading.timestamp).toLocaleTimeString("en-ZA")}
-                        </span>
-                      </div>
-                    );
-                  })}
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white">
+                <div className="flex items-center justify-between border-b border-gray-200 p-4">
+                  <span className="text-sm font-medium text-gray-700">Live Readings</span>
+                  <label className="flex items-center gap-2 text-sm text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={autoScroll}
+                      onChange={(e) => setAutoScroll(e.target.checked)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    Auto-scroll
+                  </label>
                 </div>
+
+                <div
+                  ref={containerRef}
+                  onScroll={handleScroll}
+                  className="max-h-[500px] overflow-y-auto p-4"
+                >
+                  {readings.length === 0 ? (
+                    <div className="py-12 text-center text-gray-500">
+                      <p className="text-lg font-medium">Waiting for readings...</p>
+                      <p className="mt-2 text-sm">
+                        Take a measurement on the PosiTector device. Readings will appear here in
+                        real-time.
+                      </p>
+                      <div className="mt-4 rounded-md bg-gray-50 p-3 text-left text-xs text-gray-500">
+                        <p className="mb-1 font-medium">PosiTector WiFi Streaming URL:</p>
+                        <code className="break-all text-gray-700">
+                          {stockControlApiClient.positectorStreamingEventsUrl("webhook")}
+                          ?company=YOUR_COMPANY_ID&device=YOUR_DEVICE_ID&value=[thickness]&units=[units]&probe=[probetype]&serial=[serial]
+                        </code>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {readings.map((reading, index) => {
+                        const status = specStatus(reading.value, specLimits);
+                        return (
+                          <div
+                            key={`${reading.timestamp}-${index}`}
+                            className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-gray-50"
+                          >
+                            <span className="w-8 text-right text-xs text-gray-400">
+                              {index + 1}
+                            </span>
+                            <div className={`h-2 w-2 rounded-full ${specStatusDot(status)}`} />
+                            <span className="min-w-[80px] font-mono text-sm font-medium text-gray-900">
+                              {reading.value.toFixed(1)}
+                            </span>
+                            <span className="text-xs text-gray-500">{reading.units ?? ""}</span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${specStatusColor(status)}`}
+                            >
+                              {status === "in-spec"
+                                ? "In Spec"
+                                : status === "out-of-spec"
+                                  ? "Out of Spec"
+                                  : "-"}
+                            </span>
+                            <span className="ml-auto text-xs text-gray-400">
+                              {new Date(reading.timestamp).toLocaleTimeString("en-ZA")}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {readings.length > 0 && (
+                <ReadingSummaryBar readings={readings} specLimits={specLimits} />
               )}
-            </div>
-          </div>
 
-          {readings.length > 0 && <ReadingSummaryBar readings={readings} specLimits={specLimits} />}
-
-          <div className="flex items-center justify-end gap-3">
-            <button
-              onClick={handleDiscardSession}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              Discard Session
-            </button>
-            <button
-              onClick={handleEndSession}
-              disabled={readings.length === 0}
-              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-            >
-              Save & End Session ({readings.length} readings)
-            </button>
-          </div>
-        </>
-      )}
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={handleDiscardSession}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Discard Session
+                </button>
+                <button
+                  onClick={handleEndSession}
+                  disabled={readings.length === 0}
+                  className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                >
+                  Save & End Session ({readings.length} readings)
+                </button>
+              </div>
+            </>
+          );
+        })()}
 
       {!session && !showStartForm && !isLoading && (
         <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
