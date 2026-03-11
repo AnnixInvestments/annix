@@ -44,6 +44,7 @@ export function StockControlAuthProvider(props: { children: ReactNode }) {
 
     try {
       const profile = await stockControlApiClient.currentUser();
+      stockControlApiClient.setCompanyCookie(profile.companyId);
       setState({
         isAuthenticated: true,
         isLoading: false,
@@ -78,6 +79,7 @@ export function StockControlAuthProvider(props: { children: ReactNode }) {
       const response = await stockControlApiClient.login({ email, password });
 
       const profile = await stockControlApiClient.currentUser();
+      stockControlApiClient.setCompanyCookie(profile.companyId);
 
       setState({
         isAuthenticated: true,
