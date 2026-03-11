@@ -973,9 +973,7 @@ export default function StockControlSettingsPage() {
           </label>
         </div>
 
-        {featuresError && (
-          <p className="mt-4 text-sm text-red-600">{featuresError}</p>
-        )}
+        {featuresError && <p className="mt-4 text-sm text-red-600">{featuresError}</p>}
         {featuresSuccess && (
           <p className="mt-4 text-sm text-green-600">Features updated successfully.</p>
         )}
