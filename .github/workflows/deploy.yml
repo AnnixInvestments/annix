@@ -21,6 +21,7 @@ permissions:
   packages: write
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
   APP_IMAGE: ghcr.io/annixinvestments/annix/app
 
