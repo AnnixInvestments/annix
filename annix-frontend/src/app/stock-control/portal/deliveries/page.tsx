@@ -208,17 +208,17 @@ export default function DeliveriesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Delivery Notes</h1>
-          <p className="mt-1 text-sm text-gray-600">Track incoming stock deliveries</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Delivery Notes</h1>
+          <p className="mt-1 text-xs sm:text-sm text-gray-600">Track incoming stock deliveries</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           {selectedIds.size > 0 && (
             <button
               onClick={handleBulkAddToStock}
               disabled={isBulkAdding}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+              className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
             >
               {isBulkAdding ? (
                 <>
@@ -228,7 +228,7 @@ export default function DeliveriesPage() {
               ) : (
                 <>
                   <svg
-                    className="w-4 h-4 mr-2"
+                    className="w-4 h-4 mr-1 sm:mr-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -240,16 +240,21 @@ export default function DeliveriesPage() {
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  Bulk Add to Stock ({selectedIds.size})
+                  Bulk Add ({selectedIds.size})
                 </>
               )}
             </button>
           )}
           <Link
             href="/stock-control/portal/deliveries/scan"
-            className="inline-flex items-center px-4 py-2 border border-teal-600 rounded-md shadow-sm text-sm font-medium text-teal-700 bg-white hover:bg-teal-50"
+            className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-teal-600 rounded-md shadow-sm text-xs sm:text-sm font-medium text-teal-700 bg-white hover:bg-teal-50"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-4 h-4 mr-1 sm:mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -267,9 +272,14 @@ export default function DeliveriesPage() {
           </Link>
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+            className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-4 h-4 mr-1 sm:mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -305,7 +315,7 @@ export default function DeliveriesPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-4 py-3 w-10">
+                <th scope="col" className="px-2 sm:px-4 py-3 w-8 sm:w-10">
                   <input
                     type="checkbox"
                     checked={
@@ -318,43 +328,43 @@ export default function DeliveriesPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-3 sm:px-6 py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Delivery Number
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-3 sm:px-6 py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Supplier
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Received Date
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Received By
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="hidden sm:table-cell px-3 sm:px-6 py-3 text-right text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Items
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="hidden sm:table-cell px-3 sm:px-6 py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Stock Status
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-2 sm:px-6 py-3 text-right text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Actions
                 </th>
@@ -363,7 +373,7 @@ export default function DeliveriesPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {deliveries.map((delivery) => (
                 <tr key={delivery.id} className="hover:bg-gray-50 cursor-pointer">
-                  <td className="px-4 py-4 w-10">
+                  <td className="px-2 sm:px-4 py-3 sm:py-4 w-8 sm:w-10">
                     {needsStockLink(delivery) ? (
                       <input
                         type="checkbox"
@@ -373,24 +383,24 @@ export default function DeliveriesPage() {
                       />
                     ) : null}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <Link
                       href={`/stock-control/portal/deliveries/${delivery.id}`}
-                      className="text-sm font-medium text-teal-700 hover:text-teal-900"
+                      className="text-xs sm:text-sm font-medium text-teal-700 hover:text-teal-900 break-all"
                     >
                       {delivery.deliveryNumber}
                     </Link>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 max-w-[120px] sm:max-w-none truncate">
                     {delivery.supplierName}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDateZA(delivery.receivedDate)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {delivery.receivedBy || "-"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                  <td className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-right text-gray-900">
                     {(() => {
                       const { count, isExtracted } = itemsCount(delivery);
                       return isExtracted ? (
@@ -405,18 +415,18 @@ export default function DeliveriesPage() {
                       );
                     })()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
                     {(() => {
                       const linkedCount = delivery.items ? delivery.items.length : 0;
                       if (linkedCount > 0) {
                         return (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-green-100 text-green-800">
                             In Stock
                           </span>
                         );
                       } else if (needsStockLink(delivery)) {
                         return (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-yellow-100 text-yellow-800">
                             Not in Stock
                           </span>
                         );
@@ -425,7 +435,7 @@ export default function DeliveriesPage() {
                       }
                     })()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                  <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -434,7 +444,7 @@ export default function DeliveriesPage() {
                       className="text-gray-400 hover:text-red-600"
                     >
                       <svg
-                        className="w-5 h-5"
+                        className="w-4 h-4 sm:w-5 sm:h-5"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -517,7 +527,7 @@ export default function DeliveriesPage() {
             <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-medium text-gray-900 mb-4">New Delivery Note</h3>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
                       Delivery Number
@@ -543,7 +553,7 @@ export default function DeliveriesPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Received Date</label>
                     <input
