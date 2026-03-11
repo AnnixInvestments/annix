@@ -92,17 +92,17 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                 >
                   {item.stockItemName}
                 </td>
-                <td className="px-2 py-2 text-right text-gray-500">R{item.oldPrice.toFixed(2)}</td>
+                <td className="px-2 py-2 text-right text-gray-500">R{Number(item.oldPrice || 0).toFixed(2)}</td>
                 <td className="px-2 py-2 text-right text-gray-900 font-medium">
-                  R{item.newPrice.toFixed(2)}
+                  R{Number(item.newPrice || 0).toFixed(2)}
                 </td>
                 <td
                   className={`px-2 py-2 text-right font-medium ${
                     item.changePercent > 0 ? "text-red-600" : "text-green-600"
                   }`}
                 >
-                  {item.changePercent > 0 ? "+" : ""}
-                  {item.changePercent.toFixed(1)}%
+                  {Number(item.changePercent || 0) > 0 ? "+" : ""}
+                  {Number(item.changePercent || 0).toFixed(1)}%
                 </td>
               </tr>
             ))}
