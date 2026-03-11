@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
+import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
 import {
   FieldMapping,
@@ -10,7 +11,6 @@ import {
   JobCardImportMapping,
 } from "../entities/job-card-import-mapping.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
-import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { CpoService } from "./cpo.service";
 import { DrawingExtractionService } from "./drawing-extraction.service";
 import { JobCardVersionService } from "./job-card-version.service";
@@ -148,15 +148,12 @@ function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[]
   return result;
 }
 
-const JT_DN_PATTERN = /(?:JT|DN|JT\/DN|JTDN)[\s\-#:]*([A-Z0-9\-]+)/i;
+const JT_DN_PATTERN = /(?:JT|DN|JT\/DN|JTDN)[\s\-#:]*([A-Z0-9-]+)/i;
 
 function detectJtDnNumber(row: JobCardImportRow): string | null {
-  const fieldsToCheck = [
-    row.jcNumber,
-    row.reference,
-    row.notes,
-    row.description,
-  ].filter(Boolean) as string[];
+  const fieldsToCheck = [row.jcNumber, row.reference, row.notes, row.description].filter(
+    Boolean,
+  ) as string[];
 
   const fieldMatch = fieldsToCheck.reduce<string | null>((found, field) => {
     if (found) return found;
@@ -1047,9 +1044,7 @@ export class JobCardImportService {
           result.createdJobCardIds.push(savedId);
         } else {
           const customFields =
-            row.customFields && Object.keys(row.customFields).length > 0
-              ? row.customFields
-              : null;
+            row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
 
           const jobCard = this.jobCardRepo.create({
             jobNumber: row.jobNumber,

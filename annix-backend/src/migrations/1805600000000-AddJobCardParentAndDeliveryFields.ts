@@ -23,11 +23,11 @@ export class AddJobCardParentAndDeliveryFields1805600000000 implements Migration
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_job_cards_jt_dn_number`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_job_cards_parent_id`);
-    await queryRunner.query(`ALTER TABLE job_cards DROP CONSTRAINT IF EXISTS fk_job_cards_parent`);
-    await queryRunner.query(`ALTER TABLE job_cards DROP COLUMN IF EXISTS workflow_ceiling`);
-    await queryRunner.query(`ALTER TABLE job_cards DROP COLUMN IF EXISTS jt_dn_number`);
-    await queryRunner.query(`ALTER TABLE job_cards DROP COLUMN IF EXISTS parent_job_card_id`);
+    await queryRunner.query("DROP INDEX IF EXISTS idx_job_cards_jt_dn_number");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_job_cards_parent_id");
+    await queryRunner.query("ALTER TABLE job_cards DROP CONSTRAINT IF EXISTS fk_job_cards_parent");
+    await queryRunner.query("ALTER TABLE job_cards DROP COLUMN IF EXISTS workflow_ceiling");
+    await queryRunner.query("ALTER TABLE job_cards DROP COLUMN IF EXISTS jt_dn_number");
+    await queryRunner.query("ALTER TABLE job_cards DROP COLUMN IF EXISTS parent_job_card_id");
   }
 }
