@@ -73,6 +73,7 @@ export interface CompanyDetailsUpdate {
   pipingLossFactorPct?: number;
   flatPlateLossFactorPct?: number;
   structuralSteelLossFactorPct?: number;
+  qcEnabled?: boolean;
 }
 
 export interface SmtpConfigResponse {

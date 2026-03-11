@@ -428,6 +428,7 @@ export class StockControlAuthService {
       company.flatPlateLossFactorPct = dto.flatPlateLossFactorPct;
     if (dto.structuralSteelLossFactorPct !== undefined)
       company.structuralSteelLossFactorPct = dto.structuralSteelLossFactorPct;
+    if (dto.qcEnabled !== undefined) company.qcEnabled = dto.qcEnabled;
 
     await this.companyRepo.save(company);
 

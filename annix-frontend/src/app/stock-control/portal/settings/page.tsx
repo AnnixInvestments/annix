@@ -141,6 +141,10 @@ export default function StockControlSettingsPage() {
   const [pipingLossFactorPct, setPipingLossFactorPct] = useState(45);
   const [flatPlateLossFactorPct, setFlatPlateLossFactorPct] = useState(20);
   const [structuralSteelLossFactorPct, setStructuralSteelLossFactorPct] = useState(30);
+  const [qcEnabled, setQcEnabled] = useState(true);
+  const [featuresSaving, setFeaturesSaving] = useState(false);
+  const [featuresSuccess, setFeaturesSuccess] = useState(false);
+  const [featuresError, setFeaturesError] = useState("");
   const [detailsSaving, setDetailsSaving] = useState(false);
   const [detailsSuccess, setDetailsSuccess] = useState(false);
   const [detailsError, setDetailsError] = useState("");
@@ -278,6 +282,10 @@ export default function StockControlSettingsPage() {
       setStructuralSteelLossFactorPct(profile.structuralSteelLossFactorPct);
     }
 
+    if (profile?.qcEnabled !== undefined) {
+      setQcEnabled(profile.qcEnabled);
+    }
+
     if (profile?.brandingType) {
       setBrandingSelection(profile.brandingType as BrandingSelection);
     }
@@ -343,6 +351,22 @@ export default function StockControlSettingsPage() {
       setDetailsError(e instanceof Error ? e.message : "Failed to update company details.");
     } finally {
       setDetailsSaving(false);
+    }
+  };
+
+  const handleSaveFeatures = async () => {
+    setFeaturesError("");
+    setFeaturesSaving(true);
+    setFeaturesSuccess(false);
+
+    try {
+      await stockControlApiClient.updateCompanyDetails({ qcEnabled });
+      setFeaturesSuccess(true);
+      await refreshProfile();
+    } catch (e) {
+      setFeaturesError(e instanceof Error ? e.message : "Failed to update features.");
+    } finally {
+      setFeaturesSaving(false);
     }
   };
 
@@ -913,6 +937,56 @@ export default function StockControlSettingsPage() {
           className="mt-4 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {detailsSaving ? "Saving..." : "Save Company Details"}
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">Company Features</h2>
+        <p className="text-sm text-gray-500 mb-6">
+          Enable or disable modules for your company. Changes take effect immediately after saving.
+        </p>
+
+        <div className="space-y-4">
+          <label className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+            <div className="flex-1 mr-4">
+              <span className="text-sm font-medium text-gray-900">Quality Control</span>
+              <p className="text-xs text-gray-500 mt-0.5">
+                PosiTector device integration, DFT measurements, calibration certificates, data
+                books, and QC batch management
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={qcEnabled}
+              onClick={() => setQcEnabled(!qcEnabled)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
+                qcEnabled ? "bg-teal-600" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  qcEnabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </label>
+        </div>
+
+        {featuresError && (
+          <p className="mt-4 text-sm text-red-600">{featuresError}</p>
+        )}
+        {featuresSuccess && (
+          <p className="mt-4 text-sm text-green-600">Features updated successfully.</p>
+        )}
+
+        <button
+          type="button"
+          onClick={handleSaveFeatures}
+          disabled={featuresSaving}
+          className="mt-4 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {featuresSaving ? "Saving..." : "Save Features"}
         </button>
       </div>
 

@@ -1,4 +1,13 @@
-import { IsEmail, IsInt, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
+import {
+  IsBoolean,
+  IsEmail,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from "class-validator";
 
 export class UpdateCompanyDetailsDto {
   @IsOptional()
@@ -68,4 +77,8 @@ export class UpdateCompanyDetailsDto {
   @Min(0)
   @Max(100)
   structuralSteelLossFactorPct?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  qcEnabled?: boolean;
 }
