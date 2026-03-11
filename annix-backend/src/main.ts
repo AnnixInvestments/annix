@@ -42,9 +42,7 @@ async function bootstrap() {
     app.use((req, res, next) => {
       const proto = req.headers["x-forwarded-proto"];
       const isHttps = proto === "https";
-      const isWebhookPath = req.path.startsWith(
-        "/api/stock-control/positector-streaming/webhook",
-      );
+      const isWebhookPath = req.path.startsWith("/api/stock-control/positector-streaming/webhook");
 
       if (!isHttps && !isWebhookPath) {
         const host = req.headers.host ?? "";
