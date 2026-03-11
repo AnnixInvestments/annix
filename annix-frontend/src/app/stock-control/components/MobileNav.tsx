@@ -19,7 +19,7 @@ export function MobileNav(props: MobileNavProps) {
   const { isOpen, onClose } = props;
   const pathname = usePathname();
   const { user, logout, profile } = useStockControlAuth();
-  const { colors } = useStockControlBranding();
+  const { colors, logoUrl } = useStockControlBranding();
   const { count: notificationCount } = useNotificationCount();
   const { rbacConfig } = useStockControlRbac();
   const [rbacPanelOpen, setRbacPanelOpen] = useState(false);
@@ -83,55 +83,129 @@ export function MobileNav(props: MobileNavProps) {
         style={{ backgroundColor: colors.sidebar }}
       >
         <div className="flex flex-col h-full pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm"
-                style={{ backgroundColor: colors.accent }}
-              >
-                {userInitials}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: colors.sidebarText }}>
-                  {user ? user.name : "Stock Control"}
-                </p>
-                <p className="text-xs truncate" style={{ color: colors.sidebarText, opacity: 0.6 }}>
-                  {user ? user.email : ""}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              {user?.role === "admin" && (
-                <button
-                  onClick={() => setRbacPanelOpen(true)}
-                  className="p-2 rounded-lg transition-colors"
-                  style={{ color: colors.sidebarText }}
-                  title="Configure menu visibility"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                    />
-                  </svg>
-                </button>
-              )}
-              <button
-                onClick={onClose}
-                className="p-2 rounded-lg transition-colors"
-                style={{ color: colors.sidebarText }}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
+          <div className="p-4 border-b border-gray-200">
+            {logoUrl ? (
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-10 px-2 flex items-center bg-gray-50 rounded-md">
+                  <img
+                    src={logoUrl}
+                    alt="Company logo"
+                    className="h-8 w-auto object-contain max-w-[160px]"
                   />
-                </svg>
-              </button>
+                </div>
+                <div className="flex items-center gap-1">
+                  {user?.role === "admin" && (
+                    <button
+                      onClick={() => setRbacPanelOpen(true)}
+                      className="p-2 rounded-lg transition-colors"
+                      style={{ color: colors.sidebarText }}
+                      title="Configure menu visibility"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-lg transition-colors"
+                    style={{ color: colors.sidebarText }}
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div
+                  className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                  style={{ backgroundColor: colors.accent }}
+                >
+                  {userInitials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="text-sm font-medium truncate"
+                    style={{ color: colors.sidebarText }}
+                  >
+                    {user ? user.name : "Stock Control"}
+                  </p>
+                  <p
+                    className="text-xs truncate"
+                    style={{ color: colors.sidebarText, opacity: 0.6 }}
+                  >
+                    {user ? user.email : ""}
+                  </p>
+                </div>
+              </div>
+              {!logoUrl ? (
+                <div className="flex items-center gap-1">
+                  {user?.role === "admin" && (
+                    <button
+                      onClick={() => setRbacPanelOpen(true)}
+                      className="p-2 rounded-lg transition-colors"
+                      style={{ color: colors.sidebarText }}
+                      title="Configure menu visibility"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-lg transition-colors"
+                    style={{ color: colors.sidebarText }}
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
 
