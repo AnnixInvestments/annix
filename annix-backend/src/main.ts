@@ -41,10 +41,10 @@ async function bootstrap() {
   if (isProduction) {
     app.use((req, res, next) => {
       const proto = req.headers["x-forwarded-proto"];
-      const isHttps = proto === "https";
+      const isPlainHttp = proto === "http";
       const isWebhookPath = req.path.startsWith("/api/stock-control/positector-streaming/webhook");
 
-      if (!isHttps && !isWebhookPath) {
+      if (isPlainHttp && !isWebhookPath) {
         const host = req.headers.host ?? "";
         return res.redirect(301, `https://${host}${req.url}`);
       }
