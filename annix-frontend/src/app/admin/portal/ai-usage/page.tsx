@@ -64,6 +64,10 @@ export default function AiUsagePage() {
   };
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0;
+  const filterApp = filters.app ?? "";
+  const filterProvider = filters.provider ?? "";
+  const filterFrom = filters.from ?? "";
+  const filterTo = filters.to ?? "";
 
   return (
     <div className="space-y-6">
@@ -93,7 +97,7 @@ export default function AiUsagePage() {
 
       <div className="flex flex-wrap gap-3 rounded-lg bg-white p-4 shadow dark:bg-slate-800">
         <select
-          value={filters.app ?? ""}
+          value={filterApp}
           onChange={(e) => updateFilter("app", e.target.value)}
           className="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
         >
@@ -105,7 +109,7 @@ export default function AiUsagePage() {
         </select>
 
         <select
-          value={filters.provider ?? ""}
+          value={filterProvider}
           onChange={(e) => updateFilter("provider", e.target.value)}
           className="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
         >
@@ -118,7 +122,7 @@ export default function AiUsagePage() {
 
         <input
           type="date"
-          value={filters.from ?? ""}
+          value={filterFrom}
           onChange={(e) => updateFilter("from", e.target.value)}
           placeholder="From"
           className="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
@@ -126,7 +130,7 @@ export default function AiUsagePage() {
 
         <input
           type="date"
-          value={filters.to ?? ""}
+          value={filterTo}
           onChange={(e) => updateFilter("to", e.target.value)}
           placeholder="To"
           className="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
