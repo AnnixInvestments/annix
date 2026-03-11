@@ -2351,7 +2351,9 @@ function AppInfoSection() {
       <div className="space-y-3">
         <div className="flex items-center justify-between py-2 border-b border-gray-100">
           <span className="text-sm text-gray-600">App Version</span>
-          <span className="text-sm font-medium text-gray-900">{version ?? STOCK_CONTROL_VERSION}</span>
+          <span className="text-sm font-medium text-gray-900">
+            {version ?? STOCK_CONTROL_VERSION}
+          </span>
         </div>
 
         <div className="flex items-center justify-between py-2 border-b border-gray-100">
