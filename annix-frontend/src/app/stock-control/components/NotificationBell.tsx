@@ -90,6 +90,7 @@ export function NotificationBell() {
       stock_allocated: "Stock Allocated",
       dispatch_ready: "Ready for Dispatch",
       dispatch_completed: "Dispatched",
+      job_cards_imported: "Job Cards Imported",
     };
     return labels[actionType] || actionType;
   };
@@ -102,6 +103,7 @@ export function NotificationBell() {
       stock_allocated: "bg-blue-100 text-blue-800",
       dispatch_ready: "bg-purple-100 text-purple-800",
       dispatch_completed: "bg-teal-100 text-teal-800",
+      job_cards_imported: "bg-indigo-100 text-indigo-800",
     };
     return colors[actionType] || "bg-gray-100 text-gray-800";
   };

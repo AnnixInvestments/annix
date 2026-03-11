@@ -50,18 +50,21 @@ async function sendSubscriptionToBackend(subscription: PushSubscription): Promis
 
 async function ensurePushSubscription(registration: ServiceWorkerRegistration): Promise<void> {
   if (Notification.permission !== "granted") {
+    console.warn(`Push: Notification permission is "${Notification.permission}", skipping subscription`);
     return;
   }
 
   try {
     const { vapidPublicKey } = await stockControlApiClient.pushVapidKey();
     if (!vapidPublicKey) {
+      console.warn("Push: VAPID public key not available from server");
       return;
     }
 
     const existingSub = await registration.pushManager.getSubscription();
     if (existingSub) {
       await sendSubscriptionToBackend(existingSub);
+      console.log("Push: Re-synced existing subscription to backend");
       return;
     }
 
@@ -71,6 +74,7 @@ async function ensurePushSubscription(registration: ServiceWorkerRegistration): 
     });
 
     await sendSubscriptionToBackend(subscription);
+    console.log("Push: Created and saved new subscription to backend");
   } catch (error) {
     console.error("Auto push re-subscription failed:", error);
   }
@@ -138,7 +142,9 @@ export function PwaProvider(props: { children: React.ReactNode }) {
           60 * 60 * 1000,
         );
 
-        ensurePushSubscription(registration);
+        ensurePushSubscription(registration).catch((err) =>
+          console.error("Push subscription setup failed:", err),
+        );
       } catch (error) {
         console.error("Stock Control service worker registration failed:", error);
       }

@@ -87,6 +87,13 @@ export class WebPushService {
 
     const subscriptions = await this.subscriptionRepo.find({ where: { userId } });
 
+    if (subscriptions.length === 0) {
+      this.logger.warn(`No push subscriptions found for user ${userId}`);
+      return;
+    }
+
+    this.logger.log(`Sending push to ${subscriptions.length} subscription(s) for user ${userId}`);
+
     const staleIds: number[] = [];
 
     await Promise.all(
