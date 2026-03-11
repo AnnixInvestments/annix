@@ -163,6 +163,16 @@ const url = await this.storageService.getPresignedUrl(filePath, 3600);
 - **All DDL must be idempotent**: Use `IF NOT EXISTS` / `IF EXISTS` / `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$` so migrations can safely re-run
 - **Test migrations on a fresh database**: Migrations must work when run in strict timestamp order from scratch, not just against an existing schema
 
+## Stock Control Versioning
+- **Version file**: `annix-frontend/src/app/stock-control/config/version.ts` contains `STOCK_CONTROL_VERSION`
+- **Displayed in**: Toolbar header and Settings > App Info
+- **Semantic versioning** (major.minor.patch):
+  - **Patch** (x.x.+1): Bug fixes, small tweaks, formatting changes
+  - **Minor** (x.+1.0): New features, new pages, significant enhancements to existing functionality
+  - **Major** (+1.0.0): Major redesigns, breaking UX changes, architectural overhauls
+- **When to bump**: After completing any upgrade or feature work on the stock control app, assess the scope and bump the version in `config/version.ts` before committing
+- **Include in commit**: Version bumps should be part of the feature commit, not a separate commit
+
 ## Communication
 - Be concise and direct
 - Do not use emojis unless requested

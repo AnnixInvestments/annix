@@ -5,35 +5,25 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { ALL_NAV_ITEMS, NAV_GROUP_ORDER } from "../config/navItems";
+import { ALL_NAV_ITEMS, NAV_GROUP_HUB_PATHS, NAV_GROUP_ORDER } from "../config/navItems";
+import { STOCK_CONTROL_VERSION } from "../config/version";
 import { useStockControlBranding } from "../context/StockControlBrandingContext";
 import { useStockControlRbac } from "../context/StockControlRbacContext";
-import { useNotificationCount } from "../hooks/useNotificationCount";
+
 import { GlobalSearchModal } from "./GlobalSearchModal";
 import { NotificationBell } from "./NotificationBell";
 import { OfflineIndicator } from "./OfflineIndicator";
 import { RbacConfigPanel } from "./RbacConfigPanel";
 import { SyncStatus } from "./SyncStatus";
 
-interface StockControlHeaderProps {
-  onSearch?: (query: string) => void;
-  lowStockCount?: number;
-  onMenuToggle?: () => void;
-  showMenuButton?: boolean;
-}
-
-export function StockControlHeader(props: StockControlHeaderProps) {
-  const { onSearch, lowStockCount = 0, onMenuToggle, showMenuButton = false } = props;
+export function StockControlHeader() {
   const pathname = usePathname();
   const [showDropdown, setShowDropdown] = useState(false);
   const [rbacPanelOpen, setRbacPanelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [openNavGroup, setOpenNavGroup] = useState<string | null>(null);
-  const navGroupRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { colors, logoUrl } = useStockControlBranding();
   const { user, logout } = useStockControlAuth();
-  const { count: notificationCount } = useNotificationCount();
   const { rbacConfig } = useStockControlRbac();
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
@@ -49,10 +39,6 @@ export function StockControlHeader(props: StockControlHeaderProps) {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
-
-  useEffect(() => {
-    setOpenNavGroup(null);
-  }, [pathname]);
 
   const handleLogout = async () => {
     setShowDropdown(false);
@@ -83,6 +69,20 @@ export function StockControlHeader(props: StockControlHeaderProps) {
     return pathname.startsWith(href);
   };
 
+  const isGroupActive = useCallback(
+    (groupName: string) => {
+      const groupItems = visibleNavItems.filter((item) => item.group === groupName);
+      const hubPath = NAV_GROUP_HUB_PATHS[groupName];
+      const itemIsActive = (href: string) =>
+        href === "/stock-control/portal/dashboard" ? pathname === href : pathname.startsWith(href);
+      return (
+        (hubPath && pathname.startsWith(hubPath)) ||
+        groupItems.some((item) => itemIsActive(item.href))
+      );
+    },
+    [visibleNavItems, pathname],
+  );
+
   return (
     <>
       <header
@@ -91,22 +91,6 @@ export function StockControlHeader(props: StockControlHeaderProps) {
       >
         <div className="h-14 sm:h-16 flex items-center px-3 sm:px-6">
           <div className="flex items-center shrink-0">
-            {showMenuButton && (
-              <button
-                onClick={onMenuToggle}
-                className="mr-3 p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
-                aria-label="Open menu"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              </button>
-            )}
             {logoUrl ? (
               <div className="h-10 px-2 flex items-center bg-white rounded-md">
                 <img src={logoUrl} alt="Company logo" className="h-8 w-auto object-contain" />
@@ -119,104 +103,55 @@ export function StockControlHeader(props: StockControlHeaderProps) {
             <span className="ml-2 text-white text-lg font-medium hidden sm:inline">
               Stock Control
             </span>
+            <span className="ml-1.5 text-white/50 text-xs font-mono hidden sm:inline">
+              v{STOCK_CONTROL_VERSION}
+            </span>
           </div>
 
-          {!showMenuButton &&
-            (() => {
-              const directItems = visibleNavItems
-                .filter((item) => !item.group || item.group === "hidden")
-                .filter((item) => item.group !== "hidden");
-              const groups = NAV_GROUP_ORDER.map((groupName) => ({
-                name: groupName,
-                items: visibleNavItems.filter((item) => item.group === groupName),
-              })).filter((g) => g.items.length > 0);
-              const hasActiveChild = (items: typeof visibleNavItems) =>
-                items.some((item) => isActive(item.href));
+          {(() => {
+            const directItems = visibleNavItems
+              .filter((item) => !item.group || item.group === "hidden")
+              .filter((item) => item.group !== "hidden");
+            const groups = NAV_GROUP_ORDER.map((groupName) => ({
+              name: groupName,
+              hubPath: NAV_GROUP_HUB_PATHS[groupName],
+              items: visibleNavItems.filter((item) => item.group === groupName),
+            })).filter((g) => g.items.length > 0);
 
-              return (
-                <nav className="hidden sm:flex items-center mx-4">
-                  <div className="flex items-center gap-1">
-                    {directItems.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
-                          isActive(item.href)
-                            ? "bg-black/20 text-white"
-                            : "text-white/70 hover:bg-black/10 hover:text-white"
-                        }`}
-                      >
-                        <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
-                        {item.label}
-                      </Link>
-                    ))}
-                    {groups.map((group) => (
-                      <div
-                        key={group.name}
-                        className="relative"
-                        ref={(el) => {
-                          navGroupRefs.current[group.name] = el;
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenNavGroup(openNavGroup === group.name ? null : group.name)
-                          }
-                          className={`flex items-center gap-1 px-3 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
-                            openNavGroup === group.name || hasActiveChild(group.items)
-                              ? "bg-black/20 text-white"
-                              : "text-white/70 hover:bg-black/10 hover:text-white"
-                          }`}
-                        >
-                          {group.name}
-                          <svg
-                            className={`w-3.5 h-3.5 transition-transform ${openNavGroup === group.name ? "rotate-180" : ""}`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 9l-7 7-7-7"
-                            />
-                          </svg>
-                        </button>
-                        {openNavGroup === group.name && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-40"
-                              onClick={() => setOpenNavGroup(null)}
-                            />
-                            <div className="absolute left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
-                              {group.items.map((item) => (
-                                <Link
-                                  key={item.href}
-                                  href={item.href}
-                                  onClick={() => setOpenNavGroup(null)}
-                                  className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                                    isActive(item.href)
-                                      ? "bg-gray-100 text-gray-900 font-medium"
-                                      : "text-gray-700 hover:bg-gray-50"
-                                  }`}
-                                >
-                                  <span className="[&>svg]:w-4 [&>svg]:h-4 text-gray-400">
-                                    {item.icon}
-                                  </span>
-                                  {item.label}
-                                </Link>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </nav>
-              );
-            })()}
+            return (
+              <nav className="flex items-center mx-2 sm:mx-4 overflow-x-auto scrollbar-hide">
+                <div className="flex items-center gap-1">
+                  {directItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
+                        isActive(item.href)
+                          ? "bg-black/20 text-white"
+                          : "text-white/70 hover:bg-black/10 hover:text-white"
+                      }`}
+                    >
+                      <span className="[&>svg]:w-4 [&>svg]:h-4 hidden sm:inline">{item.icon}</span>
+                      {item.label}
+                    </Link>
+                  ))}
+                  {groups.map((group) => (
+                    <Link
+                      key={group.name}
+                      href={group.hubPath}
+                      className={`min-h-[44px] px-3 py-2 text-sm font-medium whitespace-nowrap rounded-md transition-colors flex items-center ${
+                        isGroupActive(group.name)
+                          ? "bg-black/20 text-white"
+                          : "text-white/70 hover:bg-black/10 hover:text-white"
+                      }`}
+                    >
+                      {group.name}
+                    </Link>
+                  ))}
+                </div>
+              </nav>
+            );
+          })()}
 
           <div className="flex items-center space-x-1 sm:space-x-3 ml-auto shrink-0">
             <button

@@ -1,0 +1,26 @@
+"use client";
+
+import { HubPage } from "../../components/HubPage";
+import { useVisibleNavItems } from "../../hooks/useVisibleNavItems";
+
+const DESCRIPTIONS: Record<string, string> = {
+  reports: "View stock, delivery, and financial reports",
+  glossary: "Browse coating, lining, and industry term definitions",
+};
+
+export default function AdminHubPage() {
+  const items = useVisibleNavItems("Admin");
+
+  const hubItems = items.map((item) => ({
+    item,
+    description: DESCRIPTIONS[item.key] ?? "",
+  }));
+
+  return (
+    <HubPage
+      title="Admin"
+      description="Access reports and reference information."
+      items={hubItems}
+    />
+  );
+}

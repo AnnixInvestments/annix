@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { MobileNav } from "../components/MobileNav";
+import { HubBreadcrumb } from "../components/HubBreadcrumb";
 import { StockControlHeader } from "../components/StockControlHeader";
 import { GlossaryProvider } from "../context/GlossaryContext";
 import {
@@ -11,7 +11,6 @@ import {
   useStockControlBranding,
 } from "../context/StockControlBrandingContext";
 import { StockControlRbacProvider } from "../context/StockControlRbacContext";
-import { useIsMobile } from "../hooks/useMediaQuery";
 
 function MainContent({ children }: { children: React.ReactNode }) {
   const { heroImageUrl } = useStockControlBranding();
@@ -33,6 +32,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
       <div
         className={`w-full ${heroImageUrl ? "bg-white/95 rounded-lg p-4 sm:p-6 shadow-sm backdrop-blur-sm" : ""}`}
       >
+        <HubBreadcrumb />
         {children}
       </div>
     </main>
@@ -40,24 +40,12 @@ function MainContent({ children }: { children: React.ReactNode }) {
 }
 
 function PortalContent({ children }: { children: React.ReactNode }) {
-  const isMobile = useIsMobile();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-
-  const handleMenuToggle = useCallback(() => {
-    setMobileNavOpen((prev) => !prev);
-  }, []);
-
-  const handleMobileNavClose = useCallback(() => {
-    setMobileNavOpen(false);
-  }, []);
-
   return (
     <StockControlBrandingProvider>
       <StockControlRbacProvider>
         <GlossaryProvider>
           <div className="flex flex-col h-screen bg-gray-50">
-            {isMobile && <MobileNav isOpen={mobileNavOpen} onClose={handleMobileNavClose} />}
-            <StockControlHeader showMenuButton={isMobile} onMenuToggle={handleMenuToggle} />
+            <StockControlHeader />
             <MainContent>{children}</MainContent>
           </div>
         </GlossaryProvider>

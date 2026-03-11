@@ -11,6 +11,14 @@ export interface NavItemDef {
 
 export const NAV_GROUP_ORDER = ["Supplier", "Customer", "Operations", "Quality", "Admin"] as const;
 
+export const NAV_GROUP_HUB_PATHS: Record<string, string> = {
+  Supplier: "/stock-control/portal/supplier",
+  Customer: "/stock-control/portal/customer",
+  Operations: "/stock-control/portal/operations",
+  Quality: "/stock-control/portal/quality",
+  Admin: "/stock-control/portal/admin",
+};
+
 export const ALL_NAV_ITEMS: NavItemDef[] = [
   {
     key: "dashboard",
@@ -199,7 +207,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
   },
   {
     key: "certificates",
-    href: "/stock-control/portal/quality",
+    href: "/stock-control/portal/quality/certificates",
     label: "Certificates",
     defaultRoles: ["manager", "admin"],
     group: "Quality",

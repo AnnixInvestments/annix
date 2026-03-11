@@ -64,6 +64,16 @@ html {
   }
 }
 
+/* Hide scrollbar for horizontal-scroll nav */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Mobile/touch devices - use native scrolling behavior */
 @media (pointer: coarse) {
   html {
