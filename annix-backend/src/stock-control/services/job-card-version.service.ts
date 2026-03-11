@@ -84,9 +84,7 @@ export class JobCardVersionService {
 
     const saved = await this.versionRepo.save(version);
 
-    this.logger.log(
-      `Archived v${jobCard.versionNumber} for job card ${jobCard.jobNumber}`,
-    );
+    this.logger.log(`Archived v${jobCard.versionNumber} for job card ${jobCard.jobNumber}`);
 
     return saved;
   }

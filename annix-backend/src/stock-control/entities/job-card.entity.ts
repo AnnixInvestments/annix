@@ -148,14 +148,21 @@ export class JobCard {
   @Column({ name: "is_cpo_calloff", type: "boolean", default: false })
   isCpoCalloff: boolean;
 
-  @ManyToOne(() => JobCard, (jc) => jc.deliveryJobCards, { nullable: true, onDelete: "SET NULL" })
+  @ManyToOne(
+    () => JobCard,
+    (jc) => jc.deliveryJobCards,
+    { nullable: true, onDelete: "SET NULL" },
+  )
   @JoinColumn({ name: "parent_job_card_id" })
   parentJobCard: JobCard | null;
 
   @Column({ name: "parent_job_card_id", nullable: true })
   parentJobCardId: number | null;
 
-  @OneToMany(() => JobCard, (jc) => jc.parentJobCard)
+  @OneToMany(
+    () => JobCard,
+    (jc) => jc.parentJobCard,
+  )
   deliveryJobCards: JobCard[];
 
   @Column({ name: "jt_dn_number", type: "varchar", length: 500, nullable: true })
