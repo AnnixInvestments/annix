@@ -3,8 +3,8 @@
 import { Camera } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
-  CoatingAnalysis,
   CoatDetail,
+  CoatingAnalysis,
   JobCard,
   PositectorDevice,
   PositectorStreamingReading,
@@ -637,9 +637,7 @@ function StartSessionForm({
 
       {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-      {showQrScanner && (
-        <QrScanner onScan={handleQrScan} onClose={() => setShowQrScanner(false)} />
-      )}
+      {showQrScanner && <QrScanner onScan={handleQrScan} onClose={() => setShowQrScanner(false)} />}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
