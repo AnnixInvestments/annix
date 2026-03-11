@@ -252,7 +252,7 @@ export class DrawingExtractionService {
     const prompt = isMultiDoc ? MULTI_DOC_EXTRACTION_PROMPT : DRAWING_EXTRACTION_PROMPT;
 
     const messages: ChatMessage[] = [{ role: "user", content: contentParts }];
-    const { content: response } = await this.aiChatService.chat(messages, prompt, "claude");
+    const { content: response } = await this.aiChatService.chat(messages, prompt);
     const aiResult = this.parseAiResponse(response);
     return this.buildExtractionResult(aiResult);
   }
@@ -470,7 +470,7 @@ export class DrawingExtractionService {
       const prompt = isMultiDoc ? MULTI_DOC_EXTRACTION_PROMPT : DRAWING_EXTRACTION_PROMPT;
 
       const messages: ChatMessage[] = [{ role: "user", content: contentParts }];
-      const { content: response } = await this.aiChatService.chat(messages, prompt, "claude");
+      const { content: response } = await this.aiChatService.chat(messages, prompt);
       const aiResult = this.parseAiResponse(response);
       const result = this.buildExtractionResult(aiResult);
 
@@ -594,7 +594,6 @@ export class DrawingExtractionService {
     const { content: response } = await this.aiChatService.chat(
       messages,
       DRAWING_EXTRACTION_PROMPT,
-      "claude",
     );
 
     return this.parseAiResponse(response);

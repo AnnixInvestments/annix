@@ -4,7 +4,7 @@ import { IsNull, Repository } from "typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { fromJSDate, now } from "../../lib/datetime";
-import { ClaudeChatProvider } from "../../nix/ai-providers/claude-chat.provider";
+import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import {
   ClarificationStatus,
@@ -82,7 +82,6 @@ const PRICE_CHANGE_APPROVAL_THRESHOLD = 20;
 @Injectable()
 export class InvoiceExtractionService {
   private readonly logger = new Logger(InvoiceExtractionService.name);
-  private readonly claudeProvider: ClaudeChatProvider;
 
   constructor(
     @InjectRepository(SupplierInvoice)
@@ -98,9 +97,8 @@ export class InvoiceExtractionService {
     @InjectRepository(DeliveryNote)
     private readonly deliveryNoteRepo: Repository<DeliveryNote>,
     private readonly aiUsageService: AiUsageService,
-  ) {
-    this.claudeProvider = new ClaudeChatProvider();
-  }
+    private readonly aiChatService: AiChatService,
+  ) {}
 
   async extractFromImage(
     invoiceId: number,
@@ -121,7 +119,7 @@ export class InvoiceExtractionService {
     await this.invoiceRepo.save(invoice);
 
     try {
-      const { content: response, tokensUsed } = await this.claudeProvider.chatWithImage(
+      const { content: response, providerUsed, tokensUsed } = await this.aiChatService.chatWithImage(
         imageBase64,
         mediaType,
         "Extract the invoice details from this scanned invoice image. Return JSON only.",
@@ -131,7 +129,7 @@ export class InvoiceExtractionService {
       this.aiUsageService.log({
         app: AiApp.STOCK_CONTROL,
         actionType: "invoice-extraction",
-        provider: AiProvider.CLAUDE,
+        provider: providerUsed.includes("claude") ? AiProvider.CLAUDE : AiProvider.GEMINI,
         tokensUsed,
         pageCount: 1,
       });
@@ -203,7 +201,7 @@ export class InvoiceExtractionService {
     receivedDate?: string;
     lineItems?: { description: string; quantity: number; sku?: string }[];
   }> {
-    const { content: response, tokensUsed } = await this.claudeProvider.chatWithImage(
+    const { content: response, providerUsed, tokensUsed } = await this.aiChatService.chatWithImage(
       imageBase64,
       mediaType,
       "Extract the delivery note details from this scanned delivery note image. Return JSON only.",
@@ -213,7 +211,7 @@ export class InvoiceExtractionService {
     this.aiUsageService.log({
       app: AiApp.STOCK_CONTROL,
       actionType: "delivery-note-extraction",
-      provider: AiProvider.CLAUDE,
+      provider: providerUsed.includes("claude") ? AiProvider.CLAUDE : AiProvider.GEMINI,
       tokensUsed,
       pageCount: 1,
     });

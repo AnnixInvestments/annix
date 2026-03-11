@@ -1,24 +1,19 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, Repository } from "typeorm";
-import { ClaudeChatProvider } from "../../nix/ai-providers/claude-chat.provider";
+import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IdentifiedItem, IdentifyItemResponse } from "../dto/identify-item.dto";
 import { StockItem } from "../entities/stock-item.entity";
 
 @Injectable()
 export class ItemIdentificationService {
   private readonly logger = new Logger(ItemIdentificationService.name);
-  private readonly claudeProvider: ClaudeChatProvider;
 
   constructor(
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
-  ) {
-    this.claudeProvider = new ClaudeChatProvider({
-      maxTokens: 2048,
-      temperature: 0.3,
-    });
-  }
+    private readonly aiChatService: AiChatService,
+  ) {}
 
   async identifyFromPhoto(
     companyId: number,
@@ -50,7 +45,7 @@ If you cannot identify any items or the image is unclear, return an empty items 
       : "Please identify the items in this image.";
 
     try {
-      const { content: response } = await this.claudeProvider.chatWithImage(
+      const { content: response } = await this.aiChatService.chatWithImage(
         imageBase64,
         mediaType,
         prompt,

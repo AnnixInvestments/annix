@@ -106,7 +106,6 @@ export class CertificateAnalysisService {
     const { content: response } = await this.aiChatService.chat(
       messages,
       CERTIFICATE_ANALYSIS_PROMPT,
-      "claude",
     );
 
     const certificates = this.parseResponse(response, images.length);

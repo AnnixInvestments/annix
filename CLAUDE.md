@@ -58,6 +58,13 @@
 - **Fetch is the internal transport**: Hooks use `fetch` internally as the `queryFn` - this is expected
 - **ESLint enforces this**: Importing `browserBaseUrl`/`getAuthHeaders` in page.tsx files triggers a warning
 
+### AI Provider Policy
+- **Gemini only**: All AI extraction, analysis, and chat functions must use Gemini (via `AiChatService`) — never use the Anthropic/Claude API directly
+- **Never instantiate `ClaudeChatProvider` directly**: Always inject `AiChatService` which routes through Gemini by default with Claude as fallback only
+- **No `"claude"` provider overrides**: Do not pass `"claude"` as the `providerOverride` argument to `AiChatService.chat()` or `streamChat()`
+- **Use `chatWithImage()` for vision/PDF tasks**: `AiChatService.chatWithImage()` routes through the same Gemini-first provider selection
+- **Environment variable**: `GEMINI_API_KEY` must be set; `ANTHROPIC_API_KEY` is optional fallback only
+
 ### Error Handling
 - **No empty catches**: Never add `catch {}` or `catch (e) {}` blocks without at least one of:
     - Logging a meaningful message through the appropriate logger, or

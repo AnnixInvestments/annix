@@ -1,5 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { ChatMessage, ClaudeChatProvider, StreamChunk } from "./claude-chat.provider";
+import {
+  ChatMessage,
+  ClaudeChatProvider,
+  DocumentContent,
+  ImageContent,
+  StreamChunk,
+} from "./claude-chat.provider";
 import { GeminiChatProvider } from "./gemini-chat.provider";
 
 export type AiChatProviderType = "gemini" | "claude" | "auto";
@@ -132,6 +138,45 @@ export class AiChatService implements OnModuleInit {
 
       throw error;
     }
+  }
+
+  async chatWithImage(
+    imageBase64: string,
+    mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf",
+    prompt: string,
+    systemPrompt?: string,
+  ): Promise<{ content: string; providerUsed: string; tokensUsed?: number }> {
+    const fileContent: ImageContent | DocumentContent =
+      mediaType === "application/pdf"
+        ? {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: imageBase64,
+            },
+          }
+        : {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: mediaType,
+              data: imageBase64,
+            },
+          };
+
+    const message: ChatMessage = {
+      role: "user",
+      content: [
+        fileContent,
+        {
+          type: "text",
+          text: prompt,
+        },
+      ],
+    };
+
+    return this.chat([message], systemPrompt);
   }
 
   async *streamChat(
