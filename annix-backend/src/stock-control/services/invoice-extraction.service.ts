@@ -112,6 +112,11 @@ export class InvoiceExtractionService {
       throw new Error(`Invoice ${invoiceId} not found`);
     }
 
+    const previousExtractedData = invoice.extractedData;
+
+    await this.clarificationRepo.delete({ invoiceId });
+    await this.invoiceItemRepo.delete({ invoiceId });
+
     invoice.extractionStatus = InvoiceExtractionStatus.PROCESSING;
     await this.invoiceRepo.save(invoice);
 
@@ -181,7 +186,10 @@ export class InvoiceExtractionService {
     } catch (error) {
       this.logger.error(`Invoice extraction failed for ${invoiceId}: ${error.message}`);
       invoice.extractionStatus = InvoiceExtractionStatus.FAILED;
-      invoice.extractedData = { rawText: error.message };
+      invoice.extractedData = {
+        ...previousExtractedData,
+        rawText: error.message,
+      };
       return this.invoiceRepo.save(invoice);
     }
   }
