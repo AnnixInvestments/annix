@@ -15,6 +15,7 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import type { Observable } from "rxjs";
+import { nowISO } from "../../../lib/datetime";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../../guards/stock-control-role.guard";
 import { DftCoatType } from "../entities/qc-dft-reading.entity";
@@ -166,17 +167,35 @@ export class PositectorStreamingController {
     return { discarded };
   }
 
+  @Get("webhook")
+  @ApiOperation({
+    summary: "Receive a streamed reading from PosiTector WiFi streaming (GET)",
+    description:
+      "PosiTector devices send HTTP GET requests with reading data as query parameters. " +
+      "Configure the streaming URL on the device as: " +
+      "http://<host>/stock-control/positector-streaming/webhook" +
+      "?company=<id>&device=<id>&value=[thickness]&units=[units]" +
+      "&probe=[probetype]&serial=[gagesn]",
+  })
+  receiveWebhookGet(
+    @Query("company") companyId: string,
+    @Query("device") deviceId: string,
+    @Query("value") value: string,
+    @Query("units") units: string | null,
+    @Query("probe") probeType: string | null,
+    @Query("serial") serialNumber: string | null,
+  ) {
+    return this.processWebhookReading(companyId, deviceId, value, units, probeType, serialNumber);
+  }
+
   @Post("webhook")
   @ApiOperation({
-    summary: "Receive a streamed reading from PosiTector WiFi streaming mode",
+    summary: "Receive a streamed reading from PosiTector WiFi streaming (POST)",
     description:
-      "PosiTector devices can be configured to POST each reading to a URL. " +
-      "Configure the URL on the device as: " +
-      "https://<host>/stock-control/positector-streaming/webhook" +
-      "?company=<id>&device=<id>&value=[thickness]&units=[units]" +
-      "&probe=[probetype]&serial=[serial]",
+      "Fallback POST endpoint for devices or proxies that send POST requests. " +
+      "Accepts the same query parameters as the GET endpoint, plus optional JSON body.",
   })
-  receiveWebhook(
+  receiveWebhookPost(
     @Query("company") companyId: string,
     @Query("device") deviceId: string,
     @Query("value") value: string,
@@ -185,23 +204,49 @@ export class PositectorStreamingController {
     @Query("serial") serialNumber: string | null,
     @Body() body: any,
   ) {
+    return this.processWebhookReading(
+      companyId,
+      deviceId,
+      value ?? body?.value,
+      units ?? body?.units,
+      probeType ?? body?.probeType,
+      serialNumber ?? body?.serialNumber,
+    );
+  }
+
+  private processWebhookReading(
+    companyId: string,
+    deviceId: string,
+    value: string,
+    units: string | null,
+    probeType: string | null,
+    serialNumber: string | null,
+  ) {
     const parsedCompanyId = parseInt(companyId, 10);
     const parsedDeviceId = parseInt(deviceId, 10);
 
     if (Number.isNaN(parsedCompanyId) || Number.isNaN(parsedDeviceId)) {
+      this.logger.warn(
+        `Webhook received with invalid IDs: company=${companyId}, device=${deviceId}`,
+      );
       return { received: false, error: "Invalid company or device ID" };
     }
 
-    const parsedValue = parseFloat(value ?? body?.value ?? "0");
+    const parsedValue = parseFloat(value ?? "0");
     const readingValue = Number.isNaN(parsedValue) ? 0 : parsedValue;
+
+    this.logger.log(
+      `Webhook reading: company=${parsedCompanyId}, device=${parsedDeviceId}, ` +
+        `value=${readingValue}, units=${units}, probe=${probeType}, serial=${serialNumber}`,
+    );
 
     const received = this.streamingService.receiveWebhookReading(
       parsedCompanyId,
       parsedDeviceId,
       readingValue,
-      units ?? body?.units ?? null,
-      probeType ?? body?.probeType ?? null,
-      serialNumber ?? body?.serialNumber ?? null,
+      units ?? null,
+      probeType ?? null,
+      serialNumber ?? null,
     );
 
     return { received };
@@ -254,7 +299,7 @@ export class PositectorStreamingController {
       units: body.units ?? null,
       probeType: null,
       serialNumber: null,
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
     });
 
     return { received, readingCount: session.readings.length };
