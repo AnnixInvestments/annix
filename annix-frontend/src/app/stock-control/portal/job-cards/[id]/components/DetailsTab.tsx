@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import type { JobCard, JobCardAttachment, JobCardVersion } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -12,6 +13,7 @@ interface DetailsTabProps {
   jobCard: JobCard;
   versions: JobCardVersion[];
   attachments: JobCardAttachment[];
+  lineItemsContent: React.ReactNode;
   showVersionHistory: boolean;
   onToggleVersionHistory: () => void;
   showAmendmentModal: boolean;
@@ -71,6 +73,7 @@ export function DetailsTab({
   onAmendmentDrop,
   onAmendmentDragOver,
   onAmendmentDragLeave,
+  lineItemsContent,
   attachmentFiles,
   onAttachmentFilesChange,
   isUploadingAttachment,
@@ -171,7 +174,7 @@ export function DetailsTab({
             )}
             {filteredNotes ? (
               <div className="col-span-2 sm:col-span-4">
-                <dt className="text-sm font-medium text-gray-500">Notes</dt>
+                <dt className="text-sm font-medium text-gray-500">Specifications</dt>
                 <dd className="text-sm text-gray-900 whitespace-pre-wrap">{filteredNotes}</dd>
               </div>
             ) : null}
@@ -260,6 +263,8 @@ export function DetailsTab({
           )}
         </div>
       )}
+
+      {lineItemsContent}
 
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">

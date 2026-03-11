@@ -713,6 +713,7 @@ export default function JobCardDetailPage() {
               jobCard={jobCard}
               versions={versions}
               attachments={attachments}
+              lineItemsContent={<LineItemsTab jobCard={jobCard} attachments={attachments} />}
               showVersionHistory={showVersionHistory}
               onToggleVersionHistory={() => setShowVersionHistory(!showVersionHistory)}
               showAmendmentModal={showAmendmentModal}
@@ -741,7 +742,6 @@ export default function JobCardDetailPage() {
               onExtractAll={handleExtractAll}
               onDeleteAttachment={handleDeleteAttachment}
             />
-            <LineItemsTab jobCard={jobCard} attachments={attachments} />
           </TabPanel>
 
           <TabPanel tabId="coating" activeTab={activeTab} visited={visitedTabs.has("coating")}>
