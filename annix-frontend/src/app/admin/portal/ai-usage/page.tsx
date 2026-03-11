@@ -214,16 +214,24 @@ export default function AiUsagePage() {
             <thead className="bg-gray-50 dark:bg-slate-700/50">
               <tr>
                 <th className="w-8 px-2 py-3" />
-                {["Date", "App", "Action", "Provider", "Model", "Calls", "Pages", "Tokens", "Time"].map(
-                  (header) => (
-                    <th
-                      key={header}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
-                    >
-                      {header}
-                    </th>
-                  ),
-                )}
+                {[
+                  "Date",
+                  "App",
+                  "Action",
+                  "Provider",
+                  "Model",
+                  "Calls",
+                  "Pages",
+                  "Tokens",
+                  "Time",
+                ].map((header) => (
+                  <th
+                    key={header}
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                  >
+                    {header}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-slate-700">

@@ -1949,16 +1949,14 @@ export default function JobCardImportPage() {
                 Confirm Delivery Matches
               </h3>
               <p className="mt-1 text-sm text-gray-500">
-                The following delivery items were fuzzy-matched to CPO line items. Review and
-                adjust the selections, then confirm.
+                The following delivery items were fuzzy-matched to CPO line items. Review and adjust
+                the selections, then confirm.
               </p>
             </div>
             <div className="p-6 space-y-6">
               {pendingDeliveryMatches.map((dm) => (
                 <div key={dm.jobCardId} className="border rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900 mb-3">
-                    Delivery: {dm.jtDnNumber}
-                  </h4>
+                  <h4 className="font-medium text-gray-900 mb-3">Delivery: {dm.jtDnNumber}</h4>
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -2013,9 +2011,7 @@ export default function JobCardImportPage() {
                               <div className="font-medium text-gray-900">
                                 {match.cpoItemCode || "-"}
                               </div>
-                              <div className="text-gray-500">
-                                {match.cpoItemDescription || "-"}
-                              </div>
+                              <div className="text-gray-500">{match.cpoItemDescription || "-"}</div>
                             </td>
                             <td className="px-3 py-2 text-sm">
                               <span

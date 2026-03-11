@@ -779,9 +779,7 @@ export default function JobCardDetailPage() {
                   }}
                   className="w-full sm:w-auto rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="">
-                    Current (v{jobCard.versionNumber})
-                  </option>
+                  <option value="">Current (v{jobCard.versionNumber})</option>
                   {versions.map((v) => (
                     <option key={v.id} value={v.id}>
                       v{v.versionNumber} - {v.jobName}
@@ -790,83 +788,84 @@ export default function JobCardDetailPage() {
                   ))}
                 </select>
 
-                {selectedVersionId && (() => {
-                  const selectedVersion = versions.find((v) => v.id === selectedVersionId);
-                  if (!selectedVersion) return null;
-                  return (
-                    <div className="mt-4 bg-gray-50 rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-gray-900">
-                          Version {selectedVersion.versionNumber}
-                        </h4>
-                        {selectedVersion.filePath && (
-                          <a
-                            href={selectedVersion.filePath}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-teal-600 hover:text-teal-800 underline"
-                          >
-                            Download PDF
-                          </a>
+                {selectedVersionId &&
+                  (() => {
+                    const selectedVersion = versions.find((v) => v.id === selectedVersionId);
+                    if (!selectedVersion) return null;
+                    return (
+                      <div className="mt-4 bg-gray-50 rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-gray-900">
+                            Version {selectedVersion.versionNumber}
+                          </h4>
+                          {selectedVersion.filePath && (
+                            <a
+                              href={selectedVersion.filePath}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-teal-600 hover:text-teal-800 underline"
+                            >
+                              Download PDF
+                            </a>
+                          )}
+                        </div>
+                        {selectedVersion.workflowStatus && (
+                          <p className="text-sm text-gray-600">
+                            Workflow status: {selectedVersion.workflowStatus}
+                          </p>
                         )}
-                      </div>
-                      {selectedVersion.workflowStatus && (
-                        <p className="text-sm text-gray-600">
-                          Workflow status: {selectedVersion.workflowStatus}
-                        </p>
-                      )}
-                      {selectedVersion.amendmentNotes && (
-                        <p className="text-sm text-gray-600">
-                          Notes: {selectedVersion.amendmentNotes}
-                        </p>
-                      )}
-                      {selectedVersion.createdBy && (
-                        <p className="text-sm text-gray-500">
-                          Archived by: {selectedVersion.createdBy} on{" "}
-                          {new Date(selectedVersion.createdAt).toLocaleDateString("en-ZA")}
-                        </p>
-                      )}
-                      {selectedVersion.lineItemsSnapshot &&
-                        selectedVersion.lineItemsSnapshot.length > 0 && (
-                          <div className="mt-2">
-                            <h5 className="text-xs font-medium text-gray-500 uppercase mb-2">
-                              Line Items
-                            </h5>
-                            <table className="min-w-full divide-y divide-gray-200 text-sm">
-                              <thead className="bg-gray-100">
-                                <tr>
-                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
-                                    Code
-                                  </th>
-                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
-                                    Description
-                                  </th>
-                                  <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
-                                    Qty
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                {selectedVersion.lineItemsSnapshot.map((li, idx) => (
-                                  <tr key={idx}>
-                                    <td className="px-3 py-1.5 text-gray-700">
-                                      {String(li.itemCode || "-")}
-                                    </td>
-                                    <td className="px-3 py-1.5 text-gray-700">
-                                      {String(li.itemDescription || "-")}
-                                    </td>
-                                    <td className="px-3 py-1.5 text-gray-700">
-                                      {String(li.quantity ?? "-")}
-                                    </td>
+                        {selectedVersion.amendmentNotes && (
+                          <p className="text-sm text-gray-600">
+                            Notes: {selectedVersion.amendmentNotes}
+                          </p>
+                        )}
+                        {selectedVersion.createdBy && (
+                          <p className="text-sm text-gray-500">
+                            Archived by: {selectedVersion.createdBy} on{" "}
+                            {new Date(selectedVersion.createdAt).toLocaleDateString("en-ZA")}
+                          </p>
+                        )}
+                        {selectedVersion.lineItemsSnapshot &&
+                          selectedVersion.lineItemsSnapshot.length > 0 && (
+                            <div className="mt-2">
+                              <h5 className="text-xs font-medium text-gray-500 uppercase mb-2">
+                                Line Items
+                              </h5>
+                              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead className="bg-gray-100">
+                                  <tr>
+                                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
+                                      Code
+                                    </th>
+                                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
+                                      Description
+                                    </th>
+                                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500">
+                                      Qty
+                                    </th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                    </div>
-                  );
-                })()}
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {selectedVersion.lineItemsSnapshot.map((li, idx) => (
+                                    <tr key={idx}>
+                                      <td className="px-3 py-1.5 text-gray-700">
+                                        {String(li.itemCode || "-")}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-gray-700">
+                                        {String(li.itemDescription || "-")}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-gray-700">
+                                        {String(li.quantity ?? "-")}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                      </div>
+                    );
+                  })()}
               </div>
             )}
 
@@ -894,9 +893,7 @@ export default function JobCardDetailPage() {
                         >
                           {djc.status}
                         </span>
-                        <span className="text-xs text-gray-400">
-                          {djc.workflowStatus}
-                        </span>
+                        <span className="text-xs text-gray-400">{djc.workflowStatus}</span>
                       </div>
                     </Link>
                   ))}
