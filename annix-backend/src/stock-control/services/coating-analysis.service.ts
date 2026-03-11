@@ -150,6 +150,8 @@ export class CoatingAnalysisService {
         );
       }
 
+      const SPEC_NOTE_PATTERN =
+        /INT\s*:|EXT\s*:|R\/L|rubber|lining|lagging|shore|paint|blast|coat|primer|oxide|epoxy|polyurethane|zinc|silicate|nitrile|neoprene|butadiene/i;
       const noteLineItems = lineItems
         .filter((li) => {
           const code = (li.itemCode || "").trim();
@@ -158,7 +160,7 @@ export class CoatingAnalysisService {
             !li.itemNo &&
             !li.jtNo &&
             (li.quantity === null || Number.isNaN(li.quantity));
-          return hasNoData && code.length > 60;
+          return hasNoData && (code.length > 60 || SPEC_NOTE_PATTERN.test(code));
         })
         .map((li) => (li.itemCode || "").trim());
       const lineItemNotes = lineItems

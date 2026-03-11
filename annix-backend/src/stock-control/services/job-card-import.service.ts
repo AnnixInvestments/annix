@@ -99,7 +99,7 @@ function isValidLineItem(li: LineItemImportRow): boolean {
 }
 
 const NOTE_ROW_PATTERN =
-  /R\/L|rubber|lining|lagging|shore|paint|blast|coat|primer|oxide|epoxy|polyurethane/i;
+  /INT\s*:|EXT\s*:|R\/L|rubber|lining|lagging|shore|paint|blast|coat|primer|oxide|epoxy|polyurethane|zinc|silicate|nitrile|neoprene|butadiene/i;
 
 function isNoteRow(li: LineItemImportRow): boolean {
   const itemCode = (li.itemCode || "").trim();
@@ -150,7 +150,7 @@ Line items typically appear in a table format with columns for:
 - Quantity / Qty
 - JT No / Job Ticket
 
-CRITICAL: The line items table ends at or just before the "Notes" row. Do NOT include any rows after "Notes" as line items. Rows like "PRODUCTION", "Foreman Sign", "Forman Sign", "Material Spec", "Job Comp Date", "Completion Date", "Supervisor", "Quality Control", "Approved By", "Checked By" are form footer labels - they are NOT line items. Set lineItemsEndRow to the last actual work item row, BEFORE Notes and any footer labels.
+CRITICAL: The line items table ends AFTER all work items AND any coating/lining specification notes that follow them. Rows like "INT : R/L ..." or "EXT : BLAST & PAINT ..." that appear after line items are coating/lining specifications — they MUST be included in the line items range (set lineItemsEndRow to include them). Rows like "PRODUCTION", "Foreman Sign", "Forman Sign", "Material Spec", "Job Comp Date", "Completion Date", "Supervisor", "Quality Control", "Approved By", "Checked By" are form footer labels - they are NOT line items. Set lineItemsEndRow to include all work items and specification notes, but BEFORE any footer labels.
 
 Analyze the grid and return JSON with this structure:
 {
