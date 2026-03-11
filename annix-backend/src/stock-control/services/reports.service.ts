@@ -180,10 +180,11 @@ export class ReportsService {
       .createQueryBuilder("i")
       .innerJoin("i.recipientStaff", "staff")
       .innerJoin("i.stockItem", "item")
+      .leftJoin("staff.departmentEntity", "dept")
       .select("staff.id", "staffMemberId")
       .addSelect("staff.name", "staffName")
       .addSelect("staff.employee_number", "employeeNumber")
-      .addSelect("staff.department", "department")
+      .addSelect("COALESCE(dept.name, staff.department)", "department")
       .addSelect("staff.department_id", "departmentId")
       .addSelect("SUM(i.quantity)", "totalQuantityReceived")
       .addSelect("SUM(i.quantity * item.cost_per_unit)", "totalValue")
@@ -220,6 +221,7 @@ export class ReportsService {
       .addGroupBy("staff.employee_number")
       .addGroupBy("staff.department")
       .addGroupBy("staff.department_id")
+      .addGroupBy("dept.name")
       .orderBy('"totalQuantityReceived"', "DESC");
 
     const rawResults = await query.getRawMany();
