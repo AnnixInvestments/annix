@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   PositectorBatchDetail,
   PositectorBatchSummary,
@@ -464,6 +464,46 @@ export default function PositectorPage() {
   );
 }
 
+interface DiscoveredDevice {
+  ip: string;
+  port: number;
+  name: string | null;
+}
+
+async function probeAddress(ip: string, port: number, signal: AbortSignal): Promise<DiscoveredDevice | null> {
+  try {
+    const response = await fetch(`http://${ip}:${port}/api/batches`, {
+      signal,
+      mode: "cors",
+    });
+    if (response.ok) {
+      return { ip, port, name: null };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function scanSubnet(
+  subnet: string,
+  port: number,
+  onFound: (device: DiscoveredDevice) => void,
+  signal: AbortSignal,
+): Promise<void> {
+  const BATCH_SIZE = 20;
+  for (let start = 1; start <= 254 && !signal.aborted; start += BATCH_SIZE) {
+    const end = Math.min(start + BATCH_SIZE - 1, 254);
+    const promises = Array.from({ length: end - start + 1 }, (_, i) => {
+      const ip = `${subnet}.${start + i}`;
+      return probeAddress(ip, port, signal).then((result) => {
+        if (result) onFound(result);
+      });
+    });
+    await Promise.all(promises);
+  }
+}
+
 function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const [deviceName, setDeviceName] = useState("");
   const [ipAddress, setIpAddress] = useState("");
@@ -472,6 +512,79 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
   const [serialNumber, setSerialNumber] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState<string | null>(null);
+  const [foundDevices, setFoundDevices] = useState<DiscoveredDevice[]>([]);
+  const [subnet, setSubnet] = useState("192.168.1");
+  const [showScanPanel, setShowScanPanel] = useState(false);
+  const scanAbortRef = useRef<AbortController | null>(null);
+
+  const handleAutoDiscover = async () => {
+    setIsScanning(true);
+    setFoundDevices([]);
+    setScanStatus(`Scanning ${subnet}.1-254 on port ${port}...`);
+    const controller = new AbortController();
+    scanAbortRef.current = controller;
+
+    const scanPort = parseInt(port, 10) || 8080;
+
+    await scanSubnet(
+      subnet,
+      scanPort,
+      (device) => {
+        setFoundDevices((prev) => [...prev, device]);
+      },
+      controller.signal,
+    );
+
+    if (!controller.signal.aborted) {
+      setIsScanning(false);
+      setScanStatus(null);
+    }
+  };
+
+  const handleCancelScan = () => {
+    scanAbortRef.current?.abort();
+    setIsScanning(false);
+    setScanStatus(null);
+  };
+
+  const handleSelectDiscovered = (device: DiscoveredDevice) => {
+    setIpAddress(device.ip);
+    setPort(String(device.port));
+    if (device.name) {
+      setDeviceName(device.name);
+    }
+    setShowScanPanel(false);
+    setFoundDevices([]);
+    setScanStatus(null);
+  };
+
+  const handleBluetoothScan = async () => {
+    if (!("bluetooth" in navigator)) {
+      setError("Bluetooth is not supported in this browser. Use Chrome or Edge on a device with Bluetooth.");
+      return;
+    }
+
+    try {
+      setScanStatus("Waiting for Bluetooth device selection...");
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [],
+      });
+
+      if (device.name) {
+        setDeviceName(device.name);
+      }
+      setScanStatus(`Found Bluetooth device: ${device.name ?? device.id}`);
+    } catch (err) {
+      if (err instanceof Error && err.name !== "NotFoundError") {
+        setError(err.message);
+      }
+      setScanStatus(null);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -499,96 +612,211 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Register PosiTector Device</h2>
+    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/50">
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">Register PosiTector Device</h2>
 
-        {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+          {error && (
+            <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Device Name</label>
-            <input
-              type="text"
-              value={deviceName}
-              onChange={(e) => setDeviceName(e.target.value)}
-              placeholder="e.g. DFT Gauge #1"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700">IP Address</label>
-              <input
-                type="text"
-                value={ipAddress}
-                onChange={(e) => setIpAddress(e.target.value)}
-                placeholder="192.168.1.100"
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Port</label>
-              <input
-                type="text"
-                value={port}
-                onChange={(e) => setPort(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Probe Type (optional - auto-detected on connection)
-            </label>
-            <select
-              value={probeType}
-              onChange={(e) => setProbeType(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">Auto-detect</option>
-              <option value="6000">6000 - DFT (Coating Thickness)</option>
-              <option value="SPG">SPG - Surface Profile (Blast)</option>
-              <option value="SHD">SHD - Shore Hardness</option>
-              <option value="RTR">RTR - Replica Tape (Blast)</option>
-              <option value="DPM">DPM - Dew Point / Environmental</option>
-              <option value="UTG">UTG - Wall Thickness</option>
-              <option value="AT">AT - Adhesion Pull Test</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Serial Number (optional - auto-detected on connection)
-            </label>
-            <input
-              type="text"
-              value={serialNumber}
-              onChange={(e) => setSerialNumber(e.target.value)}
-              placeholder="Auto-detected from device"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="mb-4">
             <button
               type="button"
-              onClick={onClose}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              onClick={() => setShowScanPanel(!showScanPanel)}
+              className="w-full rounded-md border-2 border-dashed border-blue-300 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 hover:border-blue-400 hover:bg-blue-100"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isSaving ? "Registering..." : "Register Device"}
+              <span className="flex items-center justify-center gap-2">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                Auto Discover Devices
+              </span>
             </button>
           </div>
-        </form>
+
+          {showScanPanel && (
+            <div className="mb-4 space-y-3 rounded-md border border-blue-200 bg-blue-50 p-3">
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-blue-800">Subnet</label>
+                  <input
+                    type="text"
+                    value={subnet}
+                    onChange={(e) => setSubnet(e.target.value)}
+                    placeholder="192.168.1"
+                    className="mt-1 block w-full rounded-md border border-blue-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={isScanning ? handleCancelScan : handleAutoDiscover}
+                  disabled={!subnet.trim()}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium text-white ${
+                    isScanning
+                      ? "bg-red-600 hover:bg-red-700"
+                      : "bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                  }`}
+                >
+                  {isScanning ? "Stop" : "Scan WiFi"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBluetoothScan}
+                  className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+                >
+                  Bluetooth
+                </button>
+              </div>
+
+              {scanStatus && (
+                <div className="flex items-center gap-2 text-xs text-blue-700">
+                  {isScanning && (
+                    <svg
+                      className="h-3 w-3 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
+                  )}
+                  {scanStatus}
+                </div>
+              )}
+
+              {foundDevices.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-blue-800">
+                    Found {foundDevices.length} device(s):
+                  </p>
+                  {foundDevices.map((d) => (
+                    <button
+                      key={`${d.ip}:${d.port}`}
+                      type="button"
+                      onClick={() => handleSelectDiscovered(d)}
+                      className="flex w-full items-center justify-between rounded-md bg-white px-3 py-2 text-sm shadow-sm hover:bg-green-50"
+                    >
+                      <span className="font-mono text-gray-900">
+                        {d.ip}:{d.port}
+                      </span>
+                      <span className="text-xs text-green-600">Select</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!isScanning && foundDevices.length === 0 && scanStatus === null && (
+                <p className="text-xs text-blue-600">
+                  WiFi scan probes your local network for PosiTector HTTP servers. Bluetooth
+                  opens the browser device picker.
+                </p>
+              )}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Device Name</label>
+              <input
+                type="text"
+                value={deviceName}
+                onChange={(e) => setDeviceName(e.target.value)}
+                placeholder="e.g. DFT Gauge #1"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700">IP Address</label>
+                <input
+                  type="text"
+                  value={ipAddress}
+                  onChange={(e) => setIpAddress(e.target.value)}
+                  placeholder="192.168.1.100"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Port</label>
+                <input
+                  type="text"
+                  value={port}
+                  onChange={(e) => setPort(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Probe Type (optional - auto-detected on connection)
+              </label>
+              <select
+                value={probeType}
+                onChange={(e) => setProbeType(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">Auto-detect</option>
+                <option value="6000">6000 - DFT (Coating Thickness)</option>
+                <option value="SPG">SPG - Surface Profile (Blast)</option>
+                <option value="SHD">SHD - Shore Hardness</option>
+                <option value="RTR">RTR - Replica Tape (Blast)</option>
+                <option value="DPM">DPM - Dew Point / Environmental</option>
+                <option value="UTG">UTG - Wall Thickness</option>
+                <option value="AT">AT - Adhesion Pull Test</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Serial Number (optional - auto-detected on connection)
+              </label>
+              <input
+                type="text"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                placeholder="Auto-detected from device"
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSaving ? "Registering..." : "Register Device"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
