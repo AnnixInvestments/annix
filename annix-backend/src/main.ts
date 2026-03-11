@@ -38,6 +38,23 @@ async function bootstrap() {
     credentials: true,
   });
 
+  if (isProduction) {
+    app.use((req, res, next) => {
+      const proto = req.headers["x-forwarded-proto"];
+      const isHttps = proto === "https";
+      const isWebhookPath = req.path.startsWith(
+        "/api/stock-control/positector-streaming/webhook",
+      );
+
+      if (!isHttps && !isWebhookPath) {
+        const host = req.headers.host ?? "";
+        return res.redirect(301, `https://${host}${req.url}`);
+      }
+
+      return next();
+    });
+  }
+
   app.use((req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
