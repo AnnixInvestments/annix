@@ -1184,8 +1184,9 @@ export default function IssueStockPage() {
                     <p className="text-sm font-medium text-gray-700">
                       Items to issue ({items.length}):
                     </p>
-                    {items.map((item, index) => (
-                      <div
+                    {items.map((item, index) => {
+                      const batchSuggestions = recentBatchesMap[item.stockItem.id] ?? [];
+                      return (<div
                         key={item.stockItem.id}
                         className="bg-gray-50 rounded-lg p-3 flex items-center gap-3"
                       >
@@ -1226,7 +1227,7 @@ export default function IssueStockPage() {
                             className="w-24 rounded-md border border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-1 px-2"
                           />
                           <datalist id={`batches-${item.stockItem.id}`}>
-                            {(recentBatchesMap[item.stockItem.id] ?? []).map((b) => (
+                            {batchSuggestions.map((b) => (
                               <option key={b} value={b} />
                             ))}
                           </datalist>
@@ -1264,8 +1265,8 @@ export default function IssueStockPage() {
                             />
                           </svg>
                         </button>
-                      </div>
-                    ))}
+                      </div>);
+                    })}
                   </div>
                 )}
 
