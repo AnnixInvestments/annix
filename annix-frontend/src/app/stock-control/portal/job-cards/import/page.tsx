@@ -357,19 +357,17 @@ function extractMappedRows(
       /^(production|foreman?\s*sign|forman\s*sign|material\s*spec|job\s*comp|completion\s*date|supervisor|quality\s*control|qc\s*sign|inspector|approved\s*by|checked\s*by|signature|remarks|comments)\b/i;
     if (grouped.size > 0) {
       const lastEntry = Array.from(grouped.values()).pop()!;
-      Array.from({ length: grid.length - maxRow - 1 }, (_, i) => maxRow + 1 + i).forEach(
-        (r) => {
-          const gridRow = grid[r] ?? [];
-          const rowText = gridRow
-            .map((c) => c.trim())
-            .filter(Boolean)
-            .join(" ");
-          if (!rowText || rowText.length < 3) return;
-          if (FOOTER_LABEL_PATTERN.test(rowText.trim())) return;
-          lastEntry.notesList.push(rowText);
-          lastEntry.lines.push({ itemCode: rowText });
-        },
-      );
+      Array.from({ length: grid.length - maxRow - 1 }, (_, i) => maxRow + 1 + i).forEach((r) => {
+        const gridRow = grid[r] ?? [];
+        const rowText = gridRow
+          .map((c) => c.trim())
+          .filter(Boolean)
+          .join(" ");
+        if (!rowText || rowText.length < 3) return;
+        if (FOOTER_LABEL_PATTERN.test(rowText.trim())) return;
+        lastEntry.notesList.push(rowText);
+        lastEntry.lines.push({ itemCode: rowText });
+      });
     }
 
     return Array.from(grouped.entries()).map(([, { meta, notesList, lines }]) => {
