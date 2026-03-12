@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddUniquenessConstraints1807000000012
-  implements MigrationInterface
-{
+export class AddUniquenessConstraints1807000000012 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_items_company_sku_unique
@@ -17,11 +15,7 @@ export class AddUniquenessConstraints1807000000012
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      "DROP INDEX IF EXISTS idx_stock_items_company_sku_unique",
-    );
-    await queryRunner.query(
-      "DROP INDEX IF EXISTS idx_requisitions_company_number_unique",
-    );
+    await queryRunner.query("DROP INDEX IF EXISTS idx_stock_items_company_sku_unique");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_requisitions_company_number_unique");
   }
 }

@@ -1,8 +1,8 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { AuditService } from "../../audit/audit.service";
-import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { fromISO, fromJSDate } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
@@ -88,7 +88,11 @@ export class InvoiceService {
     return this.invoiceRepo.save(invoice);
   }
 
-  async findAll(companyId: number, page: number = 1, limit: number = 50): Promise<SupplierInvoice[]> {
+  async findAll(
+    companyId: number,
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<SupplierInvoice[]> {
     const invoices = await this.invoiceRepo.find({
       where: { companyId },
       relations: ["deliveryNote"],
@@ -131,12 +135,14 @@ export class InvoiceService {
     const imageBase64 = fileBuffer.toString("base64");
     const mediaType = this.mimeFromPath(s3Key);
 
-    this.auditService.log({
-      entityType: "supplier_invoice",
-      entityId: invoiceId,
-      action: AuditAction.UPDATE,
-      newValues: { reExtracted: true },
-    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+    this.auditService
+      .log({
+        entityType: "supplier_invoice",
+        entityId: invoiceId,
+        action: AuditAction.UPDATE,
+        newValues: { reExtracted: true },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
     return this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
   }
@@ -261,12 +267,14 @@ export class InvoiceService {
     await this.findById(companyId, invoiceId);
     const result = await this.extractionService.applyPriceUpdates(invoiceId, userId);
 
-    this.auditService.log({
-      entityType: "supplier_invoice",
-      entityId: invoiceId,
-      action: AuditAction.APPROVE,
-      newValues: { approvedByUserId: userId, extractionStatus: result.extractionStatus },
-    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+    this.auditService
+      .log({
+        entityType: "supplier_invoice",
+        entityId: invoiceId,
+        action: AuditAction.APPROVE,
+        newValues: { approvedByUserId: userId, extractionStatus: result.extractionStatus },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
     return result;
   }
@@ -357,13 +365,15 @@ export class InvoiceService {
     invoice.deliveryNote = deliveryNote;
     const saved = await this.invoiceRepo.save(invoice);
 
-    this.auditService.log({
-      entityType: "supplier_invoice",
-      entityId: invoiceId,
-      action: AuditAction.UPDATE,
-      oldValues: { deliveryNoteId: oldDeliveryNoteId },
-      newValues: { deliveryNoteId },
-    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+    this.auditService
+      .log({
+        entityType: "supplier_invoice",
+        entityId: invoiceId,
+        action: AuditAction.UPDATE,
+        oldValues: { deliveryNoteId: oldDeliveryNoteId },
+        newValues: { deliveryNoteId },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
     return saved;
   }

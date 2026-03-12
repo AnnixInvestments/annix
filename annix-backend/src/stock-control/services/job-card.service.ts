@@ -8,9 +8,9 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, IsNull, Repository } from "typeorm";
-import { now } from "../../lib/datetime";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
+import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -50,7 +50,12 @@ export class JobCardService {
     return this.jobCardRepo.save(jobCard);
   }
 
-  async findAll(companyId: number, status?: string, page: number = 1, limit: number = 50): Promise<JobCard[]> {
+  async findAll(
+    companyId: number,
+    status?: string,
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<JobCard[]> {
     const where: Record<string, unknown> = { companyId };
     if (status) {
       where.status = status;
@@ -206,12 +211,19 @@ export class JobCardService {
           );
       }
 
-      this.auditService.log({
-        entityType: "stock_allocation",
-        entityId: saved.id,
-        action: AuditAction.CREATE,
-        newValues: { stockItemId: data.stockItemId, quantity: data.quantityUsed, jobCardId: data.jobCardId, allocatedBy: data.allocatedBy },
-      }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+      this.auditService
+        .log({
+          entityType: "stock_allocation",
+          entityId: saved.id,
+          action: AuditAction.CREATE,
+          newValues: {
+            stockItemId: data.stockItemId,
+            quantity: data.quantityUsed,
+            jobCardId: data.jobCardId,
+            allocatedBy: data.allocatedBy,
+          },
+        })
+        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
       return saved;
     } catch (err) {
@@ -352,13 +364,15 @@ export class JobCardService {
           );
       }
 
-      this.auditService.log({
-        entityType: "stock_allocation",
-        entityId: saved.id,
-        action: AuditAction.APPROVE,
-        oldValues: { pendingApproval: true },
-        newValues: { pendingApproval: false, approvedByManagerId: managerId },
-      }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+      this.auditService
+        .log({
+          entityType: "stock_allocation",
+          entityId: saved.id,
+          action: AuditAction.APPROVE,
+          oldValues: { pendingApproval: true },
+          newValues: { pendingApproval: false, approvedByManagerId: managerId },
+        })
+        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
       this.logger.log(`Over-allocation ${allocationId} approved by manager ${managerId}`);
       return saved;
@@ -470,13 +484,15 @@ export class JobCardService {
 
       await queryRunner.commitTransaction();
 
-      this.auditService.log({
-        entityType: "stock_allocation",
-        entityId: allocation.id,
-        action: AuditAction.DELETE,
-        oldValues: { stockItemId: allocation.stockItem.id, quantity: allocation.quantityUsed },
-        newValues: { undoneBy: user.name },
-      }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+      this.auditService
+        .log({
+          entityType: "stock_allocation",
+          entityId: allocation.id,
+          action: AuditAction.DELETE,
+          oldValues: { stockItemId: allocation.stockItem.id, quantity: allocation.quantityUsed },
+          newValues: { undoneBy: user.name },
+        })
+        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
       return allocation;
     } catch (err) {

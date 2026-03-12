@@ -109,7 +109,12 @@ export class CpoService {
     private readonly notificationService: WorkflowNotificationService,
   ) {}
 
-  async findAll(companyId: number, status?: string, page: number = 1, limit: number = 50): Promise<CustomerPurchaseOrder[]> {
+  async findAll(
+    companyId: number,
+    status?: string,
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<CustomerPurchaseOrder[]> {
     const where: Record<string, unknown> = { companyId };
     if (status) {
       where.status = status;

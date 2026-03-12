@@ -15,13 +15,13 @@ import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
-import { M2CalculationService } from "./m2-calculation.service";
 import {
-	validateCoatingExtraction,
-	validPositiveNumber,
-	validPercentage,
-	validString,
+  validateCoatingExtraction,
+  validPercentage,
+  validPositiveNumber,
+  validString,
 } from "./extraction-validation";
+import { M2CalculationService } from "./m2-calculation.service";
 
 interface AiCoatResult {
   product: string;
@@ -485,7 +485,7 @@ export class CoatingAnalysisService {
     const allCoats = validated.coats.map((coat: Record<string, unknown>) => ({
       product: validString(coat.product, "Unknown"),
       genericType: validString(coat.genericType, "unknown"),
-      area: coat.area === "internal" ? "internal" as const : "external" as const,
+      area: coat.area === "internal" ? ("internal" as const) : ("external" as const),
       minDftUm: validPositiveNumber(coat.minDftUm, 0),
       maxDftUm: validPositiveNumber(coat.maxDftUm, 0),
       solidsByVolumePercent: validPercentage(coat.solidsByVolumePercent, DEFAULT_SOLIDS_BY_VOLUME),
@@ -518,7 +518,9 @@ export class CoatingAnalysisService {
     const midDftUm = (effectiveMinDft + effectiveMaxDft) / 2;
     const volumeSolids = knownProduct
       ? knownProduct.volumeSolidsPercent
-      : coat.solidsByVolumePercent > 0 ? coat.solidsByVolumePercent : DEFAULT_SOLIDS_BY_VOLUME;
+      : coat.solidsByVolumePercent > 0
+        ? coat.solidsByVolumePercent
+        : DEFAULT_SOLIDS_BY_VOLUME;
     const verified = knownProduct !== null;
 
     if (knownProduct) {

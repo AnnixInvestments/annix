@@ -28,12 +28,17 @@ export class MovementsController {
   ) {
     const pageNum = Math.max(1, Number(page) || 1);
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
-    return this.movementService.findAll(req.user.companyId, {
-      stockItemId: stockItemId ? Number(stockItemId) : undefined,
-      movementType: movementType as any,
-      startDate,
-      endDate,
-    }, pageNum, limitNum);
+    return this.movementService.findAll(
+      req.user.companyId,
+      {
+        stockItemId: stockItemId ? Number(stockItemId) : undefined,
+        movementType: movementType as any,
+        startDate,
+        endDate,
+      },
+      pageNum,
+      limitNum,
+    );
   }
 
   @StockControlRoles("manager", "admin")

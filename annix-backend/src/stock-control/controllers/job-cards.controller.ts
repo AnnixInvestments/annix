@@ -19,6 +19,16 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, MoreThan, Repository } from "typeorm";
+import {
+  MarkOffcutAsWastageDto,
+  UpdateRubberPlanDto,
+  UploadAmendmentDto,
+  UploadAttachmentDto,
+} from "../dto/additional.dto";
+import { CreateAllocationDto } from "../dto/create-allocation.dto";
+import { CreateJobCardDto } from "../dto/create-job-card.dto";
+import { UpdateJobCardDto } from "../dto/update-job-card.dto";
+import { RejectAllocationDto } from "../dto/workflow.dto";
 import { RubberDimensionOverride } from "../entities/rubber-dimension-override.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
@@ -29,16 +39,6 @@ import {
   StockControlRoles,
 } from "../guards/stock-control-role.guard";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
-import { CreateAllocationDto } from "../dto/create-allocation.dto";
-import { CreateJobCardDto } from "../dto/create-job-card.dto";
-import { UpdateJobCardDto } from "../dto/update-job-card.dto";
-import {
-  MarkOffcutAsWastageDto,
-  UpdateRubberPlanDto,
-  UploadAmendmentDto,
-  UploadAttachmentDto,
-} from "../dto/additional.dto";
-import { RejectAllocationDto } from "../dto/workflow.dto";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
@@ -316,7 +316,11 @@ export class JobCardsController {
   @StockControlRoles("manager", "admin")
   @Put(":id/rubber-plan")
   @ApiOperation({ summary: "Accept or override the rubber cutting plan" })
-  async updateRubberPlan(@Req() req: any, @Param("id") id: number, @Body() dto: UpdateRubberPlanDto) {
+  async updateRubberPlan(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() dto: UpdateRubberPlanDto,
+  ) {
     const jobCard = await this.jobCardService.findById(req.user.companyId, id);
     jobCard.rubberPlanOverride = {
       status: dto.status,

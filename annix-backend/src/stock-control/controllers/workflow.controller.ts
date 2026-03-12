@@ -17,10 +17,6 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
-import { WorkflowStep } from "../entities/job-card-approval.entity";
-import { JobCardDocumentType } from "../entities/job-card-document.entity";
-import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import {
   AddStepConfigDto,
   ApproveWorkflowStepDto,
@@ -37,6 +33,10 @@ import {
   UpdateStepLabelDto,
   UpdateUserLocationsDto,
 } from "../dto/workflow.dto";
+import { WorkflowStep } from "../entities/job-card-approval.entity";
+import { JobCardDocumentType } from "../entities/job-card-document.entity";
+import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { BackgroundStepService } from "../services/background-step.service";
 import { DispatchService } from "../services/dispatch.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
@@ -98,11 +98,7 @@ export class WorkflowController {
   @Post("job-cards/:id/approve")
   @StockControlRoles("admin", "manager", "storeman")
   @ApiOperation({ summary: "Approve current workflow step" })
-  async approve(
-    @Req() req: any,
-    @Param("id") id: number,
-    @Body() dto: ApproveWorkflowStepDto,
-  ) {
+  async approve(@Req() req: any, @Param("id") id: number, @Body() dto: ApproveWorkflowStepDto) {
     return this.workflowService.approveStep(req.user.companyId, id, req.user, dto);
   }
 
@@ -260,11 +256,7 @@ export class WorkflowController {
   @Post("job-cards/:id/dispatch/scan")
   @StockControlRoles("storeman", "admin")
   @ApiOperation({ summary: "Scan an item for dispatch" })
-  async scanItem(
-    @Req() req: any,
-    @Param("id") id: number,
-    @Body() dto: ScanDispatchItemDto,
-  ) {
+  async scanItem(@Req() req: any, @Param("id") id: number, @Body() dto: ScanDispatchItemDto) {
     return this.dispatchService.scanItem(
       req.user.companyId,
       id,
@@ -330,10 +322,7 @@ export class WorkflowController {
 
   @Post("push/subscribe")
   @ApiOperation({ summary: "Subscribe to push notifications" })
-  async pushSubscribe(
-    @Req() req: any,
-    @Body() dto: PushSubscribeDto,
-  ) {
+  async pushSubscribe(@Req() req: any, @Body() dto: PushSubscribeDto) {
     await this.webPushService.subscribe(req.user.id, req.user.companyId, dto);
     return { success: true };
   }
@@ -367,10 +356,7 @@ export class WorkflowController {
   @Post("step-configs")
   @StockControlRoles("admin")
   @ApiOperation({ summary: "Add a custom workflow step" })
-  async addStepConfig(
-    @Req() req: any,
-    @Body() dto: AddStepConfigDto,
-  ) {
+  async addStepConfig(@Req() req: any, @Body() dto: AddStepConfigDto) {
     return this.stepConfigService.addStep(req.user.companyId, dto);
   }
 

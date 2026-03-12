@@ -17,9 +17,9 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { RubberCocExtractionService } from "../../rubber-lining/rubber-coc-extraction.service";
 import { IdempotencyInterceptor } from "../../shared/interceptors/idempotency.interceptor";
 import { CreateDeliveryNoteDto } from "../dto/create-delivery-note.dto";
-import { RubberCocExtractionService } from "../../rubber-lining/rubber-coc-extraction.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import {
   PermissionKey,
@@ -41,11 +41,7 @@ export class DeliveriesController {
 
   @Get()
   @ApiOperation({ summary: "List all delivery notes" })
-  async list(
-    @Req() req: any,
-    @Query("page") page?: string,
-    @Query("limit") limit?: string,
-  ) {
+  async list(@Req() req: any, @Query("page") page?: string, @Query("limit") limit?: string) {
     const pageNum = Math.max(1, Number(page) || 1);
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
     return this.deliveryService.findAll(req.user.companyId, pageNum, limitNum);

@@ -5,10 +5,10 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { AuditService } from "../../audit/audit.service";
-import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { DispatchScan } from "../entities/dispatch-scan.entity";
 import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
@@ -210,18 +210,18 @@ export class DispatchService {
     );
 
     if (result.affected === 0) {
-      throw new ConflictException(
-        "Job card status has changed. Please refresh and try again.",
-      );
+      throw new ConflictException("Job card status has changed. Please refresh and try again.");
     }
 
-    this.auditService.log({
-      entityType: "job_card_dispatch",
-      entityId: jobCardId,
-      action: AuditAction.UPDATE,
-      oldValues: { workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH },
-      newValues: { workflowStatus: JobCardWorkflowStatus.DISPATCHED, completedBy: user.name },
-    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+    this.auditService
+      .log({
+        entityType: "job_card_dispatch",
+        entityId: jobCardId,
+        action: AuditAction.UPDATE,
+        oldValues: { workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH },
+        newValues: { workflowStatus: JobCardWorkflowStatus.DISPATCHED, completedBy: user.name },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
     this.logger.log(`Job card ${jobCardId} dispatch completed by ${user.name}`);
 
@@ -253,15 +253,23 @@ export class DispatchService {
 
     await this.dispatchScanRepo.remove(scan);
 
-    this.logger.log(`Dispatch scan ${scanId} reversed by ${user.name} for job card ${scan.jobCardId}`);
+    this.logger.log(
+      `Dispatch scan ${scanId} reversed by ${user.name} for job card ${scan.jobCardId}`,
+    );
 
-    this.auditService.log({
-      entityType: "dispatch_scan",
-      entityId: scanId,
-      action: AuditAction.DELETE,
-      oldValues: { jobCardId: scan.jobCardId, stockItemId: scan.stockItemId, quantity: scan.quantityDispatched },
-      newValues: { reversedBy: user.name },
-    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+    this.auditService
+      .log({
+        entityType: "dispatch_scan",
+        entityId: scanId,
+        action: AuditAction.DELETE,
+        oldValues: {
+          jobCardId: scan.jobCardId,
+          stockItemId: scan.stockItemId,
+          quantity: scan.quantityDispatched,
+        },
+        newValues: { reversedBy: user.name },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
   }
 
   async scanByQrToken(

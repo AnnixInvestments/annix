@@ -28,7 +28,7 @@ import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { CpoService } from "../services/cpo.service";
-import { JobCardImportRow, JobCardImportService } from "../services/job-card-import.service";
+import { JobCardImportService } from "../services/job-card-import.service";
 
 @ApiTags("Stock Control - Customer Purchase Orders")
 @Controller("stock-control/cpos")
@@ -120,7 +120,11 @@ export class CpoController {
     @Param("recordId", ParseIntPipe) recordId: number,
     @Body() dto: UpdateCalloffStatusDto,
   ) {
-    return this.cpoService.updateCalloffStatus(req.user.companyId, recordId, dto.status as CalloffStatus);
+    return this.cpoService.updateCalloffStatus(
+      req.user.companyId,
+      recordId,
+      dto.status as CalloffStatus,
+    );
   }
 
   @Get(":id")

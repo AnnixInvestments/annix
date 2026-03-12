@@ -16,11 +16,11 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
-import { IdempotencyInterceptor } from "../../shared/interceptors/idempotency.interceptor";
 import { SageExportFilterDto } from "../../sage-export/dto/sage-export.dto";
 import { SageExportService } from "../../sage-export/sage-export.service";
-import { LinkInvoiceToDeliveryNoteDto, SubmitClarificationDto } from "../dto/create-invoice.dto";
+import { IdempotencyInterceptor } from "../../shared/interceptors/idempotency.interceptor";
 import { UpdateInvoiceItemDto } from "../dto/additional.dto";
+import { LinkInvoiceToDeliveryNoteDto, SubmitClarificationDto } from "../dto/create-invoice.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import {
   PermissionKey,
@@ -48,11 +48,7 @@ export class InvoicesController {
 
   @Get()
   @ApiOperation({ summary: "List all supplier invoices" })
-  async list(
-    @Req() req: any,
-    @Query("page") page?: string,
-    @Query("limit") limit?: string,
-  ) {
+  async list(@Req() req: any, @Query("page") page?: string, @Query("limit") limit?: string) {
     const pageNum = Math.max(1, Number(page) || 1);
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
     return this.invoiceService.findAll(req.user.companyId, pageNum, limitNum);

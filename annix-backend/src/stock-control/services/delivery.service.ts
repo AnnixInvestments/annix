@@ -493,7 +493,8 @@ export class DeliveryService {
             : (item.volumeLitersPerPack ?? 1));
         quantity = validPositiveNumber(totalLiters, 1);
         unitOfMeasure = "L";
-        costPerUnit = item.costPerLiter ?? (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
+        costPerUnit =
+          item.costPerLiter ?? (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
         this.logger.log(
           `Paint item: ${item.description} - ${quantity}L @ R${costPerUnit.toFixed(2)}/L`,
         );
@@ -501,7 +502,8 @@ export class DeliveryService {
         quantity = validPositiveNumber(item.quantity, 1);
         unitOfMeasure = item.unitOfMeasure || "each";
         costPerUnit =
-          validPositiveNumber(item.unitPrice, 0) || (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
+          validPositiveNumber(item.unitPrice, 0) ||
+          (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
       }
 
       let stockItem = await this.stockItemRepo.findOne({

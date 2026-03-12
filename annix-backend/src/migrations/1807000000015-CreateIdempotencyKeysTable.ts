@@ -1,10 +1,8 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateIdempotencyKeysTable1807000000015
-	implements MigrationInterface
-{
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query(`
+export class CreateIdempotencyKeysTable1807000000015 implements MigrationInterface {
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS idempotency_keys (
         id SERIAL PRIMARY KEY,
         key VARCHAR(255) NOT NULL,
@@ -17,17 +15,17 @@ export class CreateIdempotencyKeysTable1807000000015
         expires_at TIMESTAMPTZ NOT NULL
       )
     `);
-		await queryRunner.query(`
+    await queryRunner.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_idempotency_keys_key
       ON idempotency_keys(key)
     `);
-		await queryRunner.query(`
+    await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS idx_idempotency_keys_expires
       ON idempotency_keys(expires_at)
     `);
-	}
+  }
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query("DROP TABLE IF EXISTS idempotency_keys");
-	}
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query("DROP TABLE IF EXISTS idempotency_keys");
+  }
 }

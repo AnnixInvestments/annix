@@ -259,7 +259,11 @@ export class RequisitionService {
     });
 
     if (!requisition) return;
-    if (requisition.status === RequisitionStatus.CANCELLED || requisition.status === RequisitionStatus.PENDING) return;
+    if (
+      requisition.status === RequisitionStatus.CANCELLED ||
+      requisition.status === RequisitionStatus.PENDING
+    )
+      return;
 
     const allFullyReceived = requisition.items.every((item) => {
       const required = item.quantityRequired ?? item.packsToOrder ?? 0;

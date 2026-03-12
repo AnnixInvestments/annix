@@ -172,7 +172,9 @@ export class InvoiceExtractionService {
         throw new Error("AI response did not contain valid JSON");
       }
 
-      const extractedData: ExtractedInvoiceData = validateInvoiceExtraction(JSON.parse(jsonMatch[0]));
+      const extractedData: ExtractedInvoiceData = validateInvoiceExtraction(
+        JSON.parse(jsonMatch[0]),
+      );
       invoice.extractedData = extractedData;
 
       if (extractedData.invoiceNumber) {
