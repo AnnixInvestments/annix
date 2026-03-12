@@ -13,14 +13,12 @@ import { useStockControlRbac } from "../context/StockControlRbacContext";
 import { GlobalSearchModal } from "./GlobalSearchModal";
 import { NotificationBell } from "./NotificationBell";
 import { OfflineIndicator } from "./OfflineIndicator";
-import { RbacConfigPanel } from "./RbacConfigPanel";
 import { SyncStatus } from "./SyncStatus";
 
 export function StockControlHeader() {
   const pathname = usePathname();
   const [showDropdown, setShowDropdown] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [rbacPanelOpen, setRbacPanelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileNavRef = useRef<HTMLDivElement>(null);
@@ -292,6 +290,28 @@ export function StockControlHeader() {
                       {isAdmin && (
                         <>
                           <Link
+                            href="/stock-control/portal/company-profile"
+                            onClick={() => setShowDropdown(false)}
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            <span className="flex items-center">
+                              <svg
+                                className="w-4 h-4 mr-2"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                />
+                              </svg>
+                              Company Profile
+                            </span>
+                          </Link>
+                          <Link
                             href="/stock-control/portal/settings"
                             onClick={() => setShowDropdown(false)}
                             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -316,33 +336,9 @@ export function StockControlHeader() {
                                   d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                                 />
                               </svg>
-                              Account Settings
+                              Settings
                             </span>
                           </Link>
-                          <button
-                            onClick={() => {
-                              setShowDropdown(false);
-                              setRbacPanelOpen(true);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            <span className="flex items-center">
-                              <svg
-                                className="w-4 h-4 mr-2"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-                                />
-                              </svg>
-                              Menu Visibility
-                            </span>
-                          </button>
                         </>
                       )}
                       <button
@@ -375,7 +371,6 @@ export function StockControlHeader() {
         </div>
       </header>
 
-      <RbacConfigPanel isOpen={rbacPanelOpen} onClose={() => setRbacPanelOpen(false)} />
       <GlobalSearchModal isOpen={searchOpen} onClose={closeSearch} />
     </>
   );
