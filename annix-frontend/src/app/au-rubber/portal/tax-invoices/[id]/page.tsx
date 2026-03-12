@@ -90,8 +90,8 @@ export default function TaxInvoiceDetailPage() {
     try {
       setIsApproving(true);
       await auRubberApiClient.approveTaxInvoice(invoiceId);
-      await fetchData();
       showToast("Invoice approved successfully", "success");
+      router.push("/au-rubber/portal/tax-invoices/suppliers");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Approval failed";
       showToast(message, "error");
