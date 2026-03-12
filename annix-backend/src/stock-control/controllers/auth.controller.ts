@@ -363,6 +363,14 @@ export class StockControlAuthController {
 
   @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
   @StockControlRoles("admin")
+  @Patch("roles/reorder")
+  @ApiOperation({ summary: "Reorder company roles" })
+  async reorderRoles(@Req() req: any, @Body() body: { orderedIds: number[] }) {
+    return this.companyRoleService.reorderRoles(req.user.companyId, body.orderedIds);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
   @Patch("roles/:id")
   @ApiOperation({ summary: "Update a role label" })
   async updateRole(@Req() req: any, @Param("id") id: string, @Body() body: { label: string }) {

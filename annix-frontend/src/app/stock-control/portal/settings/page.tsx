@@ -835,12 +835,15 @@ function MenuVisibilitySection() {
     const targetIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
     if (targetIndex < 0 || targetIndex >= roles.length) return;
 
-    const targetRole = roles[targetIndex];
-    if (targetRole.key === "admin") return;
-
     const reordered = [...roles];
     const [moved] = reordered.splice(currentIndex, 1);
     reordered.splice(targetIndex, 0, moved);
+
+    const adminIndex = reordered.findIndex((r) => r.key === "admin");
+    if (adminIndex !== -1 && adminIndex !== reordered.length - 1) {
+      const [admin] = reordered.splice(adminIndex, 1);
+      reordered.push(admin);
+    }
 
     setRoleError("");
     try {

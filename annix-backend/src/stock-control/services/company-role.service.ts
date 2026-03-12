@@ -132,6 +132,28 @@ export class CompanyRoleService {
     await this.roleRepo.remove(role);
   }
 
+  async reorderRoles(companyId: number, orderedIds: number[]): Promise<CompanyRoleDto[]> {
+    const allRoles = await this.roleRepo.find({ where: { companyId } });
+
+    const adminRole = allRoles.find((r) => r.key === "admin");
+    if (adminRole && orderedIds[orderedIds.length - 1] !== adminRole.id) {
+      throw new BadRequestException("Admin role must remain in the last position");
+    }
+
+    const updates = orderedIds.map((id, index) => {
+      const role = allRoles.find((r) => r.id === id);
+      if (!role) {
+        throw new BadRequestException(`Role with id ${id} not found`);
+      }
+      role.sortOrder = index;
+      return role;
+    });
+
+    await this.roleRepo.save(updates);
+
+    return this.rolesForCompany(companyId);
+  }
+
   private async seedDefaults(companyId: number): Promise<StockControlCompanyRole[]> {
     const entities = DEFAULT_ROLES.map((r) =>
       this.roleRepo.create({
