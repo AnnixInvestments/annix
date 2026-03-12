@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 
 export default function CvAssistantLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
   const { login, isLoading } = useCvAssistantAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +21,7 @@ export default function CvAssistantLoginPage() {
 
     try {
       await login(email, password, rememberMe);
-      router.push("/cv-assistant/portal/dashboard");
+      router.push(returnUrl || "/cv-assistant/portal/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     }

@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 
 export default function StockControlLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
   const { login, isAuthenticated, isLoading: authLoading, profile } = useStockControlAuth();
 
   const [email, setEmail] = useState(() => {
@@ -28,9 +30,9 @@ export default function StockControlLoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading && profile) {
-      router.push("/stock-control/portal/dashboard");
+      router.push(returnUrl || "/stock-control/portal/dashboard");
     }
-  }, [isAuthenticated, authLoading, profile, router]);
+  }, [isAuthenticated, authLoading, profile, router, returnUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

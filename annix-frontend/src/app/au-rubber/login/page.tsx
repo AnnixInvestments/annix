@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 
 export default function AuRubberLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
   const { login, isAuthenticated, isLoading: authLoading } = useAuRubberAuth();
 
   const [email, setEmail] = useState(() => {
@@ -28,9 +30,9 @@ export default function AuRubberLoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.push("/au-rubber/portal/dashboard");
+      router.push(returnUrl || "/au-rubber/portal/dashboard");
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, router, returnUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +51,7 @@ export default function AuRubberLoginPage() {
         localStorage.removeItem("auRubberRememberMe");
       }
 
-      router.push("/au-rubber/portal/dashboard");
+      router.push(returnUrl || "/au-rubber/portal/dashboard");
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Login failed. Please try again.";
 

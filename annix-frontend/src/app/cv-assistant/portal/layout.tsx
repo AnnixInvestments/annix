@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 import { CV_ASSISTANT_VERSION } from "../config/version";
@@ -117,13 +117,18 @@ export default function PortalLayout(props: { children: React.ReactNode }) {
   const { children } = props;
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isAuthenticated, isLoading, user, logout } = useCvAssistantAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push("/cv-assistant/login");
+      const currentUrl = searchParams.toString()
+        ? `${pathname}?${searchParams.toString()}`
+        : pathname;
+      const returnUrl = encodeURIComponent(currentUrl);
+      router.push(`/cv-assistant/login?returnUrl=${returnUrl}`);
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router, pathname, searchParams]);
 
   if (isLoading) {
     return (

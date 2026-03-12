@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect } from "react";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
@@ -71,13 +71,19 @@ function SupplierNavigation({
 export default function SupplierPortalLayout(props: { children: React.ReactNode }) {
   const { children } = props;
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isAuthenticated, isLoading, supplier, logout } = useSupplierAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push("/supplier/login");
+      const currentUrl = searchParams.toString()
+        ? `${pathname}?${searchParams.toString()}`
+        : pathname;
+      const returnUrl = encodeURIComponent(currentUrl);
+      router.push(`/supplier/login?returnUrl=${returnUrl}`);
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, router, pathname, searchParams]);
 
   const handleLogout = async () => {
     await logout();
