@@ -75,11 +75,30 @@ export class StockControlInvitationService {
   }
 
   async findByCompany(companyId: number): Promise<StockControlInvitation[]> {
-    return this.invitationRepo.find({
+    const pending = await this.invitationRepo.find({
       where: { companyId, status: StockControlInvitationStatus.PENDING },
       relations: ["invitedBy"],
       order: { createdAt: "DESC" },
     });
+
+    if (pending.length === 0) {
+      return [];
+    }
+
+    const registeredUsers = await this.userRepo.find({ where: { companyId } });
+    const registeredEmails = new Set(registeredUsers.map((u) => u.email.toLowerCase()));
+
+    const staleInvitations = pending.filter((inv) => registeredEmails.has(inv.email.toLowerCase()));
+    if (staleInvitations.length > 0) {
+      await Promise.all(
+        staleInvitations.map((inv) => {
+          inv.status = StockControlInvitationStatus.ACCEPTED;
+          return this.invitationRepo.save(inv);
+        }),
+      );
+    }
+
+    return pending.filter((inv) => !registeredEmails.has(inv.email.toLowerCase()));
   }
 
   async findByToken(token: string): Promise<StockControlInvitation | null> {
