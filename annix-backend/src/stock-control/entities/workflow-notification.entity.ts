@@ -23,6 +23,8 @@ export enum NotificationActionType {
   CPO_INVOICE_OVERDUE = "cpo_invoice_overdue",
   CALIBRATION_EXPIRY_WARNING = "calibration_expiry_warning",
   CALIBRATION_EXPIRED = "calibration_expired",
+  BACKGROUND_STEP_REQUIRED = "background_step_required",
+  BACKGROUND_STEP_COMPLETED = "background_step_completed",
 }
 
 @Entity("workflow_notifications")

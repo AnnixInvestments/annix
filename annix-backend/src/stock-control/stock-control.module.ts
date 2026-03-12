@@ -52,6 +52,7 @@ import { IssuanceBatchRecord } from "./entities/issuance-batch-record.entity";
 import { JobCard } from "./entities/job-card.entity";
 import { JobCardApproval } from "./entities/job-card-approval.entity";
 import { JobCardAttachment } from "./entities/job-card-attachment.entity";
+import { JobCardBackgroundCompletion } from "./entities/job-card-background-completion.entity";
 import { JobCardDataBook } from "./entities/job-card-data-book.entity";
 import { JobCardDocument } from "./entities/job-card-document.entity";
 import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity";
@@ -89,6 +90,7 @@ import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { QcModule } from "./qc/qc.module";
 import { StockControlAuthService } from "./services/auth.service";
+import { BackgroundStepService } from "./services/background-step.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
 import { CertificateService } from "./services/certificate.service";
 import { CertificateAnalysisService } from "./services/certificate-analysis.service";
@@ -185,6 +187,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       ChatConversation,
       ChatConversationParticipant,
       WorkflowStepConfig,
+      JobCardBackgroundCompletion,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -283,6 +286,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     DataBookPdfService,
     ChatService,
     WorkflowStepConfigService,
+    BackgroundStepService,
   ],
 })
 export class StockControlModule {}

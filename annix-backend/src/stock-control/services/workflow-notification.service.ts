@@ -998,4 +998,117 @@ export class WorkflowNotificationService {
       html,
     });
   }
+
+  async notifyBackgroundStepRequired(
+    companyId: number,
+    jobCardId: number,
+    stepKey: string,
+    stepLabel: string,
+    sender: SenderInfo,
+  ): Promise<void> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+    });
+
+    if (!jobCard) {
+      this.logger.warn(`Job card ${jobCardId} not found for background step notification`);
+      return;
+    }
+
+    const users = await this.assignmentService.usersForStep(companyId, stepKey as any);
+
+    if (users.length === 0) {
+      this.logger.warn(
+        `No users assigned to background step "${stepKey}" for company ${companyId}`,
+      );
+      return;
+    }
+
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
+
+    const notifications = users.map((user) =>
+      this.notificationRepo.create({
+        companyId,
+        userId: user.id,
+        jobCardId,
+        title: `Background Task: ${stepLabel}`,
+        message: `Job card ${jobCard.jobNumber} requires "${stepLabel}" to be completed. [step:${stepKey}]`,
+        actionType: NotificationActionType.BACKGROUND_STEP_REQUIRED,
+        actionUrl,
+        senderId: sender.id,
+        senderName: sender.name,
+      }),
+    );
+
+    await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        users.map((u) => u.id),
+        {
+          title: `Background Task: ${stepLabel}`,
+          body: `Job card ${jobCard.jobNumber} requires "${stepLabel}" to be completed.`,
+          tag: `bg-step-${jobCardId}-${stepKey}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+
+    this.logger.log(
+      `Created ${notifications.length} background step notifications for step "${stepKey}" on job card ${jobCardId}`,
+    );
+  }
+
+  async notifyBackgroundStepCompleted(
+    companyId: number,
+    jobCardId: number,
+    stepKey: string,
+    stepLabel: string,
+    completer: SenderInfo,
+  ): Promise<void> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+    });
+
+    if (!jobCard) {
+      return;
+    }
+
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
+
+    const admins = await this.userRepo.find({
+      where: [
+        { companyId, role: StockControlRole.ADMIN },
+        { companyId, role: StockControlRole.MANAGER },
+      ],
+    });
+
+    const notifications = admins.map((user) =>
+      this.notificationRepo.create({
+        companyId,
+        userId: user.id,
+        jobCardId,
+        title: `Background Task Completed: ${stepLabel}`,
+        message: `${completer.name} completed "${stepLabel}" for job card ${jobCard.jobNumber}.`,
+        actionType: NotificationActionType.BACKGROUND_STEP_COMPLETED,
+        actionUrl,
+        senderId: completer.id,
+        senderName: completer.name,
+      }),
+    );
+
+    await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        admins.map((u) => u.id),
+        {
+          title: `Background Task Completed: ${stepLabel}`,
+          body: `${completer.name} completed "${stepLabel}" for job card ${jobCard.jobNumber}.`,
+          tag: `bg-done-${jobCardId}-${stepKey}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+  }
 }

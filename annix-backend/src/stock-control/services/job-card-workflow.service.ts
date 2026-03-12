@@ -22,6 +22,7 @@ import { StockControlRole } from "../entities/stock-control-user.entity";
 import { RequisitionService } from "./requisition.service";
 import { SignatureService } from "./signature.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
+import { WorkflowStepConfigService } from "./workflow-step-config.service";
 
 interface ApprovalInput {
   signatureDataUrl?: string;
@@ -52,6 +53,7 @@ export class JobCardWorkflowService {
     private readonly notificationService: WorkflowNotificationService,
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
+    private readonly stepConfigService: WorkflowStepConfigService,
   ) {}
 
   async uploadDocument(
@@ -186,11 +188,37 @@ export class JobCardWorkflowService {
       await this.notificationService.notifyDispatchReady(companyId, jobCardId);
     }
 
+    await this.triggerBackgroundSteps(companyId, jobCardId, currentStep, senderInfo);
+
     this.logger.log(
       `Job card ${jobCardId} approved at step ${currentStep} by ${user.name}, moved to ${nextStatus}`,
     );
 
     return this.jobCardForWorkflow(companyId, jobCardId);
+  }
+
+  private async triggerBackgroundSteps(
+    companyId: number,
+    jobCardId: number,
+    completedStepKey: string,
+    sender: { id: number; name: string },
+  ): Promise<void> {
+    const bgSteps = await this.stepConfigService.backgroundStepsForTrigger(
+      companyId,
+      completedStepKey,
+    );
+
+    await Promise.all(
+      bgSteps.map((step) =>
+        this.notificationService.notifyBackgroundStepRequired(
+          companyId,
+          jobCardId,
+          step.key,
+          step.label,
+          sender,
+        ),
+      ),
+    );
   }
 
   async rejectStep(

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Check, CheckCheck } from "lucide-react";
+import { Bell, Check, CheckCheck, ClipboardCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { stockControlApiClient, WorkflowNotification } from "@/app/lib/api/stockControlApi";
@@ -82,6 +82,37 @@ export function NotificationBell() {
     [router],
   );
 
+  const [completingBgStep, setCompletingBgStep] = useState<number | null>(null);
+  const [bgNotes, setBgNotes] = useState("");
+  const [bgSaving, setBgSaving] = useState(false);
+
+  const handleCompleteBackgroundStep = useCallback(
+    async (notification: WorkflowNotification) => {
+      if (!notification.jobCardId || !notification.message) return;
+      const match = notification.message.match(/\[step:([^\]]+)\]/);
+      if (!match) return;
+
+      setBgSaving(true);
+      try {
+        await stockControlApiClient.completeBackgroundStep(
+          notification.jobCardId,
+          match[1],
+          bgNotes || undefined,
+        );
+        await stockControlApiClient.markNotificationAsRead(notification.id);
+        setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+        refetchCount();
+        setCompletingBgStep(null);
+        setBgNotes("");
+      } catch (error) {
+        console.error("Failed to complete background step:", error);
+      } finally {
+        setBgSaving(false);
+      }
+    },
+    [bgNotes, refetchCount],
+  );
+
   const actionTypeLabel = (actionType: string): string => {
     const labels: Record<string, string> = {
       approval_required: "Approval Required",
@@ -91,6 +122,8 @@ export function NotificationBell() {
       dispatch_ready: "Ready for Dispatch",
       dispatch_completed: "Dispatched",
       job_cards_imported: "Job Cards Imported",
+      background_step_required: "Background Task",
+      background_step_completed: "Task Completed",
     };
     return labels[actionType] || actionType;
   };
@@ -104,6 +137,8 @@ export function NotificationBell() {
       dispatch_ready: "bg-purple-100 text-purple-800",
       dispatch_completed: "bg-teal-100 text-teal-800",
       job_cards_imported: "bg-indigo-100 text-indigo-800",
+      background_step_required: "bg-amber-100 text-amber-800",
+      background_step_completed: "bg-emerald-100 text-emerald-800",
     };
     return colors[actionType] || "bg-gray-100 text-gray-800";
   };
@@ -180,6 +215,55 @@ export function NotificationBell() {
                             {formatDateLongZA(notification.createdAt)}
                           </span>
                         </div>
+                        {notification.actionType === "background_step_required" && (
+                          <div className="mt-2">
+                            {completingBgStep === notification.id ? (
+                              <div
+                                className="flex items-center gap-2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <input
+                                  type="text"
+                                  value={bgNotes}
+                                  onChange={(e) => setBgNotes(e.target.value)}
+                                  placeholder="Notes (optional)"
+                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+                                />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCompleteBackgroundStep(notification);
+                                  }}
+                                  disabled={bgSaving}
+                                  className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                                >
+                                  {bgSaving ? "..." : "Done"}
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCompletingBgStep(null);
+                                    setBgNotes("");
+                                  }}
+                                  className="px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCompletingBgStep(notification.id);
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded hover:bg-amber-100"
+                              >
+                                <ClipboardCheck className="h-3 w-3" />
+                                Mark Complete
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <button
                         onClick={(e) => handleMarkAsRead(notification.id, e)}

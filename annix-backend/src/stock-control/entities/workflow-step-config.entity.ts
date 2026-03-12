@@ -35,6 +35,12 @@ export class WorkflowStepConfig {
   @Column({ name: "is_system", type: "boolean", default: true })
   isSystem: boolean;
 
+  @Column({ name: "is_background", type: "boolean", default: false })
+  isBackground: boolean;
+
+  @Column({ name: "trigger_after_step", type: "varchar", length: 50, nullable: true })
+  triggerAfterStep: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

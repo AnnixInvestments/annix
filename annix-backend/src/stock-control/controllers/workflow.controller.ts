@@ -21,6 +21,7 @@ import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { BackgroundStepService } from "../services/background-step.service";
 import { DispatchService } from "../services/dispatch.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
@@ -43,6 +44,7 @@ export class WorkflowController {
     private readonly assignmentService: WorkflowAssignmentService,
     private readonly webPushService: WebPushService,
     private readonly stepConfigService: WorkflowStepConfigService,
+    private readonly backgroundStepService: BackgroundStepService,
   ) {}
 
   @Post("job-cards/:id/documents")
@@ -329,8 +331,24 @@ export class WorkflowController {
   @Post("step-configs")
   @StockControlRoles("admin")
   @ApiOperation({ summary: "Add a custom workflow step" })
-  async addStepConfig(@Req() req: any, @Body() body: { label: string; afterStepKey: string }) {
+  async addStepConfig(
+    @Req() req: any,
+    @Body()
+    body: {
+      label: string;
+      afterStepKey: string;
+      isBackground?: boolean;
+      triggerAfterStep?: string;
+    },
+  ) {
     return this.stepConfigService.addStep(req.user.companyId, body);
+  }
+
+  @Get("step-configs/background")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Get background workflow step configurations" })
+  async backgroundStepConfigs(@Req() req: any) {
+    return this.stepConfigService.backgroundSteps(req.user.companyId);
   }
 
   @Delete("step-configs/:key")
@@ -347,5 +365,34 @@ export class WorkflowController {
   async reorderStepConfigs(@Req() req: any, @Body() body: { orderedKeys: string[] }) {
     await this.stepConfigService.bulkReorder(req.user.companyId, body.orderedKeys);
     return { success: true };
+  }
+
+  @Get("job-cards/:id/background-steps")
+  @ApiOperation({ summary: "Background step statuses for a job card" })
+  async backgroundSteps(@Req() req: any, @Param("id") id: number) {
+    return this.backgroundStepService.statusForJobCard(req.user.companyId, id);
+  }
+
+  @Post("job-cards/:id/background-steps/:stepKey/complete")
+  @ApiOperation({ summary: "Complete a background step for a job card" })
+  async completeBackgroundStep(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("stepKey") stepKey: string,
+    @Body() body: { notes?: string },
+  ) {
+    return this.backgroundStepService.completeStep(
+      req.user.companyId,
+      id,
+      stepKey,
+      req.user,
+      body.notes,
+    );
+  }
+
+  @Get("background-steps/pending")
+  @ApiOperation({ summary: "Pending background steps for current user" })
+  async pendingBackgroundSteps(@Req() req: any) {
+    return this.backgroundStepService.pendingForUser(req.user.id, req.user.companyId);
   }
 }

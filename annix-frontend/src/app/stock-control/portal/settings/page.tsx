@@ -1235,6 +1235,9 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
   const [showAddStep, setShowAddStep] = useState(false);
   const [newStepLabel, setNewStepLabel] = useState("");
   const [newStepAfter, setNewStepAfter] = useState("");
+  const [newStepIsBackground, setNewStepIsBackground] = useState(false);
+  const [newStepTriggerAfter, setNewStepTriggerAfter] = useState("");
+  const [backgroundSteps, setBackgroundSteps] = useState<WorkflowStepConfig[]>([]);
 
   const [editingNotifyStep, setEditingNotifyStep] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState("");
@@ -1243,14 +1246,16 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [configs, assignmentData, recipientData] = await Promise.all([
+      const [configs, assignmentData, recipientData, bgSteps] = await Promise.all([
         stockControlApiClient.workflowStepConfigs(),
         stockControlApiClient.workflowAssignments(),
         stockControlApiClient.notificationRecipients(),
+        stockControlApiClient.backgroundStepConfigs(),
       ]);
       setStepConfigs(configs);
       setAssignments(assignmentData);
       setRecipients(recipientData);
+      setBackgroundSteps(bgSteps);
     } catch {
       setError("Failed to load workflow configuration");
     } finally {
@@ -1399,17 +1404,24 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
   };
 
   const handleAddStep = async () => {
-    if (!newStepLabel.trim() || !newStepAfter) return;
+    if (!newStepLabel.trim()) return;
+    if (!newStepIsBackground && !newStepAfter) return;
+    if (newStepIsBackground && !newStepTriggerAfter) return;
+
     setSaving(true);
     setError("");
     try {
       await stockControlApiClient.addWorkflowStep({
         label: newStepLabel.trim(),
-        afterStepKey: newStepAfter,
+        afterStepKey: newStepIsBackground ? "" : newStepAfter,
+        isBackground: newStepIsBackground,
+        triggerAfterStep: newStepIsBackground ? newStepTriggerAfter : undefined,
       });
       setShowAddStep(false);
       setNewStepLabel("");
       setNewStepAfter("");
+      setNewStepIsBackground(false);
+      setNewStepTriggerAfter("");
       await loadData();
       setSuccess(true);
     } catch (e) {
@@ -1547,6 +1559,27 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
           </div>
           {showAddStep && (
             <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center gap-3 mb-3">
+                <label className="flex items-center gap-2 text-xs font-medium text-gray-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newStepIsBackground}
+                    onChange={(e) => {
+                      setNewStepIsBackground(e.target.checked);
+                      if (e.target.checked && stepConfigs.length > 0) {
+                        setNewStepTriggerAfter(stepConfigs[0].key);
+                      }
+                    }}
+                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                  />
+                  Background Step
+                </label>
+                {newStepIsBackground && (
+                  <span className="text-xs text-gray-400">
+                    Runs parallel to main workflow, no signature required
+                  </span>
+                )}
+              </div>
               <div className="flex items-end gap-3">
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-gray-600 mb-1">Step Name</label>
@@ -1554,17 +1587,23 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                     type="text"
                     value={newStepLabel}
                     onChange={(e) => setNewStepLabel(e.target.value)}
-                    placeholder="e.g. QC Inspection"
+                    placeholder={
+                      newStepIsBackground ? "e.g. Internal QC Check" : "e.g. QC Inspection"
+                    }
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
                   />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Insert After
+                    {newStepIsBackground ? "Trigger After" : "Insert After"}
                   </label>
                   <select
-                    value={newStepAfter}
-                    onChange={(e) => setNewStepAfter(e.target.value)}
+                    value={newStepIsBackground ? newStepTriggerAfter : newStepAfter}
+                    onChange={(e) =>
+                      newStepIsBackground
+                        ? setNewStepTriggerAfter(e.target.value)
+                        : setNewStepAfter(e.target.value)
+                    }
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
                   >
                     {stepConfigs.map((s) => (
@@ -1577,14 +1616,21 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                 <button
                   type="button"
                   onClick={handleAddStep}
-                  disabled={saving || !newStepLabel.trim() || !newStepAfter}
+                  disabled={
+                    saving ||
+                    !newStepLabel.trim() ||
+                    (newStepIsBackground ? !newStepTriggerAfter : !newStepAfter)
+                  }
                   className="px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
                 >
                   Add
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowAddStep(false)}
+                  onClick={() => {
+                    setShowAddStep(false);
+                    setNewStepIsBackground(false);
+                  }}
                   className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200"
                 >
                   Cancel
@@ -1840,6 +1886,97 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
               Not assigned
             </span>
           </div>
+
+          {backgroundSteps.length > 0 && (
+            <div className="mt-6 border-t border-gray-200 pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Background Steps</h3>
+              <div className="space-y-2">
+                {backgroundSteps.map((bgStep) => {
+                  const triggerStep = stepConfigs.find((s) => s.key === bgStep.triggerAfterStep);
+                  const assignment = assignmentsByStep[bgStep.key];
+                  const assignedUsers = assignment?.users ?? [];
+
+                  return (
+                    <div
+                      key={bgStep.key}
+                      className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-900">{bgStep.label}</span>
+                          <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">
+                            Background
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          Triggers after: {triggerStep?.label ?? bgStep.triggerAfterStep ?? "N/A"}
+                        </div>
+                        {assignedUsers.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {assignedUsers.map((u) => (
+                              <span
+                                key={u.id}
+                                className="text-xs bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded cursor-pointer hover:bg-teal-200"
+                                onClick={() => handleToggleAssignment(u.id, bgStep.key)}
+                                title={`Click to unassign ${u.name}`}
+                              >
+                                {u.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {assignedUsers.length === 0 && (
+                          <p className="text-xs text-gray-400 mt-1">No users assigned</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleToggleAssignment(Number(e.target.value), bgStep.key);
+                            }
+                          }}
+                          className="text-xs border border-gray-300 rounded px-1.5 py-1 focus:ring-teal-500 focus:border-teal-500"
+                        >
+                          <option value="">Assign user...</option>
+                          {matrixUsers
+                            .filter((u) => !assignedUsers.some((au) => au.id === u.id))
+                            .map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.name}
+                              </option>
+                            ))}
+                        </select>
+                        {!bgStep.isSystem && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStep(bgStep.key)}
+                            className="text-gray-400 hover:text-red-500 p-1"
+                            title="Remove background step"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

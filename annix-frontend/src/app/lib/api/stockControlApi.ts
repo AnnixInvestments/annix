@@ -1270,6 +1270,25 @@ export interface WorkflowStepConfig {
   label: string;
   sortOrder: number;
   isSystem: boolean;
+  isBackground: boolean;
+  triggerAfterStep: string | null;
+}
+
+export interface BackgroundStepStatus {
+  stepKey: string;
+  label: string;
+  triggerAfterStep: string | null;
+  completedAt: string | null;
+  completedByName: string | null;
+  notes: string | null;
+}
+
+export interface PendingBackgroundStep {
+  jobCardId: number;
+  jobCardNumber: string;
+  stepKey: string;
+  stepLabel: string;
+  triggeredAt: string;
 }
 
 export interface WorkflowStepAssignment {
@@ -3424,6 +3443,8 @@ class StockControlApiClient {
   async addWorkflowStep(input: {
     label: string;
     afterStepKey: string;
+    isBackground?: boolean;
+    triggerAfterStep?: string;
   }): Promise<WorkflowStepConfig> {
     return this.request("/stock-control/workflow/step-configs", {
       method: "POST",
@@ -3442,6 +3463,28 @@ class StockControlApiClient {
       method: "PUT",
       body: JSON.stringify({ orderedKeys }),
     });
+  }
+
+  async backgroundStepConfigs(): Promise<WorkflowStepConfig[]> {
+    return this.request("/stock-control/workflow/step-configs/background");
+  }
+
+  async backgroundStepsForJobCard(jobCardId: number): Promise<BackgroundStepStatus[]> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/background-steps`);
+  }
+
+  async completeBackgroundStep(jobCardId: number, stepKey: string, notes?: string): Promise<void> {
+    return this.request(
+      `/stock-control/workflow/job-cards/${jobCardId}/background-steps/${encodeURIComponent(stepKey)}/complete`,
+      {
+        method: "POST",
+        body: JSON.stringify({ notes }),
+      },
+    );
+  }
+
+  async pendingBackgroundSteps(): Promise<PendingBackgroundStep[]> {
+    return this.request("/stock-control/workflow/background-steps/pending");
   }
 
   async workflowAssignments(): Promise<WorkflowStepAssignment[]> {

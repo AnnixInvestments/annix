@@ -23,7 +23,7 @@ export class WorkflowStepConfigService {
 
   async orderedSteps(companyId: number): Promise<WorkflowStepConfig[]> {
     const existing = await this.repo.find({
-      where: { companyId },
+      where: { companyId, isBackground: false },
       order: { sortOrder: "ASC" },
     });
 
@@ -34,8 +34,24 @@ export class WorkflowStepConfigService {
     await this.seedDefaults(companyId);
 
     return this.repo.find({
-      where: { companyId },
+      where: { companyId, isBackground: false },
       order: { sortOrder: "ASC" },
+    });
+  }
+
+  async backgroundSteps(companyId: number): Promise<WorkflowStepConfig[]> {
+    return this.repo.find({
+      where: { companyId, isBackground: true },
+      order: { createdAt: "ASC" },
+    });
+  }
+
+  async backgroundStepsForTrigger(
+    companyId: number,
+    triggerStepKey: string,
+  ): Promise<WorkflowStepConfig[]> {
+    return this.repo.find({
+      where: { companyId, isBackground: true, triggerAfterStep: triggerStepKey },
     });
   }
 
@@ -69,20 +85,39 @@ export class WorkflowStepConfigService {
 
   async addStep(
     companyId: number,
-    input: { label: string; afterStepKey: string },
+    input: {
+      label: string;
+      afterStepKey: string;
+      isBackground?: boolean;
+      triggerAfterStep?: string;
+    },
   ): Promise<WorkflowStepConfig> {
+    const key = this.generateKey(input.label);
+
+    const existingWithKey = await this.repo.findOne({ where: { companyId, key } });
+    if (existingWithKey) {
+      throw new BadRequestException(`A step with key "${key}" already exists`);
+    }
+
+    if (input.isBackground) {
+      const newStep = this.repo.create({
+        companyId,
+        key,
+        label: input.label,
+        sortOrder: 0,
+        isSystem: false,
+        isBackground: true,
+        triggerAfterStep: input.triggerAfterStep ?? null,
+      });
+
+      return this.repo.save(newStep);
+    }
+
     const steps = await this.orderedSteps(companyId);
 
     const afterStep = steps.find((s) => s.key === input.afterStepKey);
     if (!afterStep) {
       throw new NotFoundException(`Step "${input.afterStepKey}" not found for this company`);
-    }
-
-    const key = this.generateKey(input.label);
-
-    const existingWithKey = steps.find((s) => s.key === key);
-    if (existingWithKey) {
-      throw new BadRequestException(`A step with key "${key}" already exists`);
     }
 
     const stepsAfterInsertion = steps.filter((s) => s.sortOrder > afterStep.sortOrder);
@@ -104,6 +139,8 @@ export class WorkflowStepConfigService {
       label: input.label,
       sortOrder: afterStep.sortOrder + 1,
       isSystem: false,
+      isBackground: false,
+      triggerAfterStep: null,
     });
 
     return this.repo.save(newStep);
