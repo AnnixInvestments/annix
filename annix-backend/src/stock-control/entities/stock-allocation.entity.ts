@@ -81,6 +81,15 @@ export class StockAllocation {
   @Column({ name: "rejection_reason", type: "text", nullable: true })
   rejectionReason: string | null;
 
+  @Column({ default: false })
+  undone: boolean;
+
+  @Column({ name: "undone_at", type: "timestamp", nullable: true })
+  undoneAt: Date | null;
+
+  @Column({ name: "undone_by_name", type: "varchar", nullable: true })
+  undoneByName: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

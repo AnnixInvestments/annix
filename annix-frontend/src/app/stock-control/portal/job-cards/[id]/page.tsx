@@ -5,16 +5,12 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
-  CoatingAnalysis,
   JobCard,
   JobCardApproval,
-  JobCardAttachment,
-  JobCardVersion,
   Requisition,
   StaffMember,
   StockAllocation,
   StockItem,
-  UnverifiedProduct,
   WorkflowStatus as WorkflowStatusData,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -35,6 +31,8 @@ import { LineItemsTab } from "./components/LineItemsTab";
 import { QualityTab } from "./components/QualityTab";
 import { RequisitionTab } from "./components/RequisitionTab";
 import { RubberAllocationGuard } from "./components/RubberAllocation";
+import { useJobCardCoating } from "./hooks/useJobCardCoating";
+import { useJobCardDocuments } from "./hooks/useJobCardDocuments";
 import { isValidLineItem, STATUS_TRANSITIONS, statusBadgeColor } from "./lib/helpers";
 
 export default function JobCardDetailPage() {
@@ -50,7 +48,6 @@ export default function JobCardDetailPage() {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [currentApprovalStep, setCurrentApprovalStep] = useState("");
   const [allocations, setAllocations] = useState<StockAllocation[]>([]);
-  const [coatingAnalysis, setCoatingAnalysis] = useState<CoatingAnalysis | null>(null);
   const [requisition, setRequisition] = useState<Requisition | null>(null);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [activeStaff, setActiveStaff] = useState<StaffMember[]>([]);
@@ -65,30 +62,11 @@ export default function JobCardDetailPage() {
   });
   const [isAllocating, setIsAllocating] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [isAnalysing, setIsAnalysing] = useState(false);
   const [approvingAllocationId, setApprovingAllocationId] = useState<number | null>(null);
   const [rejectingAllocationId, setRejectingAllocationId] = useState<number | null>(null);
   const [isDownloadingQr, setIsDownloadingQr] = useState(false);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
-  const [versions, setVersions] = useState<JobCardVersion[]>([]);
-  const [attachments, setAttachments] = useState<JobCardAttachment[]>([]);
-  const [showVersionHistory, setShowVersionHistory] = useState(false);
-  const [showAmendmentModal, setShowAmendmentModal] = useState(false);
-  const [amendmentNotes, setAmendmentNotes] = useState("");
-  const [amendmentFile, setAmendmentFile] = useState<File | null>(null);
-  const [isUploadingAmendment, setIsUploadingAmendment] = useState(false);
-  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
-  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
-  const [isExtracting, setIsExtracting] = useState<number | null>(null);
-  const [isExtractingAll, setIsExtractingAll] = useState(false);
-  const [isDraggingAmendment, setIsDraggingAmendment] = useState(false);
-  const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
-  const [showTdsModal, setShowTdsModal] = useState(false);
-  const [unverifiedProducts, setUnverifiedProducts] = useState<UnverifiedProduct[]>([]);
-  const [tdsFile, setTdsFile] = useState<File | null>(null);
-  const [isUploadingTds, setIsUploadingTds] = useState(false);
   const [deliveryJobCards, setDeliveryJobCards] = useState<JobCard[]>([]);
-  const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -102,11 +80,6 @@ export default function JobCardDetailPage() {
       setError(null);
 
       stockControlApiClient
-        .jobCardCoatingAnalysis(jobId)
-        .then((data) => setCoatingAnalysis(data))
-        .catch(() => setCoatingAnalysis(null));
-
-      stockControlApiClient
         .requisitions()
         .then((reqs) => {
           const match = reqs.find((r) => r.jobCardId === jobId && r.status !== "cancelled");
@@ -115,19 +88,9 @@ export default function JobCardDetailPage() {
         .catch(() => setRequisition(null));
 
       stockControlApiClient
-        .jobCardVersionHistory(jobId)
-        .then((data) => setVersions(data))
-        .catch(() => setVersions([]));
-
-      stockControlApiClient
         .deliveryJobCards(jobId)
         .then((data) => setDeliveryJobCards(data))
         .catch(() => setDeliveryJobCards([]));
-
-      stockControlApiClient
-        .jobCardAttachments(jobId)
-        .then((data) => setAttachments(data))
-        .catch(() => setAttachments([]));
 
       stockControlApiClient
         .workflowStatus(jobId)
@@ -145,9 +108,14 @@ export default function JobCardDetailPage() {
     }
   }, [jobId]);
 
+  const documents = useJobCardDocuments(jobId, fetchData);
+  const coating = useJobCardCoating(jobId);
+
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    documents.loadDocuments();
+    coating.loadCoatingAnalysis();
+  }, [fetchData, documents.loadDocuments, coating.loadCoatingAnalysis]);
 
   const fetchStockItems = async () => {
     try {
@@ -219,18 +187,6 @@ export default function JobCardDetailPage() {
     }
   };
 
-  const handleRunAnalysis = async () => {
-    try {
-      setIsAnalysing(true);
-      const result = await stockControlApiClient.triggerCoatingAnalysis(jobId);
-      setCoatingAnalysis(result && "id" in result ? result : null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Coating analysis failed"));
-    } finally {
-      setIsAnalysing(false);
-    }
-  };
-
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const handlePrintQr = async () => {
@@ -247,16 +203,8 @@ export default function JobCardDetailPage() {
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (newStatus === "active") {
-      try {
-        const products = await stockControlApiClient.unverifiedCoatingProducts(jobId);
-        if (products.length > 0) {
-          setUnverifiedProducts(products);
-          setShowTdsModal(true);
-          return;
-        }
-      } catch {
-        // proceed with activation attempt
-      }
+      const hasUnverified = await coating.checkUnverifiedProducts();
+      if (hasUnverified) return;
     }
 
     try {
@@ -267,33 +215,6 @@ export default function JobCardDetailPage() {
       setError(err instanceof Error ? err : new Error("Failed to update status"));
     } finally {
       setIsUpdatingStatus(false);
-    }
-  };
-
-  const handleTdsUpload = async () => {
-    if (!tdsFile) return;
-    try {
-      setIsUploadingTds(true);
-      const updated = await stockControlApiClient.uploadCoatingTds(jobId, tdsFile);
-      setCoatingAnalysis(updated);
-      setTdsFile(null);
-      const remaining = (updated.coats || []).filter((c) => !c.verified);
-      if (remaining.length === 0) {
-        setShowTdsModal(false);
-        setUnverifiedProducts([]);
-      } else {
-        setUnverifiedProducts(
-          remaining.map((c) => ({
-            product: c.product,
-            genericType: c.genericType,
-            estimatedVolumeSolids: c.solidsByVolumePercent,
-          })),
-        );
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to process TDS"));
-    } finally {
-      setIsUploadingTds(false);
     }
   };
 
@@ -321,144 +242,6 @@ export default function JobCardDetailPage() {
       await stockControlApiClient.downloadSignedJobCardPdf(jobId);
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : "Failed to download signed PDF");
-    }
-  };
-
-  const handleAmendmentUpload = async () => {
-    if (!amendmentFile) return;
-    try {
-      setIsUploadingAmendment(true);
-      await stockControlApiClient.uploadJobCardAmendment(
-        jobId,
-        amendmentFile,
-        amendmentNotes || undefined,
-      );
-      setShowAmendmentModal(false);
-      setAmendmentFile(null);
-      setAmendmentNotes("");
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to upload amendment"));
-    } finally {
-      setIsUploadingAmendment(false);
-    }
-  };
-
-  const handleAttachmentUpload = async () => {
-    if (attachmentFiles.length === 0) return;
-    try {
-      setIsUploadingAttachment(true);
-      await attachmentFiles.reduce(
-        (chain, file) =>
-          chain.then(() =>
-            stockControlApiClient.uploadJobCardAttachment(jobId, file).then(() => undefined),
-          ),
-        Promise.resolve() as Promise<void>,
-      );
-      setAttachmentFiles([]);
-      const updatedAttachments = await stockControlApiClient.jobCardAttachments(jobId);
-      setAttachments(updatedAttachments);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to upload attachment"));
-    } finally {
-      setIsUploadingAttachment(false);
-    }
-  };
-
-  const handleTriggerExtraction = async (attachmentId: number) => {
-    try {
-      setIsExtracting(attachmentId);
-      await stockControlApiClient.triggerDrawingExtraction(jobId, attachmentId);
-      const updatedAttachments = await stockControlApiClient.jobCardAttachments(jobId);
-      setAttachments(updatedAttachments);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Extraction failed"));
-    } finally {
-      setIsExtracting(null);
-    }
-  };
-
-  const handleDeleteAttachment = async (attachmentId: number) => {
-    if (!confirm("Delete this attachment?")) return;
-    try {
-      await stockControlApiClient.deleteJobCardAttachment(jobId, attachmentId);
-      setAttachments(attachments.filter((a) => a.id !== attachmentId));
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to delete attachment"));
-    }
-  };
-
-  const handleAmendmentDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingAmendment(false);
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      setAmendmentFile(files[0]);
-    }
-  };
-
-  const handleAmendmentDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "copy";
-    setIsDraggingAmendment(true);
-  };
-
-  const handleAmendmentDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
-      setIsDraggingAmendment(false);
-    }
-  };
-
-  const handleExtractAll = async () => {
-    try {
-      setIsExtractingAll(true);
-      await stockControlApiClient.extractAllDrawings(jobId);
-      const updatedAttachments = await stockControlApiClient.jobCardAttachments(jobId);
-      setAttachments(updatedAttachments);
-      await fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Extraction failed"));
-    } finally {
-      setIsExtractingAll(false);
-    }
-  };
-
-  const handleAttachmentDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingAttachment(false);
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      const validExtensions = [".pdf", ".dxf"];
-      const newFiles = Array.from(files).filter((f) =>
-        validExtensions.some((ext) => f.name.toLowerCase().endsWith(ext)),
-      );
-      setAttachmentFiles((prev) => [...prev, ...newFiles]);
-    }
-  };
-
-  const handleAttachmentDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "copy";
-    setIsDraggingAttachment(true);
-  };
-
-  const handleAttachmentDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
-      setIsDraggingAttachment(false);
     }
   };
 
@@ -736,51 +519,55 @@ export default function JobCardDetailPage() {
           <TabPanel tabId="details" activeTab={activeTab} visited={visitedTabs.has("details")}>
             <DetailsTab
               jobCard={jobCard}
-              versions={versions}
-              attachments={attachments}
-              lineItemsContent={<LineItemsTab jobCard={jobCard} attachments={attachments} />}
-              showVersionHistory={showVersionHistory}
-              onToggleVersionHistory={() => setShowVersionHistory(!showVersionHistory)}
-              showAmendmentModal={showAmendmentModal}
-              onToggleAmendmentModal={setShowAmendmentModal}
-              amendmentNotes={amendmentNotes}
-              onAmendmentNotesChange={setAmendmentNotes}
-              amendmentFile={amendmentFile}
-              onAmendmentFileChange={setAmendmentFile}
-              isUploadingAmendment={isUploadingAmendment}
-              onAmendmentUpload={handleAmendmentUpload}
-              isDraggingAmendment={isDraggingAmendment}
-              onAmendmentDrop={handleAmendmentDrop}
-              onAmendmentDragOver={handleAmendmentDragOver}
-              onAmendmentDragLeave={handleAmendmentDragLeave}
-              attachmentFiles={attachmentFiles}
-              onAttachmentFilesChange={setAttachmentFiles}
-              isUploadingAttachment={isUploadingAttachment}
-              onAttachmentUpload={handleAttachmentUpload}
-              isDraggingAttachment={isDraggingAttachment}
-              onAttachmentDrop={handleAttachmentDrop}
-              onAttachmentDragOver={handleAttachmentDragOver}
-              onAttachmentDragLeave={handleAttachmentDragLeave}
-              onTriggerExtraction={handleTriggerExtraction}
-              isExtracting={isExtracting}
-              isExtractingAll={isExtractingAll}
-              onExtractAll={handleExtractAll}
-              onDeleteAttachment={handleDeleteAttachment}
+              versions={documents.versions}
+              attachments={documents.attachments}
+              lineItemsContent={
+                <LineItemsTab jobCard={jobCard} attachments={documents.attachments} />
+              }
+              showVersionHistory={documents.showVersionHistory}
+              onToggleVersionHistory={() =>
+                documents.setShowVersionHistory(!documents.showVersionHistory)
+              }
+              showAmendmentModal={documents.showAmendmentModal}
+              onToggleAmendmentModal={documents.setShowAmendmentModal}
+              amendmentNotes={documents.amendmentNotes}
+              onAmendmentNotesChange={documents.setAmendmentNotes}
+              amendmentFile={documents.amendmentFile}
+              onAmendmentFileChange={documents.setAmendmentFile}
+              isUploadingAmendment={documents.isUploadingAmendment}
+              onAmendmentUpload={documents.handleAmendmentUpload}
+              isDraggingAmendment={documents.isDraggingAmendment}
+              onAmendmentDrop={documents.handleAmendmentDrop}
+              onAmendmentDragOver={documents.handleAmendmentDragOver}
+              onAmendmentDragLeave={documents.handleAmendmentDragLeave}
+              attachmentFiles={documents.attachmentFiles}
+              onAttachmentFilesChange={documents.setAttachmentFiles}
+              isUploadingAttachment={documents.isUploadingAttachment}
+              onAttachmentUpload={documents.handleAttachmentUpload}
+              isDraggingAttachment={documents.isDraggingAttachment}
+              onAttachmentDrop={documents.handleAttachmentDrop}
+              onAttachmentDragOver={documents.handleAttachmentDragOver}
+              onAttachmentDragLeave={documents.handleAttachmentDragLeave}
+              onTriggerExtraction={documents.handleTriggerExtraction}
+              isExtracting={documents.isExtracting}
+              isExtractingAll={documents.isExtractingAll}
+              onExtractAll={documents.handleExtractAll}
+              onDeleteAttachment={documents.handleDeleteAttachment}
             />
 
-            {versions.length > 0 && (
+            {documents.versions.length > 0 && (
               <div className="mt-6 border rounded-lg p-4">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Version History</h3>
                 <select
-                  value={selectedVersionId ?? ""}
+                  value={documents.selectedVersionId ?? ""}
                   onChange={(e) => {
                     const val = e.target.value;
-                    setSelectedVersionId(val ? Number(val) : null);
+                    documents.setSelectedVersionId(val ? Number(val) : null);
                   }}
                   className="w-full sm:w-auto rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">Current (v{jobCard.versionNumber})</option>
-                  {versions.map((v) => (
+                  {documents.versions.map((v) => (
                     <option key={v.id} value={v.id}>
                       v{v.versionNumber} - {v.jobName}
                       {v.amendmentNotes ? ` (${v.amendmentNotes})` : ""}
@@ -788,9 +575,11 @@ export default function JobCardDetailPage() {
                   ))}
                 </select>
 
-                {selectedVersionId &&
+                {documents.selectedVersionId &&
                   (() => {
-                    const selectedVersion = versions.find((v) => v.id === selectedVersionId);
+                    const selectedVersion = documents.versions.find(
+                      (v) => v.id === documents.selectedVersionId,
+                    );
                     if (!selectedVersion) return null;
                     return (
                       <div className="mt-4 bg-gray-50 rounded-lg p-4 space-y-3">
@@ -905,19 +694,19 @@ export default function JobCardDetailPage() {
           <TabPanel tabId="coating" activeTab={activeTab} visited={visitedTabs.has("coating")}>
             <CoatingAnalysisTab
               jobId={jobId}
-              coatingAnalysis={coatingAnalysis}
-              isAnalysing={isAnalysing}
-              onRunAnalysis={handleRunAnalysis}
-              onCoatingAnalysisChange={setCoatingAnalysis}
+              coatingAnalysis={coating.coatingAnalysis}
+              isAnalysing={coating.isAnalysing}
+              onRunAnalysis={coating.handleRunAnalysis}
+              onCoatingAnalysisChange={coating.setCoatingAnalysis}
               pipingLossPct={pipingLossPct}
-              showTdsModal={showTdsModal}
-              onShowTdsModal={setShowTdsModal}
-              unverifiedProducts={unverifiedProducts}
-              onUnverifiedProductsChange={setUnverifiedProducts}
-              tdsFile={tdsFile}
-              onTdsFileChange={setTdsFile}
-              isUploadingTds={isUploadingTds}
-              onTdsUpload={handleTdsUpload}
+              showTdsModal={coating.showTdsModal}
+              onShowTdsModal={coating.setShowTdsModal}
+              unverifiedProducts={coating.unverifiedProducts}
+              onUnverifiedProductsChange={coating.setUnverifiedProducts}
+              tdsFile={coating.tdsFile}
+              onTdsFileChange={coating.setTdsFile}
+              isUploadingTds={coating.isUploadingTds}
+              onTdsUpload={coating.handleTdsUpload}
             />
           </TabPanel>
 

@@ -497,6 +497,21 @@ export class JobCardsController {
     return this.jobCardService.rejectOverAllocation(req.user.companyId, allocationId, dto.reason);
   }
 
+  @StockControlRoles("manager", "admin")
+  @PermissionKey("allocations.undo")
+  @Post(":id/allocations/:allocationId/undo")
+  @ApiOperation({ summary: "Undo a stock allocation within 5 minutes" })
+  async undoAllocation(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("allocationId") allocationId: number,
+  ) {
+    return this.jobCardService.undoAllocation(req.user.companyId, allocationId, {
+      id: req.user.id,
+      name: req.user.name,
+    });
+  }
+
   @Post(":id/allocations/:allocationId/photo")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload a photo for an allocation" })

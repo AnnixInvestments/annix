@@ -225,4 +225,55 @@ export class RequisitionService {
 
     return this.itemRepo.save(item);
   }
+
+  async recordReceipt(
+    companyId: number,
+    requisitionId: number,
+    itemId: number,
+    quantityReceived: number,
+    deliveryNoteId: number | null,
+  ): Promise<RequisitionItem> {
+    const item = await this.itemRepo.findOne({
+      where: { id: itemId, requisitionId, companyId },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Requisition item ${itemId} not found`);
+    }
+
+    item.quantityReceived = (item.quantityReceived || 0) + quantityReceived;
+    if (deliveryNoteId) {
+      item.linkedDeliveryNoteId = deliveryNoteId;
+    }
+
+    await this.itemRepo.save(item);
+    await this.recalculateRequisitionStatus(companyId, requisitionId);
+
+    return item;
+  }
+
+  async recalculateRequisitionStatus(companyId: number, requisitionId: number): Promise<void> {
+    const requisition = await this.requisitionRepo.findOne({
+      where: { id: requisitionId, companyId },
+      relations: ["items"],
+    });
+
+    if (!requisition) return;
+    if (requisition.status === RequisitionStatus.CANCELLED || requisition.status === RequisitionStatus.PENDING) return;
+
+    const allFullyReceived = requisition.items.every((item) => {
+      const required = item.quantityRequired ?? item.packsToOrder ?? 0;
+      return required <= 0 || item.quantityReceived >= required;
+    });
+
+    const anyReceived = requisition.items.some((item) => item.quantityReceived > 0);
+
+    if (allFullyReceived) {
+      requisition.status = RequisitionStatus.RECEIVED;
+    } else if (anyReceived) {
+      requisition.status = RequisitionStatus.PARTIALLY_RECEIVED;
+    }
+
+    await this.requisitionRepo.save(requisition);
+  }
 }

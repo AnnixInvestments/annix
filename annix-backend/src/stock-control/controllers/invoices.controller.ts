@@ -16,6 +16,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
+import { IdempotencyInterceptor } from "../../shared/interceptors/idempotency.interceptor";
 import { SageExportFilterDto } from "../../sage-export/dto/sage-export.dto";
 import { SageExportService } from "../../sage-export/sage-export.service";
 import { LinkInvoiceToDeliveryNoteDto, SubmitClarificationDto } from "../dto/create-invoice.dto";
@@ -130,6 +131,7 @@ export class InvoicesController {
   }
 
   @Post()
+  @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: "Create a new supplier invoice" })
   async create(@Body() dto: CreateInvoiceDto, @Req() req: any) {
     return this.invoiceService.create(req.user.companyId, dto);

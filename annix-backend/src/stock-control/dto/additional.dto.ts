@@ -95,3 +95,13 @@ export class UpdateCpoStatusDto {
   @IsString()
   status: string;
 }
+
+export class RecordRequisitionReceiptDto {
+  @IsNumber()
+  @Min(1)
+  quantityReceived: number;
+
+  @IsOptional()
+  @IsNumber()
+  deliveryNoteId?: number | null;
+}

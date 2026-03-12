@@ -233,6 +233,37 @@ export class DispatchService {
     return jobCard;
   }
 
+  async reverseDispatchScan(
+    companyId: number,
+    scanId: number,
+    user: { id: number; name: string },
+  ): Promise<void> {
+    const scan = await this.dispatchScanRepo.findOne({
+      where: { id: scanId, companyId },
+      relations: ["jobCard"],
+    });
+
+    if (!scan) {
+      throw new NotFoundException(`Dispatch scan ${scanId} not found`);
+    }
+
+    if (scan.jobCard.workflowStatus === JobCardWorkflowStatus.DISPATCHED) {
+      throw new BadRequestException("Cannot reverse scans on a completed dispatch");
+    }
+
+    await this.dispatchScanRepo.remove(scan);
+
+    this.logger.log(`Dispatch scan ${scanId} reversed by ${user.name} for job card ${scan.jobCardId}`);
+
+    this.auditService.log({
+      entityType: "dispatch_scan",
+      entityId: scanId,
+      action: AuditAction.DELETE,
+      oldValues: { jobCardId: scan.jobCardId, stockItemId: scan.stockItemId, quantity: scan.quantityDispatched },
+      newValues: { reversedBy: user.name },
+    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+  }
+
   async scanByQrToken(
     companyId: number,
     qrToken: string,

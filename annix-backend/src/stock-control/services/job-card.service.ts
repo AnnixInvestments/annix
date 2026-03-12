@@ -407,6 +407,86 @@ export class JobCardService {
     });
   }
 
+  async undoAllocation(
+    companyId: number,
+    allocationId: number,
+    user: { id: number; name: string },
+  ): Promise<StockAllocation> {
+    const allocation = await this.allocationRepo.findOne({
+      where: { id: allocationId, companyId },
+      relations: ["stockItem", "jobCard"],
+    });
+
+    if (!allocation) {
+      throw new NotFoundException(`Allocation ${allocationId} not found`);
+    }
+
+    if (allocation.undone) {
+      throw new BadRequestException("This allocation has already been undone");
+    }
+
+    if (allocation.pendingApproval) {
+      throw new BadRequestException("Cannot undo a pending allocation. Reject it instead.");
+    }
+
+    const fiveMinutesAgo = now().minus({ minutes: 5 }).toJSDate();
+    if (allocation.createdAt < fiveMinutesAgo) {
+      throw new BadRequestException("Allocations can only be undone within 5 minutes of creation");
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const stockItem = await queryRunner.manager.findOne(StockItem, {
+        where: { id: allocation.stockItem.id, companyId },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      if (!stockItem) {
+        throw new NotFoundException("Stock item not found");
+      }
+
+      stockItem.quantity = Number(stockItem.quantity) + allocation.quantityUsed;
+      await queryRunner.manager.save(StockItem, stockItem);
+
+      allocation.undone = true;
+      allocation.undoneAt = now().toJSDate();
+      allocation.undoneByName = user.name;
+      await queryRunner.manager.save(StockAllocation, allocation);
+
+      const reverseMovement = queryRunner.manager.create(StockMovement, {
+        stockItem: { id: stockItem.id },
+        movementType: MovementType.IN,
+        quantity: allocation.quantityUsed,
+        referenceType: ReferenceType.ALLOCATION,
+        referenceId: allocation.id,
+        notes: `Undo allocation #${allocation.id} by ${user.name}`,
+        createdBy: user.name,
+        companyId,
+      });
+      await queryRunner.manager.save(StockMovement, reverseMovement);
+
+      await queryRunner.commitTransaction();
+
+      this.auditService.log({
+        entityType: "stock_allocation",
+        entityId: allocation.id,
+        action: AuditAction.DELETE,
+        oldValues: { stockItemId: allocation.stockItem.id, quantity: allocation.quantityUsed },
+        newValues: { undoneBy: user.name },
+      }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+
+      return allocation;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
   async uploadAllocationPhoto(
     companyId: number,
     allocationId: number,

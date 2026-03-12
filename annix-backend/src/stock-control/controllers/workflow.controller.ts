@@ -282,6 +282,20 @@ export class WorkflowController {
     return this.dispatchService.completeDispatch(req.user.companyId, id, req.user);
   }
 
+  @StockControlRoles("manager", "admin")
+  @Delete("job-cards/:id/dispatch/scans/:scanId")
+  @ApiOperation({ summary: "Reverse a dispatch scan" })
+  async reverseDispatchScan(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("scanId") scanId: number,
+  ) {
+    return this.dispatchService.reverseDispatchScan(req.user.companyId, scanId, {
+      id: req.user.id,
+      name: req.user.name,
+    });
+  }
+
   @Post("dispatch/scan-qr")
   @StockControlRoles("storeman", "admin")
   @ApiOperation({ summary: "Identify item by QR code" })

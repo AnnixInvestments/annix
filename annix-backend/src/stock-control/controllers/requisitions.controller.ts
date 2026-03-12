@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Put, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { UpdateRequisitionItemDto } from "../dto/additional.dto";
+import { RecordRequisitionReceiptDto, UpdateRequisitionItemDto } from "../dto/additional.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { RequisitionService } from "../services/requisition.service";
@@ -37,5 +37,22 @@ export class RequisitionsController {
     @Body() dto: UpdateRequisitionItemDto,
   ) {
     return this.requisitionService.updateItem(req.user.companyId, itemId, dto);
+  }
+
+  @Post(":id/items/:itemId/receive")
+  @ApiOperation({ summary: "Record partial receipt of a requisition item" })
+  async recordReceipt(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("itemId") itemId: number,
+    @Body() dto: RecordRequisitionReceiptDto,
+  ) {
+    return this.requisitionService.recordReceipt(
+      req.user.companyId,
+      id,
+      itemId,
+      dto.quantityReceived,
+      dto.deliveryNoteId ?? null,
+    );
   }
 }

@@ -17,6 +17,7 @@ export enum RequisitionStatus {
   PENDING = "pending",
   APPROVED = "approved",
   ORDERED = "ordered",
+  PARTIALLY_RECEIVED = "partially_received",
   RECEIVED = "received",
   CANCELLED = "cancelled",
 }

@@ -17,6 +17,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { IdempotencyInterceptor } from "../../shared/interceptors/idempotency.interceptor";
 import { CreateDeliveryNoteDto } from "../dto/create-delivery-note.dto";
 import { RubberCocExtractionService } from "../../rubber-lining/rubber-coc-extraction.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
@@ -57,6 +58,7 @@ export class DeliveriesController {
   }
 
   @Post()
+  @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: "Create a delivery note with items" })
   async create(@Body() dto: CreateDeliveryNoteDto, @Req() req: any) {
     return this.deliveryService.create(req.user.companyId, {

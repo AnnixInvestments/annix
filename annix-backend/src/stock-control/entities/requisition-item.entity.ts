@@ -56,4 +56,10 @@ export class RequisitionItem {
 
   @Column({ name: "company_id" })
   companyId: number;
+
+  @Column({ name: "quantity_received", type: "integer", default: 0 })
+  quantityReceived: number;
+
+  @Column({ name: "linked_delivery_note_id", type: "integer", nullable: true })
+  linkedDeliveryNoteId: number | null;
 }
