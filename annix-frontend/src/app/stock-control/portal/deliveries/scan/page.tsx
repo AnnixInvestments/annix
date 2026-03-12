@@ -218,7 +218,7 @@ export default function ScanDeliveryNotePage() {
               <input
                 ref={cameraInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
                 capture="environment"
                 onChange={handleFileSelect}
                 className="hidden"
@@ -242,7 +242,7 @@ export default function ScanDeliveryNotePage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*,application/pdf"
+                accept="image/jpeg,image/png,image/heic,image/heif,image/webp,application/pdf"
                 onChange={handleFileSelect}
                 className="hidden"
               />
