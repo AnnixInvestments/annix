@@ -73,7 +73,11 @@ export function SortHeader(props: SortHeaderProps) {
   const { label, sortKey, currentSort, onSort } = props;
   const isActive = currentSort.key === sortKey;
 
-  const ariaSort = isActive ? (currentSort.direction === "asc" ? "ascending" : "descending") : "none";
+  const ariaSort = isActive
+    ? currentSort.direction === "asc"
+      ? "ascending"
+      : "descending"
+    : "none";
 
   return (
     <th

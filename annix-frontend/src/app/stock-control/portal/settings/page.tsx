@@ -14,11 +14,11 @@ import type {
   WorkflowStepConfig,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { DepartmentsLocationsSection } from "./DepartmentsLocationsSection";
-import { TeamManagementSection } from "./TeamManagementSection";
 import { ALL_NAV_ITEMS, NAV_GROUP_ORDER } from "../../config/navItems";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
 import { roleLabel } from "../../lib/roleLabels";
+import { DepartmentsLocationsSection } from "./DepartmentsLocationsSection";
+import { TeamManagementSection } from "./TeamManagementSection";
 
 export default function StockControlSettingsPage() {
   const router = useRouter();

@@ -217,7 +217,10 @@ export function StockControlHeader() {
             })).filter((g) => g.items.length > 0);
 
             return (
-              <nav className="hidden lg:flex items-center mx-2 sm:mx-4 overflow-x-auto scrollbar-hide" aria-label="Main navigation">
+              <nav
+                className="hidden lg:flex items-center mx-2 sm:mx-4 overflow-x-auto scrollbar-hide"
+                aria-label="Main navigation"
+              >
                 <div className="flex items-center gap-1">
                   {directItems.map((item) => (
                     <Link

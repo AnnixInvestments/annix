@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { CandidateImage, stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { isValidEmail } from "../../lib/validation";
 import { STOCK_CONTROL_VERSION } from "../../config/version";
 import { syncStatus } from "../../lib/offline/syncManager";
+import { isValidEmail } from "../../lib/validation";
 import { AppPermissionsSection } from "../settings/AppPermissionsSection";
 import { SmtpConfigSection } from "../settings/SmtpConfigSection";
 

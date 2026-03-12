@@ -88,7 +88,12 @@ export function StockItemModal(props: StockItemModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="stock-item-modal-title">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="stock-item-modal-title"
+    >
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
 
@@ -111,9 +116,7 @@ export function StockItemModal(props: StockItemModalProps) {
 
           <form onSubmit={handleSubmit}>
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-4">
-              {validationError && (
-                <p className="text-sm text-red-600">{validationError}</p>
-              )}
+              {validationError && <p className="text-sm text-red-600">{validationError}</p>}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>

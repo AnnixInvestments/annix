@@ -1,10 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type {
-  StockControlDepartment,
-  StockControlLocation,
-} from "@/app/lib/api/stockControlApi";
+import type { StockControlDepartment, StockControlLocation } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 interface DepartmentsLocationsSectionProps {
@@ -17,9 +14,7 @@ export function DepartmentsLocationsSection({
   const [departments, setDepartments] = useState<StockControlDepartment[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(true);
   const [newDepartmentName, setNewDepartmentName] = useState("");
-  const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(
-    null,
-  );
+  const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(null);
   const [editingDepartmentName, setEditingDepartmentName] = useState("");
   const [departmentError, setDepartmentError] = useState("");
 
@@ -27,12 +22,9 @@ export function DepartmentsLocationsSection({
   const [locationsLoading, setLocationsLoading] = useState(true);
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocationDescription, setNewLocationDescription] = useState("");
-  const [editingLocationId, setEditingLocationId] = useState<number | null>(
-    null,
-  );
+  const [editingLocationId, setEditingLocationId] = useState<number | null>(null);
   const [editingLocationName, setEditingLocationName] = useState("");
-  const [editingLocationDescription, setEditingLocationDescription] =
-    useState("");
+  const [editingLocationDescription, setEditingLocationDescription] = useState("");
   const [locationError, setLocationError] = useState("");
 
   const loadDepartments = useCallback(async () => {
@@ -41,9 +33,7 @@ export function DepartmentsLocationsSection({
       const data = await stockControlApiClient.departments();
       setDepartments(data);
     } catch (e) {
-      setDepartmentError(
-        e instanceof Error ? e.message : "Failed to load departments",
-      );
+      setDepartmentError(e instanceof Error ? e.message : "Failed to load departments");
     } finally {
       setDepartmentsLoading(false);
     }
@@ -55,9 +45,7 @@ export function DepartmentsLocationsSection({
       const data = await stockControlApiClient.locations();
       setLocations(data);
     } catch (e) {
-      setLocationError(
-        e instanceof Error ? e.message : "Failed to load locations",
-      );
+      setLocationError(e instanceof Error ? e.message : "Failed to load locations");
     } finally {
       setLocationsLoading(false);
     }
@@ -82,9 +70,7 @@ export function DepartmentsLocationsSection({
       setNewDepartmentName("");
       await loadDepartments();
     } catch (e) {
-      setDepartmentError(
-        e instanceof Error ? e.message : "Failed to add department",
-      );
+      setDepartmentError(e instanceof Error ? e.message : "Failed to add department");
     }
   };
 
@@ -98,9 +84,7 @@ export function DepartmentsLocationsSection({
       setEditingDepartmentId(null);
       await loadDepartments();
     } catch (e) {
-      setDepartmentError(
-        e instanceof Error ? e.message : "Failed to update department",
-      );
+      setDepartmentError(e instanceof Error ? e.message : "Failed to update department");
     }
   };
 
@@ -110,9 +94,7 @@ export function DepartmentsLocationsSection({
       await stockControlApiClient.deleteDepartment(id);
       await loadDepartments();
     } catch (e) {
-      setDepartmentError(
-        e instanceof Error ? e.message : "Failed to delete department",
-      );
+      setDepartmentError(e instanceof Error ? e.message : "Failed to delete department");
     }
   };
 
@@ -128,9 +110,7 @@ export function DepartmentsLocationsSection({
       setNewLocationDescription("");
       await loadLocations();
     } catch (e) {
-      setLocationError(
-        e instanceof Error ? e.message : "Failed to add location",
-      );
+      setLocationError(e instanceof Error ? e.message : "Failed to add location");
     }
   };
 
@@ -145,9 +125,7 @@ export function DepartmentsLocationsSection({
       setEditingLocationId(null);
       await loadLocations();
     } catch (e) {
-      setLocationError(
-        e instanceof Error ? e.message : "Failed to update location",
-      );
+      setLocationError(e instanceof Error ? e.message : "Failed to update location");
     }
   };
 
@@ -157,22 +135,16 @@ export function DepartmentsLocationsSection({
       await stockControlApiClient.deleteLocation(id);
       await loadLocations();
     } catch (e) {
-      setLocationError(
-        e instanceof Error ? e.message : "Failed to delete location",
-      );
+      setLocationError(e instanceof Error ? e.message : "Failed to delete location");
     }
   };
 
   return (
     <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">
-        Departments & Locations
-      </h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">Departments & Locations</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">
-            Departments
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">Departments</h3>
           <p className="text-sm text-gray-500 mb-4">
             Manage departments that can be assigned to staff members.
           </p>
@@ -201,18 +173,12 @@ export function DepartmentsLocationsSection({
             </button>
           </div>
 
-          {departmentError && (
-            <p className="text-sm text-red-600 mb-4">{departmentError}</p>
-          )}
+          {departmentError && <p className="text-sm text-red-600 mb-4">{departmentError}</p>}
 
           {departmentsLoading ? (
-            <div className="text-center py-4 text-gray-500">
-              Loading departments...
-            </div>
+            <div className="text-center py-4 text-gray-500">Loading departments...</div>
           ) : departments.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
-              No departments yet
-            </div>
+            <div className="text-center py-4 text-gray-500">No departments yet</div>
           ) : (
             <div className="space-y-2">
               {departments.map((dept) => (
@@ -282,9 +248,7 @@ export function DepartmentsLocationsSection({
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">
-            Locations
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-2">Locations</h3>
           <p className="text-sm text-gray-500 mb-4">
             Manage storage locations for inventory items.
           </p>
@@ -320,18 +284,12 @@ export function DepartmentsLocationsSection({
             </button>
           </div>
 
-          {locationError && (
-            <p className="text-sm text-red-600 mb-4">{locationError}</p>
-          )}
+          {locationError && <p className="text-sm text-red-600 mb-4">{locationError}</p>}
 
           {locationsLoading ? (
-            <div className="text-center py-4 text-gray-500">
-              Loading locations...
-            </div>
+            <div className="text-center py-4 text-gray-500">Loading locations...</div>
           ) : locations.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
-              No locations yet
-            </div>
+            <div className="text-center py-4 text-gray-500">No locations yet</div>
           ) : (
             <div className="space-y-2">
               {locations.map((loc) => (
@@ -351,9 +309,7 @@ export function DepartmentsLocationsSection({
                       <input
                         type="text"
                         value={editingLocationDescription}
-                        onChange={(e) =>
-                          setEditingLocationDescription(e.target.value)
-                        }
+                        onChange={(e) => setEditingLocationDescription(e.target.value)}
                         placeholder="Description (optional)"
                         onKeyDown={(e) => {
                           if (e.key === "Enter") handleUpdateLocation(loc.id);
@@ -366,9 +322,7 @@ export function DepartmentsLocationsSection({
                     <div className="flex-1">
                       <span className="text-sm text-gray-900">{loc.name}</span>
                       {loc.description && (
-                        <span className="ml-2 text-xs text-gray-500">
-                          {loc.description}
-                        </span>
+                        <span className="ml-2 text-xs text-gray-500">{loc.description}</span>
                       )}
                     </div>
                   )}
@@ -397,9 +351,7 @@ export function DepartmentsLocationsSection({
                           onClick={() => {
                             setEditingLocationId(loc.id);
                             setEditingLocationName(loc.name);
-                            setEditingLocationDescription(
-                              loc.description ?? "",
-                            );
+                            setEditingLocationDescription(loc.description ?? "");
                           }}
                           className="text-xs font-medium text-teal-600 hover:text-teal-800"
                         >
