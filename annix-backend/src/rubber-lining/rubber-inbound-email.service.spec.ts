@@ -300,8 +300,8 @@ describe("RubberInboundEmailService", () => {
       expect(determine("Delivery Note DN-001")).toBe("delivery_note");
     });
 
-    it("should detect delivery note from subject with 'dn'", () => {
-      expect(determine("DN attached")).toBe("delivery_note");
+    it("should classify bare 'DN' subject as coc to avoid misclassification", () => {
+      expect(determine("DN attached")).toBe("coc");
     });
 
     it("should detect delivery note from subject with 'despatch'", () => {
