@@ -158,10 +158,6 @@ export class WorkflowStepConfigService {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
 
-    if (step.isSystem) {
-      throw new BadRequestException("Cannot convert a system workflow step to background");
-    }
-
     step.isBackground = isBackground;
     step.triggerAfterStep = isBackground ? (triggerAfterStep ?? null) : null;
     step.sortOrder = isBackground ? 0 : await this.nextSortOrder(companyId);

@@ -1199,49 +1199,47 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                                 </svg>
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleBackground(step.key, true)}
+                              className="text-gray-400 hover:text-amber-600 p-0.5"
+                              title="Move to background"
+                            >
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M13 17l5-5-5-5m-6 10l5-5-5-5"
+                                />
+                              </svg>
+                            </button>
                             {!step.isSystem && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggleBackground(step.key, true)}
-                                  className="text-gray-400 hover:text-amber-600 p-0.5"
-                                  title="Move to background"
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveStep(step.key)}
+                                className="text-gray-400 hover:text-red-500 p-0.5"
+                                title="Remove step"
+                              >
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
                                 >
-                                  <svg
-                                    className="w-3 h-3"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M13 17l5-5-5-5m-6 10l5-5-5-5"
-                                    />
-                                  </svg>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveStep(step.key)}
-                                  className="text-gray-400 hover:text-red-500 p-0.5"
-                                  title="Remove step"
-                                >
-                                  <svg
-                                    className="w-3 h-3"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                    />
-                                  </svg>
-                                </button>
-                              </>
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
                             )}
                           </div>
                         </div>
@@ -1410,49 +1408,47 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                               </option>
                             ))}
                         </select>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleBackground(bgStep.key, false)}
+                          className="text-gray-400 hover:text-teal-600 p-1"
+                          title="Move to foreground workflow"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 17l-5-5 5-5m6 10l-5-5 5-5"
+                            />
+                          </svg>
+                        </button>
                         {!bgStep.isSystem && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleBackground(bgStep.key, false)}
-                              className="text-gray-400 hover:text-teal-600 p-1"
-                              title="Move to foreground workflow"
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStep(bgStep.key)}
+                            className="text-gray-400 hover:text-red-500 p-1"
+                            title="Remove background step"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
                             >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M11 17l-5-5 5-5m6 10l-5-5 5-5"
-                                />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveStep(bgStep.key)}
-                              className="text-gray-400 hover:text-red-500 p-1"
-                              title="Remove background step"
-                            >
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          </>
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
                         )}
                       </div>
                     </div>
