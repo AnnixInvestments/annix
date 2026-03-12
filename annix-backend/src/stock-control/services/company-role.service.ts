@@ -52,11 +52,7 @@ export class CompanyRoleService {
     }));
   }
 
-  async createRole(
-    companyId: number,
-    key: string,
-    label: string,
-  ): Promise<CompanyRoleDto> {
+  async createRole(companyId: number, key: string, label: string): Promise<CompanyRoleDto> {
     const sanitizedKey = key
       .toLowerCase()
       .trim()
@@ -103,11 +99,7 @@ export class CompanyRoleService {
     };
   }
 
-  async updateRole(
-    id: number,
-    companyId: number,
-    label: string,
-  ): Promise<CompanyRoleDto> {
+  async updateRole(id: number, companyId: number, label: string): Promise<CompanyRoleDto> {
     const role = await this.roleRepo.findOne({ where: { id, companyId } });
 
     if (!role) {

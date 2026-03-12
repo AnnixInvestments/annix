@@ -383,7 +383,9 @@ export default function StockControlSettingsPage() {
                     >
                       <div className="min-w-0 truncate">
                         <span className="text-sm text-gray-900">{inv.email}</span>
-                        <span className="ml-2 text-xs text-gray-500">({localRoleLabel(inv.role)})</span>
+                        <span className="ml-2 text-xs text-gray-500">
+                          ({localRoleLabel(inv.role)})
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -1053,9 +1055,7 @@ function MenuVisibilitySection() {
                         const itemRoles = localConfig[item.key] ?? item.defaultRoles;
                         return (
                           <tr key={item.key} className="border-b border-gray-100 bg-white">
-                            <td className="py-2.5 pr-2 text-sm text-gray-600 pl-8">
-                              {item.label}
-                            </td>
+                            <td className="py-2.5 pr-2 text-sm text-gray-600 pl-8">{item.label}</td>
                             {roleKeys.map((rk) => {
                               const checked = itemRoles.includes(rk);
                               const disabled = rk === "admin" || item.immutable === true;
@@ -1110,10 +1110,10 @@ function MenuVisibilitySection() {
         Admin always has full access. Settings is always admin-only.
       </p>
 
-      {roleError && !showAddRole && (
-        <p className="mt-3 text-sm text-red-600">{roleError}</p>
+      {roleError && !showAddRole && <p className="mt-3 text-sm text-red-600">{roleError}</p>}
+      {success && (
+        <p className="mt-3 text-sm text-green-600">Menu visibility updated successfully.</p>
       )}
-      {success && <p className="mt-3 text-sm text-green-600">Menu visibility updated successfully.</p>}
 
       <div className="mt-4 flex gap-3">
         <button

@@ -31,6 +31,6 @@ export class CreateStockControlCompanyRoles1805910000000 implements MigrationInt
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS stock_control_company_roles`);
+    await queryRunner.query("DROP TABLE IF EXISTS stock_control_company_roles");
   }
 }

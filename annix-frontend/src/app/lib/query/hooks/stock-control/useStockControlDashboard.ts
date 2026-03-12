@@ -133,10 +133,7 @@ export function useUpdateDashboardPreferences() {
     },
     onError: (_err, _data, context) => {
       if (context?.previous !== undefined) {
-        queryClient.setQueryData(
-          stockControlKeys.dashboard.preferences(),
-          context.previous,
-        );
+        queryClient.setQueryData(stockControlKeys.dashboard.preferences(), context.previous);
       }
     },
     onSettled: () => {

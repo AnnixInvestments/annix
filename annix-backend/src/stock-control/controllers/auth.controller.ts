@@ -365,11 +365,7 @@ export class StockControlAuthController {
   @StockControlRoles("admin")
   @Patch("roles/:id")
   @ApiOperation({ summary: "Update a role label" })
-  async updateRole(
-    @Req() req: any,
-    @Param("id") id: string,
-    @Body() body: { label: string },
-  ) {
+  async updateRole(@Req() req: any, @Param("id") id: string, @Body() body: { label: string }) {
     return this.companyRoleService.updateRole(Number(id), req.user.companyId, body.label);
   }
 
