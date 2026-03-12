@@ -266,8 +266,7 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  const canEdit =
-    user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
+  const canEdit = user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
 
   if (isLoading) {
     return (
@@ -370,7 +369,10 @@ export default function InvoiceDetailPage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">
-                  Delivery Note{invoice.linkedDeliveryNoteIds && invoice.linkedDeliveryNoteIds.length > 1 ? "s" : ""}
+                  Delivery Note
+                  {invoice.linkedDeliveryNoteIds && invoice.linkedDeliveryNoteIds.length > 1
+                    ? "s"
+                    : ""}
                 </dt>
                 <dd className="mt-1 text-sm text-gray-900">
                   {invoice.deliveryNoteId ? (
@@ -407,9 +409,7 @@ export default function InvoiceDetailPage() {
           <div className="bg-white shadow rounded-lg overflow-x-auto">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Line Items</h2>
-              {canEdit && (
-                <span className="text-xs text-gray-400">Click a row to edit</span>
-              )}
+              {canEdit && <span className="text-xs text-gray-400">Click a row to edit</span>}
             </div>
             {invoice.items && invoice.items.length > 0 ? (
               <table className="min-w-full divide-y divide-gray-200">
@@ -492,13 +492,30 @@ export default function InvoiceDetailPage() {
                               onClick={(e) => e.stopPropagation()}
                               className="w-20 px-1 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
                             >
-                              {["each", "ltr", "kg", "roll", "m", "m2", "pack", "set", "pair", "box", "drum", "pail", "can", "tin", "bag", "sheet", "length", "bundle"].map(
-                                (u) => (
-                                  <option key={u} value={u}>
-                                    {u}
-                                  </option>
-                                ),
-                              )}
+                              {[
+                                "each",
+                                "ltr",
+                                "kg",
+                                "roll",
+                                "m",
+                                "m2",
+                                "pack",
+                                "set",
+                                "pair",
+                                "box",
+                                "drum",
+                                "pail",
+                                "can",
+                                "tin",
+                                "bag",
+                                "sheet",
+                                "length",
+                                "bundle",
+                              ].map((u) => (
+                                <option key={u} value={u}>
+                                  {u}
+                                </option>
+                              ))}
                             </select>
                           ) : (
                             <span className="text-gray-400 text-xs">
@@ -544,7 +561,10 @@ export default function InvoiceDetailPage() {
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           {isEditing ? (
-                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <div
+                              className="flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <button
                                 type="button"
                                 onClick={() => saveItemEdit(item.id)}

@@ -15,7 +15,11 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { PermissionKey, StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import {
+  PermissionKey,
+  StockControlRoleGuard,
+  StockControlRoles,
+} from "../guards/stock-control-role.guard";
 import { StaffService } from "../services/staff.service";
 
 @ApiTags("Stock Control - Staff")

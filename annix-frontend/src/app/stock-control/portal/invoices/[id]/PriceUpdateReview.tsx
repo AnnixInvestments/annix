@@ -39,9 +39,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
         </div>
       ) : (
         <div className="text-center bg-gray-50 rounded-lg p-3">
-          <p className="text-xs text-gray-500">
-            {items.length} items with price updates
-          </p>
+          <p className="text-xs text-gray-500">{items.length} items with price updates</p>
         </div>
       )}
 

@@ -12,6 +12,7 @@ import {
   InvoiceClarification,
   SuggestedMatch,
 } from "../entities/invoice-clarification.entity";
+import { InvoiceExtractionCorrection } from "../entities/invoice-extraction-correction.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { PriceChangeReason, StockPriceHistory } from "../entities/stock-price-history.entity";
 import {
@@ -20,7 +21,6 @@ import {
   InvoiceExtractionStatus,
   SupplierInvoice,
 } from "../entities/supplier-invoice.entity";
-import { InvoiceExtractionCorrection } from "../entities/invoice-extraction-correction.entity";
 import {
   InvoiceItemMatchStatus,
   SupplierInvoiceItem,

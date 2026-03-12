@@ -18,7 +18,11 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { PermissionKey, StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import {
+  PermissionKey,
+  StockControlRoleGuard,
+  StockControlRoles,
+} from "../guards/stock-control-role.guard";
 import {
   type CertificateFilters,
   CertificateService,

@@ -20,12 +20,12 @@ import { SetBrandingDto } from "../dto/set-branding.dto";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { ActionPermissionService } from "../services/action-permission.service";
 import { StockControlAuthService } from "../services/auth.service";
 import { BrandingScraperService } from "../services/branding-scraper.service";
 import { CompanyEmailService, SmtpConfigDto } from "../services/company-email.service";
 import { CompanyRoleService } from "../services/company-role.service";
 import { LookupService } from "../services/lookup.service";
-import { ActionPermissionService } from "../services/action-permission.service";
 import { RbacConfigService } from "../services/rbac-config.service";
 
 @ApiTags("Stock Control - Auth")
@@ -407,10 +407,7 @@ export class StockControlAuthController {
     @Body() body: { config: Record<string, string[]> },
   ) {
     return {
-      config: await this.actionPermissionService.updatePermissions(
-        req.user.companyId,
-        body.config,
-      ),
+      config: await this.actionPermissionService.updatePermissions(req.user.companyId, body.config),
       labels: this.actionPermissionService.actionLabels(),
     };
   }

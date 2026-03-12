@@ -60,7 +60,14 @@ export class SupplierInvoiceItem {
   @Column({ name: "unit_type", type: "varchar", length: 50, nullable: true })
   unitType: string | null;
 
-  @Column({ name: "discount_percent", type: "numeric", precision: 5, scale: 2, nullable: true, default: 0 })
+  @Column({
+    name: "discount_percent",
+    type: "numeric",
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    default: 0,
+  })
   discountPercent: number | null;
 
   @Column({

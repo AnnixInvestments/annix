@@ -23,7 +23,11 @@ import { RubberDimensionOverride } from "../entities/rubber-dimension-override.e
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { PermissionKey, StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import {
+  PermissionKey,
+  StockControlRoleGuard,
+  StockControlRoles,
+} from "../guards/stock-control-role.guard";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";

@@ -2467,9 +2467,7 @@ function ActionPermissionsSection({
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500 w-64">
-                Action
-              </th>
+              <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500 w-64">Action</th>
               {roles.map((role) => (
                 <th
                   key={role.key}

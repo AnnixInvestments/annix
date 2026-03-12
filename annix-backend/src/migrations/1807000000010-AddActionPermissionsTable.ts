@@ -20,6 +20,6 @@ export class AddActionPermissionsTable1807000000010 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS stock_control_action_permissions`);
+    await queryRunner.query("DROP TABLE IF EXISTS stock_control_action_permissions");
   }
 }
