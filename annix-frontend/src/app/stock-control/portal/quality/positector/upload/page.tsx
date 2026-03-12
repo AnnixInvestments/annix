@@ -301,107 +301,107 @@ export default function PositectorUploadPage() {
         </div>
       )}
 
-      {parsedBatch && (() => {
-        const batchHeader = parsedBatch["header"];
-        const batchReadings = parsedBatch["readings"];
-        const batchFilename = parsedBatch["filename"];
-        const batchFormat = parsedBatch["detectedFormat"];
-        const batchEntityType = parsedBatch["suggestedEntityType"];
-        const headerBatchName = batchHeader["batchName"];
-        const headerProbeType = batchHeader["probeType"];
-        const headerSerialNumber = batchHeader["serialNumber"];
-        const headerUnits = batchHeader["units"];
+      {parsedBatch &&
+        (() => {
+          const batchHeader = parsedBatch["header"];
+          const batchReadings = parsedBatch["readings"];
+          const batchFilename = parsedBatch["filename"];
+          const batchFormat = parsedBatch["detectedFormat"];
+          const batchEntityType = parsedBatch["suggestedEntityType"];
+          const headerBatchName = batchHeader["batchName"];
+          const headerProbeType = batchHeader["probeType"];
+          const headerSerialNumber = batchHeader["serialNumber"];
+          const headerUnits = batchHeader["units"];
 
-        return (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {headerBatchName ?? batchFilename}
-                </h2>
-                <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                  <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                    {FORMAT_LABELS[batchFormat] ?? batchFormat}
-                  </span>
-                  {headerProbeType && (
-                    <span>Probe: {headerProbeType}</span>
-                  )}
-                  {headerSerialNumber && (
-                    <span>S/N: {headerSerialNumber}</span>
-                  )}
-                  <span>Units: {headerUnits ?? "-"}</span>
-                  <span>Readings: {batchReadings.length}</span>
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      batchEntityType !== "unknown"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    Maps to: {ENTITY_TYPE_LABELS[batchEntityType] ?? "Unknown"}
-                  </span>
+          return (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-gray-200 bg-white p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      {headerBatchName ?? batchFilename}
+                    </h2>
+                    <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                      <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                        {FORMAT_LABELS[batchFormat] ?? batchFormat}
+                      </span>
+                      {headerProbeType && <span>Probe: {headerProbeType}</span>}
+                      {headerSerialNumber && <span>S/N: {headerSerialNumber}</span>}
+                      <span>Units: {headerUnits ?? "-"}</span>
+                      <span>Readings: {batchReadings.length}</span>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          batchEntityType !== "unknown"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        Maps to: {ENTITY_TYPE_LABELS[batchEntityType] ?? "Unknown"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {batchReadings.length > 0 && (
+                      <button
+                        onClick={() => setShowImportForm(true)}
+                        className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+                      >
+                        Import to Job Card
+                      </button>
+                    )}
+                    <button
+                      onClick={handleClear}
+                      className="text-sm text-gray-500 hover:text-gray-700"
+                    >
+                      Clear
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                {batchReadings.length > 0 && (
-                  <button
-                    onClick={() => setShowImportForm(true)}
-                    className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                  >
-                    Import to Job Card
-                  </button>
-                )}
-                <button onClick={handleClear} className="text-sm text-gray-500 hover:text-gray-700">
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {batchReadings.length > 0 && (
-            <div className="overflow-hidden rounded-lg border border-gray-200">
-              <div className="max-h-96 overflow-y-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="sticky top-0 bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        #
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Value
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Units
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Timestamp
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {batchReadings.map((reading) => (
-                      <tr key={reading.index} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-sm text-gray-500">{reading.index}</td>
-                        <td className="px-4 py-2 text-sm font-medium text-gray-900">
-                          {reading.value}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-500">
-                          {reading.units ?? headerUnits ?? "-"}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-500">
-                          {reading.timestamp ?? "-"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {batchReadings.length > 0 && (
+                <div className="overflow-hidden rounded-lg border border-gray-200">
+                  <div className="max-h-96 overflow-y-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="sticky top-0 bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                            #
+                          </th>
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                            Value
+                          </th>
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                            Units
+                          </th>
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                            Timestamp
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {batchReadings.map((reading) => (
+                          <tr key={reading.index} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 text-sm text-gray-500">{reading.index}</td>
+                            <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                              {reading.value}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-500">
+                              {reading.units ?? headerUnits ?? "-"}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-500">
+                              {reading.timestamp ?? "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        );
-      })()}
+          );
+        })()}
 
       {showImportForm && parsedBatch && selectedFile && (
         <UploadImportForm
