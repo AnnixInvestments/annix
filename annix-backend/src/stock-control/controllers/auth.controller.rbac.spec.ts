@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
+import { ActionPermissionService } from "../services/action-permission.service";
 import { StockControlAuthService } from "../services/auth.service";
 import { BrandingScraperService } from "../services/branding-scraper.service";
 import { CompanyEmailService } from "../services/company-email.service";
@@ -48,6 +49,10 @@ describe("StockControlAuthController - RBAC endpoints", () => {
         },
         {
           provide: CompanyRoleService,
+          useValue: {},
+        },
+        {
+          provide: ActionPermissionService,
           useValue: {},
         },
       ],
