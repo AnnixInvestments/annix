@@ -22,7 +22,7 @@ export class IssuanceController {
   constructor(private readonly issuanceService: IssuanceService) {}
 
   @Post("scan-qr")
-  @StockControlRoles("storeman", "accounts", "manager", "admin")
+  @StockControlRoles("storeman", "receiving-clerk", "accounts", "manager", "admin")
   @PermissionKey("issuance.issue")
   @ApiOperation({ summary: "Scan and validate any QR code for issuance workflow" })
   async scanQr(@Req() req: any, @Body() body: { qrCode: string }) {
@@ -30,7 +30,7 @@ export class IssuanceController {
   }
 
   @Post()
-  @StockControlRoles("storeman", "accounts", "manager", "admin")
+  @StockControlRoles("storeman", "receiving-clerk", "accounts", "manager", "admin")
   @PermissionKey("issuance.issue")
   @ApiOperation({ summary: "Create a new stock issuance" })
   async createIssuance(@Req() req: any, @Body() dto: CreateIssuanceDto) {
@@ -38,7 +38,7 @@ export class IssuanceController {
   }
 
   @Post("batch")
-  @StockControlRoles("storeman", "accounts", "manager", "admin")
+  @StockControlRoles("storeman", "receiving-clerk", "accounts", "manager", "admin")
   @PermissionKey("issuance.issue")
   @ApiOperation({ summary: "Create multiple stock issuances in batch" })
   async createBatchIssuance(@Req() req: any, @Body() dto: BatchIssuanceDto) {
@@ -67,7 +67,7 @@ export class IssuanceController {
   }
 
   @Get("recent")
-  @StockControlRoles("storeman", "accounts", "manager", "admin")
+  @StockControlRoles("storeman", "receiving-clerk", "accounts", "manager", "admin")
   @PermissionKey("issuance.issue")
   @ApiOperation({ summary: "Get recent issuances from the last 24 hours" })
   async recentIssuances(@Req() req: any) {
@@ -81,7 +81,7 @@ export class IssuanceController {
   }
 
   @Post(":id/undo")
-  @StockControlRoles("storeman", "accounts", "manager", "admin")
+  @StockControlRoles("storeman", "receiving-clerk", "accounts", "manager", "admin")
   @PermissionKey("issuance.undo")
   @ApiOperation({ summary: "Undo a recent issuance (within 5 minutes)" })
   async undoIssuance(@Req() req: any, @Param("id") id: number) {
