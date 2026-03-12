@@ -1,9 +1,11 @@
-import { Body, Controller, Get, Put, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlRole } from "../entities/stock-control-user.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { CpoService } from "../services/cpo.service";
 import { DashboardService } from "../services/dashboard.service";
+
+const ROLE_HIERARCHY = ["viewer", "storeman", "accounts", "manager", "admin"];
 
 @ApiTags("Stock Control - Dashboard")
 @Controller("stock-control/dashboard")
@@ -58,21 +60,27 @@ export class DashboardController {
 
   @Get("role-summary")
   @ApiOperation({ summary: "Role-specific dashboard summary" })
-  async roleSummary(@Req() req: any) {
-    const { companyId, role } = req.user;
+  async roleSummary(@Req() req: any, @Query("role") requestedRole?: string) {
+    const { companyId, role: userRole } = req.user;
+    const userRoleIndex = ROLE_HIERARCHY.indexOf(userRole);
+    const requestedIndex = requestedRole ? ROLE_HIERARCHY.indexOf(requestedRole) : -1;
+    const effectiveRole =
+      requestedRole && requestedIndex >= 0 && requestedIndex <= userRoleIndex
+        ? requestedRole
+        : userRole;
 
-    if (role === StockControlRole.STOREMAN) {
+    if (effectiveRole === StockControlRole.STOREMAN) {
       const data = await this.dashboardService.storemanSummary(companyId);
-      return { role, ...data };
-    } else if (role === StockControlRole.ACCOUNTS) {
+      return { role: effectiveRole, ...data };
+    } else if (effectiveRole === StockControlRole.ACCOUNTS) {
       const data = await this.dashboardService.accountsSummary(companyId);
-      return { role, ...data };
-    } else if (role === StockControlRole.MANAGER) {
+      return { role: effectiveRole, ...data };
+    } else if (effectiveRole === StockControlRole.MANAGER) {
       const data = await this.dashboardService.managerSummary(companyId);
-      return { role, ...data };
-    } else if (role === StockControlRole.ADMIN) {
+      return { role: effectiveRole, ...data };
+    } else if (effectiveRole === StockControlRole.ADMIN) {
       const data = await this.dashboardService.adminSummary(companyId);
-      return { role, ...data };
+      return { role: effectiveRole, ...data };
     } else {
       const data = await this.dashboardService.stats(companyId);
       return { role: "viewer", ...data };

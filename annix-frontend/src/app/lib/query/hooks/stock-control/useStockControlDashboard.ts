@@ -111,7 +111,35 @@ export function useUpdateDashboardPreferences() {
       hiddenWidgets?: string[];
       viewOverride?: string | null;
     }) => stockControlApiClient.updateDashboardPreferences(data),
-    onSuccess: () => {
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({
+        queryKey: stockControlKeys.dashboard.preferences(),
+      });
+      const previous = queryClient.getQueryData<DashboardPreferences | null>(
+        stockControlKeys.dashboard.preferences(),
+      );
+      const fallback: DashboardPreferences = {
+        id: 0,
+        userId: 0,
+        pinnedWidgets: [],
+        hiddenWidgets: [],
+        viewOverride: null,
+      };
+      queryClient.setQueryData<DashboardPreferences>(
+        stockControlKeys.dashboard.preferences(),
+        (old) => ({ ...(old ?? fallback), ...data }),
+      );
+      return { previous };
+    },
+    onError: (_err, _data, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(
+          stockControlKeys.dashboard.preferences(),
+          context.previous,
+        );
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: stockControlKeys.dashboard.preferences(),
       });
