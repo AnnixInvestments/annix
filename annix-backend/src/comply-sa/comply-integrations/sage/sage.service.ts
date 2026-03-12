@@ -65,7 +65,9 @@ export class SageService {
       this.encryptionKey !== null;
 
     if (!this.enabled) {
-      this.logger.warn("Sage integration not configured — SAGE_CLIENT_ID, SAGE_CLIENT_SECRET, SAGE_REDIRECT_URI, and SAGE_ENCRYPTION_KEY are required");
+      this.logger.warn(
+        "Sage integration not configured — SAGE_CLIENT_ID, SAGE_CLIENT_SECRET, SAGE_REDIRECT_URI, and SAGE_ENCRYPTION_KEY are required",
+      );
     }
   }
 
