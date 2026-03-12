@@ -14,7 +14,11 @@ import { AnyFilesInterceptor, FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { ImportMappingConfig } from "../entities/job-card-import-mapping.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import {
+  PermissionKey,
+  StockControlRoleGuard,
+  StockControlRoles,
+} from "../guards/stock-control-role.guard";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { JobCardImportRow, JobCardImportService } from "../services/job-card-import.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
@@ -25,6 +29,7 @@ import { WorkflowNotificationService } from "../services/workflow-notification.s
 @Controller("stock-control/job-card-import")
 @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
 @StockControlRoles("manager", "admin")
+@PermissionKey("job-cards.import")
 export class JobCardImportController {
   private readonly logger = new Logger(JobCardImportController.name);
 

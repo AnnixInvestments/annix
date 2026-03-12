@@ -20,7 +20,7 @@ import { SageExportFilterDto } from "../../sage-export/dto/sage-export.dto";
 import { SageExportService } from "../../sage-export/sage-export.service";
 import { LinkInvoiceToDeliveryNoteDto } from "../dto/create-invoice.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { PermissionKey, StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { InvoiceExtractionService } from "../services/invoice-extraction.service";
 import {
   CreateInvoiceDto,
@@ -53,6 +53,7 @@ export class InvoicesController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("invoices.sage-export")
   @Get("export/sage-preview")
   @ApiOperation({ summary: "Preview Sage export: count and totals" })
   async sageExportPreview(@Req() req: any, @Query() filters: SageExportFilterDto) {
@@ -60,6 +61,7 @@ export class InvoicesController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("invoices.sage-export")
   @Get("export/sage-csv")
   @ApiOperation({ summary: "Download approved invoices as Sage CSV" })
   async sageExportCsv(
@@ -196,6 +198,7 @@ export class InvoicesController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("invoices.approve")
   @Post(":id/approve")
   @ApiOperation({ summary: "Approve and apply price updates" })
   async approve(@Req() req: any, @Param("id") id: number) {
@@ -216,6 +219,7 @@ export class InvoicesController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("invoices.delete")
   @Delete(":id")
   @ApiOperation({ summary: "Delete an invoice" })
   async remove(@Req() req: any, @Param("id") id: number) {

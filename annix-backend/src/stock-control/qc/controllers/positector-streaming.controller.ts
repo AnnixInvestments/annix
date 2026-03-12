@@ -17,7 +17,11 @@ import type { Response } from "express";
 import type { Observable } from "rxjs";
 import { nowISO } from "../../../lib/datetime";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../../guards/stock-control-role.guard";
+import {
+  PermissionKey,
+  StockControlRoleGuard,
+  StockControlRoles,
+} from "../../guards/stock-control-role.guard";
 import { DftCoatType } from "../entities/qc-dft-reading.entity";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import type { StreamingSessionConfig } from "../services/positector-streaming.service";
@@ -33,6 +37,7 @@ export class PositectorStreamingController {
   @Post("sessions")
   @UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
   @StockControlRoles("manager", "admin")
+  @PermissionKey("positector.streaming")
   @ApiOperation({ summary: "Start or resume a live streaming session for a device" })
   startSession(
     @Req() req: any,
@@ -149,6 +154,7 @@ export class PositectorStreamingController {
   @Post("sessions/:sessionId/end")
   @UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
   @StockControlRoles("manager", "admin")
+  @PermissionKey("positector.streaming")
   @ApiOperation({ summary: "End a streaming session and save readings to QC entity" })
   async endSession(@Param("sessionId") sessionId: string) {
     const result = await this.streamingService.endSession(sessionId);
@@ -161,6 +167,7 @@ export class PositectorStreamingController {
   @Delete("sessions/:sessionId")
   @UseGuards(StockControlAuthGuard, QcEnabledGuard, StockControlRoleGuard)
   @StockControlRoles("manager", "admin")
+  @PermissionKey("positector.streaming")
   @ApiOperation({ summary: "Discard a streaming session without saving" })
   discardSession(@Param("sessionId") sessionId: string) {
     const discarded = this.streamingService.discardSession(sessionId);

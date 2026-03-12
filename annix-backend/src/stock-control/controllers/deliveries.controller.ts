@@ -18,7 +18,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { RubberCocExtractionService } from "../../rubber-lining/rubber-coc-extraction.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { PermissionKey, StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { DeliveryService } from "../services/delivery.service";
 
 @ApiTags("Stock Control - Deliveries")
@@ -51,6 +51,7 @@ export class DeliveriesController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("deliveries.delete")
   @Delete(":id")
   @ApiOperation({ summary: "Delete a delivery note" })
   async remove(@Req() req: any, @Param("id") id: number) {

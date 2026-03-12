@@ -18,7 +18,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { PermissionKey, StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import {
   type CertificateFilters,
   CertificateService,
@@ -39,6 +39,7 @@ export class CertificateController {
 
   @Post()
   @StockControlRoles("manager", "admin")
+  @PermissionKey("certificates.upload")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload a supplier certificate (COA/COC)" })
   async uploadCertificate(
@@ -195,6 +196,7 @@ export class CertificateController {
 
   @Delete(":id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("certificates.delete")
   @ApiOperation({ summary: "Delete a certificate" })
   async deleteCertificate(@Req() req: any, @Param("id") id: number) {
     await this.certificateService.deleteCertificate(req.user.companyId, id);

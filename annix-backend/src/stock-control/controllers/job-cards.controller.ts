@@ -23,7 +23,7 @@ import { RubberDimensionOverride } from "../entities/rubber-dimension-override.e
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { PermissionKey, StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
@@ -103,6 +103,7 @@ export class JobCardsController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.create")
   @Post()
   @ApiOperation({ summary: "Create a job card" })
   async create(@Body() body: any, @Req() req: any) {
@@ -110,6 +111,7 @@ export class JobCardsController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.update")
   @Put(":id")
   @ApiOperation({ summary: "Update a job card" })
   async update(@Req() req: any, @Param("id") id: number, @Body() body: any) {
@@ -158,6 +160,7 @@ export class JobCardsController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.delete")
   @Delete(":id")
   @ApiOperation({ summary: "Delete a job card" })
   async remove(@Req() req: any, @Param("id") id: number) {
@@ -445,6 +448,7 @@ export class JobCardsController {
 
   @Get("allocations/pending")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.allocations")
   @ApiOperation({ summary: "All pending over-allocation approvals" })
   async pendingAllocations(@Req() req: any) {
     return this.jobCardService.pendingAllocations(req.user.companyId);
@@ -452,6 +456,7 @@ export class JobCardsController {
 
   @Post(":id/allocations/:allocationId/approve")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.allocations")
   @ApiOperation({ summary: "Approve an over-allocation request" })
   async approveOverAllocation(@Req() req: any, @Param("allocationId") allocationId: number) {
     return this.jobCardService.approveOverAllocation(req.user.companyId, allocationId, req.user.id);
@@ -459,6 +464,7 @@ export class JobCardsController {
 
   @Post(":id/allocations/:allocationId/reject")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.allocations")
   @ApiOperation({ summary: "Reject an over-allocation request" })
   async rejectOverAllocation(
     @Req() req: any,
@@ -480,6 +486,7 @@ export class JobCardsController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.amendment")
   @Post(":id/amendment")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload an amendment to a job card" })
@@ -521,6 +528,7 @@ export class JobCardsController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.attachments")
   @Post(":id/attachments")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload a drawing attachment" })
@@ -556,6 +564,7 @@ export class JobCardsController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.attachments")
   @Delete(":id/attachments/:attachmentId")
   @ApiOperation({ summary: "Delete an attachment" })
   async deleteAttachment(

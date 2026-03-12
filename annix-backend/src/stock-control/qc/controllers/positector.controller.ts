@@ -16,7 +16,11 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../../guards/stock-control-role.guard";
+import {
+  PermissionKey,
+  StockControlRoleGuard,
+  StockControlRoles,
+} from "../../guards/stock-control-role.guard";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import {
   PositectorService,
@@ -38,6 +42,7 @@ export class PositectorController {
 
   @Post()
   @StockControlRoles("manager", "admin")
+  @PermissionKey("positector.manage-devices")
   @ApiOperation({ summary: "Register a PosiTector device" })
   async registerDevice(@Req() req: any, @Body() body: RegisterDeviceDto) {
     return this.positectorService.registerDevice(req.user.companyId, body, req.user);
@@ -62,6 +67,7 @@ export class PositectorController {
 
   @Patch(":id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("positector.manage-devices")
   @ApiOperation({ summary: "Update a PosiTector device" })
   async updateDevice(@Req() req: any, @Param("id") id: number, @Body() body: UpdateDeviceDto) {
     return this.positectorService.updateDevice(req.user.companyId, id, body);
@@ -69,6 +75,7 @@ export class PositectorController {
 
   @Delete(":id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("positector.manage-devices")
   @ApiOperation({ summary: "Delete a PosiTector device" })
   async deleteDevice(@Req() req: any, @Param("id") id: number) {
     await this.positectorService.deleteDevice(req.user.companyId, id);
@@ -100,6 +107,7 @@ export class PositectorController {
 
   @Post(":id/batches/:buid/import")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("positector.upload-import")
   @ApiOperation({ summary: "Import a batch from a PosiTector device into a QC entity" })
   async importBatch(
     @Req() req: any,
@@ -173,6 +181,7 @@ export class PositectorController {
 
   @Post("upload")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("positector.upload-import")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({
     summary: "Upload a PosiTector batch file (JSON, CSV, or PosiSoft Desktop CSV)",
@@ -205,6 +214,7 @@ export class PositectorController {
 
   @Post("upload/import")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("positector.upload-import")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({
     summary: "Upload and directly import a PosiTector batch file into a QC entity",

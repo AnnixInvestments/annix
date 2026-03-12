@@ -3898,6 +3898,23 @@ class StockControlApiClient {
     });
   }
 
+  async actionPermissions(): Promise<{
+    config: Record<string, string[]>;
+    labels: Record<string, { group: string; label: string }>;
+  }> {
+    return this.request("/stock-control/auth/action-permissions");
+  }
+
+  async updateActionPermissions(config: Record<string, string[]>): Promise<{
+    config: Record<string, string[]>;
+    labels: Record<string, { group: string; label: string }>;
+  }> {
+    return this.request("/stock-control/auth/action-permissions", {
+      method: "PATCH",
+      body: JSON.stringify({ config }),
+    });
+  }
+
   async companyRoles(): Promise<CompanyRole[]> {
     return this.request("/stock-control/auth/roles");
   }

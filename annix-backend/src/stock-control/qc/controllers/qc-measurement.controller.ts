@@ -12,7 +12,11 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../../guards/stock-control-role.guard";
+import {
+  PermissionKey,
+  StockControlRoleGuard,
+  StockControlRoles,
+} from "../../guards/stock-control-role.guard";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import { QcMeasurementService } from "../services/qc-measurement.service";
 
@@ -48,6 +52,7 @@ export class QcMeasurementController {
 
   @Post("shore-hardness")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Create shore hardness record" })
   async createShoreHardness(
     @Req() req: any,
@@ -59,6 +64,7 @@ export class QcMeasurementController {
 
   @Patch("shore-hardness/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Update shore hardness record" })
   async updateShoreHardness(@Req() req: any, @Param("id") id: number, @Body() body: any) {
     return this.qcService.updateShoreHardness(req.user.companyId, id, body);
@@ -66,6 +72,7 @@ export class QcMeasurementController {
 
   @Delete("shore-hardness/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Delete shore hardness record" })
   async deleteShoreHardness(@Req() req: any, @Param("id") id: number) {
     await this.qcService.deleteShoreHardness(req.user.companyId, id);
@@ -88,6 +95,7 @@ export class QcMeasurementController {
 
   @Post("dft-readings")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Create DFT reading" })
   async createDftReading(
     @Req() req: any,
@@ -99,6 +107,7 @@ export class QcMeasurementController {
 
   @Patch("dft-readings/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Update DFT reading" })
   async updateDftReading(@Req() req: any, @Param("id") id: number, @Body() body: any) {
     return this.qcService.updateDftReading(req.user.companyId, id, body);
@@ -106,6 +115,7 @@ export class QcMeasurementController {
 
   @Delete("dft-readings/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Delete DFT reading" })
   async deleteDftReading(@Req() req: any, @Param("id") id: number) {
     await this.qcService.deleteDftReading(req.user.companyId, id);
@@ -128,6 +138,7 @@ export class QcMeasurementController {
 
   @Post("blast-profiles")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Create blast profile" })
   async createBlastProfile(
     @Req() req: any,
@@ -139,6 +150,7 @@ export class QcMeasurementController {
 
   @Patch("blast-profiles/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Update blast profile" })
   async updateBlastProfile(@Req() req: any, @Param("id") id: number, @Body() body: any) {
     return this.qcService.updateBlastProfile(req.user.companyId, id, body);
@@ -146,6 +158,7 @@ export class QcMeasurementController {
 
   @Delete("blast-profiles/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Delete blast profile" })
   async deleteBlastProfile(@Req() req: any, @Param("id") id: number) {
     await this.qcService.deleteBlastProfile(req.user.companyId, id);
@@ -168,6 +181,7 @@ export class QcMeasurementController {
 
   @Post("dust-debris")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Create dust/debris test" })
   async createDustDebrisTest(
     @Req() req: any,
@@ -179,6 +193,7 @@ export class QcMeasurementController {
 
   @Patch("dust-debris/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Update dust/debris test" })
   async updateDustDebrisTest(@Req() req: any, @Param("id") id: number, @Body() body: any) {
     return this.qcService.updateDustDebrisTest(req.user.companyId, id, body);
@@ -186,6 +201,7 @@ export class QcMeasurementController {
 
   @Delete("dust-debris/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Delete dust/debris test" })
   async deleteDustDebrisTest(@Req() req: any, @Param("id") id: number) {
     await this.qcService.deleteDustDebrisTest(req.user.companyId, id);
@@ -208,6 +224,7 @@ export class QcMeasurementController {
 
   @Post("pull-tests")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Create pull test" })
   async createPullTest(@Req() req: any, @Param("jobCardId") jobCardId: number, @Body() body: any) {
     return this.qcService.createPullTest(req.user.companyId, jobCardId, body, req.user);
@@ -215,6 +232,7 @@ export class QcMeasurementController {
 
   @Patch("pull-tests/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Update pull test" })
   async updatePullTest(@Req() req: any, @Param("id") id: number, @Body() body: any) {
     return this.qcService.updatePullTest(req.user.companyId, id, body);
@@ -222,6 +240,7 @@ export class QcMeasurementController {
 
   @Delete("pull-tests/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Delete pull test" })
   async deletePullTest(@Req() req: any, @Param("id") id: number) {
     await this.qcService.deletePullTest(req.user.companyId, id);
@@ -244,6 +263,7 @@ export class QcMeasurementController {
 
   @Post("control-plans")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Create control plan" })
   async createControlPlan(
     @Req() req: any,
@@ -255,6 +275,7 @@ export class QcMeasurementController {
 
   @Patch("control-plans/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Update control plan" })
   async updateControlPlan(@Req() req: any, @Param("id") id: number, @Body() body: any) {
     return this.qcService.updateControlPlan(req.user.companyId, id, body);
@@ -262,6 +283,7 @@ export class QcMeasurementController {
 
   @Delete("control-plans/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Delete control plan" })
   async deleteControlPlan(@Req() req: any, @Param("id") id: number) {
     await this.qcService.deleteControlPlan(req.user.companyId, id);
@@ -284,6 +306,7 @@ export class QcMeasurementController {
 
   @Post("release-certificates")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Create release certificate" })
   async createReleaseCertificate(
     @Req() req: any,
@@ -295,6 +318,7 @@ export class QcMeasurementController {
 
   @Patch("release-certificates/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Update release certificate" })
   async updateReleaseCertificate(@Req() req: any, @Param("id") id: number, @Body() body: any) {
     return this.qcService.updateReleaseCertificate(req.user.companyId, id, body);
@@ -302,6 +326,7 @@ export class QcMeasurementController {
 
   @Delete("release-certificates/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Delete release certificate" })
   async deleteReleaseCertificate(@Req() req: any, @Param("id") id: number) {
     await this.qcService.deleteReleaseCertificate(req.user.companyId, id);
@@ -324,6 +349,7 @@ export class QcMeasurementController {
 
   @Post("items-releases")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Create items release" })
   async createItemsRelease(
     @Req() req: any,
@@ -335,6 +361,7 @@ export class QcMeasurementController {
 
   @Post("items-releases/auto-populate")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Auto-populate items release from job card line items" })
   async autoPopulateItemsRelease(@Req() req: any, @Param("jobCardId") jobCardId: number) {
     return this.qcService.autoPopulateItemsRelease(req.user.companyId, jobCardId, req.user);
@@ -342,6 +369,7 @@ export class QcMeasurementController {
 
   @Patch("items-releases/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Update items release" })
   async updateItemsRelease(@Req() req: any, @Param("id") id: number, @Body() body: any) {
     return this.qcService.updateItemsRelease(req.user.companyId, id, body);
@@ -349,6 +377,7 @@ export class QcMeasurementController {
 
   @Delete("items-releases/:id")
   @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Delete items release" })
   async deleteItemsRelease(@Req() req: any, @Param("id") id: number) {
     await this.qcService.deleteItemsRelease(req.user.companyId, id);

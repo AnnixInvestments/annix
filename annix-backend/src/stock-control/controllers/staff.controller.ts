@@ -15,7 +15,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { PermissionKey, StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { StaffService } from "../services/staff.service";
 
 @ApiTags("Stock Control - Staff")
@@ -37,6 +37,7 @@ export class StaffController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("staff.manage")
   @Post()
   @ApiOperation({ summary: "Create a staff member" })
   async create(@Req() req: any, @Body() body: any) {
@@ -44,6 +45,7 @@ export class StaffController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("staff.manage")
   @Put(":id")
   @ApiOperation({ summary: "Update a staff member" })
   async update(@Req() req: any, @Param("id") id: number, @Body() body: any) {
@@ -51,6 +53,7 @@ export class StaffController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("staff.manage")
   @Delete(":id")
   @ApiOperation({ summary: "Deactivate a staff member" })
   async remove(@Req() req: any, @Param("id") id: number) {

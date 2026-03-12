@@ -279,6 +279,8 @@ export default function StockControlSettingsPage() {
         onRolesChanged={loadCompanyRoles}
       />
 
+      <ActionPermissionsSection roles={companyRoles} rolesLoading={companyRolesLoading} />
+
       <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Team Management</h2>
@@ -2332,5 +2334,245 @@ function UserLocationAssignmentsSection({
         </div>
       )}
     </div>
+  );
+}
+
+function ActionPermissionsSection({
+  roles,
+  rolesLoading,
+}: {
+  roles: CompanyRole[];
+  rolesLoading: boolean;
+}) {
+  const [config, setConfig] = useState<Record<string, string[]>>({});
+  const [labels, setLabels] = useState<Record<string, { group: string; label: string }>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const loadPermissions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await stockControlApiClient.actionPermissions();
+      setConfig(data.config);
+      setLabels(data.labels);
+    } catch {
+      setConfig({});
+      setLabels({});
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPermissions();
+  }, [loadPermissions]);
+
+  const roleKeys = roles.map((r) => r.key);
+
+  const actionKeys = Object.keys(labels);
+  const groups = actionKeys.reduce<Record<string, string[]>>((acc, key) => {
+    const group = labels[key]?.group ?? "Other";
+    if (!acc[group]) {
+      acc[group] = [];
+    }
+    acc[group].push(key);
+    return acc;
+  }, {});
+  const groupNames = Object.keys(groups);
+
+  const toggleGroup = useCallback((group: string) => {
+    setExpandedGroups((prev) => ({ ...prev, [group]: !prev[group] }));
+  }, []);
+
+  const handleToggle = useCallback((actionKey: string, role: string) => {
+    if (role === "admin") return;
+    setConfig((prev) => {
+      const current = prev[actionKey] ?? [];
+      const has = current.includes(role);
+      return {
+        ...prev,
+        [actionKey]: has ? current.filter((r) => r !== role) : [...current, role],
+      };
+    });
+    setDirty(true);
+    setSuccess(false);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    try {
+      setSaving(true);
+      const data = await stockControlApiClient.updateActionPermissions(config);
+      setConfig(data.config);
+      setDirty(false);
+      setSuccess(true);
+    } catch {
+      // save failed
+    } finally {
+      setSaving(false);
+    }
+  }, [config]);
+
+  const handleReset = useCallback(() => {
+    loadPermissions();
+    setDirty(false);
+    setSuccess(false);
+  }, [loadPermissions]);
+
+  if (loading || rolesLoading) {
+    return (
+      <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900">Action Permissions</h2>
+        <p className="mt-2 text-sm text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Action Permissions</h2>
+          <p className="text-xs text-gray-500">
+            Control which roles can perform specific actions like importing, deleting, or approving
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {success && <span className="text-xs text-green-600 font-medium">Saved</span>}
+          {dirty && (
+            <>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="px-3 py-1.5 text-xs text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500 w-64">
+                Action
+              </th>
+              {roles.map((role) => (
+                <th
+                  key={role.key}
+                  className="text-center py-2 px-2 text-xs font-medium text-gray-500 min-w-[70px]"
+                >
+                  {role.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {groupNames.map((groupName) => {
+              const expanded = expandedGroups[groupName] !== false;
+              const groupActions = groups[groupName];
+
+              return (
+                <GroupRows
+                  key={groupName}
+                  groupName={groupName}
+                  expanded={expanded}
+                  onToggleExpand={() => toggleGroup(groupName)}
+                  actionKeys={groupActions}
+                  labels={labels}
+                  config={config}
+                  roleKeys={roleKeys}
+                  roles={roles}
+                  onToggle={handleToggle}
+                />
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function GroupRows({
+  groupName,
+  expanded,
+  onToggleExpand,
+  actionKeys,
+  labels,
+  config,
+  roleKeys,
+  roles,
+  onToggle,
+}: {
+  groupName: string;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  actionKeys: string[];
+  labels: Record<string, { group: string; label: string }>;
+  config: Record<string, string[]>;
+  roleKeys: string[];
+  roles: CompanyRole[];
+  onToggle: (actionKey: string, role: string) => void;
+}) {
+  return (
+    <>
+      <tr
+        className="border-b border-gray-100 bg-gray-50 cursor-pointer hover:bg-gray-100"
+        onClick={onToggleExpand}
+      >
+        <td className="py-2 pr-4 font-medium text-gray-700 text-xs">
+          <span className="mr-1">{expanded ? "▾" : "▸"}</span>
+          {groupName}
+        </td>
+        {roles.map((role) => (
+          <td key={role.key} className="text-center py-2 px-2">
+            <span className="text-xs text-gray-400">
+              {actionKeys.filter((ak) => (config[ak] ?? []).includes(role.key)).length}/
+              {actionKeys.length}
+            </span>
+          </td>
+        ))}
+      </tr>
+      {expanded &&
+        actionKeys.map((actionKey) => {
+          const actionRoles = config[actionKey] ?? [];
+          return (
+            <tr key={actionKey} className="border-b border-gray-50 hover:bg-gray-50">
+              <td className="py-1.5 pr-4 pl-6 text-xs text-gray-600">
+                {labels[actionKey]?.label ?? actionKey}
+              </td>
+              {roles.map((role) => {
+                const isAdmin = role.key === "admin";
+                const checked = actionRoles.includes(role.key);
+                return (
+                  <td key={role.key} className="text-center py-1.5 px-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={isAdmin}
+                      onChange={() => onToggle(actionKey, role.key)}
+                      className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50"
+                    />
+                  </td>
+                );
+              })}
+            </tr>
+          );
+        })}
+    </>
   );
 }

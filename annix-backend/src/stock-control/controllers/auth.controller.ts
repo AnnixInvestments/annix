@@ -25,6 +25,7 @@ import { BrandingScraperService } from "../services/branding-scraper.service";
 import { CompanyEmailService, SmtpConfigDto } from "../services/company-email.service";
 import { CompanyRoleService } from "../services/company-role.service";
 import { LookupService } from "../services/lookup.service";
+import { ActionPermissionService } from "../services/action-permission.service";
 import { RbacConfigService } from "../services/rbac-config.service";
 
 @ApiTags("Stock Control - Auth")
@@ -36,6 +37,7 @@ export class StockControlAuthController {
     private readonly companyEmailService: CompanyEmailService,
     private readonly lookupService: LookupService,
     private readonly rbacConfigService: RbacConfigService,
+    private readonly actionPermissionService: ActionPermissionService,
     private readonly companyRoleService: CompanyRoleService,
   ) {}
 
@@ -384,5 +386,32 @@ export class StockControlAuthController {
   async deleteRole(@Req() req: any, @Param("id") id: string) {
     await this.companyRoleService.deleteRole(Number(id), req.user.companyId);
     return { success: true };
+  }
+
+  @UseGuards(StockControlAuthGuard)
+  @Get("action-permissions")
+  @ApiOperation({ summary: "Action permissions configuration for company" })
+  async actionPermissions(@Req() req: any) {
+    return {
+      config: await this.actionPermissionService.permissionsForCompany(req.user.companyId),
+      labels: this.actionPermissionService.actionLabels(),
+    };
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Patch("action-permissions")
+  @ApiOperation({ summary: "Update action permissions configuration" })
+  async updateActionPermissions(
+    @Req() req: any,
+    @Body() body: { config: Record<string, string[]> },
+  ) {
+    return {
+      config: await this.actionPermissionService.updatePermissions(
+        req.user.companyId,
+        body.config,
+      ),
+      labels: this.actionPermissionService.actionLabels(),
+    };
   }
 }

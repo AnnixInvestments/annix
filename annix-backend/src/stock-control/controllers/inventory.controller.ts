@@ -15,7 +15,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { PermissionKey, StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { InventoryService } from "../services/inventory.service";
 import { ItemIdentificationService } from "../services/item-identification.service";
 import { PriceHistoryService } from "../services/price-history.service";
@@ -82,6 +82,7 @@ export class InventoryController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("inventory.create")
   @Post()
   @ApiOperation({ summary: "Create a stock item" })
   async create(@Req() req: any, @Body() body: any) {
@@ -96,6 +97,7 @@ export class InventoryController {
   }
 
   @StockControlRoles("manager", "admin")
+  @PermissionKey("inventory.delete")
   @Delete(":id")
   @ApiOperation({ summary: "Delete a stock item" })
   async remove(@Req() req: any, @Param("id") id: number) {

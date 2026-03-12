@@ -8,8 +8,10 @@ import { PushSubscription } from "../entities/push-subscription.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockControlUser } from "../entities/stock-control-user.entity";
 import { WorkflowNotification } from "../entities/workflow-notification.entity";
+import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
+import { ActionPermissionService } from "../services/action-permission.service";
 import { CompanyEmailService } from "../services/company-email.service";
 import { JobCardWorkItemProvider } from "../services/job-card-work-item-provider";
 import { WebPushService } from "../services/web-push.service";
@@ -51,6 +53,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       QcReleaseCertificate,
       QcShoreHardness,
       StockControlCompany,
+      StockControlActionPermission,
       StockControlUser,
       WorkflowNotification,
     ]),
@@ -71,6 +74,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     PositectorStreamingController,
   ],
   providers: [
+    ActionPermissionService,
     StockControlAuthGuard,
     StockControlRoleGuard,
     QcEnabledGuard,

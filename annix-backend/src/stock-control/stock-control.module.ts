@@ -70,6 +70,7 @@ import { StockControlCompanyRole } from "./entities/stock-control-company-role.e
 import { StockControlDepartment } from "./entities/stock-control-department.entity";
 import { StockControlInvitation } from "./entities/stock-control-invitation.entity";
 import { StockControlLocation } from "./entities/stock-control-location.entity";
+import { StockControlActionPermission } from "./entities/stock-control-action-permission.entity";
 import { StockControlRbacConfig } from "./entities/stock-control-rbac-config.entity";
 import { StockControlSupplier } from "./entities/stock-control-supplier.entity";
 import { StockControlUser } from "./entities/stock-control-user.entity";
@@ -90,6 +91,7 @@ import { MessagingEnabledGuard } from "./guards/messaging-enabled.guard";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { QcModule } from "./qc/qc.module";
+import { ActionPermissionService } from "./services/action-permission.service";
 import { StockControlAuthService } from "./services/auth.service";
 import { BackgroundStepService } from "./services/background-step.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
@@ -171,6 +173,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       InvoiceClarification,
       StockPriceHistory,
       StockControlCompanyRole,
+      StockControlActionPermission,
       StockControlRbacConfig,
       StockControlSupplier,
       PushSubscription,
@@ -278,6 +281,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     InvoiceService,
     PriceHistoryService,
     CompanyRoleService,
+    ActionPermissionService,
     RbacConfigService,
     SageInvoiceAdapterService,
     SearchService,

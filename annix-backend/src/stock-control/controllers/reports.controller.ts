@@ -1,13 +1,14 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { PermissionKey, StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { ReportsService } from "../services/reports.service";
 
 @ApiTags("Stock Control - Reports")
 @Controller("stock-control/reports")
 @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
 @StockControlRoles("manager", "admin")
+@PermissionKey("reports.view")
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
