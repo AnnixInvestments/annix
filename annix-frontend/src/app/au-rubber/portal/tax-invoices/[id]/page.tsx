@@ -109,9 +109,12 @@ export default function TaxInvoiceDetailPage() {
       quantity: invoice.numberOfRolls != null ? String(invoice.numberOfRolls) : "",
       unit: invoice.unit ?? "",
       costPerUnit: invoice.costPerUnit != null ? String(invoice.costPerUnit) : "",
-      subtotal: invoice.extractedData?.subtotal != null ? String(invoice.extractedData.subtotal) : "",
-      vatAmount: invoice.extractedData?.vatAmount != null ? String(invoice.extractedData.vatAmount) : "",
-      totalAmount: invoice.extractedData?.totalAmount != null ? String(invoice.extractedData.totalAmount) : "",
+      subtotal:
+        invoice.extractedData?.subtotal != null ? String(invoice.extractedData.subtotal) : "",
+      vatAmount:
+        invoice.extractedData?.vatAmount != null ? String(invoice.extractedData.vatAmount) : "",
+      totalAmount:
+        invoice.extractedData?.totalAmount != null ? String(invoice.extractedData.totalAmount) : "",
     });
     setIsEditingSummary(true);
   };
@@ -383,7 +386,9 @@ export default function TaxInvoiceDetailPage() {
           {isEditingSummary ? (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">Product Description</label>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Product Description
+                </label>
                 <input
                   type="text"
                   value={editForm.productDescription}
@@ -393,7 +398,9 @@ export default function TaxInvoiceDetailPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Delivery Note Ref</label>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Delivery Note Ref
+                  </label>
                   <input
                     type="text"
                     value={editForm.deliveryNoteRef}
@@ -402,7 +409,9 @@ export default function TaxInvoiceDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Order Number</label>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Order Number
+                  </label>
                   <input
                     type="text"
                     value={editForm.orderNumber}
@@ -432,7 +441,9 @@ export default function TaxInvoiceDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Cost per Unit</label>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Cost per Unit
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -444,7 +455,9 @@ export default function TaxInvoiceDetailPage() {
               </div>
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Subtotal (ex VAT)</label>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Subtotal (ex VAT)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -464,7 +477,9 @@ export default function TaxInvoiceDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Total (incl VAT)</label>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Total (incl VAT)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
