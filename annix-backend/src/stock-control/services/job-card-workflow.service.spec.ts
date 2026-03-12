@@ -10,6 +10,7 @@ import { JobCardWorkflowService } from "./job-card-workflow.service";
 import { RequisitionService } from "./requisition.service";
 import { SignatureService } from "./signature.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
+import { WorkflowStepConfigService } from "./workflow-step-config.service";
 
 describe("JobCardWorkflowService", () => {
   let service: JobCardWorkflowService;
@@ -61,6 +62,10 @@ describe("JobCardWorkflowService", () => {
     createFromJobCard: jest.fn().mockResolvedValue(null),
   };
 
+  const mockStepConfigService = {
+    backgroundStepsForTrigger: jest.fn().mockResolvedValue([]),
+  };
+
   function makeUser(role: StockControlRole) {
     return { id: 1, companyId: 1, name: "Test User", role };
   }
@@ -80,6 +85,7 @@ describe("JobCardWorkflowService", () => {
         { provide: SignatureService, useValue: mockSignatureService },
         { provide: WorkflowNotificationService, useValue: mockNotificationService },
         { provide: RequisitionService, useValue: mockRequisitionService },
+        { provide: WorkflowStepConfigService, useValue: mockStepConfigService },
       ],
     }).compile();
 

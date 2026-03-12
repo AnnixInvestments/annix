@@ -41,7 +41,7 @@ export class ComplySaAddSubscriptionsAndApiKeys1807000000006 implements Migratio
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS comply_sa_api_keys`);
-    await queryRunner.query(`DROP TABLE IF EXISTS comply_sa_subscriptions`);
+    await queryRunner.query("DROP TABLE IF EXISTS comply_sa_api_keys");
+    await queryRunner.query("DROP TABLE IF EXISTS comply_sa_subscriptions");
   }
 }
