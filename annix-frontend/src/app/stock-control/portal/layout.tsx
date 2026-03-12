@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
 import { StockControlHeader } from "../components/StockControlHeader";
 import { GlossaryProvider } from "../context/GlossaryContext";
@@ -47,6 +48,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col h-screen bg-gray-50">
             <StockControlHeader />
             <MainContent>{children}</MainContent>
+            <ChatPanel />
           </div>
         </GlossaryProvider>
       </StockControlRbacProvider>

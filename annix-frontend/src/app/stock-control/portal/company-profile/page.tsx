@@ -3,10 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import {
-  CandidateImage,
-  stockControlApiClient,
-} from "@/app/lib/api/stockControlApi";
+import { CandidateImage, stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { STOCK_CONTROL_VERSION } from "../../config/version";
 import { syncStatus } from "../../lib/offline/syncManager";
 import { AppPermissionsSection } from "../settings/AppPermissionsSection";
@@ -134,6 +131,7 @@ export default function CompanyProfilePage() {
   const [flatPlateLossFactorPct, setFlatPlateLossFactorPct] = useState(20);
   const [structuralSteelLossFactorPct, setStructuralSteelLossFactorPct] = useState(30);
   const [qcEnabled, setQcEnabled] = useState(true);
+  const [messagingEnabled, setMessagingEnabled] = useState(false);
   const [featuresSaving, setFeaturesSaving] = useState(false);
   const [featuresSuccess, setFeaturesSuccess] = useState(false);
   const [featuresError, setFeaturesError] = useState("");
@@ -211,6 +209,10 @@ export default function CompanyProfilePage() {
       setQcEnabled(profile.qcEnabled);
     }
 
+    if (profile?.messagingEnabled !== undefined) {
+      setMessagingEnabled(profile.messagingEnabled);
+    }
+
     if (profile?.brandingType) {
       setBrandingSelection(profile.brandingType as BrandingSelection);
     }
@@ -281,7 +283,7 @@ export default function CompanyProfilePage() {
     setFeaturesSuccess(false);
 
     try {
-      await stockControlApiClient.updateCompanyDetails({ qcEnabled });
+      await stockControlApiClient.updateCompanyDetails({ qcEnabled, messagingEnabled });
       setFeaturesSuccess(true);
       await refreshProfile();
     } catch (e) {
@@ -738,6 +740,30 @@ export default function CompanyProfilePage() {
               <span
                 className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                   qcEnabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </label>
+
+          <label className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Team Messaging</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                In-app team chat for real-time communication between staff members
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={messagingEnabled}
+              onClick={() => setMessagingEnabled(!messagingEnabled)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
+                messagingEnabled ? "bg-teal-600" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  messagingEnabled ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>

@@ -43,6 +43,7 @@ export interface StockControlUserProfile {
   flatPlateLossFactorPct: number;
   structuralSteelLossFactorPct: number;
   qcEnabled: boolean;
+  messagingEnabled: boolean;
   linkedStaffId: number | null;
   createdAt: string;
   companyUpdatedAt: string | null;
@@ -57,6 +58,16 @@ export interface GlossaryTerm {
   category: string | null;
   companyId: number;
   isCustom: boolean;
+}
+
+export interface ChatMessageResponse {
+  id: number;
+  senderId: number;
+  senderName: string;
+  text: string;
+  imageUrl: string | null;
+  editedAt: string | null;
+  createdAt: string;
 }
 
 export interface CompanyDetailsUpdate {
@@ -74,6 +85,7 @@ export interface CompanyDetailsUpdate {
   flatPlateLossFactorPct?: number;
   structuralSteelLossFactorPct?: number;
   qcEnabled?: boolean;
+  messagingEnabled?: boolean;
 }
 
 export interface SmtpConfigResponse {
@@ -4625,6 +4637,25 @@ class StockControlApiClient {
   async deleteItemsRelease(jobCardId: number, id: number): Promise<void> {
     return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/${id}`, {
       method: "DELETE",
+    });
+  }
+
+  async chatMessages(afterId: number | null): Promise<ChatMessageResponse[]> {
+    const params = afterId !== null ? `?afterId=${afterId}` : "";
+    return this.request(`/stock-control/chat/messages${params}`);
+  }
+
+  async sendChatMessage(text: string, imageUrl?: string | null): Promise<ChatMessageResponse> {
+    return this.request("/stock-control/chat/messages", {
+      method: "POST",
+      body: JSON.stringify({ text, imageUrl: imageUrl ?? null }),
+    });
+  }
+
+  async editChatMessage(messageId: number, text: string): Promise<{ success: boolean }> {
+    return this.request(`/stock-control/chat/messages/${messageId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ text }),
     });
   }
 }

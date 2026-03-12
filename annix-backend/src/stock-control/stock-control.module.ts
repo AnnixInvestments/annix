@@ -36,6 +36,7 @@ import { StaffController } from "./controllers/staff.controller";
 import { SupplierController } from "./controllers/supplier.controller";
 import { WorkflowController } from "./controllers/workflow.controller";
 import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
+import { ChatMessage } from "./entities/chat-message.entity";
 import { CpoCalloffRecord } from "./entities/cpo-calloff-record.entity";
 import { CustomerPurchaseOrder } from "./entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "./entities/customer-purchase-order-item.entity";
@@ -80,12 +81,14 @@ import { UserLocationAssignment } from "./entities/user-location-assignment.enti
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
 import { WorkflowNotificationRecipient } from "./entities/workflow-notification-recipient.entity";
 import { WorkflowStepAssignment } from "./entities/workflow-step-assignment.entity";
+import { MessagingEnabledGuard } from "./guards/messaging-enabled.guard";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { QcModule } from "./qc/qc.module";
 import { StockControlAuthService } from "./services/auth.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
 import { CertificateService } from "./services/certificate.service";
+import { ChatService } from "./services/chat.service";
 import { CertificateAnalysisService } from "./services/certificate-analysis.service";
 import { CoatingAnalysisService } from "./services/coating-analysis.service";
 import { CompanyEmailService } from "./services/company-email.service";
@@ -174,6 +177,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       SupplierCertificate,
       IssuanceBatchRecord,
       JobCardDataBook,
+      ChatMessage,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -222,10 +226,12 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CpoController,
     GlossaryController,
     CertificateController,
+    ChatController,
   ],
   providers: [
     StockControlAuthGuard,
     StockControlRoleGuard,
+    MessagingEnabledGuard,
     StockControlAuthService,
     PublicBrandingService,
     BrandingScraperService,
@@ -268,6 +274,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CertificateService,
     CertificateAnalysisService,
     DataBookPdfService,
+    ChatService,
   ],
 })
 export class StockControlModule {}

@@ -97,6 +97,9 @@ export class StockControlCompany {
   @Column({ name: "qc_enabled", type: "boolean", default: true })
   qcEnabled: boolean;
 
+  @Column({ name: "messaging_enabled", type: "boolean", default: false })
+  messagingEnabled: boolean;
+
   @Column({ name: "sage_username", type: "varchar", length: 255, nullable: true })
   sageUsername: string | null;
 

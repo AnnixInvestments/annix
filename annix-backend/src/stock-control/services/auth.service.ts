@@ -315,6 +315,7 @@ export class StockControlAuthService {
       flatPlateLossFactorPct: user.company?.flatPlateLossFactorPct ?? 20,
       structuralSteelLossFactorPct: user.company?.structuralSteelLossFactorPct ?? 30,
       qcEnabled: user.company?.qcEnabled ?? false,
+      messagingEnabled: user.company?.messagingEnabled ?? false,
       linkedStaffId: user.linkedStaffId ?? null,
       createdAt: user.createdAt,
       companyUpdatedAt: user.company?.updatedAt ?? null,
@@ -429,6 +430,7 @@ export class StockControlAuthService {
     if (dto.structuralSteelLossFactorPct !== undefined)
       company.structuralSteelLossFactorPct = dto.structuralSteelLossFactorPct;
     if (dto.qcEnabled !== undefined) company.qcEnabled = dto.qcEnabled;
+    if (dto.messagingEnabled !== undefined) company.messagingEnabled = dto.messagingEnabled;
 
     await this.companyRepo.save(company);
 

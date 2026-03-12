@@ -81,4 +81,8 @@ export class UpdateCompanyDetailsDto {
   @IsOptional()
   @IsBoolean()
   qcEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  messagingEnabled?: boolean;
 }
