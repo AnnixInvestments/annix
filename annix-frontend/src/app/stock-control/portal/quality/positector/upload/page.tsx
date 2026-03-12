@@ -42,16 +42,32 @@ export default function PositectorUploadPage() {
   };
 
   const processTextData = useCallback(async (text: string, sourceName: string) => {
-    const lines = text
+    const normalized = text.includes("\t")
+      ? text
+          .split("\n")
+          .map((line) => line.split("\t").join(","))
+          .join("\n")
+      : text;
+
+    const lines = normalized
       .trim()
       .split("\n")
       .filter((l) => l.trim().length > 0);
-    if (lines.length < 2) {
-      setError("Pasted data does not contain enough lines to extract readings");
+
+    const hasNumericData = lines.some((line) => /\d+[,\t]\s*\d+/.test(line));
+    if (lines.length < 1 || (!hasNumericData && lines.length < 2)) {
+      setError(
+        "Dragged data does not contain readings. Try dragging from the Readings panel in PosiSoft Desktop, or export the batch as a CSV/JSON file and upload it here.",
+      );
       return;
     }
 
-    const blob = new Blob([text], { type: "text/csv" });
+    const csvContent =
+      hasNumericData && !normalized.includes("reading") && !normalized.includes("thickness")
+        ? `reading,thickness,time\n${normalized}`
+        : normalized;
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const file = new File([blob], `${sourceName}.csv`, { type: "text/csv" });
 
     try {
@@ -115,10 +131,32 @@ export default function PositectorUploadPage() {
       return;
     }
 
-    const textData = e.dataTransfer.getData("text/plain") || e.dataTransfer.getData("text");
+    const textData =
+      e.dataTransfer.getData("text/plain") ||
+      e.dataTransfer.getData("text") ||
+      e.dataTransfer.getData("text/csv") ||
+      e.dataTransfer.getData("text/tab-separated-values") ||
+      e.dataTransfer.getData("text/unicode");
+
     if (textData && textData.trim().length > 0) {
       processTextData(textData, "posisoft-drag");
+      return;
     }
+
+    const htmlData = e.dataTransfer.getData("text/html");
+    if (htmlData && htmlData.trim().length > 0) {
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = htmlData;
+      const plainFromHtml = tempDiv.textContent || tempDiv.innerText || "";
+      if (plainFromHtml.trim().length > 0) {
+        processTextData(plainFromHtml, "posisoft-drag");
+        return;
+      }
+    }
+
+    setError(
+      "Could not read data from PosiSoft Desktop drag. Please export the batch as a CSV or JSON file from PosiSoft Desktop (Export menu) and upload it here.",
+    );
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
