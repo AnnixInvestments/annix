@@ -9,12 +9,11 @@ export interface NavItemDef {
   requiresQc?: boolean;
 }
 
-export const NAV_GROUP_ORDER = ["Supplier", "Customer", "Operations", "Quality", "Admin"] as const;
+export const NAV_GROUP_ORDER = ["Supplier", "Customer", "Quality", "Admin"] as const;
 
 export const NAV_GROUP_HUB_PATHS: Record<string, string> = {
   Supplier: "/stock-control/portal/supplier",
   Customer: "/stock-control/portal/customer",
-  Operations: "/stock-control/portal/operations",
   Quality: "/stock-control/portal/quality",
   Admin: "/stock-control/portal/admin",
 };
@@ -108,7 +107,6 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/staff",
     label: "Staff",
     defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
-    group: "Operations",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -142,7 +140,6 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/issue-stock",
     label: "Issue Stock",
     defaultRoles: ["storeman", "manager", "admin"],
-    group: "Operations",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
