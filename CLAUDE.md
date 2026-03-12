@@ -174,10 +174,12 @@ const url = await this.storageService.getPresignedUrl(filePath, 3600);
 - **Version file**: `annix-frontend/src/app/stock-control/config/version.ts` contains `STOCK_CONTROL_VERSION`
 - **Displayed in**: Toolbar header and Settings > App Info
 - **Semantic versioning** (major.minor.patch):
-  - **Patch** (x.x.+1): Bug fixes, small tweaks, formatting changes
-  - **Minor** (x.+1.0): New features, new pages, significant enhancements to existing functionality
-  - **Major** (+1.0.0): Major redesigns, breaking UX changes, architectural overhauls
-- **When to bump**: After completing any upgrade or feature work on the stock control app, assess the scope and bump the version in `config/version.ts` before committing
+  - **Patch** (x.x.+1): Every small update, bug fix, tweak, or formatting change
+  - **Minor** (x.+1.0): New features, new pages, significant enhancements — patch resets to 0
+  - **Major** (+1.0.0): Major redesigns, breaking UX changes, architectural overhauls — minor and patch reset to 0
+- **Overflow rule**: When patch reaches 100, minor increments by 1 and patch resets to 0
+- **Reset rule**: Whenever minor increments (for any reason), patch resets to 0
+- **When to bump**: After completing any update or feature work on the stock control app, bump the version in `config/version.ts` before committing. Every commit that changes stock control functionality must include a version bump.
 - **Include in commit**: Version bumps should be part of the feature commit, not a separate commit
 
 ## Communication
