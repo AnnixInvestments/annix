@@ -292,7 +292,9 @@ export class PositectorService {
   detectFileFormat(
     content: string,
     filename: string | null,
-  ): "positector_json" | "positector_csv" | "posisoft_csv" | "unknown" {
+  ): "positector_json" | "positector_csv" | "posisoft_csv" | "posisoft_pdf" | "unknown" {
+    const ext = filename?.toLowerCase().split(".").pop() ?? "";
+    if (ext === "pdf") return "posisoft_pdf";
     const trimmed = content.trim();
 
     if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
@@ -327,7 +329,6 @@ export class PositectorService {
       return "positector_csv";
     }
 
-    const ext = filename?.toLowerCase().split(".").pop() ?? "";
     if (ext === "json") return "positector_json";
     if (ext === "csv" || ext === "txt") return "positector_csv";
 
@@ -364,8 +365,102 @@ export class PositectorService {
     }
 
     throw new BadRequestException(
-      "Unrecognized file format. Expected PosiTector JSON, PosiTector CSV, or PosiSoft Desktop CSV.",
+      "Unrecognized file format. Expected PosiTector JSON, CSV, PosiSoft Desktop CSV, or PosiSoft PDF.",
     );
+  }
+
+  async parsePosiSoftPdf(buffer: Buffer, filename: string | null): Promise<PositectorBatch> {
+    const pdfParseModule = require("pdf-parse");
+    const pdfParse = pdfParseModule.default ?? pdfParseModule;
+    const pdfData = await pdfParse(buffer);
+    const text: string = pdfData.text;
+
+    const lines = text
+      .split("\n")
+      .map((l: string) => l.trim())
+      .filter((l: string) => l.length > 0);
+
+    let serialNumber: string | null = null;
+    let probeType: string | null = null;
+    let batchName: string | null = null;
+    let units: string | null = null;
+
+    lines.forEach((line: string) => {
+      const lower = line.toLowerCase();
+      if (lower.startsWith("positector body s/n") || lower.startsWith("positector body s/n")) {
+        serialNumber = line.split(/\s{2,}/).pop()?.trim() ?? null;
+      }
+      if (lower.startsWith("probe type") || lower.includes("probe type")) {
+        const parts = line.split(/\s{2,}/);
+        probeType = parts.length > 1 ? parts[parts.length - 1].trim() : null;
+      }
+      if (lower.includes("thickness") && lower.includes("microns")) {
+        units = "µm";
+      }
+      if (lower.includes("mils")) {
+        units = units ?? "mils";
+      }
+    });
+
+    const readings: PositectorReading[] = [];
+    const readingPattern = /^\d+\s+(\d+(?:\.\d+)?)\s+/;
+
+    lines.forEach((line: string) => {
+      const match = line.match(readingPattern);
+      if (match) {
+        const value = parseFloat(match[1]);
+        if (!Number.isNaN(value)) {
+          const timePart = line.match(/(\d{1,2}:\d{2}:\d{2})/);
+          const datePart = line.match(/(\d{4}-\d{2}-\d{2})/);
+          const timestamp =
+            datePart && timePart ? `${datePart[1]} ${timePart[1]}` : timePart?.[1] ?? null;
+
+          readings.push({
+            index: readings.length + 1,
+            value,
+            units: null,
+            timestamp,
+            raw: {},
+          });
+        }
+      }
+    });
+
+    if (readings.length === 0) {
+      const numberLines = lines.filter((l: string) => /^\d+\s+\d+/.test(l));
+      numberLines.forEach((line: string) => {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          const value = parseFloat(parts[1]);
+          if (!Number.isNaN(value) && value > 0 && value < 10000) {
+            readings.push({
+              index: readings.length + 1,
+              value,
+              units: null,
+              timestamp: parts.length >= 3 ? parts.slice(2).join(" ") : null,
+              raw: {},
+            });
+          }
+        }
+      });
+    }
+
+    batchName = filename?.replace(/\.[^.]+$/, "") ?? null;
+
+    return {
+      buid: "upload",
+      header: {
+        serialNumber,
+        probeType,
+        batchName,
+        model: probeType,
+        units: units ?? "µm",
+        readingCount: readings.length,
+        raw: {},
+      },
+      readings,
+      statistics: null,
+    };
   }
 
   private isPosiSoftDesktopCsv(lines: string[]): boolean {

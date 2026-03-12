@@ -178,9 +178,17 @@ export class PositectorController {
     summary: "Upload a PosiTector batch file (JSON, CSV, or PosiSoft Desktop CSV)",
   })
   async uploadBatchFile(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
-    const content = file.buffer.toString("utf-8");
-    const format = this.positectorService.detectFileFormat(content, file.originalname);
-    const batch = this.positectorService.parseFileUpload(content, file.originalname);
+    const ext = file.originalname?.toLowerCase().split(".").pop() ?? "";
+    const isPdf = ext === "pdf";
+
+    const batch = isPdf
+      ? await this.positectorService.parsePosiSoftPdf(file.buffer, file.originalname)
+      : this.positectorService.parseFileUpload(file.buffer.toString("utf-8"), file.originalname);
+
+    const format = isPdf
+      ? "posisoft_pdf"
+      : this.positectorService.detectFileFormat(file.buffer.toString("utf-8"), file.originalname);
+
     const entityType = this.positectorService.detectQcEntityType(batch.header.probeType);
     const suggestedCoatType = this.importService.detectCoatTypeFromBatchName(
       batch.header.batchName,
@@ -207,8 +215,12 @@ export class PositectorController {
     @Body()
     body: Record<string, string>,
   ) {
-    const content = file.buffer.toString("utf-8");
-    const batch = this.positectorService.parseFileUpload(content, file.originalname);
+    const ext = file.originalname?.toLowerCase().split(".").pop() ?? "";
+    const isPdf = ext === "pdf";
+
+    const batch = isPdf
+      ? await this.positectorService.parsePosiSoftPdf(file.buffer, file.originalname)
+      : this.positectorService.parseFileUpload(file.buffer.toString("utf-8"), file.originalname);
 
     const entityType =
       body.entityType ?? this.positectorService.detectQcEntityType(batch.header.probeType);

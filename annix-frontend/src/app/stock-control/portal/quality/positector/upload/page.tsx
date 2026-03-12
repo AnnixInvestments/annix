@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { PositectorBatchDetail, PositectorImportResult } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
@@ -8,6 +8,8 @@ const FORMAT_LABELS: Record<string, string> = {
   positector_json: "PosiTector JSON",
   positector_csv: "PosiTector CSV (readings.txt)",
   posisoft_csv: "PosiSoft Desktop CSV Export",
+  posisoft_pdf: "PosiSoft Desktop PDF Report",
+  pasted_text: "Pasted Text Data",
   unknown: "Unknown",
 };
 
@@ -32,12 +34,38 @@ export default function PositectorUploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const validExtensions = [".json", ".csv", ".txt"];
+  const validExtensions = [".json", ".csv", ".txt", ".pdf"];
 
   const isValidFile = (file: File): boolean => {
     const ext = `.${file.name.split(".").pop()?.toLowerCase()}`;
     return validExtensions.includes(ext);
   };
+
+  const processTextData = useCallback(async (text: string, sourceName: string) => {
+    const lines = text.trim().split("\n").filter((l) => l.trim().length > 0);
+    if (lines.length < 2) {
+      setError("Pasted data does not contain enough lines to extract readings");
+      return;
+    }
+
+    const blob = new Blob([text], { type: "text/csv" });
+    const file = new File([blob], `${sourceName}.csv`, { type: "text/csv" });
+
+    try {
+      setIsUploading(true);
+      setError(null);
+      setParsedBatch(null);
+      setImportResult(null);
+      setSelectedFile(file);
+
+      const result = await stockControlApiClient.uploadPositectorFile(file);
+      setParsedBatch(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to parse pasted data");
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
 
   const processFile = useCallback(async (file: File) => {
     if (!isValidFile(file)) {
@@ -81,6 +109,12 @@ export default function PositectorUploadPage() {
     const file = e.dataTransfer.files[0];
     if (file) {
       processFile(file);
+      return;
+    }
+
+    const textData = e.dataTransfer.getData("text/plain") || e.dataTransfer.getData("text");
+    if (textData && textData.trim().length > 0) {
+      processTextData(textData, "posisoft-drag");
     }
   };
 
@@ -99,6 +133,26 @@ export default function PositectorUploadPage() {
     setShowImportForm(false);
     setError(null);
   };
+
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (parsedBatch || showImportForm) return;
+
+      const files = e.clipboardData?.files;
+      if (files && files.length > 0) {
+        processFile(files[0]);
+        return;
+      }
+
+      const text = e.clipboardData?.getData("text/plain");
+      if (text && text.trim().length > 0) {
+        processTextData(text, "clipboard-paste");
+      }
+    };
+
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [parsedBatch, showImportForm, processFile, processTextData]);
 
   return (
     <div className="space-y-6">
@@ -165,7 +219,7 @@ export default function PositectorUploadPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".json,.csv,.txt"
+            accept=".json,.csv,.txt,.pdf"
             onChange={handleFileSelect}
             className="hidden"
           />
@@ -192,9 +246,15 @@ export default function PositectorUploadPage() {
               </p>
               <p className="mt-2 text-xs text-gray-500">
                 Supports: PosiTector JSON batch files, PosiTector CSV (readings.txt), PosiSoft
-                Desktop CSV exports
+                Desktop CSV exports, PosiSoft PDF reports
               </p>
-              <p className="mt-1 text-xs text-gray-400">Accepted formats: .json, .csv, .txt</p>
+              <p className="mt-1 text-xs text-gray-400">
+                Accepted formats: .json, .csv, .txt, .pdf
+              </p>
+              <p className="mt-3 text-xs text-gray-400">
+                You can also drag data directly from PosiSoft Desktop or paste from clipboard
+                (Ctrl+V)
+              </p>
             </>
           )}
         </div>
