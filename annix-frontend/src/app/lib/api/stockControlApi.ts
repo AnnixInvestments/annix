@@ -1263,6 +1263,15 @@ export interface WorkflowNotification {
   jobCard?: JobCard;
 }
 
+export interface WorkflowStepConfig {
+  id: number;
+  companyId: number;
+  key: string;
+  label: string;
+  sortOrder: number;
+  isSystem: boolean;
+}
+
 export interface WorkflowStepAssignment {
   step: string;
   userIds: number[];
@@ -3398,6 +3407,43 @@ class StockControlApiClient {
     return this.request("/stock-control/auth/me/linked-staff", {
       method: "PATCH",
       body: JSON.stringify({ linkedStaffId }),
+    });
+  }
+
+  async workflowStepConfigs(): Promise<WorkflowStepConfig[]> {
+    return this.request("/stock-control/workflow/step-configs");
+  }
+
+  async updateWorkflowStepLabel(
+    key: string,
+    label: string,
+  ): Promise<{ success: boolean }> {
+    return this.request(`/stock-control/workflow/step-configs/${encodeURIComponent(key)}/label`, {
+      method: "PUT",
+      body: JSON.stringify({ label }),
+    });
+  }
+
+  async addWorkflowStep(input: {
+    label: string;
+    afterStepKey: string;
+  }): Promise<WorkflowStepConfig> {
+    return this.request("/stock-control/workflow/step-configs", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async removeWorkflowStep(key: string): Promise<{ success: boolean }> {
+    return this.request(`/stock-control/workflow/step-configs/${encodeURIComponent(key)}`, {
+      method: "DELETE",
+    });
+  }
+
+  async reorderWorkflowSteps(orderedKeys: string[]): Promise<{ success: boolean }> {
+    return this.request("/stock-control/workflow/step-configs/reorder", {
+      method: "PUT",
+      body: JSON.stringify({ orderedKeys }),
     });
   }
 

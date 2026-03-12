@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Logger,
   Param,
@@ -26,6 +27,7 @@ import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { WebPushService } from "../services/web-push.service";
 import { WorkflowAssignmentService } from "../services/workflow-assignment.service";
 import { WorkflowNotificationService } from "../services/workflow-notification.service";
+import { WorkflowStepConfigService } from "../services/workflow-step-config.service";
 
 @ApiTags("Stock Control - Workflow")
 @Controller("stock-control/workflow")
@@ -40,6 +42,7 @@ export class WorkflowController {
     private readonly pdfService: JobCardPdfService,
     private readonly assignmentService: WorkflowAssignmentService,
     private readonly webPushService: WebPushService,
+    private readonly stepConfigService: WorkflowStepConfigService,
   ) {}
 
   @Post("job-cards/:id/documents")
@@ -301,6 +304,54 @@ export class WorkflowController {
   @ApiOperation({ summary: "Unsubscribe from push notifications" })
   async pushUnsubscribe(@Req() req: any, @Body() body: { endpoint: string }) {
     await this.webPushService.unsubscribe(req.user.id, body.endpoint);
+    return { success: true };
+  }
+
+  @Get("step-configs")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Get ordered workflow step configurations for company" })
+  async stepConfigs(@Req() req: any) {
+    return this.stepConfigService.orderedSteps(req.user.companyId);
+  }
+
+  @Put("step-configs/:key/label")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update a workflow step label" })
+  async updateStepLabel(
+    @Req() req: any,
+    @Param("key") key: string,
+    @Body() body: { label: string },
+  ) {
+    await this.stepConfigService.updateLabel(req.user.companyId, key, body.label);
+    return { success: true };
+  }
+
+  @Post("step-configs")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Add a custom workflow step" })
+  async addStepConfig(
+    @Req() req: any,
+    @Body() body: { label: string; afterStepKey: string },
+  ) {
+    return this.stepConfigService.addStep(req.user.companyId, body);
+  }
+
+  @Delete("step-configs/:key")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Remove a custom workflow step" })
+  async removeStepConfig(@Req() req: any, @Param("key") key: string) {
+    await this.stepConfigService.removeStep(req.user.companyId, key);
+    return { success: true };
+  }
+
+  @Put("step-configs/reorder")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Bulk reorder workflow steps" })
+  async reorderStepConfigs(
+    @Req() req: any,
+    @Body() body: { orderedKeys: string[] },
+  ) {
+    await this.stepConfigService.bulkReorder(req.user.companyId, body.orderedKeys);
     return { success: true };
   }
 }

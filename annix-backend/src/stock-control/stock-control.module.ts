@@ -83,6 +83,7 @@ import { UserLocationAssignment } from "./entities/user-location-assignment.enti
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
 import { WorkflowNotificationRecipient } from "./entities/workflow-notification-recipient.entity";
 import { WorkflowStepAssignment } from "./entities/workflow-step-assignment.entity";
+import { WorkflowStepConfig } from "./entities/workflow-step-config.entity";
 import { MessagingEnabledGuard } from "./guards/messaging-enabled.guard";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
@@ -130,6 +131,7 @@ import { StaffService } from "./services/staff.service";
 import { WebPushService } from "./services/web-push.service";
 import { WorkflowAssignmentService } from "./services/workflow-assignment.service";
 import { WorkflowNotificationService } from "./services/workflow-notification.service";
+import { WorkflowStepConfigService } from "./services/workflow-step-config.service";
 
 @Module({
   imports: [
@@ -182,6 +184,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       ChatMessage,
       ChatConversation,
       ChatConversationParticipant,
+      WorkflowStepConfig,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -279,6 +282,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     CertificateAnalysisService,
     DataBookPdfService,
     ChatService,
+    WorkflowStepConfigService,
   ],
 })
 export class StockControlModule {}
