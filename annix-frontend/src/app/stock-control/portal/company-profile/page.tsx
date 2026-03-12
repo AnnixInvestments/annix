@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { CandidateImage, stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { isValidEmail } from "../../lib/validation";
 import { STOCK_CONTROL_VERSION } from "../../config/version";
 import { syncStatus } from "../../lib/offline/syncManager";
 import { AppPermissionsSection } from "../settings/AppPermissionsSection";
@@ -245,6 +246,11 @@ export default function CompanyProfilePage() {
   const handleSaveCompanyDetails = async () => {
     if (!companyName.trim()) {
       setDetailsError("Company name is required.");
+      return;
+    }
+
+    if (companyEmail.trim() && !isValidEmail(companyEmail)) {
+      setDetailsError("Please enter a valid email address.");
       return;
     }
 

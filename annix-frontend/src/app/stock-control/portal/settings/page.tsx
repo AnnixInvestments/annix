@@ -19,6 +19,7 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { ALL_NAV_ITEMS, NAV_GROUP_ORDER } from "../../config/navItems";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
 import { roleLabel } from "../../lib/roleLabels";
+import { isValidEmail } from "../../lib/validation";
 
 export default function StockControlSettingsPage() {
   const router = useRouter();
@@ -144,6 +145,11 @@ export default function StockControlSettingsPage() {
   const handleInvite = async () => {
     if (!inviteEmail.trim()) {
       setInviteError("Please enter an email address.");
+      return;
+    }
+
+    if (!isValidEmail(inviteEmail)) {
+      setInviteError("Please enter a valid email address.");
       return;
     }
 

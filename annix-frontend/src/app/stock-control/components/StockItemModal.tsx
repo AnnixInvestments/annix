@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
+import { isNonNegativeNumber } from "../lib/validation";
 
 interface StockItemFormData {
   sku: string;
@@ -62,21 +63,38 @@ export function StockItemModal(props: StockItemModalProps) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const [validationError, setValidationError] = useState<string | null>(null);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationError(null);
+
+    if (!isNonNegativeNumber(form.quantity)) {
+      setValidationError("Quantity must be a non-negative number.");
+      return;
+    }
+    if (!isNonNegativeNumber(form.costPerUnit)) {
+      setValidationError("Cost per unit must be a non-negative number.");
+      return;
+    }
+    if (!isNonNegativeNumber(form.minStockLevel)) {
+      setValidationError("Min stock level must be a non-negative number.");
+      return;
+    }
+
     onSave(form);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="stock-item-modal-title">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
 
         <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 id="stock-item-modal-title" className="text-lg font-semibold text-gray-900">
               {item ? "Edit Stock Item" : "New Stock Item"}
             </h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -93,6 +111,9 @@ export function StockItemModal(props: StockItemModalProps) {
 
           <form onSubmit={handleSubmit}>
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-4">
+              {validationError && (
+                <p className="text-sm text-red-600">{validationError}</p>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>

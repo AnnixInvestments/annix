@@ -73,7 +73,10 @@ export default function StaffPage() {
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
+    if (!form.name.trim()) {
+      setError("Staff member name is required.");
+      return;
+    }
     try {
       setIsSaving(true);
       const payload = {
@@ -502,6 +505,7 @@ export default function StaffPage() {
                     type="text"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                     placeholder="Full name"
                   />

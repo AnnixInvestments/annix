@@ -82,13 +82,13 @@ export function ApprovalModal(props: ApprovalModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="approval-modal-title">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleClose} />
 
         <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 id="approval-modal-title" className="text-lg font-semibold text-gray-900">
               {mode === "choice" && `Workflow Action: ${jobNumber}`}
               {mode === "approve" && `Approve: ${stepName}`}
               {mode === "reject" && `Reject: ${jobNumber}`}

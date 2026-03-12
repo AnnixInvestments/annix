@@ -81,6 +81,7 @@ function MessageBubble({
               type="button"
               onClick={() => onStartEdit(msg)}
               className="opacity-50 hover:opacity-100"
+              aria-label="Edit message"
             >
               <Pencil className="h-2.5 w-2.5" />
             </button>
@@ -154,6 +155,7 @@ function MessageInput({
           onClick={() => fileRef.current?.click()}
           disabled={uploading || !!editingId}
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          aria-label="Upload photo"
         >
           <Camera className="h-4 w-4" />
         </button>
@@ -184,6 +186,7 @@ function MessageInput({
           onClick={onSend}
           disabled={!text.trim() || sending}
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-300 transition-colors"
+          aria-label="Send message"
         >
           <Send className="h-4 w-4" />
         </button>

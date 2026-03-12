@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SmtpConfigResponse, stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { isValidEmail } from "../../lib/validation";
 
 export function SmtpConfigSection() {
   const [smtpHost, setSmtpHost] = useState("");
@@ -115,7 +116,7 @@ export function SmtpConfigSection() {
 
   const addNotificationEmail = () => {
     const trimmed = newNotificationEmail.trim().toLowerCase();
-    if (trimmed?.includes("@") && !notificationEmails.includes(trimmed)) {
+    if (isValidEmail(trimmed) && !notificationEmails.includes(trimmed)) {
       setNotificationEmails([...notificationEmails, trimmed]);
       setNewNotificationEmail("");
       setSmtpSuccess("");
@@ -308,7 +309,7 @@ export function SmtpConfigSection() {
               <button
                 type="button"
                 onClick={addNotificationEmail}
-                disabled={!newNotificationEmail.trim() || !newNotificationEmail.includes("@")}
+                disabled={!isValidEmail(newNotificationEmail)}
                 className="px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Add

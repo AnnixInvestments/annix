@@ -294,10 +294,11 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
   let flatIndex = -1;
 
   return (
-    <div className="fixed inset-0 z-[60] overflow-y-auto">
+    <div className="fixed inset-0 z-[60] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="global-search-modal-title">
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
       <div className="flex items-start justify-center min-h-screen pt-[10vh] px-4 pb-20">
         <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl">
+          <h2 id="global-search-modal-title" className="sr-only">Search</h2>
           <div className="flex items-center px-4 border-b border-gray-200">
             <svg
               className="w-5 h-5 text-gray-400 shrink-0"

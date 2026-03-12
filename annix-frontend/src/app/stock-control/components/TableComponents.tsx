@@ -73,10 +73,13 @@ export function SortHeader(props: SortHeaderProps) {
   const { label, sortKey, currentSort, onSort } = props;
   const isActive = currentSort.key === sortKey;
 
+  const ariaSort = isActive ? (currentSort.direction === "asc" ? "ascending" : "descending") : "none";
+
   return (
     <th
       onClick={() => onSort(sortKey)}
       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+      aria-sort={ariaSort}
     >
       <div className="flex items-center">
         {label}
