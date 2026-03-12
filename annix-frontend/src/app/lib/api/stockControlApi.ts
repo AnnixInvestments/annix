@@ -3414,10 +3414,7 @@ class StockControlApiClient {
     return this.request("/stock-control/workflow/step-configs");
   }
 
-  async updateWorkflowStepLabel(
-    key: string,
-    label: string,
-  ): Promise<{ success: boolean }> {
+  async updateWorkflowStepLabel(key: string, label: string): Promise<{ success: boolean }> {
     return this.request(`/stock-control/workflow/step-configs/${encodeURIComponent(key)}/label`, {
       method: "PUT",
       body: JSON.stringify({ label }),

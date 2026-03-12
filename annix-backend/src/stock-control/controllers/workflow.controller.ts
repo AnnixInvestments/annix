@@ -329,10 +329,7 @@ export class WorkflowController {
   @Post("step-configs")
   @StockControlRoles("admin")
   @ApiOperation({ summary: "Add a custom workflow step" })
-  async addStepConfig(
-    @Req() req: any,
-    @Body() body: { label: string; afterStepKey: string },
-  ) {
+  async addStepConfig(@Req() req: any, @Body() body: { label: string; afterStepKey: string }) {
     return this.stepConfigService.addStep(req.user.companyId, body);
   }
 
@@ -347,10 +344,7 @@ export class WorkflowController {
   @Put("step-configs/reorder")
   @StockControlRoles("admin")
   @ApiOperation({ summary: "Bulk reorder workflow steps" })
-  async reorderStepConfigs(
-    @Req() req: any,
-    @Body() body: { orderedKeys: string[] },
-  ) {
+  async reorderStepConfigs(@Req() req: any, @Body() body: { orderedKeys: string[] }) {
     await this.stepConfigService.bulkReorder(req.user.companyId, body.orderedKeys);
     return { success: true };
   }

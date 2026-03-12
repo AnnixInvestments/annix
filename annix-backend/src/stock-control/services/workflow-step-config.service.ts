@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
@@ -123,11 +123,7 @@ export class WorkflowStepConfigService {
     await this.repo.remove(step);
   }
 
-  async reorderStep(
-    companyId: number,
-    stepKey: string,
-    direction: "up" | "down",
-  ): Promise<void> {
+  async reorderStep(companyId: number, stepKey: string, direction: "up" | "down"): Promise<void> {
     const steps = await this.orderedSteps(companyId);
     const currentIndex = steps.findIndex((s) => s.key === stepKey);
 

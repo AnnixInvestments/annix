@@ -1359,7 +1359,10 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
     setSaving(true);
     setError("");
     try {
-      await stockControlApiClient.updateWorkflowStepLabel(editingLabelKey, editingLabelValue.trim());
+      await stockControlApiClient.updateWorkflowStepLabel(
+        editingLabelKey,
+        editingLabelValue.trim(),
+      );
       setEditingLabelKey(null);
       await loadData();
       setSuccess(true);
@@ -1525,12 +1528,19 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
               type="button"
               onClick={() => {
                 setShowAddStep(!showAddStep);
-                setNewStepAfter(stepConfigs.length > 0 ? stepConfigs[stepConfigs.length - 1].key : "");
+                setNewStepAfter(
+                  stepConfigs.length > 0 ? stepConfigs[stepConfigs.length - 1].key : "",
+                );
               }}
               className="text-xs font-medium text-teal-600 hover:text-teal-700 flex items-center gap-1"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Add Step
             </button>
@@ -1549,14 +1559,18 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Insert After</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Insert After
+                  </label>
                   <select
                     value={newStepAfter}
                     onChange={(e) => setNewStepAfter(e.target.value)}
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
                   >
                     {stepConfigs.map((s) => (
-                      <option key={s.key} value={s.key}>{s.label}</option>
+                      <option key={s.key} value={s.key}>
+                        {s.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1609,8 +1623,18 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                               onClick={handleSaveLabel}
                               className="text-teal-600 hover:text-teal-800"
                             >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={3}
+                                  d="M5 13l4 4L19 7"
+                                />
                               </svg>
                             </button>
                             <button
@@ -1618,8 +1642,18 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                               onClick={() => setEditingLabelKey(null)}
                               className="text-gray-400 hover:text-gray-600"
                             >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={3}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
                               </svg>
                             </button>
                           </div>
@@ -1642,8 +1676,18 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                                 className="text-gray-400 hover:text-teal-600 p-0.5"
                                 title="Move left"
                               >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 19l-7-7 7-7"
+                                  />
                                 </svg>
                               </button>
                             )}
@@ -1654,8 +1698,18 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                                 className="text-gray-400 hover:text-teal-600 p-0.5"
                                 title="Move right"
                               >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5l7 7-7 7"
+                                  />
                                 </svg>
                               </button>
                             )}
@@ -1666,8 +1720,18 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                                 className="text-gray-400 hover:text-red-500 p-0.5"
                                 title="Remove step"
                               >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
                                 </svg>
                               </button>
                             )}
