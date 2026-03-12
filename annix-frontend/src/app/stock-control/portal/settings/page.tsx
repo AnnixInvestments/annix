@@ -75,8 +75,8 @@ export default function StockControlSettingsPage() {
       ]);
       setTeamMembers(members);
       setInvitations(invites);
-    } catch {
-      // Silent fail
+    } catch (e) {
+      setInviteError(e instanceof Error ? e.message : "Failed to load team data");
     } finally {
       setTeamLoading(false);
     }
@@ -87,8 +87,8 @@ export default function StockControlSettingsPage() {
     try {
       const data = await stockControlApiClient.departments();
       setDepartments(data);
-    } catch {
-      // Silent fail
+    } catch (e) {
+      setDepartmentError(e instanceof Error ? e.message : "Failed to load departments");
     } finally {
       setDepartmentsLoading(false);
     }
@@ -99,8 +99,8 @@ export default function StockControlSettingsPage() {
     try {
       const data = await stockControlApiClient.locations();
       setLocations(data);
-    } catch {
-      // Silent fail
+    } catch (e) {
+      setLocationError(e instanceof Error ? e.message : "Failed to load locations");
     } finally {
       setLocationsLoading(false);
     }
@@ -1633,6 +1633,12 @@ function WorkflowConfigurationSection({ teamMembers }: { teamMembers: StockContr
                         {s.label}
                       </option>
                     ))}
+                    {newStepIsBackground &&
+                      backgroundSteps.map((s) => (
+                        <option key={s.key} value={s.key}>
+                          {s.label} (Background)
+                        </option>
+                      ))}
                   </select>
                 </div>
                 <button
