@@ -157,7 +157,10 @@ function VatTab() {
   }
 
   const statusBadge = (status: string) => {
-    const config: Record<string, { color: string; icon: React.ElementType; label: string }> = {
+    const config: Record<
+      string,
+      { color: string; icon: React.ComponentType<{ className?: string }>; label: string }
+    > = {
       must_register: {
         color: "bg-red-500/10 border-red-500/30 text-red-400",
         icon: AlertTriangle,

@@ -29,7 +29,7 @@ import { COMPLY_SA_VERSION } from "@/app/comply-sa/config/version";
 
 type NavGroup = {
   label: string;
-  items: Array<{ href: string; label: string; icon: React.ElementType }>;
+  items: Array<{ href: string; label: string; icon: React.ComponentType<{ className?: string }> }>;
 };
 
 const NAV_GROUPS: NavGroup[] = [
@@ -89,7 +89,7 @@ function NavLink({
 }: {
   href: string;
   label: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   active: boolean;
   onClick?: () => void;
 }) {

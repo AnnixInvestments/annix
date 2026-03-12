@@ -4,7 +4,7 @@ import { Repository } from "typeorm";
 import { ComplySaCompany } from "../companies/entities/company.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 
-interface ChatResponse {
+export interface ChatResponse {
   answer: string;
   relatedRequirements: string[];
 }

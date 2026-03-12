@@ -5,7 +5,7 @@ import { ComplySaCompany } from "../companies/entities/company.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { formatDateLongZA, now } from "../lib/datetime";
 
-interface TemplateMetadata {
+export interface TemplateMetadata {
   id: string;
   name: string;
   description: string;
@@ -13,7 +13,7 @@ interface TemplateMetadata {
   requiredFields: string[];
 }
 
-interface GeneratedTemplate {
+export interface GeneratedTemplate {
   html: string;
 }
 

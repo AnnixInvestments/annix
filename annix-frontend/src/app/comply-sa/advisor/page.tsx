@@ -49,7 +49,7 @@ function StatCard({
   label: string;
   value: string | number;
   color: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">

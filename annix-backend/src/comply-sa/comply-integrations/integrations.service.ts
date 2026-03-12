@@ -1,13 +1,13 @@
 import { Injectable } from "@nestjs/common";
 
-interface Integration {
+export interface Integration {
   id: string;
   name: string;
   status: string;
   description: string;
 }
 
-interface ConnectionStatus {
+export interface ConnectionStatus {
   connected: boolean;
   lastSync: string | null;
 }

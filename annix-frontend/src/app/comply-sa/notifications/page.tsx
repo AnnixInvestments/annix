@@ -13,7 +13,7 @@ type Notification = {
   createdAt: string;
 };
 
-const NOTIFICATION_ICONS: Record<string, React.ElementType> = {
+const NOTIFICATION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   warning: AlertTriangle,
   overdue: AlertTriangle,
   compliant: CheckCircle,
@@ -21,7 +21,7 @@ const NOTIFICATION_ICONS: Record<string, React.ElementType> = {
   info: Info,
 };
 
-function notificationIcon(type: string): React.ElementType {
+function notificationIcon(type: string): React.ComponentType<{ className?: string }> {
   return NOTIFICATION_ICONS[type] ?? Bell;
 }
 

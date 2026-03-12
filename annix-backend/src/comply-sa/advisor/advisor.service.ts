@@ -5,7 +5,7 @@ import { ComplySaComplianceStatus } from "../compliance/entities/compliance-stat
 import { DateTime } from "../lib/datetime";
 import { ComplySaAdvisorClient } from "./entities/advisor-client.entity";
 
-interface ClientSummary {
+export interface ClientSummary {
   companyId: number;
   companyName: string;
   score: number;
@@ -13,7 +13,7 @@ interface ClientSummary {
   warningCount: number;
 }
 
-interface DashboardStats {
+export interface DashboardStats {
   totalClients: number;
   totalOverdue: number;
   totalWarnings: number;
@@ -24,7 +24,7 @@ interface DashboardStats {
   };
 }
 
-interface CalendarDeadline {
+export interface CalendarDeadline {
   companyId: number;
   companyName: string;
   requirementName: string;

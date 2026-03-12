@@ -19,7 +19,7 @@ type Requirement = DashboardData["requirements"][number];
 
 const STATUS_CONFIG: Record<
   string,
-  { color: string; bg: string; icon: React.ElementType; label: string }
+  { color: string; bg: string; icon: React.ComponentType<{ className?: string }>; label: string }
 > = {
   compliant: {
     color: "text-green-400",
@@ -127,7 +127,7 @@ function SummaryCard({
   label: string;
   count: number;
   color: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">

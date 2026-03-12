@@ -6,7 +6,7 @@ import { integrationsList } from "@/app/comply-sa/lib/api";
 
 type Integration = Awaited<ReturnType<typeof integrationsList>>[number];
 
-const INTEGRATION_ICONS: Record<string, React.ElementType> = {
+const INTEGRATION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   sage: DollarSign,
   xero: BookOpen,
   quickbooks: Receipt,

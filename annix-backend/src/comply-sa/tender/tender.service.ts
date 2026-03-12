@@ -4,7 +4,7 @@ import { Repository } from "typeorm";
 import { ComplySaCompany } from "../companies/entities/company.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
 
-interface TenderDocument {
+export interface TenderDocument {
   name: string;
   description: string;
   status: "uploaded" | "missing";

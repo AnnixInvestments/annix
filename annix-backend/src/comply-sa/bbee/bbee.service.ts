@@ -1,13 +1,13 @@
 import { Injectable } from "@nestjs/common";
 
-interface BbeeLevel {
+export interface BbeeLevel {
   category: "EME" | "QSE" | "Generic";
   automaticLevel: number | null;
   requiresVerification: boolean;
   description: string;
 }
 
-interface ScorecardElement {
+export interface ScorecardElement {
   element: string;
   weighting: number;
   unit: string;

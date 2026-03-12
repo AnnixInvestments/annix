@@ -16,7 +16,7 @@ import { setaGrantInfo } from "@/app/comply-sa/lib/api";
 
 type GrantInfo = Awaited<ReturnType<typeof setaGrantInfo>>;
 
-const GRANT_ICONS: Record<string, React.ElementType> = {
+const GRANT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Mandatory: BookOpen,
   Discretionary: Award,
   PIVOTAL: Target,

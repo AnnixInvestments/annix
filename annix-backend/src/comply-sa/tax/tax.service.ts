@@ -1,38 +1,38 @@
 import { Injectable } from "@nestjs/common";
 import { now } from "../lib/datetime";
 
-interface MinimumWageResult {
+export interface MinimumWageResult {
   compliant: boolean;
   minimumWage: number;
   shortfall: number | null;
   overtimeRate: number;
 }
 
-interface VatAssessmentResult {
+export interface VatAssessmentResult {
   mustRegister: boolean;
   canVoluntaryRegister: boolean;
   threshold: number;
   voluntaryThreshold: number;
 }
 
-interface TurnoverTaxResult {
+export interface TurnoverTaxResult {
   eligible: boolean;
   estimatedTax: number;
   effectiveRate: number;
 }
 
-interface CorporateTaxResult {
+export interface CorporateTaxResult {
   tax: number;
   rate: number;
 }
 
-interface SdlResult {
+export interface SdlResult {
   applicable: boolean;
   amount: number;
   threshold: number;
 }
 
-interface UifResult {
+export interface UifResult {
   employeeContribution: number;
   employerContribution: number;
   total: number;
@@ -40,7 +40,7 @@ interface UifResult {
   capped: boolean;
 }
 
-interface TaxCalendarEntry {
+export interface TaxCalendarEntry {
   name: string;
   date: string;
   type: string;
@@ -52,7 +52,7 @@ interface SetaGrantDeadline {
   date: string;
 }
 
-interface SetaGrantInfo {
+export interface SetaGrantInfo {
   mandatoryGrant: { percentage: number; description: string };
   discretionaryGrant: { percentage: string; description: string };
   pivotalGrant: { percentage: string; description: string };
