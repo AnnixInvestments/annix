@@ -37,12 +37,13 @@ export class ComplySaUser {
   @Column({ name: "password_reset_token", type: "varchar", length: 100, nullable: true })
   passwordResetToken!: string | null;
 
-  @Column({ name: "password_reset_expires_at", type: "varchar", length: 50, nullable: true })
-  passwordResetExpiresAt!: string | null;
+  @Column({ name: "password_reset_expires_at", type: "timestamp", nullable: true })
+  passwordResetExpiresAt!: Date | null;
 
   @ManyToOne(
     () => ComplySaCompany,
     (company) => company.users,
+    { onDelete: "CASCADE" },
   )
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;

@@ -1,8 +1,11 @@
 "use client";
 
 import { AlertTriangle, Bell, BellOff, CheckCircle, Clock, Info } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { notifications as fetchNotifications, markNotificationRead } from "@/app/comply-sa/lib/api";
+import { formatDateTimeZA } from "@/app/lib/datetime";
+import {
+  useComplySaNotifications,
+  useMarkNotificationRead,
+} from "@/app/lib/query/hooks";
 
 type Notification = {
   id: string;
@@ -38,37 +41,12 @@ function notificationColor(type: string): string {
 }
 
 export default function NotificationsPage() {
-  const [items, setItems] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: items = [], isLoading, error } = useComplySaNotifications();
+  const markRead = useMarkNotificationRead();
 
-  const loadNotifications = useCallback(async () => {
-    try {
-      const result = await fetchNotifications();
-      setItems(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load notifications");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const unreadCount = (items as Notification[]).filter((n) => !n.read).length;
 
-  useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
-
-  async function handleMarkRead(id: string) {
-    try {
-      await markNotificationRead(id);
-      setItems(items.map((item) => (item.id === id ? { ...item, read: true } : item)));
-    } catch {
-      setError("Failed to mark notification as read");
-    }
-  }
-
-  const unreadCount = items.filter((n) => !n.read).length;
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4 animate-pulse">
         <div className="h-8 bg-slate-700 rounded w-48" />
@@ -90,15 +68,15 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      {error && (
+      {(error || markRead.error) && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-          {error}
+          {error?.message ?? markRead.error?.message ?? "An error occurred"}
         </div>
       )}
 
-      {items.length > 0 ? (
+      {(items as Notification[]).length > 0 ? (
         <div className="space-y-2">
-          {items.map((notification) => {
+          {(items as Notification[]).map((notification) => {
             const Icon = notificationIcon(notification.type);
             const color = notificationColor(notification.type);
 
@@ -107,7 +85,7 @@ export default function NotificationsPage() {
                 key={notification.id}
                 type="button"
                 onClick={() => {
-                  if (!notification.read) handleMarkRead(notification.id);
+                  if (!notification.read) markRead.mutate(notification.id);
                 }}
                 className={`w-full text-left bg-slate-800 border rounded-xl p-4 transition-colors ${
                   notification.read
@@ -132,13 +110,7 @@ export default function NotificationsPage() {
                         </span>
                       )}
                       <span className="text-xs text-slate-500">
-                        {new Date(notification.createdAt).toLocaleDateString("en-ZA", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatDateTimeZA(notification.createdAt)}
                       </span>
                     </div>
                     {!notification.read && (

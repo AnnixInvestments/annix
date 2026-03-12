@@ -22,11 +22,11 @@ export class ComplySaApiKey {
   @Column({ type: "varchar", length: 100 })
   name!: string;
 
-  @Column({ name: "last_used_at", type: "varchar", length: 50, nullable: true })
-  lastUsedAt!: string | null;
+  @Column({ name: "last_used_at", type: "timestamp", nullable: true })
+  lastUsedAt!: Date | null;
 
-  @Column({ name: "expires_at", type: "varchar", length: 50, nullable: true })
-  expiresAt!: string | null;
+  @Column({ name: "expires_at", type: "timestamp", nullable: true })
+  expiresAt!: Date | null;
 
   @Column({ type: "boolean", default: true })
   active!: boolean;

@@ -1,10 +1,8 @@
 "use client";
 
 import { BookOpen, DollarSign, Info, Loader2, Plug, Receipt, Users } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { integrationsList } from "@/app/comply-sa/lib/api";
-
-type Integration = Awaited<ReturnType<typeof integrationsList>>[number];
+import { useIntegrationsList } from "@/app/lib/query/hooks";
+import type { IntegrationItem } from "@/app/lib/query/hooks";
 
 const INTEGRATION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   sage: DollarSign,
@@ -38,7 +36,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
   },
 };
 
-const FALLBACK_INTEGRATIONS: Integration[] = [
+const FALLBACK_INTEGRATIONS: IntegrationItem[] = [
   {
     id: "sage",
     name: "Sage",
@@ -72,7 +70,7 @@ const FALLBACK_INTEGRATIONS: Integration[] = [
   },
 ];
 
-function IntegrationCard({ integration }: { integration: Integration }) {
+function IntegrationCard({ integration }: { integration: IntegrationItem }) {
   const Icon = INTEGRATION_ICONS[integration.id] ?? Plug;
   const iconColor = INTEGRATION_COLORS[integration.id] ?? "bg-slate-500/10 text-slate-400";
   const statusStyle = STATUS_STYLES[integration.status] ?? STATUS_STYLES.coming_soon;
@@ -110,25 +108,11 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 }
 
 export default function IntegrationsPage() {
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useIntegrationsList();
 
-  const fetchData = useCallback(async () => {
-    try {
-      const data = await integrationsList();
-      setIntegrations(data);
-    } catch {
-      setIntegrations(FALLBACK_INTEGRATIONS);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const integrations = (data as IntegrationItem[] | undefined) ?? FALLBACK_INTEGRATIONS;
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 text-teal-400 animate-spin" />

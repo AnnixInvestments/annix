@@ -8,5 +8,6 @@ import { ComplySaDocument } from "./entities/document.entity";
   imports: [TypeOrmModule.forFeature([ComplySaDocument])],
   controllers: [ComplySaDocumentsController],
   providers: [ComplySaDocumentsService],
+  exports: [ComplySaDocumentsService],
 })
 export class ComplySaDocumentsModule {}

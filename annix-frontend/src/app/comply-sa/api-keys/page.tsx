@@ -11,10 +11,14 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { apiKeysList, generateApiKey, revokeApiKey } from "@/app/comply-sa/lib/api";
-
-type ApiKey = Awaited<ReturnType<typeof apiKeysList>>[number];
+import { useState } from "react";
+import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useApiKeysList,
+  useGenerateApiKey,
+  useRevokeApiKey,
+} from "@/app/lib/query/hooks";
+import type { ApiKeyItem } from "@/app/lib/query/hooks";
 
 function GenerateModal({
   onClose,
@@ -24,18 +28,14 @@ function GenerateModal({
   onGenerated: (key: string) => void;
 }) {
   const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
+  const generateMutation = useGenerateApiKey();
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    setLoading(true);
-    try {
-      const result = await generateApiKey(name.trim());
-      onGenerated(result.key);
-    } catch {
-      setLoading(false);
-    }
+    generateMutation.mutate(name.trim(), {
+      onSuccess: (result) => onGenerated(result.key),
+    });
   }
 
   return (
@@ -64,10 +64,10 @@ function GenerateModal({
           </div>
           <button
             type="submit"
-            disabled={loading || !name.trim()}
+            disabled={generateMutation.isPending || !name.trim()}
             className="w-full px-4 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg text-sm transition-colors inline-flex items-center justify-center gap-2"
           >
-            {loading ? (
+            {generateMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Generating...
@@ -141,16 +141,16 @@ function KeyRevealModal({ apiKey, onClose }: { apiKey: string; onClose: () => vo
   );
 }
 
-function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: number) => void }) {
+function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKeyItem; onRevoke: (id: number) => void }) {
   return (
     <tr className="border-b border-slate-700 last:border-b-0">
       <td className="px-4 py-3 text-sm text-white font-medium">{apiKey.name}</td>
       <td className="px-4 py-3 text-sm text-slate-400 font-mono">{apiKey.keyPreview}</td>
       <td className="px-4 py-3 text-sm text-slate-400">
-        {new Date(apiKey.createdAt).toLocaleDateString("en-ZA")}
+        {formatDateZA(apiKey.createdAt)}
       </td>
       <td className="px-4 py-3 text-sm text-slate-400">
-        {apiKey.lastUsedAt ? new Date(apiKey.lastUsedAt).toLocaleDateString("en-ZA") : "Never"}
+        {apiKey.lastUsedAt ? formatDateZA(apiKey.lastUsedAt) : "Never"}
       </td>
       <td className="px-4 py-3">
         <span
@@ -179,49 +179,33 @@ function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: number) =
 }
 
 export default function ApiKeysPage() {
-  const [keys, setKeys] = useState<ApiKey[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: keys = [], isLoading, error } = useApiKeysList();
+  const revokeMutation = useRevokeApiKey();
   const [showGenerate, setShowGenerate] = useState(false);
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
-
-  const fetchKeys = useCallback(async () => {
-    try {
-      const data = await apiKeysList();
-      setKeys(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load API keys");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchKeys();
-  }, [fetchKeys]);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
 
   function handleGenerated(key: string) {
     setShowGenerate(false);
     setRevealedKey(key);
-    fetchKeys();
   }
 
-  async function handleRevoke(id: number) {
-    try {
-      await revokeApiKey(id);
-      fetchKeys();
-    } catch {
-      setError("Failed to revoke API key");
-    }
+  function handleRevoke(id: number) {
+    setRevokeError(null);
+    revokeMutation.mutate(id, {
+      onError: () => setRevokeError("Failed to revoke API key"),
+    });
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 text-teal-400 animate-spin" />
       </div>
     );
   }
+
+  const displayError = error?.message ?? revokeError;
 
   return (
     <div className="space-y-6">
@@ -250,13 +234,13 @@ export default function ApiKeysPage() {
         </p>
       </div>
 
-      {error && (
+      {displayError && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-          {error}
+          {displayError}
         </div>
       )}
 
-      {keys.length > 0 ? (
+      {(keys as ApiKeyItem[]).length > 0 ? (
         <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -283,7 +267,7 @@ export default function ApiKeysPage() {
                 </tr>
               </thead>
               <tbody>
-                {keys.map((key) => (
+                {(keys as ApiKeyItem[]).map((key) => (
                   <KeyRow key={key.id} apiKey={key} onRevoke={handleRevoke} />
                 ))}
               </tbody>

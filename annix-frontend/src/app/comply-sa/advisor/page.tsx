@@ -12,10 +12,15 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { addAdvisorClient, advisorDashboard, removeAdvisorClient } from "@/app/comply-sa/lib/api";
+import { useState } from "react";
+import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useAddAdvisorClient,
+  useAdvisorDashboard,
+  useRemoveAdvisorClient,
+} from "@/app/lib/query/hooks";
 
-type DashboardData = Awaited<ReturnType<typeof advisorDashboard>>;
+type DashboardData = NonNullable<ReturnType<typeof useAdvisorDashboard>["data"]>;
 type Client = DashboardData["clients"][number];
 type SortKey = "score_asc" | "score_desc" | "name" | "overdue";
 
@@ -80,7 +85,7 @@ function ClientCard({
           <h3 className="text-base font-semibold text-white">{client.companyName}</h3>
           {client.lastActivity && (
             <p className="text-xs text-slate-500 mt-1">
-              Last activity: {new Date(client.lastActivity).toLocaleDateString("en-ZA")}
+              Last activity: {formatDateZA(client.lastActivity)}
             </p>
           )}
         </div>
@@ -156,36 +161,32 @@ function ClientCard({
 function AddClientModal({
   open,
   onClose,
-  onAdd,
 }: {
   open: boolean;
   onClose: () => void;
-  onAdd: (companyId: number) => void;
 }) {
   const [companyId, setCompanyId] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const addClient = useAddAdvisorClient();
 
   if (!open) return null;
 
-  async function handleAdd() {
+  function handleAdd() {
     const id = Number(companyId);
     if (!id || id <= 0) {
       setError("Please enter a valid company ID");
       return;
     }
-    setLoading(true);
     setError(null);
-    try {
-      await addAdvisorClient(id);
-      onAdd(id);
-      setCompanyId("");
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add client");
-    } finally {
-      setLoading(false);
-    }
+    addClient.mutate(id, {
+      onSuccess: () => {
+        setCompanyId("");
+        onClose();
+      },
+      onError: (err) => {
+        setError(err instanceof Error ? err.message : "Failed to add client");
+      },
+    });
   }
 
   return (
@@ -218,10 +219,10 @@ function AddClientModal({
           <button
             type="button"
             onClick={handleAdd}
-            disabled={loading}
+            disabled={addClient.isPending}
             className="px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {addClient.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Add Client
           </button>
         </div>
@@ -248,46 +249,21 @@ function LoadingSkeleton() {
 }
 
 export default function AdvisorPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error } = useAdvisorDashboard();
+  const removeClient = useRemoveAdvisorClient();
   const [sortKey, setSortKey] = useState<SortKey>("score_desc");
   const [modalOpen, setModalOpen] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const result = await advisorDashboard();
-      setData(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load advisor dashboard");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  async function handleRemoveClient(companyId: number) {
-    try {
-      await removeAdvisorClient(companyId);
-      fetchData();
-    } catch {
-      setError("Failed to remove client");
-    }
+  function handleRemoveClient(companyId: number) {
+    removeClient.mutate(companyId);
   }
 
-  function handleClientAdded() {
-    fetchData();
-  }
-
-  if (loading) return <LoadingSkeleton />;
+  if (isLoading) return <LoadingSkeleton />;
 
   if (error) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-        {error}
+        {error.message}
       </div>
     );
   }
@@ -384,7 +360,6 @@ export default function AdvisorPage() {
       <AddClientModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onAdd={handleClientAdded}
       />
     </div>
   );

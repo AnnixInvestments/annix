@@ -3,7 +3,7 @@
 import { Bot, ExternalLink, Loader2, MessageSquare, Send, User } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { aiChat } from "@/app/comply-sa/lib/api";
+import { useAiChat } from "@/app/lib/query/hooks";
 
 type Message = {
   role: "user" | "assistant";
@@ -89,17 +89,17 @@ function TypingIndicator() {
 export default function AiAssistantPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const chatMutation = useAiChat();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, chatMutation.isPending]);
 
-  async function handleSend(question?: string) {
+  function handleSend(question?: string) {
     const text = question ?? input.trim();
-    if (!text || loading) return;
+    if (!text || chatMutation.isPending) return;
 
     const userMessage: Message = {
       role: "user",
@@ -109,28 +109,28 @@ export default function AiAssistantPage() {
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setLoading(true);
 
-    try {
-      const response = await aiChat(text);
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: response.answer,
-        relatedRequirements: response.relatedRequirements,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err) {
-      const errorMessage: Message = {
-        role: "assistant",
-        content:
-          err instanceof Error ? err.message : "Sorry, something went wrong. Please try again.",
-        relatedRequirements: [],
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setLoading(false);
-      inputRef.current?.focus();
-    }
+    chatMutation.mutate(text, {
+      onSuccess: (response) => {
+        const assistantMessage: Message = {
+          role: "assistant",
+          content: response.answer,
+          relatedRequirements: response.relatedRequirements,
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        inputRef.current?.focus();
+      },
+      onError: (err) => {
+        const errorMessage: Message = {
+          role: "assistant",
+          content:
+            err instanceof Error ? err.message : "Sorry, something went wrong. Please try again.",
+          relatedRequirements: [],
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+        inputRef.current?.focus();
+      },
+    });
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -168,7 +168,7 @@ export default function AiAssistantPage() {
           <MessageBubble key={idx} message={msg} />
         ))}
 
-        {loading && <TypingIndicator />}
+        {chatMutation.isPending && <TypingIndicator />}
 
         <div ref={messagesEndRef} />
       </div>
@@ -197,16 +197,16 @@ export default function AiAssistantPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask a compliance question..."
-            disabled={loading}
+            disabled={chatMutation.isPending}
             className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
           />
           <button
             type="button"
             onClick={() => handleSend()}
-            disabled={loading || !input.trim()}
+            disabled={chatMutation.isPending || !input.trim()}
             className="px-4 py-3 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 disabled:hover:bg-teal-500 text-white rounded-xl transition-colors"
           >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            {chatMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           </button>
         </div>
       </div>

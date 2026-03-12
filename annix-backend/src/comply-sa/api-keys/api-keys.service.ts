@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { fromISO, now, nowISO } from "../lib/datetime";
+import { fromJSDate, now } from "../lib/datetime";
 import { ComplySaApiKey } from "./entities/api-key.entity";
 
 @Injectable()
@@ -39,11 +39,11 @@ export class ComplySaApiKeysService {
       return null;
     }
 
-    if (apiKey.expiresAt !== null && fromISO(apiKey.expiresAt) < now()) {
+    if (apiKey.expiresAt !== null && fromJSDate(apiKey.expiresAt) < now()) {
       return null;
     }
 
-    apiKey.lastUsedAt = nowISO();
+    apiKey.lastUsedAt = now().toJSDate();
     await this.apiKeyRepository.save(apiKey);
 
     return { companyId: apiKey.companyId };
@@ -53,9 +53,9 @@ export class ComplySaApiKeysService {
     Array<{
       id: number;
       name: string;
-      lastUsedAt: string | null;
+      lastUsedAt: Date | null;
       active: boolean;
-      expiresAt: string | null;
+      expiresAt: Date | null;
       createdAt: Date;
     }>
   > {

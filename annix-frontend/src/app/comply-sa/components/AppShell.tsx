@@ -26,6 +26,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { COMPLY_SA_VERSION } from "@/app/comply-sa/config/version";
+import Breadcrumbs from "@/app/comply-sa/components/Breadcrumbs";
+import HelpLinks from "@/app/comply-sa/components/HelpLinks";
 
 type NavGroup = {
   label: string;
@@ -205,7 +207,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <SidebarNav pathname={pathname} />
         </aside>
 
-        <main className="flex-1 p-4 lg:p-6 max-w-6xl">{children}</main>
+        <main className="flex-1 p-4 lg:p-6 max-w-6xl">
+          <Breadcrumbs />
+          {children}
+          <HelpLinks />
+        </main>
       </div>
     </div>
   );

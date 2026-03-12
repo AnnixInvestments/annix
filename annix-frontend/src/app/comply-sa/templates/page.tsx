@@ -1,10 +1,16 @@
 "use client";
 
 import { Download, FileStack, Loader2, Printer, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { generateTemplate, templatesList } from "@/app/comply-sa/lib/api";
+import { useRef, useState } from "react";
+import { useTemplatesList, useGenerateTemplate } from "@/app/lib/query/hooks";
 
-type Template = Awaited<ReturnType<typeof templatesList>>[number];
+type Template = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  fields: { name: string; label: string; type: string }[];
+};
 
 const CATEGORY_COLORS: Record<string, string> = {
   Privacy: "bg-purple-500/20 text-purple-400 border-purple-500/30",
@@ -60,25 +66,18 @@ function TemplateForm({ template, onClose }: { template: Template; onClose: () =
     ),
   );
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const generateMutation = useGenerateTemplate();
   const previewRef = useRef<HTMLDivElement>(null);
 
   function handleFieldChange(fieldName: string, value: string) {
     setFormData((prev) => ({ ...prev, [fieldName]: value }));
   }
 
-  async function handleGenerate() {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await generateTemplate(template.id, formData);
-      setGeneratedHtml(result.html);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Generation failed");
-    } finally {
-      setLoading(false);
-    }
+  function handleGenerate() {
+    generateMutation.mutate(
+      { templateId: template.id, data: formData },
+      { onSuccess: (result) => setGeneratedHtml(result.html) },
+    );
   }
 
   function handlePrint() {
@@ -130,19 +129,19 @@ function TemplateForm({ template, onClose }: { template: Template; onClose: () =
               ))}
             </div>
 
-            {error && (
+            {generateMutation.error && (
               <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-                {error}
+                {generateMutation.error.message}
               </div>
             )}
 
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={loading}
+              disabled={generateMutation.isPending}
               className="px-5 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
             >
-              {loading ? (
+              {generateMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Generating...
@@ -193,18 +192,11 @@ function TemplateForm({ template, onClose }: { template: Template; onClose: () =
 }
 
 export default function TemplatesPage() {
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const { data: templates, isLoading } = useTemplatesList();
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    templatesList()
-      .then(setTemplates)
-      .catch(() => setTemplates([]))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const categories = [...new Set(templates.map((t) => t.category))];
+  const templatesList = (templates ?? []) as Template[];
+  const categories = [...new Set(templatesList.map((t) => t.category))];
 
   return (
     <div className="space-y-6">
@@ -216,7 +208,7 @@ export default function TemplatesPage() {
         <p className="text-slate-400 mt-1">Generate compliance documents from templates</p>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 text-teal-400 animate-spin" />
         </div>
@@ -230,7 +222,7 @@ export default function TemplatesPage() {
                 {category}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {templates
+                {templatesList
                   .filter((t) => t.category === category)
                   .map((template) => (
                     <TemplateCard
@@ -242,7 +234,7 @@ export default function TemplatesPage() {
               </div>
             </div>
           ))}
-          {templates.length === 0 && (
+          {templatesList.length === 0 && (
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 text-center">
               <FileStack className="h-10 w-10 text-slate-600 mx-auto mb-3" />
               <p className="text-slate-400 text-sm">No templates available</p>

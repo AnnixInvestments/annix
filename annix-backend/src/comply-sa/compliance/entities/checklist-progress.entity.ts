@@ -22,8 +22,8 @@ export class ComplySaChecklistProgress {
   @Column({ type: "boolean", default: false })
   completed!: boolean;
 
-  @Column({ name: "completed_at", type: "varchar", length: 50, nullable: true })
-  completedAt!: string | null;
+  @Column({ name: "completed_at", type: "timestamp", nullable: true })
+  completedAt!: Date | null;
 
   @Column({ name: "completed_by_user_id", type: "int", nullable: true })
   completedByUserId!: number | null;
@@ -31,7 +31,7 @@ export class ComplySaChecklistProgress {
   @Column({ type: "text", nullable: true })
   notes!: string | null;
 
-  @ManyToOne(() => ComplySaCompany)
+  @ManyToOne(() => ComplySaCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;
 

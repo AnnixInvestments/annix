@@ -9,10 +9,11 @@ import {
   List,
   Loader2,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { advisorCalendar, advisorClients } from "@/app/comply-sa/lib/api";
+import { useState } from "react";
+import { DateTime, fromISO, now } from "@/app/lib/datetime";
+import { useAdvisorCalendar, useAdvisorClients } from "@/app/lib/query/hooks";
 
-type CalendarEntry = Awaited<ReturnType<typeof advisorCalendar>>[number];
+type CalendarEntry = NonNullable<ReturnType<typeof useAdvisorCalendar>["data"]>[number];
 type ViewMode = "calendar" | "list";
 
 const MONTH_NAMES = [
@@ -45,12 +46,12 @@ function urgencyDot(daysRemaining: number): string {
 }
 
 function daysInMonth(month: number, year: number): number {
-  return new Date(year, month, 0).getDate();
+  return DateTime.local(year, month).daysInMonth ?? 30;
 }
 
 function firstDayOfMonth(month: number, year: number): number {
-  const day = new Date(year, month - 1, 1).getDay();
-  return day === 0 ? 7 : day;
+  const day = DateTime.local(year, month, 1).weekday;
+  return day;
 }
 
 function CalendarGrid({
@@ -71,7 +72,7 @@ function CalendarGrid({
 
   const entriesByDay = entries.reduce(
     (acc, entry) => {
-      const day = new Date(entry.date).getDate();
+      const day = fromISO(entry.date).day;
       return {
         ...acc,
         [day]: [...(acc[day] ?? []), entry],
@@ -125,7 +126,7 @@ function CalendarGrid({
 
 function ListView({ entries }: { entries: CalendarEntry[] }) {
   const sortedEntries = [...entries].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    (a, b) => fromISO(a.date).toMillis() - fromISO(b.date).toMillis(),
   );
 
   if (sortedEntries.length === 0) {
@@ -147,7 +148,7 @@ function ListView({ entries }: { entries: CalendarEntry[] }) {
             <p className="text-xs text-slate-400 mt-0.5">{entry.companyName}</p>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-sm text-white">{new Date(entry.date).toLocaleDateString("en-ZA")}</p>
+            <p className="text-sm text-white">{fromISO(entry.date).toLocaleString({ year: "numeric", month: "short", day: "numeric" })}</p>
             <p
               className={`text-xs mt-0.5 ${
                 entry.daysRemaining < 0
@@ -171,44 +172,18 @@ function ListView({ entries }: { entries: CalendarEntry[] }) {
 }
 
 export default function AdvisorCalendarPage() {
-  const now = new Date();
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
-  const [entries, setEntries] = useState<CalendarEntry[]>([]);
-  const [clients, setClients] = useState<Array<{ companyId: number; companyName: string }>>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const currentDate = now();
+  const [month, setMonth] = useState(currentDate.month);
+  const [year, setYear] = useState(currentDate.year);
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [filterClient, setFilterClient] = useState<number | null>(null);
 
-  const fetchEntries = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await advisorCalendar(month, year);
-      setEntries(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load calendar");
-    } finally {
-      setLoading(false);
-    }
-  }, [month, year]);
-
-  useEffect(() => {
-    fetchEntries();
-  }, [fetchEntries]);
-
-  useEffect(() => {
-    advisorClients()
-      .then((data) =>
-        setClients(
-          data.map((c) => ({
-            companyId: c.companyId,
-            companyName: c.companyName,
-          })),
-        ),
-      )
-      .catch(() => null);
-  }, []);
+  const { data: entries = [], isLoading: loading, error } = useAdvisorCalendar(month, year);
+  const { data: clientsData = [] } = useAdvisorClients();
+  const clients = clientsData.map((c) => ({
+    companyId: c.companyId,
+    companyName: c.companyName,
+  }));
 
   function handlePrevMonth() {
     if (month === 1) {
@@ -308,7 +283,7 @@ export default function AdvisorCalendarPage() {
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-          {error}
+          {error.message}
         </div>
       )}
 

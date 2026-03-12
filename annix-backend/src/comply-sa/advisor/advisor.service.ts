@@ -2,7 +2,10 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
-import { DateTime } from "../lib/datetime";
+import { formatDateZA, fromJSDate } from "../lib/datetime";
+
+const SCORE_THRESHOLD_LOW = 50;
+const SCORE_THRESHOLD_HIGH = 80;
 import { ComplySaAdvisorClient } from "./entities/advisor-client.entity";
 
 export interface ClientSummary {
@@ -110,9 +113,9 @@ export class ComplySaAdvisorService {
 
     const clientsByScoreBucket = summaries.reduce(
       (acc, s) => {
-        if (s.score < 50) {
+        if (s.score < SCORE_THRESHOLD_LOW) {
           return { ...acc, low: acc.low + 1 };
-        } else if (s.score < 80) {
+        } else if (s.score < SCORE_THRESHOLD_HIGH) {
           return { ...acc, medium: acc.medium + 1 };
         } else {
           return { ...acc, high: acc.high + 1 };
@@ -151,14 +154,14 @@ export class ComplySaAdvisorService {
             if (status.nextDueDate === null) {
               return false;
             }
-            const dueDate = DateTime.fromISO(status.nextDueDate);
+            const dueDate = fromJSDate(status.nextDueDate);
             return dueDate.month === month && dueDate.year === year;
           })
           .map((status) => ({
             companyId: client.clientCompanyId,
             companyName: client.clientCompany.name,
             requirementName: status.requirement?.name ?? "Unknown",
-            dueDate: status.nextDueDate!,
+            dueDate: formatDateZA(fromJSDate(status.nextDueDate!)),
             status: status.status,
           }));
       }),

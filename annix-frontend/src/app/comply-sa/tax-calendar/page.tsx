@@ -1,8 +1,9 @@
 "use client";
 
 import { CalendarDays, Grid3X3, List, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { companyProfile, taxCalendar } from "@/app/comply-sa/lib/api";
+import { useState } from "react";
+import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
+import { useCompanyProfile, useTaxCalendar } from "@/app/lib/query/hooks";
 
 type Deadline = {
   name: string;
@@ -57,14 +58,14 @@ function TypeBadge({ type }: { type: string }) {
 }
 
 function isUpcoming(dateStr: string): boolean {
-  const today = new Date();
-  const deadline = new Date(dateStr);
-  const diffDays = (deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  const today = now();
+  const deadline = fromISO(dateStr);
+  const diffDays = deadline.diff(today, "days").days;
   return diffDays >= 0 && diffDays <= 30;
 }
 
 function isPast(dateStr: string): boolean {
-  return new Date(dateStr) < new Date();
+  return fromISO(dateStr) < now();
 }
 
 function MonthCard({ month, deadlines }: { month: string; deadlines: Deadline[] }) {
@@ -94,7 +95,7 @@ function MonthCard({ month, deadlines }: { month: string; deadlines: Deadline[] 
                   <div className="min-w-0">
                     <p className="font-medium text-white truncate">{d.name}</p>
                     <p className="text-slate-400">
-                      {new Date(d.date).toLocaleDateString("en-ZA", {
+                      {fromISO(d.date).toLocaleString({
                         day: "numeric",
                         month: "short",
                       })}
@@ -114,7 +115,7 @@ function MonthCard({ month, deadlines }: { month: string; deadlines: Deadline[] 
 
 function ListView({ deadlines }: { deadlines: Deadline[] }) {
   const sorted = [...deadlines].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    (a, b) => fromISO(a.date).toMillis() - fromISO(b.date).toMillis(),
   );
 
   return (
@@ -140,11 +141,7 @@ function ListView({ deadlines }: { deadlines: Deadline[] }) {
             <div className="flex items-center gap-3 shrink-0 sm:ml-4">
               <TypeBadge type={d.type} />
               <span className="text-sm text-slate-300">
-                {new Date(d.date).toLocaleDateString("en-ZA", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
+                {formatDateZA(d.date)}
               </span>
             </div>
           </div>
@@ -159,32 +156,16 @@ function ListView({ deadlines }: { deadlines: Deadline[] }) {
 
 export default function TaxCalendarPage() {
   const [yearEndMonth, setYearEndMonth] = useState(2);
-  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  useEffect(() => {
-    companyProfile()
-      .then((profile) => {
-        if (profile.financialYearEndMonth) {
-          setYearEndMonth(profile.financialYearEndMonth);
-        }
-      })
-      .catch(() => null);
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    taxCalendar(yearEndMonth)
-      .then(setDeadlines)
-      .catch(() => setDeadlines([]))
-      .finally(() => setLoading(false));
-  }, [yearEndMonth]);
+  const { data: profile } = useCompanyProfile();
+  const resolvedYearEndMonth = profile?.financialYearEndMonth ?? yearEndMonth;
+  const { data: deadlines = [], isLoading: loading } = useTaxCalendar(resolvedYearEndMonth);
 
   const deadlinesByMonth = MONTHS.reduce(
     (acc, month, index) => ({
       ...acc,
-      [month]: deadlines.filter((d) => new Date(d.date).getMonth() === index),
+      [month]: deadlines.filter((d) => fromISO(d.date).month - 1 === index),
     }),
     {} as Record<string, Deadline[]>,
   );
@@ -203,7 +184,7 @@ export default function TaxCalendarPage() {
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium text-slate-300">Financial Year End:</label>
           <select
-            value={yearEndMonth}
+            value={resolvedYearEndMonth}
             onChange={(e) => setYearEndMonth(Number(e.target.value))}
             className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
           >

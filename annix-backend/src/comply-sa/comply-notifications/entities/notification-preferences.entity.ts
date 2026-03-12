@@ -1,4 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { phoneEncryptionTransformer } from "../../lib/encryption";
 
 @Entity("comply_sa_notification_preferences")
 export class ComplySaNotificationPreferences {
@@ -23,6 +24,11 @@ export class ComplySaNotificationPreferences {
   @Column({ name: "weekly_digest", type: "boolean", default: true })
   weeklyDigest!: boolean;
 
-  @Column({ type: "varchar", length: 20, nullable: true })
+  @Column({
+    type: "varchar",
+    length: 255,
+    nullable: true,
+    transformer: phoneEncryptionTransformer,
+  })
   phone!: string | null;
 }

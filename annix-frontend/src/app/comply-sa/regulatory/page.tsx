@@ -1,10 +1,22 @@
 "use client";
 
 import { Calendar, ExternalLink, Newspaper } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { regulatoryUpdates, regulatoryUpdatesByCategory } from "@/app/comply-sa/lib/api";
+import { useState } from "react";
+import { formatDateZA, fromISO } from "@/app/lib/datetime";
+import {
+  useRegulatoryUpdates,
+  useRegulatoryUpdatesByCategory,
+} from "@/app/lib/query/hooks";
 
-type RegulatoryUpdate = Awaited<ReturnType<typeof regulatoryUpdates>>[number];
+type RegulatoryUpdate = {
+  id: string;
+  title: string;
+  summary: string;
+  category: string;
+  effectiveDate: string;
+  sourceUrl: string | null;
+  affectedAreas: string[];
+};
 
 const CATEGORIES = [
   { key: "all", label: "All" },
@@ -46,7 +58,7 @@ function UpdateCard({ update }: { update: RegulatoryUpdate }) {
       <div className="flex flex-wrap items-center gap-3 text-xs">
         <span className="inline-flex items-center gap-1.5 text-slate-400">
           <Calendar className="h-3.5 w-3.5" />
-          Effective: {new Date(update.effectiveDate).toLocaleDateString("en-ZA")}
+          Effective: {formatDateZA(update.effectiveDate)}
         </span>
 
         {update.sourceUrl && (
@@ -89,33 +101,20 @@ function LoadingSkeleton() {
 }
 
 export default function RegulatoryPage() {
-  const [updates, setUpdates] = useState<RegulatoryUpdate[]>([]);
   const [activeCategory, setActiveCategory] = useState("all");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchUpdates = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data =
-        activeCategory === "all"
-          ? await regulatoryUpdates()
-          : await regulatoryUpdatesByCategory(activeCategory);
-      setUpdates(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load regulatory updates");
-    } finally {
-      setLoading(false);
-    }
-  }, [activeCategory]);
+  const allUpdates = useRegulatoryUpdates();
+  const categoryUpdates = useRegulatoryUpdatesByCategory(
+    activeCategory === "all" ? "" : activeCategory,
+  );
 
-  useEffect(() => {
-    fetchUpdates();
-  }, [fetchUpdates]);
+  const activeQuery = activeCategory === "all" ? allUpdates : categoryUpdates;
+  const updates = (activeQuery.data ?? []) as RegulatoryUpdate[];
+  const isLoading = activeQuery.isLoading;
+  const error = activeQuery.error;
 
   const sortedUpdates = [...updates].sort(
-    (a, b) => new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime(),
+    (a, b) => fromISO(b.effectiveDate).toMillis() - fromISO(a.effectiveDate).toMillis(),
   );
 
   return (
@@ -151,11 +150,11 @@ export default function RegulatoryPage() {
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-          {error}
+          {error.message}
         </div>
       )}
 
-      {loading ? (
+      {isLoading ? (
         <LoadingSkeleton />
       ) : sortedUpdates.length > 0 ? (
         <div className="space-y-4">

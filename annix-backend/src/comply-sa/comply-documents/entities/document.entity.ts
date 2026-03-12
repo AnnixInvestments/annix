@@ -34,8 +34,8 @@ export class ComplySaDocument {
   @Column({ name: "uploaded_by_user_id", type: "int", nullable: true })
   uploadedByUserId!: number | null;
 
-  @Column({ name: "expiry_date", type: "varchar", length: 50, nullable: true })
-  expiryDate!: string | null;
+  @Column({ name: "expiry_date", type: "timestamp", nullable: true })
+  expiryDate!: Date | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
@@ -43,6 +43,7 @@ export class ComplySaDocument {
   @ManyToOne(
     () => ComplySaCompany,
     (company) => company.documents,
+    { onDelete: "CASCADE" },
   )
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;

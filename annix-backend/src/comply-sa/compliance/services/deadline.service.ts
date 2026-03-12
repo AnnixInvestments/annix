@@ -40,7 +40,7 @@ export class ComplySaDeadlineService {
   calculateNextDueDate(
     requirement: ComplySaComplianceRequirement,
     company: ComplySaCompany,
-  ): string | null {
+  ): Date | null {
     if (requirement.deadlineRule === null) {
       return null;
     }
@@ -67,7 +67,7 @@ export class ComplySaDeadlineService {
     rule: AnniversaryOffsetRule,
     company: ComplySaCompany,
     today: DateTime,
-  ): string | null {
+  ): Date | null {
     const fieldValue = (company as unknown as Record<string, unknown>)[rule.field] as string | null;
 
     if (fieldValue === null || fieldValue === undefined) {
@@ -83,26 +83,26 @@ export class ComplySaDeadlineService {
     const thisYearAnniversary = baseDate.set({ year: today.year }).plus({ days: rule.offset_days });
 
     if (thisYearAnniversary > today) {
-      return thisYearAnniversary.toISO()!;
+      return thisYearAnniversary.toJSDate();
     } else {
       return baseDate
         .set({ year: today.year + 1 })
         .plus({ days: rule.offset_days })
-        .toISO()!;
+        .toJSDate();
     }
   }
 
-  private fixedMonthly(rule: FixedMonthlyRule, today: DateTime): string {
+  private fixedMonthly(rule: FixedMonthlyRule, today: DateTime): Date {
     const thisMonth = today.set({ day: rule.day });
 
     if (thisMonth > today) {
-      return thisMonth.toISO()!;
+      return thisMonth.toJSDate();
     } else {
-      return thisMonth.plus({ months: 1 }).toISO()!;
+      return thisMonth.plus({ months: 1 }).toJSDate();
     }
   }
 
-  private fixedDates(rule: FixedDatesRule, today: DateTime): string {
+  private fixedDates(rule: FixedDatesRule, today: DateTime): Date {
     const futureDates = rule.dates
       .map((d) => {
         const thisYear = today.set({ month: d.month, day: d.day });
@@ -111,20 +111,20 @@ export class ComplySaDeadlineService {
       })
       .sort((a, b) => a.toMillis() - b.toMillis());
 
-    return futureDates[0].toISO()!;
+    return futureDates[0].toJSDate();
   }
 
-  private biMonthly(rule: BiMonthlyRule, today: DateTime): string {
+  private biMonthly(rule: BiMonthlyRule, today: DateTime): Date {
     const currentDay = today.set({ day: rule.day });
 
     if (currentDay > today && today.month % 2 !== 0) {
-      return currentDay.toISO()!;
+      return currentDay.toJSDate();
     } else {
       const nextBiMonth =
         today.month % 2 === 0
           ? today.set({ day: rule.day }).plus({ months: 1 })
           : today.set({ day: rule.day }).plus({ months: 2 });
-      return nextBiMonth.toISO()!;
+      return nextBiMonth.toJSDate();
     }
   }
 }

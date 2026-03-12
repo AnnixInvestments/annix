@@ -10,11 +10,20 @@ import {
   Upload,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { tenderChecklist, tenderScore, uploadDocument } from "@/app/comply-sa/lib/api";
+import { useState } from "react";
+import {
+  useTenderChecklist,
+  useTenderScore,
+  useUploadTenderDocument,
+} from "@/app/lib/query/hooks";
 
-type ChecklistItem = Awaited<ReturnType<typeof tenderChecklist>>[number];
-type TenderScore = Awaited<ReturnType<typeof tenderScore>>;
+type ChecklistItem = {
+  id: string;
+  name: string;
+  description: string;
+  uploaded: boolean;
+  documentUrl: string | null;
+};
 
 function ScoreRing({ score }: { score: number }) {
   const circumference = 2 * Math.PI * 45;
@@ -138,51 +147,35 @@ function LoadingSkeleton() {
 }
 
 export default function TenderPage() {
-  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
-  const [score, setScore] = useState<TenderScore | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: checklist, isLoading: checklistLoading, error: checklistError } = useTenderChecklist();
+  const { data: score, isLoading: scoreLoading } = useTenderScore();
+  const uploadMutation = useUploadTenderDocument();
   const [uploading, setUploading] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [checklistData, scoreData] = await Promise.all([tenderChecklist(), tenderScore()]);
-      setChecklist(checklistData);
-      setScore(scoreData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load tender data");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const isLoading = checklistLoading || scoreLoading;
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  async function handleUpload(itemId: string, file: File) {
+  function handleUpload(itemId: string, file: File) {
     setUploading(itemId);
-    try {
-      await uploadDocument(file, itemId);
-      await fetchData();
-    } catch {
-      setError("Failed to upload document");
-    } finally {
-      setUploading(null);
-    }
+    uploadMutation.mutate(
+      { file, requirementId: itemId },
+      { onSettled: () => setUploading(null) },
+    );
   }
 
-  if (loading) return <LoadingSkeleton />;
+  if (isLoading) return <LoadingSkeleton />;
 
-  if (error) {
+  const error = checklistError ?? uploadMutation.error;
+
+  if (checklistError) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-        {error}
+        {checklistError.message}
       </div>
     );
   }
 
-  const uploadedCount = checklist.filter((item) => item.uploaded).length;
+  const checklistItems = (checklist ?? []) as ChecklistItem[];
+  const uploadedCount = checklistItems.filter((item) => item.uploaded).length;
 
   return (
     <div className="space-y-6">
@@ -202,13 +195,19 @@ export default function TenderPage() {
         </p>
       </div>
 
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
+          {error.message}
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row items-center gap-6 bg-slate-800 border border-slate-700 rounded-xl p-6">
         {score && <ScoreRing score={score.score} />}
         <div>
           <h2 className="text-lg font-semibold text-white">Tender Readiness</h2>
           <p className="text-slate-400 mt-1">
             <span className="text-teal-400 font-bold">{uploadedCount}</span> of{" "}
-            <span className="font-bold text-white">{checklist.length}</span> documents ready
+            <span className="font-bold text-white">{checklistItems.length}</span> documents ready
           </p>
           {score && score.score === 100 && (
             <span className="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-sm font-medium bg-green-500/10 border border-green-500/30 text-green-400">
@@ -220,7 +219,7 @@ export default function TenderPage() {
       </div>
 
       <div className="space-y-3">
-        {checklist.map((item) => (
+        {checklistItems.map((item) => (
           <div key={item.id} className="relative">
             {uploading === item.id && (
               <div className="absolute inset-0 bg-slate-900/50 rounded-xl flex items-center justify-center z-10">

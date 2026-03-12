@@ -1,9 +1,13 @@
 import { Body, Controller, Post, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { ThrottlerGuard, Throttle } from "@nestjs/throttler";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { ComplySaAuthService } from "./auth.service";
+import { ComplySaForgotPasswordDto } from "./dto/forgot-password.dto";
 import { ComplySaLoginDto } from "./dto/login.dto";
+import { ComplySaResendVerificationDto } from "./dto/resend-verification.dto";
+import { ComplySaResetPasswordDto } from "./dto/reset-password.dto";
 import { ComplySaSignupDto } from "./dto/signup.dto";
+import { ComplySaVerifyEmailDto } from "./dto/verify-email.dto";
 
 @ApiTags("comply-sa/auth")
 @Controller("comply-sa/auth")
@@ -25,25 +29,25 @@ export class ComplySaAuthController {
 
   @Post("verify-email")
   @Throttle({ default: { ttl: 60000, limit: 10 } })
-  async verifyEmail(@Body() body: { token: string }) {
-    return this.authService.verifyEmail(body.token);
+  async verifyEmail(@Body() dto: ComplySaVerifyEmailDto) {
+    return this.authService.verifyEmail(dto.token);
   }
 
   @Post("resend-verification")
   @Throttle({ default: { ttl: 60000, limit: 3 } })
-  async resendVerification(@Body() body: { email: string }) {
-    return this.authService.resendVerification(body.email);
+  async resendVerification(@Body() dto: ComplySaResendVerificationDto) {
+    return this.authService.resendVerification(dto.email);
   }
 
   @Post("forgot-password")
   @Throttle({ default: { ttl: 60000, limit: 3 } })
-  async forgotPassword(@Body() body: { email: string }) {
-    return this.authService.forgotPassword(body.email);
+  async forgotPassword(@Body() dto: ComplySaForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
   }
 
   @Post("reset-password")
   @Throttle({ default: { ttl: 60000, limit: 5 } })
-  async resetPassword(@Body() body: { token: string; password: string }) {
-    return this.authService.resetPassword(body.token, body.password);
+  async resetPassword(@Body() dto: ComplySaResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.password);
   }
 }

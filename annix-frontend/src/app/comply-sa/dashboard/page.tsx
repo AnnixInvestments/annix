@@ -11,10 +11,15 @@ import {
   Loader2,
   Upload,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { dashboard, toggleChecklist, uploadDocument } from "@/app/comply-sa/lib/api";
+import { useState } from "react";
+import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useComplySaDashboard,
+  useToggleChecklist,
+  useUploadDocument,
+} from "@/app/lib/query/hooks";
 
-type DashboardData = Awaited<ReturnType<typeof dashboard>>;
+type DashboardData = NonNullable<ReturnType<typeof useComplySaDashboard>["data"]>;
 type Requirement = DashboardData["requirements"][number];
 
 const STATUS_CONFIG: Record<
@@ -201,7 +206,7 @@ function RequirementCard({
           </div>
           {requirement.nextDueDate && (
             <p className="text-xs text-slate-400">
-              Due: {new Date(requirement.nextDueDate).toLocaleDateString("en-ZA")}
+              Due: {formatDateZA(requirement.nextDueDate)}
             </p>
           )}
           {totalSteps > 0 && (
@@ -269,7 +274,7 @@ function RequirementCard({
                     <FileText className="h-4 w-4" />
                     <span>{doc.name}</span>
                     <span className="text-xs text-slate-500">
-                      {new Date(doc.uploadedAt).toLocaleDateString("en-ZA")}
+                      {formatDateZA(doc.uploadedAt)}
                     </span>
                   </div>
                 ))}
@@ -297,61 +302,24 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error } = useComplySaDashboard();
+  const toggleChecklist = useToggleChecklist();
+  const uploadDocument = useUploadDocument();
 
-  const fetchData = useCallback(async () => {
-    try {
-      const result = await dashboard();
-      setData(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load dashboard");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  async function handleChecklistToggle(reqId: string, stepIndex: number) {
-    if (!data) return;
-
-    const updatedRequirements = data.requirements.map((req) => {
-      if (req.id !== reqId) return req;
-      return {
-        ...req,
-        checklist: req.checklist.map((item, i) =>
-          i === stepIndex ? { ...item, completed: !item.completed } : item,
-        ),
-      };
-    });
-    setData({ ...data, requirements: updatedRequirements });
-
-    try {
-      await toggleChecklist(reqId, stepIndex);
-    } catch {
-      fetchData();
-    }
+  function handleChecklistToggle(reqId: string, stepIndex: number) {
+    toggleChecklist.mutate({ requirementId: reqId, stepIndex });
   }
 
-  async function handleDocumentUpload(reqId: string, file: File) {
-    try {
-      await uploadDocument(file, reqId);
-      fetchData();
-    } catch {
-      setError("Failed to upload document");
-    }
+  function handleDocumentUpload(reqId: string, file: File) {
+    uploadDocument.mutate({ file, requirementId: reqId });
   }
 
-  if (loading) return <LoadingSkeleton />;
+  if (isLoading) return <LoadingSkeleton />;
 
   if (error) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-        {error}
+        {error.message}
       </div>
     );
   }
@@ -408,7 +376,7 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-sm font-medium text-white">{deadline.requirementName}</p>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    {new Date(deadline.dueDate).toLocaleDateString("en-ZA")}
+                    {formatDateZA(deadline.dueDate)}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

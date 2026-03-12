@@ -16,19 +16,22 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { COMPLY_SA_VERSION } from "@/app/comply-sa/config/version";
+import { formatDateZA } from "@/app/lib/datetime";
 import {
-  cancelSubscription,
-  companyProfile,
-  notificationPreferences,
-  subscriptionStatus,
-  updateCompanyProfile,
-  updateNotificationPreferences,
-} from "@/app/comply-sa/lib/api";
-
-type NotifPrefs = Awaited<ReturnType<typeof notificationPreferences>>;
-type CompanyData = Awaited<ReturnType<typeof companyProfile>>;
+  useCancelSubscription,
+  useCompanyProfile,
+  useNotificationPreferences,
+  useSubscriptionStatus,
+  useUpdateCompanyProfile,
+  useUpdateNotificationPreferences,
+} from "@/app/lib/query/hooks";
+import type {
+  CompanyProfile,
+  NotificationPreferences,
+  SubscriptionStatusData,
+} from "@/app/lib/query/hooks";
 
 function Toggle({
   label,
@@ -60,38 +63,28 @@ function Toggle({
 }
 
 function NotificationSection() {
-  const [prefs, setPrefs] = useState<NotifPrefs | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { data: prefs, isLoading } = useNotificationPreferences();
+  const updateMutation = useUpdateNotificationPreferences();
+  const [localPrefs, setLocalPrefs] = useState<NotificationPreferences | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    notificationPreferences()
-      .then(setPrefs)
-      .catch(() => null)
-      .finally(() => setLoading(false));
-  }, []);
+  const activePrefs = localPrefs ?? prefs ?? null;
 
-  function handleToggle(key: keyof NotifPrefs, value: boolean) {
-    if (!prefs) return;
-    setPrefs({ ...prefs, [key]: value });
+  function handleToggle(key: keyof NotificationPreferences, value: boolean) {
+    if (!activePrefs) return;
+    setLocalPrefs({ ...activePrefs, [key]: value });
     setSaved(false);
   }
 
-  async function handleSave() {
-    if (!prefs) return;
-    setSaving(true);
-    try {
-      await updateNotificationPreferences(prefs);
-      setSaved(true);
-    } catch {
-      setSaved(false);
-    } finally {
-      setSaving(false);
-    }
+  function handleSave() {
+    if (!activePrefs) return;
+    updateMutation.mutate(activePrefs as unknown as Record<string, unknown>, {
+      onSuccess: () => setSaved(true),
+      onError: () => setSaved(false),
+    });
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 text-teal-400 animate-spin" />
@@ -99,7 +92,7 @@ function NotificationSection() {
     );
   }
 
-  if (!prefs) {
+  if (!activePrefs) {
     return <p className="text-sm text-slate-500 py-4">Unable to load notification preferences</p>;
   }
 
@@ -108,38 +101,41 @@ function NotificationSection() {
       <div className="divide-y divide-slate-700/50">
         <Toggle
           label="Email Notifications"
-          enabled={prefs.email}
+          enabled={activePrefs.email}
           onChange={(v) => handleToggle("email", v)}
         />
         <Toggle
           label="SMS Notifications"
-          enabled={prefs.sms}
+          enabled={activePrefs.sms}
           onChange={(v) => handleToggle("sms", v)}
         />
         <Toggle
           label="WhatsApp Notifications"
-          enabled={prefs.whatsapp}
+          enabled={activePrefs.whatsapp}
           onChange={(v) => handleToggle("whatsapp", v)}
         />
         <Toggle
           label="In-App Notifications"
-          enabled={prefs.inApp}
+          enabled={activePrefs.inApp}
           onChange={(v) => handleToggle("inApp", v)}
         />
         <Toggle
           label="Weekly Digest"
-          enabled={prefs.weeklyDigest}
+          enabled={activePrefs.weeklyDigest}
           onChange={(v) => handleToggle("weeklyDigest", v)}
         />
       </div>
 
-      {(prefs.sms || prefs.whatsapp) && (
+      {(activePrefs.sms || activePrefs.whatsapp) && (
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Phone Number</label>
           <input
             type="tel"
-            value={prefs.phoneNumber ?? ""}
-            onChange={(e) => setPrefs({ ...prefs, phoneNumber: e.target.value || null })}
+            value={activePrefs.phoneNumber ?? ""}
+            onChange={(e) => {
+              setLocalPrefs({ ...activePrefs, phoneNumber: e.target.value || null });
+              setSaved(false);
+            }}
             placeholder="+27 XX XXX XXXX"
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
@@ -149,10 +145,10 @@ function NotificationSection() {
       <button
         type="button"
         onClick={handleSave}
-        disabled={saving}
+        disabled={updateMutation.isPending}
         className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
       >
-        {saving ? (
+        {updateMutation.isPending ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
             Saving...
@@ -174,38 +170,28 @@ function NotificationSection() {
 }
 
 function CompanySection() {
-  const [company, setCompany] = useState<CompanyData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { data: company, isLoading } = useCompanyProfile();
+  const updateMutation = useUpdateCompanyProfile();
+  const [localCompany, setLocalCompany] = useState<CompanyProfile | null>(null);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    companyProfile()
-      .then(setCompany)
-      .catch(() => null)
-      .finally(() => setLoading(false));
-  }, []);
+  const activeCompany = localCompany ?? company ?? null;
 
-  function handleChange(key: keyof CompanyData, value: string | null) {
-    if (!company) return;
-    setCompany({ ...company, [key]: value });
+  function handleChange(key: keyof CompanyProfile, value: string | null) {
+    if (!activeCompany) return;
+    setLocalCompany({ ...activeCompany, [key]: value });
     setSaved(false);
   }
 
-  async function handleSave() {
-    if (!company) return;
-    setSaving(true);
-    try {
-      await updateCompanyProfile(company);
-      setSaved(true);
-    } catch {
-      setSaved(false);
-    } finally {
-      setSaving(false);
-    }
+  function handleSave() {
+    if (!activeCompany) return;
+    updateMutation.mutate(activeCompany as unknown as Record<string, unknown>, {
+      onSuccess: () => setSaved(true),
+      onError: () => setSaved(false),
+    });
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 text-teal-400 animate-spin" />
@@ -213,7 +199,7 @@ function CompanySection() {
     );
   }
 
-  if (!company) {
+  if (!activeCompany) {
     return <p className="text-sm text-slate-500 py-4">Unable to load company profile</p>;
   }
 
@@ -224,7 +210,7 @@ function CompanySection() {
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Company Name</label>
           <input
             type="text"
-            value={company.name}
+            value={activeCompany.name}
             onChange={(e) => handleChange("name", e.target.value)}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
@@ -235,7 +221,7 @@ function CompanySection() {
           </label>
           <input
             type="text"
-            value={company.registrationNumber ?? ""}
+            value={activeCompany.registrationNumber ?? ""}
             onChange={(e) => handleChange("registrationNumber", e.target.value || null)}
             placeholder="e.g. 2024/123456/07"
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -245,7 +231,7 @@ function CompanySection() {
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
           <input
             type="email"
-            value={company.email ?? ""}
+            value={activeCompany.email ?? ""}
             onChange={(e) => handleChange("email", e.target.value || null)}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
@@ -254,7 +240,7 @@ function CompanySection() {
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Phone</label>
           <input
             type="tel"
-            value={company.phone ?? ""}
+            value={activeCompany.phone ?? ""}
             onChange={(e) => handleChange("phone", e.target.value || null)}
             placeholder="+27 XX XXX XXXX"
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -264,7 +250,7 @@ function CompanySection() {
           <label className="block text-sm font-medium text-slate-300 mb-1.5">Industry</label>
           <input
             type="text"
-            value={company.industry ?? ""}
+            value={activeCompany.industry ?? ""}
             onChange={(e) => handleChange("industry", e.target.value || null)}
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
@@ -274,9 +260,9 @@ function CompanySection() {
             Financial Year End
           </label>
           <select
-            value={company.financialYearEndMonth ?? ""}
+            value={activeCompany.financialYearEndMonth ?? ""}
             onChange={(e) =>
-              handleChange("financialYearEndMonth" as keyof CompanyData, e.target.value || null)
+              handleChange("financialYearEndMonth" as keyof CompanyProfile, e.target.value || null)
             }
             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
           >
@@ -306,10 +292,10 @@ function CompanySection() {
       <button
         type="button"
         onClick={handleSave}
-        disabled={saving}
+        disabled={updateMutation.isPending}
         className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
       >
-        {saving ? (
+        {updateMutation.isPending ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
             Saving...
@@ -329,8 +315,6 @@ function CompanySection() {
     </div>
   );
 }
-
-type SubStatus = Awaited<ReturnType<typeof subscriptionStatus>>;
 
 const STATUS_BADGE_STYLES: Record<string, string> = {
   active: "bg-green-500/10 text-green-400 border-green-500/30",
@@ -394,33 +378,17 @@ function CancelModal({
 }
 
 function SubscriptionSection() {
-  const [sub, setSub] = useState<SubStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: sub, isLoading } = useSubscriptionStatus();
+  const cancelMutation = useCancelSubscription();
   const [showCancel, setShowCancel] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
 
-  useEffect(() => {
-    subscriptionStatus()
-      .then(setSub)
-      .catch(() => null)
-      .finally(() => setLoading(false));
-  }, []);
-
-  async function handleCancel() {
-    setCancelling(true);
-    try {
-      await cancelSubscription();
-      const updated = await subscriptionStatus();
-      setSub(updated);
-      setShowCancel(false);
-    } catch {
-      /* handled by api layer */
-    } finally {
-      setCancelling(false);
-    }
+  function handleCancel() {
+    cancelMutation.mutate(undefined, {
+      onSuccess: () => setShowCancel(false),
+    });
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 text-teal-400 animate-spin" />
@@ -458,8 +426,8 @@ function SubscriptionSection() {
         <div className="bg-slate-900/50 rounded-lg p-3">
           <p className="text-xs text-slate-500 mb-0.5">Current Period</p>
           <p className="text-slate-300">
-            {new Date(sub.currentPeriodStart).toLocaleDateString("en-ZA")} -{" "}
-            {new Date(sub.currentPeriodEnd).toLocaleDateString("en-ZA")}
+            {formatDateZA(sub.currentPeriodStart)} -{" "}
+            {formatDateZA(sub.currentPeriodEnd)}
           </p>
         </div>
         <div className="bg-slate-900/50 rounded-lg p-3">
@@ -504,7 +472,7 @@ function SubscriptionSection() {
         <CancelModal
           onClose={() => setShowCancel(false)}
           onConfirm={handleCancel}
-          loading={cancelling}
+          loading={cancelMutation.isPending}
         />
       )}
     </div>

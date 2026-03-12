@@ -2,36 +2,37 @@
 
 import { Building2, CalendarDays, Download, HeartPulse, Loader2, Printer } from "lucide-react";
 import { useState } from "react";
-import { healthReport } from "@/app/comply-sa/lib/api";
+import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
+import { useHealthReport } from "@/app/lib/query/hooks";
 
 export default function HealthReportPage() {
   const [html, setHtml] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+  const reportMutation = useHealthReport();
 
-  async function handleGenerate() {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await healthReport();
-      setHtml(result.html);
-      setGeneratedAt(
-        new Date().toLocaleDateString("en-ZA", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }),
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate report");
-    } finally {
-      setLoading(false);
-    }
+  function handleGenerate() {
+    reportMutation.mutate(undefined, {
+      onSuccess: (result) => {
+        setHtml(result.html);
+        setGeneratedAt(formatDateLongZA(nowISO()));
+      },
+    });
   }
 
   function handlePrint() {
     window.print();
+  }
+
+  function handleDownloadPdf() {
+    if (!html) return;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.addEventListener("afterprint", () => printWindow.close());
+    printWindow.print();
   }
 
   return (
@@ -48,10 +49,10 @@ export default function HealthReportPage() {
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={loading}
+            disabled={reportMutation.isPending}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg text-sm transition-colors"
           >
-            {loading ? (
+            {reportMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Generating...
@@ -63,13 +64,13 @@ export default function HealthReportPage() {
         )}
       </div>
 
-      {error && (
+      {reportMutation.error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-          {error}
+          {reportMutation.error.message ?? "Failed to generate report"}
         </div>
       )}
 
-      {loading && !html && (
+      {reportMutation.isPending && !html && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-20 flex flex-col items-center justify-center gap-4">
           <Loader2 className="h-10 w-10 text-teal-400 animate-spin" />
           <p className="text-slate-400 text-sm">Analyzing your compliance data...</p>
@@ -102,7 +103,7 @@ export default function HealthReportPage() {
               </button>
               <button
                 type="button"
-                onClick={handlePrint}
+                onClick={handleDownloadPdf}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition-colors"
               >
                 <Download className="h-4 w-4" />
@@ -111,7 +112,7 @@ export default function HealthReportPage() {
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={loading}
+                disabled={reportMutation.isPending}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white rounded-lg text-sm transition-colors"
               >
                 Regenerate
@@ -129,7 +130,7 @@ export default function HealthReportPage() {
         </>
       )}
 
-      {!html && !loading && (
+      {!html && !reportMutation.isPending && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-12 text-center">
           <HeartPulse className="h-12 w-12 text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400 text-sm">

@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ComplySaCompany } from "../companies/entities/company.entity";
-import { nowISO } from "../lib/datetime";
+import { fromISO, now } from "../lib/datetime";
 import { ComplySaAuditLog } from "./entities/audit-log.entity";
 import { ComplySaChecklistProgress } from "./entities/checklist-progress.entity";
 import { ComplySaComplianceRequirement } from "./entities/compliance-requirement.entity";
@@ -11,13 +11,15 @@ import { ComplySaDeadlineService } from "./services/deadline.service";
 import { ComplySaRuleEngineService } from "./services/rule-engine.service";
 
 interface UpdateStatusDto {
-  status?: string;
-  notes?: string;
-  lastCompletedDate?: string;
+  status: string | null;
+  notes: string | null;
+  lastCompletedDate: string | null;
 }
 
 @Injectable()
 export class ComplySaComplianceService {
+  private readonly logger = new Logger(ComplySaComplianceService.name);
+
   constructor(
     @InjectRepository(ComplySaComplianceStatus)
     private readonly statusRepository: Repository<ComplySaComplianceStatus>,
@@ -113,14 +115,14 @@ export class ComplySaComplianceService {
 
     const previousStatus = status.status;
 
-    if (dto.status !== undefined) {
+    if (dto.status !== null) {
       status.status = dto.status;
     }
-    if (dto.notes !== undefined) {
+    if (dto.notes !== null) {
       status.notes = dto.notes;
     }
-    if (dto.lastCompletedDate !== undefined) {
-      status.lastCompletedDate = dto.lastCompletedDate;
+    if (dto.lastCompletedDate !== null) {
+      status.lastCompletedDate = fromISO(dto.lastCompletedDate).toJSDate();
     }
 
     const saved = await this.statusRepository.save(status);
@@ -149,7 +151,7 @@ export class ComplySaComplianceService {
 
     if (existing !== null) {
       existing.completed = !existing.completed;
-      existing.completedAt = existing.completed ? nowISO() : null;
+      existing.completedAt = existing.completed ? now().toJSDate() : null;
       existing.completedByUserId = existing.completed ? userId : null;
       const saved = await this.checklistRepository.save(existing);
       await this.autoCompleteStatus(companyId, requirementId, userId);
@@ -174,7 +176,7 @@ export class ComplySaComplianceService {
         stepIndex,
         stepLabel,
         completed: true,
-        completedAt: nowISO(),
+        completedAt: now().toJSDate(),
         completedByUserId: userId,
       });
 
@@ -213,7 +215,7 @@ export class ComplySaComplianceService {
 
       if (status !== null && status.status !== "compliant") {
         status.status = "compliant";
-        status.lastCompletedDate = nowISO();
+        status.lastCompletedDate = now().toJSDate();
         status.completedByUserId = userId;
         await this.statusRepository.save(status);
 

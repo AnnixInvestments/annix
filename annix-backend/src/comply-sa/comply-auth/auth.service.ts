@@ -14,7 +14,7 @@ import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { ComplySaCompany } from "../companies/entities/company.entity";
 import { ComplySaUser } from "../companies/entities/user.entity";
-import { fromISO, now, nowISO } from "../lib/datetime";
+import { fromJSDate, now } from "../lib/datetime";
 import { ComplySaLoginDto } from "./dto/login.dto";
 import { ComplySaSignupDto } from "./dto/signup.dto";
 
@@ -164,7 +164,7 @@ export class ComplySaAuthService {
     }
 
     const resetToken = randomBytes(32).toString("hex");
-    const expiresAt = now().plus({ hours: PASSWORD_RESET_EXPIRY_HOURS }).toISO()!;
+    const expiresAt = now().plus({ hours: PASSWORD_RESET_EXPIRY_HOURS }).toJSDate();
 
     user.passwordResetToken = resetToken;
     user.passwordResetExpiresAt = expiresAt;
@@ -187,7 +187,7 @@ export class ComplySaAuthService {
     }
 
     if (user.passwordResetExpiresAt !== null) {
-      const expiresAt = fromISO(user.passwordResetExpiresAt);
+      const expiresAt = fromJSDate(user.passwordResetExpiresAt);
       if (now() > expiresAt) {
         throw new BadRequestException("Reset token has expired. Please request a new one.");
       }

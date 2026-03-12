@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { fromISO, now, nowISO } from "../lib/datetime";
+import { ComplySaAuditLog } from "../compliance/entities/audit-log.entity";
+import { fromJSDate, now } from "../lib/datetime";
 import { ComplySaSubscription } from "./entities/subscription.entity";
 
 const PRICING: Record<string, { monthly: number; name: string; description: string }> = {
@@ -58,13 +59,17 @@ const MAX_CLIENTS: Record<string, number> = {
 
 @Injectable()
 export class ComplySaSubscriptionsService {
+  private readonly logger = new Logger(ComplySaSubscriptionsService.name);
+
   constructor(
     @InjectRepository(ComplySaSubscription)
     private readonly subscriptionRepository: Repository<ComplySaSubscription>,
+    @InjectRepository(ComplySaAuditLog)
+    private readonly auditLogRepository: Repository<ComplySaAuditLog>,
   ) {}
 
   async createTrialSubscription(companyId: number): Promise<ComplySaSubscription> {
-    const trialEndsAt = now().plus({ days: 14 }).toISO()!;
+    const trialEndsAt = now().plus({ days: 14 }).toJSDate();
 
     const subscription = this.subscriptionRepository.create({
       companyId,
@@ -72,6 +77,8 @@ export class ComplySaSubscriptionsService {
       status: "trial",
       trialEndsAt,
     });
+
+    this.logger.log(`Trial subscription created for company ${companyId}`);
 
     return this.subscriptionRepository.save(subscription);
   }
@@ -93,10 +100,10 @@ export class ComplySaSubscriptionsService {
 
     const daysRemaining = (() => {
       if (subscription.status === "trial" && subscription.trialEndsAt !== null) {
-        const diff = fromISO(subscription.trialEndsAt).diff(now(), "days").days;
+        const diff = fromJSDate(subscription.trialEndsAt).diff(now(), "days").days;
         return Math.max(0, Math.ceil(diff));
       } else if (subscription.currentPeriodEnd !== null) {
-        const diff = fromISO(subscription.currentPeriodEnd).diff(now(), "days").days;
+        const diff = fromJSDate(subscription.currentPeriodEnd).diff(now(), "days").days;
         return Math.max(0, Math.ceil(diff));
       } else {
         return null;
@@ -130,12 +137,22 @@ export class ComplySaSubscriptionsService {
       throw new NotFoundException("Subscription not found");
     }
 
+    const previousTier = subscription.tier;
     subscription.tier = tier;
     subscription.status = "active";
-    subscription.currentPeriodStart = nowISO();
-    subscription.currentPeriodEnd = now().plus({ months: 1 }).toISO()!;
+    subscription.currentPeriodStart = now().toJSDate();
+    subscription.currentPeriodEnd = now().plus({ months: 1 }).toJSDate();
 
-    return this.subscriptionRepository.save(subscription);
+    const saved = await this.subscriptionRepository.save(subscription);
+
+    await this.logAudit(companyId, "subscription_upgrade", {
+      previousTier,
+      newTier: tier,
+    });
+
+    this.logger.log(`Company ${companyId} upgraded from ${previousTier} to ${tier}`);
+
+    return saved;
   }
 
   async cancelSubscription(companyId: number): Promise<ComplySaSubscription> {
@@ -147,10 +164,20 @@ export class ComplySaSubscriptionsService {
       throw new NotFoundException("Subscription not found");
     }
 
+    const previousStatus = subscription.status;
     subscription.status = "cancelled";
-    subscription.cancelledAt = nowISO();
+    subscription.cancelledAt = now().toJSDate();
 
-    return this.subscriptionRepository.save(subscription);
+    const saved = await this.subscriptionRepository.save(subscription);
+
+    await this.logAudit(companyId, "subscription_cancel", {
+      previousStatus,
+      tier: subscription.tier,
+    });
+
+    this.logger.log(`Company ${companyId} cancelled subscription (was ${subscription.tier})`);
+
+    return saved;
   }
 
   async handleWebhook(
@@ -166,9 +193,15 @@ export class ComplySaSubscriptionsService {
 
       if (subscription !== null) {
         subscription.status = "active";
-        subscription.currentPeriodStart = nowISO();
-        subscription.currentPeriodEnd = now().plus({ months: 1 }).toISO()!;
+        subscription.currentPeriodStart = now().toJSDate();
+        subscription.currentPeriodEnd = now().plus({ months: 1 }).toJSDate();
         await this.subscriptionRepository.save(subscription);
+
+        await this.logAudit(subscription.companyId, "webhook_charge_success", {
+          paystackCustomerId,
+        });
+
+        this.logger.log(`Webhook charge.success for customer ${paystackCustomerId}`);
       }
     } else if (event === "subscription.disable" && paystackCustomerId !== null) {
       const subscription = await this.subscriptionRepository.findOne({
@@ -177,8 +210,14 @@ export class ComplySaSubscriptionsService {
 
       if (subscription !== null) {
         subscription.status = "cancelled";
-        subscription.cancelledAt = nowISO();
+        subscription.cancelledAt = now().toJSDate();
         await this.subscriptionRepository.save(subscription);
+
+        await this.logAudit(subscription.companyId, "webhook_subscription_disable", {
+          paystackCustomerId,
+        });
+
+        this.logger.log(`Webhook subscription.disable for customer ${paystackCustomerId}`);
       }
     }
 
@@ -197,5 +236,25 @@ export class ComplySaSubscriptionsService {
 
     const features = FEATURE_MATRIX[subscription.tier] ?? FEATURE_MATRIX["free"];
     return features.includes(feature);
+  }
+
+  private async logAudit(
+    companyId: number,
+    action: string,
+    details: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const entry = this.auditLogRepository.create({
+        companyId,
+        action,
+        entityType: "subscription",
+        details,
+      });
+      await this.auditLogRepository.save(entry);
+    } catch (error) {
+      this.logger.error(
+        `Failed to log audit entry: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 }

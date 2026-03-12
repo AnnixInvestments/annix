@@ -1,4 +1,12 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
+import { ComplySaCompany } from "../../companies/entities/company.entity";
 
 @Entity("comply_sa_audit_logs")
 export class ComplySaAuditLog {
@@ -7,6 +15,10 @@ export class ComplySaAuditLog {
 
   @Column({ name: "company_id", type: "int" })
   companyId!: number;
+
+  @ManyToOne(() => ComplySaCompany, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "company_id" })
+  company!: ComplySaCompany;
 
   @Column({ name: "user_id", type: "int", nullable: true })
   userId!: number | null;

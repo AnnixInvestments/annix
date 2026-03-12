@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ComplySaCompany } from "../companies/entities/company.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
+import { formatDateZA, fromJSDate } from "../lib/datetime";
 
 export interface ChatResponse {
   answer: string;
@@ -79,7 +80,7 @@ export class ComplySaAiService {
             "Current compliance status:",
             ...statuses.map(
               (s) =>
-                `- ${s.requirement?.name ?? "Unknown"}: ${s.status}${s.nextDueDate !== null ? ` (due: ${s.nextDueDate})` : ""}`,
+                `- ${s.requirement?.name ?? "Unknown"}: ${s.status}${s.nextDueDate !== null ? ` (due: ${formatDateZA(fromJSDate(s.nextDueDate))})` : ""}`,
             ),
           ]
         : [];

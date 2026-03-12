@@ -23,14 +23,14 @@ export class ComplySaSubscription {
   @Column({ type: "varchar", length: 20, default: "trial" })
   status!: string;
 
-  @Column({ name: "trial_ends_at", type: "varchar", length: 50, nullable: true })
-  trialEndsAt!: string | null;
+  @Column({ name: "trial_ends_at", type: "timestamp", nullable: true })
+  trialEndsAt!: Date | null;
 
-  @Column({ name: "current_period_start", type: "varchar", length: 50, nullable: true })
-  currentPeriodStart!: string | null;
+  @Column({ name: "current_period_start", type: "timestamp", nullable: true })
+  currentPeriodStart!: Date | null;
 
-  @Column({ name: "current_period_end", type: "varchar", length: 50, nullable: true })
-  currentPeriodEnd!: string | null;
+  @Column({ name: "current_period_end", type: "timestamp", nullable: true })
+  currentPeriodEnd!: Date | null;
 
   @Column({ name: "paystack_customer_id", type: "varchar", length: 100, nullable: true })
   paystackCustomerId!: string | null;
@@ -38,8 +38,8 @@ export class ComplySaSubscription {
   @Column({ name: "paystack_subscription_code", type: "varchar", length: 100, nullable: true })
   paystackSubscriptionCode!: string | null;
 
-  @Column({ name: "cancelled_at", type: "varchar", length: 50, nullable: true })
-  cancelledAt!: string | null;
+  @Column({ name: "cancelled_at", type: "timestamp", nullable: true })
+  cancelledAt!: Date | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
@@ -47,7 +47,7 @@ export class ComplySaSubscription {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt!: Date;
 
-  @ManyToOne(() => ComplySaCompany)
+  @ManyToOne(() => ComplySaCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Shield } from "lucide-react";
+import { ArrowLeft, Check, CheckCircle, ChevronDown, ChevronUp, Loader2, Shield } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { upgradeSubscription } from "@/app/comply-sa/lib/api";
+import { useUpgradeSubscription } from "@/app/lib/query/hooks";
 
 type BillingCycle = "monthly" | "annual";
 
@@ -78,11 +78,15 @@ function PricingCard({
   billing,
   currentTier,
   onUpgrade,
+  upgrading,
+  upgraded,
 }: {
   tier: (typeof TIERS)[number];
   billing: BillingCycle;
   currentTier: string | null;
   onUpgrade: (tierId: string) => void;
+  upgrading: boolean;
+  upgraded: boolean;
 }) {
   const isCurrent = currentTier === tier.id;
   const price = billing === "annual" ? annualPrice(tier.monthlyPrice) : tier.monthlyPrice;
@@ -127,17 +131,30 @@ function PricingCard({
           <span className="inline-flex items-center justify-center w-full px-4 py-2.5 bg-green-500/10 border border-green-500/30 text-green-400 font-medium rounded-lg text-sm">
             Current Plan
           </span>
+        ) : upgraded ? (
+          <span className="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-green-500/10 border border-green-500/30 text-green-400 font-medium rounded-lg text-sm">
+            <CheckCircle className="h-4 w-4" />
+            Upgraded
+          </span>
         ) : (
           <button
             type="button"
             onClick={() => onUpgrade(tier.id)}
-            className={`w-full px-4 py-2.5 font-medium rounded-lg text-sm transition-colors ${
+            disabled={upgrading}
+            className={`w-full px-4 py-2.5 font-medium rounded-lg text-sm transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2 ${
               tier.highlighted
                 ? "bg-teal-500 hover:bg-teal-600 text-white"
                 : "bg-slate-700 hover:bg-slate-600 text-white"
             }`}
           >
-            {tier.cta}
+            {upgrading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Upgrading...
+              </>
+            ) : (
+              tier.cta
+            )}
           </button>
         )}
       </div>
@@ -170,14 +187,17 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 export default function PricingPage() {
   const [billing, setBilling] = useState<BillingCycle>("monthly");
   const [currentTier] = useState<string | null>("starter");
+  const [upgradedTier, setUpgradedTier] = useState<string | null>(null);
+  const [upgradeError, setUpgradeError] = useState<string | null>(null);
+  const upgradeMutation = useUpgradeSubscription();
 
-  async function handleUpgrade(tierId: string) {
-    try {
-      await upgradeSubscription(tierId);
-      window.location.reload();
-    } catch {
-      /* handled by api layer */
-    }
+  function handleUpgrade(tierId: string) {
+    setUpgradeError(null);
+    upgradeMutation.mutate(tierId, {
+      onSuccess: () => setUpgradedTier(tierId),
+      onError: (err) =>
+        setUpgradeError(err instanceof Error ? err.message : "Failed to upgrade subscription"),
+    });
   }
 
   return (
@@ -225,6 +245,12 @@ export default function PricingPage() {
           </div>
         </div>
 
+        {upgradeError && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm text-center">
+            {upgradeError}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {TIERS.map((tier) => (
             <PricingCard
@@ -233,6 +259,8 @@ export default function PricingPage() {
               billing={billing}
               currentTier={currentTier}
               onUpgrade={handleUpgrade}
+              upgrading={upgradeMutation.isPending}
+              upgraded={upgradedTier === tier.id}
             />
           ))}
         </div>

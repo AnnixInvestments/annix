@@ -14,6 +14,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ComplySaCompanyScopeGuard } from "../comply-auth/guards/company-scope.guard";
 import { ComplySaJwtAuthGuard } from "../comply-auth/guards/jwt-auth.guard";
+import { ComplySaUpdatePreferencesDto } from "./dto/update-preferences.dto";
 import { ComplySaNotificationPreferences } from "./entities/notification-preferences.entity";
 import { ComplySaNotificationsService } from "./notifications.service";
 
@@ -64,28 +65,20 @@ export class ComplySaNotificationsController {
   @Put("preferences")
   async updatePreferences(
     @Req() req: { user: { userId: number } },
-    @Body()
-    body: {
-      emailEnabled?: boolean;
-      smsEnabled?: boolean;
-      whatsappEnabled?: boolean;
-      inAppEnabled?: boolean;
-      weeklyDigest?: boolean;
-      phone?: string | null;
-    },
+    @Body() dto: ComplySaUpdatePreferencesDto,
   ) {
     const existing = await this.preferencesRepository.findOne({
       where: { userId: req.user.userId },
     });
 
     if (existing !== null) {
-      const updated = this.preferencesRepository.merge(existing, body);
+      const updated = this.preferencesRepository.merge(existing, dto);
       return this.preferencesRepository.save(updated);
     }
 
     const preferences = this.preferencesRepository.create({
       userId: req.user.userId,
-      ...body,
+      ...dto,
     });
 
     return this.preferencesRepository.save(preferences);

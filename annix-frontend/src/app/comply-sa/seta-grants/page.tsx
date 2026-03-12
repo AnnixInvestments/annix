@@ -11,10 +11,9 @@ import {
   Target,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { setaGrantInfo } from "@/app/comply-sa/lib/api";
+import { useSetaGrantInfo } from "@/app/lib/query/hooks";
 
-type GrantInfo = Awaited<ReturnType<typeof setaGrantInfo>>;
+type GrantInfo = NonNullable<ReturnType<typeof useSetaGrantInfo>["data"]>;
 
 const GRANT_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Mandatory: BookOpen,
@@ -115,25 +114,9 @@ function GrantCard({ grant }: { grant: GrantInfo["grants"][number] }) {
 }
 
 export default function SetaGrantsPage() {
-  const [data, setData] = useState<GrantInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading } = useSetaGrantInfo();
 
-  const fetchData = useCallback(async () => {
-    try {
-      const result = await setaGrantInfo();
-      setData(result);
-    } catch {
-      setData(FALLBACK_DATA);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 text-teal-400 animate-spin" />

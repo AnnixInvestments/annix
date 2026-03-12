@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { SageService } from "./sage/sage.service";
 
 export interface Integration {
   id: string;
@@ -16,7 +17,7 @@ const AVAILABLE_INTEGRATIONS: Integration[] = [
   {
     id: "sage",
     name: "Sage Business Cloud",
-    status: "coming_soon",
+    status: "available",
     description: "Sync company data and financial reports",
   },
   {
@@ -41,11 +42,17 @@ const AVAILABLE_INTEGRATIONS: Integration[] = [
 
 @Injectable()
 export class ComplySaIntegrationsService {
+  constructor(private readonly sageService: SageService) {}
+
   availableIntegrations(): Integration[] {
     return AVAILABLE_INTEGRATIONS;
   }
 
-  connectionStatus(_companyId: number, _integrationId: string): ConnectionStatus {
+  async connectionStatus(companyId: number, integrationId: string): Promise<ConnectionStatus> {
+    if (integrationId === "sage") {
+      return this.sageService.isConnected(companyId);
+    }
+
     return { connected: false, lastSync: null };
   }
 }

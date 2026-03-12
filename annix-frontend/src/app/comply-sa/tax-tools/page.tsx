@@ -3,12 +3,12 @@
 import { AlertTriangle, Calculator, CheckCircle, Loader2, XCircle } from "lucide-react";
 import { useState } from "react";
 import {
-  minimumWageCheck,
-  sdlAssessment,
-  turnoverTaxEstimate,
-  uifCalculation,
-  vatAssessment,
-} from "@/app/comply-sa/lib/api";
+  useMinimumWageCheck,
+  useSdlAssessment,
+  useTurnoverTaxEstimate,
+  useUifCalculation,
+  useVatAssessment,
+} from "@/app/lib/query/hooks";
 
 type Tab = "wage" | "vat" | "turnover" | "uif" | "sdl";
 
@@ -73,22 +73,15 @@ function ResultRow({
 
 function MinimumWageTab() {
   const [hourlyRate, setHourlyRate] = useState("");
-  const [result, setResult] = useState<Awaited<ReturnType<typeof minimumWageCheck>> | null>(null);
-  const [loading, setLoading] = useState(false);
+  const mutation = useMinimumWageCheck();
 
-  async function handleSubmit() {
+  function handleSubmit() {
     const rate = Number(hourlyRate);
     if (!rate || rate <= 0) return;
-    setLoading(true);
-    try {
-      const data = await minimumWageCheck(rate);
-      setResult(data);
-    } catch {
-      setResult(null);
-    } finally {
-      setLoading(false);
-    }
+    mutation.mutate(rate);
   }
+
+  const result = mutation.data ?? null;
 
   return (
     <div className="space-y-4">
@@ -106,10 +99,10 @@ function MinimumWageTab() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={mutation.isPending}
             className="px-5 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Check"}
+            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Check"}
           </button>
         </div>
       </div>
@@ -139,22 +132,15 @@ function MinimumWageTab() {
 
 function VatTab() {
   const [turnover, setTurnover] = useState("");
-  const [result, setResult] = useState<Awaited<ReturnType<typeof vatAssessment>> | null>(null);
-  const [loading, setLoading] = useState(false);
+  const mutation = useVatAssessment();
 
-  async function handleSubmit() {
+  function handleSubmit() {
     const amount = Number(turnover.replace(/[^0-9.]/g, ""));
     if (!amount || amount <= 0) return;
-    setLoading(true);
-    try {
-      const data = await vatAssessment(amount);
-      setResult(data);
-    } catch {
-      setResult(null);
-    } finally {
-      setLoading(false);
-    }
+    mutation.mutate(amount);
   }
+
+  const result = mutation.data ?? null;
 
   const statusBadge = (status: string) => {
     const config: Record<
@@ -206,10 +192,10 @@ function VatTab() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={mutation.isPending}
             className="px-5 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assess"}
+            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assess"}
           </button>
         </div>
       </div>
@@ -232,24 +218,15 @@ function VatTab() {
 
 function TurnoverTaxTab() {
   const [turnover, setTurnover] = useState("");
-  const [result, setResult] = useState<Awaited<ReturnType<typeof turnoverTaxEstimate>> | null>(
-    null,
-  );
-  const [loading, setLoading] = useState(false);
+  const mutation = useTurnoverTaxEstimate();
 
-  async function handleSubmit() {
+  function handleSubmit() {
     const amount = Number(turnover.replace(/[^0-9.]/g, ""));
     if (!amount || amount <= 0) return;
-    setLoading(true);
-    try {
-      const data = await turnoverTaxEstimate(amount);
-      setResult(data);
-    } catch {
-      setResult(null);
-    } finally {
-      setLoading(false);
-    }
+    mutation.mutate(amount);
   }
+
+  const result = mutation.data ?? null;
 
   return (
     <div className="space-y-4">
@@ -268,10 +245,10 @@ function TurnoverTaxTab() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={mutation.isPending}
             className="px-5 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Estimate"}
+            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Estimate"}
           </button>
         </div>
       </div>
@@ -301,22 +278,15 @@ function TurnoverTaxTab() {
 
 function UifTab() {
   const [remuneration, setRemuneration] = useState("");
-  const [result, setResult] = useState<Awaited<ReturnType<typeof uifCalculation>> | null>(null);
-  const [loading, setLoading] = useState(false);
+  const mutation = useUifCalculation();
 
-  async function handleSubmit() {
+  function handleSubmit() {
     const amount = Number(remuneration.replace(/[^0-9.]/g, ""));
     if (!amount || amount <= 0) return;
-    setLoading(true);
-    try {
-      const data = await uifCalculation(amount);
-      setResult(data);
-    } catch {
-      setResult(null);
-    } finally {
-      setLoading(false);
-    }
+    mutation.mutate(amount);
   }
+
+  const result = mutation.data ?? null;
 
   return (
     <div className="space-y-4">
@@ -335,10 +305,10 @@ function UifTab() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={mutation.isPending}
             className="px-5 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Calculate"}
+            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Calculate"}
           </button>
         </div>
       </div>
@@ -373,22 +343,15 @@ function UifTab() {
 
 function SdlTab() {
   const [payroll, setPayroll] = useState("");
-  const [result, setResult] = useState<Awaited<ReturnType<typeof sdlAssessment>> | null>(null);
-  const [loading, setLoading] = useState(false);
+  const mutation = useSdlAssessment();
 
-  async function handleSubmit() {
+  function handleSubmit() {
     const amount = Number(payroll.replace(/[^0-9.]/g, ""));
     if (!amount || amount <= 0) return;
-    setLoading(true);
-    try {
-      const data = await sdlAssessment(amount);
-      setResult(data);
-    } catch {
-      setResult(null);
-    } finally {
-      setLoading(false);
-    }
+    mutation.mutate(amount);
   }
+
+  const result = mutation.data ?? null;
 
   return (
     <div className="space-y-4">
@@ -407,10 +370,10 @@ function SdlTab() {
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={mutation.isPending}
             className="px-5 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assess"}
+            {mutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assess"}
           </button>
         </div>
       </div>

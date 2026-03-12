@@ -23,11 +23,11 @@ export class ComplySaComplianceStatus {
   @Column({ type: "varchar", length: 20, default: "in_progress" })
   status!: string;
 
-  @Column({ name: "last_completed_date", type: "varchar", length: 50, nullable: true })
-  lastCompletedDate!: string | null;
+  @Column({ name: "last_completed_date", type: "timestamp", nullable: true })
+  lastCompletedDate!: Date | null;
 
-  @Column({ name: "next_due_date", type: "varchar", length: 50, nullable: true })
-  nextDueDate!: string | null;
+  @Column({ name: "next_due_date", type: "timestamp", nullable: true })
+  nextDueDate!: Date | null;
 
   @Column({ type: "text", nullable: true })
   notes!: string | null;
@@ -41,6 +41,7 @@ export class ComplySaComplianceStatus {
   @ManyToOne(
     () => ComplySaCompany,
     (company) => company.complianceStatuses,
+    { onDelete: "CASCADE" },
   )
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;

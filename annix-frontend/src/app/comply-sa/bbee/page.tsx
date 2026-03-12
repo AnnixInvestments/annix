@@ -2,10 +2,17 @@
 
 import { Award, FileText, Info, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { bbeeCalculate, bbeeScorecardElements } from "@/app/comply-sa/lib/api";
+import { useState } from "react";
+import { useBbeeScorecardElements, useBbeeCalculate } from "@/app/lib/query/hooks";
 
-type BbeeResult = Awaited<ReturnType<typeof bbeeCalculate>>;
+type BbeeResult = {
+  category: string;
+  level: string | null;
+  description: string;
+  procurementRecognition: number | null;
+  requiresVerification: boolean;
+};
+
 type ScorecardElement = { element: string; weighting: number; description: string };
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -135,34 +142,19 @@ function ScorecardTable({ elements }: { elements: ScorecardElement[] }) {
 export default function BbeePage() {
   const [turnover, setTurnover] = useState("");
   const [ownership, setOwnership] = useState(51);
-  const [result, setResult] = useState<BbeeResult | null>(null);
-  const [scorecardElements, setScorecardElements] = useState<ScorecardElement[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: scorecardElements } = useBbeeScorecardElements();
+  const calculateMutation = useBbeeCalculate();
 
-  useEffect(() => {
-    bbeeScorecardElements()
-      .then(setScorecardElements)
-      .catch(() => null);
-  }, []);
+  const elements = (scorecardElements ?? []) as ScorecardElement[];
+  const result = calculateMutation.data as BbeeResult | undefined;
 
-  async function handleCalculate() {
+  function handleCalculate() {
     const numericTurnover = Number(turnover.replace(/[^0-9.]/g, ""));
     if (!numericTurnover || numericTurnover <= 0) {
-      setError("Please enter a valid turnover amount");
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await bbeeCalculate(numericTurnover, ownership);
-      setResult(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Calculation failed");
-    } finally {
-      setLoading(false);
-    }
+    calculateMutation.mutate({ turnover: numericTurnover, blackOwnershipPercent: ownership });
   }
 
   return (
@@ -208,19 +200,19 @@ export default function BbeePage() {
           </div>
         </div>
 
-        {error && (
+        {calculateMutation.error && (
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-            {error}
+            {calculateMutation.error.message}
           </div>
         )}
 
         <button
           type="button"
           onClick={handleCalculate}
-          disabled={loading}
+          disabled={calculateMutation.isPending}
           className="w-full sm:w-auto px-6 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
         >
-          {loading ? (
+          {calculateMutation.isPending ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
               Calculating...
@@ -233,7 +225,7 @@ export default function BbeePage() {
 
       {result && <ResultCard result={result} />}
 
-      {scorecardElements.length > 0 && <ScorecardTable elements={scorecardElements} />}
+      {elements.length > 0 && <ScorecardTable elements={elements} />}
     </div>
   );
 }

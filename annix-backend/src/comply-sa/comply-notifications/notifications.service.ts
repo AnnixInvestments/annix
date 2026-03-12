@@ -6,7 +6,8 @@ import { IsNull, Not, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { ComplySaUser } from "../companies/entities/user.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
-import { daysBetween, fromISO, now, nowISO } from "../lib/datetime";
+import { ComplySaDocument } from "../comply-documents/entities/document.entity";
+import { daysBetween, formatDateZA, fromJSDate, now } from "../lib/datetime";
 import { ComplySaNotificationPreferences } from "./entities/notification-preferences.entity";
 import { ComplySaNotification } from "./entities/notification.entity";
 
@@ -34,6 +35,8 @@ export class ComplySaNotificationsService {
     private readonly preferencesRepository: Repository<ComplySaNotificationPreferences>,
     @InjectRepository(ComplySaUser)
     private readonly userRepository: Repository<ComplySaUser>,
+    @InjectRepository(ComplySaDocument)
+    private readonly documentRepository: Repository<ComplySaDocument>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
   ) {
@@ -55,7 +58,7 @@ export class ComplySaNotificationsService {
 
       const pendingNotifications = statusesWithDueDates
         .map((status) => {
-          const dueDate = fromISO(status.nextDueDate!);
+          const dueDate = fromJSDate(status.nextDueDate!);
           const daysUntilDue = daysBetween(today, dueDate);
 
           if (daysUntilDue < 0) {
@@ -117,7 +120,7 @@ export class ComplySaNotificationsService {
                 const prefs = await this.preferencesRepository.findOne({
                   where: { userId: user.id },
                 });
-                if (prefs?.phone !== null && prefs?.phone !== undefined) {
+                if (prefs !== null && prefs.phone !== null) {
                   await this.sendSms(prefs.phone, message);
                 }
               }
@@ -126,7 +129,7 @@ export class ComplySaNotificationsService {
                 const prefs = await this.preferencesRepository.findOne({
                   where: { userId: user.id },
                 });
-                if (prefs?.phone !== null && prefs?.phone !== undefined) {
+                if (prefs !== null && prefs.phone !== null) {
                   await this.sendWhatsApp(prefs.phone, message);
                 }
               }
@@ -140,7 +143,7 @@ export class ComplySaNotificationsService {
       );
 
       const overdueStatuses = statusesWithDueDates.filter((status) => {
-        const dueDate = fromISO(status.nextDueDate!);
+        const dueDate = fromJSDate(status.nextDueDate!);
         return daysBetween(today, dueDate) < 0 && status.status !== "overdue";
       });
 
@@ -154,7 +157,7 @@ export class ComplySaNotificationsService {
       }
 
       const warningStatuses = statusesWithDueDates.filter((status) => {
-        const dueDate = fromISO(status.nextDueDate!);
+        const dueDate = fromJSDate(status.nextDueDate!);
         const daysUntil = daysBetween(today, dueDate);
         return daysUntil <= 30 && daysUntil >= 0 && status.status === "in_progress";
       });
@@ -174,6 +177,72 @@ export class ComplySaNotificationsService {
     }
   }
 
+  @Cron("0 7 * * *", { timeZone: "Africa/Johannesburg" })
+  async processDocumentExpiryWarnings(): Promise<void> {
+    try {
+      const today = now();
+      const thirtyDaysFromNow = today.plus({ days: 30 }).toJSDate();
+
+      const allDocumentsWithExpiry = await this.documentRepository.find({
+        where: { expiryDate: Not(IsNull()) },
+      });
+
+      const documentsInRange = allDocumentsWithExpiry.filter((doc) => {
+        const expiryDt = fromJSDate(doc.expiryDate!);
+        const daysUntil = daysBetween(today, expiryDt);
+        return daysUntil >= -1 && daysUntil <= 30;
+      });
+
+      await Promise.all(
+        documentsInRange.map(async (doc) => {
+          const expiryDt = fromJSDate(doc.expiryDate!);
+          const daysUntil = daysBetween(today, expiryDt);
+          const formattedDate = formatDateZA(expiryDt);
+
+          const message = daysUntil < 0
+            ? `EXPIRED: Document "${doc.name}" expired on ${formattedDate}. Please upload a renewed version.`
+            : `EXPIRING: Document "${doc.name}" expires on ${formattedDate} (${daysUntil} days). Please renew before expiry.`;
+
+          const type = daysUntil < 0 ? "document_expired" : "document_expiring";
+
+          const users = await this.userRepository.find({
+            where: { companyId: doc.companyId },
+          });
+
+          await Promise.all(
+            users.map(async (user) => {
+              const channels = await this.channelsForUser(user.id);
+
+              if (channels.inApp) {
+                const notification = this.notificationRepository.create({
+                  companyId: doc.companyId,
+                  userId: user.id,
+                  channel: "in_app",
+                  type,
+                  message,
+                });
+                await this.notificationRepository.save(notification);
+              }
+
+              if (channels.email) {
+                const subject = daysUntil < 0
+                  ? `[EXPIRED] ${doc.name} - Comply SA`
+                  : `[Expiring] ${doc.name} expires in ${daysUntil} days - Comply SA`;
+                await this.sendEmail(user.email, subject, message);
+              }
+            }),
+          );
+        }),
+      );
+
+      this.logger.log(`Processed ${documentsInRange.length} document expiry warnings`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to process document expiry warnings: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   async unreadForUser(userId: number): Promise<ComplySaNotification[]> {
     return this.notificationRepository.find({
       where: { userId, readAt: IsNull() },
@@ -187,7 +256,7 @@ export class ComplySaNotificationsService {
     });
 
     if (notification !== null) {
-      notification.readAt = nowISO();
+      notification.readAt = now().toJSDate();
       return this.notificationRepository.save(notification);
     }
 
@@ -218,11 +287,15 @@ export class ComplySaNotificationsService {
   ): string {
     const requirementName = status.requirement?.name ?? "Requirement";
 
+    const formattedDate = status.nextDueDate !== null
+      ? formatDateZA(fromJSDate(status.nextDueDate))
+      : "unknown";
+
     if (type === "overdue") {
-      return `OVERDUE: ${requirementName} was due on ${status.nextDueDate}. Please address this immediately to avoid penalties.`;
+      return `OVERDUE: ${requirementName} was due on ${formattedDate}. Please address this immediately to avoid penalties.`;
     }
 
-    return `REMINDER: ${requirementName} is due in ${daysUntilDue} days (${status.nextDueDate}). Complete it before the deadline.`;
+    return `REMINDER: ${requirementName} is due in ${daysUntilDue} days (${formattedDate}). Complete it before the deadline.`;
   }
 
   private emailSubject(type: string, requirementName: string): string {

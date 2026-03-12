@@ -15,6 +15,8 @@ import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { ComplySaCompanyScopeGuard } from "../comply-auth/guards/company-scope.guard";
 import { ComplySaJwtAuthGuard } from "../comply-auth/guards/jwt-auth.guard";
 import { ComplySaComplianceService } from "./compliance.service";
+import { ComplySaToggleChecklistDto } from "./dto/toggle-checklist.dto";
+import { ComplySaUpdateStatusDto } from "./dto/update-status.dto";
 
 @ApiTags("comply-sa/compliance")
 @Controller("comply-sa/compliance")
@@ -41,7 +43,7 @@ export class ComplySaComplianceController {
   async updateStatus(
     @Req() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
-    @Body() dto: { status?: string; notes?: string; lastCompletedDate?: string },
+    @Body() dto: ComplySaUpdateStatusDto,
   ) {
     return this.complianceService.updateStatus(req.user.companyId, id, dto);
   }
@@ -52,12 +54,12 @@ export class ComplySaComplianceController {
   async toggleChecklistStep(
     @Req() req: { user: { companyId: number; userId: number } },
     @Param("requirementId", ParseIntPipe) requirementId: number,
-    @Body() body: { stepIndex: number },
+    @Body() dto: ComplySaToggleChecklistDto,
   ) {
     return this.complianceService.toggleChecklistStep(
       req.user.companyId,
       requirementId,
-      body.stepIndex,
+      dto.stepIndex,
       req.user.userId,
     );
   }

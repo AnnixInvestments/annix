@@ -1,4 +1,14 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
+import { ComplySaCompany } from "../../companies/entities/company.entity";
+import { ComplySaUser } from "../../companies/entities/user.entity";
+import { ComplySaComplianceRequirement } from "../../compliance/entities/compliance-requirement.entity";
 
 @Entity("comply_sa_notifications")
 export class ComplySaNotification {
@@ -26,6 +36,18 @@ export class ComplySaNotification {
   @CreateDateColumn({ name: "sent_at" })
   sentAt!: Date;
 
-  @Column({ name: "read_at", type: "varchar", length: 50, nullable: true })
-  readAt!: string | null;
+  @Column({ name: "read_at", type: "timestamp", nullable: true })
+  readAt!: Date | null;
+
+  @ManyToOne(() => ComplySaCompany, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "company_id" })
+  company!: ComplySaCompany;
+
+  @ManyToOne(() => ComplySaUser, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "user_id" })
+  user!: ComplySaUser | null;
+
+  @ManyToOne(() => ComplySaComplianceRequirement, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "requirement_id" })
+  requirement!: ComplySaComplianceRequirement | null;
 }

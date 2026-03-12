@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { ComplySaCompanyScopeGuard } from "../comply-auth/guards/company-scope.guard";
 import { ComplySaJwtAuthGuard } from "../comply-auth/guards/jwt-auth.guard";
 import { ComplySaApiKeysService } from "./api-keys.service";
+import { ComplySaCreateApiKeyDto } from "./dto/create-api-key.dto";
 
 @ApiTags("comply-sa/api-keys")
 @ApiBearerAuth()
@@ -22,8 +23,8 @@ export class ComplySaApiKeysController {
   constructor(private readonly apiKeysService: ComplySaApiKeysService) {}
 
   @Post()
-  async create(@Req() req: { user: { companyId: number } }, @Body() body: { name: string }) {
-    return this.apiKeysService.generateKey(req.user.companyId, body.name);
+  async create(@Req() req: { user: { companyId: number } }, @Body() dto: ComplySaCreateApiKeyDto) {
+    return this.apiKeysService.generateKey(req.user.companyId, dto.name);
   }
 
   @Get()

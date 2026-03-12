@@ -1,13 +1,14 @@
 "use client";
 
 import { Download, FileText, FolderOpen, Search, Trash2, Upload } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { formatDateZA } from "@/app/lib/datetime";
 import {
-  deleteDocument,
-  documents as fetchDocuments,
-  requirements as fetchRequirements,
-  uploadDocument,
-} from "@/app/comply-sa/lib/api";
+  useComplySaDocuments,
+  useComplySaRequirements,
+  useUploadDocument,
+  useDeleteDocument,
+} from "@/app/lib/query/hooks";
 
 type Document = {
   id: string;
@@ -19,13 +20,6 @@ type Document = {
   url: string;
 };
 
-type Requirement = {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-};
-
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -33,43 +27,19 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function DocumentsPage() {
-  const [docs, setDocs] = useState<Document[]>([]);
-  const [reqs, setReqs] = useState<Requirement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: docs, isLoading: docsLoading, error: docsError } = useComplySaDocuments();
+  const { data: reqs, isLoading: reqsLoading } = useComplySaRequirements();
+  const uploadMutation = useUploadDocument();
+  const deleteMutation = useDeleteDocument();
   const [filterReqId, setFilterReqId] = useState<string>("all");
-  const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [docsResult, reqsResult] = await Promise.all([fetchDocuments(), fetchRequirements()]);
-      setDocs(docsResult);
-      setReqs(reqsResult);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load documents");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const isLoading = docsLoading || reqsLoading;
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  async function handleUpload(file: File) {
-    setUploading(true);
-    setError(null);
-    try {
-      const reqId = filterReqId !== "all" ? filterReqId : undefined;
-      await uploadDocument(file, reqId);
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
-    }
+  function handleUpload(file: File) {
+    const reqId = filterReqId !== "all" ? filterReqId : undefined;
+    uploadMutation.mutate({ file, requirementId: reqId });
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -84,19 +54,16 @@ export default function DocumentsPage() {
     if (file) handleUpload(file);
   }
 
-  async function handleDelete(id: string) {
-    try {
-      await deleteDocument(id);
-      setDocs(docs.filter((d) => d.id !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
-    }
+  function handleDelete(id: string) {
+    deleteMutation.mutate(id);
   }
 
+  const docsList = docs ?? [];
+  const reqsList = reqs ?? [];
   const filteredDocs =
-    filterReqId === "all" ? docs : docs.filter((d) => d.requirementId === filterReqId);
+    filterReqId === "all" ? docsList : docsList.filter((d: Document) => d.requirementId === filterReqId);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4 animate-pulse">
         <div className="h-32 bg-slate-700 rounded-xl" />
@@ -108,13 +75,15 @@ export default function DocumentsPage() {
     );
   }
 
+  const error = docsError ?? uploadMutation.error ?? deleteMutation.error;
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-white">Document Vault</h1>
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
-          {error}
+          {error.message}
         </div>
       )}
 
@@ -133,12 +102,12 @@ export default function DocumentsPage() {
           className={`h-10 w-10 mx-auto mb-3 ${dragOver ? "text-teal-400" : "text-slate-500"}`}
         />
         <p className="text-sm text-slate-400 mb-3">
-          {uploading ? "Uploading..." : "Drag and drop a file here, or click to browse"}
+          {uploadMutation.isPending ? "Uploading..." : "Drag and drop a file here, or click to browse"}
         </p>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
+          disabled={uploadMutation.isPending}
           className="bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           Choose File
@@ -154,7 +123,7 @@ export default function DocumentsPage() {
           className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500"
         >
           <option value="all">All requirements</option>
-          {reqs.map((req) => (
+          {reqsList.map((req: { id: string; name: string }) => (
             <option key={req.id} value={req.id}>
               {req.name}
             </option>
@@ -182,7 +151,7 @@ export default function DocumentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700">
-                {filteredDocs.map((doc) => (
+                {filteredDocs.map((doc: Document) => (
                   <tr key={doc.id} className="hover:bg-slate-700/30 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -194,7 +163,7 @@ export default function DocumentsPage() {
                       {doc.requirementName ?? "-"}
                     </td>
                     <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
-                      {new Date(doc.uploadedAt).toLocaleDateString("en-ZA")}
+                      {formatDateZA(doc.uploadedAt)}
                     </td>
                     <td className="px-4 py-3 text-slate-400 hidden md:table-cell">
                       {formatFileSize(doc.size)}

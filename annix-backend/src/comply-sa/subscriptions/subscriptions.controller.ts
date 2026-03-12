@@ -2,6 +2,8 @@ import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { ComplySaCompanyScopeGuard } from "../comply-auth/guards/company-scope.guard";
 import { ComplySaJwtAuthGuard } from "../comply-auth/guards/jwt-auth.guard";
+import { ComplySaUpgradeTierDto } from "./dto/upgrade-tier.dto";
+import { ComplySaWebhookDto } from "./dto/webhook.dto";
 import { ComplySaSubscriptionsService } from "./subscriptions.service";
 
 @ApiTags("comply-sa/subscriptions")
@@ -19,8 +21,8 @@ export class ComplySaSubscriptionsController {
   @ApiBearerAuth()
   @UseGuards(ComplySaJwtAuthGuard, ComplySaCompanyScopeGuard)
   @Post("upgrade")
-  async upgrade(@Req() req: { user: { companyId: number } }, @Body() body: { tier: string }) {
-    return this.subscriptionsService.upgradeTier(req.user.companyId, body.tier);
+  async upgrade(@Req() req: { user: { companyId: number } }, @Body() dto: ComplySaUpgradeTierDto) {
+    return this.subscriptionsService.upgradeTier(req.user.companyId, dto.tier);
   }
 
   @ApiBearerAuth()
@@ -31,7 +33,7 @@ export class ComplySaSubscriptionsController {
   }
 
   @Post("webhook")
-  async webhook(@Body() body: { event: string; data: Record<string, unknown> }) {
-    return this.subscriptionsService.handleWebhook(body.event, body.data);
+  async webhook(@Body() dto: ComplySaWebhookDto) {
+    return this.subscriptionsService.handleWebhook(dto.event, dto.data);
   }
 }
