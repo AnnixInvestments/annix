@@ -6,19 +6,12 @@ import { useCallback, useEffect, useState } from "react";
 import type { CustomerPurchaseOrder } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { HelpTooltip } from "../../components/HelpTooltip";
+import { StatusBadge } from "../../components/StatusBadge";
 import { setPendingCpoImportFile } from "./import/pending-file";
 
 const STATUS_TABS = ["all", "active", "fulfilled", "cancelled"] as const;
-
-function statusBadgeColor(status: string): string {
-  const colors: Record<string, string> = {
-    active: "bg-green-100 text-green-800",
-    fulfilled: "bg-blue-100 text-blue-800",
-    cancelled: "bg-red-100 text-red-800",
-  };
-  return colors[status.toLowerCase()] || "bg-gray-100 text-gray-800";
-}
 
 function fulfillmentPercent(cpo: CustomerPurchaseOrder): number {
   if (cpo.totalQuantity <= 0) return 0;
@@ -32,6 +25,9 @@ export default function PurchaseOrdersPage() {
   const [error, setError] = useState<Error | null>(null);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: number; cpoNumber: string } | null>(
+    null,
+  );
   const [isDragging, setIsDragging] = useState(false);
 
   const fetchCpos = useCallback(async () => {
@@ -52,8 +48,7 @@ export default function PurchaseOrdersPage() {
     fetchCpos();
   }, [fetchCpos]);
 
-  const handleDelete = async (id: number, cpoNumber: string) => {
-    if (!window.confirm(`Delete CPO ${cpoNumber}? This cannot be undone.`)) return;
+  const handleDelete = async (id: number) => {
     try {
       setDeletingId(id);
       await stockControlApiClient.deleteCpo(id);
@@ -61,6 +56,7 @@ export default function PurchaseOrdersPage() {
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to delete CPO"));
     } finally {
+      setConfirmDelete(null);
       setDeletingId(null);
     }
   };
@@ -307,18 +303,14 @@ export default function PurchaseOrdersPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(cpo.status)}`}
-                        >
-                          {cpo.status}
-                        </span>
+                        <StatusBadge status={cpo.status} />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDateZA(cpo.createdAt)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
-                          onClick={() => handleDelete(cpo.id, cpo.cpoNumber)}
+                          onClick={() => setConfirmDelete({ id: cpo.id, cpoNumber: cpo.cpoNumber })}
                           disabled={deletingId === cpo.id}
                           className="text-red-600 hover:text-red-900 disabled:opacity-50"
                         >
@@ -333,6 +325,21 @@ export default function PurchaseOrdersPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Delete Purchase Order"
+        message={`Delete CPO ${confirmDelete?.cpoNumber ?? ""}? This cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deletingId !== null}
+        onConfirm={() => {
+          if (confirmDelete) {
+            handleDelete(confirmDelete.id);
+          }
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }

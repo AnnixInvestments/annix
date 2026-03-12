@@ -5,17 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Requisition } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
-
-function statusBadgeColor(status: string): string {
-  const colors: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-800",
-    approved: "bg-blue-100 text-blue-800",
-    ordered: "bg-purple-100 text-purple-800",
-    received: "bg-green-100 text-green-800",
-    cancelled: "bg-red-100 text-red-800",
-  };
-  return colors[status.toLowerCase()] || "bg-gray-100 text-gray-800";
-}
+import { StatusBadge } from "../../components/StatusBadge";
 
 export default function RequisitionsPage() {
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
@@ -175,11 +165,7 @@ export default function RequisitionsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(req.status)}`}
-                    >
-                      {req.status}
-                    </span>
+                    <StatusBadge status={req.status} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                     {req.items ? req.items.length : 0}

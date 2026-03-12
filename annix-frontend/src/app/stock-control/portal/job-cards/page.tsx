@@ -3,28 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import {
-  useJobCards,
-  useDataBookStatuses,
-  useCreateJobCard,
-  useDeleteJobCard,
-} from "@/app/lib/query/hooks";
 import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useCreateJobCard,
+  useDataBookStatuses,
+  useDeleteJobCard,
+  useJobCards,
+} from "@/app/lib/query/hooks";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { HelpTooltip } from "../../components/HelpTooltip";
+import { StatusBadge } from "../../components/StatusBadge";
 import { CompactWorkflowStepper } from "../../components/WorkflowStatus";
 import { setPendingImportFile } from "./import/pending-file";
 
 const STATUS_TABS = ["all", "draft", "active", "completed", "cancelled"] as const;
-
-function statusBadgeColor(status: string): string {
-  const colors: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-800",
-    active: "bg-green-100 text-green-800",
-    completed: "bg-blue-100 text-blue-800",
-    cancelled: "bg-red-100 text-red-800",
-  };
-  return colors[status.toLowerCase()] || "bg-gray-100 text-gray-800";
-}
 
 export default function JobCardsPage() {
   const router = useRouter();
@@ -48,6 +40,9 @@ export default function JobCardsPage() {
   });
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: number; jobNumber: string } | null>(
+    null,
+  );
   const [isModalDragging, setIsModalDragging] = useState(false);
   const modalFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -167,14 +162,14 @@ export default function JobCardsPage() {
     }
   };
 
-  const handleDelete = async (id: number, jobNumber: string) => {
-    if (!window.confirm(`Delete job card ${jobNumber}? This cannot be undone.`)) return;
+  const handleDelete = async (id: number) => {
     try {
       setDeletingId(id);
       await deleteJobCard.mutateAsync(id);
     } catch (_err) {
-      // mutation error handled by TanStack Query
+      setDeletingId(null);
     } finally {
+      setConfirmDelete(null);
       setDeletingId(null);
     }
   };
@@ -410,11 +405,7 @@ export default function JobCardsPage() {
                     {job.customerName || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(job.status)}`}
-                    >
-                      {job.status}
-                    </span>
+                    <StatusBadge status={job.status} />
                     {job.cpoId ? (
                       <span className="ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
                         CPO
@@ -454,7 +445,7 @@ export default function JobCardsPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(job.id, job.jobNumber);
+                        setConfirmDelete({ id: job.id, jobNumber: job.jobNumber });
                       }}
                       disabled={deletingId === job.id}
                       className="text-gray-400 hover:text-red-600 disabled:opacity-50"
@@ -499,6 +490,21 @@ export default function JobCardsPage() {
           </table>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title="Delete Job Card"
+        message={`Delete job card ${confirmDelete?.jobNumber ?? ""}? This cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        loading={deletingId !== null}
+        onConfirm={() => {
+          if (confirmDelete) {
+            handleDelete(confirmDelete.id);
+          }
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
 
       {showCreateForm && (
         <div className="fixed inset-0 z-50 overflow-y-auto">

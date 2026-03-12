@@ -16,6 +16,12 @@ import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { M2CalculationService } from "./m2-calculation.service";
+import {
+	validateCoatingExtraction,
+	validPositiveNumber,
+	validPercentage,
+	validString,
+} from "./extraction-validation";
 
 interface AiCoatResult {
   product: string;
@@ -472,24 +478,24 @@ export class CoatingAnalysisService {
       throw new Error("AI response did not contain valid JSON");
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const validated = validateCoatingExtraction(JSON.parse(jsonMatch[0]));
 
     const RUBBER_PATTERN = /\br\/l\b|rubber|shore|lining|liner|lagging/i;
 
-    const allCoats = (parsed.coats || []).map((coat: any) => ({
-      product: coat.product || "Unknown",
-      genericType: coat.genericType || "unknown",
-      area: coat.area === "internal" ? "internal" : "external",
-      minDftUm: coat.minDftUm || 0,
-      maxDftUm: coat.maxDftUm || 0,
-      solidsByVolumePercent: coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME,
+    const allCoats = validated.coats.map((coat: Record<string, unknown>) => ({
+      product: validString(coat.product, "Unknown"),
+      genericType: validString(coat.genericType, "unknown"),
+      area: coat.area === "internal" ? "internal" as const : "external" as const,
+      minDftUm: validPositiveNumber(coat.minDftUm, 0),
+      maxDftUm: validPositiveNumber(coat.maxDftUm, 0),
+      solidsByVolumePercent: validPercentage(coat.solidsByVolumePercent, DEFAULT_SOLIDS_BY_VOLUME),
     }));
 
     const paintCoats = allCoats.filter((coat: AiCoatResult) => !RUBBER_PATTERN.test(coat.product));
 
     return {
-      applicationType: parsed.applicationType || "external",
-      surfacePrep: parsed.surfacePrep || null,
+      applicationType: validated.applicationType,
+      surfacePrep: validated.surfacePrep,
       coats: paintCoats,
     };
   }
@@ -512,7 +518,7 @@ export class CoatingAnalysisService {
     const midDftUm = (effectiveMinDft + effectiveMaxDft) / 2;
     const volumeSolids = knownProduct
       ? knownProduct.volumeSolidsPercent
-      : coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME;
+      : coat.solidsByVolumePercent > 0 ? coat.solidsByVolumePercent : DEFAULT_SOLIDS_BY_VOLUME;
     const verified = knownProduct !== null;
 
     if (knownProduct) {

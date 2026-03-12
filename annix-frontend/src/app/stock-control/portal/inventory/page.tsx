@@ -11,14 +11,15 @@ import type {
   StockItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
 import {
+  useInvalidateInventory,
   useInventoryCategories,
   useInventoryGrouped,
   useInventoryItems,
   useInventoryLocations,
-  useInvalidateInventory,
 } from "@/app/lib/query/hooks";
-import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { HelpTooltip } from "../../components/HelpTooltip";
 import {
   type GroupByOption,
@@ -107,6 +108,7 @@ export default function InventoryPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [modalForm, setModalForm] = useState({
     sku: "",
     name: "",
@@ -174,7 +176,9 @@ export default function InventoryPage() {
 
   const groupedData: LocationGroup[] = useMemo(() => {
     if (!isGroupedView || !groupedQuery.data) return [];
-    const allFlatItems = groupedQuery.data.flatMap((g: { category: string; items: StockItem[] }) => g.items);
+    const allFlatItems = groupedQuery.data.flatMap(
+      (g: { category: string; items: StockItem[] }) => g.items,
+    );
     const filteredItems = categoryFilter
       ? allFlatItems.filter((item: StockItem) => item.category === categoryFilter)
       : allFlatItems;
@@ -535,12 +539,13 @@ export default function InventoryPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this item?")) return;
     try {
       await stockControlApiClient.deleteStockItem(id);
       invalidateInventory();
     } catch (err) {
       setActionError(err instanceof Error ? err : new Error("Failed to delete item"));
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 
@@ -1515,7 +1520,7 @@ export default function InventoryPage() {
           selectedIds={selectedIds}
           onToggleSelect={toggleSelectItem}
           onEdit={openEditModal}
-          onDelete={handleDelete}
+          onDelete={setConfirmDeleteId}
           canEditPrices={canEditPrices ?? false}
           thumbnailSize={thumbnailSize}
         />
@@ -1783,7 +1788,7 @@ export default function InventoryPage() {
                                     Edit
                                   </button>
                                   <button
-                                    onClick={() => handleDelete(item.id)}
+                                    onClick={() => setConfirmDeleteId(item.id)}
                                     className="text-red-600 hover:text-red-900"
                                   >
                                     Del
@@ -2013,7 +2018,7 @@ export default function InventoryPage() {
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDelete(item.id)}
+                            onClick={() => setConfirmDeleteId(item.id)}
                             className="text-red-600 hover:text-red-900"
                           >
                             Del
@@ -2423,6 +2428,20 @@ export default function InventoryPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Delete Item"
+        message="Are you sure you want to delete this item?"
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => {
+          if (confirmDeleteId !== null) {
+            handleDelete(confirmDeleteId);
+          }
+        }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import {
   InvoiceItemMatchStatus,
   SupplierInvoiceItem,
 } from "../entities/supplier-invoice-item.entity";
+import { validateInvoiceExtraction, validPositiveNumber } from "./extraction-validation";
 
 const INVOICE_EXTRACTION_PROMPT = `You are an industrial supplier invoice parser. Extract line items from scanned invoices.
 
@@ -171,7 +172,7 @@ export class InvoiceExtractionService {
         throw new Error("AI response did not contain valid JSON");
       }
 
-      const extractedData: ExtractedInvoiceData = JSON.parse(jsonMatch[0]);
+      const extractedData: ExtractedInvoiceData = validateInvoiceExtraction(JSON.parse(jsonMatch[0]));
       invoice.extractedData = extractedData;
 
       if (extractedData.invoiceNumber) {
@@ -394,10 +395,10 @@ export class InvoiceExtractionService {
         lineNumber: item.lineNumber,
         extractedDescription: item.description,
         extractedSku: item.sku || null,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
+        quantity: validPositiveNumber(item.quantity, 1),
+        unitPrice: validPositiveNumber(item.unitPrice, 0),
         unitType: item.unitType || null,
-        discountPercent: item.discountPercent ?? 0,
+        discountPercent: validPositiveNumber(item.discountPercent, 0),
         isPartA: item.isPaintPartA || false,
         isPartB: item.isPaintPartB || false,
         matchStatus: InvoiceItemMatchStatus.UNMATCHED,

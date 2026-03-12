@@ -18,6 +18,7 @@ import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { CpoService } from "./cpo.service";
+import { validPositiveNumber } from "./extraction-validation";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
 @Injectable()
@@ -490,17 +491,17 @@ export class DeliveryService {
           (item.volumeLitersPerPack && item.quantity
             ? item.volumeLitersPerPack * item.quantity
             : (item.volumeLitersPerPack ?? 1));
-        quantity = totalLiters;
+        quantity = validPositiveNumber(totalLiters, 1);
         unitOfMeasure = "L";
-        costPerUnit = item.costPerLiter ?? (item.lineTotal ? item.lineTotal / totalLiters : 0);
+        costPerUnit = item.costPerLiter ?? (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
         this.logger.log(
           `Paint item: ${item.description} - ${quantity}L @ R${costPerUnit.toFixed(2)}/L`,
         );
       } else {
-        quantity = item.quantity ?? 1;
+        quantity = validPositiveNumber(item.quantity, 1);
         unitOfMeasure = item.unitOfMeasure || "each";
         costPerUnit =
-          item.unitPrice ?? (item.lineTotal && item.quantity ? item.lineTotal / item.quantity : 0);
+          validPositiveNumber(item.unitPrice, 0) || (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
       }
 
       let stockItem = await this.stockItemRepo.findOne({

@@ -570,7 +570,9 @@ export function ChatPanel() {
           {chatError && (
             <div className="px-3 py-2 bg-red-50 text-red-700 text-xs flex items-center justify-between">
               <span>{chatError}</span>
-              <button type="button" onClick={() => setChatError(null)} className="ml-2 font-bold">&times;</button>
+              <button type="button" onClick={() => setChatError(null)} className="ml-2 font-bold">
+                &times;
+              </button>
             </div>
           )}
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
