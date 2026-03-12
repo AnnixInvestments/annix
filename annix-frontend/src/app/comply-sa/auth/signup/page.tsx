@@ -29,7 +29,7 @@ export default function SignupPage() {
         companyName,
         registrationNumber: registrationNumber || undefined,
       });
-      localStorage.setItem("token", result.token);
+      localStorage.setItem("token", result.access_token);
       router.push("/comply-sa/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");

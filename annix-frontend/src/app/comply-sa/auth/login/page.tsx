@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     try {
       const result = await login(email, password);
-      localStorage.setItem("token", result.token);
+      localStorage.setItem("token", result.access_token);
       router.push("/comply-sa/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

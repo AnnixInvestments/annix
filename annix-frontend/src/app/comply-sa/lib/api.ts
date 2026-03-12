@@ -29,7 +29,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export function login(
   email: string,
   password: string,
-): Promise<{ token: string; user: Record<string, unknown> }> {
+): Promise<{ access_token: string; user: Record<string, unknown> }> {
   return request("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
@@ -42,7 +42,7 @@ export function signup(data: {
   password: string;
   companyName: string;
   registrationNumber?: string;
-}): Promise<{ token: string; user: Record<string, unknown> }> {
+}): Promise<{ access_token: string; user: Record<string, unknown> }> {
   return request("/auth/signup", {
     method: "POST",
     body: JSON.stringify(data),

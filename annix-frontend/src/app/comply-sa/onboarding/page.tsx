@@ -56,7 +56,42 @@ const MONTHS = [
   "December",
 ];
 
-const TOTAL_STEPS = 5;
+const MUNICIPALITIES: Record<string, string[]> = {
+  "Eastern Cape": [
+    "Buffalo City", "Nelson Mandela Bay", "Alfred Nzo", "Amathole",
+    "Chris Hani", "Joe Gqabi", "O.R. Tambo", "Sarah Baartman",
+  ],
+  "Free State": [
+    "Mangaung", "Fezile Dabi", "Lejweleputswa", "Thabo Mofutsanyana", "Xhariep",
+  ],
+  "Gauteng": [
+    "City of Johannesburg", "City of Tshwane", "Ekurhuleni",
+    "Sedibeng", "West Rand",
+  ],
+  "KwaZulu-Natal": [
+    "eThekwini", "Amajuba", "Harry Gwala", "iLembe",
+    "King Cetshwayo", "Ugu", "uMgungundlovu", "uMkhanyakude",
+    "uMzinyathi", "uThukela", "Zululand",
+  ],
+  "Limpopo": [
+    "Capricorn", "Mopani", "Sekhukhune", "Vhembe", "Waterberg",
+  ],
+  "Mpumalanga": [
+    "Ehlanzeni", "Gert Sibande", "Nkangala",
+  ],
+  "North West": [
+    "Bojanala Platinum", "Dr Kenneth Kaunda", "Dr Ruth Segomotsi Mompati", "Ngaka Modiri Molema",
+  ],
+  "Northern Cape": [
+    "Frances Baard", "John Taolo Gaetsewe", "Namakwa", "Pixley ka Seme", "Z.F. Mgcawu",
+  ],
+  "Western Cape": [
+    "City of Cape Town", "Cape Winelands", "Central Karoo",
+    "Garden Route", "Overberg", "West Coast",
+  ],
+};
+
+const TOTAL_STEPS = 4;
 
 function ProgressBar({ currentStep }: { currentStep: number }) {
   return (
@@ -80,11 +115,6 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [companyName, setCompanyName] = useState("");
-  const [registrationNumber, setRegistrationNumber] = useState("");
-  const [registrationDate, setRegistrationDate] = useState("");
-  const [tradingName, setTradingName] = useState("");
-
   const [industry, setIndustry] = useState("");
   const [employeeCount, setEmployeeCount] = useState("");
   const [annualTurnover, setAnnualTurnover] = useState("");
@@ -101,22 +131,20 @@ export default function OnboardingPage() {
   const [municipality, setMunicipality] = useState("");
 
   function stepTitle(): string {
-    if (step === 1) return "Company Basics";
-    if (step === 2) return "Business Details";
-    if (step === 3) return "Tax Status";
-    if (step === 4) return "Operations";
+    if (step === 1) return "Business Details";
+    if (step === 2) return "Tax Status";
+    if (step === 3) return "Operations";
     return "Location";
   }
 
   function canProceed(): boolean {
-    if (step === 1) return companyName.trim().length > 0;
-    if (step === 2)
+    if (step === 1)
       return industry.length > 0 && employeeCount.length > 0 && annualTurnover.length > 0;
-    if (step === 3) {
+    if (step === 2) {
       if (vatRegistered) return vatNumber.trim().length > 0 && financialYearEnd.length > 0;
       return financialYearEnd.length > 0;
     }
-    if (step === 4) return true;
+    if (step === 3) return true;
     return province.length > 0;
   }
 
@@ -128,10 +156,6 @@ export default function OnboardingPage() {
       const selectedTurnover = TURNOVER_OPTIONS.find((t) => t.label === annualTurnover);
 
       await updateCompanyProfile({
-        companyName,
-        registrationNumber: registrationNumber || null,
-        registrationDate: registrationDate || null,
-        tradingName: tradingName || null,
         industry,
         employeeCount: parseInt(employeeCount, 10),
         annualTurnover: selectedTurnover?.value ?? null,
@@ -201,50 +225,6 @@ export default function OnboardingPage() {
             {step === 1 && (
               <>
                 <div>
-                  <label className={labelClass}>Company Name</label>
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className={inputClass}
-                    placeholder="Acme Pty Ltd"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>CIPC Registration Number</label>
-                  <input
-                    type="text"
-                    value={registrationNumber}
-                    onChange={(e) => setRegistrationNumber(e.target.value)}
-                    className={inputClass}
-                    placeholder="2024/123456/07"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>Registration Date</label>
-                  <input
-                    type="date"
-                    value={registrationDate}
-                    onChange={(e) => setRegistrationDate(e.target.value)}
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className={labelClass}>Trading Name</label>
-                  <input
-                    type="text"
-                    value={tradingName}
-                    onChange={(e) => setTradingName(e.target.value)}
-                    className={inputClass}
-                    placeholder="Acme Solutions"
-                  />
-                </div>
-              </>
-            )}
-
-            {step === 2 && (
-              <>
-                <div>
                   <label className={labelClass}>Industry</label>
                   <select
                     value={industry}
@@ -288,7 +268,7 @@ export default function OnboardingPage() {
               </>
             )}
 
-            {step === 3 && (
+            {step === 2 && (
               <>
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium text-slate-300">VAT Registered?</label>
@@ -336,7 +316,7 @@ export default function OnboardingPage() {
               </>
             )}
 
-            {step === 4 && (
+            {step === 3 && (
               <>
                 <ToggleField
                   label="Do you handle personal data (customers, employees)?"
@@ -356,13 +336,16 @@ export default function OnboardingPage() {
               </>
             )}
 
-            {step === 5 && (
+            {step === 4 && (
               <>
                 <div>
                   <label className={labelClass}>Province</label>
                   <select
                     value={province}
-                    onChange={(e) => setProvince(e.target.value)}
+                    onChange={(e) => {
+                      setProvince(e.target.value);
+                      setMunicipality("");
+                    }}
                     className={selectClass}
                   >
                     <option value="">Select province</option>
@@ -373,16 +356,23 @@ export default function OnboardingPage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className={labelClass}>Municipality</label>
-                  <input
-                    type="text"
-                    value={municipality}
-                    onChange={(e) => setMunicipality(e.target.value)}
-                    className={inputClass}
-                    placeholder="e.g. City of Johannesburg"
-                  />
-                </div>
+                {province && (
+                  <div>
+                    <label className={labelClass}>Municipality</label>
+                    <select
+                      value={municipality}
+                      onChange={(e) => setMunicipality(e.target.value)}
+                      className={selectClass}
+                    >
+                      <option value="">Select municipality</option>
+                      {(MUNICIPALITIES[province] ?? []).map((muni) => (
+                        <option key={muni} value={muni}>
+                          {muni}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </>
             )}
           </div>
