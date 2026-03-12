@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 import { CV_ASSISTANT_VERSION } from "../config/version";
 
@@ -113,8 +113,7 @@ function CogIcon({ className }: { className?: string }) {
   );
 }
 
-export default function PortalLayout(props: { children: React.ReactNode }) {
-  const { children } = props;
+function PortalContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -206,5 +205,20 @@ export default function PortalLayout(props: { children: React.ReactNode }) {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
     </div>
+  );
+}
+
+export default function PortalLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto" />
+        </div>
+      }
+    >
+      <PortalContent>{children}</PortalContent>
+    </Suspense>
   );
 }

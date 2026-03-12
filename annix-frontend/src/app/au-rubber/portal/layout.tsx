@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
@@ -99,5 +99,15 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
 export default function AuRubberPortalLayout(props: { children: React.ReactNode }) {
   const { children } = props;
-  return <ProtectedLayout>{children}</ProtectedLayout>;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto" />
+        </div>
+      }
+    >
+      <ProtectedLayout>{children}</ProtectedLayout>
+    </Suspense>
+  );
 }

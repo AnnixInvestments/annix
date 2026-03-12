@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
 import { ErrorBoundary } from "@/app/components/ui/ErrorBoundary";
@@ -68,8 +68,7 @@ function SupplierNavigation({
   );
 }
 
-export default function SupplierPortalLayout(props: { children: React.ReactNode }) {
-  const { children } = props;
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -120,5 +119,20 @@ export default function SupplierPortalLayout(props: { children: React.ReactNode 
         }}
       />
     </div>
+  );
+}
+
+export default function SupplierPortalLayout(props: { children: React.ReactNode }) {
+  const { children } = props;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+        </div>
+      }
+    >
+      <ProtectedLayout>{children}</ProtectedLayout>
+    </Suspense>
   );
 }

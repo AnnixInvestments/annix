@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
@@ -130,5 +130,15 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
 export default function CustomerPortalLayout(props: { children: React.ReactNode }) {
   const { children } = props;
-  return <ProtectedLayout>{children}</ProtectedLayout>;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+        </div>
+      }
+    >
+      <ProtectedLayout>{children}</ProtectedLayout>
+    </Suspense>
+  );
 }

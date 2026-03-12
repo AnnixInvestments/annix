@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
@@ -134,5 +134,15 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 
 export default function StockControlPortalLayout(props: { children: React.ReactNode }) {
   const { children } = props;
-  return <ProtectedLayout>{children}</ProtectedLayout>;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto" />
+        </div>
+      }
+    >
+      <ProtectedLayout>{children}</ProtectedLayout>
+    </Suspense>
+  );
 }
