@@ -228,7 +228,8 @@ export class ImportService {
         unitOfMeasure: row.unitOfMeasure ? String(row.unitOfMeasure) : undefined,
         costPerUnit: row.costPerUnit != null ? Number(row.costPerUnit) || undefined : undefined,
         quantity: row.quantity != null ? Number(row.quantity) || undefined : undefined,
-        minStockLevel: row.minStockLevel != null ? Number(row.minStockLevel) || undefined : undefined,
+        minStockLevel:
+          row.minStockLevel != null ? Number(row.minStockLevel) || undefined : undefined,
         location: row.location ? String(row.location) : undefined,
       }));
     } catch (err) {

@@ -345,9 +345,7 @@ export class JobCardImportService {
 
     const aiGrid = await this.extractGridFromPdfWithAi(buffer);
     if (aiGrid.length > 1) {
-      this.logger.log(
-        `AI vision extracted ${aiGrid.length} rows from PDF "${filename}"`,
-      );
+      this.logger.log(`AI vision extracted ${aiGrid.length} rows from PDF "${filename}"`);
       return { grid: aiGrid, documentNumber: extractedDocNumber };
     }
 
