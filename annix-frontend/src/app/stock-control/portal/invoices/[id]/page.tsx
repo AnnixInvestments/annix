@@ -236,11 +236,13 @@ export default function InvoiceDetailPage() {
   };
 
   const startEditing = (item: import("@/app/lib/api/stockControlApi").SupplierInvoiceItem) => {
+    const uType = item["unitType"];
+    const sItem = item["stockItem"];
     setEditingItemId(item.id);
     setEditValues({
       quantity: String(item.quantity),
       unitPrice: item.unitPrice !== null ? String(item.unitPrice) : "",
-      unitType: item.unitType ?? item.stockItem?.unitOfMeasure ?? "each",
+      unitType: uType ?? sItem?.unitOfMeasure ?? "each",
     });
   };
 
@@ -441,6 +443,9 @@ export default function InvoiceDetailPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {invoice.items.map((item) => {
                     const isEditing = editingItemId === item.id;
+                    const itemUnitType = item.unitType;
+                    const itemDiscountPercent = item.discountPercent;
+                    const itemStockItem = item.stockItem;
 
                     return (
                       <tr
@@ -519,7 +524,7 @@ export default function InvoiceDetailPage() {
                             </select>
                           ) : (
                             <span className="text-gray-400 text-xs">
-                              {item.unitType ?? item.stockItem?.unitOfMeasure ?? "-"}
+                              {itemUnitType ?? itemStockItem?.unitOfMeasure ?? "-"}
                             </span>
                           )}
                         </td>
@@ -541,19 +546,19 @@ export default function InvoiceDetailPage() {
                               {item.unitPrice
                                 ? `R${Number(item.unitPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
                                 : "-"}
-                              {Number(item.discountPercent) > 0 && (
+                              {Number(itemDiscountPercent) > 0 && (
                                 <div className="text-xs text-green-600 font-medium">
-                                  {item.discountPercent}% disc.
+                                  {itemDiscountPercent}% disc.
                                 </div>
                               )}
                             </>
                           )}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.stockItem ? (
+                          {itemStockItem ? (
                             <div>
-                              <div>{item.stockItem.name}</div>
-                              <div className="text-xs text-gray-500">{item.stockItem.sku}</div>
+                              <div>{itemStockItem.name}</div>
+                              <div className="text-xs text-gray-500">{itemStockItem.sku}</div>
                             </div>
                           ) : (
                             <span className="text-gray-400">-</span>

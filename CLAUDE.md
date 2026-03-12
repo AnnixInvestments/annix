@@ -172,8 +172,8 @@ const url = await this.storageService.getPresignedUrl(filePath, 3600);
 
 ## App Versioning
 All apps follow the same **semantic versioning** rules (major.minor.patch):
-- **Patch** (x.x.+1): Every small update, bug fix, tweak, or formatting change
-- **Minor** (x.+1.0): New features, new pages, significant enhancements — patch resets to 0
+- **Patch** (x.x.+1): Bug fixes, tweaks, formatting, and enhancements/improvements to existing features (e.g. multi-DN linking, inline editing, discount detection are all patches)
+- **Minor** (x.+1.0): Entirely NEW features or pages that didn't exist before (e.g. a new "Reports" page, a new module like PosiTector integration) — patch resets to 0
 - **Major** (+1.0.0): Major redesigns, breaking UX changes, architectural overhauls — minor and patch reset to 0
 - **Overflow rule**: When patch reaches 100, minor increments by 1 and patch resets to 0
 - **Reset rule**: Whenever minor increments (for any reason), patch resets to 0
