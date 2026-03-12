@@ -42,6 +42,19 @@ export default function PositectorUploadPage() {
   };
 
   const processTextData = useCallback(async (text: string, sourceName: string) => {
+    const trimmed = text.trim().replace(/\r/g, "");
+    const singleLine = !trimmed.includes("\n");
+    const looksLikeBatchName =
+      singleLine &&
+      trimmed.length < 30 &&
+      (/^[A-Za-z]{0,3}\d{1,6}$/.test(trimmed) || /^B\d+/i.test(trimmed));
+    if (looksLikeBatchName) {
+      setError(
+        `Batch "${trimmed}" detected, but PosiSoft Desktop only sends the batch name when dragging from the tree — not the readings.\n\nTo upload this batch:\n1. In PosiSoft Desktop, select batch ${trimmed}\n2. Click File → Export (or right-click → Export)\n3. Save as CSV\n4. Drag or upload the exported CSV file here`,
+      );
+      return;
+    }
+
     const normalized = text.includes("\t")
       ? text
           .split("\n")
@@ -57,7 +70,7 @@ export default function PositectorUploadPage() {
     const hasNumericData = lines.some((line) => /\d+[,\t]\s*\d+/.test(line));
     if (lines.length < 1 || (!hasNumericData && lines.length < 2)) {
       setError(
-        "Dragged data does not contain readings. Try dragging from the Readings panel in PosiSoft Desktop, or export the batch as a CSV/JSON file and upload it here.",
+        "Dragged data does not contain readings. Export the batch from PosiSoft Desktop as CSV (File → Export) and upload the file here.",
       );
       return;
     }
@@ -206,11 +219,11 @@ export default function PositectorUploadPage() {
 
       {error && (
         <div className="rounded-md bg-red-50 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="flex items-start justify-between gap-3">
+            <p className="whitespace-pre-line text-sm text-red-700">{error}</p>
             <button
               onClick={() => setError(null)}
-              className="text-sm text-red-500 hover:text-red-700"
+              className="shrink-0 text-sm text-red-500 hover:text-red-700"
             >
               Dismiss
             </button>
