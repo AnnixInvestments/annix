@@ -1,7 +1,11 @@
 import { Body, Controller, Get, Logger, Param, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import {
+  PermissionKey,
+  StockControlRoleGuard,
+  StockControlRoles,
+} from "../guards/stock-control-role.guard";
 import {
   BatchIssuanceDto,
   CreateIssuanceDto,
@@ -18,21 +22,24 @@ export class IssuanceController {
   constructor(private readonly issuanceService: IssuanceService) {}
 
   @Post("scan-qr")
-  @StockControlRoles("storeman", "manager", "admin")
+  @StockControlRoles("storeman", "accounts", "manager", "admin")
+  @PermissionKey("issuance.issue")
   @ApiOperation({ summary: "Scan and validate any QR code for issuance workflow" })
   async scanQr(@Req() req: any, @Body() body: { qrCode: string }) {
     return this.issuanceService.parseAndValidateQr(req.user.companyId, body.qrCode);
   }
 
   @Post()
-  @StockControlRoles("storeman", "manager", "admin")
+  @StockControlRoles("storeman", "accounts", "manager", "admin")
+  @PermissionKey("issuance.issue")
   @ApiOperation({ summary: "Create a new stock issuance" })
   async createIssuance(@Req() req: any, @Body() dto: CreateIssuanceDto) {
     return this.issuanceService.createIssuance(req.user.companyId, dto, req.user);
   }
 
   @Post("batch")
-  @StockControlRoles("storeman", "manager", "admin")
+  @StockControlRoles("storeman", "accounts", "manager", "admin")
+  @PermissionKey("issuance.issue")
   @ApiOperation({ summary: "Create multiple stock issuances in batch" })
   async createBatchIssuance(@Req() req: any, @Body() dto: BatchIssuanceDto) {
     return this.issuanceService.createBatchIssuance(req.user.companyId, dto, req.user);
@@ -60,7 +67,8 @@ export class IssuanceController {
   }
 
   @Get("recent")
-  @StockControlRoles("storeman", "manager", "admin")
+  @StockControlRoles("storeman", "accounts", "manager", "admin")
+  @PermissionKey("issuance.issue")
   @ApiOperation({ summary: "Get recent issuances from the last 24 hours" })
   async recentIssuances(@Req() req: any) {
     return this.issuanceService.recentByUser(req.user.companyId);
@@ -73,7 +81,8 @@ export class IssuanceController {
   }
 
   @Post(":id/undo")
-  @StockControlRoles("storeman", "manager", "admin")
+  @StockControlRoles("storeman", "accounts", "manager", "admin")
+  @PermissionKey("issuance.undo")
   @ApiOperation({ summary: "Undo a recent issuance (within 5 minutes)" })
   async undoIssuance(@Req() req: any, @Param("id") id: number) {
     return this.issuanceService.undoIssuance(req.user.companyId, id, req.user);

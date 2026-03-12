@@ -27,6 +27,8 @@ export const DEFAULT_ACTION_PERMISSIONS: Record<string, string[]> = {
   "reports.view": ["manager", "admin"],
   "stock.adjustment": ["manager", "admin"],
   "deliveries.delete": ["manager", "admin"],
+  "issuance.issue": ["storeman", "accounts", "manager", "admin"],
+  "issuance.undo": ["storeman", "accounts", "manager", "admin"],
 };
 
 export const ACTION_PERMISSION_LABELS: Record<string, { group: string; label: string }> = {
@@ -53,6 +55,8 @@ export const ACTION_PERMISSION_LABELS: Record<string, { group: string; label: st
   "reports.view": { group: "Reports", label: "View reports" },
   "stock.adjustment": { group: "Stock", label: "Create stock adjustments" },
   "deliveries.delete": { group: "Deliveries", label: "Delete deliveries" },
+  "issuance.issue": { group: "Issuance", label: "Issue stock" },
+  "issuance.undo": { group: "Issuance", label: "Undo issuance" },
 };
 
 const IMMUTABLE_ACTIONS: string[] = [];
