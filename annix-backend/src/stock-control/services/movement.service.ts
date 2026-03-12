@@ -25,8 +25,9 @@ export class MovementService {
       movementType?: MovementType;
       startDate?: string;
       endDate?: string;
-      limit?: number;
     },
+    page: number = 1,
+    limit: number = 50,
   ): Promise<StockMovement[]> {
     const where: Record<string, unknown> = { companyId };
 
@@ -46,7 +47,8 @@ export class MovementService {
       where,
       relations: ["stockItem"],
       order: { createdAt: "DESC" },
-      take: filters?.limit || 100,
+      take: limit,
+      skip: (page - 1) * limit,
     });
   }
 

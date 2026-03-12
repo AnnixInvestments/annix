@@ -1,4 +1,6 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { fromISO, fromJSDate } from "../../lib/datetime";
@@ -42,6 +44,8 @@ export interface PriceChangeSummary {
 
 @Injectable()
 export class InvoiceService {
+  private readonly logger = new Logger(InvoiceService.name);
+
   constructor(
     @InjectRepository(SupplierInvoice)
     private readonly invoiceRepo: Repository<SupplierInvoice>,
@@ -54,6 +58,7 @@ export class InvoiceService {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly extractionService: InvoiceExtractionService,
+    private readonly auditService: AuditService,
   ) {}
 
   async create(companyId: number, dto: CreateInvoiceDto): Promise<SupplierInvoice> {
@@ -83,11 +88,13 @@ export class InvoiceService {
     return this.invoiceRepo.save(invoice);
   }
 
-  async findAll(companyId: number): Promise<SupplierInvoice[]> {
+  async findAll(companyId: number, page: number = 1, limit: number = 50): Promise<SupplierInvoice[]> {
     const invoices = await this.invoiceRepo.find({
       where: { companyId },
       relations: ["deliveryNote"],
       order: { createdAt: "DESC" },
+      take: limit,
+      skip: (page - 1) * limit,
     });
 
     return Promise.all(invoices.map((inv) => this.resolveScanUrl(inv)));
@@ -123,6 +130,13 @@ export class InvoiceService {
     const fileBuffer = await this.storageService.download(s3Key);
     const imageBase64 = fileBuffer.toString("base64");
     const mediaType = this.mimeFromPath(s3Key);
+
+    this.auditService.log({
+      entityType: "supplier_invoice",
+      entityId: invoiceId,
+      action: AuditAction.UPDATE,
+      newValues: { reExtracted: true },
+    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
     return this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
   }
@@ -245,7 +259,16 @@ export class InvoiceService {
 
   async approve(companyId: number, invoiceId: number, userId: number): Promise<SupplierInvoice> {
     await this.findById(companyId, invoiceId);
-    return this.extractionService.applyPriceUpdates(invoiceId, userId);
+    const result = await this.extractionService.applyPriceUpdates(invoiceId, userId);
+
+    this.auditService.log({
+      entityType: "supplier_invoice",
+      entityId: invoiceId,
+      action: AuditAction.APPROVE,
+      newValues: { approvedByUserId: userId, extractionStatus: result.extractionStatus },
+    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+
+    return result;
   }
 
   async priceChangeSummary(companyId: number, invoiceId: number): Promise<PriceChangeSummary> {
@@ -329,10 +352,20 @@ export class InvoiceService {
       throw new NotFoundException(`Delivery note ${deliveryNoteId} not found`);
     }
 
+    const oldDeliveryNoteId = invoice.deliveryNoteId;
     invoice.deliveryNoteId = deliveryNoteId;
     invoice.deliveryNote = deliveryNote;
+    const saved = await this.invoiceRepo.save(invoice);
 
-    return this.invoiceRepo.save(invoice);
+    this.auditService.log({
+      entityType: "supplier_invoice",
+      entityId: invoiceId,
+      action: AuditAction.UPDATE,
+      oldValues: { deliveryNoteId: oldDeliveryNoteId },
+      newValues: { deliveryNoteId },
+    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+
+    return saved;
   }
 
   async autoLinkAllUnlinked(companyId: number): Promise<{ linked: number; details: string[] }> {

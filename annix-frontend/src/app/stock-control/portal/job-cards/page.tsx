@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { JobCard } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useRef, useState } from "react";
+import {
+  useJobCards,
+  useDataBookStatuses,
+  useCreateJobCard,
+  useDeleteJobCard,
+} from "@/app/lib/query/hooks";
 import { formatDateZA } from "@/app/lib/datetime";
 import { HelpTooltip } from "../../components/HelpTooltip";
 import { CompactWorkflowStepper } from "../../components/WorkflowStatus";
@@ -25,9 +29,6 @@ function statusBadgeColor(status: string): string {
 export default function JobCardsPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [jobCards, setJobCards] = useState<JobCard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -46,13 +47,15 @@ export default function JobCardsPage() {
     reference: "",
   });
   const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isModalDragging, setIsModalDragging] = useState(false);
   const modalFileInputRef = useRef<HTMLInputElement>(null);
-  const [dataBookStatuses, setDataBookStatuses] = useState<
-    Record<number, { exists: boolean; isStale: boolean; certificateCount: number }>
-  >({});
+
+  const { data: jobCards = [], isLoading, error } = useJobCards(activeTab);
+  const jobCardIds = jobCards.map((jc) => jc.id);
+  const { data: dataBookStatuses = {} } = useDataBookStatuses(jobCardIds);
+  const createJobCard = useCreateJobCard();
+  const deleteJobCard = useDeleteJobCard();
 
   const navigateWithFile = (file: File) => {
     setPendingImportFile(file);
@@ -138,37 +141,9 @@ export default function JobCardsPage() {
     }
   };
 
-  const fetchJobCards = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const status = activeTab === "all" ? undefined : activeTab;
-      const data = await stockControlApiClient.jobCards(status);
-      setJobCards(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load job cards"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    fetchJobCards();
-  }, [fetchJobCards]);
-
-  useEffect(() => {
-    if (jobCards.length === 0) return;
-    const ids = jobCards.map((jc) => jc.id);
-    stockControlApiClient
-      .dataBookStatusBulk(ids)
-      .then(setDataBookStatuses)
-      .catch(() => setDataBookStatuses({}));
-  }, [jobCards]);
-
   const handleCreate = async () => {
     try {
-      setIsCreating(true);
-      await stockControlApiClient.createJobCard({
+      await createJobCard.mutateAsync({
         ...createForm,
         status: "draft",
       });
@@ -187,11 +162,8 @@ export default function JobCardsPage() {
         notes: "",
         reference: "",
       });
-      fetchJobCards();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to create job card"));
-    } finally {
-      setIsCreating(false);
+    } catch (_err) {
+      // mutation error handled by TanStack Query
     }
   };
 
@@ -199,10 +171,9 @@ export default function JobCardsPage() {
     if (!window.confirm(`Delete job card ${jobNumber}? This cannot be undone.`)) return;
     try {
       setDeletingId(id);
-      await stockControlApiClient.deleteJobCard(id);
-      fetchJobCards();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to delete job card"));
+      await deleteJobCard.mutateAsync(id);
+    } catch (_err) {
+      // mutation error handled by TanStack Query
     } finally {
       setDeletingId(null);
     }
@@ -760,10 +731,10 @@ export default function JobCardsPage() {
                 </button>
                 <button
                   onClick={handleCreate}
-                  disabled={isCreating || !createForm.jobNumber || !createForm.jobName}
+                  disabled={createJobCard.isPending || !createForm.jobNumber || !createForm.jobName}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isCreating ? "Creating..." : "Create Job Card"}
+                  {createJobCard.isPending ? "Creating..." : "Create Job Card"}
                 </button>
               </div>
             </div>

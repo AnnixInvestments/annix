@@ -5,6 +5,8 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { DispatchScan } from "../entities/dispatch-scan.entity";
@@ -50,6 +52,7 @@ export class DispatchService {
     @InjectRepository(StockMovement)
     private readonly movementRepo: Repository<StockMovement>,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   async startDispatchSession(
@@ -211,6 +214,14 @@ export class DispatchService {
         "Job card status has changed. Please refresh and try again.",
       );
     }
+
+    this.auditService.log({
+      entityType: "job_card_dispatch",
+      entityId: jobCardId,
+      action: AuditAction.UPDATE,
+      oldValues: { workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH },
+      newValues: { workflowStatus: JobCardWorkflowStatus.DISPATCHED, completedBy: user.name },
+    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
     this.logger.log(`Job card ${jobCardId} dispatch completed by ${user.name}`);
 

@@ -33,8 +33,8 @@ export function SmtpConfigSection() {
       if (config.smtpHost || config.notificationEmails?.length > 0) {
         setExpanded(true);
       }
-    } catch {
-      // Silent fail
+    } catch (e) {
+      setSmtpError(e instanceof Error ? e.message : "Failed to load SMTP configuration");
     }
   }, []);
 

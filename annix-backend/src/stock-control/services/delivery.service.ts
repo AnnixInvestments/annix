@@ -121,11 +121,13 @@ export class DeliveryService {
     return this.findById(companyId, savedNote.id);
   }
 
-  async findAll(companyId: number): Promise<DeliveryNote[]> {
+  async findAll(companyId: number, page: number = 1, limit: number = 50): Promise<DeliveryNote[]> {
     const notes = await this.deliveryNoteRepo.find({
       where: { companyId },
       relations: ["items", "items.stockItem"],
       order: { createdAt: "DESC" },
+      take: limit,
+      skip: (page - 1) * limit,
     });
 
     return Promise.all(notes.map((note) => this.addPresignedUrl(note)));

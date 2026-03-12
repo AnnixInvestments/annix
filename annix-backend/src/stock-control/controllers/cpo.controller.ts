@@ -45,8 +45,15 @@ export class CpoController {
   @Get()
   @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
   @ApiOperation({ summary: "List all CPOs for the company" })
-  async findAll(@Req() req: any, @Query("status") status?: string) {
-    return this.cpoService.findAll(req.user.companyId, status);
+  async findAll(
+    @Req() req: any,
+    @Query("status") status?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
+    return this.cpoService.findAll(req.user.companyId, status, pageNum, limitNum);
   }
 
   @Get("reports/fulfillment")

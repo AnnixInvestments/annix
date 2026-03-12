@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   ImportResult,
@@ -11,6 +11,13 @@ import type {
   StockItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import {
+  useInventoryCategories,
+  useInventoryGrouped,
+  useInventoryItems,
+  useInventoryLocations,
+  useInvalidateInventory,
+} from "@/app/lib/query/hooks";
 import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
 import { HelpTooltip } from "../../components/HelpTooltip";
 import {
@@ -86,19 +93,13 @@ export default function InventoryPage() {
   const { user } = useStockControlAuth();
   const canEditPrices =
     user?.role === "admin" || user?.role === "manager" || user?.role === "accounts";
-  const [items, setItems] = useState<StockItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [locations, setLocations] = useState<StockControlLocation[]>([]);
-  const [groupedData, setGroupedData] = useState<LocationGroup[]>([]);
+  const [actionError, setActionError] = useState<Error | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(savedViewMode);
   const [thumbnailSize, setThumbnailSize] = useState<ThumbnailSize>(savedThumbSize);
   const [cardGroupBy, setCardGroupBy] = useState<GroupByOption>("location");
   const [cardSortField, setCardSortField] = useState<SortField>("name");
   const [cardSortDirection, setCardSortDirection] = useState<SortDirection>("asc");
   const [lowStockOnly, setLowStockOnly] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -143,8 +144,65 @@ export default function InventoryPage() {
   const [showPrintDropdown, setShowPrintDropdown] = useState(false);
   const [printPreviewItems, setPrintPreviewItems] = useState<StockItem[] | null>(null);
   const [isStockTakeMode, setIsStockTakeMode] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Map<number | null, boolean>>(new Map());
   const printDropdownRef = useRef<HTMLDivElement>(null);
   const dragCounterRef = useRef(0);
+
+  const isGroupedView = viewMode === "grouped" || viewMode === "cards";
+
+  const listParams: Record<string, string> = isGroupedView
+    ? {}
+    : { page: String(currentPage + 1), limit: String(ITEMS_PER_PAGE) };
+  if (!isGroupedView && debouncedSearch) listParams.search = debouncedSearch;
+  if (!isGroupedView && categoryFilter) listParams.category = categoryFilter;
+  if (!isGroupedView && locationFilter) listParams.locationId = String(locationFilter);
+
+  const listQuery = useInventoryItems(isGroupedView ? {} : listParams);
+  const groupedQuery = useInventoryGrouped(
+    isGroupedView ? debouncedSearch || undefined : undefined,
+    isGroupedView ? locationFilter || undefined : undefined,
+  );
+  const { data: categories = [] } = useInventoryCategories();
+  const { data: locations = [] } = useInventoryLocations();
+  const invalidateInventory = useInvalidateInventory();
+
+  const isLoading = isGroupedView ? groupedQuery.isLoading : listQuery.isLoading;
+  const queryError = isGroupedView ? groupedQuery.error : listQuery.error;
+  const error = actionError || queryError;
+  const items = isGroupedView ? [] : (listQuery.data?.items ?? []);
+  const total = isGroupedView ? 0 : (listQuery.data?.total ?? 0);
+
+  const groupedData: LocationGroup[] = useMemo(() => {
+    if (!isGroupedView || !groupedQuery.data) return [];
+    const allFlatItems = groupedQuery.data.flatMap((g: { category: string; items: StockItem[] }) => g.items);
+    const filteredItems = categoryFilter
+      ? allFlatItems.filter((item: StockItem) => item.category === categoryFilter)
+      : allFlatItems;
+    const locMap = new Map(locations.map((l: StockControlLocation) => [l.id, l.name]));
+    const byLocation = filteredItems.reduce<Record<string, StockItem[]>>((acc, item: StockItem) => {
+      const key = item.locationId != null ? String(item.locationId) : "null";
+      const existing = acc[key] || [];
+      return { ...acc, [key]: [...existing, item] };
+    }, {});
+    return Object.entries(byLocation)
+      .map(([key, locationItems]) => {
+        const locationId = key === "null" ? null : Number(key);
+        const locationName =
+          locationId != null ? locMap.get(locationId) || "Unknown" : "No Location Assigned";
+        const sortedItems = [...locationItems].sort((a, b) => {
+          const catCmp = (a.category || "").localeCompare(b.category || "");
+          if (catCmp !== 0) return catCmp;
+          return a.name.localeCompare(b.name);
+        });
+        const isExpanded = expandedGroups.has(locationId) ? expandedGroups.get(locationId)! : true;
+        return { locationId, locationName, items: sortedItems, expanded: isExpanded };
+      })
+      .sort((a, b) => {
+        if (a.locationId === null) return -1;
+        if (b.locationId === null) return 1;
+        return a.locationName.localeCompare(b.locationName);
+      });
+  }, [isGroupedView, groupedQuery.data, categoryFilter, locations, expandedGroups]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -238,10 +296,10 @@ export default function InventoryPage() {
         .map((item) => item.id);
       if (itemsNeedingClear.length > 0) {
         await stockControlApiClient.clearQrPrintFlag(itemsNeedingClear);
-        fetchItems();
+        invalidateInventory();
       }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to download labels"));
+      setActionError(err instanceof Error ? err : new Error("Failed to download labels"));
     } finally {
       setIsPrintingLabels(false);
     }
@@ -259,92 +317,14 @@ export default function InventoryPage() {
         .map((item) => item.id);
       if (itemsNeedingClear.length > 0) {
         await stockControlApiClient.clearQrPrintFlag(itemsNeedingClear);
-        fetchItems();
+        invalidateInventory();
       }
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to download labels"));
+      setActionError(err instanceof Error ? err : new Error("Failed to download labels"));
     } finally {
       setIsPrintingLabels(false);
     }
   };
-
-  const fetchItems = useCallback(async () => {
-    try {
-      setIsLoading(true);
-
-      if (viewMode === "grouped" || viewMode === "cards") {
-        const [grouped, cats, locs] = await Promise.all([
-          stockControlApiClient.stockItemsGrouped(
-            debouncedSearch || undefined,
-            locationFilter || undefined,
-          ),
-          stockControlApiClient.categories(),
-          stockControlApiClient.locations(),
-        ]);
-        const allFlatItems = grouped.flatMap((g) => g.items);
-        const filteredItems = categoryFilter
-          ? allFlatItems.filter((item) => item.category === categoryFilter)
-          : allFlatItems;
-        const locMap = new Map(locs.map((l) => [l.id, l.name]));
-        const byLocation = filteredItems.reduce<Record<string, StockItem[]>>((acc, item) => {
-          const key = item.locationId != null ? String(item.locationId) : "null";
-          const existing = acc[key] || [];
-          return { ...acc, [key]: [...existing, item] };
-        }, {});
-        const locationGroups: LocationGroup[] = Object.entries(byLocation)
-          .map(([key, items]) => {
-            const locationId = key === "null" ? null : Number(key);
-            const locationName =
-              locationId != null ? locMap.get(locationId) || "Unknown" : "No Location Assigned";
-            const sortedItems = [...items].sort((a, b) => {
-              const catCmp = (a.category || "").localeCompare(b.category || "");
-              if (catCmp !== 0) return catCmp;
-              return a.name.localeCompare(b.name);
-            });
-            return { locationId, locationName, items: sortedItems, expanded: true };
-          })
-          .sort((a, b) => {
-            if (a.locationId === null) return -1;
-            if (b.locationId === null) return 1;
-            return a.locationName.localeCompare(b.locationName);
-          });
-        setGroupedData(locationGroups);
-        setCategories(Array.isArray(cats) ? cats : []);
-        setLocations(locs);
-        const totalItems = filteredItems.length;
-        setTotal(totalItems);
-        setItems([]);
-      } else {
-        const params: Record<string, string> = {
-          page: String(currentPage + 1),
-          limit: String(ITEMS_PER_PAGE),
-        };
-        if (debouncedSearch) params.search = debouncedSearch;
-        if (categoryFilter) params.category = categoryFilter;
-        if (locationFilter) params.locationId = String(locationFilter);
-
-        const [result, cats, locs] = await Promise.all([
-          stockControlApiClient.stockItems(params),
-          stockControlApiClient.categories(),
-          stockControlApiClient.locations(),
-        ]);
-        setItems(Array.isArray(result.items) ? result.items : []);
-        setTotal(result.total || 0);
-        setCategories(Array.isArray(cats) ? cats : []);
-        setLocations(locs);
-        setGroupedData([]);
-      }
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load inventory"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, debouncedSearch, categoryFilter, locationFilter, viewMode]);
-
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
@@ -364,17 +344,28 @@ export default function InventoryPage() {
   };
 
   const toggleGroupExpanded = (locationId: number | null) => {
-    setGroupedData((prev) =>
-      prev.map((g) => (g.locationId === locationId ? { ...g, expanded: !g.expanded } : g)),
-    );
+    setExpandedGroups((prev) => {
+      const next = new Map(prev);
+      const current = next.has(locationId) ? next.get(locationId)! : true;
+      next.set(locationId, !current);
+      return next;
+    });
   };
 
   const expandAllGroups = () => {
-    setGroupedData((prev) => prev.map((g) => ({ ...g, expanded: true })));
+    setExpandedGroups((prev) => {
+      const next = new Map(prev);
+      groupedData.forEach((g) => next.set(g.locationId, true));
+      return next;
+    });
   };
 
   const collapseAllGroups = () => {
-    setGroupedData((prev) => prev.map((g) => ({ ...g, expanded: false })));
+    setExpandedGroups((prev) => {
+      const next = new Map(prev);
+      groupedData.forEach((g) => next.set(g.locationId, false));
+      return next;
+    });
   };
 
   const openCreateModal = () => {
@@ -428,9 +419,9 @@ export default function InventoryPage() {
       setShowModal(false);
       setPhotoFile(null);
       setPhotoPreview(null);
-      fetchItems();
+      invalidateInventory();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to save item"));
+      setActionError(err instanceof Error ? err : new Error("Failed to save item"));
     } finally {
       setIsSaving(false);
     }
@@ -465,9 +456,9 @@ export default function InventoryPage() {
       );
       await Promise.all(updates);
       setPendingMinLevels(new Map());
-      fetchItems();
+      invalidateInventory();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to update min stock levels"));
+      setActionError(err instanceof Error ? err : new Error("Failed to update min stock levels"));
     } finally {
       setIsSavingMinLevels(false);
     }
@@ -518,9 +509,9 @@ export default function InventoryPage() {
       );
       await Promise.all(updates);
       setPendingPrices(new Map());
-      fetchItems();
+      invalidateInventory();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to update prices"));
+      setActionError(err instanceof Error ? err : new Error("Failed to update prices"));
     } finally {
       setIsSavingPrices(false);
     }
@@ -535,9 +526,9 @@ export default function InventoryPage() {
       );
       await Promise.all(updates);
       setPendingLocations(new Map());
-      fetchItems();
+      invalidateInventory();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to update locations"));
+      setActionError(err instanceof Error ? err : new Error("Failed to update locations"));
     } finally {
       setIsSavingLocations(false);
     }
@@ -547,9 +538,9 @@ export default function InventoryPage() {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
     try {
       await stockControlApiClient.deleteStockItem(id);
-      fetchItems();
+      invalidateInventory();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to delete item"));
+      setActionError(err instanceof Error ? err : new Error("Failed to delete item"));
     }
   };
 
@@ -731,7 +722,7 @@ export default function InventoryPage() {
     setImportFormat(null);
     setImportResult(null);
     setImportError(null);
-    fetchItems();
+    invalidateInventory();
   };
 
   if (isLoading && items.length === 0 && groupedData.length === 0) {

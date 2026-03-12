@@ -71,8 +71,15 @@ export class JobCardsController {
 
   @Get()
   @ApiOperation({ summary: "List job cards with optional status filter" })
-  async list(@Req() req: any, @Query("status") status?: string) {
-    return this.jobCardService.findAll(req.user.companyId, status);
+  async list(
+    @Req() req: any,
+    @Query("status") status?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
+    return this.jobCardService.findAll(req.user.companyId, status, pageNum, limitNum);
   }
 
   @Get("rubber-dimension-suggestions")
@@ -145,6 +152,8 @@ export class JobCardsController {
     const result = await this.jobCardService.update(req.user.companyId, id, dto);
 
     if (dto.status === "active") {
+      const warnings: string[] = [];
+
       try {
         await this.workflowService.initializeWorkflow(req.user.companyId, id, {
           id: req.user.id,
@@ -153,6 +162,7 @@ export class JobCardsController {
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         this.logger.error(`Failed to initialize workflow for job card ${id}: ${message}`);
+        warnings.push(`Workflow initialization failed: ${message}`);
       }
 
       try {
@@ -160,6 +170,7 @@ export class JobCardsController {
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         this.logger.error(`Failed to create requisition for job card ${id}: ${message}`);
+        warnings.push(`Requisition creation failed: ${message}`);
       }
 
       try {
@@ -167,6 +178,11 @@ export class JobCardsController {
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         this.logger.error(`Failed to create CPO calloff records for job card ${id}: ${message}`);
+        warnings.push(`CPO calloff creation failed: ${message}`);
+      }
+
+      if (warnings.length > 0) {
+        return { ...result, warnings };
       }
     }
 

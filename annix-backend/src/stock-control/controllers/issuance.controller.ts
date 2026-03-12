@@ -54,6 +54,8 @@ export class IssuanceController {
     @Query("staffId") staffId?: string,
     @Query("stockItemId") stockItemId?: string,
     @Query("jobCardId") jobCardId?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
   ) {
     const filters: IssuanceFilters = {};
 
@@ -63,7 +65,9 @@ export class IssuanceController {
     if (stockItemId) filters.stockItemId = parseInt(stockItemId, 10);
     if (jobCardId) filters.jobCardId = parseInt(jobCardId, 10);
 
-    return this.issuanceService.findAll(req.user.companyId, filters);
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
+    return this.issuanceService.findAll(req.user.companyId, filters, pageNum, limitNum);
   }
 
   @Get("recent")

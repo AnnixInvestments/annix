@@ -10,6 +10,8 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
@@ -55,6 +57,7 @@ export class JobCardWorkflowService {
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
     private readonly stepConfigService: WorkflowStepConfigService,
+    private readonly auditService: AuditService,
   ) {}
 
   async uploadDocument(
@@ -201,6 +204,14 @@ export class JobCardWorkflowService {
 
     await this.triggerBackgroundSteps(companyId, jobCardId, currentStep, senderInfo);
 
+    this.auditService.log({
+      entityType: "job_card_workflow",
+      entityId: jobCardId,
+      action: AuditAction.APPROVE,
+      oldValues: { workflowStatus: jobCard.workflowStatus, step: currentStep },
+      newValues: { workflowStatus: nextStatus, approvedBy: user.name },
+    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+
     this.logger.log(
       `Job card ${jobCardId} approved at step ${currentStep} by ${user.name}, moved to ${nextStatus}`,
     );
@@ -282,6 +293,14 @@ export class JobCardWorkflowService {
       reason,
     );
 
+    this.auditService.log({
+      entityType: "job_card_workflow",
+      entityId: jobCardId,
+      action: AuditAction.REJECT,
+      oldValues: { workflowStatus: jobCard.workflowStatus, step: currentStep },
+      newValues: { workflowStatus: JobCardWorkflowStatus.DOCUMENT_UPLOADED, rejectedBy: user.name, reason },
+    }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+
     this.logger.log(`Job card ${jobCardId} rejected at step ${currentStep} by ${user.name}`);
 
     return this.jobCardForWorkflow(companyId, jobCardId);
@@ -330,7 +349,7 @@ export class JobCardWorkflowService {
     return withPresignedUrls;
   }
 
-  async pendingApprovalsForUser(user: UserContext): Promise<JobCard[]> {
+  async pendingApprovalsForUser(user: UserContext, page: number = 1, limit: number = 50): Promise<JobCard[]> {
     const statuses = this.statusesForRole(user.role);
 
     if (statuses.length === 0) {
@@ -342,6 +361,8 @@ export class JobCardWorkflowService {
       .where("jc.companyId = :companyId", { companyId: user.companyId })
       .andWhere("jc.workflowStatus IN (:...statuses)", { statuses })
       .orderBy("jc.createdAt", "ASC")
+      .take(limit)
+      .skip((page - 1) * limit)
       .getMany();
   }
 

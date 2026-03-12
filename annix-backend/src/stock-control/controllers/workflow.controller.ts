@@ -115,8 +115,14 @@ export class WorkflowController {
 
   @Get("pending")
   @ApiOperation({ summary: "Pending approvals for current user" })
-  async pendingApprovals(@Req() req: any) {
-    return this.workflowService.pendingApprovalsForUser(req.user);
+  async pendingApprovals(
+    @Req() req: any,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
+    return this.workflowService.pendingApprovalsForUser(req.user, pageNum, limitNum);
   }
 
   @Get("job-cards/:id/can-approve")

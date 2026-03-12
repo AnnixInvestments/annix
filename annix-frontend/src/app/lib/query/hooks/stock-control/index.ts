@@ -1,4 +1,20 @@
 export {
+  useCreateJobCard,
+  useDataBookStatuses,
+  useDeleteInvoice,
+  useDeleteJobCard,
+  useDeliveryNotes,
+  useInventoryCategories,
+  useInventoryGrouped,
+  useInventoryItems,
+  useInventoryLocations,
+  useInvalidateInventory,
+  useInvalidateInvoices,
+  useInvalidateJobCards,
+  useInvoices,
+  useJobCards,
+} from "./useStockControlData";
+export {
   useCpoSummary,
   useDashboardPreferences,
   useDashboardStats,

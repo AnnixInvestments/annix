@@ -9,6 +9,8 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, IsNull, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -40,6 +42,7 @@ export class JobCardService {
     @Inject(forwardRef(() => WorkflowNotificationService))
     private readonly notificationService: WorkflowNotificationService,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   async create(companyId: number, data: Partial<JobCard>): Promise<JobCard> {
@@ -47,7 +50,7 @@ export class JobCardService {
     return this.jobCardRepo.save(jobCard);
   }
 
-  async findAll(companyId: number, status?: string): Promise<JobCard[]> {
+  async findAll(companyId: number, status?: string, page: number = 1, limit: number = 50): Promise<JobCard[]> {
     const where: Record<string, unknown> = { companyId };
     if (status) {
       where.status = status;
@@ -55,6 +58,8 @@ export class JobCardService {
     return this.jobCardRepo.find({
       where,
       order: { createdAt: "DESC" },
+      take: limit,
+      skip: (page - 1) * limit,
     });
   }
 
@@ -201,6 +206,13 @@ export class JobCardService {
           );
       }
 
+      this.auditService.log({
+        entityType: "stock_allocation",
+        entityId: saved.id,
+        action: AuditAction.CREATE,
+        newValues: { stockItemId: data.stockItemId, quantity: data.quantityUsed, jobCardId: data.jobCardId, allocatedBy: data.allocatedBy },
+      }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+
       return saved;
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -339,6 +351,14 @@ export class JobCardService {
             this.logger.error(`Failed to create reorder requisition: ${err.message}`),
           );
       }
+
+      this.auditService.log({
+        entityType: "stock_allocation",
+        entityId: saved.id,
+        action: AuditAction.APPROVE,
+        oldValues: { pendingApproval: true },
+        newValues: { pendingApproval: false, approvedByManagerId: managerId },
+      }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
       this.logger.log(`Over-allocation ${allocationId} approved by manager ${managerId}`);
       return saved;

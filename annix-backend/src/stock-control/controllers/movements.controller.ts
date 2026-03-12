@@ -24,14 +24,16 @@ export class MovementsController {
     @Query("startDate") startDate?: string,
     @Query("endDate") endDate?: string,
     @Query("limit") limit?: string,
+    @Query("page") page?: string,
   ) {
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
     return this.movementService.findAll(req.user.companyId, {
       stockItemId: stockItemId ? Number(stockItemId) : undefined,
       movementType: movementType as any,
       startDate,
       endDate,
-      limit: limit ? Number(limit) : undefined,
-    });
+    }, pageNum, limitNum);
   }
 
   @StockControlRoles("manager", "admin")

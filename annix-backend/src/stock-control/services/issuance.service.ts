@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, In, MoreThanOrEqual, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
@@ -86,6 +88,7 @@ export class IssuanceService {
     @InjectRepository(JobCardDataBook)
     private readonly dataBookRepo: Repository<JobCardDataBook>,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   async parseAndValidateQr(companyId: number, rawQr: string): Promise<ScanResult> {
@@ -366,6 +369,13 @@ export class IssuanceService {
         await this.markDataBookStale(companyId, dto.jobCardId);
       }
 
+      this.auditService.log({
+        entityType: "stock_issuance",
+        entityId: savedIssuance.id,
+        action: AuditAction.CREATE,
+        newValues: { stockItemId: dto.stockItemId, quantity: dto.quantity, jobCardId: dto.jobCardId ?? null, issuedBy: user.name, recipientStaffId: dto.recipientStaffId },
+      }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+
       this.logger.log(
         `Stock issuance created: ${dto.quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
       );
@@ -548,7 +558,7 @@ export class IssuanceService {
     }
   }
 
-  async findAll(companyId: number, filters?: IssuanceFilters): Promise<StockIssuance[]> {
+  async findAll(companyId: number, filters?: IssuanceFilters, page: number = 1, limit: number = 50): Promise<StockIssuance[]> {
     const qb = this.issuanceRepo
       .createQueryBuilder("issuance")
       .leftJoinAndSelect("issuance.stockItem", "stockItem")
@@ -580,7 +590,7 @@ export class IssuanceService {
       qb.andWhere("issuance.jobCardId = :jobCardId", { jobCardId: filters.jobCardId });
     }
 
-    return qb.getMany();
+    return qb.take(limit).skip((page - 1) * limit).getMany();
   }
 
   async findById(companyId: number, id: number): Promise<StockIssuance> {
@@ -663,6 +673,14 @@ export class IssuanceService {
       }
 
       await queryRunner.commitTransaction();
+
+      this.auditService.log({
+        entityType: "stock_issuance",
+        entityId: id,
+        action: AuditAction.DELETE,
+        oldValues: { stockItemId: issuance.stockItemId, quantity: issuance.quantity, jobCardId: issuance.jobCardId },
+        newValues: { undone: true, undoneBy: user.name },
+      }).catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
 
       this.logger.log(`Issuance #${id} undone by ${user.name}`);
 

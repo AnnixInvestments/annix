@@ -219,6 +219,7 @@ export function ChatPanel() {
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
   const [groupName, setGroupName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [chatError, setChatError] = useState<string | null>(null);
 
   const messagingEnabled = profile?.messagingEnabled ?? false;
 
@@ -242,8 +243,8 @@ export function ChatPanel() {
       if (!isOpen || view !== "general") {
         setUnreadCount((prev) => prev + msgs.length);
       }
-    } catch {
-      // Polling retry
+    } catch (e) {
+      console.error("Chat poll failed:", e instanceof Error ? e.message : e);
     }
   }, [lastMessageId, messagingEnabled, isOpen, view]);
 
@@ -266,8 +267,8 @@ export function ChatPanel() {
 
       const lastNew = msgs[msgs.length - 1];
       setConvLastMessageId(lastNew.id);
-    } catch {
-      // Polling retry
+    } catch (e) {
+      console.error("Conversation poll failed:", e instanceof Error ? e.message : e);
     }
   }, [convLastMessageId, messagingEnabled, activeConversation]);
 
@@ -294,8 +295,8 @@ export function ChatPanel() {
       try {
         const convs = await stockControlApiClient.chatConversations();
         setConversations(convs);
-      } catch {
-        // Silent
+      } catch (e) {
+        console.error("Fetch conversations failed:", e instanceof Error ? e.message : e);
       }
     };
 
@@ -311,8 +312,8 @@ export function ChatPanel() {
       try {
         const counts = await stockControlApiClient.chatUnreadCounts();
         setConvUnreadCounts(counts);
-      } catch {
-        // Silent
+      } catch (e) {
+        console.error("Fetch unread counts failed:", e instanceof Error ? e.message : e);
       }
     };
 
@@ -357,8 +358,8 @@ export function ChatPanel() {
             setMessages((prev) => prev.map(updateMsg));
           }
         }
-      } catch {
-        // Silent
+      } catch (e) {
+        setChatError(e instanceof Error ? e.message : "Failed to edit message");
       }
       setEditingId(null);
       setText("");
@@ -380,8 +381,8 @@ export function ChatPanel() {
         }
       }
       setText("");
-    } catch {
-      // Silent
+    } catch (e) {
+      setChatError(e instanceof Error ? e.message : "Failed to send message");
     } finally {
       setSending(false);
     }
@@ -403,8 +404,8 @@ export function ChatPanel() {
           setLastMessageId(newMsg.id);
         }
       }
-    } catch {
-      // Silent
+    } catch (e) {
+      setChatError(e instanceof Error ? e.message : "Failed to upload photo");
     } finally {
       setUploading(false);
     }
@@ -448,8 +449,8 @@ export function ChatPanel() {
     try {
       const members = await stockControlApiClient.chatTeamMembers();
       setTeamMembers(members.filter((m) => m.id !== user?.id));
-    } catch {
-      // Silent
+    } catch (e) {
+      setChatError(e instanceof Error ? e.message : "Failed to load team members");
     }
     setSelectedUserIds([]);
     setGroupName("");
@@ -465,8 +466,8 @@ export function ChatPanel() {
       const conv = await stockControlApiClient.createChatConversation(selectedUserIds, name);
       setConversations((prev) => [conv, ...prev]);
       openConversation(conv);
-    } catch {
-      // Silent
+    } catch (e) {
+      setChatError(e instanceof Error ? e.message : "Failed to create conversation");
     }
   };
 
@@ -566,6 +567,12 @@ export function ChatPanel() {
               )}
             </button>
           </div>
+          {chatError && (
+            <div className="px-3 py-2 bg-red-50 text-red-700 text-xs flex items-center justify-between">
+              <span>{chatError}</span>
+              <button type="button" onClick={() => setChatError(null)} className="ml-2 font-bold">&times;</button>
+            </div>
+          )}
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
             {messages.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-12">

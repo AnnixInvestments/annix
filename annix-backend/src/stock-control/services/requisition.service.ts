@@ -165,11 +165,13 @@ export class RequisitionService {
     return this.findById(companyId, saved.id);
   }
 
-  async findAll(companyId: number): Promise<Requisition[]> {
+  async findAll(companyId: number, page: number = 1, limit: number = 50): Promise<Requisition[]> {
     return this.requisitionRepo.find({
       where: { companyId },
       relations: ["jobCard", "items"],
       order: { createdAt: "DESC" },
+      take: limit,
+      skip: (page - 1) * limit,
     });
   }
 

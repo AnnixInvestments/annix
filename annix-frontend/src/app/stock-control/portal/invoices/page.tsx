@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { DeliveryNote, SupplierInvoice } from "@/app/lib/api/stockControlApi";
+import type { SupplierInvoice } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import {
+  useInvoices,
+  useDeliveryNotes,
+  useDeleteInvoice,
+  useInvalidateInvoices,
+} from "@/app/lib/query/hooks";
 import { formatDateZA } from "@/app/lib/datetime";
 import InvoiceUploadModal from "./InvoiceUploadModal";
 import SageExportModal from "./SageExportModal";
@@ -41,32 +47,18 @@ const statusLabel = (invoice: SupplierInvoice): string => {
 export default function InvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [invoices, setInvoices] = useState<SupplierInvoice[]>([]);
-  const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { data: invoices = [], isLoading, error } = useInvoices();
+  const { data: deliveryNotes = [] } = useDeliveryNotes();
+  const deleteInvoiceMutation = useDeleteInvoice();
+  const invalidateInvoices = useInvalidateInvoices();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SupplierInvoice | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAutoLinking, setIsAutoLinking] = useState(false);
   const [isReExtractingAll, setIsReExtractingAll] = useState(false);
-
-  const fetchInvoices = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.supplierInvoices();
-      setInvoices(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load invoices"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -101,33 +93,19 @@ export default function InvoicesPage() {
         const result = await stockControlApiClient.analyzeDeliveryNotePhoto(file);
         const invoice = await stockControlApiClient.acceptAnalyzedInvoice(file, result.data);
         showToast(`Invoice ${invoice.invoiceNumber || ""} created successfully`, "success");
-        fetchInvoices();
+        invalidateInvoices();
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Failed to analyze document", "error");
       } finally {
         setIsAnalyzing(false);
       }
     },
-    [showToast, fetchInvoices],
+    [showToast, invalidateInvoices],
   );
-
-  const fetchDeliveryNotes = useCallback(async () => {
-    try {
-      const data = await stockControlApiClient.deliveryNotes();
-      setDeliveryNotes(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load delivery notes"));
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchInvoices();
-    fetchDeliveryNotes();
-  }, [fetchInvoices, fetchDeliveryNotes]);
 
   const handleInvoiceCreated = () => {
     setShowUploadModal(false);
-    fetchInvoices();
+    invalidateInvoices();
   };
 
   const handleReExtract = async (invoiceId: number) => {
@@ -135,7 +113,7 @@ export default function InvoicesPage() {
       showToast("Re-extracting invoice...", "info");
       await stockControlApiClient.reExtractInvoice(invoiceId);
       showToast("Extraction triggered successfully", "success");
-      fetchInvoices();
+      invalidateInvoices();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to re-extract", "error");
     }
@@ -154,7 +132,7 @@ export default function InvoicesPage() {
       if (result.failed.length > 0) {
         showToast(`${result.failed.length} invoice(s) failed again`, "error");
       }
-      fetchInvoices();
+      invalidateInvoices();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Bulk re-extract failed", "error");
     } finally {
@@ -168,7 +146,7 @@ export default function InvoicesPage() {
       const result = await stockControlApiClient.autoLinkInvoices();
       if (result.linked > 0) {
         showToast(`Auto-linked ${result.linked} invoice(s) to delivery notes`, "success");
-        fetchInvoices();
+        invalidateInvoices();
       } else {
         showToast("No matching delivery notes found for unlinked invoices", "info");
       }
@@ -181,16 +159,12 @@ export default function InvoicesPage() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    setIsDeleting(true);
     setDeleteError(null);
     try {
-      await stockControlApiClient.deleteInvoice(deleteTarget.id);
+      await deleteInvoiceMutation.mutateAsync(deleteTarget.id);
       setDeleteTarget(null);
-      fetchInvoices();
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Failed to delete invoice");
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -556,7 +530,7 @@ export default function InvoicesPage() {
       {showExportModal && (
         <SageExportModal
           onClose={() => setShowExportModal(false)}
-          onSuccess={() => fetchInvoices()}
+          onSuccess={() => invalidateInvoices()}
         />
       )}
 
@@ -595,17 +569,17 @@ export default function InvoicesPage() {
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteTarget(null)}
-                  disabled={isDeleting}
+                  disabled={deleteInvoiceMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
-                  disabled={isDeleting}
+                  disabled={deleteInvoiceMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
                 >
-                  {isDeleting ? "Deleting..." : "Delete"}
+                  {deleteInvoiceMutation.isPending ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </div>
