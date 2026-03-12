@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
+import { CV_ASSISTANT_VERSION } from "../config/version";
 
 const navigation = [
   { name: "Dashboard", href: "/cv-assistant/portal/dashboard", icon: HomeIcon },
@@ -164,6 +165,9 @@ export default function PortalLayout(props: { children: React.ReactNode }) {
                   </svg>
                 </div>
                 <span className="font-bold text-lg text-gray-900">CV Assistant</span>
+                <span className="ml-1.5 text-gray-400 text-xs font-mono hidden sm:inline">
+                  v{CV_ASSISTANT_VERSION}
+                </span>
               </Link>
               <div className="hidden sm:ml-8 sm:flex sm:space-x-1">
                 {navigation.map((item) => {

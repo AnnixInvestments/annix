@@ -34,6 +34,7 @@ export interface PortalToolbarProps {
   additionalActions?: React.ReactNode;
   statusBadge?: React.ReactNode;
   featureFlags?: Record<string, boolean> | null;
+  version?: string;
 }
 
 // Descriptive tooltips for navigation items
@@ -60,8 +61,16 @@ const NAV_TOOLTIPS: Record<string, string> = {
 const getNavTooltip = (label: string): string => NAV_TOOLTIPS[label] || label;
 
 export default function PortalToolbar(props: PortalToolbarProps) {
-  const { portalType, navItems, user, onLogout, additionalActions, statusBadge, featureFlags } =
-    props;
+  const {
+    portalType,
+    navItems,
+    user,
+    onLogout,
+    additionalActions,
+    statusBadge,
+    featureFlags,
+    version,
+  } = props;
   const pathname = usePathname();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -122,6 +131,9 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                     style={{ color: corpId.colors.accent.orange }}
                   >
                     {config.title}
+                    {version && (
+                      <span className="ml-1.5 text-xs font-mono opacity-50">v{version}</span>
+                    )}
                   </span>
                 )}
               </Link>

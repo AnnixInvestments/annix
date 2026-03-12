@@ -8,6 +8,7 @@ import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { PAGE_PERMISSIONS } from "../config/pagePermissions";
+import { AU_RUBBER_VERSION } from "../config/version";
 
 interface NavItem {
   href: string;
@@ -375,6 +376,9 @@ export function AuHeader(props: AuHeaderProps) {
           </div>
         )}
         <span className="ml-2 text-white text-base font-medium hidden sm:inline">Rubber App</span>
+        <span className="ml-1.5 text-white/50 text-xs font-mono hidden sm:inline">
+          v{AU_RUBBER_VERSION}
+        </span>
       </div>
 
       <nav className="flex items-center flex-1 ml-4">

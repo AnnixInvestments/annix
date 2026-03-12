@@ -87,22 +87,53 @@ fi
 
 echo "Secret scan passed - no secrets detected."
 
-# Version bump check for stock control changes
-VERSION_FILE="annix-frontend/src/app/stock-control/config/version.ts"
-SC_FRONTEND_CHANGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -c '^annix-frontend/src/app/stock-control/' || true)
-SC_BACKEND_CHANGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -c '^annix-backend/src/stock-control/' || true)
-VERSION_CHANGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -c "^${VERSION_FILE}$" || true)
+# Version bump check for app changes
+check_version_bump() {
+    local app_name="$1"
+    local version_file="$2"
+    shift 2
+    local frontend_patterns=("$@")
 
-if [ "$SC_FRONTEND_CHANGED" -gt 0 ] || [ "$SC_BACKEND_CHANGED" -gt 0 ]; then
-    if [ "$VERSION_CHANGED" -eq 0 ]; then
-        # Exclude commits that only touch formatting/style files
-        ONLY_STYLE=$(git diff --cached --name-only --diff-filter=ACMR | grep '^annix-\(frontend\|backend\)/src/stock-control/' | grep -cvE '\.(spec|test)\.ts$' || true)
-        if [ "$ONLY_STYLE" -gt 0 ]; then
+    local files_changed=0
+    for pattern in "${frontend_patterns[@]}"; do
+        local count=$(git diff --cached --name-only --diff-filter=ACMR | grep -c "^${pattern}" || true)
+        files_changed=$((files_changed + count))
+    done
+
+    local version_changed=$(git diff --cached --name-only --diff-filter=ACMR | grep -c "^${version_file}$" || true)
+
+    if [ "$files_changed" -gt 0 ] && [ "$version_changed" -eq 0 ]; then
+        local non_test=$(git diff --cached --name-only --diff-filter=ACMR | grep -E "$(printf '%s|' "${frontend_patterns[@]}" | sed 's/|$//')" | grep -cvE '\.(spec|test)\.ts$' || true)
+        if [ "$non_test" -gt 0 ]; then
             echo ""
-            echo "⚠  WARNING: Stock control files changed but version not bumped."
-            echo "   Remember to update: $VERSION_FILE"
+            echo "  WARNING: ${app_name} files changed but version not bumped."
+            echo "   Remember to update: $version_file"
             echo "   (patch for fixes, minor for features, major for breaking changes)"
             echo ""
         fi
     fi
-fi
+}
+
+check_version_bump "Stock Control" \
+    "annix-frontend/src/app/stock-control/config/version.ts" \
+    "annix-frontend/src/app/stock-control/" "annix-backend/src/stock-control/"
+
+check_version_bump "RFQ" \
+    "annix-frontend/src/app/lib/config/rfq/version.ts" \
+    "annix-frontend/src/app/admin/" "annix-frontend/src/app/customer/" "annix-frontend/src/app/supplier/" "annix-frontend/src/app/lib/config/rfq/" "annix-backend/src/rfq/" "annix-backend/src/boq/"
+
+check_version_bump "AU Rubber" \
+    "annix-frontend/src/app/au-rubber/config/version.ts" \
+    "annix-frontend/src/app/au-rubber/" "annix-backend/src/au-rubber/"
+
+check_version_bump "FieldFlow/Voice" \
+    "annix-frontend/src/app/fieldflow/config/version.ts" \
+    "annix-frontend/src/app/fieldflow/"
+
+check_version_bump "Annix Rep" \
+    "annix-frontend/src/app/fieldflow/config/annix-rep-version.ts" \
+    "annix-frontend/src/app/fieldflow/"
+
+check_version_bump "CV Assistant" \
+    "annix-frontend/src/app/cv-assistant/config/version.ts" \
+    "annix-frontend/src/app/cv-assistant/" "annix-backend/src/cv-assistant/"

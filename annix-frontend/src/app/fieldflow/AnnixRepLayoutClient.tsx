@@ -10,6 +10,7 @@ import {
 } from "@/app/components/pwa";
 import { AnnixRepAuthProvider, useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
 import { LayoutProvider } from "@/app/context/LayoutContext";
+import { ANNIX_REP_VERSION } from "@/app/fieldflow/config/annix-rep-version";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { useOrganization, useRepProfileStatus, useTeamMembers } from "@/app/lib/query/hooks";
 
@@ -79,6 +80,7 @@ function AnnixRepNavigation() {
         window.location.href = "/annix-rep/welcome";
       }}
       featureFlags={flags}
+      version={ANNIX_REP_VERSION}
     />
   );
 }

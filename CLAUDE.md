@@ -170,17 +170,24 @@ const url = await this.storageService.getPresignedUrl(filePath, 3600);
 - **All DDL must be idempotent**: Use `IF NOT EXISTS` / `IF EXISTS` / `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$` so migrations can safely re-run
 - **Test migrations on a fresh database**: Migrations must work when run in strict timestamp order from scratch, not just against an existing schema
 
-## Stock Control Versioning
-- **Version file**: `annix-frontend/src/app/stock-control/config/version.ts` contains `STOCK_CONTROL_VERSION`
-- **Displayed in**: Toolbar header and Settings > App Info
-- **Semantic versioning** (major.minor.patch):
-  - **Patch** (x.x.+1): Every small update, bug fix, tweak, or formatting change
-  - **Minor** (x.+1.0): New features, new pages, significant enhancements — patch resets to 0
-  - **Major** (+1.0.0): Major redesigns, breaking UX changes, architectural overhauls — minor and patch reset to 0
+## App Versioning
+All apps follow the same **semantic versioning** rules (major.minor.patch):
+- **Patch** (x.x.+1): Every small update, bug fix, tweak, or formatting change
+- **Minor** (x.+1.0): New features, new pages, significant enhancements — patch resets to 0
+- **Major** (+1.0.0): Major redesigns, breaking UX changes, architectural overhauls — minor and patch reset to 0
 - **Overflow rule**: When patch reaches 100, minor increments by 1 and patch resets to 0
 - **Reset rule**: Whenever minor increments (for any reason), patch resets to 0
-- **When to bump**: After completing any update or feature work on the stock control app, bump the version in `config/version.ts` before committing. Every commit that changes stock control functionality must include a version bump.
+- **When to bump**: After completing any update or feature work on an app, bump the version before committing. Every commit that changes app functionality must include a version bump.
 - **Include in commit**: Version bumps should be part of the feature commit, not a separate commit
+
+| App | Version File | Constant | Displayed In |
+|-----|-------------|----------|--------------|
+| Stock Control | `annix-frontend/src/app/stock-control/config/version.ts` | `STOCK_CONTROL_VERSION` | Toolbar header, Settings > App Info |
+| RFQ | `annix-frontend/src/app/lib/config/rfq/version.ts` | `RFQ_VERSION` | PortalToolbar (admin/customer/supplier) |
+| AU Rubber | `annix-frontend/src/app/au-rubber/config/version.ts` | `AU_RUBBER_VERSION` | AuHeader |
+| FieldFlow/Voice | `annix-frontend/src/app/fieldflow/config/version.ts` | `FIELDFLOW_VERSION` | PortalToolbar |
+| Annix Rep | `annix-frontend/src/app/fieldflow/config/annix-rep-version.ts` | `ANNIX_REP_VERSION` | PortalToolbar |
+| CV Assistant | `annix-frontend/src/app/cv-assistant/config/version.ts` | `CV_ASSISTANT_VERSION` | Portal layout header |
 
 ## Communication
 - Be concise and direct

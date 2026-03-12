@@ -8,6 +8,7 @@ import RemoteAccessNotificationBanner from "@/app/components/remote-access/Remot
 import { ErrorBoundary } from "@/app/components/ui/ErrorBoundary";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
+import { RFQ_VERSION } from "@/app/lib/config/rfq/version";
 import { NixAssistant } from "@/app/lib/nix";
 
 const navItems = [
@@ -70,6 +71,7 @@ function CustomerNavigation() {
       }
       onLogout={handleLogout}
       featureFlags={flags}
+      version={RFQ_VERSION}
     />
   );
 }
