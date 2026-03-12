@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   forwardRef,
   Inject,
@@ -158,8 +159,18 @@ export class JobCardWorkflowService {
       );
     }
 
+    const updateResult = await this.jobCardRepo.update(
+      { id: jobCardId, companyId, workflowStatus: jobCard.workflowStatus },
+      { workflowStatus: nextStatus },
+    );
+
+    if (updateResult.affected === 0) {
+      throw new ConflictException(
+        "Job card workflow status has changed. Please refresh and try again.",
+      );
+    }
+
     jobCard.workflowStatus = nextStatus;
-    await this.jobCardRepo.save(jobCard);
 
     const senderInfo = { id: user.id, name: user.name };
 
@@ -251,8 +262,18 @@ export class JobCardWorkflowService {
       },
     );
 
+    const updateResult = await this.jobCardRepo.update(
+      { id: jobCardId, companyId, workflowStatus: jobCard.workflowStatus },
+      { workflowStatus: JobCardWorkflowStatus.DOCUMENT_UPLOADED },
+    );
+
+    if (updateResult.affected === 0) {
+      throw new ConflictException(
+        "Job card workflow status has changed. Please refresh and try again.",
+      );
+    }
+
     jobCard.workflowStatus = JobCardWorkflowStatus.DOCUMENT_UPLOADED;
-    await this.jobCardRepo.save(jobCard);
 
     await this.notificationService.notifyRejection(
       companyId,

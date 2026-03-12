@@ -18,6 +18,11 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
+import {
+  ConfirmCpoImportDto,
+  UpdateCalloffStatusDto,
+  UpdateCpoStatusDto,
+} from "../dto/additional.dto";
 import { CalloffStatus } from "../entities/cpo-calloff-record.entity";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
@@ -92,10 +97,10 @@ export class CpoController {
 
   @Post("confirm")
   @ApiOperation({ summary: "Confirm and import mapped rows as CPO" })
-  async confirm(@Body() body: { rows: JobCardImportRow[] }, @Req() req: any) {
+  async confirm(@Body() dto: ConfirmCpoImportDto, @Req() req: any) {
     const result = await this.cpoService.createFromImportRows(
       req.user.companyId,
-      body.rows,
+      dto.rows,
       req.user.name || null,
     );
     return result;
@@ -106,9 +111,9 @@ export class CpoController {
   async updateCalloffStatus(
     @Req() req: any,
     @Param("recordId", ParseIntPipe) recordId: number,
-    @Body() body: { status: CalloffStatus },
+    @Body() dto: UpdateCalloffStatusDto,
   ) {
-    return this.cpoService.updateCalloffStatus(req.user.companyId, recordId, body.status);
+    return this.cpoService.updateCalloffStatus(req.user.companyId, recordId, dto.status as CalloffStatus);
   }
 
   @Get(":id")
@@ -123,9 +128,9 @@ export class CpoController {
   async updateStatus(
     @Req() req: any,
     @Param("id", ParseIntPipe) id: number,
-    @Body() body: { status: CpoStatus },
+    @Body() dto: UpdateCpoStatusDto,
   ) {
-    return this.cpoService.updateStatus(req.user.companyId, id, body.status);
+    return this.cpoService.updateStatus(req.user.companyId, id, dto.status as CpoStatus);
   }
 
   @Get(":id/calloff-records")

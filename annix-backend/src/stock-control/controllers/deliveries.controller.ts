@@ -16,6 +16,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
+import { CreateDeliveryNoteDto } from "../dto/create-delivery-note.dto";
 import { RubberCocExtractionService } from "../../rubber-lining/rubber-coc-extraction.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import {
@@ -50,8 +51,12 @@ export class DeliveriesController {
 
   @Post()
   @ApiOperation({ summary: "Create a delivery note with items" })
-  async create(@Body() body: any, @Req() req: any) {
-    return this.deliveryService.create(req.user.companyId, { ...body, receivedBy: req.user.name });
+  async create(@Body() dto: CreateDeliveryNoteDto, @Req() req: any) {
+    return this.deliveryService.create(req.user.companyId, {
+      ...dto,
+      receivedDate: dto.receivedDate ? new Date(dto.receivedDate) : undefined,
+      receivedBy: req.user.name,
+    });
   }
 
   @StockControlRoles("manager", "admin")

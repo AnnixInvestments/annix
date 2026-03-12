@@ -14,6 +14,8 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { CreateStockItemDto } from "../dto/create-stock-item.dto";
+import { UpdateStockItemDto } from "../dto/update-stock-item.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import {
   PermissionKey,
@@ -89,15 +91,15 @@ export class InventoryController {
   @PermissionKey("inventory.create")
   @Post()
   @ApiOperation({ summary: "Create a stock item" })
-  async create(@Req() req: any, @Body() body: any) {
-    return this.inventoryService.create(req.user.companyId, body);
+  async create(@Req() req: any, @Body() dto: CreateStockItemDto) {
+    return this.inventoryService.create(req.user.companyId, dto);
   }
 
   @StockControlRoles("storeman", "accounts", "manager", "admin")
   @Put(":id")
   @ApiOperation({ summary: "Update a stock item" })
-  async update(@Req() req: any, @Param("id") id: number, @Body() body: any) {
-    return this.inventoryService.update(req.user.companyId, id, body);
+  async update(@Req() req: any, @Param("id") id: number, @Body() dto: UpdateStockItemDto) {
+    return this.inventoryService.update(req.user.companyId, id, dto);
   }
 
   @StockControlRoles("manager", "admin")

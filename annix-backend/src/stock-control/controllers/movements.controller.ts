@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { CreateStockMovementDto } from "../dto/create-stock-movement.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import {
   PermissionKey,
@@ -37,9 +38,9 @@ export class MovementsController {
   @PermissionKey("stock.adjustment")
   @Post("adjustment")
   @ApiOperation({ summary: "Create a manual stock adjustment" })
-  async createAdjustment(@Body() body: any, @Req() req: any) {
+  async createAdjustment(@Body() dto: CreateStockMovementDto, @Req() req: any) {
     return this.movementService.createManualAdjustment(req.user.companyId, {
-      ...body,
+      ...dto,
       createdBy: req.user.name,
     });
   }

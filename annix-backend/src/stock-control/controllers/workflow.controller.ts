@@ -21,6 +21,22 @@ import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import {
+  AddStepConfigDto,
+  ApproveWorkflowStepDto,
+  CompleteBackgroundStepDto,
+  PushSubscribeDto,
+  PushUnsubscribeDto,
+  RejectWorkflowStepDto,
+  ReorderStepConfigsDto,
+  ScanDispatchItemDto,
+  ScanQrDto,
+  ToggleStepBackgroundDto,
+  UpdateNotificationRecipientsDto,
+  UpdateStepAssignmentsDto,
+  UpdateStepLabelDto,
+  UpdateUserLocationsDto,
+} from "../dto/workflow.dto";
 import { BackgroundStepService } from "../services/background-step.service";
 import { DispatchService } from "../services/dispatch.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
@@ -85,16 +101,16 @@ export class WorkflowController {
   async approve(
     @Req() req: any,
     @Param("id") id: number,
-    @Body() body: { signatureDataUrl?: string; comments?: string },
+    @Body() dto: ApproveWorkflowStepDto,
   ) {
-    return this.workflowService.approveStep(req.user.companyId, id, req.user, body);
+    return this.workflowService.approveStep(req.user.companyId, id, req.user, dto);
   }
 
   @Post("job-cards/:id/reject")
   @StockControlRoles("admin", "manager")
   @ApiOperation({ summary: "Reject current workflow step" })
-  async reject(@Req() req: any, @Param("id") id: number, @Body() body: { reason: string }) {
-    return this.workflowService.rejectStep(req.user.companyId, id, req.user, body.reason);
+  async reject(@Req() req: any, @Param("id") id: number, @Body() dto: RejectWorkflowStepDto) {
+    return this.workflowService.rejectStep(req.user.companyId, id, req.user, dto.reason);
   }
 
   @Get("pending")
@@ -163,13 +179,13 @@ export class WorkflowController {
   async updateStepAssignments(
     @Req() req: any,
     @Param("step") step: string,
-    @Body() body: { userIds: number[]; primaryUserId?: number },
+    @Body() dto: UpdateStepAssignmentsDto,
   ) {
     await this.assignmentService.updateAssignments(
       req.user.companyId,
       step as WorkflowStep,
-      body.userIds,
-      body.primaryUserId,
+      dto.userIds,
+      dto.primaryUserId,
     );
     return { success: true };
   }
@@ -187,12 +203,12 @@ export class WorkflowController {
   async updateNotificationRecipients(
     @Req() req: any,
     @Param("step") step: string,
-    @Body() body: { emails: string[] },
+    @Body() dto: UpdateNotificationRecipientsDto,
   ) {
     await this.assignmentService.updateNotificationRecipients(
       req.user.companyId,
       step as WorkflowStep,
-      body.emails,
+      dto.emails,
     );
     return { success: true };
   }
@@ -210,9 +226,9 @@ export class WorkflowController {
   async updateUserLocations(
     @Req() req: any,
     @Param("userId") userId: number,
-    @Body() body: { locationIds: number[] },
+    @Body() dto: UpdateUserLocationsDto,
   ) {
-    await this.assignmentService.updateUserLocations(req.user.companyId, userId, body.locationIds);
+    await this.assignmentService.updateUserLocations(req.user.companyId, userId, dto.locationIds);
     return { success: true };
   }
 
@@ -241,15 +257,15 @@ export class WorkflowController {
   async scanItem(
     @Req() req: any,
     @Param("id") id: number,
-    @Body() body: { stockItemId: number; quantity: number; notes?: string },
+    @Body() dto: ScanDispatchItemDto,
   ) {
     return this.dispatchService.scanItem(
       req.user.companyId,
       id,
-      body.stockItemId,
-      body.quantity,
+      dto.stockItemId,
+      dto.quantity,
       req.user,
-      body.notes,
+      dto.notes,
     );
   }
 
@@ -263,8 +279,8 @@ export class WorkflowController {
   @Post("dispatch/scan-qr")
   @StockControlRoles("storeman", "admin")
   @ApiOperation({ summary: "Identify item by QR code" })
-  async scanQr(@Req() req: any, @Body() body: { qrToken: string }) {
-    return this.dispatchService.scanByQrToken(req.user.companyId, body.qrToken);
+  async scanQr(@Req() req: any, @Body() dto: ScanQrDto) {
+    return this.dispatchService.scanByQrToken(req.user.companyId, dto.qrToken);
   }
 
   @Get("job-cards/:id/print")
@@ -296,16 +312,16 @@ export class WorkflowController {
   @ApiOperation({ summary: "Subscribe to push notifications" })
   async pushSubscribe(
     @Req() req: any,
-    @Body() body: { endpoint: string; keys: { p256dh: string; auth: string } },
+    @Body() dto: PushSubscribeDto,
   ) {
-    await this.webPushService.subscribe(req.user.id, req.user.companyId, body);
+    await this.webPushService.subscribe(req.user.id, req.user.companyId, dto);
     return { success: true };
   }
 
   @Post("push/unsubscribe")
   @ApiOperation({ summary: "Unsubscribe from push notifications" })
-  async pushUnsubscribe(@Req() req: any, @Body() body: { endpoint: string }) {
-    await this.webPushService.unsubscribe(req.user.id, body.endpoint);
+  async pushUnsubscribe(@Req() req: any, @Body() dto: PushUnsubscribeDto) {
+    await this.webPushService.unsubscribe(req.user.id, dto.endpoint);
     return { success: true };
   }
 
@@ -322,9 +338,9 @@ export class WorkflowController {
   async updateStepLabel(
     @Req() req: any,
     @Param("key") key: string,
-    @Body() body: { label: string },
+    @Body() dto: UpdateStepLabelDto,
   ) {
-    await this.stepConfigService.updateLabel(req.user.companyId, key, body.label);
+    await this.stepConfigService.updateLabel(req.user.companyId, key, dto.label);
     return { success: true };
   }
 
@@ -333,15 +349,9 @@ export class WorkflowController {
   @ApiOperation({ summary: "Add a custom workflow step" })
   async addStepConfig(
     @Req() req: any,
-    @Body()
-    body: {
-      label: string;
-      afterStepKey: string;
-      isBackground?: boolean;
-      triggerAfterStep?: string;
-    },
+    @Body() dto: AddStepConfigDto,
   ) {
-    return this.stepConfigService.addStep(req.user.companyId, body);
+    return this.stepConfigService.addStep(req.user.companyId, dto);
   }
 
   @Get("step-configs/background")
@@ -357,13 +367,13 @@ export class WorkflowController {
   async toggleStepBackground(
     @Req() req: any,
     @Param("key") key: string,
-    @Body() body: { isBackground: boolean; triggerAfterStep?: string },
+    @Body() dto: ToggleStepBackgroundDto,
   ) {
     return this.stepConfigService.toggleBackground(
       req.user.companyId,
       key,
-      body.isBackground,
-      body.triggerAfterStep,
+      dto.isBackground,
+      dto.triggerAfterStep,
     );
   }
 
@@ -378,8 +388,8 @@ export class WorkflowController {
   @Put("step-configs/reorder")
   @StockControlRoles("admin")
   @ApiOperation({ summary: "Bulk reorder workflow steps" })
-  async reorderStepConfigs(@Req() req: any, @Body() body: { orderedKeys: string[] }) {
-    await this.stepConfigService.bulkReorder(req.user.companyId, body.orderedKeys);
+  async reorderStepConfigs(@Req() req: any, @Body() dto: ReorderStepConfigsDto) {
+    await this.stepConfigService.bulkReorder(req.user.companyId, dto.orderedKeys);
     return { success: true };
   }
 
@@ -395,14 +405,14 @@ export class WorkflowController {
     @Req() req: any,
     @Param("id") id: number,
     @Param("stepKey") stepKey: string,
-    @Body() body: { notes?: string },
+    @Body() dto: CompleteBackgroundStepDto,
   ) {
     return this.backgroundStepService.completeStep(
       req.user.companyId,
       id,
       stepKey,
       req.user,
-      body.notes,
+      dto.notes,
     );
   }
 

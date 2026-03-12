@@ -18,7 +18,8 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { SageExportFilterDto } from "../../sage-export/dto/sage-export.dto";
 import { SageExportService } from "../../sage-export/sage-export.service";
-import { LinkInvoiceToDeliveryNoteDto } from "../dto/create-invoice.dto";
+import { LinkInvoiceToDeliveryNoteDto, SubmitClarificationDto } from "../dto/create-invoice.dto";
+import { UpdateInvoiceItemDto } from "../dto/additional.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import {
   PermissionKey,
@@ -157,25 +158,13 @@ export class InvoicesController {
     @Req() req: any,
     @Param("id") id: number,
     @Param("clarificationId") clarificationId: number,
-    @Body()
-    body: {
-      selectedStockItemId?: number;
-      createNewItem?: {
-        sku: string;
-        name: string;
-        description?: string;
-        category?: string;
-        unitOfMeasure?: string;
-      };
-      skipPriceUpdate?: boolean;
-      confirmed?: boolean;
-    },
+    @Body() dto: SubmitClarificationDto,
   ) {
     return this.invoiceService.submitClarification(
       req.user.companyId,
       id,
       clarificationId,
-      body,
+      dto,
       req.user.id,
     );
   }
@@ -216,10 +205,10 @@ export class InvoicesController {
     @Req() req: any,
     @Param("id") id: number,
     @Param("itemId") itemId: number,
-    @Body() body: { quantity?: number; unitPrice?: number; unitType?: string },
+    @Body() dto: UpdateInvoiceItemDto,
   ) {
     await this.invoiceService.findById(req.user.companyId, id);
-    return this.extractionService.updateInvoiceItem(id, itemId, body, req.user.id);
+    return this.extractionService.updateInvoiceItem(id, itemId, dto, req.user.id);
   }
 
   @StockControlRoles("manager", "admin")

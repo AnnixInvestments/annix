@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { UpdateRequisitionItemDto } from "../dto/additional.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { RequisitionService } from "../services/requisition.service";
@@ -27,12 +28,8 @@ export class RequisitionsController {
   async updateItem(
     @Req() req: any,
     @Param("itemId") itemId: number,
-    @Body() body: {
-      packSizeLitres?: number;
-      reorderQty?: number | null;
-      reqNumber?: string | null;
-    },
+    @Body() dto: UpdateRequisitionItemDto,
   ) {
-    return this.requisitionService.updateItem(req.user.companyId, itemId, body);
+    return this.requisitionService.updateItem(req.user.companyId, itemId, dto);
   }
 }

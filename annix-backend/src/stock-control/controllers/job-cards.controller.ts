@@ -29,6 +29,16 @@ import {
   StockControlRoles,
 } from "../guards/stock-control-role.guard";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
+import { CreateAllocationDto } from "../dto/create-allocation.dto";
+import { CreateJobCardDto } from "../dto/create-job-card.dto";
+import { UpdateJobCardDto } from "../dto/update-job-card.dto";
+import {
+  MarkOffcutAsWastageDto,
+  UpdateRubberPlanDto,
+  UploadAmendmentDto,
+  UploadAttachmentDto,
+} from "../dto/additional.dto";
+import { RejectAllocationDto } from "../dto/workflow.dto";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
@@ -110,16 +120,16 @@ export class JobCardsController {
   @PermissionKey("job-cards.create")
   @Post()
   @ApiOperation({ summary: "Create a job card" })
-  async create(@Body() body: any, @Req() req: any) {
-    return this.jobCardService.create(req.user.companyId, { ...body, createdBy: req.user.name });
+  async create(@Body() dto: CreateJobCardDto, @Req() req: any) {
+    return this.jobCardService.create(req.user.companyId, dto);
   }
 
   @StockControlRoles("manager", "admin")
   @PermissionKey("job-cards.update")
   @Put(":id")
   @ApiOperation({ summary: "Update a job card" })
-  async update(@Req() req: any, @Param("id") id: number, @Body() body: any) {
-    if (body.status === "active") {
+  async update(@Req() req: any, @Param("id") id: number, @Body() dto: UpdateJobCardDto) {
+    if (dto.status === "active") {
       const unverified = await this.coatingAnalysisService.unverifiedProducts(
         req.user.companyId,
         id,
@@ -132,9 +142,9 @@ export class JobCardsController {
       }
     }
 
-    const result = await this.jobCardService.update(req.user.companyId, id, body);
+    const result = await this.jobCardService.update(req.user.companyId, id, dto);
 
-    if (body.status === "active") {
+    if (dto.status === "active") {
       try {
         await this.workflowService.initializeWorkflow(req.user.companyId, id, {
           id: req.user.id,
@@ -290,12 +300,12 @@ export class JobCardsController {
   @StockControlRoles("manager", "admin")
   @Put(":id/rubber-plan")
   @ApiOperation({ summary: "Accept or override the rubber cutting plan" })
-  async updateRubberPlan(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+  async updateRubberPlan(@Req() req: any, @Param("id") id: number, @Body() dto: UpdateRubberPlanDto) {
     const jobCard = await this.jobCardService.findById(req.user.companyId, id);
     jobCard.rubberPlanOverride = {
-      status: body.status,
-      selectedPlyCombination: body.selectedPlyCombination || null,
-      manualRolls: body.manualRolls || null,
+      status: dto.status,
+      selectedPlyCombination: dto.selectedPlyCombination || null,
+      manualRolls: dto.manualRolls || null,
       reviewedBy: req.user.name,
       reviewedAt: new Date().toISOString(),
     };
@@ -303,7 +313,7 @@ export class JobCardsController {
       rubberPlanOverride: jobCard.rubberPlanOverride,
     });
 
-    const overrides: any[] = body.dimensionOverrides || [];
+    const overrides: any[] = dto.dimensionOverrides || [];
     if (overrides.length > 0) {
       await this.upsertDimensionOverrides(req.user.companyId, overrides);
     }
@@ -317,24 +327,17 @@ export class JobCardsController {
   async markOffcutAsWastage(
     @Req() req: any,
     @Param("id") id: number,
-    @Body()
-    body: {
-      widthMm: number;
-      lengthMm: number;
-      thicknessMm: number;
-      color: string | null;
-      specificGravity: number;
-    },
+    @Body() dto: MarkOffcutAsWastageDto,
   ) {
     const companyId = req.user.companyId;
 
-    const thicknessM = body.thicknessMm / 1000;
-    const widthM = body.widthMm / 1000;
-    const lengthM = body.lengthMm / 1000;
+    const thicknessM = dto.thicknessMm / 1000;
+    const widthM = dto.widthMm / 1000;
+    const lengthM = dto.lengthMm / 1000;
     const volumeM3 = thicknessM * widthM * lengthM;
-    const weightKg = volumeM3 * (body.specificGravity || 1) * 1000;
+    const weightKg = volumeM3 * (dto.specificGravity || 1) * 1000;
 
-    const colour = (body.color || "Unknown").trim();
+    const colour = (dto.color || "Unknown").trim();
     const wastageName = `Rubber Wastage - ${colour}`;
     const wastageSku = `RW-${colour.toUpperCase().replace(/\s+/g, "-")}`;
 
@@ -370,7 +373,7 @@ export class JobCardsController {
       quantity: wholeKg,
       referenceType: ReferenceType.MANUAL,
       referenceId: id,
-      notes: `Rubber offcut wastage from JC #${id}: ${body.widthMm}mm x ${body.lengthMm}mm x ${body.thicknessMm}mm (SG ${body.specificGravity}) = ${roundedKg} kg`,
+      notes: `Rubber offcut wastage from JC #${id}: ${dto.widthMm}mm x ${dto.lengthMm}mm x ${dto.thicknessMm}mm (SG ${dto.specificGravity}) = ${roundedKg} kg`,
       createdBy: req.user.name,
     });
     await this.stockMovementRepo.save(movement);
@@ -436,9 +439,9 @@ export class JobCardsController {
 
   @Post(":id/allocate")
   @ApiOperation({ summary: "Allocate stock to a job card" })
-  async allocateStock(@Param("id") id: number, @Body() body: any, @Req() req: any) {
+  async allocateStock(@Param("id") id: number, @Body() dto: CreateAllocationDto, @Req() req: any) {
     return this.jobCardService.allocateStock(req.user.companyId, {
-      ...body,
+      ...dto,
       jobCardId: id,
       allocatedBy: req.user.name,
     });
@@ -473,9 +476,9 @@ export class JobCardsController {
   async rejectOverAllocation(
     @Req() req: any,
     @Param("allocationId") allocationId: number,
-    @Body() body: { reason: string },
+    @Body() dto: RejectAllocationDto,
   ) {
-    return this.jobCardService.rejectOverAllocation(req.user.companyId, allocationId, body.reason);
+    return this.jobCardService.rejectOverAllocation(req.user.companyId, allocationId, dto.reason);
   }
 
   @Post(":id/allocations/:allocationId/photo")
@@ -498,13 +501,13 @@ export class JobCardsController {
     @Req() req: any,
     @Param("id") id: number,
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { notes?: string },
+    @Body() dto: UploadAmendmentDto,
   ) {
     return this.versionService.createAmendment(
       req.user.companyId,
       id,
       file,
-      body.notes ?? null,
+      dto.notes ?? null,
       req.user.name,
     );
   }
@@ -540,14 +543,14 @@ export class JobCardsController {
     @Req() req: any,
     @Param("id") id: number,
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { notes?: string },
+    @Body() dto: UploadAttachmentDto,
   ) {
     return this.drawingExtractionService.uploadAttachment(
       req.user.companyId,
       id,
       file,
       req.user.name,
-      body.notes ?? null,
+      dto.notes ?? null,
     );
   }
 

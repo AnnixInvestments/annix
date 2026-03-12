@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
+import { DataSource, IsNull, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
@@ -39,6 +39,7 @@ export class JobCardService {
     private readonly requisitionService: RequisitionService,
     @Inject(forwardRef(() => WorkflowNotificationService))
     private readonly notificationService: WorkflowNotificationService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(companyId: number, data: Partial<JobCard>): Promise<JobCard> {
@@ -99,33 +100,72 @@ export class JobCardService {
       staffMemberId?: number;
     },
   ): Promise<StockAllocation> {
-    const stockItem = await this.stockItemRepo.findOne({
-      where: { id: data.stockItemId, companyId },
-    });
-    if (!stockItem) {
-      throw new NotFoundException("Stock item not found");
-    }
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const jobCard = await this.jobCardRepo.findOne({ where: { id: data.jobCardId, companyId } });
-    if (!jobCard) {
-      throw new NotFoundException("Job card not found");
-    }
+    try {
+      const stockItem = await queryRunner.manager.findOne(StockItem, {
+        where: { id: data.stockItemId, companyId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!stockItem) {
+        throw new NotFoundException("Stock item not found");
+      }
 
-    if (stockItem.quantity < data.quantityUsed) {
-      throw new BadRequestException(
-        `Insufficient stock. Available: ${stockItem.quantity}, Requested: ${data.quantityUsed}`,
+      const jobCard = await queryRunner.manager.findOne(JobCard, {
+        where: { id: data.jobCardId, companyId },
+      });
+      if (!jobCard) {
+        throw new NotFoundException("Job card not found");
+      }
+
+      if (stockItem.quantity < data.quantityUsed) {
+        throw new BadRequestException(
+          `Insufficient stock. Available: ${stockItem.quantity}, Requested: ${data.quantityUsed}`,
+        );
+      }
+
+      const overAllocationCheck = await this.checkOverAllocation(
+        companyId,
+        data.jobCardId,
+        stockItem,
+        data.quantityUsed,
       );
-    }
 
-    const overAllocationCheck = await this.checkOverAllocation(
-      companyId,
-      data.jobCardId,
-      stockItem,
-      data.quantityUsed,
-    );
+      if (overAllocationCheck.requiresApproval) {
+        const allocation = queryRunner.manager.create(StockAllocation, {
+          stockItem,
+          jobCard,
+          quantityUsed: data.quantityUsed,
+          photoUrl: data.photoUrl || null,
+          notes: data.notes || null,
+          allocatedBy: data.allocatedBy || null,
+          staffMemberId: data.staffMemberId || null,
+          companyId,
+          pendingApproval: true,
+          allowedLitres: overAllocationCheck.allowedLitres,
+        });
+        const saved = await queryRunner.manager.save(StockAllocation, allocation);
+        await queryRunner.commitTransaction();
 
-    if (overAllocationCheck.requiresApproval) {
-      const allocation = this.allocationRepo.create({
+        await this.notificationService.notifyOverAllocationApproval(
+          companyId,
+          data.jobCardId,
+          saved.id,
+          stockItem.name,
+          data.quantityUsed,
+          overAllocationCheck.allowedLitres ?? 0,
+          overAllocationCheck.alreadyAllocated,
+        );
+
+        return saved;
+      }
+
+      stockItem.quantity = stockItem.quantity - data.quantityUsed;
+      await queryRunner.manager.save(StockItem, stockItem);
+
+      const allocation = queryRunner.manager.create(StockAllocation, {
         stockItem,
         jobCard,
         quantityUsed: data.quantityUsed,
@@ -134,60 +174,40 @@ export class JobCardService {
         allocatedBy: data.allocatedBy || null,
         staffMemberId: data.staffMemberId || null,
         companyId,
-        pendingApproval: true,
+        pendingApproval: false,
         allowedLitres: overAllocationCheck.allowedLitres,
       });
-      const saved = await this.allocationRepo.save(allocation);
+      const saved = await queryRunner.manager.save(StockAllocation, allocation);
 
-      await this.notificationService.notifyOverAllocationApproval(
+      const movement = queryRunner.manager.create(StockMovement, {
+        stockItem,
+        movementType: MovementType.OUT,
+        quantity: data.quantityUsed,
+        referenceType: ReferenceType.ALLOCATION,
+        referenceId: saved.id,
+        notes: `Allocated to job ${jobCard.jobNumber}`,
+        createdBy: data.allocatedBy || null,
         companyId,
-        data.jobCardId,
-        saved.id,
-        stockItem.name,
-        data.quantityUsed,
-        overAllocationCheck.allowedLitres ?? 0,
-        overAllocationCheck.alreadyAllocated,
-      );
+      });
+      await queryRunner.manager.save(StockMovement, movement);
+
+      await queryRunner.commitTransaction();
+
+      if (stockItem.minStockLevel > 0 && stockItem.quantity < stockItem.minStockLevel) {
+        this.requisitionService
+          .createReorderRequisition(companyId, stockItem.id)
+          .catch((err) =>
+            this.logger.error(`Failed to create reorder requisition: ${err.message}`),
+          );
+      }
 
       return saved;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
     }
-
-    stockItem.quantity = stockItem.quantity - data.quantityUsed;
-    await this.stockItemRepo.save(stockItem);
-
-    const allocation = this.allocationRepo.create({
-      stockItem,
-      jobCard,
-      quantityUsed: data.quantityUsed,
-      photoUrl: data.photoUrl || null,
-      notes: data.notes || null,
-      allocatedBy: data.allocatedBy || null,
-      staffMemberId: data.staffMemberId || null,
-      companyId,
-      pendingApproval: false,
-      allowedLitres: overAllocationCheck.allowedLitres,
-    });
-    const saved = await this.allocationRepo.save(allocation);
-
-    const movement = this.movementRepo.create({
-      stockItem,
-      movementType: MovementType.OUT,
-      quantity: data.quantityUsed,
-      referenceType: ReferenceType.ALLOCATION,
-      referenceId: saved.id,
-      notes: `Allocated to job ${jobCard.jobNumber}`,
-      createdBy: data.allocatedBy || null,
-      companyId,
-    });
-    await this.movementRepo.save(movement);
-
-    if (stockItem.minStockLevel > 0 && stockItem.quantity < stockItem.minStockLevel) {
-      this.requisitionService
-        .createReorderRequisition(companyId, stockItem.id)
-        .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`));
-    }
-
-    return saved;
   }
 
   private async checkOverAllocation(
@@ -261,50 +281,73 @@ export class JobCardService {
     allocationId: number,
     managerId: number,
   ): Promise<StockAllocation> {
-    const allocation = await this.allocationRepo.findOne({
-      where: { id: allocationId, companyId, pendingApproval: true },
-      relations: ["stockItem", "jobCard"],
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (!allocation) {
-      throw new NotFoundException("Pending allocation not found");
+    try {
+      const allocation = await queryRunner.manager.findOne(StockAllocation, {
+        where: { id: allocationId, companyId, pendingApproval: true },
+        relations: ["stockItem", "jobCard"],
+      });
+
+      if (!allocation) {
+        throw new NotFoundException("Pending allocation not found");
+      }
+
+      const stockItem = await queryRunner.manager.findOne(StockItem, {
+        where: { id: allocation.stockItem.id, companyId },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      if (!stockItem) {
+        throw new NotFoundException("Stock item not found");
+      }
+
+      if (stockItem.quantity < allocation.quantityUsed) {
+        throw new BadRequestException(
+          `Insufficient stock. Available: ${stockItem.quantity}, Requested: ${allocation.quantityUsed}`,
+        );
+      }
+
+      stockItem.quantity = stockItem.quantity - allocation.quantityUsed;
+      await queryRunner.manager.save(StockItem, stockItem);
+
+      allocation.pendingApproval = false;
+      allocation.approvedByManagerId = managerId;
+      allocation.approvedAt = now().toJSDate();
+      const saved = await queryRunner.manager.save(StockAllocation, allocation);
+
+      const movement = queryRunner.manager.create(StockMovement, {
+        stockItem,
+        movementType: MovementType.OUT,
+        quantity: allocation.quantityUsed,
+        referenceType: ReferenceType.ALLOCATION,
+        referenceId: saved.id,
+        notes: `Allocated to job ${allocation.jobCard.jobNumber} (manager approved over-allocation)`,
+        createdBy: allocation.allocatedBy || null,
+        companyId,
+      });
+      await queryRunner.manager.save(StockMovement, movement);
+
+      await queryRunner.commitTransaction();
+
+      if (stockItem.minStockLevel > 0 && stockItem.quantity < stockItem.minStockLevel) {
+        this.requisitionService
+          .createReorderRequisition(companyId, stockItem.id)
+          .catch((err) =>
+            this.logger.error(`Failed to create reorder requisition: ${err.message}`),
+          );
+      }
+
+      this.logger.log(`Over-allocation ${allocationId} approved by manager ${managerId}`);
+      return saved;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
     }
-
-    const stockItem = allocation.stockItem;
-    if (stockItem.quantity < allocation.quantityUsed) {
-      throw new BadRequestException(
-        `Insufficient stock. Available: ${stockItem.quantity}, Requested: ${allocation.quantityUsed}`,
-      );
-    }
-
-    stockItem.quantity = stockItem.quantity - allocation.quantityUsed;
-    await this.stockItemRepo.save(stockItem);
-
-    allocation.pendingApproval = false;
-    allocation.approvedByManagerId = managerId;
-    allocation.approvedAt = now().toJSDate();
-    const saved = await this.allocationRepo.save(allocation);
-
-    const movement = this.movementRepo.create({
-      stockItem,
-      movementType: MovementType.OUT,
-      quantity: allocation.quantityUsed,
-      referenceType: ReferenceType.ALLOCATION,
-      referenceId: saved.id,
-      notes: `Allocated to job ${allocation.jobCard.jobNumber} (manager approved over-allocation)`,
-      createdBy: allocation.allocatedBy || null,
-      companyId,
-    });
-    await this.movementRepo.save(movement);
-
-    if (stockItem.minStockLevel > 0 && stockItem.quantity < stockItem.minStockLevel) {
-      this.requisitionService
-        .createReorderRequisition(companyId, stockItem.id)
-        .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`));
-    }
-
-    this.logger.log(`Over-allocation ${allocationId} approved by manager ${managerId}`);
-    return saved;
   }
 
   async rejectOverAllocation(

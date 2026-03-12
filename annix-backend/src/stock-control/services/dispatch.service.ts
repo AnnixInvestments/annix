@@ -1,6 +1,12 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { DataSource, Repository } from "typeorm";
 import { DispatchScan } from "../entities/dispatch-scan.entity";
 import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
@@ -43,6 +49,7 @@ export class DispatchService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockMovement)
     private readonly movementRepo: Repository<StockMovement>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async startDispatchSession(
@@ -194,18 +201,23 @@ export class DispatchService {
       throw new BadRequestException("Cannot complete dispatch. Not all items have been scanned.");
     }
 
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const result = await this.jobCardRepo.update(
+      { id: jobCardId, companyId, workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH },
+      { workflowStatus: JobCardWorkflowStatus.DISPATCHED },
+    );
 
+    if (result.affected === 0) {
+      throw new ConflictException(
+        "Job card status has changed. Please refresh and try again.",
+      );
+    }
+
+    this.logger.log(`Job card ${jobCardId} dispatch completed by ${user.name}`);
+
+    const jobCard = await this.jobCardRepo.findOne({ where: { id: jobCardId, companyId } });
     if (!jobCard) {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
     }
-
-    jobCard.workflowStatus = JobCardWorkflowStatus.DISPATCHED;
-    await this.jobCardRepo.save(jobCard);
-
-    this.logger.log(`Job card ${jobCardId} dispatch completed by ${user.name}`);
 
     return jobCard;
   }
