@@ -27,6 +27,7 @@ export interface SuggestedDeliveryNote {
 export interface PriceChangeItem {
   id: number;
   stockItemName: string;
+  quantity: number;
   oldPrice: number;
   newPrice: number;
   changePercent: number;
@@ -251,15 +252,17 @@ export class InvoiceService {
     const invoice = await this.findById(companyId, invoiceId);
 
     const items: PriceChangeItem[] = invoice.items
-      .filter((item) => item.stockItemId && item.stockItem)
+      .filter((item) => item.stockItemId && item.stockItem && item.quantity > 0)
       .map((item) => {
         const oldPrice = item.previousPrice || Number(item.stockItem?.costPerUnit) || 0;
         const newPrice = Number(item.unitPrice) || 0;
+        const qty = Number(item.quantity) || 0;
         const changePercent = oldPrice > 0 ? ((newPrice - oldPrice) / oldPrice) * 100 : 0;
 
         return {
           id: item.id,
           stockItemName: item.stockItem?.name || item.extractedDescription || "",
+          quantity: qty,
           oldPrice,
           newPrice,
           changePercent,

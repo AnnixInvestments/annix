@@ -57,6 +57,9 @@ export class SupplierInvoiceItem {
   @Column({ name: "unit_price", type: "numeric", precision: 12, scale: 2, nullable: true })
   unitPrice: number | null;
 
+  @Column({ name: "discount_percent", type: "numeric", precision: 5, scale: 2, nullable: true, default: 0 })
+  discountPercent: number | null;
+
   @Column({
     name: "match_status",
     type: "varchar",

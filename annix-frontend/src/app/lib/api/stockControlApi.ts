@@ -1709,6 +1709,7 @@ export interface SupplierInvoiceItem {
   extractedSku: string | null;
   quantity: number;
   unitPrice: number | null;
+  discountPercent: number | null;
   matchStatus:
     | "matched"
     | "unmatched"
@@ -1764,6 +1765,7 @@ export interface PriceChangeSummary {
     id: number;
     description: string;
     stockItemName: string;
+    quantity: number;
     oldPrice: number;
     newPrice: number;
     changePercent: number;
@@ -3463,6 +3465,20 @@ class StockControlApiClient {
       method: "PUT",
       body: JSON.stringify({ orderedKeys }),
     });
+  }
+
+  async toggleWorkflowStepBackground(
+    key: string,
+    isBackground: boolean,
+    triggerAfterStep?: string,
+  ): Promise<WorkflowStepConfig> {
+    return this.request(
+      `/stock-control/workflow/step-configs/${encodeURIComponent(key)}/toggle-background`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ isBackground, triggerAfterStep }),
+      },
+    );
   }
 
   async backgroundStepConfigs(): Promise<WorkflowStepConfig[]> {

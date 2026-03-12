@@ -41,6 +41,7 @@ export interface ExtractedLineItem {
   sku?: string;
   quantity: number;
   unitPrice: number;
+  discountPercent?: number;
   isPaintPartA?: boolean;
   isPaintPartB?: boolean;
 }

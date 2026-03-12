@@ -401,6 +401,11 @@ export default function InvoiceDetailPage() {
                         {item.unitPrice
                           ? `R${Number(item.unitPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
                           : "-"}
+                        {Number(item.discountPercent) > 0 && (
+                          <div className="text-xs text-green-600 font-medium">
+                            {item.discountPercent}% disc.
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {item.stockItem ? (

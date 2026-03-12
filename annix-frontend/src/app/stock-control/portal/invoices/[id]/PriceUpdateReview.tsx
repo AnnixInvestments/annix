@@ -22,20 +22,28 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 text-center">
-        <div className="bg-gray-50 rounded-lg p-3">
-          <p className="text-xs text-gray-500">Previous Total</p>
-          <p className="text-lg font-semibold text-gray-900">
-            R{totalOldValue.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+      {items.length === 1 ? (
+        <div className="grid grid-cols-2 gap-3 text-center">
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500">Previous Unit Price</p>
+            <p className="text-lg font-semibold text-gray-900">
+              R{items[0].oldPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-xs text-gray-500">New Unit Price</p>
+            <p className="text-lg font-semibold text-gray-900">
+              R{items[0].newPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center bg-gray-50 rounded-lg p-3">
+          <p className="text-xs text-gray-500">
+            {items.length} items with price updates
           </p>
         </div>
-        <div className="bg-gray-50 rounded-lg p-3">
-          <p className="text-xs text-gray-500">New Total</p>
-          <p className="text-lg font-semibold text-gray-900">
-            R{totalNewValue.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-      </div>
+      )}
 
       <div className="text-center">
         <span
@@ -87,7 +95,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
             {items.map((item) => (
               <tr key={item.id} className={item.needsApproval ? "bg-yellow-50" : ""}>
                 <td
-                  className="px-2 py-2 text-gray-900 truncate max-w-[120px]"
+                  className="px-2 py-2 text-gray-900 truncate max-w-[140px]"
                   title={item.stockItemName}
                 >
                   {item.stockItemName}

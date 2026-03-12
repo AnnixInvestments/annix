@@ -42,11 +42,20 @@ Return JSON only:
       "sku": "PEM-001",
       "quantity": 5,
       "unitPrice": 2500.00,
+      "discountPercent": 0,
       "isPaintPartA": false,
       "isPaintPartB": false
     }
   ]
 }
+
+DISCOUNT HANDLING (critical):
+- Look for discount columns: "Disc %", "Disc. %", "Discount", "Less", or similar.
+- If a line item has a discount, set discountPercent to the percentage value (e.g. 20 for 20%).
+- unitPrice MUST be the EFFECTIVE price AFTER discount, not the list price before discount.
+- To calculate: if list price is 2775.00 with 20% discount, unitPrice = 2775.00 * (1 - 20/100) = 2220.00.
+- Alternatively, if the invoice shows a "Total (Excl)" or line total column, divide that by the quantity supplied to derive the effective unitPrice.
+- If no discount is present, set discountPercent to 0 and use the listed unit price as-is.
 
 For deliveryNoteNumber: Look for "Delivery Note", "DN", "D/N", "Delivery No", "GRN", "Goods Received Note", or similar references on the invoice. This may appear in a reference field, header, or line item area. If not found, omit the field.
 
@@ -339,6 +348,7 @@ export class InvoiceExtractionService {
         extractedSku: item.sku || null,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        discountPercent: item.discountPercent ?? 0,
         isPartA: item.isPaintPartA || false,
         isPartB: item.isPaintPartB || false,
         matchStatus: InvoiceItemMatchStatus.UNMATCHED,
@@ -751,6 +761,7 @@ export class InvoiceExtractionService {
       if (
         item.stockItemId &&
         item.unitPrice !== null &&
+        item.quantity > 0 &&
         !item.priceUpdated &&
         !skippedItemIds.has(item.id)
       ) {
