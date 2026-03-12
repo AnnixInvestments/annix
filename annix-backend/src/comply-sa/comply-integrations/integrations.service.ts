@@ -17,7 +17,7 @@ const AVAILABLE_INTEGRATIONS: Integration[] = [
   {
     id: "sage",
     name: "Sage Business Cloud",
-    status: "available",
+    status: "coming_soon",
     description: "Sync company data and financial reports",
   },
   {
@@ -45,7 +45,12 @@ export class ComplySaIntegrationsService {
   constructor(private readonly sageService: SageService) {}
 
   availableIntegrations(): Integration[] {
-    return AVAILABLE_INTEGRATIONS;
+    return AVAILABLE_INTEGRATIONS.map((integration) => {
+      if (integration.id === "sage" && this.sageService.isEnabled()) {
+        return { ...integration, status: "available" };
+      }
+      return integration;
+    });
   }
 
   async connectionStatus(companyId: number, integrationId: string): Promise<ConnectionStatus> {

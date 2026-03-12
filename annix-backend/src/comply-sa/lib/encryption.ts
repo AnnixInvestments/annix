@@ -30,7 +30,7 @@ export const phoneEncryptionTransformer: ValueTransformer = {
     }
     const key = process.env.COMPLY_SA_ENCRYPTION_KEY;
     if (!key) {
-      throw new Error("COMPLY_SA_ENCRYPTION_KEY environment variable is not set");
+      return value;
     }
     return encryptPhone(value, key);
   },
@@ -40,7 +40,7 @@ export const phoneEncryptionTransformer: ValueTransformer = {
     }
     const key = process.env.COMPLY_SA_ENCRYPTION_KEY;
     if (!key) {
-      throw new Error("COMPLY_SA_ENCRYPTION_KEY environment variable is not set");
+      return value;
     }
     return decryptPhone(value, key);
   },

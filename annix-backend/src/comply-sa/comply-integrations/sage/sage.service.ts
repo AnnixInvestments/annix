@@ -41,28 +41,50 @@ const AUTH_TAG_LENGTH = 16;
 @Injectable()
 export class SageService {
   private readonly logger = new Logger(SageService.name);
-  private readonly clientId: string;
-  private readonly clientSecret: string;
-  private readonly redirectUri: string;
-  private readonly encryptionKey: Buffer;
+  private readonly clientId: string | null;
+  private readonly clientSecret: string | null;
+  private readonly redirectUri: string | null;
+  private readonly encryptionKey: Buffer | null;
+  private readonly enabled: boolean;
 
   constructor(
     @InjectRepository(ComplySaSageConnection)
     private readonly connectionRepository: Repository<ComplySaSageConnection>,
     private readonly configService: ConfigService,
   ) {
-    this.clientId = this.configService.getOrThrow<string>("SAGE_CLIENT_ID");
-    this.clientSecret = this.configService.getOrThrow<string>("SAGE_CLIENT_SECRET");
-    this.redirectUri = this.configService.getOrThrow<string>("SAGE_REDIRECT_URI");
-    const encryptionKeyHex = this.configService.getOrThrow<string>("SAGE_ENCRYPTION_KEY");
-    this.encryptionKey = Buffer.from(encryptionKeyHex, "hex");
+    this.clientId = this.configService.get<string>("SAGE_CLIENT_ID") ?? null;
+    this.clientSecret = this.configService.get<string>("SAGE_CLIENT_SECRET") ?? null;
+    this.redirectUri = this.configService.get<string>("SAGE_REDIRECT_URI") ?? null;
+    const encryptionKeyHex = this.configService.get<string>("SAGE_ENCRYPTION_KEY") ?? null;
+    this.encryptionKey = encryptionKeyHex !== null ? Buffer.from(encryptionKeyHex, "hex") : null;
+
+    this.enabled =
+      this.clientId !== null &&
+      this.clientSecret !== null &&
+      this.redirectUri !== null &&
+      this.encryptionKey !== null;
+
+    if (!this.enabled) {
+      this.logger.warn("Sage integration not configured — SAGE_CLIENT_ID, SAGE_CLIENT_SECRET, SAGE_REDIRECT_URI, and SAGE_ENCRYPTION_KEY are required");
+    }
+  }
+
+  private assertEnabled(): void {
+    if (!this.enabled) {
+      throw new Error("Sage integration is not configured");
+    }
+  }
+
+  isEnabled(): boolean {
+    return this.enabled;
   }
 
   authorizationUrl(companyId: number): string {
+    this.assertEnabled();
     const params = new URLSearchParams({
       response_type: "code",
-      client_id: this.clientId,
-      redirect_uri: this.redirectUri,
+      client_id: this.clientId!,
+      redirect_uri: this.redirectUri!,
       scope: "full_access",
       state: String(companyId),
     });
@@ -71,6 +93,7 @@ export class SageService {
   }
 
   async handleCallback(companyId: number, code: string): Promise<{ connected: boolean }> {
+    this.assertEnabled();
     const tokenData = await this.exchangeCodeForTokens(code);
 
     const encryptedAccess = this.encrypt(tokenData.access_token);
@@ -231,8 +254,8 @@ export class SageService {
       body: new URLSearchParams({
         grant_type: "refresh_token",
         refresh_token: refreshToken,
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
+        client_id: this.clientId!,
+        client_secret: this.clientSecret!,
       }),
     });
 
@@ -259,9 +282,9 @@ export class SageService {
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: this.redirectUri,
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
+        redirect_uri: this.redirectUri!,
+        client_id: this.clientId!,
+        client_secret: this.clientSecret!,
       }),
     });
 
@@ -295,7 +318,7 @@ export class SageService {
 
   private encrypt(plainText: string): string {
     const iv = randomBytes(IV_LENGTH);
-    const cipher = createCipheriv(ENCRYPTION_ALGORITHM, this.encryptionKey, iv);
+    const cipher = createCipheriv(ENCRYPTION_ALGORITHM, this.encryptionKey!, iv);
     const encrypted = Buffer.concat([cipher.update(plainText, "utf8"), cipher.final()]);
     const authTag = cipher.getAuthTag();
 
@@ -308,7 +331,7 @@ export class SageService {
     const authTag = data.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
     const encrypted = data.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
 
-    const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, this.encryptionKey, iv);
+    const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, this.encryptionKey!, iv);
     decipher.setAuthTag(authTag);
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
 
