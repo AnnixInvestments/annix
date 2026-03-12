@@ -96,7 +96,7 @@ export function StockControlHeader() {
           <div className="relative flex items-center shrink-0" ref={mobileNavRef}>
             <button
               type="button"
-              className="md:hidden flex items-center gap-2 p-1.5 -ml-1.5 rounded-md hover:bg-white/10 transition-colors"
+              className="lg:hidden flex items-center gap-2 p-1.5 -ml-1.5 rounded-md hover:bg-white/10 transition-colors"
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
               aria-label="Toggle navigation menu"
             >
@@ -132,7 +132,7 @@ export function StockControlHeader() {
                 </span>
               )}
             </button>
-            <div className="hidden md:flex items-center">
+            <div className="hidden lg:flex items-center">
               {logoUrl ? (
                 <div className="h-10 px-2 flex items-center bg-white rounded-md">
                   <img src={logoUrl} alt="Company logo" className="h-8 w-auto object-contain" />
@@ -217,7 +217,7 @@ export function StockControlHeader() {
             })).filter((g) => g.items.length > 0);
 
             return (
-              <nav className="hidden md:flex items-center mx-2 sm:mx-4 overflow-x-auto scrollbar-hide">
+              <nav className="hidden lg:flex items-center mx-2 sm:mx-4 overflow-x-auto scrollbar-hide">
                 <div className="flex items-center gap-1">
                   {directItems.map((item) => (
                     <Link
@@ -266,8 +266,8 @@ export function StockControlHeader() {
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-              <span className="hidden lg:inline">Search...</span>
-              <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 text-xs bg-white/10 rounded font-mono">
+              <span className="hidden xl:inline">Search...</span>
+              <kbd className="hidden xl:inline-flex items-center px-1.5 py-0.5 text-xs bg-white/10 rounded font-mono">
                 {typeof navigator !== "undefined" && /Mac/.test(navigator.userAgent)
                   ? "⌘"
                   : "Ctrl+"}
