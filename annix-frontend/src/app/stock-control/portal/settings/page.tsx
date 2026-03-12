@@ -828,6 +828,29 @@ function MenuVisibilitySection() {
     }
   };
 
+  const handleMoveRole = async (roleId: number, direction: "left" | "right") => {
+    const currentIndex = roles.findIndex((r) => r.id === roleId);
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= roles.length) return;
+
+    const targetRole = roles[targetIndex];
+    if (targetRole.key === "admin") return;
+
+    const reordered = [...roles];
+    const [moved] = reordered.splice(currentIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    setRoleError("");
+    try {
+      const updated = await stockControlApiClient.reorderCompanyRoles(reordered.map((r) => r.id));
+      setRoles(updated);
+    } catch (e) {
+      setRoleError(e instanceof Error ? e.message : "Failed to reorder roles");
+    }
+  };
+
   const standaloneItems = ALL_NAV_ITEMS.filter(
     (item) => !item.group || item.group === "hidden",
   ).filter((item) => item.group !== "hidden");
@@ -905,7 +928,7 @@ function MenuVisibilitySection() {
                 <th className="text-left text-xs font-medium text-gray-500 uppercase pb-3 pr-2 min-w-[160px]">
                   Menu Item
                 </th>
-                {roles.map((role) => (
+                {roles.map((role, roleIndex) => (
                   <th
                     key={role.key}
                     className="text-center text-xs font-medium text-gray-500 uppercase pb-3 px-2 min-w-[80px]"
@@ -942,7 +965,53 @@ function MenuVisibilitySection() {
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-0.5">
-                        <span>{role.label}</span>
+                        <div className="flex items-center gap-1">
+                          {role.key !== "admin" && roleIndex > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => handleMoveRole(role.id, "left")}
+                              className="text-gray-400 hover:text-gray-600 p-0.5"
+                              title="Move left"
+                            >
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 19l-7-7 7-7"
+                                />
+                              </svg>
+                            </button>
+                          )}
+                          <span>{role.label}</span>
+                          {role.key !== "admin" && roleIndex < roles.length - 2 && (
+                            <button
+                              type="button"
+                              onClick={() => handleMoveRole(role.id, "right")}
+                              className="text-gray-400 hover:text-gray-600 p-0.5"
+                              title="Move right"
+                            >
+                              <svg
+                                className="w-3 h-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
                         <div className="flex gap-1">
                           <button
                             type="button"

@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, IsNull, Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { ChatConversation } from "../entities/chat-conversation.entity";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { CandidateImage, stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { STOCK_CONTROL_VERSION } from "../../config/version";
