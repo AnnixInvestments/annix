@@ -17,10 +17,11 @@ export class StockControlAuthGuard implements CanActivate {
     const authHeader = request.headers.authorization;
     const queryToken = request.query?.token as string | undefined;
 
-    const token =
-      authHeader?.startsWith("Bearer ") ? authHeader.substring(7)
-      : queryToken ? queryToken
-      : null;
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : queryToken
+        ? queryToken
+        : null;
 
     if (!token) {
       throw new UnauthorizedException("Missing or invalid authorization header");

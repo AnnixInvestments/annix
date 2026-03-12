@@ -521,9 +521,7 @@ function StartSessionForm({
 
     try {
       setIsCheckingDevice(true);
-      const status = await stockControlApiClient.checkPositectorConnection(
-        parseInt(deviceId, 10),
-      );
+      const status = await stockControlApiClient.checkPositectorConnection(parseInt(deviceId, 10));
       setDeviceStatus(status);
     } catch {
       setDeviceStatus(null);
@@ -731,9 +729,7 @@ function StartSessionForm({
             {!isCheckingDevice && deviceStatus && (
               <div
                 className={`mt-2 flex items-center justify-between rounded-md px-3 py-2 text-sm ${
-                  deviceStatus.online
-                    ? "bg-green-50 text-green-800"
-                    : "bg-red-50 text-red-800"
+                  deviceStatus.online ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -975,7 +971,9 @@ function StartSessionForm({
           </button>
           <button
             type="submit"
-            disabled={isStarting || isCheckingDevice || (deviceStatus !== null && !deviceStatus.online)}
+            disabled={
+              isStarting || isCheckingDevice || (deviceStatus !== null && !deviceStatus.online)
+            }
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {isStarting ? "Starting..." : "Start Streaming"}

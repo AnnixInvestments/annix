@@ -3,17 +3,17 @@
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { ALL_NAV_ITEMS } from "../config/navItems";
 import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
 import { StockControlHeader } from "../components/StockControlHeader";
+import { ALL_NAV_ITEMS } from "../config/navItems";
 import { GlossaryProvider } from "../context/GlossaryContext";
 import {
   StockControlBrandingProvider,
   useStockControlBranding,
 } from "../context/StockControlBrandingContext";
 import { StockControlRbacProvider, useStockControlRbac } from "../context/StockControlRbacContext";
-import { ViewAsProvider, useViewAs } from "../context/ViewAsContext";
+import { useViewAs, ViewAsProvider } from "../context/ViewAsContext";
 
 function MainContent({ children }: { children: React.ReactNode }) {
   const { heroImageUrl } = useStockControlBranding();
@@ -52,13 +52,11 @@ function PageAccessGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isLoaded) return;
 
-    const candidates = ALL_NAV_ITEMS
-      .filter((item) => {
-        if (item.group === "hidden") return false;
-        const itemPath = item.href.split("?")[0];
-        return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
-      })
-      .sort((a, b) => b.href.split("?")[0].length - a.href.split("?")[0].length);
+    const candidates = ALL_NAV_ITEMS.filter((item) => {
+      if (item.group === "hidden") return false;
+      const itemPath = item.href.split("?")[0];
+      return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
+    }).sort((a, b) => b.href.split("?")[0].length - a.href.split("?")[0].length);
 
     const matchingItem = candidates[0] ?? null;
 

@@ -10,6 +10,7 @@ import { AuthModule } from "./auth/auth.module";
 import { BendDimensionController } from "./bend-dimension/bend-dimension.controller";
 import { BendDimensionService } from "./bend-dimension/bend-dimension.service";
 import { BoqModule } from "./boq/boq.module";
+import { ComplySaModule } from "./comply-sa/comply-sa.module";
 import typeormConfig from "./config/typeorm";
 import { CustomerModule } from "./customer/customer.module";
 import { DataValidationModule } from "./data-validation/data-validation.module";
@@ -38,7 +39,6 @@ import { UnifiedApiModule } from "./unified-api/unified-api.module";
 import { UserModule } from "./user/user.module";
 import { UserRolesModule } from "./user-roles/user-roles.module";
 import { UserSyncModule } from "./user-sync/user-sync.module";
-import { ComplySaModule } from "./comply-sa/comply-sa.module";
 import { WorkflowModule } from "./workflow/workflow.module";
 
 @Module({

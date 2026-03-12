@@ -14,7 +14,6 @@ import {
   useUpdateDashboardPreferences,
   useWorkflowLaneCounts,
 } from "@/app/lib/query/hooks";
-import { ALL_NAV_ITEMS } from "../../config/navItems";
 import { MyTasksWidget } from "../../components/dashboard/MyTasksWidget";
 import {
   AccountsWidget,
@@ -24,6 +23,7 @@ import {
   ViewerWidget,
 } from "../../components/dashboard/RoleDashboardWidgets";
 import { WidgetVisibilityToggle } from "../../components/dashboard/WidgetVisibilityToggle";
+import { ALL_NAV_ITEMS } from "../../config/navItems";
 import { useStockControlBranding } from "../../context/StockControlBrandingContext";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
 import { useViewAs } from "../../context/ViewAsContext";
