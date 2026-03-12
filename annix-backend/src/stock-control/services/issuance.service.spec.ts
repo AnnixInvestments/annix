@@ -1,6 +1,8 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { DataSource } from "typeorm";
+import { AuditService } from "../../audit/audit.service";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
@@ -18,6 +20,7 @@ describe("IssuanceService", () => {
   const mockIssuanceRepo = {
     create: jest.fn().mockImplementation((data) => ({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn(),
   };
 
@@ -62,6 +65,30 @@ describe("IssuanceService", () => {
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
   };
 
+  const mockQueryRunnerManager = {
+    find: jest.fn().mockResolvedValue([]),
+    findOne: jest.fn(),
+    save: jest.fn().mockImplementation((_entity, data) => Promise.resolve({ id: 1, ...data })),
+    create: jest.fn().mockImplementation((_entity, data) => ({ ...data })),
+  };
+
+  const mockQueryRunner = {
+    connect: jest.fn(),
+    startTransaction: jest.fn(),
+    commitTransaction: jest.fn(),
+    rollbackTransaction: jest.fn(),
+    release: jest.fn(),
+    manager: mockQueryRunnerManager,
+  };
+
+  const mockDataSource = {
+    createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+  };
+
+  const mockAuditService = {
+    log: jest.fn().mockResolvedValue(undefined),
+  };
+
   const mockUser = { id: 1, companyId: 1, name: "Test User" };
 
   beforeEach(async () => {
@@ -77,6 +104,8 @@ describe("IssuanceService", () => {
         { provide: getRepositoryToken(IssuanceBatchRecord), useValue: mockBatchRecordRepo },
         { provide: getRepositoryToken(SupplierCertificate), useValue: mockCertRepo },
         { provide: getRepositoryToken(JobCardDataBook), useValue: mockDataBookRepo },
+        { provide: DataSource, useValue: mockDataSource },
+        { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();
 
@@ -242,6 +271,13 @@ describe("IssuanceService", () => {
       mockStockItemRepo.save.mockResolvedValue(true);
       mockJobCardRepo.findOne.mockResolvedValue(overrides?.jobCardId !== null ? jobCard : null);
       mockIssuanceRepo.findOne.mockResolvedValue({ id: 1 });
+      mockQueryRunnerManager.findOne.mockResolvedValue({
+        ...stockItem,
+        quantity: overrides?.stockQuantity ?? 50,
+      });
+      mockQueryRunnerManager.save.mockImplementation((_entity, data) =>
+        Promise.resolve({ id: 1, ...data }),
+      );
     }
 
     it("throws BadRequestException when quantity <= 0", async () => {
@@ -292,7 +328,8 @@ describe("IssuanceService", () => {
         mockUser,
       );
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
+      expect(mockQueryRunnerManager.save).toHaveBeenCalledWith(
+        StockItem,
         expect.objectContaining({ quantity: 45 }),
       );
     });
@@ -311,7 +348,8 @@ describe("IssuanceService", () => {
         mockUser,
       );
 
-      expect(mockMovementRepo.create).toHaveBeenCalledWith(
+      expect(mockQueryRunnerManager.create).toHaveBeenCalledWith(
+        StockMovement,
         expect.objectContaining({
           movementType: MovementType.OUT,
           quantity: 5,
@@ -335,8 +373,10 @@ describe("IssuanceService", () => {
         mockUser,
       );
 
-      expect(mockAllocationRepo.create).toHaveBeenCalled();
-      expect(mockAllocationRepo.save).toHaveBeenCalled();
+      const allocationCreateCalls = mockQueryRunnerManager.create.mock.calls.filter(
+        (call) => call[0] === StockAllocation,
+      );
+      expect(allocationCreateCalls.length).toBe(1);
     });
 
     it("does not create allocation without jobCardId", async () => {
@@ -353,7 +393,10 @@ describe("IssuanceService", () => {
         mockUser,
       );
 
-      expect(mockAllocationRepo.create).not.toHaveBeenCalled();
+      const allocationCreateCalls = mockQueryRunnerManager.create.mock.calls.filter(
+        (call) => call[0] === StockAllocation,
+      );
+      expect(allocationCreateCalls.length).toBe(0);
     });
 
     it("throws NotFoundException when issuer not found", async () => {
@@ -394,8 +437,10 @@ describe("IssuanceService", () => {
         .mockResolvedValueOnce({ id: 1, name: "Issuer" })
         .mockResolvedValueOnce({ id: 2, name: "Recipient" });
       mockJobCardRepo.findOne.mockResolvedValue(null);
-      mockStockItemRepo.find.mockResolvedValue([{ id: 2, name: "Item 2", quantity: 100 }]);
-      mockStockItemRepo.save.mockResolvedValue(true);
+      mockQueryRunnerManager.find.mockResolvedValue([{ id: 2, name: "Item 2", quantity: 100 }]);
+      mockQueryRunnerManager.save.mockImplementation((_entity, data) =>
+        Promise.resolve({ id: 1, ...data }),
+      );
       mockIssuanceRepo.findOne.mockResolvedValue({ id: 1 });
 
       const result = await service.createBatchIssuance(
@@ -421,7 +466,7 @@ describe("IssuanceService", () => {
         .mockResolvedValueOnce({ id: 1, name: "Issuer" })
         .mockResolvedValueOnce({ id: 2, name: "Recipient" });
       mockJobCardRepo.findOne.mockResolvedValue(null);
-      mockStockItemRepo.find.mockResolvedValue([{ id: 1, name: "Item", quantity: 100 }]);
+      mockQueryRunnerManager.find.mockResolvedValue([{ id: 1, name: "Item", quantity: 100 }]);
 
       const result = await service.createBatchIssuance(
         1,

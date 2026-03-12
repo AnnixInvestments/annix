@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { AuditService } from "../../audit/audit.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
 import { JobCardApproval } from "../entities/job-card-approval.entity";
@@ -15,10 +16,20 @@ import { WorkflowStepConfigService } from "./workflow-step-config.service";
 describe("JobCardWorkflowService", () => {
   let service: JobCardWorkflowService;
 
+  const mockQueryBuilder = {
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+  };
+
   const mockJobCardRepo = {
     findOne: jest.fn(),
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-    createQueryBuilder: jest.fn(),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
+    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
   };
 
   const mockApprovalRepo = {
@@ -66,6 +77,10 @@ describe("JobCardWorkflowService", () => {
     backgroundStepsForTrigger: jest.fn().mockResolvedValue([]),
   };
 
+  const mockAuditService = {
+    log: jest.fn().mockResolvedValue(undefined),
+  };
+
   function makeUser(role: StockControlRole) {
     return { id: 1, companyId: 1, name: "Test User", role };
   }
@@ -86,6 +101,7 @@ describe("JobCardWorkflowService", () => {
         { provide: WorkflowNotificationService, useValue: mockNotificationService },
         { provide: RequisitionService, useValue: mockRequisitionService },
         { provide: WorkflowStepConfigService, useValue: mockStepConfigService },
+        { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();
 
@@ -143,8 +159,9 @@ describe("JobCardWorkflowService", () => {
 
         await service.approveStep(1, 1, makeUser(role), {});
 
-        expect(mockJobCardRepo.save).toHaveBeenCalledWith(
-          expect.objectContaining({ workflowStatus: toStatus }),
+        expect(mockJobCardRepo.update).toHaveBeenCalledWith(
+          { id: 1, companyId: 1, workflowStatus: fromStatus },
+          { workflowStatus: toStatus },
         );
       });
     });
@@ -159,8 +176,9 @@ describe("JobCardWorkflowService", () => {
         service.approveStep(1, 1, makeUser(StockControlRole.ADMIN), {}),
       ).resolves.toBeDefined();
 
-      expect(mockJobCardRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ workflowStatus: JobCardWorkflowStatus.MANAGER_APPROVED }),
+      expect(mockJobCardRepo.update).toHaveBeenCalledWith(
+        { id: 1, companyId: 1, workflowStatus: JobCardWorkflowStatus.ADMIN_APPROVED },
+        { workflowStatus: JobCardWorkflowStatus.MANAGER_APPROVED },
       );
     });
 
@@ -271,8 +289,9 @@ describe("JobCardWorkflowService", () => {
 
       await service.rejectStep(1, 1, makeUser(StockControlRole.ADMIN), "Wrong docs");
 
-      expect(mockJobCardRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ workflowStatus: JobCardWorkflowStatus.DOCUMENT_UPLOADED }),
+      expect(mockJobCardRepo.update).toHaveBeenCalledWith(
+        { id: 1, companyId: 1, workflowStatus: JobCardWorkflowStatus.ADMIN_APPROVED },
+        { workflowStatus: JobCardWorkflowStatus.DOCUMENT_UPLOADED },
       );
     });
 
@@ -315,6 +334,9 @@ describe("JobCardWorkflowService", () => {
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
         getMany: jest.fn().mockResolvedValue([]),
       };
       mockJobCardRepo.createQueryBuilder.mockReturnValue(qb);
@@ -339,6 +361,9 @@ describe("JobCardWorkflowService", () => {
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
         getMany: jest.fn().mockResolvedValue([]),
       };
       mockJobCardRepo.createQueryBuilder.mockReturnValue(qb);
@@ -362,6 +387,9 @@ describe("JobCardWorkflowService", () => {
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
         getMany: jest.fn().mockResolvedValue([]),
       };
       mockJobCardRepo.createQueryBuilder.mockReturnValue(qb);
