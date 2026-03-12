@@ -163,6 +163,9 @@ export default function IssueStockPage() {
   const [recentIssuances, setRecentIssuances] = useState<StockIssuance[]>([]);
   const [undoingId, setUndoingId] = useState<number | null>(null);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [staffDropdownSearch, setStaffDropdownSearch] = useState("");
+  const [showStaffDropdown, setShowStaffDropdown] = useState(false);
+  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [showLinkStaffModal, setShowLinkStaffModal] = useState(false);
   const [showBrowseItems, setShowBrowseItems] = useState(false);
   const [browseSearch, setBrowseSearch] = useState("");
@@ -201,6 +204,21 @@ export default function IssueStockPage() {
       .then(setRecentIssuances)
       .catch(() => setRecentIssuances([]));
   }, []);
+
+  useEffect(() => {
+    if (
+      (currentStep === "issuer" || currentStep === "recipient") &&
+      staffList.length === 0 &&
+      !isLoadingStaff
+    ) {
+      setIsLoadingStaff(true);
+      stockControlApiClient
+        .staffMembers({ active: "true" })
+        .then(setStaffList)
+        .catch(() => setStaffList([]))
+        .finally(() => setIsLoadingStaff(false));
+    }
+  }, [currentStep]);
 
   const fetchRecentBatches = useCallback(
     async (stockItemIds: number[]) => {
@@ -354,6 +372,36 @@ export default function IssueStockPage() {
       inputRef.current?.focus();
     }
   };
+
+  const handleStaffDropdownSelect = (staff: StaffMember) => {
+    setShowStaffDropdown(false);
+    setStaffDropdownSearch("");
+    triggerHaptic();
+    playSuccessSound();
+
+    if (currentStep === "issuer") {
+      setIssuer(staff);
+      setCurrentStep("recipient");
+    } else if (currentStep === "recipient") {
+      if (issuer && staff.id === issuer.id) {
+        setError("Recipient cannot be the same as issuer");
+        return;
+      }
+      setRecipient(staff);
+      setCurrentStep("stock_items");
+    }
+
+    setScanInput("");
+  };
+
+  const filteredStaffList = staffDropdownSearch.trim()
+    ? staffList.filter(
+        (s) =>
+          s.name.toLowerCase().includes(staffDropdownSearch.toLowerCase()) ||
+          (s.employeeNumber ?? "").toLowerCase().includes(staffDropdownSearch.toLowerCase()) ||
+          (s.department ?? "").toLowerCase().includes(staffDropdownSearch.toLowerCase()),
+      )
+    : staffList;
 
   const handleRemoveItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
@@ -1505,6 +1553,79 @@ export default function IssueStockPage() {
                     )}
                   </button>
                 </div>
+
+                {(currentStep === "issuer" || currentStep === "recipient") && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setShowStaffDropdown(!showStaffDropdown)}
+                      className="text-sm text-teal-600 hover:text-teal-800 font-medium"
+                    >
+                      {showStaffDropdown
+                        ? "Hide staff list"
+                        : "Card not working? Select staff from list"}
+                    </button>
+
+                    {showStaffDropdown && (
+                      <div className="mt-3 border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="p-2 border-b border-gray-100">
+                          <input
+                            type="text"
+                            value={staffDropdownSearch}
+                            onChange={(e) => setStaffDropdownSearch(e.target.value)}
+                            placeholder="Search by name, employee number, or department..."
+                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2"
+                          />
+                        </div>
+                        <div className="max-h-[240px] overflow-y-auto">
+                          {isLoadingStaff ? (
+                            <div className="p-4 text-center text-sm text-gray-500">
+                              Loading staff...
+                            </div>
+                          ) : filteredStaffList.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-gray-500">
+                              No staff found
+                            </div>
+                          ) : (
+                            filteredStaffList.map((staff) => (
+                              <button
+                                key={staff.id}
+                                onClick={() => handleStaffDropdownSelect(staff)}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 border-b border-gray-50 last:border-b-0 text-left"
+                              >
+                                <div className="flex-shrink-0">
+                                  {staff.photoUrl ? (
+                                    <img
+                                      src={staff.photoUrl}
+                                      alt={staff.name}
+                                      className="h-8 w-8 rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center">
+                                      <span className="text-teal-600 font-semibold text-xs">
+                                        {staffInitials(staff.name)}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900">{staff.name}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {[
+                                      staff.employeeNumber ? `#${staff.employeeNumber}` : null,
+                                      staff.department,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ") || "No department"}
+                                  </p>
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between pt-4 border-t">
