@@ -86,3 +86,23 @@ if [ $FOUND_SECRETS -eq 1 ]; then
 fi
 
 echo "Secret scan passed - no secrets detected."
+
+# Version bump check for stock control changes
+VERSION_FILE="annix-frontend/src/app/stock-control/config/version.ts"
+SC_FRONTEND_CHANGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -c '^annix-frontend/src/app/stock-control/' || true)
+SC_BACKEND_CHANGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -c '^annix-backend/src/stock-control/' || true)
+VERSION_CHANGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -c "^${VERSION_FILE}$" || true)
+
+if [ "$SC_FRONTEND_CHANGED" -gt 0 ] || [ "$SC_BACKEND_CHANGED" -gt 0 ]; then
+    if [ "$VERSION_CHANGED" -eq 0 ]; then
+        # Exclude commits that only touch formatting/style files
+        ONLY_STYLE=$(git diff --cached --name-only --diff-filter=ACMR | grep '^annix-\(frontend\|backend\)/src/stock-control/' | grep -cvE '\.(spec|test)\.ts$' || true)
+        if [ "$ONLY_STYLE" -gt 0 ]; then
+            echo ""
+            echo "⚠  WARNING: Stock control files changed but version not bumped."
+            echo "   Remember to update: $VERSION_FILE"
+            echo "   (patch for fixes, minor for features, major for breaking changes)"
+            echo ""
+        fi
+    fi
+fi
