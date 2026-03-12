@@ -375,6 +375,8 @@ export class PositectorService {
     const pdfData = await pdfParse(buffer);
     const text: string = pdfData.text;
 
+    this.logger.debug(`PDF raw text:\n${text}`);
+
     const lines = text
       .split("\n")
       .map((l: string) => l.trim())
@@ -387,37 +389,62 @@ export class PositectorService {
 
     lines.forEach((line: string) => {
       const lower = line.toLowerCase();
-      if (lower.startsWith("positector body s/n") || lower.startsWith("positector body s/n")) {
-        serialNumber =
-          line
-            .split(/\s{2,}/)
-            .pop()
-            ?.trim() ?? null;
+
+      const snColonMatch = line.match(/positector body s\/n[:\s]+(\d+)/i);
+      if (snColonMatch) {
+        serialNumber = snColonMatch[1];
       }
-      if (lower.startsWith("probe type") || lower.includes("probe type")) {
-        const parts = line.split(/\s{2,}/);
-        probeType = parts.length > 1 ? parts[parts.length - 1].trim() : null;
+
+      const probeColonMatch = line.match(/probe type[:\s]+(.+)/i);
+      if (probeColonMatch) {
+        probeType = probeColonMatch[1].trim();
       }
+
       if (lower.includes("thickness") && lower.includes("microns")) {
         units = "µm";
       }
-      if (lower.includes("mils")) {
-        units = units ?? "mils";
+      if (lower.includes("mils") && !units) {
+        units = "mils";
+      }
+      if (lower.includes("shore a") || lower.includes("shore d") || lower.includes("(ha)")) {
+        units = units ?? "Shore A";
+      }
+
+      if (!units && probeType) {
+        const probeLower = probeType.toLowerCase();
+        if (probeLower.includes("shd")) {
+          units = "Shore A";
+        } else if (probeLower.includes("spg") || probeLower.includes("rtr")) {
+          units = "µm";
+        } else if (probeLower.includes("6000") || probeLower.includes("200")) {
+          units = "µm";
+        }
       }
     });
 
     const readings: PositectorReading[] = [];
-    const readingPattern = /^\d+\s+(\d+(?:\.\d+)?)\s+/;
+    const readingPattern = /^(\d{1,4})\s+(\d+(?:[.,]\d+)?)\s+/;
+    let currentDate: string | null = null;
 
     lines.forEach((line: string) => {
+      const dateOnlyMatch = line.match(/^(\d{4}-\d{2}-\d{2})$/);
+      if (dateOnlyMatch) {
+        currentDate = dateOnlyMatch[1];
+        return;
+      }
+
       const match = line.match(readingPattern);
       if (match) {
-        const value = parseFloat(match[1]);
-        if (!Number.isNaN(value)) {
+        const index = parseInt(match[1], 10);
+        const value = parseFloat(match[2].replace(",", "."));
+        if (!Number.isNaN(value) && index > 0 && index <= 9999) {
           const timePart = line.match(/(\d{1,2}:\d{2}:\d{2})/);
           const datePart = line.match(/(\d{4}-\d{2}-\d{2})/);
+          const effectiveDate = datePart?.[1] ?? currentDate;
           const timestamp =
-            datePart && timePart ? `${datePart[1]} ${timePart[1]}` : (timePart?.[1] ?? null);
+            effectiveDate && timePart
+              ? `${effectiveDate} ${timePart[1]}`
+              : (timePart?.[1] ?? null);
 
           readings.push({
             index: readings.length + 1,
@@ -431,11 +458,50 @@ export class PositectorService {
     });
 
     if (readings.length === 0) {
+      this.logger.debug("Primary pattern matched 0 readings, trying fallback column extraction");
+      const readingsIdx = lines.findIndex(
+        (l: string) => l.toLowerCase() === "readings" || l.toLowerCase().startsWith("readings"),
+      );
+      const startIdx = readingsIdx >= 0 ? readingsIdx + 1 : 0;
+
+      const candidateValues: number[] = [];
+      const candidateTimestamps: string[] = [];
+
+      lines.slice(startIdx).forEach((line: string) => {
+        if (/^\d{1,4}$/.test(line.trim())) {
+          const val = parseInt(line.trim(), 10);
+          if (val > 0 && val < 10000) {
+            candidateValues.push(val);
+          }
+        }
+        const timeMatch = line.match(/^(\d{1,2}:\d{2}:\d{2})$/);
+        if (timeMatch) {
+          candidateTimestamps.push(timeMatch[1]);
+        }
+      });
+
+      if (candidateValues.length > 1) {
+        const isSequential = candidateValues.every((v, i) => i === 0 || v === i + 1);
+        const values = isSequential ? candidateValues.slice(candidateValues.length / 2) : candidateValues;
+
+        values.forEach((value, i) => {
+          readings.push({
+            index: i + 1,
+            value,
+            units: null,
+            timestamp: candidateTimestamps[i] ?? null,
+            raw: {},
+          });
+        });
+      }
+    }
+
+    if (readings.length === 0) {
       const numberLines = lines.filter((l: string) => /^\d+\s+\d+/.test(l));
       numberLines.forEach((line: string) => {
         const parts = line.trim().split(/\s+/);
         if (parts.length >= 2) {
-          const value = parseFloat(parts[1]);
+          const value = parseFloat(parts[1].replace(",", "."));
           if (!Number.isNaN(value) && value > 0 && value < 10000) {
             readings.push({
               index: readings.length + 1,
