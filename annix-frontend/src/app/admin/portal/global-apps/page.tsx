@@ -93,6 +93,19 @@ function CvAssistantIcon() {
   );
 }
 
+function ComplySaIcon() {
+  return (
+    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
 function AdminPortalIcon() {
   return (
     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,6 +214,15 @@ const platformApps: AppCard[] = [
     icon: <CvAssistantIcon />,
     color: "bg-violet-100 text-violet-600",
     hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
+    isExternal: true,
+  },
+  {
+    href: "https://comply.annix.co.za",
+    title: "Comply SA",
+    description: "SA SME compliance dashboard with B-BBEE, tax tools, and regulatory tracking.",
+    icon: <ComplySaIcon />,
+    color: "bg-rose-100 text-rose-600",
+    hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",
     isExternal: true,
   },
 ];
