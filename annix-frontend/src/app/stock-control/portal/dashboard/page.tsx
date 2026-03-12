@@ -14,6 +14,7 @@ import {
   useUpdateDashboardPreferences,
   useWorkflowLaneCounts,
 } from "@/app/lib/query/hooks";
+import { ALL_NAV_ITEMS } from "../../config/navItems";
 import { MyTasksWidget } from "../../components/dashboard/MyTasksWidget";
 import {
   AccountsWidget,
@@ -22,9 +23,10 @@ import {
   StoremanWidget,
   ViewerWidget,
 } from "../../components/dashboard/RoleDashboardWidgets";
-import { ViewSwitcher } from "../../components/dashboard/ViewSwitcher";
 import { WidgetVisibilityToggle } from "../../components/dashboard/WidgetVisibilityToggle";
 import { useStockControlBranding } from "../../context/StockControlBrandingContext";
+import { useStockControlRbac } from "../../context/StockControlRbacContext";
+import { useViewAs } from "../../context/ViewAsContext";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 
 const DISMISS_KEY = "stock-control-push-dismissed";
@@ -226,6 +228,8 @@ function RoleSummarySection({ activeView }: { activeView: string }) {
 export default function StockControlDashboard() {
   const { colors, heroImageUrl } = useStockControlBranding();
   const { user } = useStockControlAuth();
+  const { effectiveRole } = useViewAs();
+  const { rbacConfig } = useStockControlRbac();
   const { data: lanes, isLoading: lanesLoading } = useWorkflowLaneCounts();
   const { data: stats } = useDashboardStats();
   const { data: cpoSummary } = useCpoSummary();
@@ -233,13 +237,6 @@ export default function StockControlDashboard() {
   const { data: preferences } = useDashboardPreferences();
   const updatePreferences = useUpdateDashboardPreferences();
   const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
-
-  const role = user?.role || "viewer";
-  const [activeView, setActiveView] = useState(role);
-
-  useEffect(() => {
-    setActiveView(preferences?.viewOverride ?? role);
-  }, [preferences?.viewOverride, role]);
 
   useEffect(() => {
     stockControlApiClient
@@ -261,20 +258,21 @@ export default function StockControlDashboard() {
     [preferences?.hiddenWidgets, updatePreferences],
   );
 
-  const handleViewSwitch = useCallback(
-    (newRole: string) => {
-      setActiveView(newRole);
-      const override = newRole === role ? null : newRole;
-      updatePreferences.mutate({ viewOverride: override });
-    },
-    [role, updatePreferences],
-  );
-
   const widgetVisible = (key: string) => !hiddenWidgets.includes(key);
 
-  const showInbound = INBOUND_ROLES.includes(activeView);
-  const showWorkshop = WORKSHOP_ROLES.includes(activeView);
-  const showOutbound = OUTBOUND_ROLES.includes(activeView);
+  const navItemVisible = useCallback(
+    (navKey: string) => {
+      const item = ALL_NAV_ITEMS.find((i) => i.key === navKey);
+      if (!item) return false;
+      const allowedRoles = rbacConfig[navKey] ?? item.defaultRoles;
+      return allowedRoles.includes(effectiveRole);
+    },
+    [rbacConfig, effectiveRole],
+  );
+
+  const showInbound = INBOUND_ROLES.includes(effectiveRole);
+  const showWorkshop = WORKSHOP_ROLES.includes(effectiveRole);
+  const showOutbound = OUTBOUND_ROLES.includes(effectiveRole);
 
   return (
     <div className="space-y-6">
@@ -314,10 +312,9 @@ export default function StockControlDashboard() {
           hiddenWidgets={hiddenWidgets}
           onToggle={handleWidgetToggle}
         />
-        <ViewSwitcher currentRole={role} activeView={activeView} onSwitch={handleViewSwitch} />
       </div>
 
-      {widgetVisible("role-summary") && <RoleSummarySection activeView={activeView} />}
+      {widgetVisible("role-summary") && <RoleSummarySection activeView={effectiveRole} />}
 
       {widgetVisible("my-tasks") && (
         <MyTasksWidget pendingApprovals={pendingApprovals ?? []} notifications={notifications} />
@@ -596,88 +593,96 @@ export default function StockControlDashboard() {
 
       {widgetVisible("quick-links") && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Link
-            href="/stock-control/portal/inventory"
-            className="bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-teal-500 transition-all text-center"
-          >
-            <svg
-              className="w-6 h-6 mx-auto text-gray-400 mb-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          {navItemVisible("inventory-stock") && (
+            <Link
+              href="/stock-control/portal/inventory"
+              className="bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-teal-500 transition-all text-center"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-              />
-            </svg>
-            <p className="text-sm font-medium text-gray-700">Inventory</p>
-          </Link>
-          <Link
-            href="/stock-control/portal/staff"
-            className="bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-teal-500 transition-all text-center"
-          >
-            <svg
-              className="w-6 h-6 mx-auto text-gray-400 mb-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+              <svg
+                className="w-6 h-6 mx-auto text-gray-400 mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                />
+              </svg>
+              <p className="text-sm font-medium text-gray-700">Inventory</p>
+            </Link>
+          )}
+          {navItemVisible("staff") && (
+            <Link
+              href="/stock-control/portal/staff"
+              className="bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-teal-500 transition-all text-center"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-            <p className="text-sm font-medium text-gray-700">Staff</p>
-          </Link>
-          <Link
-            href="/stock-control/portal/reports"
-            className="bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-teal-500 transition-all text-center"
-          >
-            <svg
-              className="w-6 h-6 mx-auto text-gray-400 mb-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+              <svg
+                className="w-6 h-6 mx-auto text-gray-400 mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              <p className="text-sm font-medium text-gray-700">Staff</p>
+            </Link>
+          )}
+          {navItemVisible("reports") && (
+            <Link
+              href="/stock-control/portal/reports"
+              className="bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-teal-500 transition-all text-center"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              />
-            </svg>
-            <p className="text-sm font-medium text-gray-700">Reports</p>
-          </Link>
-          <Link
-            href="/stock-control/portal/settings"
-            className="bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-teal-500 transition-all text-center"
-          >
-            <svg
-              className="w-6 h-6 mx-auto text-gray-400 mb-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+              <svg
+                className="w-6 h-6 mx-auto text-gray-400 mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+              <p className="text-sm font-medium text-gray-700">Reports</p>
+            </Link>
+          )}
+          {navItemVisible("settings") && (
+            <Link
+              href="/stock-control/portal/settings"
+              className="bg-white shadow-sm border border-gray-200 rounded-lg p-4 hover:ring-2 hover:ring-teal-500 transition-all text-center"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-            <p className="text-sm font-medium text-gray-700">Settings</p>
-          </Link>
+              <svg
+                className="w-6 h-6 mx-auto text-gray-400 mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              <p className="text-sm font-medium text-gray-700">Settings</p>
+            </Link>
+          )}
         </div>
       )}
     </div>

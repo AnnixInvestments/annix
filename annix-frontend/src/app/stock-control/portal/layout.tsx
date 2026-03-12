@@ -1,8 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { ALL_NAV_ITEMS } from "../config/navItems";
 import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
 import { StockControlHeader } from "../components/StockControlHeader";
@@ -11,7 +12,8 @@ import {
   StockControlBrandingProvider,
   useStockControlBranding,
 } from "../context/StockControlBrandingContext";
-import { StockControlRbacProvider } from "../context/StockControlRbacContext";
+import { StockControlRbacProvider, useStockControlRbac } from "../context/StockControlRbacContext";
+import { ViewAsProvider, useViewAs } from "../context/ViewAsContext";
 
 function MainContent({ children }: { children: React.ReactNode }) {
   const { heroImageUrl } = useStockControlBranding();
@@ -40,17 +42,59 @@ function MainContent({ children }: { children: React.ReactNode }) {
   );
 }
 
+function PageAccessGuard({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { rbacConfig, isLoaded } = useStockControlRbac();
+  const { effectiveRole } = useViewAs();
+  const { profile } = useStockControlAuth();
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const candidates = ALL_NAV_ITEMS
+      .filter((item) => {
+        if (item.group === "hidden") return false;
+        const itemPath = item.href.split("?")[0];
+        return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
+      })
+      .sort((a, b) => b.href.split("?")[0].length - a.href.split("?")[0].length);
+
+    const matchingItem = candidates[0] ?? null;
+
+    if (!matchingItem) return;
+
+    const allowedRoles = rbacConfig[matchingItem.key] ?? matchingItem.defaultRoles;
+    const hasAccess = allowedRoles.includes(effectiveRole);
+
+    if (matchingItem.requiresQc && !profile?.qcEnabled && effectiveRole !== "admin") {
+      router.replace("/stock-control/portal/dashboard");
+      return;
+    }
+
+    if (!hasAccess) {
+      router.replace("/stock-control/portal/dashboard");
+    }
+  }, [pathname, rbacConfig, effectiveRole, isLoaded, router, profile]);
+
+  return <>{children}</>;
+}
+
 function PortalContent({ children }: { children: React.ReactNode }) {
   return (
     <StockControlBrandingProvider>
       <StockControlRbacProvider>
-        <GlossaryProvider>
-          <div className="flex flex-col h-screen bg-gray-50">
-            <StockControlHeader />
-            <MainContent>{children}</MainContent>
-            <ChatPanel />
-          </div>
-        </GlossaryProvider>
+        <ViewAsProvider>
+          <GlossaryProvider>
+            <div className="flex flex-col h-screen bg-gray-50">
+              <StockControlHeader />
+              <PageAccessGuard>
+                <MainContent>{children}</MainContent>
+              </PageAccessGuard>
+              <ChatPanel />
+            </div>
+          </GlossaryProvider>
+        </ViewAsProvider>
       </StockControlRbacProvider>
     </StockControlBrandingProvider>
   );

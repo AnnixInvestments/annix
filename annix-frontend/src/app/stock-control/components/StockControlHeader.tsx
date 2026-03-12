@@ -9,8 +9,10 @@ import { ALL_NAV_ITEMS, NAV_GROUP_HUB_PATHS, NAV_GROUP_ORDER } from "../config/n
 import { STOCK_CONTROL_VERSION } from "../config/version";
 import { useStockControlBranding } from "../context/StockControlBrandingContext";
 import { useStockControlRbac } from "../context/StockControlRbacContext";
+import { useViewAs } from "../context/ViewAsContext";
 
 import { GlobalSearchModal } from "./GlobalSearchModal";
+import { HeaderViewSwitcher } from "./HeaderViewSwitcher";
 import { NotificationBell } from "./NotificationBell";
 import { OfflineIndicator } from "./OfflineIndicator";
 import { SyncStatus } from "./SyncStatus";
@@ -25,6 +27,7 @@ export function StockControlHeader() {
   const { colors, logoUrl } = useStockControlBranding();
   const { user, logout } = useStockControlAuth();
   const { rbacConfig } = useStockControlRbac();
+  const { effectiveRole, isPreviewActive } = useViewAs();
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
@@ -59,7 +62,7 @@ export function StockControlHeader() {
 
   const visibleNavItems = ALL_NAV_ITEMS.filter((item) => {
     const allowedRoles = rbacConfig[item.key] ?? item.defaultRoles;
-    return user?.role ? allowedRoles.includes(user.role) : false;
+    return allowedRoles.includes(effectiveRole);
   });
 
   const isActive = (href: string) => {
@@ -249,6 +252,7 @@ export function StockControlHeader() {
           })()}
 
           <div className="flex items-center space-x-1 sm:space-x-3 ml-auto shrink-0">
+            {isAdmin && <HeaderViewSwitcher />}
             <button
               onClick={openSearch}
               className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white/70 hover:bg-opacity-20 hover:text-white transition-colors"
@@ -379,6 +383,29 @@ export function StockControlHeader() {
           </div>
         </div>
       </header>
+
+      {isPreviewActive && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 flex items-center justify-center gap-2">
+          <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+            />
+          </svg>
+          <span className="text-xs font-medium text-amber-700">
+            Previewing as {effectiveRole.charAt(0).toUpperCase() + effectiveRole.slice(1)} — pages
+            and navigation reflect this role&apos;s access
+          </span>
+        </div>
+      )}
 
       <GlobalSearchModal isOpen={searchOpen} onClose={closeSearch} />
     </>
