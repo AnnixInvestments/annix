@@ -301,39 +301,50 @@ export default function PositectorUploadPage() {
         </div>
       )}
 
-      {parsedBatch && (
+      {parsedBatch && (() => {
+        const batchHeader = parsedBatch["header"];
+        const batchReadings = parsedBatch["readings"];
+        const batchFilename = parsedBatch["filename"];
+        const batchFormat = parsedBatch["detectedFormat"];
+        const batchEntityType = parsedBatch["suggestedEntityType"];
+        const headerBatchName = batchHeader["batchName"];
+        const headerProbeType = batchHeader["probeType"];
+        const headerSerialNumber = batchHeader["serialNumber"];
+        const headerUnits = batchHeader["units"];
+
+        return (
         <div className="space-y-4">
           <div className="rounded-lg border border-gray-200 bg-white p-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
-                  {parsedBatch.header.batchName ?? parsedBatch.filename}
+                  {headerBatchName ?? batchFilename}
                 </h2>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
                   <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                    {FORMAT_LABELS[parsedBatch.detectedFormat] ?? parsedBatch.detectedFormat}
+                    {FORMAT_LABELS[batchFormat] ?? batchFormat}
                   </span>
-                  {parsedBatch.header.probeType && (
-                    <span>Probe: {parsedBatch.header.probeType}</span>
+                  {headerProbeType && (
+                    <span>Probe: {headerProbeType}</span>
                   )}
-                  {parsedBatch.header.serialNumber && (
-                    <span>S/N: {parsedBatch.header.serialNumber}</span>
+                  {headerSerialNumber && (
+                    <span>S/N: {headerSerialNumber}</span>
                   )}
-                  <span>Units: {parsedBatch.header.units ?? "-"}</span>
-                  <span>Readings: {parsedBatch.readings.length}</span>
+                  <span>Units: {headerUnits ?? "-"}</span>
+                  <span>Readings: {batchReadings.length}</span>
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                      parsedBatch.suggestedEntityType !== "unknown"
+                      batchEntityType !== "unknown"
                         ? "bg-green-100 text-green-800"
                         : "bg-gray-100 text-gray-800"
                     }`}
                   >
-                    Maps to: {ENTITY_TYPE_LABELS[parsedBatch.suggestedEntityType] ?? "Unknown"}
+                    Maps to: {ENTITY_TYPE_LABELS[batchEntityType] ?? "Unknown"}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                {parsedBatch.readings.length > 0 && (
+                {batchReadings.length > 0 && (
                   <button
                     onClick={() => setShowImportForm(true)}
                     className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
@@ -348,7 +359,7 @@ export default function PositectorUploadPage() {
             </div>
           </div>
 
-          {parsedBatch.readings.length > 0 && (
+          {batchReadings.length > 0 && (
             <div className="overflow-hidden rounded-lg border border-gray-200">
               <div className="max-h-96 overflow-y-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -369,14 +380,14 @@ export default function PositectorUploadPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {parsedBatch.readings.map((reading) => (
+                    {batchReadings.map((reading) => (
                       <tr key={reading.index} className="hover:bg-gray-50">
                         <td className="px-4 py-2 text-sm text-gray-500">{reading.index}</td>
                         <td className="px-4 py-2 text-sm font-medium text-gray-900">
                           {reading.value}
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-500">
-                          {reading.units ?? parsedBatch.header.units ?? "-"}
+                          {reading.units ?? headerUnits ?? "-"}
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-500">
                           {reading.timestamp ?? "-"}
@@ -389,7 +400,8 @@ export default function PositectorUploadPage() {
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {showImportForm && parsedBatch && selectedFile && (
         <UploadImportForm
