@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
 import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
 
-export default function SupplierLoginPage() {
+function SupplierLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
@@ -236,5 +236,19 @@ export default function SupplierLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SupplierLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+      }
+    >
+      <SupplierLoginContent />
+    </Suspense>
   );
 }

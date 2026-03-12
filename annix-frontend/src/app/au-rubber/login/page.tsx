@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 
-export default function AuRubberLoginPage() {
+function AuRubberLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
@@ -239,5 +239,19 @@ export default function AuRubberLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuRubberLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400" />
+        </div>
+      }
+    >
+      <AuRubberLoginContent />
+    </Suspense>
   );
 }

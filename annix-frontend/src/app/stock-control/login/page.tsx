@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 
-export default function StockControlLoginPage() {
+function StockControlLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
@@ -263,5 +263,19 @@ export default function StockControlLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function StockControlLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-300" />
+        </div>
+      }
+    >
+      <StockControlLoginContent />
+    </Suspense>
   );
 }

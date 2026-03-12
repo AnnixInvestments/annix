@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 
-export default function CvAssistantLoginPage() {
+function CvAssistantLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
@@ -135,5 +135,19 @@ export default function CvAssistantLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CvAssistantLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-violet-900 via-purple-900 to-violet-900 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-400" />
+        </div>
+      }
+    >
+      <CvAssistantLoginContent />
+    </Suspense>
   );
 }
