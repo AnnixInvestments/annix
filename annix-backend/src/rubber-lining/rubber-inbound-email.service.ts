@@ -270,22 +270,16 @@ export class RubberInboundEmailService {
         }
 
         try {
-          const isKnownCocSupplier =
-            cert.supplierMapping.cocType === SupplierCocType.COMPOUNDER ||
-            cert.supplierMapping.cocType === SupplierCocType.CALENDARER;
-
-          if (!isKnownCocSupplier) {
-            const actualType = await this.classifyDocumentType(
-              cert.pdfText,
-              cert.attachment.filename,
+          const actualType = await this.classifyDocumentType(
+            cert.pdfText,
+            cert.attachment.filename,
+          );
+          if (actualType !== "coc") {
+            this.logger.log(
+              `Rerouting ${cert.attachment.filename} from CoC to ${actualType} (supplier: ${cert.supplierMapping.company.name})`,
             );
-            if (actualType !== "coc") {
-              this.logger.log(
-                `Rerouting ${cert.attachment.filename} from CoC to ${actualType} (supplier: ${cert.supplierMapping.company.name})`,
-              );
-              await this.processNonCocAttachments([cert.attachment], emailData, actualType, result);
-              continue;
-            }
+            await this.processNonCocAttachments([cert.attachment], emailData, actualType, result);
+            continue;
           }
         } catch (error) {
           this.logger.warn(
@@ -695,9 +689,11 @@ export class RubberInboundEmailService {
 
     if (
       subjectLower.includes("delivery") ||
-      subjectLower.includes("dn") ||
       subjectLower.includes("despatch") ||
-      subjectLower.includes("dispatch")
+      subjectLower.includes("dispatch") ||
+      subjectLower.includes("waybill") ||
+      subjectLower.includes("packing slip") ||
+      subjectLower.includes("packing list")
     ) {
       return "delivery_note";
     }
@@ -710,6 +706,7 @@ export class RubberInboundEmailService {
     filename: string,
   ): Promise<"coc" | "delivery_note" | "tax_invoice"> {
     const textLower = pdfText.toLowerCase();
+    const filenameLower = filename.toLowerCase();
 
     const taxInvoiceKeywords = [
       "tax invoice",
@@ -717,20 +714,44 @@ export class RubberInboundEmailService {
       "invoice date",
       "payment terms",
       "amount due",
+      "vat invoice",
     ];
     const deliveryNoteKeywords = [
       "delivery note",
       "goods received",
       "dispatch note",
+      "despatch note",
       "packing slip",
+      "packing list",
+      "waybill",
+      "way bill",
+      "goods delivered",
+      "proof of delivery",
     ];
 
-    if (taxInvoiceKeywords.some((kw) => textLower.includes(kw))) {
+    const taxInvoiceFilenameKeywords = ["invoice", "tax_inv", "tax-inv"];
+    const deliveryNoteFilenameKeywords = [
+      "delivery",
+      "dn_",
+      "dn-",
+      "despatch",
+      "dispatch",
+      "waybill",
+      "packing",
+    ];
+
+    if (
+      taxInvoiceKeywords.some((kw) => textLower.includes(kw)) ||
+      taxInvoiceFilenameKeywords.some((kw) => filenameLower.includes(kw))
+    ) {
       this.logger.log(`Rule-based classification: tax_invoice (file: ${filename})`);
       return "tax_invoice";
     }
 
-    if (deliveryNoteKeywords.some((kw) => textLower.includes(kw))) {
+    if (
+      deliveryNoteKeywords.some((kw) => textLower.includes(kw)) ||
+      deliveryNoteFilenameKeywords.some((kw) => filenameLower.includes(kw))
+    ) {
       this.logger.log(`Rule-based classification: delivery_note (file: ${filename})`);
       return "delivery_note";
     }
