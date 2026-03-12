@@ -4625,6 +4625,14 @@ class StockControlApiClient {
     return `${this.baseURL}/stock-control/positector-streaming/sessions/${sessionId}/events`;
   }
 
+  positectorWebhookUrl(companyId: number, deviceId: number): string {
+    return (
+      `${this.baseURL}/stock-control/positector-streaming/webhook` +
+      `?company=${companyId}&device=${deviceId}` +
+      "&value=[thickness]&units=[units]&probe=[probetype]&serial=[gagesn]"
+    );
+  }
+
   async itemsReleasesForJobCard(jobCardId: number): Promise<QcItemsReleaseRecord[]> {
     return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases`);
   }

@@ -12,6 +12,7 @@ import type {
   PositectorStreamingSession,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { QrScanner } from "@/app/stock-control/components/QrScanner";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
@@ -54,6 +55,7 @@ export default function PositectorLiveStreamingPage() {
   const [autoScroll, setAutoScroll] = useState(true);
   const [saveResult, setSaveResult] = useState<PositectorStreamingSaveResult | null>(null);
   const [showStartForm, setShowStartForm] = useState(false);
+  const { profile } = useStockControlAuth();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -315,13 +317,17 @@ export default function PositectorLiveStreamingPage() {
                         Take a measurement on the PosiTector device. Readings will appear here in
                         real-time.
                       </p>
-                      <div className="mt-4 rounded-md bg-gray-50 p-3 text-left text-xs text-gray-500">
-                        <p className="mb-1 font-medium">PosiTector WiFi Streaming URL:</p>
-                        <code className="break-all text-gray-700">
-                          {stockControlApiClient.positectorStreamingEventsUrl("webhook")}
-                          ?company=YOUR_COMPANY_ID&device=YOUR_DEVICE_ID&value=[thickness]&units=[units]&probe=[probetype]&serial=[serial]
-                        </code>
-                      </div>
+                      {profile?.companyId && session?.deviceId && (
+                        <div className="mt-4 rounded-md bg-gray-50 p-3 text-left text-xs text-gray-500">
+                          <p className="mb-1 font-medium">PosiTector WiFi Streaming URL:</p>
+                          <code className="break-all text-gray-700">
+                            {stockControlApiClient.positectorWebhookUrl(
+                              profile.companyId,
+                              session.deviceId,
+                            )}
+                          </code>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="space-y-1">
