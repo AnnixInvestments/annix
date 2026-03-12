@@ -442,9 +442,7 @@ export class PositectorService {
           const datePart = line.match(/(\d{4}-\d{2}-\d{2})/);
           const effectiveDate = datePart?.[1] ?? currentDate;
           const timestamp =
-            effectiveDate && timePart
-              ? `${effectiveDate} ${timePart[1]}`
-              : (timePart?.[1] ?? null);
+            effectiveDate && timePart ? `${effectiveDate} ${timePart[1]}` : (timePart?.[1] ?? null);
 
           readings.push({
             index: readings.length + 1,
@@ -482,7 +480,9 @@ export class PositectorService {
 
       if (candidateValues.length > 1) {
         const isSequential = candidateValues.every((v, i) => i === 0 || v === i + 1);
-        const values = isSequential ? candidateValues.slice(candidateValues.length / 2) : candidateValues;
+        const values = isSequential
+          ? candidateValues.slice(candidateValues.length / 2)
+          : candidateValues;
 
         values.forEach((value, i) => {
           readings.push({
