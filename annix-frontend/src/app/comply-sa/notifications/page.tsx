@@ -2,10 +2,7 @@
 
 import { AlertTriangle, Bell, BellOff, CheckCircle, Clock, Info } from "lucide-react";
 import { formatDateTimeZA } from "@/app/lib/datetime";
-import {
-  useComplySaNotifications,
-  useMarkNotificationRead,
-} from "@/app/lib/query/hooks";
+import { useComplySaNotifications, useMarkNotificationRead } from "@/app/lib/query/hooks";
 
 type Notification = {
   id: string;

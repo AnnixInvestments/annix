@@ -6,8 +6,8 @@ import { formatDateZA } from "@/app/lib/datetime";
 import {
   useComplySaDocuments,
   useComplySaRequirements,
-  useUploadDocument,
   useDeleteDocument,
+  useUploadDocument,
 } from "@/app/lib/query/hooks";
 
 type Document = {
@@ -61,7 +61,9 @@ export default function DocumentsPage() {
   const docsList = docs ?? [];
   const reqsList = reqs ?? [];
   const filteredDocs =
-    filterReqId === "all" ? docsList : docsList.filter((d: Document) => d.requirementId === filterReqId);
+    filterReqId === "all"
+      ? docsList
+      : docsList.filter((d: Document) => d.requirementId === filterReqId);
 
   if (isLoading) {
     return (
@@ -102,7 +104,9 @@ export default function DocumentsPage() {
           className={`h-10 w-10 mx-auto mb-3 ${dragOver ? "text-teal-400" : "text-slate-500"}`}
         />
         <p className="text-sm text-slate-400 mb-3">
-          {uploadMutation.isPending ? "Uploading..." : "Drag and drop a file here, or click to browse"}
+          {uploadMutation.isPending
+            ? "Uploading..."
+            : "Drag and drop a file here, or click to browse"}
         </p>
         <button
           type="button"

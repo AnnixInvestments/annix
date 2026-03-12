@@ -877,7 +877,10 @@ ${recommendations.length > 0 ? `<h2>Recommendations</h2><ul>${recommendations}</
     const deponentIdNumber = data["deponentIdNumber"];
     const affidavitDate = data["date"];
     const blackOwnershipNum = parseFloat(blackOwnershipPercent) || 0;
-    const bbbeeLevel = blackOwnershipNum >= 51 ? "Level 1 (135% B-BBEE recognition)" : "Level 2 (125% B-BBEE recognition)";
+    const bbbeeLevel =
+      blackOwnershipNum >= 51
+        ? "Level 1 (135% B-BBEE recognition)"
+        : "Level 2 (125% B-BBEE recognition)";
 
     return `<!DOCTYPE html>
 <html lang="en">

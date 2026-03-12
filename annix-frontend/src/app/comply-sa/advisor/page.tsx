@@ -158,13 +158,7 @@ function ClientCard({
   );
 }
 
-function AddClientModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+function AddClientModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [companyId, setCompanyId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const addClient = useAddAdvisorClient();
@@ -222,7 +216,11 @@ function AddClientModal({
             disabled={addClient.isPending}
             className="px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
           >
-            {addClient.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {addClient.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
             Add Client
           </button>
         </div>
@@ -357,10 +355,7 @@ export default function AdvisorPage() {
         </div>
       )}
 
-      <AddClientModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-      />
+      <AddClientModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }

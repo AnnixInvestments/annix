@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class ComplySaPhase2SchemaImprovements1807000000008
-  implements MigrationInterface
-{
+export class ComplySaPhase2SchemaImprovements1807000000008 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS idx_comply_sa_compliance_statuses_company_id
@@ -208,28 +206,62 @@ export class ComplySaPhase2SchemaImprovements1807000000008
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_comply_sa_compliance_statuses_company_id`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_comply_sa_documents_company_id`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_comply_sa_notifications_user_read`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_comply_sa_audit_logs_company_id`);
+    await queryRunner.query("DROP INDEX IF EXISTS idx_comply_sa_compliance_statuses_company_id");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_comply_sa_documents_company_id");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_comply_sa_notifications_user_read");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_comply_sa_audit_logs_company_id");
 
-    await queryRunner.query(`ALTER TABLE comply_sa_compliance_statuses ALTER COLUMN next_due_date TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_compliance_statuses ALTER COLUMN last_completed_date TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_subscriptions ALTER COLUMN trial_ends_at TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_subscriptions ALTER COLUMN current_period_start TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_subscriptions ALTER COLUMN current_period_end TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_subscriptions ALTER COLUMN cancelled_at TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_notifications ALTER COLUMN read_at TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_compliance_checklist_progress ALTER COLUMN completed_at TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_documents ALTER COLUMN expiry_date TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_api_keys ALTER COLUMN last_used_at TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_api_keys ALTER COLUMN expires_at TYPE varchar(50)`);
-    await queryRunner.query(`ALTER TABLE comply_sa_users ALTER COLUMN password_reset_expires_at TYPE varchar(50)`);
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_compliance_statuses ALTER COLUMN next_due_date TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_compliance_statuses ALTER COLUMN last_completed_date TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_subscriptions ALTER COLUMN trial_ends_at TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_subscriptions ALTER COLUMN current_period_start TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_subscriptions ALTER COLUMN current_period_end TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_subscriptions ALTER COLUMN cancelled_at TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_notifications ALTER COLUMN read_at TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_compliance_checklist_progress ALTER COLUMN completed_at TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_documents ALTER COLUMN expiry_date TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_api_keys ALTER COLUMN last_used_at TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_api_keys ALTER COLUMN expires_at TYPE varchar(50)",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_users ALTER COLUMN password_reset_expires_at TYPE varchar(50)",
+    );
 
-    await queryRunner.query(`ALTER TABLE comply_sa_documents DROP CONSTRAINT IF EXISTS fk_comply_sa_documents_company`);
-    await queryRunner.query(`ALTER TABLE comply_sa_notifications DROP CONSTRAINT IF EXISTS fk_comply_sa_notifications_user`);
-    await queryRunner.query(`ALTER TABLE comply_sa_notifications DROP CONSTRAINT IF EXISTS fk_comply_sa_notifications_requirement`);
-    await queryRunner.query(`ALTER TABLE comply_sa_notifications DROP CONSTRAINT IF EXISTS fk_comply_sa_notifications_company`);
-    await queryRunner.query(`ALTER TABLE comply_sa_audit_logs DROP CONSTRAINT IF EXISTS fk_comply_sa_audit_logs_company`);
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_documents DROP CONSTRAINT IF EXISTS fk_comply_sa_documents_company",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_notifications DROP CONSTRAINT IF EXISTS fk_comply_sa_notifications_user",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_notifications DROP CONSTRAINT IF EXISTS fk_comply_sa_notifications_requirement",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_notifications DROP CONSTRAINT IF EXISTS fk_comply_sa_notifications_company",
+    );
+    await queryRunner.query(
+      "ALTER TABLE comply_sa_audit_logs DROP CONSTRAINT IF EXISTS fk_comply_sa_audit_logs_company",
+    );
   }
 }

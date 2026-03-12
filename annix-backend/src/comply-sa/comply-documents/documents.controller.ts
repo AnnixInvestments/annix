@@ -30,16 +30,9 @@ export class ComplySaDocumentsController {
     @Req() req: { user: { companyId: number; userId: number }; body: { requirementId?: string } },
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const requirementId = req.body.requirementId
-      ? parseInt(req.body.requirementId, 10)
-      : null;
+    const requirementId = req.body.requirementId ? parseInt(req.body.requirementId, 10) : null;
 
-    return this.documentsService.upload(
-      req.user.companyId,
-      file,
-      requirementId,
-      req.user.userId,
-    );
+    return this.documentsService.upload(req.user.companyId, file, requirementId, req.user.userId);
   }
 
   @Get()
@@ -52,10 +45,7 @@ export class ComplySaDocumentsController {
     @Req() req: { user: { companyId: number } },
     @Param("requirementId", ParseIntPipe) requirementId: number,
   ) {
-    return this.documentsService.documentsByRequirement(
-      req.user.companyId,
-      requirementId,
-    );
+    return this.documentsService.documentsByRequirement(req.user.companyId, requirementId);
   }
 
   @Get(":id/url")
@@ -63,18 +53,12 @@ export class ComplySaDocumentsController {
     @Req() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
   ) {
-    const url = await this.documentsService.presignedUrl(
-      req.user.companyId,
-      id,
-    );
+    const url = await this.documentsService.presignedUrl(req.user.companyId, id);
     return { url };
   }
 
   @Delete(":id")
-  async remove(
-    @Req() req: { user: { companyId: number } },
-    @Param("id", ParseIntPipe) id: number,
-  ) {
+  async remove(@Req() req: { user: { companyId: number } }, @Param("id", ParseIntPipe) id: number) {
     return this.documentsService.remove(req.user.companyId, id);
   }
 }

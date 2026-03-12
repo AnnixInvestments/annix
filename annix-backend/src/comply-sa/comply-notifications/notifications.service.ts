@@ -8,8 +8,8 @@ import { ComplySaUser } from "../companies/entities/user.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
 import { daysBetween, formatDateZA, fromJSDate, now } from "../lib/datetime";
-import { ComplySaNotificationPreferences } from "./entities/notification-preferences.entity";
 import { ComplySaNotification } from "./entities/notification.entity";
+import { ComplySaNotificationPreferences } from "./entities/notification-preferences.entity";
 
 interface DeliveryChannels {
   inApp: boolean;
@@ -138,9 +138,7 @@ export class ComplySaNotificationsService {
         }),
       );
 
-      this.logger.log(
-        `Processed ${pendingNotifications.length} deadline notifications`,
-      );
+      this.logger.log(`Processed ${pendingNotifications.length} deadline notifications`);
 
       const overdueStatuses = statusesWithDueDates.filter((status) => {
         const dueDate = fromJSDate(status.nextDueDate!);
@@ -199,9 +197,10 @@ export class ComplySaNotificationsService {
           const daysUntil = daysBetween(today, expiryDt);
           const formattedDate = formatDateZA(expiryDt);
 
-          const message = daysUntil < 0
-            ? `EXPIRED: Document "${doc.name}" expired on ${formattedDate}. Please upload a renewed version.`
-            : `EXPIRING: Document "${doc.name}" expires on ${formattedDate} (${daysUntil} days). Please renew before expiry.`;
+          const message =
+            daysUntil < 0
+              ? `EXPIRED: Document "${doc.name}" expired on ${formattedDate}. Please upload a renewed version.`
+              : `EXPIRING: Document "${doc.name}" expires on ${formattedDate} (${daysUntil} days). Please renew before expiry.`;
 
           const type = daysUntil < 0 ? "document_expired" : "document_expiring";
 
@@ -225,9 +224,10 @@ export class ComplySaNotificationsService {
               }
 
               if (channels.email) {
-                const subject = daysUntil < 0
-                  ? `[EXPIRED] ${doc.name} - Comply SA`
-                  : `[Expiring] ${doc.name} expires in ${daysUntil} days - Comply SA`;
+                const subject =
+                  daysUntil < 0
+                    ? `[EXPIRED] ${doc.name} - Comply SA`
+                    : `[Expiring] ${doc.name} expires in ${daysUntil} days - Comply SA`;
                 await this.sendEmail(user.email, subject, message);
               }
             }),
@@ -287,9 +287,8 @@ export class ComplySaNotificationsService {
   ): string {
     const requirementName = status.requirement?.name ?? "Requirement";
 
-    const formattedDate = status.nextDueDate !== null
-      ? formatDateZA(fromJSDate(status.nextDueDate))
-      : "unknown";
+    const formattedDate =
+      status.nextDueDate !== null ? formatDateZA(fromJSDate(status.nextDueDate)) : "unknown";
 
     if (type === "overdue") {
       return `OVERDUE: ${requirementName} was due on ${formattedDate}. Please address this immediately to avoid penalties.`;
@@ -358,9 +357,9 @@ export class ComplySaNotificationsService {
 
     try {
       const url = `https://api.twilio.com/2010-04-01/Accounts/${this.twilioAccountSid}/Messages.json`;
-      const auth = Buffer.from(
-        `${this.twilioAccountSid}:${this.twilioAuthToken}`,
-      ).toString("base64");
+      const auth = Buffer.from(`${this.twilioAccountSid}:${this.twilioAuthToken}`).toString(
+        "base64",
+      );
 
       const body = new URLSearchParams({
         To: phone,
@@ -402,9 +401,9 @@ export class ComplySaNotificationsService {
 
     try {
       const url = `https://api.twilio.com/2010-04-01/Accounts/${this.twilioAccountSid}/Messages.json`;
-      const auth = Buffer.from(
-        `${this.twilioAccountSid}:${this.twilioAuthToken}`,
-      ).toString("base64");
+      const auth = Buffer.from(`${this.twilioAccountSid}:${this.twilioAuthToken}`).toString(
+        "base64",
+      );
 
       const body = new URLSearchParams({
         To: `whatsapp:${phone}`,

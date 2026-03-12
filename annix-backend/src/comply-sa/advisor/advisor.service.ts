@@ -6,6 +6,7 @@ import { formatDateZA, fromJSDate } from "../lib/datetime";
 
 const SCORE_THRESHOLD_LOW = 50;
 const SCORE_THRESHOLD_HIGH = 80;
+
 import { ComplySaAdvisorClient } from "./entities/advisor-client.entity";
 
 export interface ClientSummary {

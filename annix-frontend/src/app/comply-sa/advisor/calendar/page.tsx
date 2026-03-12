@@ -148,7 +148,13 @@ function ListView({ entries }: { entries: CalendarEntry[] }) {
             <p className="text-xs text-slate-400 mt-0.5">{entry.companyName}</p>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-sm text-white">{fromISO(entry.date).toLocaleString({ year: "numeric", month: "short", day: "numeric" })}</p>
+            <p className="text-sm text-white">
+              {fromISO(entry.date).toLocaleString({
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+            </p>
             <p
               className={`text-xs mt-0.5 ${
                 entry.daysRemaining < 0

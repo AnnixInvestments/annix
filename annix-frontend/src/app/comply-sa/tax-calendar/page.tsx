@@ -140,9 +140,7 @@ function ListView({ deadlines }: { deadlines: Deadline[] }) {
             </div>
             <div className="flex items-center gap-3 shrink-0 sm:ml-4">
               <TypeBadge type={d.type} />
-              <span className="text-sm text-slate-300">
-                {formatDateZA(d.date)}
-              </span>
+              <span className="text-sm text-slate-300">{formatDateZA(d.date)}</span>
             </div>
           </div>
         );

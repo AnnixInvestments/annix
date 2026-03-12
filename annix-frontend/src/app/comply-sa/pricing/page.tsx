@@ -1,6 +1,14 @@
 "use client";
 
-import { ArrowLeft, Check, CheckCircle, ChevronDown, ChevronUp, Loader2, Shield } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Shield,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useUpgradeSubscription } from "@/app/lib/query/hooks";

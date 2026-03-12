@@ -179,9 +179,7 @@ export class SageService {
     };
   }
 
-  async fullSync(
-    companyId: number,
-  ): Promise<{
+  async fullSync(companyId: number): Promise<{
     companyInfo: SageCompanyInfo;
     financialData: SageFinancialData;
     contacts: SageContactSummary;

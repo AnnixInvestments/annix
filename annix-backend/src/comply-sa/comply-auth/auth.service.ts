@@ -1,15 +1,14 @@
+import { randomBytes } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
   Injectable,
   Logger,
-  NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
-import { randomBytes } from "node:crypto";
 import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { ComplySaCompany } from "../companies/entities/company.entity";

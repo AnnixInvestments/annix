@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { now } from "../lib/datetime";
 import { ComplySaRegulatoryUpdate } from "./entities/regulatory-update.entity";
@@ -87,9 +87,7 @@ export class ComplySaRegulatoryService {
         if (result.status === "fulfilled") {
           return { ...acc, inserted: acc.inserted + result.value };
         } else {
-          this.logger.error(
-            `Failed to scrape ${REGULATORY_SOURCES[index].name}: ${result.reason}`,
-          );
+          this.logger.error(`Failed to scrape ${REGULATORY_SOURCES[index].name}: ${result.reason}`);
           return { ...acc, failed: acc.failed + 1 };
         }
       },
@@ -134,9 +132,7 @@ export class ComplySaRegulatoryService {
         effectiveDate: update.effectiveDate,
         sourceUrl: update.sourceUrl,
         affectedRequirementCodes:
-          update.affectedRequirementCodes.length > 0
-            ? update.affectedRequirementCodes
-            : null,
+          update.affectedRequirementCodes.length > 0 ? update.affectedRequirementCodes : null,
         publishedAt: now().toJSDate(),
       }),
     );
@@ -154,8 +150,7 @@ export class ComplySaRegulatoryService {
       const response = await fetch(url, {
         signal: controller.signal,
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (compatible; ComplySA-RegulatorySync/1.0)",
+          "User-Agent": "Mozilla/5.0 (compatible; ComplySA-RegulatorySync/1.0)",
           Accept: "text/html,application/xhtml+xml",
         },
       });
@@ -176,10 +171,7 @@ export class ComplySaRegulatoryService {
     }
   }
 
-  private async extractUpdatesViaAi(
-    html: string,
-    sourceUrl: string,
-  ): Promise<ExtractedUpdate[]> {
+  private async extractUpdatesViaAi(html: string, sourceUrl: string): Promise<ExtractedUpdate[]> {
     try {
       const result = await this.aiChatService.chat(
         [
@@ -200,8 +192,7 @@ export class ComplySaRegulatoryService {
 
       return parsed
         .filter(
-          (item): item is Record<string, unknown> =>
-            typeof item === "object" && item !== null,
+          (item): item is Record<string, unknown> => typeof item === "object" && item !== null,
         )
         .filter(
           (item) =>
@@ -213,12 +204,12 @@ export class ComplySaRegulatoryService {
           title: String(item.title).slice(0, 255),
           summary: String(item.summary),
           category: this.normalizeCategory(String(item.category)),
-          effectiveDate:
-            typeof item.effectiveDate === "string" ? item.effectiveDate : null,
+          effectiveDate: typeof item.effectiveDate === "string" ? item.effectiveDate : null,
           sourceUrl,
           affectedRequirementCodes: Array.isArray(item.affectedRequirementCodes)
-            ? (item.affectedRequirementCodes as unknown[])
-                .filter((code): code is string => typeof code === "string")
+            ? (item.affectedRequirementCodes as unknown[]).filter(
+                (code): code is string => typeof code === "string",
+              )
             : [],
         }));
     } catch (error) {
@@ -230,21 +221,16 @@ export class ComplySaRegulatoryService {
   }
 
   private normalizeCategory(category: string): string {
-    const match = VALID_CATEGORIES.find(
-      (valid) => valid.toLowerCase() === category.toLowerCase(),
-    );
+    const match = VALID_CATEGORIES.find((valid) => valid.toLowerCase() === category.toLowerCase());
     return match ?? "SARS";
   }
 
-  private async deduplicateUpdates(
-    updates: ExtractedUpdate[],
-  ): Promise<ExtractedUpdate[]> {
+  private async deduplicateUpdates(updates: ExtractedUpdate[]): Promise<ExtractedUpdate[]> {
     const existingTitles = await this.existingTitleIndex();
 
     return updates.filter((update) => {
       const isDuplicate = existingTitles.some(
-        (existing) =>
-          this.titleSimilarity(existing, update.title) >= TITLE_SIMILARITY_THRESHOLD,
+        (existing) => this.titleSimilarity(existing, update.title) >= TITLE_SIMILARITY_THRESHOLD,
       );
       return !isDuplicate;
     });

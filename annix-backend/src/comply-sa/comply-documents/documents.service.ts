@@ -1,11 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import {
-  IStorageService,
-  STORAGE_SERVICE,
-  StorageArea,
-} from "../../storage/storage.interface";
+import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { ComplySaDocument } from "./entities/document.entity";
 
 @Injectable()
@@ -25,15 +21,14 @@ export class ComplySaDocumentsService {
     requirementId: number | null = null,
     userId: number | null = null,
   ): Promise<ComplySaDocument> {
-    const subPath = requirementId !== null
-      ? `${StorageArea.COMPLY_SA}/companies/${companyId}/requirements/${requirementId}`
-      : `${StorageArea.COMPLY_SA}/companies/${companyId}/documents`;
+    const subPath =
+      requirementId !== null
+        ? `${StorageArea.COMPLY_SA}/companies/${companyId}/requirements/${requirementId}`
+        : `${StorageArea.COMPLY_SA}/companies/${companyId}/documents`;
 
     const result = await this.storageService.upload(file, subPath);
 
-    this.logger.log(
-      `Document uploaded: ${result.originalFilename} -> ${result.path}`,
-    );
+    this.logger.log(`Document uploaded: ${result.originalFilename} -> ${result.path}`);
 
     const document = this.documentRepository.create({
       companyId,
@@ -65,10 +60,7 @@ export class ComplySaDocumentsService {
     });
   }
 
-  async presignedUrl(
-    companyId: number,
-    documentId: number,
-  ): Promise<string> {
+  async presignedUrl(companyId: number, documentId: number): Promise<string> {
     const document = await this.documentRepository.findOne({
       where: { id: documentId, companyId },
     });

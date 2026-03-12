@@ -203,8 +203,13 @@ export function useBbeeScorecardElements() {
 
 export function useBbeeCalculate() {
   return useMutation({
-    mutationFn: ({ turnover, blackOwnershipPercent }: { turnover: number; blackOwnershipPercent: number }) =>
-      api.bbeeCalculate(turnover, blackOwnershipPercent),
+    mutationFn: ({
+      turnover,
+      blackOwnershipPercent,
+    }: {
+      turnover: number;
+      blackOwnershipPercent: number;
+    }) => api.bbeeCalculate(turnover, blackOwnershipPercent),
   });
 }
 

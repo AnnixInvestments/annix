@@ -2,7 +2,7 @@
 
 import { Download, FileStack, Loader2, Printer, X } from "lucide-react";
 import { useRef, useState } from "react";
-import { useTemplatesList, useGenerateTemplate } from "@/app/lib/query/hooks";
+import { useGenerateTemplate, useTemplatesList } from "@/app/lib/query/hooks";
 
 type Template = {
   id: string;

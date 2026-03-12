@@ -4,8 +4,8 @@ import { ComplySaComplianceModule } from "../compliance/compliance.module";
 import { ComplySaDocumentsModule } from "../comply-documents/documents.module";
 import { ComplySaApiKeysController } from "./api-keys.controller";
 import { ComplySaApiKeysService } from "./api-keys.service";
-import { ComplySaApiKey } from "./entities/api-key.entity";
 import { ComplySaEnterpriseApiController } from "./enterprise-api.controller";
+import { ComplySaApiKey } from "./entities/api-key.entity";
 import { ComplySaApiKeyGuard } from "./guards/api-key.guard";
 
 @Module({

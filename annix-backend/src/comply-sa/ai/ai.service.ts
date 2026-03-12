@@ -63,12 +63,8 @@ export class ComplySaAiService {
     const contextParts = [
       `Company: ${company.name}`,
       company.industry !== null ? `Industry: ${company.industry}` : null,
-      company.employeeCount !== null
-        ? `Employees: ${company.employeeCount}`
-        : null,
-      company.annualTurnover !== null
-        ? `Annual Turnover: R${company.annualTurnover}`
-        : null,
+      company.employeeCount !== null ? `Employees: ${company.employeeCount}` : null,
+      company.annualTurnover !== null ? `Annual Turnover: R${company.annualTurnover}` : null,
       company.vatRegistered ? "VAT Registered: Yes" : "VAT Registered: No",
       company.province !== null ? `Province: ${company.province}` : null,
     ].filter((part): part is string => part !== null);
@@ -93,10 +89,7 @@ export class ComplySaAiService {
       ...statusSummary,
     ].join("\n");
 
-    const relatedRequirements = this.identifyRelatedRequirements(
-      question,
-      statuses,
-    );
+    const relatedRequirements = this.identifyRelatedRequirements(question, statuses);
 
     try {
       const result = await this.aiChatService.chat(
@@ -132,23 +125,11 @@ export class ComplySaAiService {
     const keywordMap: Record<string, string[]> = {
       cipc: ["CIPC_ANNUAL_RETURN", "CIPC_BENEFICIAL_OWNERSHIP"],
       "annual return": ["CIPC_ANNUAL_RETURN"],
-      popia: [
-        "POPIA_INFORMATION_OFFICER",
-        "POPIA_PRIVACY_POLICY",
-        "POPIA_PAIA_MANUAL",
-      ],
+      popia: ["POPIA_INFORMATION_OFFICER", "POPIA_PRIVACY_POLICY", "POPIA_PAIA_MANUAL"],
       privacy: ["POPIA_INFORMATION_OFFICER", "POPIA_PRIVACY_POLICY"],
       vat: ["SARS_VAT_REGISTRATION", "SARS_VAT_RETURNS"],
-      "b-bbee": [
-        "BBEE_EME_AFFIDAVIT",
-        "BBEE_QSE_AFFIDAVIT",
-        "BBEE_GENERIC_VERIFICATION",
-      ],
-      bee: [
-        "BBEE_EME_AFFIDAVIT",
-        "BBEE_QSE_AFFIDAVIT",
-        "BBEE_GENERIC_VERIFICATION",
-      ],
+      "b-bbee": ["BBEE_EME_AFFIDAVIT", "BBEE_QSE_AFFIDAVIT", "BBEE_GENERIC_VERIFICATION"],
+      bee: ["BBEE_EME_AFFIDAVIT", "BBEE_QSE_AFFIDAVIT", "BBEE_GENERIC_VERIFICATION"],
       tax: ["SARS_INCOME_TAX", "SARS_PROVISIONAL_TAX", "SARS_TURNOVER_TAX"],
       paye: ["SARS_EMP201"],
       uif: ["UIF_REGISTRATION"],

@@ -32,8 +32,7 @@ export const af: Record<string, string> = {
   view: "Bekyk",
   print: "Druk",
 
-  overdue_reminder:
-    "Jy het agterstallige nakomingsvereistes wat aandag vereis.",
+  overdue_reminder: "Jy het agterstallige nakomingsvereistes wat aandag vereis.",
   deadline_approaching: "n Nakomingsperdatum nader binnekort.",
   document_expiring: "Een of meer dokumente verval binnekort.",
   status_updated: "'n Nakomingstatus is bygewerk.",

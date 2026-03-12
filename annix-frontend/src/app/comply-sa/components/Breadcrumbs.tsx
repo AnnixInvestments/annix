@@ -36,9 +36,9 @@ function matchedNavItem(pathname: string): NavItem | null {
   if (exact) {
     return exact;
   }
-  const parent = NAV_LOOKUP
-    .filter((item) => item.href !== "/comply-sa/dashboard" && pathname.startsWith(`${item.href}/`))
-    .sort((a, b) => b.href.length - a.href.length)[0];
+  const parent = NAV_LOOKUP.filter(
+    (item) => item.href !== "/comply-sa/dashboard" && pathname.startsWith(`${item.href}/`),
+  ).sort((a, b) => b.href.length - a.href.length)[0];
   return parent ?? null;
 }
 
@@ -58,7 +58,10 @@ export default function Breadcrumbs() {
 
   return (
     <nav className="flex items-center gap-1.5 text-sm mb-4">
-      <Link href="/comply-sa/dashboard" className="text-slate-400 hover:text-white transition-colors">
+      <Link
+        href="/comply-sa/dashboard"
+        className="text-slate-400 hover:text-white transition-colors"
+      >
         Home
       </Link>
       {showGroup && (

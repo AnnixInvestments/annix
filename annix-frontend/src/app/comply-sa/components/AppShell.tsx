@@ -25,9 +25,9 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { COMPLY_SA_VERSION } from "@/app/comply-sa/config/version";
 import Breadcrumbs from "@/app/comply-sa/components/Breadcrumbs";
 import HelpLinks from "@/app/comply-sa/components/HelpLinks";
+import { COMPLY_SA_VERSION } from "@/app/comply-sa/config/version";
 
 type NavGroup = {
   label: string;

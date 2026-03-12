@@ -206,7 +206,11 @@ export default function AiAssistantPage() {
             disabled={chatMutation.isPending || !input.trim()}
             className="px-4 py-3 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 disabled:hover:bg-teal-500 text-white rounded-xl transition-colors"
           >
-            {chatMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            {chatMutation.isPending ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>

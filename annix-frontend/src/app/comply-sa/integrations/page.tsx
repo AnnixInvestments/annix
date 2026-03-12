@@ -1,8 +1,8 @@
 "use client";
 
 import { BookOpen, DollarSign, Info, Loader2, Plug, Receipt, Users } from "lucide-react";
-import { useIntegrationsList } from "@/app/lib/query/hooks";
 import type { IntegrationItem } from "@/app/lib/query/hooks";
+import { useIntegrationsList } from "@/app/lib/query/hooks";
 
 const INTEGRATION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   sage: DollarSign,

@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { COMPLY_SA_VERSION } from "@/app/comply-sa/config/version";
 import { formatDateZA } from "@/app/lib/datetime";
+import type { CompanyProfile, NotificationPreferences } from "@/app/lib/query/hooks";
 import {
   useCancelSubscription,
   useCompanyProfile,
@@ -26,11 +27,6 @@ import {
   useSubscriptionStatus,
   useUpdateCompanyProfile,
   useUpdateNotificationPreferences,
-} from "@/app/lib/query/hooks";
-import type {
-  CompanyProfile,
-  NotificationPreferences,
-  SubscriptionStatusData,
 } from "@/app/lib/query/hooks";
 
 function Toggle({
@@ -426,8 +422,7 @@ function SubscriptionSection() {
         <div className="bg-slate-900/50 rounded-lg p-3">
           <p className="text-xs text-slate-500 mb-0.5">Current Period</p>
           <p className="text-slate-300">
-            {formatDateZA(sub.currentPeriodStart)} -{" "}
-            {formatDateZA(sub.currentPeriodEnd)}
+            {formatDateZA(sub.currentPeriodStart)} - {formatDateZA(sub.currentPeriodEnd)}
           </p>
         </div>
         <div className="bg-slate-900/50 rounded-lg p-3">

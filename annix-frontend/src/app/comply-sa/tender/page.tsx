@@ -11,11 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useState } from "react";
-import {
-  useTenderChecklist,
-  useTenderScore,
-  useUploadTenderDocument,
-} from "@/app/lib/query/hooks";
+import { useTenderChecklist, useTenderScore, useUploadTenderDocument } from "@/app/lib/query/hooks";
 
 type ChecklistItem = {
   id: string;
@@ -147,7 +143,11 @@ function LoadingSkeleton() {
 }
 
 export default function TenderPage() {
-  const { data: checklist, isLoading: checklistLoading, error: checklistError } = useTenderChecklist();
+  const {
+    data: checklist,
+    isLoading: checklistLoading,
+    error: checklistError,
+  } = useTenderChecklist();
   const { data: score, isLoading: scoreLoading } = useTenderScore();
   const uploadMutation = useUploadTenderDocument();
   const [uploading, setUploading] = useState<string | null>(null);
@@ -156,10 +156,7 @@ export default function TenderPage() {
 
   function handleUpload(itemId: string, file: File) {
     setUploading(itemId);
-    uploadMutation.mutate(
-      { file, requirementId: itemId },
-      { onSettled: () => setUploading(null) },
-    );
+    uploadMutation.mutate({ file, requirementId: itemId }, { onSettled: () => setUploading(null) });
   }
 
   if (isLoading) return <LoadingSkeleton />;

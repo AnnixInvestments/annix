@@ -3,10 +3,7 @@
 import { Calendar, ExternalLink, Newspaper } from "lucide-react";
 import { useState } from "react";
 import { formatDateZA, fromISO } from "@/app/lib/datetime";
-import {
-  useRegulatoryUpdates,
-  useRegulatoryUpdatesByCategory,
-} from "@/app/lib/query/hooks";
+import { useRegulatoryUpdates, useRegulatoryUpdatesByCategory } from "@/app/lib/query/hooks";
 
 type RegulatoryUpdate = {
   id: string;

@@ -13,11 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { formatDateZA } from "@/app/lib/datetime";
-import {
-  useComplySaDashboard,
-  useToggleChecklist,
-  useUploadDocument,
-} from "@/app/lib/query/hooks";
+import { useComplySaDashboard, useToggleChecklist, useUploadDocument } from "@/app/lib/query/hooks";
 
 type DashboardData = NonNullable<ReturnType<typeof useComplySaDashboard>["data"]>;
 type Requirement = DashboardData["requirements"][number];
@@ -205,9 +201,7 @@ function RequirementCard({
             <StatusBadge status={requirement.status} />
           </div>
           {requirement.nextDueDate && (
-            <p className="text-xs text-slate-400">
-              Due: {formatDateZA(requirement.nextDueDate)}
-            </p>
+            <p className="text-xs text-slate-400">Due: {formatDateZA(requirement.nextDueDate)}</p>
           )}
           {totalSteps > 0 && (
             <div className="mt-2 flex items-center gap-3">
@@ -273,9 +267,7 @@ function RequirementCard({
                   <div key={doc.id} className="flex items-center gap-2 text-sm text-slate-400">
                     <FileText className="h-4 w-4" />
                     <span>{doc.name}</span>
-                    <span className="text-xs text-slate-500">
-                      {formatDateZA(doc.uploadedAt)}
-                    </span>
+                    <span className="text-xs text-slate-500">{formatDateZA(doc.uploadedAt)}</span>
                   </div>
                 ))}
               </div>
@@ -375,9 +367,7 @@ export default function DashboardPage() {
               <div key={deadline.id} className="flex items-center justify-between p-4">
                 <div>
                   <p className="text-sm font-medium text-white">{deadline.requirementName}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {formatDateZA(deadline.dueDate)}
-                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">{formatDateZA(deadline.dueDate)}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span

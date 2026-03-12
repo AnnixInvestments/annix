@@ -32,10 +32,7 @@ export class ComplySaIntegrationsController {
   }
 
   @Get("sage/callback")
-  sageCallback(
-    @Query("code") code: string,
-    @Query("state") state: string,
-  ) {
+  sageCallback(@Query("code") code: string, @Query("state") state: string) {
     const companyId = Number.parseInt(state, 10);
     return this.sageService.handleCallback(companyId, code);
   }

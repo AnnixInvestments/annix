@@ -3,7 +3,7 @@
 import { Award, FileText, Info, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { useBbeeScorecardElements, useBbeeCalculate } from "@/app/lib/query/hooks";
+import { useBbeeCalculate, useBbeeScorecardElements } from "@/app/lib/query/hooks";
 
 type BbeeResult = {
   category: string;

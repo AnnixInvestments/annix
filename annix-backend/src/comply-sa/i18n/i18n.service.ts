@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { en } from "./translations/en";
 import { af } from "./translations/af";
+import { en } from "./translations/en";
 import { zu } from "./translations/zu";
 
 interface SupportedLanguage {

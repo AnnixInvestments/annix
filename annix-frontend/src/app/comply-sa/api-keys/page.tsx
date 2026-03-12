@@ -13,12 +13,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { formatDateZA } from "@/app/lib/datetime";
-import {
-  useApiKeysList,
-  useGenerateApiKey,
-  useRevokeApiKey,
-} from "@/app/lib/query/hooks";
 import type { ApiKeyItem } from "@/app/lib/query/hooks";
+import { useApiKeysList, useGenerateApiKey, useRevokeApiKey } from "@/app/lib/query/hooks";
 
 function GenerateModal({
   onClose,
@@ -146,9 +142,7 @@ function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKeyItem; onRevoke: (id: numbe
     <tr className="border-b border-slate-700 last:border-b-0">
       <td className="px-4 py-3 text-sm text-white font-medium">{apiKey.name}</td>
       <td className="px-4 py-3 text-sm text-slate-400 font-mono">{apiKey.keyPreview}</td>
-      <td className="px-4 py-3 text-sm text-slate-400">
-        {formatDateZA(apiKey.createdAt)}
-      </td>
+      <td className="px-4 py-3 text-sm text-slate-400">{formatDateZA(apiKey.createdAt)}</td>
       <td className="px-4 py-3 text-sm text-slate-400">
         {apiKey.lastUsedAt ? formatDateZA(apiKey.lastUsedAt) : "Never"}
       </td>

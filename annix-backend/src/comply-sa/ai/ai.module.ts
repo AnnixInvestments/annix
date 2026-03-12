@@ -7,10 +7,7 @@ import { ComplySaAiController } from "./ai.controller";
 import { ComplySaAiService } from "./ai.service";
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ComplySaCompany, ComplySaComplianceStatus]),
-    NixModule,
-  ],
+  imports: [TypeOrmModule.forFeature([ComplySaCompany, ComplySaComplianceStatus]), NixModule],
   controllers: [ComplySaAiController],
   providers: [ComplySaAiService],
 })

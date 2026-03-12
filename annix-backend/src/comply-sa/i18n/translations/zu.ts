@@ -32,8 +32,7 @@ export const zu: Record<string, string> = {
   view: "Buka",
   print: "Phrinta",
 
-  overdue_reminder:
-    "Unezidingo zokuthobela ezidlulelwe yisikhathi ezidinga ukunakwa.",
+  overdue_reminder: "Unezidingo zokuthobela ezidlulelwe yisikhathi ezidinga ukunakwa.",
   deadline_approaching: "Umhlangano wokuthobela usondela maduze.",
   document_expiring: "Idokhumenti elilodwa noma ngaphezulu liphelelwa yisikhathi maduze.",
   status_updated: "Isimo sokuthobela sibuyekezwe.",
