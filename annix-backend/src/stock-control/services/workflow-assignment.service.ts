@@ -77,8 +77,14 @@ export class WorkflowAssignmentService {
       >,
     );
 
-    return Object.values(WorkflowStep).map((step) => ({
-      step,
+    const enumSteps = Object.values(WorkflowStep) as string[];
+    const allStepKeys = [
+      ...enumSteps,
+      ...Object.keys(stepGroups).filter((key) => !enumSteps.includes(key)),
+    ];
+
+    return allStepKeys.map((step) => ({
+      step: step as WorkflowStep,
       userIds: stepGroups[step]?.userIds || [],
       primaryUserId: stepGroups[step]?.primaryUserId || null,
       users: stepGroups[step]?.users || [],
@@ -235,8 +241,14 @@ export class WorkflowAssignmentService {
       {} as Record<string, string[]>,
     );
 
-    return Object.values(WorkflowStep).map((step) => ({
-      step,
+    const enumSteps = Object.values(WorkflowStep) as string[];
+    const allStepKeys = [
+      ...enumSteps,
+      ...Object.keys(grouped).filter((key) => !enumSteps.includes(key)),
+    ];
+
+    return allStepKeys.map((step) => ({
+      step: step as WorkflowStep,
       emails: grouped[step] || [],
     }));
   }
