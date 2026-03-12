@@ -15,12 +15,16 @@ export class StockControlAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
+    const queryToken = request.query?.token as string | undefined;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const token =
+      authHeader?.startsWith("Bearer ") ? authHeader.substring(7)
+      : queryToken ? queryToken
+      : null;
+
+    if (!token) {
       throw new UnauthorizedException("Missing or invalid authorization header");
     }
-
-    const token = authHeader.substring(7);
 
     try {
       const payload = this.jwtService.verify(token);

@@ -7,6 +7,7 @@ import type {
   CoatDetail,
   CoatingAnalysis,
   JobCard,
+  PositectorConnectionStatus,
   PositectorDevice,
   PositectorStreamingReading,
   PositectorStreamingSaveResult,
@@ -259,7 +260,7 @@ export default function PositectorLiveStreamingPage() {
                         className={`h-2.5 w-2.5 rounded-full ${connected ? "animate-pulse bg-green-500" : "bg-gray-400"}`}
                       />
                       <span className="text-sm text-gray-600">
-                        {connected ? "Connected" : "Waiting for connection..."}
+                        {connected ? "Live stream active" : "Connecting to server..."}
                       </span>
                     </div>
                     <div className="text-sm text-gray-600">
@@ -470,6 +471,8 @@ function StartSessionForm({
   onCancel: () => void;
 }) {
   const [deviceId, setDeviceId] = useState("");
+  const [deviceStatus, setDeviceStatus] = useState<PositectorConnectionStatus | null>(null);
+  const [isCheckingDevice, setIsCheckingDevice] = useState(false);
   const [jobCardId, setJobCardId] = useState("");
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
@@ -492,6 +495,43 @@ function StartSessionForm({
   const [requiredShore, setRequiredShore] = useState("");
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleDeviceChange = useCallback(async (selectedId: string) => {
+    setDeviceId(selectedId);
+    setDeviceStatus(null);
+
+    if (!selectedId) return;
+
+    try {
+      setIsCheckingDevice(true);
+      const status = await stockControlApiClient.checkPositectorConnection(
+        parseInt(selectedId, 10),
+      );
+      setDeviceStatus(status);
+    } catch {
+      setDeviceStatus(null);
+      setError("Failed to check device connection");
+    } finally {
+      setIsCheckingDevice(false);
+    }
+  }, []);
+
+  const handleRetryConnection = useCallback(async () => {
+    if (!deviceId) return;
+
+    try {
+      setIsCheckingDevice(true);
+      const status = await stockControlApiClient.checkPositectorConnection(
+        parseInt(deviceId, 10),
+      );
+      setDeviceStatus(status);
+    } catch {
+      setDeviceStatus(null);
+      setError("Failed to check device connection");
+    } finally {
+      setIsCheckingDevice(false);
+    }
+  }, [deviceId]);
 
   useEffect(() => {
     const fetchJobCards = async () => {
@@ -620,6 +660,13 @@ function StartSessionForm({
       return;
     }
 
+    if (deviceStatus && !deviceStatus.online) {
+      setError(
+        "Device is offline. Please ensure the PosiTector is powered on and connected to WiFi before starting a session.",
+      );
+      return;
+    }
+
     try {
       setIsStarting(true);
       setError(null);
@@ -665,7 +712,7 @@ function StartSessionForm({
             <label className="block text-sm font-medium text-gray-700">Device</label>
             <select
               value={deviceId}
-              onChange={(e) => setDeviceId(e.target.value)}
+              onChange={(e) => handleDeviceChange(e.target.value)}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Select device...</option>
@@ -675,6 +722,51 @@ function StartSessionForm({
                 </option>
               ))}
             </select>
+            {isCheckingDevice && (
+              <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
+                <div className="h-3 w-3 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+                Checking device connection...
+              </div>
+            )}
+            {!isCheckingDevice && deviceStatus && (
+              <div
+                className={`mt-2 flex items-center justify-between rounded-md px-3 py-2 text-sm ${
+                  deviceStatus.online
+                    ? "bg-green-50 text-green-800"
+                    : "bg-red-50 text-red-800"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      deviceStatus.online ? "bg-green-500" : "bg-red-500"
+                    }`}
+                  />
+                  {deviceStatus.online ? (
+                    <span>
+                      Device online
+                      {deviceStatus.probeType && ` — ${deviceStatus.probeType}`}
+                      {deviceStatus.batchCount !== null &&
+                        ` (${deviceStatus.batchCount} batches on device)`}
+                    </span>
+                  ) : (
+                    <span>
+                      Device offline — ensure PosiTector is powered on, connected to WiFi, and WiFi
+                      streaming is enabled
+                    </span>
+                  )}
+                </div>
+                {!deviceStatus.online && (
+                  <button
+                    type="button"
+                    onClick={handleRetryConnection}
+                    className="rounded-md bg-red-100 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-200"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Measurement Type</label>
@@ -883,7 +975,7 @@ function StartSessionForm({
           </button>
           <button
             type="submit"
-            disabled={isStarting}
+            disabled={isStarting || isCheckingDevice || (deviceStatus !== null && !deviceStatus.online)}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
             {isStarting ? "Starting..." : "Start Streaming"}
