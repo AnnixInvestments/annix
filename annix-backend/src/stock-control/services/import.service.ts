@@ -37,6 +37,24 @@ export interface ImportResult {
   errors: { row: number; message: string }[];
 }
 
+const INVENTORY_PDF_EXTRACTION_PROMPT = `You are an expert at reading inventory, stock, and product listing documents.
+
+Look at this PDF and extract all inventory/stock items into a JSON array.
+
+Each item should have these fields (use null if not found):
+- sku: product code, SKU, item code, or part number
+- name: product name or item name
+- description: additional description or specification
+- category: category or group if shown
+- unitOfMeasure: unit (each, kg, m, ltr, etc.)
+- costPerUnit: price per unit (number only, no currency symbol)
+- quantity: stock quantity or count (number only)
+- minStockLevel: minimum stock level if shown (number only)
+- location: storage location or bin number
+
+Return ONLY a JSON array of objects, no markdown fences or explanation.
+Example: [{"sku":"ABC-001","name":"Widget","quantity":50,"costPerUnit":12.5}]`;
+
 @Injectable()
 export class ImportService {
   private readonly logger = new Logger(ImportService.name);
@@ -153,6 +171,11 @@ export class ImportService {
   }
 
   async parsePdf(buffer: Buffer): Promise<ImportRow[]> {
+    const aiRows = await this.parsePdfWithAi(buffer);
+    if (aiRows.length > 0) {
+      return aiRows;
+    }
+
     const pdfParse = require("pdf-parse");
     const data = await pdfParse(buffer);
     const lines = data.text.split("\n").filter((line: string) => line.trim().length > 0);
@@ -173,6 +196,46 @@ export class ImportService {
     }
 
     return rows;
+  }
+
+  private async parsePdfWithAi(buffer: Buffer): Promise<ImportRow[]> {
+    try {
+      const base64 = buffer.toString("base64");
+      const { content } = await this.aiChatService.chatWithImage(
+        base64,
+        "application/pdf",
+        INVENTORY_PDF_EXTRACTION_PROMPT,
+      );
+
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        this.logger.warn("AI inventory PDF extraction returned no JSON array");
+        return [];
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        return [];
+      }
+
+      this.logger.log(`AI extracted ${parsed.length} inventory rows from PDF`);
+
+      return parsed.map((row: Record<string, unknown>) => ({
+        sku: row.sku ? String(row.sku) : undefined,
+        name: row.name ? String(row.name) : undefined,
+        description: row.description ? String(row.description) : undefined,
+        category: row.category ? String(row.category) : undefined,
+        unitOfMeasure: row.unitOfMeasure ? String(row.unitOfMeasure) : undefined,
+        costPerUnit: row.costPerUnit != null ? Number(row.costPerUnit) || undefined : undefined,
+        quantity: row.quantity != null ? Number(row.quantity) || undefined : undefined,
+        minStockLevel: row.minStockLevel != null ? Number(row.minStockLevel) || undefined : undefined,
+        location: row.location ? String(row.location) : undefined,
+      }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.warn(`AI inventory PDF extraction failed, falling back to text: ${message}`);
+      return [];
+    }
   }
 
   async importRows(

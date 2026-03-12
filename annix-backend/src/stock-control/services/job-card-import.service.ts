@@ -200,6 +200,21 @@ function jaccardSimilarity(textA: string, textB: string): number {
   return union > 0 ? intersection / union : 0;
 }
 
+const PDF_GRID_EXTRACTION_PROMPT = `You are an expert at reading job cards, work orders, sales orders, and industrial documents from PDF files.
+
+Look at this PDF document and extract ALL visible data into a 2D grid (array of arrays), exactly as it appears in the document layout.
+
+Rules:
+- Return ONLY a JSON array of arrays (e.g. [["Header1","Header2"],["val1","val2"]])
+- Preserve the table structure exactly as shown in the document
+- Include header rows
+- Include ALL rows, even if some cells are empty (use "" for empty cells)
+- If there are multiple tables/sections, include them all in sequence
+- Include any metadata fields visible on the page (job number, customer, dates, etc.) as rows too
+- Capture text exactly as shown - do not paraphrase or reformat values
+- For fields shown as "Label: Value" pairs, output them as ["Label", "Value"]
+- Return valid JSON only, no markdown fences or explanation`;
+
 const JOB_CARD_MAPPING_PROMPT = `You are an expert at reading job cards and work orders. Given a grid of text extracted from a PDF or spreadsheet, identify where the job card fields are located.
 
 Job cards typically have these fields:
@@ -312,9 +327,9 @@ export class JobCardImportService {
 
     const extractedDocNumber = this.extractDocumentNumber(filename, text);
 
-    const grid = this.buildGridFromPdfText(text);
+    const textGrid = this.buildGridFromPdfText(text);
 
-    if (this.isLikelyDrawingPdf(grid, text)) {
+    if (this.isLikelyDrawingPdf(textGrid, text)) {
       this.logger.log(
         `PDF "${filename}" appears to be an engineering drawing, using vision extraction`,
       );
@@ -328,7 +343,15 @@ export class JobCardImportService {
       }
     }
 
-    return { grid, documentNumber: extractedDocNumber };
+    const aiGrid = await this.extractGridFromPdfWithAi(buffer);
+    if (aiGrid.length > 1) {
+      this.logger.log(
+        `AI vision extracted ${aiGrid.length} rows from PDF "${filename}"`,
+      );
+      return { grid: aiGrid, documentNumber: extractedDocNumber };
+    }
+
+    return { grid: textGrid, documentNumber: extractedDocNumber };
   }
 
   async parseDrawingPdfs(
@@ -361,6 +384,48 @@ export class JobCardImportService {
       /job\s*card|work\s*order|item\s*code|item\s*description|qty|quantity/i.test(text);
 
     return hasDrawingKeywords && !hasJobCardKeywords && nonEmptyCells < 50;
+  }
+
+  private async extractGridFromPdfWithAi(buffer: Buffer): Promise<string[][]> {
+    try {
+      const base64 = buffer.toString("base64");
+      const { content } = await this.aiChatService.chatWithImage(
+        base64,
+        "application/pdf",
+        PDF_GRID_EXTRACTION_PROMPT,
+      );
+
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        this.logger.warn("AI PDF grid extraction returned no JSON array");
+        return [];
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        return [];
+      }
+
+      const grid: string[][] = parsed.map((row: unknown) => {
+        if (!Array.isArray(row)) return [];
+        return row.map((cell: unknown) =>
+          cell === null || cell === undefined ? "" : String(cell),
+        );
+      });
+
+      const maxCols = grid.reduce((max, row) => Math.max(max, row.length), 0);
+      return grid.map((row) => {
+        const padded = [...row];
+        while (padded.length < maxCols) {
+          padded.push("");
+        }
+        return padded;
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.warn(`AI PDF grid extraction failed, falling back to text: ${message}`);
+      return [];
+    }
   }
 
   private async extractDrawingAsImportRows(
