@@ -68,6 +68,23 @@ export interface ChatMessageResponse {
   imageUrl: string | null;
   editedAt: string | null;
   createdAt: string;
+  conversationId: number | null;
+}
+
+export interface ChatConversationParticipant {
+  userId: number;
+  name: string;
+  lastReadAt: string | null;
+}
+
+export interface ChatConversationResponse {
+  id: number;
+  type: "general" | "direct" | "group";
+  name: string | null;
+  createdById: number;
+  lastMessageAt: string | null;
+  createdAt: string;
+  participants: ChatConversationParticipant[];
 }
 
 export interface CompanyDetailsUpdate {
@@ -3790,6 +3807,13 @@ class StockControlApiClient {
     });
   }
 
+  async reorderCompanyRoles(orderedIds: number[]): Promise<CompanyRole[]> {
+    return this.request("/stock-control/auth/roles/reorder", {
+      method: "PATCH",
+      body: JSON.stringify({ orderedIds }),
+    });
+  }
+
   async cpos(status?: string): Promise<CustomerPurchaseOrder[]> {
     const query = status ? `?status=${encodeURIComponent(status)}` : "";
     return this.request(`/stock-control/cpos${query}`);
@@ -4640,15 +4664,30 @@ class StockControlApiClient {
     });
   }
 
-  async chatMessages(afterId: number | null): Promise<ChatMessageResponse[]> {
-    const params = afterId !== null ? `?afterId=${afterId}` : "";
-    return this.request(`/stock-control/chat/messages${params}`);
+  async chatMessages(
+    afterId: number | null,
+    conversationId?: number | null,
+  ): Promise<ChatMessageResponse[]> {
+    const params = new URLSearchParams();
+    if (afterId !== null) params.set("afterId", String(afterId));
+    if (conversationId !== null && conversationId !== undefined)
+      params.set("conversationId", String(conversationId));
+    const qs = params.toString();
+    return this.request(`/stock-control/chat/messages${qs ? `?${qs}` : ""}`);
   }
 
-  async sendChatMessage(text: string, imageUrl?: string | null): Promise<ChatMessageResponse> {
+  async sendChatMessage(
+    text: string,
+    imageUrl?: string | null,
+    conversationId?: number | null,
+  ): Promise<ChatMessageResponse> {
     return this.request("/stock-control/chat/messages", {
       method: "POST",
-      body: JSON.stringify({ text, imageUrl: imageUrl ?? null }),
+      body: JSON.stringify({
+        text,
+        imageUrl: imageUrl ?? null,
+        conversationId: conversationId ?? null,
+      }),
     });
   }
 
@@ -4657,6 +4696,55 @@ class StockControlApiClient {
       method: "PATCH",
       body: JSON.stringify({ text }),
     });
+  }
+
+  async uploadChatImage(file: File): Promise<{ imageUrl: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/chat/upload`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async chatConversations(): Promise<ChatConversationResponse[]> {
+    return this.request("/stock-control/chat/conversations");
+  }
+
+  async createChatConversation(
+    participantUserIds: number[],
+    name?: string | null,
+  ): Promise<ChatConversationResponse> {
+    return this.request("/stock-control/chat/conversations", {
+      method: "POST",
+      body: JSON.stringify({ participantUserIds, name: name ?? null }),
+    });
+  }
+
+  async markConversationRead(conversationId: number): Promise<{ success: boolean }> {
+    return this.request(`/stock-control/chat/conversations/${conversationId}/read`, {
+      method: "POST",
+    });
+  }
+
+  async chatUnreadCounts(): Promise<Record<string, number>> {
+    return this.request("/stock-control/chat/unread");
+  }
+
+  async chatTeamMembers(): Promise<StockControlTeamMember[]> {
+    return this.request("/stock-control/chat/team");
   }
 }
 

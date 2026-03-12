@@ -7,11 +7,13 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { ChatConversation } from "./chat-conversation.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
 
 @Entity("stock_control_chat_messages")
 @Index(["companyId", "createdAt"])
+@Index(["conversationId", "createdAt"])
 export class ChatMessage {
   @PrimaryGeneratedColumn()
   id: number;
@@ -22,6 +24,17 @@ export class ChatMessage {
   @ManyToOne(() => StockControlCompany)
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
+
+  @Column({ name: "conversation_id", type: "int", nullable: true })
+  conversationId: number | null;
+
+  @ManyToOne(
+    () => ChatConversation,
+    (c) => c.messages,
+    { onDelete: "CASCADE" },
+  )
+  @JoinColumn({ name: "conversation_id" })
+  conversation: ChatConversation | null;
 
   @Column({ name: "sender_id", type: "int" })
   senderId: number;

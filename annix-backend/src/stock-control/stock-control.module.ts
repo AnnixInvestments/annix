@@ -35,6 +35,8 @@ import { SignatureController } from "./controllers/signature.controller";
 import { StaffController } from "./controllers/staff.controller";
 import { SupplierController } from "./controllers/supplier.controller";
 import { WorkflowController } from "./controllers/workflow.controller";
+import { ChatConversation } from "./entities/chat-conversation.entity";
+import { ChatConversationParticipant } from "./entities/chat-conversation-participant.entity";
 import { ChatMessage } from "./entities/chat-message.entity";
 import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
 import { CpoCalloffRecord } from "./entities/cpo-calloff-record.entity";
@@ -178,6 +180,8 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       IssuanceBatchRecord,
       JobCardDataBook,
       ChatMessage,
+      ChatConversation,
+      ChatConversationParticipant,
     ]),
     EmailModule,
     JwtModule.registerAsync({
