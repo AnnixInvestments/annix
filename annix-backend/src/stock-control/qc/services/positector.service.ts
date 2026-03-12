@@ -388,7 +388,11 @@ export class PositectorService {
     lines.forEach((line: string) => {
       const lower = line.toLowerCase();
       if (lower.startsWith("positector body s/n") || lower.startsWith("positector body s/n")) {
-        serialNumber = line.split(/\s{2,}/).pop()?.trim() ?? null;
+        serialNumber =
+          line
+            .split(/\s{2,}/)
+            .pop()
+            ?.trim() ?? null;
       }
       if (lower.startsWith("probe type") || lower.includes("probe type")) {
         const parts = line.split(/\s{2,}/);
@@ -413,7 +417,7 @@ export class PositectorService {
           const timePart = line.match(/(\d{1,2}:\d{2}:\d{2})/);
           const datePart = line.match(/(\d{4}-\d{2}-\d{2})/);
           const timestamp =
-            datePart && timePart ? `${datePart[1]} ${timePart[1]}` : timePart?.[1] ?? null;
+            datePart && timePart ? `${datePart[1]} ${timePart[1]}` : (timePart?.[1] ?? null);
 
           readings.push({
             index: readings.length + 1,

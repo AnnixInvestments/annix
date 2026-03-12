@@ -42,7 +42,10 @@ export default function PositectorUploadPage() {
   };
 
   const processTextData = useCallback(async (text: string, sourceName: string) => {
-    const lines = text.trim().split("\n").filter((l) => l.trim().length > 0);
+    const lines = text
+      .trim()
+      .split("\n")
+      .filter((l) => l.trim().length > 0);
     if (lines.length < 2) {
       setError("Pasted data does not contain enough lines to extract readings");
       return;
