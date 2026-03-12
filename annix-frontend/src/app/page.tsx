@@ -1,4 +1,12 @@
-import { AudioLines, FileText, MapPinned, Package, ShieldCheck, UserSearch } from "lucide-react";
+import {
+  AudioLines,
+  ClipboardCheck,
+  FileText,
+  MapPinned,
+  Package,
+  ShieldCheck,
+  UserSearch,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -201,6 +209,42 @@ export default function HomePage() {
                 </p>
                 <span className="inline-flex items-center text-violet-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Login
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="https://comply.annix.co.za"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group"
+          >
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-rose-400 hover:shadow-xl transition-all duration-300 h-full">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-rose-100 rounded-2xl text-rose-600 mb-6 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                  <ClipboardCheck {...iconProps} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Comply SA</h3>
+                <p className="text-gray-600 mb-6">
+                  SA SME compliance dashboard with B-BBEE, tax tools, document templates, and
+                  regulatory tracking.
+                </p>
+                <span className="inline-flex items-center text-rose-600 font-semibold group-hover:translate-x-1 transition-transform">
+                  Open App
                   <svg
                     className="w-5 h-5 ml-2"
                     fill="none"

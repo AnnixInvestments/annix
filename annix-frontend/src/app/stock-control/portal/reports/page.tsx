@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   CostByJob,
   StaffMember,
@@ -13,7 +14,6 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, now } from "@/app/lib/datetime";
-import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 
 function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", {
@@ -490,7 +490,12 @@ export default function ReportsPage() {
           </div>
           <button
             onClick={() =>
-              setMovementFilters({ startDate: todayISO, endDate: todayISO, movementType: "", stockItemId: 0 })
+              setMovementFilters({
+                startDate: todayISO,
+                endDate: todayISO,
+                movementType: "",
+                stockItemId: 0,
+              })
             }
             className="col-span-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 sm:col-span-1"
           >
@@ -1101,7 +1106,9 @@ export default function ReportsPage() {
             {profile?.logoUrl && (
               <div
                 className="flex items-center justify-center p-6 pb-4"
-                style={{ backgroundColor: profile.primaryColor ? `${profile.primaryColor}10` : "#f0fdfa" }}
+                style={{
+                  backgroundColor: profile.primaryColor ? `${profile.primaryColor}10` : "#f0fdfa",
+                }}
               >
                 <img
                   src={profile.logoUrl}
@@ -1127,7 +1134,8 @@ export default function ReportsPage() {
               </svg>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Stock Movement</h3>
               <p className="text-sm text-gray-600 mb-5">
-                There has been no stock movement on the selected date. Please select a different date range.
+                There has been no stock movement on the selected date. Please select a different
+                date range.
               </p>
               <button
                 type="button"

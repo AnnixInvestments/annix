@@ -2,6 +2,7 @@
 
 import { Camera } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   CoatDetail,
   CoatingAnalysis,
@@ -12,7 +13,6 @@ import type {
   PositectorStreamingSession,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { QrScanner } from "@/app/stock-control/components/QrScanner";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
