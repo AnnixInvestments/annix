@@ -13,6 +13,7 @@ import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
 import { StockControlAuthController } from "./controllers/auth.controller";
 import { CertificateController } from "./controllers/certificate.controller";
+import { ChatController } from "./controllers/chat.controller";
 import { CpoController } from "./controllers/cpo.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
@@ -64,6 +65,7 @@ import { StockControlCompany } from "./entities/stock-control-company.entity";
 import { StockControlDepartment } from "./entities/stock-control-department.entity";
 import { StockControlInvitation } from "./entities/stock-control-invitation.entity";
 import { StockControlLocation } from "./entities/stock-control-location.entity";
+import { StockControlCompanyRole } from "./entities/stock-control-company-role.entity";
 import { StockControlRbacConfig } from "./entities/stock-control-rbac-config.entity";
 import { StockControlSupplier } from "./entities/stock-control-supplier.entity";
 import { StockControlUser } from "./entities/stock-control-user.entity";
@@ -87,6 +89,7 @@ import { CertificateService } from "./services/certificate.service";
 import { CertificateAnalysisService } from "./services/certificate-analysis.service";
 import { CoatingAnalysisService } from "./services/coating-analysis.service";
 import { CompanyEmailService } from "./services/company-email.service";
+import { CompanyRoleService } from "./services/company-role.service";
 import { CpoService } from "./services/cpo.service";
 import { DashboardService } from "./services/dashboard.service";
 import { DataBookPdfService } from "./services/data-book-pdf.service";
@@ -156,6 +159,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
       SupplierInvoiceItem,
       InvoiceClarification,
       StockPriceHistory,
+      StockControlCompanyRole,
       StockControlRbacConfig,
       StockControlSupplier,
       PushSubscription,
@@ -255,6 +259,7 @@ import { WorkflowNotificationService } from "./services/workflow-notification.se
     InvoiceExtractionService,
     InvoiceService,
     PriceHistoryService,
+    CompanyRoleService,
     RbacConfigService,
     SageInvoiceAdapterService,
     SearchService,

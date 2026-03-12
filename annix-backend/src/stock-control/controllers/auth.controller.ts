@@ -23,6 +23,7 @@ import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-contro
 import { StockControlAuthService } from "../services/auth.service";
 import { BrandingScraperService } from "../services/branding-scraper.service";
 import { CompanyEmailService, SmtpConfigDto } from "../services/company-email.service";
+import { CompanyRoleService } from "../services/company-role.service";
 import { LookupService } from "../services/lookup.service";
 import { RbacConfigService } from "../services/rbac-config.service";
 
@@ -35,6 +36,7 @@ export class StockControlAuthController {
     private readonly companyEmailService: CompanyEmailService,
     private readonly lookupService: LookupService,
     private readonly rbacConfigService: RbacConfigService,
+    private readonly companyRoleService: CompanyRoleService,
   ) {}
 
   @Post("register")
@@ -342,5 +344,41 @@ export class StockControlAuthController {
   @ApiOperation({ summary: "Update nav RBAC configuration" })
   async updateRbacConfig(@Req() req: any, @Body() body: { config: Record<string, string[]> }) {
     return this.rbacConfigService.updateNavConfig(req.user.companyId, body.config);
+  }
+
+  @UseGuards(StockControlAuthGuard)
+  @Get("roles")
+  @ApiOperation({ summary: "List company roles" })
+  async listRoles(@Req() req: any) {
+    return this.companyRoleService.rolesForCompany(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Post("roles")
+  @ApiOperation({ summary: "Create a custom role" })
+  async createRole(@Req() req: any, @Body() body: { key: string; label: string }) {
+    return this.companyRoleService.createRole(req.user.companyId, body.key, body.label);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Patch("roles/:id")
+  @ApiOperation({ summary: "Update a role label" })
+  async updateRole(
+    @Req() req: any,
+    @Param("id") id: string,
+    @Body() body: { label: string },
+  ) {
+    return this.companyRoleService.updateRole(Number(id), req.user.companyId, body.label);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Delete("roles/:id")
+  @ApiOperation({ summary: "Delete a custom role" })
+  async deleteRole(@Req() req: any, @Param("id") id: string) {
+    await this.companyRoleService.deleteRole(Number(id), req.user.companyId);
+    return { success: true };
   }
 }

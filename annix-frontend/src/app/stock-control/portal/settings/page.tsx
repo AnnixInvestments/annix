@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import {
+  CompanyRole,
   EligibleUser,
   StepNotificationRecipients,
   StockControlDepartment,
@@ -14,7 +15,7 @@ import {
   UserLocationSummary,
   WorkflowStepAssignment,
 } from "@/app/lib/api/stockControlApi";
-import { ALL_NAV_ITEMS, ALL_ROLES } from "../../config/navItems";
+import { ALL_NAV_ITEMS, NAV_GROUP_ORDER } from "../../config/navItems";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
 import { roleLabel } from "../../lib/roleLabels";
 
@@ -656,16 +657,47 @@ function MenuVisibilitySection() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const [roles, setRoles] = useState<CompanyRole[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [newRoleLabel, setNewRoleLabel] = useState("");
+  const [showAddRole, setShowAddRole] = useState(false);
+  const [roleError, setRoleError] = useState("");
+  const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
+  const [editingRoleLabel, setEditingRoleLabel] = useState("");
+
+  const loadRoles = useCallback(async () => {
+    setRolesLoading(true);
+    try {
+      const data = await stockControlApiClient.companyRoles();
+      setRoles(data);
+    } catch {
+      setRoles([]);
+    } finally {
+      setRolesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRoles();
+  }, [loadRoles]);
 
   useEffect(() => {
     setLocalConfig(
-      Object.entries(rbacConfig).reduce<Record<string, string[]>>((acc, [key, roles]) => {
-        acc[key] = [...roles];
+      Object.entries(rbacConfig).reduce<Record<string, string[]>>((acc, [key, r]) => {
+        acc[key] = [...r];
         return acc;
       }, {}),
     );
     setDirty(false);
   }, [rbacConfig]);
+
+  const roleKeys = roles.map((r) => r.key);
+
+  const toggleGroup = useCallback((group: string) => {
+    setExpandedGroups((prev) => ({ ...prev, [group]: !prev[group] }));
+  }, []);
 
   const handleToggle = useCallback((navKey: string, role: string) => {
     setLocalConfig((prev) => {
@@ -679,6 +711,56 @@ function MenuVisibilitySection() {
     setDirty(true);
     setSuccess(false);
   }, []);
+
+  const handleToggleGroup = useCallback(
+    (groupName: string, role: string) => {
+      const groupItems = ALL_NAV_ITEMS.filter((item) => item.group === groupName);
+      const allChecked = groupItems.every((item) => {
+        const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+        return itemRoles.includes(role);
+      });
+
+      setLocalConfig((prev) => {
+        const next = { ...prev };
+        groupItems.forEach((item) => {
+          if (item.immutable) return;
+          const current = next[item.key] ?? [...item.defaultRoles];
+          if (allChecked) {
+            next[item.key] = current.filter((r) => r !== role);
+          } else if (!current.includes(role)) {
+            next[item.key] = [...current, role];
+          }
+        });
+        return next;
+      });
+      setDirty(true);
+      setSuccess(false);
+    },
+    [localConfig],
+  );
+
+  const isGroupAllChecked = useCallback(
+    (groupName: string, role: string): boolean => {
+      const groupItems = ALL_NAV_ITEMS.filter((item) => item.group === groupName);
+      return groupItems.every((item) => {
+        const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+        return itemRoles.includes(role);
+      });
+    },
+    [localConfig],
+  );
+
+  const isGroupPartialChecked = useCallback(
+    (groupName: string, role: string): boolean => {
+      const groupItems = ALL_NAV_ITEMS.filter((item) => item.group === groupName);
+      const checkedCount = groupItems.filter((item) => {
+        const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+        return itemRoles.includes(role);
+      }).length;
+      return checkedCount > 0 && checkedCount < groupItems.length;
+    },
+    [localConfig],
+  );
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -695,8 +777,8 @@ function MenuVisibilitySection() {
 
   const handleReset = useCallback(() => {
     setLocalConfig(
-      Object.entries(rbacConfig).reduce<Record<string, string[]>>((acc, [key, roles]) => {
-        acc[key] = [...roles];
+      Object.entries(rbacConfig).reduce<Record<string, string[]>>((acc, [key, r]) => {
+        acc[key] = [...r];
         return acc;
       }, {}),
     );
@@ -704,62 +786,333 @@ function MenuVisibilitySection() {
     setSuccess(false);
   }, [rbacConfig]);
 
+  const handleAddRole = async () => {
+    if (!newRoleLabel.trim()) return;
+    setRoleError("");
+    try {
+      const key = newRoleLabel
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9_-]/g, "-")
+        .replace(/-+/g, "-");
+      await stockControlApiClient.createCompanyRole(key, newRoleLabel.trim());
+      setNewRoleLabel("");
+      setShowAddRole(false);
+      await loadRoles();
+    } catch (e) {
+      setRoleError(e instanceof Error ? e.message : "Failed to create role");
+    }
+  };
+
+  const handleSaveRoleLabel = async (id: number) => {
+    if (!editingRoleLabel.trim()) return;
+    setRoleError("");
+    try {
+      await stockControlApiClient.updateCompanyRole(id, editingRoleLabel.trim());
+      setEditingRoleId(null);
+      await loadRoles();
+    } catch (e) {
+      setRoleError(e instanceof Error ? e.message : "Failed to update role");
+    }
+  };
+
+  const handleDeleteRole = async (id: number) => {
+    setRoleError("");
+    try {
+      await stockControlApiClient.deleteCompanyRole(id);
+      await loadRoles();
+    } catch (e) {
+      setRoleError(e instanceof Error ? e.message : "Failed to delete role");
+    }
+  };
+
+  const standaloneItems = ALL_NAV_ITEMS.filter(
+    (item) => !item.group || item.group === "hidden",
+  ).filter((item) => item.group !== "hidden");
+
+  const groups = NAV_GROUP_ORDER.map((groupName) => ({
+    name: groupName,
+    items: ALL_NAV_ITEMS.filter((item) => item.group === groupName),
+  })).filter((g) => g.items.length > 0);
+
+  const hiddenItems = ALL_NAV_ITEMS.filter((item) => item.group === "hidden");
+
   return (
     <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-1">Menu Visibility</h2>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-lg font-semibold text-gray-900">Menu Visibility</h2>
+        <button
+          type="button"
+          onClick={() => setShowAddRole(!showAddRole)}
+          className="px-3 py-1.5 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+        >
+          Add Role
+        </button>
+      </div>
       <p className="text-sm text-gray-500 mb-4">
-        Control which menu items are visible to each role. Admin always has full access.
+        Control which menu items are visible to each role. Click a group header to expand sub-pages.
       </p>
 
-      <div className="overflow-x-auto -mx-6 px-6">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left text-xs font-medium text-gray-500 uppercase pb-3 pr-2">
-                Menu Item
-              </th>
-              {ALL_ROLES.map((role) => (
-                <th
-                  key={role}
-                  className="text-center text-xs font-medium text-gray-500 uppercase pb-3 px-2"
-                >
-                  {role}
+      {showAddRole && (
+        <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              placeholder="Role name"
+              value={newRoleLabel}
+              onChange={(e) => {
+                setNewRoleLabel(e.target.value);
+                setRoleError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddRole();
+              }}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+            />
+            <button
+              type="button"
+              onClick={handleAddRole}
+              disabled={!newRoleLabel.trim()}
+              className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+            >
+              Create
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowAddRole(false);
+                setNewRoleLabel("");
+                setRoleError("");
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+          {roleError && <p className="mt-2 text-sm text-red-600">{roleError}</p>}
+        </div>
+      )}
+
+      {rolesLoading ? (
+        <div className="text-center py-8 text-gray-500">Loading roles...</div>
+      ) : (
+        <div className="overflow-x-auto -mx-6 px-6">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left text-xs font-medium text-gray-500 uppercase pb-3 pr-2 min-w-[160px]">
+                  Menu Item
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {ALL_NAV_ITEMS.map((item) => {
-              const roles = localConfig[item.key] ?? item.defaultRoles;
-              return (
-                <tr key={item.key} className="border-b border-gray-100">
-                  <td className="py-3 pr-2 text-sm text-gray-700">{item.label}</td>
-                  {ALL_ROLES.map((role) => {
-                    const checked = roles.includes(role);
-                    const disabled = role === "admin" || item.immutable === true;
-                    return (
-                      <td key={role} className="py-3 px-2 text-center">
+                {roles.map((role) => (
+                  <th
+                    key={role.key}
+                    className="text-center text-xs font-medium text-gray-500 uppercase pb-3 px-2 min-w-[80px]"
+                  >
+                    {editingRoleId === role.id ? (
+                      <div className="flex flex-col items-center gap-1">
                         <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={disabled}
-                          onChange={() => handleToggle(item.key, role)}
-                          className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          type="text"
+                          value={editingRoleLabel}
+                          onChange={(e) => setEditingRoleLabel(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveRoleLabel(role.id);
+                            if (e.key === "Escape") setEditingRoleId(null);
+                          }}
+                          autoFocus
+                          className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded text-center focus:outline-none focus:ring-teal-500 focus:border-teal-500"
                         />
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveRoleLabel(role.id)}
+                            className="text-[10px] text-teal-600 hover:text-teal-800 font-medium"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingRoleId(null)}
+                            className="text-[10px] text-gray-500 hover:text-gray-700 font-medium"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span>{role.label}</span>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingRoleId(role.id);
+                              setEditingRoleLabel(role.label);
+                            }}
+                            className="text-[10px] text-teal-600 hover:text-teal-800 font-medium"
+                          >
+                            Edit
+                          </button>
+                          {!role.isSystem && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteRole(role.id)}
+                              className="text-[10px] text-red-500 hover:text-red-700 font-medium"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {standaloneItems.map((item) => {
+                const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+                return (
+                  <tr key={item.key} className="border-b border-gray-100">
+                    <td className="py-3 pr-2 text-sm text-gray-700">{item.label}</td>
+                    {roleKeys.map((rk) => {
+                      const checked = itemRoles.includes(rk);
+                      const disabled = rk === "admin" || item.immutable === true;
+                      return (
+                        <td key={rk} className="py-3 px-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={disabled}
+                            onChange={() => handleToggle(item.key, rk)}
+                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+
+              {groups.map((group) => {
+                const isExpanded = expandedGroups[group.name] === true;
+                return [
+                  <tr
+                    key={`group-${group.name}`}
+                    className="border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                    onClick={() => toggleGroup(group.name)}
+                  >
+                    <td className="py-3 pr-2 text-sm font-semibold text-gray-900">
+                      <span className="flex items-center gap-1.5">
+                        <svg
+                          className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                        {group.name}
+                        <span className="text-xs font-normal text-gray-400">
+                          ({group.items.length})
+                        </span>
+                      </span>
+                    </td>
+                    {roleKeys.map((rk) => {
+                      const allChecked = isGroupAllChecked(group.name, rk);
+                      const partial = isGroupPartialChecked(group.name, rk);
+                      const disabled = rk === "admin";
+                      return (
+                        <td key={rk} className="py-3 px-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={allChecked}
+                            ref={(el) => {
+                              if (el) {
+                                el.indeterminate = partial;
+                              }
+                            }}
+                            disabled={disabled}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleToggleGroup(group.name, rk);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>,
+                  ...(isExpanded
+                    ? group.items.map((item) => {
+                        const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+                        return (
+                          <tr key={item.key} className="border-b border-gray-100 bg-white">
+                            <td className="py-2.5 pr-2 text-sm text-gray-600 pl-8">
+                              {item.label}
+                            </td>
+                            {roleKeys.map((rk) => {
+                              const checked = itemRoles.includes(rk);
+                              const disabled = rk === "admin" || item.immutable === true;
+                              return (
+                                <td key={rk} className="py-2.5 px-2 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    disabled={disabled}
+                                    onChange={() => handleToggle(item.key, rk)}
+                                    className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })
+                    : []),
+                ];
+              })}
+
+              {hiddenItems.map((item) => {
+                const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+                return (
+                  <tr key={item.key} className="border-b border-gray-100">
+                    <td className="py-3 pr-2 text-sm text-gray-700">{item.label}</td>
+                    {roleKeys.map((rk) => {
+                      const checked = itemRoles.includes(rk);
+                      const disabled = rk === "admin" || item.immutable === true;
+                      return (
+                        <td key={rk} className="py-3 px-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={disabled}
+                            onChange={() => handleToggle(item.key, rk)}
+                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <p className="mt-4 text-xs text-gray-500">
         Admin always has full access. Settings is always admin-only.
       </p>
 
+      {roleError && !showAddRole && (
+        <p className="mt-3 text-sm text-red-600">{roleError}</p>
+      )}
       {success && <p className="mt-3 text-sm text-green-600">Menu visibility updated successfully.</p>}
 
       <div className="mt-4 flex gap-3">

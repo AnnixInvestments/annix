@@ -126,6 +126,14 @@ export interface StockControlTeamMember {
   createdAt: string;
 }
 
+export interface CompanyRole {
+  id: number;
+  key: string;
+  label: string;
+  isSystem: boolean;
+  sortOrder: number;
+}
+
 export interface StockControlDepartment {
   id: number;
   name: string;
@@ -3745,6 +3753,31 @@ class StockControlApiClient {
       body: JSON.stringify({ config }),
     });
   }
+
+  async companyRoles(): Promise<CompanyRole[]> {
+    return this.request("/stock-control/auth/roles");
+  }
+
+  async createCompanyRole(key: string, label: string): Promise<CompanyRole> {
+    return this.request("/stock-control/auth/roles", {
+      method: "POST",
+      body: JSON.stringify({ key, label }),
+    });
+  }
+
+  async updateCompanyRole(id: number, label: string): Promise<CompanyRole> {
+    return this.request(`/stock-control/auth/roles/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ label }),
+    });
+  }
+
+  async deleteCompanyRole(id: number): Promise<void> {
+    return this.request(`/stock-control/auth/roles/${id}`, {
+      method: "DELETE",
+    });
+  }
+
   async cpos(status?: string): Promise<CustomerPurchaseOrder[]> {
     const query = status ? `?status=${encodeURIComponent(status)}` : "";
     return this.request(`/stock-control/cpos${query}`);
