@@ -1692,6 +1692,7 @@ export interface SupplierInvoice {
   extractedData: Record<string, unknown> | null;
   deliveryNoteId: number | null;
   deliveryNote?: DeliveryNote | null;
+  linkedDeliveryNoteIds: number[] | null;
   approvedBy: number | null;
   approvedAt: string | null;
   exportedToSageAt: string | null;
@@ -1709,6 +1710,7 @@ export interface SupplierInvoiceItem {
   extractedSku: string | null;
   quantity: number;
   unitPrice: number | null;
+  unitType: string | null;
   discountPercent: number | null;
   matchStatus:
     | "matched"
@@ -3632,6 +3634,17 @@ class StockControlApiClient {
   async deleteInvoice(invoiceId: number): Promise<void> {
     return this.request(`/stock-control/invoices/${invoiceId}`, {
       method: "DELETE",
+    });
+  }
+
+  async updateInvoiceItem(
+    invoiceId: number,
+    itemId: number,
+    updates: { quantity?: number; unitPrice?: number; unitType?: string },
+  ): Promise<SupplierInvoiceItem> {
+    return this.request(`/stock-control/invoices/${invoiceId}/items/${itemId}`, {
+      method: "PATCH",
+      body: JSON.stringify(updates),
     });
   }
 

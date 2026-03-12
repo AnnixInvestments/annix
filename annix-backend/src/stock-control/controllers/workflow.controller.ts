@@ -351,6 +351,22 @@ export class WorkflowController {
     return this.stepConfigService.backgroundSteps(req.user.companyId);
   }
 
+  @Put("step-configs/:key/toggle-background")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Toggle a step between foreground and background" })
+  async toggleStepBackground(
+    @Req() req: any,
+    @Param("key") key: string,
+    @Body() body: { isBackground: boolean; triggerAfterStep?: string },
+  ) {
+    return this.stepConfigService.toggleBackground(
+      req.user.companyId,
+      key,
+      body.isBackground,
+      body.triggerAfterStep,
+    );
+  }
+
   @Delete("step-configs/:key")
   @StockControlRoles("admin")
   @ApiOperation({ summary: "Remove a custom workflow step" })

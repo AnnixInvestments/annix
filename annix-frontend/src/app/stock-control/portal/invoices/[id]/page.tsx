@@ -65,6 +65,13 @@ export default function InvoiceDetailPage() {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isReExtracting, setIsReExtracting] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [editValues, setEditValues] = useState<{
+    quantity: string;
+    unitPrice: string;
+    unitType: string;
+  }>({ quantity: "", unitPrice: "", unitType: "" });
+  const [isSavingItem, setIsSavingItem] = useState(false);
 
   const fetchInvoice = useCallback(async () => {
     try {
@@ -228,6 +235,40 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const startEditing = (item: import("@/app/lib/api/stockControlApi").SupplierInvoiceItem) => {
+    setEditingItemId(item.id);
+    setEditValues({
+      quantity: String(item.quantity),
+      unitPrice: item.unitPrice !== null ? String(item.unitPrice) : "",
+      unitType: item.unitType ?? item.stockItem?.unitOfMeasure ?? "each",
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingItemId(null);
+  };
+
+  const saveItemEdit = async (itemId: number) => {
+    setIsSavingItem(true);
+    try {
+      await stockControlApiClient.updateInvoiceItem(invoiceId, itemId, {
+        quantity: Number(editValues.quantity),
+        unitPrice: Number(editValues.unitPrice),
+        unitType: editValues.unitType,
+      });
+      setEditingItemId(null);
+      await fetchInvoice();
+      await fetchPriceSummary();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to update item"));
+    } finally {
+      setIsSavingItem(false);
+    }
+  };
+
+  const canEdit =
+    user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -328,15 +369,31 @@ export default function InvoiceDetailPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500">Delivery Note</dt>
+                <dt className="text-sm font-medium text-gray-500">
+                  Delivery Note{invoice.linkedDeliveryNoteIds && invoice.linkedDeliveryNoteIds.length > 1 ? "s" : ""}
+                </dt>
                 <dd className="mt-1 text-sm text-gray-900">
                   {invoice.deliveryNoteId ? (
-                    <Link
-                      href={`/stock-control/portal/deliveries/${invoice.deliveryNoteId}`}
-                      className="text-teal-600 hover:text-teal-800"
-                    >
-                      {invoice.deliveryNote?.deliveryNumber || `DN-${invoice.deliveryNoteId}`}
-                    </Link>
+                    <div className="space-y-1">
+                      <Link
+                        href={`/stock-control/portal/deliveries/${invoice.deliveryNoteId}`}
+                        className="text-teal-600 hover:text-teal-800"
+                      >
+                        {invoice.deliveryNote?.deliveryNumber || `DN-${invoice.deliveryNoteId}`}
+                      </Link>
+                      {invoice.linkedDeliveryNoteIds
+                        ?.filter((dnId) => dnId !== invoice.deliveryNoteId)
+                        .map((dnId) => (
+                          <div key={dnId}>
+                            <Link
+                              href={`/stock-control/portal/deliveries/${dnId}`}
+                              className="text-teal-600 hover:text-teal-800"
+                            >
+                              DN-{dnId}
+                            </Link>
+                          </div>
+                        ))}
+                    </div>
                   ) : (
                     <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
                       Unlinked
@@ -348,84 +405,173 @@ export default function InvoiceDetailPage() {
           </div>
 
           <div className="bg-white shadow rounded-lg overflow-x-auto">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Line Items</h2>
+              {canEdit && (
+                <span className="text-xs text-gray-400">Click a row to edit</span>
+              )}
             </div>
             {invoice.items && invoice.items.length > 0 ? (
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       #
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Description
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Qty
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Unit
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Unit Price
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Matched Item
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {invoice.items.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.lineNumber}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div>{item.extractedDescription}</div>
-                        {item.extractedSku && (
-                          <div className="text-xs text-gray-500">SKU: {item.extractedSku}</div>
-                        )}
-                        {(item.isPartA || item.isPartB) && (
-                          <span
-                            className={`inline-flex mt-1 px-2 py-0.5 text-xs rounded-full ${item.isPartA ? "bg-blue-100 text-blue-800" : "bg-orange-100 text-orange-800"}`}
-                          >
-                            {item.isPartA ? "Part A" : "Part B"}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                        {item.quantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                        {item.unitPrice
-                          ? `R${Number(item.unitPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
-                          : "-"}
-                        {Number(item.discountPercent) > 0 && (
-                          <div className="text-xs text-green-600 font-medium">
-                            {item.discountPercent}% disc.
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {item.stockItem ? (
-                          <div>
-                            <div>{item.stockItem.name}</div>
-                            <div className="text-xs text-gray-500">{item.stockItem.sku}</div>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${MATCH_STATUS_COLORS[item.matchStatus] || "bg-gray-100 text-gray-800"}`}
-                        >
-                          {item.matchStatus.replace(/_/g, " ")}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {invoice.items.map((item) => {
+                    const isEditing = editingItemId === item.id;
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`${canEdit && !isEditing ? "cursor-pointer hover:bg-gray-50" : ""} ${isEditing ? "bg-teal-50" : ""}`}
+                        onClick={() => {
+                          if (canEdit && !isEditing && !editingItemId) startEditing(item);
+                        }}
+                      >
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {item.lineNumber}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-900">
+                          <div>{item.extractedDescription}</div>
+                          {item.extractedSku && (
+                            <div className="text-xs text-gray-500">SKU: {item.extractedSku}</div>
+                          )}
+                          {(item.isPartA || item.isPartB) && (
+                            <span
+                              className={`inline-flex mt-1 px-2 py-0.5 text-xs rounded-full ${item.isPartA ? "bg-blue-100 text-blue-800" : "bg-orange-100 text-orange-800"}`}
+                            >
+                              {item.isPartA ? "Part A" : "Part B"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={editValues.quantity}
+                              onChange={(e) =>
+                                setEditValues((prev) => ({ ...prev, quantity: e.target.value }))
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-16 px-2 py-1 text-sm border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                              min={0}
+                            />
+                          ) : (
+                            item.quantity
+                          )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {isEditing ? (
+                            <select
+                              value={editValues.unitType}
+                              onChange={(e) =>
+                                setEditValues((prev) => ({ ...prev, unitType: e.target.value }))
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-20 px-1 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                            >
+                              {["each", "ltr", "kg", "roll", "m", "m2", "pack", "set", "pair", "box", "drum", "pail", "can", "tin", "bag", "sheet", "length", "bundle"].map(
+                                (u) => (
+                                  <option key={u} value={u}>
+                                    {u}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          ) : (
+                            <span className="text-gray-400 text-xs">
+                              {item.unitType ?? item.stockItem?.unitOfMeasure ?? "-"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={editValues.unitPrice}
+                              onChange={(e) =>
+                                setEditValues((prev) => ({ ...prev, unitPrice: e.target.value }))
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-24 px-2 py-1 text-sm border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                              min={0}
+                              step="0.01"
+                            />
+                          ) : (
+                            <>
+                              {item.unitPrice
+                                ? `R${Number(item.unitPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
+                                : "-"}
+                              {Number(item.discountPercent) > 0 && (
+                                <div className="text-xs text-green-600 font-medium">
+                                  {item.discountPercent}% disc.
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {item.stockItem ? (
+                            <div>
+                              <div>{item.stockItem.name}</div>
+                              <div className="text-xs text-gray-500">{item.stockItem.sku}</div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          {isEditing ? (
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => saveItemEdit(item.id)}
+                                disabled={isSavingItem}
+                                className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                              >
+                                {isSavingItem ? "..." : "Save"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelEditing}
+                                className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${MATCH_STATUS_COLORS[item.matchStatus] || "bg-gray-100 text-gray-800"}`}
+                            >
+                              {item.matchStatus.replace(/_/g, " ")}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (

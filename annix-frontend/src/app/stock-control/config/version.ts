@@ -7,4 +7,4 @@
  * - When patch reaches 100, minor increments by 1 and patch resets to 0
  * - When minor increments for any reason, patch resets to 0
  */
-export const STOCK_CONTROL_VERSION = "2.8.0";
+export const STOCK_CONTROL_VERSION = "2.9.0";

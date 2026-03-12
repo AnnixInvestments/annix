@@ -86,36 +86,43 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
           <thead className="bg-gray-50 sticky top-0">
             <tr>
               <th className="px-2 py-1 text-left text-gray-500 font-medium">Item</th>
-              <th className="px-2 py-1 text-right text-gray-500 font-medium">Old</th>
-              <th className="px-2 py-1 text-right text-gray-500 font-medium">New</th>
+              <th className="px-2 py-1 text-right text-gray-500 font-medium">Qty</th>
+              <th className="px-2 py-1 text-right text-gray-500 font-medium">Unit</th>
+              <th className="px-2 py-1 text-right text-gray-500 font-medium">Total</th>
               <th className="px-2 py-1 text-right text-gray-500 font-medium">%</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {items.map((item) => (
-              <tr key={item.id} className={item.needsApproval ? "bg-yellow-50" : ""}>
-                <td
-                  className="px-2 py-2 text-gray-900 truncate max-w-[140px]"
-                  title={item.stockItemName}
-                >
-                  {item.stockItemName}
-                </td>
-                <td className="px-2 py-2 text-right text-gray-500">
-                  R{Number(item.oldPrice || 0).toFixed(2)}
-                </td>
-                <td className="px-2 py-2 text-right text-gray-900 font-medium">
-                  R{Number(item.newPrice || 0).toFixed(2)}
-                </td>
-                <td
-                  className={`px-2 py-2 text-right font-medium ${
-                    item.changePercent > 0 ? "text-red-600" : "text-green-600"
-                  }`}
-                >
-                  {Number(item.changePercent || 0) > 0 ? "+" : ""}
-                  {Number(item.changePercent || 0).toFixed(1)}%
-                </td>
-              </tr>
-            ))}
+            {items.map((item) => {
+              const qty = Number(item.quantity || 0);
+              const lineTotal = qty * Number(item.newPrice || 0);
+
+              return (
+                <tr key={item.id} className={item.needsApproval ? "bg-yellow-50" : ""}>
+                  <td
+                    className="px-2 py-2 text-gray-900 truncate max-w-[140px]"
+                    title={item.stockItemName}
+                  >
+                    {item.stockItemName}
+                  </td>
+                  <td className="px-2 py-2 text-right text-gray-500">{qty}</td>
+                  <td className="px-2 py-2 text-right text-gray-900 font-medium">
+                    R{Number(item.newPrice || 0).toFixed(2)}
+                  </td>
+                  <td className="px-2 py-2 text-right text-gray-900 font-medium">
+                    R{lineTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+                  </td>
+                  <td
+                    className={`px-2 py-2 text-right font-medium ${
+                      item.changePercent > 0 ? "text-red-600" : "text-green-600"
+                    }`}
+                  >
+                    {Number(item.changePercent || 0) > 0 ? "+" : ""}
+                    {Number(item.changePercent || 0).toFixed(1)}%
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

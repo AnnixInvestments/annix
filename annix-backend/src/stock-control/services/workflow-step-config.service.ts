@@ -146,6 +146,37 @@ export class WorkflowStepConfigService {
     return this.repo.save(newStep);
   }
 
+  async toggleBackground(
+    companyId: number,
+    stepKey: string,
+    isBackground: boolean,
+    triggerAfterStep?: string,
+  ): Promise<WorkflowStepConfig> {
+    const step = await this.repo.findOne({ where: { companyId, key: stepKey } });
+
+    if (!step) {
+      throw new NotFoundException(`Step "${stepKey}" not found for this company`);
+    }
+
+    if (step.isSystem) {
+      throw new BadRequestException("Cannot convert a system workflow step to background");
+    }
+
+    step.isBackground = isBackground;
+    step.triggerAfterStep = isBackground ? (triggerAfterStep ?? null) : null;
+    step.sortOrder = isBackground ? 0 : await this.nextSortOrder(companyId);
+
+    return this.repo.save(step);
+  }
+
+  private async nextSortOrder(companyId: number): Promise<number> {
+    const steps = await this.orderedSteps(companyId);
+    if (steps.length === 0) {
+      return 1;
+    }
+    return steps[steps.length - 1].sortOrder + 1;
+  }
+
   async removeStep(companyId: number, stepKey: string): Promise<void> {
     const step = await this.repo.findOne({ where: { companyId, key: stepKey } });
 

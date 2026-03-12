@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -20,6 +21,7 @@ import { SageExportService } from "../../sage-export/sage-export.service";
 import { LinkInvoiceToDeliveryNoteDto } from "../dto/create-invoice.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { InvoiceExtractionService } from "../services/invoice-extraction.service";
 import {
   CreateInvoiceDto,
   InvoiceService,
@@ -33,6 +35,7 @@ import { SageInvoiceAdapterService } from "../services/sage-invoice-adapter.serv
 export class InvoicesController {
   constructor(
     private readonly invoiceService: InvoiceService,
+    private readonly extractionService: InvoiceExtractionService,
     private readonly sageAdapter: SageInvoiceAdapterService,
     private readonly sageExportService: SageExportService,
   ) {}
@@ -197,6 +200,19 @@ export class InvoicesController {
   @ApiOperation({ summary: "Approve and apply price updates" })
   async approve(@Req() req: any, @Param("id") id: number) {
     return this.invoiceService.approve(req.user.companyId, id, req.user.id);
+  }
+
+  @StockControlRoles("accounts", "manager", "admin")
+  @Patch(":id/items/:itemId")
+  @ApiOperation({ summary: "Update an invoice line item (correction)" })
+  async updateItem(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("itemId") itemId: number,
+    @Body() body: { quantity?: number; unitPrice?: number; unitType?: string },
+  ) {
+    await this.invoiceService.findById(req.user.companyId, id);
+    return this.extractionService.updateInvoiceItem(id, itemId, body, req.user.id);
   }
 
   @StockControlRoles("manager", "admin")

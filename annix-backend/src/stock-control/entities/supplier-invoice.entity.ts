@@ -31,6 +31,7 @@ export interface ExtractedInvoiceData {
   totalAmount?: number;
   vatAmount?: number;
   deliveryNoteNumber?: string;
+  deliveryNoteNumbers?: string[];
   lineItems?: ExtractedLineItem[];
   rawText?: string;
 }
@@ -41,6 +42,7 @@ export interface ExtractedLineItem {
   sku?: string;
   quantity: number;
   unitPrice: number;
+  unitType?: string;
   discountPercent?: number;
   isPaintPartA?: boolean;
   isPaintPartB?: boolean;
@@ -113,6 +115,9 @@ export class SupplierInvoice {
 
   @Column({ name: "exported_to_sage_at", type: "timestamp", nullable: true })
   exportedToSageAt: Date | null;
+
+  @Column({ name: "linked_delivery_note_ids", type: "jsonb", nullable: true, default: null })
+  linkedDeliveryNoteIds: number[] | null;
 
   @OneToMany(
     () => SupplierInvoiceItem,

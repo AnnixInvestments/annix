@@ -24,6 +24,7 @@ import {
   parseRubberSpecNote,
   type RollAllocation,
 } from "../lib/rubberCuttingCalculator";
+import { WorkflowStepConfigService } from "./workflow-step-config.service";
 
 @Injectable()
 export class JobCardPdfService {
@@ -41,6 +42,7 @@ export class JobCardPdfService {
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
     private readonly configService: ConfigService,
+    private readonly stepConfigService: WorkflowStepConfigService,
   ) {}
 
   async generatePrintableJobCard(
@@ -76,11 +78,20 @@ export class JobCardPdfService {
       this.logger.log(`Coats data: ${JSON.stringify(coatingAnalysis.coats)}`);
     }
 
+    const stepConfigs = await this.stepConfigService.orderedSteps(companyId);
+
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const qrUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}/dispatch`;
     const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 120, margin: 1 });
 
-    const buffer = await this.createPdf(jobCard, company, approvals, coatingAnalysis, qrDataUrl);
+    const buffer = await this.createPdf(
+      jobCard,
+      company,
+      approvals,
+      coatingAnalysis,
+      qrDataUrl,
+      stepConfigs,
+    );
     const filename = `JC-${jobCard.jobNumber}-${jobCard.id}.pdf`;
 
     return { buffer, filename };
@@ -92,6 +103,7 @@ export class JobCardPdfService {
     approvals: JobCardApproval[],
     coatingAnalysis: JobCardCoatingAnalysis | null,
     qrDataUrl: string,
+    stepConfigs: { key: string; label: string }[] = [],
   ): Promise<Buffer> {
     const rubberAllocationResult = await this.prepareRubberAllocation(jobCard);
 
@@ -124,7 +136,7 @@ export class JobCardPdfService {
         totalPipeQty,
       );
       currentY = this.drawAllocations(doc, jobCard, currentY);
-      currentY = this.drawSignatureBoxes(doc, approvals, currentY);
+      currentY = this.drawSignatureBoxes(doc, approvals, currentY, stepConfigs);
       this.drawFooter(doc);
 
       doc.end();
@@ -1073,17 +1085,35 @@ export class JobCardPdfService {
     doc: typeof PDFDocument,
     approvals: JobCardApproval[],
     startY: number,
+    stepConfigs: { key: string; label: string }[] = [],
   ): number {
-    const stepLabels: { step: WorkflowStep; label: string }[] = [
-      { step: WorkflowStep.DOCUMENT_UPLOAD, label: "Document Upload" },
-      { step: WorkflowStep.ADMIN_APPROVAL, label: "Admin Approval" },
-      { step: WorkflowStep.MANAGER_APPROVAL, label: "Manager Approval" },
-      { step: WorkflowStep.REQUISITION_SENT, label: "Requisition Sent" },
-      { step: WorkflowStep.STOCK_ALLOCATION, label: "Stock Allocation" },
-      { step: WorkflowStep.MANAGER_FINAL, label: "Final Approval" },
-      { step: WorkflowStep.READY_FOR_DISPATCH, label: "Ready for Dispatch" },
-      { step: WorkflowStep.DISPATCHED, label: "Dispatched" },
-    ];
+    const STEP_KEY_TO_WORKFLOW_STEP: Record<string, WorkflowStep> = {
+      document_upload: WorkflowStep.DOCUMENT_UPLOAD,
+      admin_approval: WorkflowStep.ADMIN_APPROVAL,
+      manager_approval: WorkflowStep.MANAGER_APPROVAL,
+      requisition_sent: WorkflowStep.REQUISITION_SENT,
+      stock_allocation: WorkflowStep.STOCK_ALLOCATION,
+      manager_final: WorkflowStep.MANAGER_FINAL,
+      ready_for_dispatch: WorkflowStep.READY_FOR_DISPATCH,
+      dispatched: WorkflowStep.DISPATCHED,
+    };
+
+    const steps =
+      stepConfigs.length > 0
+        ? stepConfigs.map((sc) => ({
+            step: STEP_KEY_TO_WORKFLOW_STEP[sc.key] ?? sc.key,
+            label: sc.label,
+          }))
+        : [
+            { step: WorkflowStep.DOCUMENT_UPLOAD, label: "Document Upload" },
+            { step: WorkflowStep.ADMIN_APPROVAL, label: "Admin Approval" },
+            { step: WorkflowStep.MANAGER_APPROVAL, label: "Manager Approval" },
+            { step: WorkflowStep.REQUISITION_SENT, label: "Requisition Sent" },
+            { step: WorkflowStep.STOCK_ALLOCATION, label: "Stock Allocation" },
+            { step: WorkflowStep.MANAGER_FINAL, label: "Final Approval" },
+            { step: WorkflowStep.READY_FOR_DISPATCH, label: "Ready for Dispatch" },
+            { step: WorkflowStep.DISPATCHED, label: "Dispatched" },
+          ];
 
     const approvalMap = new Map(
       approvals.filter((a) => a.status === ApprovalStatus.APPROVED).map((a) => [a.step, a]),
@@ -1094,7 +1124,7 @@ export class JobCardPdfService {
     const boxGap = 4;
     const startX = 50;
     const boxesPerRow = 4;
-    const totalRows = Math.ceil(stepLabels.length / boxesPerRow);
+    const totalRows = Math.ceil(steps.length / boxesPerRow);
     const totalHeight = totalRows * (boxHeight + boxGap) + 25;
 
     const pageHeight = doc.page.height;
@@ -1113,7 +1143,7 @@ export class JobCardPdfService {
       .font("Helvetica-Bold")
       .text("Workflow Sign-Off", startX, startY - 8, { align: "center", width: 495 });
 
-    stepLabels.forEach(({ step, label }, index) => {
+    steps.forEach(({ step, label }, index) => {
       const row = Math.floor(index / boxesPerRow);
       const col = index % boxesPerRow;
       const x = startX + col * (boxWidth + boxGap);
@@ -1130,7 +1160,7 @@ export class JobCardPdfService {
         .fillColor("black")
         .text(label, x + 4, y + 4, { width: boxWidth - 8 });
 
-      const approval = approvalMap.get(step);
+      const approval = approvalMap.get(step as WorkflowStep);
       if (approval) {
         doc
           .fontSize(7)

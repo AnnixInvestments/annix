@@ -79,6 +79,7 @@ import { StockMovement } from "./entities/stock-movement.entity";
 import { StockPriceHistory } from "./entities/stock-price-history.entity";
 import { SupplierCertificate } from "./entities/supplier-certificate.entity";
 import { SupplierInvoice } from "./entities/supplier-invoice.entity";
+import { InvoiceExtractionCorrection } from "./entities/invoice-extraction-correction.entity";
 import { SupplierInvoiceItem } from "./entities/supplier-invoice-item.entity";
 import { UserLocationAssignment } from "./entities/user-location-assignment.entity";
 import { WorkflowNotification } from "./entities/workflow-notification.entity";
@@ -166,6 +167,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       StockIssuance,
       SupplierInvoice,
       SupplierInvoiceItem,
+      InvoiceExtractionCorrection,
       InvoiceClarification,
       StockPriceHistory,
       StockControlCompanyRole,

@@ -20,6 +20,7 @@ import {
   InvoiceExtractionStatus,
   SupplierInvoice,
 } from "../entities/supplier-invoice.entity";
+import { InvoiceExtractionCorrection } from "../entities/invoice-extraction-correction.entity";
 import {
   InvoiceItemMatchStatus,
   SupplierInvoiceItem,
@@ -34,7 +35,7 @@ Return JSON only:
   "invoiceDate": "2024-01-15",
   "totalAmount": 15000.00,
   "vatAmount": 2250.00,
-  "deliveryNoteNumber": "DN-12345",
+  "deliveryNoteNumbers": ["DN-12345", "DN-12346"],
   "lineItems": [
     {
       "lineNumber": 1,
@@ -42,6 +43,7 @@ Return JSON only:
       "sku": "PEM-001",
       "quantity": 5,
       "unitPrice": 2500.00,
+      "unitType": "each",
       "discountPercent": 0,
       "isPaintPartA": false,
       "isPaintPartB": false
@@ -57,7 +59,14 @@ DISCOUNT HANDLING (critical):
 - Alternatively, if the invoice shows a "Total (Excl)" or line total column, divide that by the quantity supplied to derive the effective unitPrice.
 - If no discount is present, set discountPercent to 0 and use the listed unit price as-is.
 
-For deliveryNoteNumber: Look for "Delivery Note", "DN", "D/N", "Delivery No", "GRN", "Goods Received Note", or similar references on the invoice. This may appear in a reference field, header, or line item area. If not found, omit the field.
+DELIVERY NOTE NUMBERS (critical):
+- An invoice may reference MULTIPLE delivery notes. Look for ALL delivery note references.
+- Search for "Delivery Note", "DN", "D/N", "Delivery No", "GRN", "Goods Received Note", "Order Number", "Your Order", "Call Off Order", or similar reference fields.
+- Check header fields, reference sections, AND the line item area — each line may reference a different DN.
+- Return ALL found numbers as an array in deliveryNoteNumbers, even if there is only one.
+- If no delivery note numbers are found, return an empty array.
+
+UNIT TYPE: Identify the unit of measure for each line item. Common values: "each", "ltr", "kg", "roll", "m", "m2", "pack", "set", "pair", "box", "drum", "pail", "can", "tin", "bag", "sheet", "length", "bundle". Look for UOM columns like "Unit", "UoM", "U/M", "Measure" on the invoice or infer from the product description (e.g. "25Lt" = "ltr", "20L" = "ltr", "5kg" = "kg"). If unclear, default to "each".
 
 For paint products, detect "Part A" or "Part B" in description. Common patterns:
 - "Part A", "Comp A", "Component A" -> isPaintPartA: true
@@ -105,6 +114,8 @@ export class InvoiceExtractionService {
     private readonly priceHistoryRepo: Repository<StockPriceHistory>,
     @InjectRepository(DeliveryNote)
     private readonly deliveryNoteRepo: Repository<DeliveryNote>,
+    @InjectRepository(InvoiceExtractionCorrection)
+    private readonly correctionRepo: Repository<InvoiceExtractionCorrection>,
     private readonly aiUsageService: AiUsageService,
     private readonly aiChatService: AiChatService,
   ) {}
@@ -128,6 +139,14 @@ export class InvoiceExtractionService {
     await this.invoiceRepo.save(invoice);
 
     try {
+      const correctionHints = await this.correctionHintsForSupplier(
+        invoice.companyId,
+        invoice.supplierName,
+      );
+      const systemPrompt = correctionHints
+        ? `${INVOICE_EXTRACTION_PROMPT}\n\n${correctionHints}`
+        : INVOICE_EXTRACTION_PROMPT;
+
       const {
         content: response,
         providerUsed,
@@ -136,7 +155,7 @@ export class InvoiceExtractionService {
         imageBase64,
         mediaType,
         "Extract the invoice details from this scanned invoice image. Return JSON only.",
-        INVOICE_EXTRACTION_PROMPT,
+        systemPrompt,
       );
 
       this.aiUsageService.log({
@@ -251,42 +270,68 @@ export class InvoiceExtractionService {
 
     if (candidates.length === 0) return;
 
-    const match = this.findDeliveryNoteMatch(invoice, extractedData, candidates);
-    if (match) {
-      invoice.deliveryNoteId = match.id;
+    const dnNumbers = this.normalizeDeliveryNoteNumbers(extractedData);
+    const matches = this.findDeliveryNoteMatches(invoice, dnNumbers, candidates);
+
+    if (matches.length > 0) {
+      invoice.deliveryNoteId = matches[0].id;
+      invoice.linkedDeliveryNoteIds = matches.map((m) => m.id);
       await this.invoiceRepo.save(invoice);
+      const dnLabels = matches.map((m) => `${m.id} (${m.deliveryNumber})`).join(", ");
       this.logger.log(
-        `Auto-linked invoice ${invoice.id} (${invoice.invoiceNumber}) to DN ${match.id} (${match.deliveryNumber})`,
+        `Auto-linked invoice ${invoice.id} (${invoice.invoiceNumber}) to DNs: ${dnLabels}`,
       );
     }
   }
 
-  private findDeliveryNoteMatch(
-    invoice: SupplierInvoice,
-    extractedData: ExtractedInvoiceData,
-    candidates: DeliveryNote[],
-  ): DeliveryNote | null {
-    if (extractedData.deliveryNoteNumber) {
-      const dnNumber = extractedData.deliveryNoteNumber.trim().toLowerCase();
-      const exactMatch = candidates.find(
-        (dn) => dn.deliveryNumber.trim().toLowerCase() === dnNumber,
-      );
-      if (exactMatch) return exactMatch;
-
-      const partialMatch = candidates.find(
-        (dn) =>
-          dn.deliveryNumber.trim().toLowerCase().includes(dnNumber) ||
-          dnNumber.includes(dn.deliveryNumber.trim().toLowerCase()),
-      );
-      if (partialMatch) return partialMatch;
+  private normalizeDeliveryNoteNumbers(extractedData: ExtractedInvoiceData): string[] {
+    if (extractedData.deliveryNoteNumbers && extractedData.deliveryNoteNumbers.length > 0) {
+      return extractedData.deliveryNoteNumbers;
     }
+    if (extractedData.deliveryNoteNumber) {
+      return [extractedData.deliveryNoteNumber];
+    }
+    return [];
+  }
+
+  private findDeliveryNoteMatches(
+    invoice: SupplierInvoice,
+    dnNumbers: string[],
+    candidates: DeliveryNote[],
+  ): DeliveryNote[] {
+    const matched: DeliveryNote[] = [];
+    const matchedIds = new Set<number>();
+
+    dnNumbers.forEach((rawDnNumber) => {
+      const dnNumber = rawDnNumber.trim().toLowerCase();
+      const exactMatch = candidates.find(
+        (dn) => !matchedIds.has(dn.id) && dn.deliveryNumber.trim().toLowerCase() === dnNumber,
+      );
+      if (exactMatch) {
+        matched.push(exactMatch);
+        matchedIds.add(exactMatch.id);
+      } else {
+        const partialMatch = candidates.find(
+          (dn) =>
+            !matchedIds.has(dn.id) &&
+            (dn.deliveryNumber.trim().toLowerCase().includes(dnNumber) ||
+              dnNumber.includes(dn.deliveryNumber.trim().toLowerCase())),
+        );
+        if (partialMatch) {
+          matched.push(partialMatch);
+          matchedIds.add(partialMatch.id);
+        }
+      }
+    });
+
+    if (matched.length > 0) return matched;
 
     const supplierMatches = candidates.filter(
       (dn) => dn.supplierName.toLowerCase() === invoice.supplierName.toLowerCase(),
     );
 
     if (supplierMatches.length === 1) {
-      return supplierMatches[0];
+      return [supplierMatches[0]];
     }
 
     if (supplierMatches.length > 1 && invoice.invoiceDate) {
@@ -300,10 +345,10 @@ export class InvoiceExtractionService {
         .filter((entry) => entry.daysDiff <= 14)
         .sort((a, b) => a.daysDiff - b.daysDiff)[0];
 
-      if (closestMatch) return closestMatch.dn;
+      if (closestMatch) return [closestMatch.dn];
     }
 
-    return null;
+    return [];
   }
 
   async autoLinkAllUnlinked(companyId: number): Promise<{ linked: number; details: string[] }> {
@@ -320,11 +365,14 @@ export class InvoiceExtractionService {
     let linked = 0;
 
     for (const invoice of unlinked) {
-      const match = this.findDeliveryNoteMatch(invoice, invoice.extractedData || {}, candidates);
-      if (match) {
-        invoice.deliveryNoteId = match.id;
+      const dnNumbers = this.normalizeDeliveryNoteNumbers(invoice.extractedData || {});
+      const matches = this.findDeliveryNoteMatches(invoice, dnNumbers, candidates);
+      if (matches.length > 0) {
+        invoice.deliveryNoteId = matches[0].id;
+        invoice.linkedDeliveryNoteIds = matches.map((m) => m.id);
         await this.invoiceRepo.save(invoice);
-        details.push(`Invoice ${invoice.invoiceNumber} → DN ${match.deliveryNumber}`);
+        const dnLabels = matches.map((m) => m.deliveryNumber).join(", ");
+        details.push(`Invoice ${invoice.invoiceNumber} → DN ${dnLabels}`);
         linked++;
       }
     }
@@ -348,6 +396,7 @@ export class InvoiceExtractionService {
         extractedSku: item.sku || null,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        unitType: item.unitType || null,
         discountPercent: item.discountPercent ?? 0,
         isPartA: item.isPaintPartA || false,
         isPartB: item.isPaintPartB || false,
@@ -824,5 +873,96 @@ export class InvoiceExtractionService {
       /curing\s*agent/i.test(lower);
 
     return { isPartA, isPartB };
+  }
+
+  async updateInvoiceItem(
+    invoiceId: number,
+    itemId: number,
+    updates: {
+      quantity?: number;
+      unitPrice?: number;
+      unitType?: string;
+    },
+    userId: number | null,
+  ): Promise<SupplierInvoiceItem> {
+    const item = await this.invoiceItemRepo.findOne({
+      where: { id: itemId, invoiceId },
+      relations: ["invoice"],
+    });
+
+    if (!item) {
+      throw new Error(`Invoice item ${itemId} not found on invoice ${invoiceId}`);
+    }
+
+    const corrections: { field: string; original: string; corrected: string }[] = [];
+
+    if (updates.quantity !== undefined && updates.quantity !== item.quantity) {
+      corrections.push({
+        field: "quantity",
+        original: String(item.quantity),
+        corrected: String(updates.quantity),
+      });
+      item.quantity = updates.quantity;
+    }
+
+    if (updates.unitPrice !== undefined && Number(updates.unitPrice) !== Number(item.unitPrice)) {
+      corrections.push({
+        field: "unitPrice",
+        original: String(item.unitPrice ?? ""),
+        corrected: String(updates.unitPrice),
+      });
+      item.unitPrice = updates.unitPrice;
+    }
+
+    if (updates.unitType !== undefined && updates.unitType !== item.unitType) {
+      corrections.push({
+        field: "unitType",
+        original: item.unitType ?? "",
+        corrected: updates.unitType,
+      });
+      item.unitType = updates.unitType;
+    }
+
+    const savedItem = await this.invoiceItemRepo.save(item);
+
+    if (corrections.length > 0 && item.invoice?.supplierName) {
+      const correctionEntities = corrections.map((c) =>
+        this.correctionRepo.create({
+          companyId: item.companyId,
+          supplierName: item.invoice.supplierName,
+          invoiceItemId: item.id,
+          fieldName: c.field,
+          originalValue: c.original,
+          correctedValue: c.corrected,
+          extractedDescription: item.extractedDescription,
+          correctedBy: userId,
+        }),
+      );
+      await this.correctionRepo.save(correctionEntities);
+    }
+
+    return savedItem;
+  }
+
+  private async correctionHintsForSupplier(
+    companyId: number,
+    supplierName: string | null,
+  ): Promise<string | null> {
+    if (!supplierName) return null;
+
+    const recentCorrections = await this.correctionRepo.find({
+      where: { companyId, supplierName },
+      order: { createdAt: "DESC" },
+      take: 30,
+    });
+
+    if (recentCorrections.length === 0) return null;
+
+    const hints = recentCorrections.map(
+      (c) =>
+        `- For item "${c.extractedDescription}": ${c.fieldName} was corrected from "${c.originalValue}" to "${c.correctedValue}"`,
+    );
+
+    return `PREVIOUS CORRECTIONS FOR THIS SUPPLIER (learn from these):\n${hints.join("\n")}\n\nApply these patterns to similar items. For example, if quantity was consistently corrected, pay extra attention to the quantity column. If unitType was corrected, use the corrected unit type for similar products.`;
   }
 }

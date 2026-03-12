@@ -270,8 +270,8 @@ export class InvoiceService {
         };
       });
 
-    const totalOldValue = items.reduce((sum, item) => sum + item.oldPrice, 0);
-    const totalNewValue = items.reduce((sum, item) => sum + item.newPrice, 0);
+    const totalOldValue = items.reduce((sum, item) => sum + item.oldPrice * item.quantity, 0);
+    const totalNewValue = items.reduce((sum, item) => sum + item.newPrice * item.quantity, 0);
 
     return { items, totalOldValue, totalNewValue };
   }
