@@ -2,15 +2,19 @@ import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { ComplySaUser } from "../companies/entities/user.entity";
 import { ComplySaCompaniesModule } from "../companies/companies.module";
 import { ComplySaAuthController } from "./auth.controller";
 import { ComplySaAuthService } from "./auth.service";
+import { ComplySaCompanyScopeGuard } from "./guards/company-scope.guard";
 import { ComplySaJwtStrategy } from "./strategies/jwt.strategy";
 
 @Module({
   imports: [
     ComplySaCompaniesModule,
     PassportModule,
+    TypeOrmModule.forFeature([ComplySaUser]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -20,7 +24,7 @@ import { ComplySaJwtStrategy } from "./strategies/jwt.strategy";
     }),
   ],
   controllers: [ComplySaAuthController],
-  providers: [ComplySaAuthService, ComplySaJwtStrategy],
-  exports: [ComplySaAuthService, JwtModule],
+  providers: [ComplySaAuthService, ComplySaJwtStrategy, ComplySaCompanyScopeGuard],
+  exports: [ComplySaAuthService, JwtModule, ComplySaCompanyScopeGuard, TypeOrmModule],
 })
 export class ComplySaAuthModule {}

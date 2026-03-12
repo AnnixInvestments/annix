@@ -11,6 +11,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { ComplySaCompanyScopeGuard } from "../comply-auth/guards/company-scope.guard";
 import { ComplySaJwtAuthGuard } from "../comply-auth/guards/jwt-auth.guard";
 import { ComplySaComplianceService } from "./compliance.service";
 
@@ -20,21 +22,21 @@ export class ComplySaComplianceController {
   constructor(private readonly complianceService: ComplySaComplianceService) {}
 
   @ApiBearerAuth()
-  @UseGuards(ComplySaJwtAuthGuard)
+  @UseGuards(ComplySaJwtAuthGuard, ComplySaCompanyScopeGuard)
   @Post("assess")
   async assess(@Req() req: { user: { companyId: number } }) {
     return this.complianceService.assessCompany(req.user.companyId);
   }
 
   @ApiBearerAuth()
-  @UseGuards(ComplySaJwtAuthGuard)
+  @UseGuards(ComplySaJwtAuthGuard, ComplySaCompanyScopeGuard)
   @Get("dashboard")
   async dashboard(@Req() req: { user: { companyId: number } }) {
     return this.complianceService.companyDashboard(req.user.companyId);
   }
 
   @ApiBearerAuth()
-  @UseGuards(ComplySaJwtAuthGuard)
+  @UseGuards(ComplySaJwtAuthGuard, ComplySaCompanyScopeGuard)
   @Patch("status/:id")
   async updateStatus(
     @Req() req: { user: { companyId: number } },
@@ -45,7 +47,7 @@ export class ComplySaComplianceController {
   }
 
   @ApiBearerAuth()
-  @UseGuards(ComplySaJwtAuthGuard)
+  @UseGuards(ComplySaJwtAuthGuard, ComplySaCompanyScopeGuard)
   @Post("checklist/:requirementId/toggle")
   async toggleChecklistStep(
     @Req() req: { user: { companyId: number; userId: number } },
@@ -61,13 +63,15 @@ export class ComplySaComplianceController {
   }
 
   @ApiBearerAuth()
-  @UseGuards(ComplySaJwtAuthGuard)
+  @UseGuards(ComplySaJwtAuthGuard, ComplySaCompanyScopeGuard)
   @Get("requirements")
   async requirements() {
     return this.complianceService.allRequirements();
   }
 
   @Get("badge/:companyId")
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { ttl: 60000, limit: 30 } })
   @Header("Content-Type", "image/svg+xml")
   @Header("Cache-Control", "no-cache, no-store, must-revalidate")
   async badge(@Param("companyId", ParseIntPipe) companyId: number): Promise<string> {

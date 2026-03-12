@@ -10,12 +10,13 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ComplySaCompanyScopeGuard } from "../comply-auth/guards/company-scope.guard";
 import { ComplySaJwtAuthGuard } from "../comply-auth/guards/jwt-auth.guard";
 import { ComplySaApiKeysService } from "./api-keys.service";
 
 @ApiTags("comply-sa/api-keys")
 @ApiBearerAuth()
-@UseGuards(ComplySaJwtAuthGuard)
+@UseGuards(ComplySaJwtAuthGuard, ComplySaCompanyScopeGuard)
 @Controller("comply-sa/api-keys")
 export class ComplySaApiKeysController {
   constructor(private readonly apiKeysService: ComplySaApiKeysService) {}

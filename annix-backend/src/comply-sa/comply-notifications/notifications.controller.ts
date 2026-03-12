@@ -12,13 +12,14 @@ import {
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { ComplySaCompanyScopeGuard } from "../comply-auth/guards/company-scope.guard";
 import { ComplySaJwtAuthGuard } from "../comply-auth/guards/jwt-auth.guard";
 import { ComplySaNotificationPreferences } from "./entities/notification-preferences.entity";
 import { ComplySaNotificationsService } from "./notifications.service";
 
 @ApiTags("comply-sa/notifications")
 @ApiBearerAuth()
-@UseGuards(ComplySaJwtAuthGuard)
+@UseGuards(ComplySaJwtAuthGuard, ComplySaCompanyScopeGuard)
 @Controller("comply-sa/notifications")
 export class ComplySaNotificationsController {
   constructor(

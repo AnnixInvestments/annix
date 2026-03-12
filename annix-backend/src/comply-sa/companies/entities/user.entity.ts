@@ -28,6 +28,18 @@ export class ComplySaUser {
   @Column({ name: "company_id", type: "int" })
   companyId!: number;
 
+  @Column({ name: "email_verified", type: "boolean", default: false })
+  emailVerified!: boolean;
+
+  @Column({ name: "email_verification_token", type: "varchar", length: 100, nullable: true })
+  emailVerificationToken!: string | null;
+
+  @Column({ name: "password_reset_token", type: "varchar", length: 100, nullable: true })
+  passwordResetToken!: string | null;
+
+  @Column({ name: "password_reset_expires_at", type: "varchar", length: 50, nullable: true })
+  passwordResetExpiresAt!: string | null;
+
   @ManyToOne(
     () => ComplySaCompany,
     (company) => company.users,
