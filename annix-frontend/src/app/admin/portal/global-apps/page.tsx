@@ -217,13 +217,13 @@ const platformApps: AppCard[] = [
     isExternal: true,
   },
   {
-    href: "https://comply.annix.co.za",
+    href: "/comply-sa",
     title: "Comply SA",
     description: "SA SME compliance dashboard with B-BBEE, tax tools, and regulatory tracking.",
     icon: <ComplySaIcon />,
     color: "bg-rose-100 text-rose-600",
     hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",
-    isExternal: true,
+    isExternal: false,
   },
 ];
 

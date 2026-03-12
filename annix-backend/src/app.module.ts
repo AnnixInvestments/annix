@@ -38,6 +38,7 @@ import { UnifiedApiModule } from "./unified-api/unified-api.module";
 import { UserModule } from "./user/user.module";
 import { UserRolesModule } from "./user-roles/user-roles.module";
 import { UserSyncModule } from "./user-sync/user-sync.module";
+import { ComplySaModule } from "./comply-sa/comply-sa.module";
 import { WorkflowModule } from "./workflow/workflow.module";
 
 @Module({
@@ -101,6 +102,8 @@ import { WorkflowModule } from "./workflow/workflow.module";
     UserSyncModule,
 
     HeavyFeaturesModule,
+
+    ComplySaModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [BendDimensionService],
