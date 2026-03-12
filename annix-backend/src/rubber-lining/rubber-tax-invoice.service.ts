@@ -67,6 +67,13 @@ export interface UpdateTaxInvoiceDto {
   status?: TaxInvoiceStatus;
   totalAmount?: number;
   vatAmount?: number;
+  productDescription?: string;
+  orderNumber?: string;
+  deliveryNoteRef?: string;
+  quantity?: number;
+  unit?: string;
+  costPerUnit?: number;
+  subtotal?: number;
 }
 
 @Injectable()
@@ -167,6 +174,43 @@ export class RubberTaxInvoiceService {
     }
     if (dto.vatAmount !== undefined) {
       invoice.vatAmount = dto.vatAmount != null ? String(dto.vatAmount) : null;
+    }
+
+    const hasExtractedDataUpdate =
+      dto.productDescription !== undefined ||
+      dto.orderNumber !== undefined ||
+      dto.deliveryNoteRef !== undefined ||
+      dto.quantity !== undefined ||
+      dto.unit !== undefined ||
+      dto.costPerUnit !== undefined ||
+      dto.subtotal !== undefined;
+
+    if (hasExtractedDataUpdate) {
+      const existing = invoice.extractedData ?? {
+        invoiceNumber: invoice.invoiceNumber,
+        invoiceDate: invoice.invoiceDate ? formatISODate(invoice.invoiceDate) : null,
+        companyName: null,
+        productSummary: null,
+        deliveryNoteRef: null,
+        orderNumber: null,
+        lineItems: [],
+        subtotal: null,
+        vatAmount: null,
+        totalAmount: null,
+      };
+
+      if (dto.productDescription !== undefined) existing.productSummary = dto.productDescription;
+      if (dto.orderNumber !== undefined) existing.orderNumber = dto.orderNumber;
+      if (dto.deliveryNoteRef !== undefined) existing.deliveryNoteRef = dto.deliveryNoteRef;
+      if (dto.quantity !== undefined) existing.productQuantity = dto.quantity;
+      if (dto.unit !== undefined) existing.productUnit = dto.unit;
+      if (dto.subtotal !== undefined) existing.subtotal = dto.subtotal;
+      if (dto.vatAmount !== undefined) existing.vatAmount = dto.vatAmount ?? null;
+      if (dto.costPerUnit !== undefined && dto.quantity !== undefined && dto.quantity > 0) {
+        existing.subtotal = Math.round(dto.costPerUnit * dto.quantity * 100) / 100;
+      }
+
+      invoice.extractedData = existing;
     }
 
     await this.taxInvoiceRepository.save(invoice);

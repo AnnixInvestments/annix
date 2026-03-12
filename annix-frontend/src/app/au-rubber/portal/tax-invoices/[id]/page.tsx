@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Download, FileText, RefreshCw } from "lucide-react";
+import { CheckCircle, Download, FileText, Pencil, RefreshCw, Save, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -23,6 +23,19 @@ export default function TaxInvoiceDetailPage() {
   const [isApproving, setIsApproving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [isSavingSummary, setIsSavingSummary] = useState(false);
+  const [editForm, setEditForm] = useState({
+    productDescription: "",
+    deliveryNoteRef: "",
+    orderNumber: "",
+    quantity: "",
+    unit: "",
+    costPerUnit: "",
+    subtotal: "",
+    vatAmount: "",
+    totalAmount: "",
+  });
 
   const invoiceId = Number(params.id);
 
@@ -84,6 +97,58 @@ export default function TaxInvoiceDetailPage() {
       showToast(message, "error");
     } finally {
       setIsApproving(false);
+    }
+  };
+
+  const startEditingSummary = () => {
+    if (!invoice) return;
+    setEditForm({
+      productDescription: invoice.productDescription ?? "",
+      deliveryNoteRef: invoice.extractedData?.deliveryNoteRef ?? "",
+      orderNumber: invoice.extractedData?.orderNumber ?? "",
+      quantity: invoice.numberOfRolls != null ? String(invoice.numberOfRolls) : "",
+      unit: invoice.unit ?? "",
+      costPerUnit: invoice.costPerUnit != null ? String(invoice.costPerUnit) : "",
+      subtotal: invoice.extractedData?.subtotal != null ? String(invoice.extractedData.subtotal) : "",
+      vatAmount: invoice.extractedData?.vatAmount != null ? String(invoice.extractedData.vatAmount) : "",
+      totalAmount: invoice.extractedData?.totalAmount != null ? String(invoice.extractedData.totalAmount) : "",
+    });
+    setIsEditingSummary(true);
+  };
+
+  const cancelEditingSummary = () => {
+    setIsEditingSummary(false);
+  };
+
+  const saveSummary = async () => {
+    if (!invoice) return;
+    try {
+      setIsSavingSummary(true);
+      const quantity = editForm.quantity ? Number(editForm.quantity) : undefined;
+      const costPerUnit = editForm.costPerUnit ? Number(editForm.costPerUnit) : undefined;
+      const subtotal = editForm.subtotal ? Number(editForm.subtotal) : undefined;
+      const vatAmount = editForm.vatAmount ? Number(editForm.vatAmount) : undefined;
+      const totalAmount = editForm.totalAmount ? Number(editForm.totalAmount) : undefined;
+
+      const updated = await auRubberApiClient.updateTaxInvoice(invoiceId, {
+        productDescription: editForm.productDescription || undefined,
+        deliveryNoteRef: editForm.deliveryNoteRef || undefined,
+        orderNumber: editForm.orderNumber || undefined,
+        quantity,
+        unit: editForm.unit || undefined,
+        costPerUnit,
+        subtotal,
+        vatAmount,
+        totalAmount,
+      });
+      setInvoice(updated);
+      setIsEditingSummary(false);
+      showToast("Invoice summary updated", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Update failed";
+      showToast(message, "error");
+    } finally {
+      setIsSavingSummary(false);
     }
   };
 
@@ -282,31 +347,154 @@ export default function TaxInvoiceDetailPage() {
         </div>
 
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Invoice Summary</h2>
-          {invoice.extractedData ? (
-            <dl className="space-y-4">
-              {invoice.productDescription && (
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-gray-900">Invoice Summary</h2>
+            {!isEditingSummary ? (
+              <button
+                type="button"
+                onClick={startEditingSummary}
+                className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-orange-600 transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+                Edit
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={saveSummary}
+                  disabled={isSavingSummary}
+                  className="inline-flex items-center gap-1.5 text-sm text-white bg-orange-600 hover:bg-orange-700 px-3 py-1.5 rounded-md disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  {isSavingSummary ? "Saving..." : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEditingSummary}
+                  className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-md border border-gray-300"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+          {isEditingSummary ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Product Description</label>
+                <input
+                  type="text"
+                  value={editForm.productDescription}
+                  onChange={(e) => setEditForm({ ...editForm, productDescription: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Product Description</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{invoice.productDescription}</dd>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Delivery Note Ref</label>
+                  <input
+                    type="text"
+                    value={editForm.deliveryNoteRef}
+                    onChange={(e) => setEditForm({ ...editForm, deliveryNoteRef: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  />
                 </div>
-              )}
-              {invoice.extractedData.deliveryNoteRef && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Order Number</label>
+                  <input
+                    type="text"
+                    value={editForm.orderNumber}
+                    onChange={(e) => setEditForm({ ...editForm, orderNumber: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    value={editForm.quantity}
+                    onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Unit</label>
+                  <input
+                    type="text"
+                    value={editForm.unit}
+                    onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                    placeholder="e.g. rolls, kg, sheets"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Cost per Unit</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.costPerUnit}
+                    onChange={(e) => setEditForm({ ...editForm, costPerUnit: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Subtotal (ex VAT)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.subtotal}
+                    onChange={(e) => setEditForm({ ...editForm, subtotal: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">VAT</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.vatAmount}
+                    onChange={(e) => setEditForm({ ...editForm, vatAmount: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Total (incl VAT)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.totalAmount}
+                    onChange={(e) => setEditForm({ ...editForm, totalAmount: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : invoice.extractedData ? (
+            <dl className="space-y-4">
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Product Description</dt>
+                <dd className="mt-1 text-sm text-gray-900">{invoice.productDescription || "-"}</dd>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Delivery Note Ref</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {invoice.extractedData.deliveryNoteRef}
+                    {invoice.extractedData.deliveryNoteRef || "-"}
                   </dd>
                 </div>
-              )}
-              {invoice.extractedData.orderNumber && (
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Order Number</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {invoice.extractedData.orderNumber}
+                    {invoice.extractedData.orderNumber || "-"}
                   </dd>
                 </div>
-              )}
+              </div>
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Quantity</dt>

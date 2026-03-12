@@ -2891,6 +2891,13 @@ class AuRubberApiClient {
       status?: TaxInvoiceStatus;
       totalAmount?: number;
       vatAmount?: number;
+      productDescription?: string;
+      orderNumber?: string;
+      deliveryNoteRef?: string;
+      quantity?: number;
+      unit?: string;
+      costPerUnit?: number;
+      subtotal?: number;
     },
   ): Promise<RubberTaxInvoiceDto> {
     return this.request(`/rubber-lining/portal/tax-invoices/${id}`, {
