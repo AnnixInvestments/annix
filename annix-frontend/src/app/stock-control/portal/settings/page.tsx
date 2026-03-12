@@ -23,6 +23,21 @@ export default function StockControlSettingsPage() {
   const router = useRouter();
   const { user } = useStockControlAuth();
 
+  const [companyRoles, setCompanyRoles] = useState<CompanyRole[]>([]);
+  const [companyRolesLoading, setCompanyRolesLoading] = useState(true);
+
+  const loadCompanyRoles = useCallback(async () => {
+    setCompanyRolesLoading(true);
+    try {
+      const data = await stockControlApiClient.companyRoles();
+      setCompanyRoles(data);
+    } catch {
+      setCompanyRoles([]);
+    } finally {
+      setCompanyRolesLoading(false);
+    }
+  }, []);
+
   const [teamMembers, setTeamMembers] = useState<StockControlTeamMember[]>([]);
   const [invitations, setInvitations] = useState<StockControlInvitation[]>([]);
   const [teamLoading, setTeamLoading] = useState(true);
@@ -99,7 +114,8 @@ export default function StockControlSettingsPage() {
     loadTeamData();
     loadDepartments();
     loadLocations();
-  }, [user, router, loadTeamData, loadDepartments, loadLocations]);
+    loadCompanyRoles();
+  }, [user, router, loadTeamData, loadDepartments, loadLocations, loadCompanyRoles]);
 
   const handleRoleChange = async (memberId: number, newRole: string) => {
     try {
@@ -166,15 +182,12 @@ export default function StockControlSettingsPage() {
     }
   };
 
-  const localRoleLabel = (role: string) => {
-    const labels: Record<string, string> = {
-      admin: "Admin",
-      manager: "Manager",
-      accounts: "Accounts",
-      storeman: "Storeman",
-    };
-    return labels[role] || role;
+  const localRoleLabel = (roleKey: string) => {
+    const match = companyRoles.find((r) => r.key === roleKey);
+    return match ? match.label : roleKey;
   };
+
+  const assignableRoles = companyRoles.filter((r) => r.key !== "viewer");
 
   const handleAddDepartment = async () => {
     if (!newDepartmentName.trim()) return;
@@ -259,7 +272,11 @@ export default function StockControlSettingsPage() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <h1 className="text-2xl font-bold text-gray-900 lg:col-span-2">Settings</h1>
 
-      <MenuVisibilitySection />
+      <MenuVisibilitySection
+        roles={companyRoles}
+        rolesLoading={companyRolesLoading}
+        onRolesChanged={loadCompanyRoles}
+      />
 
       <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-4">
@@ -291,10 +308,11 @@ export default function StockControlSettingsPage() {
                 onChange={(e) => setInviteRole(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
               >
-                <option value="storeman">Storeman</option>
-                <option value="accounts">Accounts</option>
-                <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
+                {assignableRoles.map((r) => (
+                  <option key={r.key} value={r.key}>
+                    {r.label}
+                  </option>
+                ))}
               </select>
               <button
                 type="button"
@@ -347,10 +365,11 @@ export default function StockControlSettingsPage() {
                           onChange={(e) => handleRoleChange(member.id, e.target.value)}
                           className="rounded border border-gray-300 px-2 py-1 text-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500"
                         >
-                          <option value="storeman">Storeman</option>
-                          <option value="accounts">Accounts</option>
-                          <option value="manager">Manager</option>
-                          <option value="admin">Admin</option>
+                          {assignableRoles.map((r) => (
+                            <option key={r.key} value={r.key}>
+                              {r.label}
+                            </option>
+                          ))}
                         </select>
                       </td>
                       <td className="hidden py-3 px-2 text-sm text-gray-500 md:table-cell">
@@ -653,7 +672,15 @@ export default function StockControlSettingsPage() {
   );
 }
 
-function MenuVisibilitySection() {
+function MenuVisibilitySection({
+  roles,
+  rolesLoading,
+  onRolesChanged,
+}: {
+  roles: CompanyRole[];
+  rolesLoading: boolean;
+  onRolesChanged: () => Promise<void>;
+}) {
   const { rbacConfig, reloadRbacConfig } = useStockControlRbac();
   const [localConfig, setLocalConfig] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
@@ -661,29 +688,11 @@ function MenuVisibilitySection() {
   const [dirty, setDirty] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
-  const [roles, setRoles] = useState<CompanyRole[]>([]);
-  const [rolesLoading, setRolesLoading] = useState(true);
   const [newRoleLabel, setNewRoleLabel] = useState("");
   const [showAddRole, setShowAddRole] = useState(false);
   const [roleError, setRoleError] = useState("");
   const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
   const [editingRoleLabel, setEditingRoleLabel] = useState("");
-
-  const loadRoles = useCallback(async () => {
-    setRolesLoading(true);
-    try {
-      const data = await stockControlApiClient.companyRoles();
-      setRoles(data);
-    } catch {
-      setRoles([]);
-    } finally {
-      setRolesLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadRoles();
-  }, [loadRoles]);
 
   useEffect(() => {
     setLocalConfig(
@@ -800,7 +809,7 @@ function MenuVisibilitySection() {
       await stockControlApiClient.createCompanyRole(key, newRoleLabel.trim());
       setNewRoleLabel("");
       setShowAddRole(false);
-      await loadRoles();
+      await onRolesChanged();
     } catch (e) {
       setRoleError(e instanceof Error ? e.message : "Failed to create role");
     }
@@ -812,7 +821,7 @@ function MenuVisibilitySection() {
     try {
       await stockControlApiClient.updateCompanyRole(id, editingRoleLabel.trim());
       setEditingRoleId(null);
-      await loadRoles();
+      await onRolesChanged();
     } catch (e) {
       setRoleError(e instanceof Error ? e.message : "Failed to update role");
     }
@@ -822,7 +831,7 @@ function MenuVisibilitySection() {
     setRoleError("");
     try {
       await stockControlApiClient.deleteCompanyRole(id);
-      await loadRoles();
+      await onRolesChanged();
     } catch (e) {
       setRoleError(e instanceof Error ? e.message : "Failed to delete role");
     }
@@ -847,8 +856,8 @@ function MenuVisibilitySection() {
 
     setRoleError("");
     try {
-      const updated = await stockControlApiClient.reorderCompanyRoles(reordered.map((r) => r.id));
-      setRoles(updated);
+      await stockControlApiClient.reorderCompanyRoles(reordered.map((r) => r.id));
+      await onRolesChanged();
     } catch (e) {
       setRoleError(e instanceof Error ? e.message : "Failed to reorder roles");
     }
