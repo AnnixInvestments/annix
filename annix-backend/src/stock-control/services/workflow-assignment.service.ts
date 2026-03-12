@@ -11,7 +11,7 @@ export interface StepAssignment {
   step: WorkflowStep;
   userIds: number[];
   primaryUserId: number | null;
-  users: { id: number; name: string; email: string; role: StockControlRole }[];
+  users: { id: number; name: string; email: string; role: string }[];
 }
 
 export interface StepNotificationRecipients {
@@ -23,7 +23,7 @@ export interface UserLocationSummary {
   userId: number;
   userName: string;
   userEmail: string;
-  userRole: StockControlRole;
+  userRole: string;
   locationIds: number[];
 }
 
@@ -72,7 +72,7 @@ export class WorkflowAssignmentService {
         {
           userIds: number[];
           primaryUserId: number | null;
-          users: { id: number; name: string; email: string; role: StockControlRole }[];
+          users: { id: number; name: string; email: string; role: string }[];
         }
       >,
     );
@@ -152,7 +152,7 @@ export class WorkflowAssignmentService {
   async eligibleUsersForStep(
     companyId: number,
     step: WorkflowStep,
-  ): Promise<{ id: number; name: string; email: string; role: StockControlRole }[]> {
+  ): Promise<{ id: number; name: string; email: string; role: string }[]> {
     const compatibleRoles = this.compatibleRolesForStep(step);
 
     const users = await this.userRepo.find({

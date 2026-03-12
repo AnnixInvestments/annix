@@ -32,7 +32,7 @@ export class StockControlUser {
   name: string;
 
   @Column({ type: "varchar", length: 50, default: StockControlRole.STOREMAN })
-  role: StockControlRole;
+  role: string;
 
   @Column({ name: "email_verified", type: "boolean", default: false })
   emailVerified: boolean;

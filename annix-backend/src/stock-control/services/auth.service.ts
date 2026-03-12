@@ -23,6 +23,7 @@ import {
   StockControlInvitationStatus,
 } from "../entities/stock-control-invitation.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
+import { CompanyRoleService } from "./company-role.service";
 import { PublicBrandingService } from "./public-branding.service";
 
 const VERIFICATION_EXPIRY_HOURS = 24;
@@ -45,6 +46,7 @@ export class StockControlAuthService {
     private readonly s3StorageService: S3StorageService,
     private readonly configService: ConfigService,
     private readonly publicBrandingService: PublicBrandingService,
+    private readonly companyRoleService: CompanyRoleService,
   ) {
     this.storageType = this.configService.get<string>("STORAGE_TYPE") || "local";
   }
@@ -452,15 +454,16 @@ export class StockControlAuthService {
     }));
   }
 
-  async updateMemberRole(companyId: number, userId: number, role: StockControlRole) {
+  async updateMemberRole(companyId: number, userId: number, role: string) {
     const user = await this.userRepo.findOne({ where: { id: userId, companyId } });
     if (!user) {
       throw new NotFoundException("Team member not found");
     }
 
-    const validRoles = Object.values(StockControlRole);
-    if (!validRoles.includes(role)) {
-      throw new BadRequestException(`Invalid role. Must be one of: ${validRoles.join(", ")}`);
+    const companyRoles = await this.companyRoleService.rolesForCompany(companyId);
+    const validKeys = companyRoles.map((r) => r.key);
+    if (!validKeys.includes(role)) {
+      throw new BadRequestException(`Invalid role. Must be one of: ${validKeys.join(", ")}`);
     }
 
     const admins = await this.userRepo.count({
