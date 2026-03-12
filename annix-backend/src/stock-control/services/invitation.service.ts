@@ -85,20 +85,36 @@ export class StockControlInvitationService {
       return [];
     }
 
-    const registeredUsers = await this.userRepo.find({ where: { companyId } });
-    const registeredEmails = new Set(registeredUsers.map((u) => u.email.toLowerCase()));
+    const pendingEmails = pending.map((inv) => inv.email.toLowerCase());
+    const matchingUsers = await Promise.all(
+      pendingEmails.map((email) => this.userRepo.findOne({ where: { email } })),
+    );
 
-    const staleInvitations = pending.filter((inv) => registeredEmails.has(inv.email.toLowerCase()));
-    if (staleInvitations.length > 0) {
-      await Promise.all(
-        staleInvitations.map((inv) => {
-          inv.status = StockControlInvitationStatus.ACCEPTED;
-          return this.invitationRepo.save(inv);
-        }),
-      );
-    }
+    const resolvedInvitationIds = new Set<number>();
 
-    return pending.filter((inv) => !registeredEmails.has(inv.email.toLowerCase()));
+    await Promise.all(
+      pending.map(async (inv, index) => {
+        const existingUser = matchingUsers[index];
+        if (!existingUser) return;
+
+        if (existingUser.companyId !== companyId) {
+          const previousCompanyId = existingUser.companyId;
+          existingUser.companyId = companyId;
+          existingUser.role = inv.role;
+          await this.userRepo.save(existingUser);
+          this.logger.log(
+            `Moved user ${existingUser.email} from company ${previousCompanyId} to ${companyId}`,
+          );
+        }
+
+        inv.status = StockControlInvitationStatus.ACCEPTED;
+        inv.acceptedAt = new Date();
+        await this.invitationRepo.save(inv);
+        resolvedInvitationIds.add(inv.id);
+      }),
+    );
+
+    return pending.filter((inv) => !resolvedInvitationIds.has(inv.id));
   }
 
   async findByToken(token: string): Promise<StockControlInvitation | null> {

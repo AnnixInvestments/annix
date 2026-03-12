@@ -106,12 +106,26 @@ export class StockControlAuthService {
       invitation.acceptedAt = now().toJSDate();
       await this.invitationRepo.save(invitation);
     } else {
-      const company = this.companyRepo.create({
-        name: companyName || `${name} Company`,
+      const pendingInvitation = await this.invitationRepo.findOne({
+        where: { email: normalizedEmail, status: StockControlInvitationStatus.PENDING },
       });
-      const savedCompany = await this.companyRepo.save(company);
-      companyId = savedCompany.id;
-      role = StockControlRole.ADMIN;
+
+      if (pendingInvitation) {
+        companyId = pendingInvitation.companyId;
+        role = pendingInvitation.role as StockControlRole;
+        isInvitedUser = true;
+
+        pendingInvitation.status = StockControlInvitationStatus.ACCEPTED;
+        pendingInvitation.acceptedAt = now().toJSDate();
+        await this.invitationRepo.save(pendingInvitation);
+      } else {
+        const company = this.companyRepo.create({
+          name: companyName || `${name} Company`,
+        });
+        const savedCompany = await this.companyRepo.save(company);
+        companyId = savedCompany.id;
+        role = StockControlRole.ADMIN;
+      }
     }
 
     const user = this.userRepo.create({
