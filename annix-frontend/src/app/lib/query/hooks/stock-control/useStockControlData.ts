@@ -55,7 +55,12 @@ export function useInventoryItems(params: Record<string, string>) {
 }
 
 export function useInventoryGrouped(search?: string, locationId?: number) {
-  return useQuery<{ category: string; items: StockItem[] }[]>({
+  return useQuery<{
+    groups: { category: string; items: StockItem[] }[];
+    total: number;
+    page: number;
+    limit: number;
+  }>({
     queryKey: stockControlKeys.inventory.grouped(search, locationId),
     queryFn: () => stockControlApiClient.stockItemsGrouped(search, locationId),
   });

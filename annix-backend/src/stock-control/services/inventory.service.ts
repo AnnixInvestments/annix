@@ -200,7 +200,14 @@ export class InventoryService {
     companyId: number,
     search?: string,
     locationId?: number,
-  ): Promise<{ category: string; items: StockItem[] }[]> {
+    page = 1,
+    limit = 500,
+  ): Promise<{
+    groups: { category: string; items: StockItem[] }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const queryBuilder = this.stockItemRepo
       .createQueryBuilder("item")
       .where("item.company_id = :companyId", { companyId });
@@ -216,9 +223,13 @@ export class InventoryService {
       queryBuilder.andWhere("item.location_id = :locationId", { locationId });
     }
 
-    queryBuilder.orderBy("item.category", "ASC").addOrderBy("item.name", "ASC");
+    queryBuilder
+      .orderBy("item.category", "ASC")
+      .addOrderBy("item.name", "ASC")
+      .skip((page - 1) * limit)
+      .take(limit);
 
-    const rawItems = await queryBuilder.getMany();
+    const [rawItems, total] = await queryBuilder.getManyAndCount();
     const allItems = await this.refreshPhotoUrls(rawItems);
 
     const grouped = allItems.reduce(
@@ -234,16 +245,16 @@ export class InventoryService {
     );
 
     const uncategorizedIndex = grouped.findIndex((g) => g.category === "Uncategorized");
-    if (uncategorizedIndex > 0) {
-      const uncategorized = grouped[uncategorizedIndex];
-      return [
-        ...grouped.slice(0, uncategorizedIndex),
-        ...grouped.slice(uncategorizedIndex + 1),
-        uncategorized,
-      ];
-    }
+    const groups =
+      uncategorizedIndex > 0
+        ? [
+            ...grouped.slice(0, uncategorizedIndex),
+            ...grouped.slice(uncategorizedIndex + 1),
+            grouped[uncategorizedIndex],
+          ]
+        : grouped;
 
-    return grouped;
+    return { groups, total, page, limit };
   }
 
   async adjustQuantity(companyId: number, id: number, delta: number): Promise<StockItem> {

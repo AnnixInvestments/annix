@@ -182,7 +182,7 @@ export default function InventoryPage() {
 
   const groupedData: LocationGroup[] = useMemo(() => {
     if (!isGroupedView || !groupedQuery.data) return [];
-    const allFlatItems = groupedQuery.data.flatMap(
+    const allFlatItems = groupedQuery.data.groups.flatMap(
       (g: { category: string; items: StockItem[] }) => g.items,
     );
     const filteredItems = categoryFilter

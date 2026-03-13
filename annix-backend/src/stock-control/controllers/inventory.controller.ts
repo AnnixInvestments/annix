@@ -74,6 +74,8 @@ export class InventoryController {
     @Req() req: any,
     @Query("search") search?: string,
     @Query("locationId") locationId?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
   ) {
     const parsedLocationId = locationId ? Number(locationId) : null;
     if (
@@ -82,10 +84,14 @@ export class InventoryController {
     ) {
       throw new BadRequestException("locationId must be a positive integer");
     }
+    const parsedPage = Math.max(1, Number(page) || 1);
+    const parsedLimit = Math.min(1000, Math.max(1, Number(limit) || 500));
     return this.inventoryService.groupedByCategory(
       req.user.companyId,
       search,
       parsedLocationId ?? undefined,
+      parsedPage,
+      parsedLimit,
     );
   }
 

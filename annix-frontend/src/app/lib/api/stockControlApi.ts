@@ -2466,10 +2466,19 @@ class StockControlApiClient {
   async stockItemsGrouped(
     search?: string,
     locationId?: number,
-  ): Promise<{ category: string; items: StockItem[] }[]> {
+    page?: number,
+    limit?: number,
+  ): Promise<{
+    groups: { category: string; items: StockItem[] }[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const params = new URLSearchParams();
-    if (search) params.append("search", search);
-    if (locationId) params.append("locationId", String(locationId));
+    if (search) params.set("search", search);
+    if (locationId) params.set("locationId", String(locationId));
+    if (page) params.set("page", String(page));
+    if (limit) params.set("limit", String(limit));
     const query = params.toString() ? `?${params.toString()}` : "";
     return this.request(`/stock-control/inventory/grouped${query}`);
   }
@@ -3127,13 +3136,13 @@ class StockControlApiClient {
 
   async staffStockReport(filters?: StaffStockFilters): Promise<StaffStockReportResult> {
     const params = new URLSearchParams();
-    if (filters?.startDate) params.append("startDate", filters.startDate);
-    if (filters?.endDate) params.append("endDate", filters.endDate);
-    if (filters?.staffMemberId) params.append("staffMemberId", String(filters.staffMemberId));
-    if (filters?.departmentId) params.append("departmentId", String(filters.departmentId));
-    if (filters?.stockItemId) params.append("stockItemId", String(filters.stockItemId));
+    if (filters?.startDate) params.set("startDate", filters.startDate);
+    if (filters?.endDate) params.set("endDate", filters.endDate);
+    if (filters?.staffMemberId) params.set("staffMemberId", String(filters.staffMemberId));
+    if (filters?.departmentId) params.set("departmentId", String(filters.departmentId));
+    if (filters?.stockItemId) params.set("stockItemId", String(filters.stockItemId));
     if (filters?.anomalyThreshold)
-      params.append("anomalyThreshold", String(filters.anomalyThreshold));
+      params.set("anomalyThreshold", String(filters.anomalyThreshold));
     const query = params.toString() ? `?${params.toString()}` : "";
     return this.request(`/stock-control/reports/staff-stock${query}`);
   }
@@ -3143,8 +3152,8 @@ class StockControlApiClient {
     filters?: { startDate?: string; endDate?: string },
   ): Promise<StockIssuance[]> {
     const params = new URLSearchParams();
-    if (filters?.startDate) params.append("startDate", filters.startDate);
-    if (filters?.endDate) params.append("endDate", filters.endDate);
+    if (filters?.startDate) params.set("startDate", filters.startDate);
+    if (filters?.endDate) params.set("endDate", filters.endDate);
     const query = params.toString() ? `?${params.toString()}` : "";
     return this.request(`/stock-control/reports/staff-stock/${staffMemberId}/detail${query}`);
   }
@@ -3474,11 +3483,11 @@ class StockControlApiClient {
 
   async issuanceHistory(filters?: IssuanceFilters): Promise<StockIssuance[]> {
     const params = new URLSearchParams();
-    if (filters?.startDate) params.append("startDate", filters.startDate);
-    if (filters?.endDate) params.append("endDate", filters.endDate);
-    if (filters?.staffId) params.append("staffId", String(filters.staffId));
-    if (filters?.stockItemId) params.append("stockItemId", String(filters.stockItemId));
-    if (filters?.jobCardId) params.append("jobCardId", String(filters.jobCardId));
+    if (filters?.startDate) params.set("startDate", filters.startDate);
+    if (filters?.endDate) params.set("endDate", filters.endDate);
+    if (filters?.staffId) params.set("staffId", String(filters.staffId));
+    if (filters?.stockItemId) params.set("stockItemId", String(filters.stockItemId));
+    if (filters?.jobCardId) params.set("jobCardId", String(filters.jobCardId));
     const query = params.toString() ? `?${params.toString()}` : "";
     return this.request(`/stock-control/issuance${query}`);
   }
