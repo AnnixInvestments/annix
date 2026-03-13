@@ -6,7 +6,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
+import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import {
   CompleteUploadDto,
   InitiateUploadDto,
@@ -48,7 +48,7 @@ export class RecordingService {
     private readonly storageService: IStorageService,
     private readonly configService: ConfigService,
   ) {
-    this.tempDir = path.join(os.tmpdir(), "fieldflow-recordings");
+    this.tempDir = path.join(os.tmpdir(), "annix-rep-recordings");
     this.ensureTempDir();
   }
 
@@ -77,7 +77,7 @@ export class RecordingService {
 
     const timestamp = now().toFormat("yyyyMMdd-HHmmss");
     const sanitizedFilename = dto.filename.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const storagePath = `fieldflow/recordings/${meeting.id}/${timestamp}-${sanitizedFilename}`;
+    const storagePath = `${StorageArea.ANNIX_REP}/recordings/${meeting.id}/${timestamp}-${sanitizedFilename}`;
 
     const recording = this.recordingRepo.create({
       meetingId: dto.meetingId,
@@ -236,7 +236,7 @@ export class RecordingService {
       path: "",
     };
 
-    const subPath = `fieldflow/recordings/${recording.meetingId}`;
+    const subPath = `${StorageArea.ANNIX_REP}/recordings/${recording.meetingId}`;
     const storageResult = await this.storageService.upload(multerFile, subPath);
 
     fs.unlinkSync(assembledPath);
@@ -457,7 +457,7 @@ export class RecordingService {
       return null;
     }
 
-    const presignedUrl = await this.storageService.getPresignedUrl(
+    const presignedUrl = await this.storageService.presignedUrl(
       recording.storagePath,
       PRESIGNED_URL_EXPIRY_SECONDS,
     );
