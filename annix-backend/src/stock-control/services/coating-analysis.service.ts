@@ -332,14 +332,14 @@ export class CoatingAnalysisService {
         role: "user",
         content: [
           {
-            type: "image",
+            type: "document",
             source: { type: "base64", media_type: "application/pdf", data: tdsBase64 },
           },
           {
             type: "text",
             text: `Extract the volume solids percentage from this Technical Data Sheet (TDS) PDF. I need the volume solids for: ${productNames}.\n\nReturn JSON only:\n{ "products": [{ "product": "Product Name", "volumeSolidsPercent": 85 }] }\n\nRules:\n- Look for "Volume Solids", "Solids by Volume", or similar in the datasheet\n- The value is typically a percentage (e.g., 85%, 72%)\n- Match each product name to the closest product found in the TDS\n- Return valid JSON only, no additional text`,
           },
-        ] as any,
+        ],
       },
     ];
 

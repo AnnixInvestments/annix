@@ -1,9 +1,10 @@
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
+import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
 import {
   FieldMapping,
@@ -1044,7 +1045,7 @@ export class JobCardImportService {
       companyId,
       cpo.id,
       totalFulfilled >= Number(cpo.totalQuantity) && Number(cpo.totalQuantity) > 0
-        ? ("fulfilled" as any)
+        ? CpoStatus.FULFILLED
         : cpo.status,
     );
 
@@ -1076,7 +1077,7 @@ export class JobCardImportService {
         const jtDnNumber = detectJtDnNumber(row);
 
         const existing = await this.jobCardRepo.findOne({
-          where: { jobNumber: row.jobNumber, companyId, parentJobCardId: null as any },
+          where: { jobNumber: row.jobNumber, companyId, parentJobCardId: IsNull() },
           relations: ["lineItems"],
         });
 

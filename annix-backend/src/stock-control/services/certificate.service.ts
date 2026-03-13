@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { PDFDocument } from "pdf-lib";
+import { Readable } from "stream";
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import {
@@ -494,7 +495,7 @@ export class CertificateService {
       size: mergedBuffer.length,
       fieldname: "file",
       encoding: "7bit",
-      stream: null as any,
+      stream: Readable.from(mergedBuffer),
       destination: "",
       filename,
       path: "",

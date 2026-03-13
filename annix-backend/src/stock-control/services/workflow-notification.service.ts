@@ -1015,7 +1015,7 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const users = await this.assignmentService.usersForStep(companyId, stepKey as any);
+    const users = await this.assignmentService.usersForStep(companyId, stepKey as WorkflowStep);
 
     if (users.length === 0) {
       this.logger.warn(

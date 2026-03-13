@@ -23,12 +23,18 @@ export class StockAllocation {
   @JoinColumn({ name: "stock_item_id" })
   stockItem: StockItem;
 
+  @Column({ name: "stock_item_id" })
+  stockItemId: number;
+
   @ManyToOne(
     () => JobCard,
     (jobCard) => jobCard.allocations,
   )
   @JoinColumn({ name: "job_card_id" })
   jobCard: JobCard;
+
+  @Column({ name: "job_card_id" })
+  jobCardId: number;
 
   @Column({ name: "quantity_used", type: "integer" })
   quantityUsed: number;

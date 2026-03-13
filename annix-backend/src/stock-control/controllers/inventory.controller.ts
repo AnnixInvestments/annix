@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -74,10 +75,14 @@ export class InventoryController {
     @Query("search") search?: string,
     @Query("locationId") locationId?: string,
   ) {
+    const parsedLocationId = locationId ? Number(locationId) : null;
+    if (parsedLocationId !== null && (!Number.isInteger(parsedLocationId) || parsedLocationId <= 0)) {
+      throw new BadRequestException("locationId must be a positive integer");
+    }
     return this.inventoryService.groupedByCategory(
       req.user.companyId,
       search,
-      locationId ? Number(locationId) : undefined,
+      parsedLocationId ?? undefined,
     );
   }
 

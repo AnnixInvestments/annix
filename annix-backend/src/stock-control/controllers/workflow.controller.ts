@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -74,7 +75,15 @@ export class WorkflowController {
     @UploadedFile() file: Express.Multer.File,
     @Body("documentType") documentType: string,
   ) {
-    const docType = (documentType as JobCardDocumentType) || JobCardDocumentType.SCANNED_FORM;
+    const validTypes = Object.values(JobCardDocumentType) as string[];
+    const docType = validTypes.includes(documentType)
+      ? (documentType as JobCardDocumentType)
+      : JobCardDocumentType.SCANNED_FORM;
+    if (documentType && !validTypes.includes(documentType)) {
+      throw new BadRequestException(
+        `Invalid documentType "${documentType}". Must be one of: ${validTypes.join(", ")}`,
+      );
+    }
     return this.workflowService.uploadDocument(req.user.companyId, id, req.user, file, docType);
   }
 

@@ -4,7 +4,10 @@ import { IsNull, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardBackgroundCompletion } from "../entities/job-card-background-completion.entity";
-import { WorkflowNotification } from "../entities/workflow-notification.entity";
+import {
+  NotificationActionType,
+  WorkflowNotification,
+} from "../entities/workflow-notification.entity";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 import { WorkflowStepConfigService } from "./workflow-step-config.service";
 
@@ -132,7 +135,7 @@ export class BackgroundStepService {
       where: {
         userId,
         companyId,
-        actionType: "background_step_required" as any,
+        actionType: NotificationActionType.BACKGROUND_STEP_REQUIRED,
         readAt: IsNull(),
       },
       relations: ["jobCard"],

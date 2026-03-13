@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { GlossaryTerm } from "../entities/glossary-term.entity";
+import { StockControlCompany } from "../entities/stock-control-company.entity";
 
 const DEFAULT_TERMS: Array<{
   abbreviation: string;
@@ -190,7 +191,7 @@ export class GlossaryService {
       category: d.category,
       companyId,
       isCustom: false,
-      company: null as any,
+      company: null as unknown as StockControlCompany,
       createdAt: new Date(),
       updatedAt: new Date(),
     }));

@@ -155,7 +155,7 @@ export class StockControlAuthService {
     };
   }
 
-  async verifyEmail(token: string) {
+  async verifyEmail(token: string): Promise<Record<string, unknown>> {
     const user = await this.userRepo.findOne({
       where: {
         emailVerificationToken: token,
@@ -192,7 +192,7 @@ export class StockControlAuthService {
     return result;
   }
 
-  async resendVerification(email: string) {
+  async resendVerification(email: string): Promise<{ message: string }> {
     const user = await this.userRepo.findOne({ where: { email: ILike(email.trim()) } });
 
     if (!user) {
@@ -215,7 +215,7 @@ export class StockControlAuthService {
     return { message: "Verification email resent. Please check your inbox." };
   }
 
-  async forgotPassword(email: string) {
+  async forgotPassword(email: string): Promise<{ message: string }> {
     const user = await this.userRepo.findOne({ where: { email: ILike(email.trim()) } });
 
     if (user?.emailVerified) {
@@ -234,7 +234,7 @@ export class StockControlAuthService {
     };
   }
 
-  async resetPassword(token: string, password: string) {
+  async resetPassword(token: string, password: string): Promise<{ message: string }> {
     const user = await this.userRepo.findOne({
       where: {
         resetPasswordToken: token,
@@ -357,7 +357,7 @@ export class StockControlAuthService {
     return { linkedStaffId };
   }
 
-  async updateTooltipPreference(userId: number, hideTooltips: boolean) {
+  async updateTooltipPreference(userId: number, hideTooltips: boolean): Promise<{ hideTooltips: boolean }> {
     await this.userRepo.update(userId, { hideTooltips });
     return { hideTooltips };
   }
@@ -493,7 +493,7 @@ export class StockControlAuthService {
     return { message: "Role updated successfully." };
   }
 
-  async sendAppLink(companyId: number, userId: number) {
+  async sendAppLink(companyId: number, userId: number): Promise<{ message: string }> {
     const user = await this.userRepo.findOne({
       where: { id: userId, companyId },
       relations: ["company"],
