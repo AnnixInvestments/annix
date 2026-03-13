@@ -193,7 +193,6 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/issue-stock",
     label: "Issue Stock",
     defaultRoles: ["storeman", "manager", "admin"],
-    group: "Inventory",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
