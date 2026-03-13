@@ -62,7 +62,16 @@ function formatRandCell(value: string): string {
   }
 }
 
-const ITEMS_PER_PAGE = 20;
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 0] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+const PAGE_SIZE_KEY = "asca-inventory-page-size";
+
+function savedPageSize(): PageSize {
+  if (typeof window === "undefined") return 25;
+  const stored = Number(localStorage.getItem(PAGE_SIZE_KEY));
+  if ((PAGE_SIZE_OPTIONS as readonly number[]).includes(stored)) return stored as PageSize;
+  return 25;
+}
 
 type ViewMode = "list" | "grouped" | "cards";
 
@@ -106,6 +115,7 @@ export default function InventoryPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState<number | "">("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState<PageSize>(savedPageSize);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -154,7 +164,9 @@ export default function InventoryPage() {
 
   const listParams: Record<string, string> = isGroupedView
     ? {}
-    : { page: String(currentPage + 1), limit: String(ITEMS_PER_PAGE) };
+    : pageSize > 0
+      ? { page: String(currentPage + 1), limit: String(pageSize) }
+      : {};
   if (!isGroupedView && debouncedSearch) listParams.search = debouncedSearch;
   if (!isGroupedView && categoryFilter) listParams.category = categoryFilter;
   if (!isGroupedView && locationFilter) listParams.locationId = String(locationFilter);
@@ -330,7 +342,7 @@ export default function InventoryPage() {
     }
   };
 
-  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+  const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
 
   const handleSearch = (value: string) => {
     setSearch(value);
@@ -2031,33 +2043,61 @@ export default function InventoryPage() {
             </div>
           )}
 
-          {totalPages > 1 && (
-            <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="text-sm text-gray-700 text-center sm:text-left">
-                Showing {currentPage * ITEMS_PER_PAGE + 1} to{" "}
-                {Math.min((currentPage + 1) * ITEMS_PER_PAGE, total)} of {total} items
-              </div>
-              <div className="flex items-center justify-center sm:justify-end gap-2">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
-                  disabled={currentPage === 0}
-                  className="px-3 py-1 text-sm border rounded-md text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-gray-600">
-                  Page {currentPage + 1} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={currentPage >= totalPages - 1}
-                  className="px-3 py-1 text-sm border rounded-md text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
+          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="text-sm text-gray-700 text-center sm:text-left">
+              {pageSize > 0 ? (
+                <>
+                  Showing {currentPage * pageSize + 1} to{" "}
+                  {Math.min((currentPage + 1) * pageSize, total)} of {total} items
+                </>
+              ) : (
+                <>Showing all {total} items</>
+              )}
             </div>
-          )}
+            <div className="flex items-center justify-center sm:justify-end gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-gray-600">Rows:</span>
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => {
+                      setPageSize(size);
+                      setCurrentPage(0);
+                      localStorage.setItem(PAGE_SIZE_KEY, String(size));
+                    }}
+                    className={`px-2 py-1 text-sm rounded-md ${
+                      pageSize === size
+                        ? "bg-teal-600 text-white"
+                        : "border text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    }`}
+                  >
+                    {size === 0 ? "All" : size}
+                  </button>
+                ))}
+              </div>
+              {pageSize > 0 && totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                    className="px-3 py-1 text-sm border rounded-md text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    Page {currentPage + 1} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage >= totalPages - 1}
+                    className="px-3 py-1 text-sm border rounded-md text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
