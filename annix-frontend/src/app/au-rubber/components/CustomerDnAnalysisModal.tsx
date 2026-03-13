@@ -260,10 +260,7 @@ function GroupCard({
               <select
                 value={override.customerId || ""}
                 onChange={(e) =>
-                  onUpdateOverride(
-                    "customerId",
-                    e.target.value ? Number(e.target.value) : null,
-                  )
+                  onUpdateOverride("customerId", e.target.value ? Number(e.target.value) : null)
                 }
                 className={`block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 ${
                   !override.customerId ? "border-yellow-300" : "border-gray-300"

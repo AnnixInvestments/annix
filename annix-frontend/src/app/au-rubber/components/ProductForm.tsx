@@ -80,9 +80,7 @@ export function formDataToDto(formData: ProductFormData): CreateRubberProductDto
     tensileStrengthMpa: formData.tensileStrengthMpa
       ? parseFloat(formData.tensileStrengthMpa)
       : null,
-    elongationAtBreak: formData.elongationAtBreak
-      ? parseInt(formData.elongationAtBreak, 10)
-      : null,
+    elongationAtBreak: formData.elongationAtBreak ? parseInt(formData.elongationAtBreak, 10) : null,
     markup: formData.markup ? parseFloat(formData.markup) : null,
   };
 }
