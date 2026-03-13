@@ -1,6 +1,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { DataSource } from "typeorm";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
@@ -83,6 +84,25 @@ describe("DeliveryService", () => {
     linkDeliveryToCalloffs: jest.fn().mockResolvedValue([]),
   };
 
+  const mockQueryRunner = {
+    connect: jest.fn(),
+    startTransaction: jest.fn(),
+    commitTransaction: jest.fn(),
+    rollbackTransaction: jest.fn(),
+    release: jest.fn(),
+    manager: {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+      save: jest.fn().mockImplementation((_entity, data) => Promise.resolve({ id: 1, ...data })),
+      remove: jest.fn(),
+      create: jest.fn().mockImplementation((_entity, data) => ({ ...data })),
+    },
+  };
+
+  const mockDataSource = {
+    createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -96,6 +116,7 @@ describe("DeliveryService", () => {
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: InvoiceExtractionService, useValue: mockExtractionService },
         { provide: CpoService, useValue: mockCpoService },
+        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
@@ -110,7 +131,7 @@ describe("DeliveryService", () => {
   describe("create", () => {
     it("increments stock quantity for each delivered item", async () => {
       const stockItem = { id: 1, name: "Paint", quantity: 50 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
       mockDeliveryNoteRepo.findOne
         .mockResolvedValueOnce(null)
         .mockResolvedValue({ id: 1, items: [], photoUrl: null });
@@ -121,14 +142,16 @@ describe("DeliveryService", () => {
         items: [{ stockItemId: 1, quantityReceived: 20 }],
       });
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+        StockItem,
         expect.objectContaining({ quantity: 70 }),
       );
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
     });
 
     it("creates IN movement for each delivered item", async () => {
       const stockItem = { id: 1, name: "Paint", quantity: 50 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
       mockDeliveryNoteRepo.findOne
         .mockResolvedValueOnce(null)
         .mockResolvedValue({ id: 1, items: [], photoUrl: null });
@@ -139,7 +162,8 @@ describe("DeliveryService", () => {
         items: [{ stockItemId: 1, quantityReceived: 20 }],
       });
 
-      expect(mockMovementRepo.create).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+        StockMovement,
         expect.objectContaining({
           movementType: MovementType.IN,
           quantity: 20,
@@ -149,7 +173,7 @@ describe("DeliveryService", () => {
     });
 
     it("throws NotFoundException for missing stock item", async () => {
-      mockStockItemRepo.findOne.mockResolvedValue(null);
+      mockQueryRunner.manager.findOne.mockResolvedValue(null);
       mockDeliveryNoteRepo.findOne.mockResolvedValueOnce(null);
 
       await expect(
@@ -159,12 +183,15 @@ describe("DeliveryService", () => {
           items: [{ stockItemId: 999, quantityReceived: 10 }],
         }),
       ).rejects.toThrow(NotFoundException);
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
     });
 
     it("handles multiple items in single delivery", async () => {
       const stockItem1 = { id: 1, name: "Paint A", quantity: 10 };
       const stockItem2 = { id: 2, name: "Paint B", quantity: 20 };
-      mockStockItemRepo.findOne.mockResolvedValueOnce(stockItem1).mockResolvedValueOnce(stockItem2);
+      mockQueryRunner.manager.findOne
+        .mockResolvedValueOnce(stockItem1)
+        .mockResolvedValueOnce(stockItem2);
       mockDeliveryNoteRepo.findOne
         .mockResolvedValueOnce(null)
         .mockResolvedValue({ id: 1, items: [], photoUrl: null });
@@ -178,7 +205,7 @@ describe("DeliveryService", () => {
         ],
       });
 
-      expect(mockMovementRepo.create).toHaveBeenCalledTimes(2);
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
     });
   });
 
@@ -190,16 +217,18 @@ describe("DeliveryService", () => {
         items: [],
         photoUrl: null,
       });
-      mockMovementRepo.find.mockResolvedValue([
+      mockQueryRunner.manager.find.mockResolvedValue([
         { id: 1, stockItem, quantity: 20, movementType: MovementType.IN },
       ]);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
 
       await service.remove(1, 1);
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+        StockItem,
         expect.objectContaining({ quantity: 50 }),
       );
-      expect(mockMovementRepo.remove).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
     });
 
     it("removes delivery note and items", async () => {
@@ -209,12 +238,15 @@ describe("DeliveryService", () => {
         items,
         photoUrl: null,
       });
-      mockMovementRepo.find.mockResolvedValue([]);
+      mockQueryRunner.manager.find.mockResolvedValue([]);
 
       await service.remove(1, 1);
 
-      expect(mockDeliveryNoteItemRepo.remove).toHaveBeenCalledWith(items);
-      expect(mockDeliveryNoteRepo.remove).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(DeliveryNoteItem, items);
+      expect(mockQueryRunner.manager.remove).toHaveBeenCalledWith(
+        DeliveryNote,
+        expect.objectContaining({ id: 1 }),
+      );
     });
   });
 
