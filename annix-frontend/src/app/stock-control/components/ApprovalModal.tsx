@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useModalAccessibility } from "../lib/useModalAccessibility";
 import { SignaturePad } from "./SignaturePad";
 
 interface ApprovalModalProps {
@@ -79,6 +80,8 @@ export function ApprovalModal(props: ApprovalModalProps) {
     onClose();
   }, [onClose]);
 
+  const modalFocusRef = useModalAccessibility(isOpen, handleClose);
+
   if (!isOpen) return null;
 
   return (
@@ -98,7 +101,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
               {mode === "approve" && `Approve: ${stepName}`}
               {mode === "reject" && `Reject: ${jobNumber}`}
             </h2>
-            <button onClick={handleClose} className="p-1 hover:bg-gray-100 rounded-full">
+            <button ref={modalFocusRef as React.RefObject<HTMLButtonElement>} onClick={handleClose} className="p-1 hover:bg-gray-100 rounded-full">
               <X className="h-5 w-5 text-gray-500" />
             </button>
           </div>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
+import { useModalAccessibility } from "../lib/useModalAccessibility";
 
 interface DeliveryLineItem {
   stockItemId: number | null;
@@ -66,7 +67,7 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
     onSave(form);
   };
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setForm({
       deliveryNumber: "",
       supplierName: "",
@@ -75,7 +76,9 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
       items: [{ ...emptyLineItem }],
     });
     onClose();
-  };
+  }, [onClose]);
+
+  const modalFocusRef = useModalAccessibility(isOpen, handleClose);
 
   if (!isOpen) return null;
 
@@ -94,7 +97,7 @@ export function DeliveryNoteModal(props: DeliveryNoteModalProps) {
             <h2 id="delivery-note-modal-title" className="text-lg font-semibold text-gray-900">
               New Delivery Note
             </h2>
-            <button aria-label="Close" onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+            <button ref={modalFocusRef as React.RefObject<HTMLButtonElement>} aria-label="Close" onClick={handleClose} className="text-gray-400 hover:text-gray-600">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
