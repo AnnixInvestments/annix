@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { now } from "../../lib/datetime";
 import { FlangeDimension } from "../../flange-dimension/entities/flange-dimension.entity";
 import { NbNpsLookup } from "../../nb-nps-lookup/entities/nb-nps-lookup.entity";
 import { PipeDimension } from "../../pipe-dimension/entities/pipe-dimension.entity";
@@ -48,7 +49,7 @@ export class ReferenceDataCacheService implements OnModuleInit {
     for (const item of data) {
       map.set(item.nb_mm, item);
     }
-    this.nbNpsLookupCache = { data: map, loadedAt: new Date() };
+    this.nbNpsLookupCache = { data: map, loadedAt: now().toJSDate() };
     this.logger.debug(`Loaded ${data.length} NB-NPS lookup entries`);
   }
 
@@ -58,7 +59,7 @@ export class ReferenceDataCacheService implements OnModuleInit {
     for (const item of data) {
       map.set(item.id, item);
     }
-    this.steelSpecCache = { data: map, loadedAt: new Date() };
+    this.steelSpecCache = { data: map, loadedAt: now().toJSDate() };
     this.logger.debug(`Loaded ${data.length} steel specifications`);
   }
 
@@ -75,7 +76,7 @@ export class ReferenceDataCacheService implements OnModuleInit {
         map.set(nb, existing);
       }
     }
-    this.pipeDimensionsByNbCache = { data: map, loadedAt: new Date() };
+    this.pipeDimensionsByNbCache = { data: map, loadedAt: now().toJSDate() };
     this.logger.debug(`Loaded ${data.length} pipe dimensions`);
   }
 
@@ -93,7 +94,7 @@ export class ReferenceDataCacheService implements OnModuleInit {
         map.set(key, existing);
       }
     }
-    this.flangeDimensionsByNbCache = { data: map, loadedAt: new Date() };
+    this.flangeDimensionsByNbCache = { data: map, loadedAt: now().toJSDate() };
     this.logger.debug(`Loaded ${data.length} flange dimensions`);
   }
 

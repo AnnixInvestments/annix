@@ -450,17 +450,65 @@ export class RubberRequisitionService {
   }
 
   async checkAndCreateLowStockRequisitions(): Promise<RequisitionDto[]> {
-    const lowStockItems = await this.compoundStockRepo
-      .createQueryBuilder("stock")
-      .where("stock.min_stock_level_kg > 0")
-      .andWhere("stock.quantity_kg < stock.min_stock_level_kg")
-      .getMany();
+    const [lowStockItems, existingRequisition] = await Promise.all([
+      this.compoundStockRepo
+        .createQueryBuilder("stock")
+        .leftJoinAndSelect("stock.compoundCoding", "coding")
+        .where("stock.min_stock_level_kg > 0")
+        .andWhere("stock.quantity_kg < stock.min_stock_level_kg")
+        .getMany(),
+      this.requisitionRepo.findOne({
+        where: {
+          sourceType: RequisitionSourceType.LOW_STOCK,
+          status: RequisitionStatus.PENDING,
+        },
+        relations: ["items"],
+      }),
+    ]);
 
-    const created = await lowStockItems.reduce(
+    const existingItemStockIds = new Set(
+      (existingRequisition?.items || []).map((item) => item.compoundStockId),
+    );
+
+    const eligibleItems = lowStockItems.filter(
+      (stock) => !existingItemStockIds.has(stock.id),
+    );
+
+    const created = await eligibleItems.reduce(
       async (accPromise, stock) => {
         const acc = await accPromise;
-        const requisition = await this.createLowStockRequisition(stock.id);
-        return requisition ? [...acc, requisition] : acc;
+        const deficit =
+          stock.reorderPointKg > 0
+            ? stock.reorderPointKg - stock.quantityKg
+            : stock.minStockLevelKg - stock.quantityKg;
+        const quantityToOrder = Math.max(deficit, stock.reorderPointKg || 100);
+        const compoundName = stock.compoundCoding?.name || `Compound #${stock.id}`;
+        const compoundCode = stock.compoundCoding?.code || "";
+
+        const requisition = this.requisitionRepo.create({
+          firebaseUid: uuidv4(),
+          requisitionNumber: await this.generateRequisitionNumber(),
+          sourceType: RequisitionSourceType.LOW_STOCK,
+          status: RequisitionStatus.PENDING,
+          notes: `Auto-generated: ${compoundName} (${compoundCode}) is below minimum stock level. Current: ${stock.quantityKg} kg, Minimum: ${stock.minStockLevelKg} kg`,
+          createdBy: "System",
+          items: [
+            this.requisitionItemRepo.create({
+              itemType: RequisitionItemType.COMPOUND,
+              compoundStockId: stock.id,
+              compoundCodingId: stock.compoundCodingId,
+              compoundName: `${compoundName} (${compoundCode})`,
+              quantityKg: quantityToOrder,
+              quantityReceivedKg: 0,
+            }),
+          ],
+        });
+
+        const saved = await this.requisitionRepo.save(requisition);
+        this.logger.log(
+          `Created low-stock requisition ${saved.requisitionNumber} for ${compoundName}`,
+        );
+        return [...acc, this.toDto(saved)];
       },
       Promise.resolve([] as RequisitionDto[]),
     );

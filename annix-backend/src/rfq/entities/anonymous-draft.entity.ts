@@ -4,9 +4,12 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { User } from "../../user/entities/user.entity";
 
 @Entity("anonymous_drafts")
 export class AnonymousDraft {
@@ -82,10 +85,11 @@ export class AnonymousDraft {
   recoveryEmailSentAt?: Date;
 
   @ApiProperty({
-    description: "User ID if the draft was claimed by a registered user",
+    description: "User who claimed this draft",
   })
-  @Column({ name: "claimed_by_user_id", nullable: true })
-  claimedByUserId?: number;
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: "claimed_by_user_id" })
+  claimedBy?: User;
 
   @ApiProperty({
     description: "Whether the draft has been claimed by a registered user",

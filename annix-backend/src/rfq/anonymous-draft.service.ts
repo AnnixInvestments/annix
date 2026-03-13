@@ -11,6 +11,7 @@ import {
   RecoveryEmailResponseDto,
   SaveAnonymousDraftDto,
 } from "./dto/anonymous-draft.dto";
+import { User } from "../user/entities/user.entity";
 import { AnonymousDraft } from "./entities/anonymous-draft.entity";
 
 @Injectable()
@@ -243,7 +244,7 @@ export class AnonymousDraftService {
     }
 
     draft.isClaimed = true;
-    draft.claimedByUserId = userId;
+    draft.claimedBy = { id: userId } as User;
     await this.anonymousDraftRepo.save(draft);
 
     this.logger.log(`Draft ${draft.id} claimed by user ${userId}`);

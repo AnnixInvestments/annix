@@ -1089,37 +1089,31 @@ ${truncatedText}`;
     this.logger.log(`Analyzing ${files.length} files for CoC data...`);
     const companies = await this.companyRepository.find();
 
-    const analyzedFiles: AnalyzedFile[] = [];
-    const dataPdfs: number[] = [];
-    const graphPdfs: number[] = [];
+    const analyzedFiles: AnalyzedFile[] = await Promise.all(
+      files.map(async (file, i) => {
+        this.logger.log(`Analyzing file ${i + 1}/${files.length}: ${file.originalname}`);
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      this.logger.log(`Analyzing file ${i + 1}/${files.length}: ${file.originalname}`);
+        const pdfText = await this.extractTextFromPdf(file.buffer);
+        this.logger.log(`Extracted ${pdfText.length} characters from ${file.originalname}`);
 
-      const pdfText = await this.extractTextFromPdf(file.buffer);
-      this.logger.log(`Extracted ${pdfText.length} characters from ${file.originalname}`);
+        const graphInfo = this.detectIfGraph(pdfText, file.originalname);
+        this.logger.log(
+          `Graph detection for ${file.originalname}: isGraph=${graphInfo.isGraph}, batchNumbers=${graphInfo.batchNumbers.join(",")}`,
+        );
 
-      const graphInfo = this.detectIfGraph(pdfText, file.originalname);
-      this.logger.log(
-        `Graph detection for ${file.originalname}: isGraph=${graphInfo.isGraph}, batchNumbers=${graphInfo.batchNumbers.join(",")}`,
-      );
-
-      if (graphInfo.isGraph) {
-        graphPdfs.push(i);
-        analyzedFiles.push({
-          filename: file.originalname,
-          isGraph: true,
-          cocType: null,
-          companyId: null,
-          companyName: null,
-          extractedData: null,
-          batchNumbers: graphInfo.batchNumbers,
-          linkedToIndex: null,
-          pdfText,
-        });
-      } else {
-        dataPdfs.push(i);
+        if (graphInfo.isGraph) {
+          return {
+            filename: file.originalname,
+            isGraph: true,
+            cocType: null,
+            companyId: null,
+            companyName: null,
+            extractedData: null,
+            batchNumbers: graphInfo.batchNumbers,
+            linkedToIndex: null,
+            pdfText,
+          };
+        }
 
         const filenameInfo = this.parseFilenameForCocInfo(file.originalname);
 
@@ -1150,7 +1144,7 @@ ${truncatedText}`;
           extractedData.compoundCode = compoundCodeFromFilename;
         }
 
-        analyzedFiles.push({
+        return {
           filename: file.originalname,
           isGraph: false,
           cocType,
@@ -1160,9 +1154,18 @@ ${truncatedText}`;
           batchNumbers,
           linkedToIndex: null,
           pdfText,
-        });
-      }
-    }
+        };
+      }),
+    );
+
+    const dataPdfs = analyzedFiles.reduce<number[]>(
+      (acc, f, i) => (f.isGraph ? acc : [...acc, i]),
+      [],
+    );
+    const graphPdfs = analyzedFiles.reduce<number[]>(
+      (acc, f, i) => (f.isGraph ? [...acc, i] : acc),
+      [],
+    );
 
     for (const graphIdx of graphPdfs) {
       const graphFile = analyzedFiles[graphIdx];
