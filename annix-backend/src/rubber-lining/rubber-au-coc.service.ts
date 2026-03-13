@@ -17,7 +17,7 @@ import {
   RubberAuCocItemDto,
   SendAuCocDto,
 } from "./dto/rubber-coc.dto";
-import { AuCocStatus, RubberAuCoc } from "./entities/rubber-au-coc.entity";
+import { AuCocStatus, type ExtractedRollData, RubberAuCoc } from "./entities/rubber-au-coc.entity";
 import { RubberAuCocItem } from "./entities/rubber-au-coc-item.entity";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
@@ -232,8 +232,8 @@ export class RubberAuCocService {
     const extractedData = deliveryNote.extractedData;
     const rolls = extractedData?.rolls || [];
 
-    const extractedRollData = rolls.map((roll) => ({
-      rollNumber: roll.rollNumber,
+    const extractedRollData: ExtractedRollData[] = rolls.map((roll) => ({
+      rollNumber: roll.rollNumber ?? "",
       thicknessMm: roll.thicknessMm ?? null,
       widthMm: roll.widthMm ?? null,
       lengthM: roll.lengthM ?? null,
