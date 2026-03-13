@@ -1,24 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import type {
-  ImportResult,
-  ImportUploadResponse,
-  InventoryColumnMapping,
-  StockControlLocation,
-  StockItem,
-} from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import type { StockItem } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
-import {
-  useInvalidateInventory,
-  useInventoryCategories,
-  useInventoryGrouped,
-  useInventoryItems,
-  useInventoryLocations,
-} from "@/app/lib/query/hooks";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { HelpTooltip } from "../../components/HelpTooltip";
 import {
@@ -26,713 +10,73 @@ import {
   InventoryCardView,
   type SortDirection,
   type SortField,
-  type ThumbnailSize,
 } from "../../components/InventoryCardView";
 import { formatZAR } from "../../lib/currency";
-
-function isRandColumn(header: string): boolean {
-  return /value|price|cost|r\/p|amount|rand|zar/i.test(header);
-}
-
-function isImportRowBlank(row: string[]): boolean {
-  return row.every((cell) => cell.trim() === "" || cell.trim() === "0");
-}
-
-function isImportSectionTitle(row: string[]): boolean {
-  const firstCell = row[0] ? row[0].trim() : "";
-  if (firstCell === "" || firstCell === "0") {
-    return false;
-  } else {
-    return row.slice(1).every((cell) => cell.trim() === "" || cell.trim() === "0");
-  }
-}
-
-function formatRandCell(value: string): string {
-  const num = parseFloat(value);
-  if (Number.isNaN(num)) {
-    return value;
-  } else {
-    return `R ${num.toFixed(2)}`;
-  }
-}
-
-const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 0] as const;
-type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
-const PAGE_SIZE_KEY = "asca-inventory-page-size";
-
-function savedPageSize(): PageSize {
-  if (typeof window === "undefined") return 25;
-  const stored = Number(localStorage.getItem(PAGE_SIZE_KEY));
-  if ((PAGE_SIZE_OPTIONS as readonly number[]).includes(stored)) return stored as PageSize;
-  return 25;
-}
-
-type ViewMode = "list" | "grouped" | "cards";
-
-const VIEW_MODE_KEY = "asca-inventory-view-mode";
-const THUMB_SIZE_KEY = "asca-inventory-thumb-size";
-
-function savedViewMode(): ViewMode {
-  if (typeof window === "undefined") return "cards";
-  const stored = localStorage.getItem(VIEW_MODE_KEY);
-  if (stored === "list" || stored === "grouped" || stored === "cards") return stored;
-  return "cards";
-}
-
-function savedThumbSize(): ThumbnailSize {
-  if (typeof window === "undefined") return "M";
-  const stored = localStorage.getItem(THUMB_SIZE_KEY);
-  if (stored === "S" || stored === "M" || stored === "L" || stored === "XL") return stored;
-  return "M";
-}
-
-interface LocationGroup {
-  locationId: number | null;
-  locationName: string;
-  items: StockItem[];
-  expanded: boolean;
-}
+import {
+  PAGE_SIZE_OPTIONS,
+  isRandColumn,
+  isImportRowBlank,
+  isImportSectionTitle,
+  formatRandCell,
+  useInventoryPageState,
+} from "../../lib/useInventoryPageState";
 
 export default function InventoryPage() {
-  const { user } = useStockControlAuth();
-  const canEditPrices =
-    user?.role === "admin" || user?.role === "manager" || user?.role === "accounts";
-  const [actionError, setActionError] = useState<Error | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>(savedViewMode);
-  const [thumbnailSize, setThumbnailSize] = useState<ThumbnailSize>(savedThumbSize);
-  const [cardGroupBy, setCardGroupBy] = useState<GroupByOption>("location");
-  const [cardSortField, setCardSortField] = useState<SortField>("name");
-  const [cardSortDirection, setCardSortDirection] = useState<SortDirection>("asc");
-  const [lowStockOnly, setLowStockOnly] = useState(false);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [locationFilter, setLocationFilter] = useState<number | "">("");
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState<PageSize>(savedPageSize);
-  const [showModal, setShowModal] = useState(false);
-  const [editingItem, setEditingItem] = useState<StockItem | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
-  const [modalForm, setModalForm] = useState({
-    sku: "",
-    name: "",
-    description: "",
-    category: "",
-    unitOfMeasure: "each",
-    costPerUnit: 0,
-    quantity: 0,
-    minStockLevel: 0,
-    locationId: null as number | null,
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [importStep, setImportStep] = useState<
-    "idle" | "parsing" | "preview" | "importing" | "result"
-  >("idle");
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [parsedRows, setParsedRows] = useState<Record<string, unknown>[]>([]);
-  const [importHeaders, setImportHeaders] = useState<string[]>([]);
-  const [importRawRows, setImportRawRows] = useState<string[][]>([]);
-  const [importMapping, setImportMapping] = useState<InventoryColumnMapping | null>(null);
-  const [importFormat, setImportFormat] = useState<string | null>(null);
-  const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [isPrintingLabels, setIsPrintingLabels] = useState(false);
-  const [pendingMinLevels, setPendingMinLevels] = useState<Map<number, number>>(new Map());
-  const [pendingPrices, setPendingPrices] = useState<Map<number, number>>(new Map());
-  const [pendingLocations, setPendingLocations] = useState<Map<number, number | null>>(new Map());
-  const [isSavingMinLevels, setIsSavingMinLevels] = useState(false);
-  const [isSavingPrices, setIsSavingPrices] = useState(false);
-  const [isSavingLocations, setIsSavingLocations] = useState(false);
-  const [showPrintDropdown, setShowPrintDropdown] = useState(false);
-  const [printPreviewItems, setPrintPreviewItems] = useState<StockItem[] | null>(null);
-  const [isStockTakeMode, setIsStockTakeMode] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Map<number | null, boolean>>(new Map());
-  const printDropdownRef = useRef<HTMLDivElement>(null);
-  const dragCounterRef = useRef(0);
-
-  const isGroupedView = viewMode === "grouped" || viewMode === "cards";
-
-  const listParams: Record<string, string> = isGroupedView
-    ? {}
-    : pageSize > 0
-      ? { page: String(currentPage + 1), limit: String(pageSize) }
-      : {};
-  if (!isGroupedView && debouncedSearch) listParams.search = debouncedSearch;
-  if (!isGroupedView && categoryFilter) listParams.category = categoryFilter;
-  if (!isGroupedView && locationFilter) listParams.locationId = String(locationFilter);
-
-  const listQuery = useInventoryItems(isGroupedView ? {} : listParams);
-  const groupedQuery = useInventoryGrouped(
-    isGroupedView ? debouncedSearch || undefined : undefined,
-    isGroupedView ? locationFilter || undefined : undefined,
-  );
-  const { data: categories = [] } = useInventoryCategories();
-  const { data: locations = [] } = useInventoryLocations();
-  const invalidateInventory = useInvalidateInventory();
-
-  const isLoading = isGroupedView ? groupedQuery.isLoading : listQuery.isLoading;
-  const queryError = isGroupedView ? groupedQuery.error : listQuery.error;
-  const error = actionError || queryError;
-  const items = isGroupedView ? [] : (listQuery.data?.items ?? []);
-  const total = isGroupedView ? 0 : (listQuery.data?.total ?? 0);
-
-  const groupedData: LocationGroup[] = useMemo(() => {
-    if (!isGroupedView || !groupedQuery.data) return [];
-    const allFlatItems = groupedQuery.data.groups.flatMap(
-      (g: { category: string; items: StockItem[] }) => g.items,
-    );
-    const filteredItems = categoryFilter
-      ? allFlatItems.filter((item: StockItem) => item.category === categoryFilter)
-      : allFlatItems;
-    const locMap = new Map(locations.map((l: StockControlLocation) => [l.id, l.name]));
-    const byLocation = filteredItems.reduce<Record<string, StockItem[]>>((acc, item: StockItem) => {
-      const key = item.locationId != null ? String(item.locationId) : "null";
-      const existing = acc[key] || [];
-      return { ...acc, [key]: [...existing, item] };
-    }, {});
-    return Object.entries(byLocation)
-      .map(([key, locationItems]) => {
-        const locationId = key === "null" ? null : Number(key);
-        const locationName =
-          locationId != null ? locMap.get(locationId) || "Unknown" : "No Location Assigned";
-        const sortedItems = [...locationItems].sort((a, b) => {
-          const catCmp = (a.category || "").localeCompare(b.category || "");
-          if (catCmp !== 0) return catCmp;
-          return a.name.localeCompare(b.name);
-        });
-        const isExpanded = expandedGroups.has(locationId) ? expandedGroups.get(locationId)! : true;
-        return { locationId, locationName, items: sortedItems, expanded: isExpanded };
-      })
-      .sort((a, b) => {
-        if (a.locationId === null) return -1;
-        if (b.locationId === null) return 1;
-        return a.locationName.localeCompare(b.locationName);
-      });
-  }, [isGroupedView, groupedQuery.data, categoryFilter, locations, expandedGroups]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (printDropdownRef.current && !printDropdownRef.current.contains(event.target as Node)) {
-        setShowPrintDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const changeViewMode = (mode: ViewMode) => {
-    setViewMode(mode);
-    localStorage.setItem(VIEW_MODE_KEY, mode);
-  };
-
-  const changeThumbSize = (size: ThumbnailSize) => {
-    setThumbnailSize(size);
-    localStorage.setItem(THUMB_SIZE_KEY, size);
-  };
-
-  const allItems = useMemo((): StockItem[] => {
-    if (viewMode === "grouped" || viewMode === "cards") {
-      return groupedData
-        .flatMap((g) => g.items)
-        .filter((item): item is StockItem => item != null && typeof item === "object");
-    }
-    return items.filter((item): item is StockItem => item != null && typeof item === "object");
-  }, [viewMode, groupedData, items]);
-
-  const handlePrintStockList = (mode: "all" | "selected") => {
-    setShowPrintDropdown(false);
-    const itemsToPrint =
-      mode === "selected" ? allItems.filter((item) => selectedIds.has(item.id)) : allItems;
-    setPrintPreviewItems(itemsToPrint);
-  };
-
-  const handlePrintPreviewPrint = () => {
-    window.print();
-  };
-
-  const closePrintPreview = () => {
-    setPrintPreviewItems(null);
-  };
-
-  const toggleSelectItem = (id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    const pageIds = items.map((item) => item.id);
-    const allSelected = pageIds.every((id) => selectedIds.has(id));
-    if (allSelected) {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        pageIds.forEach((id) => next.delete(id));
-        return next;
-      });
-    } else {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        pageIds.forEach((id) => next.add(id));
-        return next;
-      });
-    }
-  };
-
-  const handlePrintSelected = async () => {
-    if (selectedIds.size === 0) return;
-    try {
-      setIsPrintingLabels(true);
-      const idsArray = [...selectedIds];
-      await stockControlApiClient.downloadBatchLabelsPdf({ ids: idsArray });
-      const itemsNeedingClear = allItems
-        .filter((item) => idsArray.includes(item.id) && item.needsQrPrint)
-        .map((item) => item.id);
-      if (itemsNeedingClear.length > 0) {
-        await stockControlApiClient.clearQrPrintFlag(itemsNeedingClear);
-        invalidateInventory();
-      }
-    } catch (err) {
-      setActionError(err instanceof Error ? err : new Error("Failed to download labels"));
-    } finally {
-      setIsPrintingLabels(false);
-    }
-  };
-
-  const handlePrintAll = async () => {
-    try {
-      setIsPrintingLabels(true);
-      await stockControlApiClient.downloadBatchLabelsPdf({
-        search: search || undefined,
-        category: categoryFilter || undefined,
-      });
-      const itemsNeedingClear = allItems.filter((item) => item.needsQrPrint).map((item) => item.id);
-      if (itemsNeedingClear.length > 0) {
-        await stockControlApiClient.clearQrPrintFlag(itemsNeedingClear);
-        invalidateInventory();
-      }
-    } catch (err) {
-      setActionError(err instanceof Error ? err : new Error("Failed to download labels"));
-    } finally {
-      setIsPrintingLabels(false);
-    }
-  };
-
-  const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 1;
-
-  const handleSearch = (value: string) => {
-    setSearch(value);
-    setCurrentPage(0);
-  };
-
-  const handleCategoryChange = (value: string) => {
-    setCategoryFilter(value);
-    setCurrentPage(0);
-  };
-
-  const handleLocationChange = (value: string) => {
-    setLocationFilter(value === "" ? "" : Number(value));
-    setCurrentPage(0);
-  };
-
-  const toggleGroupExpanded = (locationId: number | null) => {
-    setExpandedGroups((prev) => {
-      const next = new Map(prev);
-      const current = next.has(locationId) ? next.get(locationId)! : true;
-      next.set(locationId, !current);
-      return next;
-    });
-  };
-
-  const expandAllGroups = () => {
-    setExpandedGroups((prev) => {
-      const next = new Map(prev);
-      groupedData.forEach((g) => next.set(g.locationId, true));
-      return next;
-    });
-  };
-
-  const collapseAllGroups = () => {
-    setExpandedGroups((prev) => {
-      const next = new Map(prev);
-      groupedData.forEach((g) => next.set(g.locationId, false));
-      return next;
-    });
-  };
-
-  const openCreateModal = () => {
-    setEditingItem(null);
-    setModalForm({
-      sku: "",
-      name: "",
-      description: "",
-      category: "",
-      unitOfMeasure: "each",
-      costPerUnit: 0,
-      quantity: 0,
-      minStockLevel: 0,
-      locationId: null,
-    });
-    setPhotoFile(null);
-    setPhotoPreview(null);
-    setShowModal(true);
-  };
-
-  const openEditModal = (item: StockItem) => {
-    setEditingItem(item);
-    setModalForm({
-      sku: item.sku,
-      name: item.name,
-      description: item.description || "",
-      category: item.category || "",
-      unitOfMeasure: item.unitOfMeasure,
-      costPerUnit: item.costPerUnit,
-      quantity: item.quantity,
-      minStockLevel: item.minStockLevel,
-      locationId: item.locationId,
-    });
-    setPhotoFile(null);
-    setPhotoPreview(item.photoUrl || null);
-    setShowModal(true);
-  };
-
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      let savedItem: StockItem;
-      if (editingItem) {
-        savedItem = await stockControlApiClient.updateStockItem(editingItem.id, modalForm);
-      } else {
-        savedItem = await stockControlApiClient.createStockItem(modalForm);
-      }
-      if (photoFile) {
-        await stockControlApiClient.uploadStockItemPhoto(savedItem.id, photoFile);
-      }
-      setShowModal(false);
-      setPhotoFile(null);
-      setPhotoPreview(null);
-      invalidateInventory();
-    } catch (err) {
-      setActionError(err instanceof Error ? err : new Error("Failed to save item"));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const updatePendingMinLevel = (itemId: number, value: number) => {
-    setPendingMinLevels((prev) => {
-      const next = new Map(prev);
-      next.set(itemId, value);
-      return next;
-    });
-  };
-
-  const clearPendingMinLevel = (itemId: number) => {
-    setPendingMinLevels((prev) => {
-      const next = new Map(prev);
-      next.delete(itemId);
-      return next;
-    });
-  };
-
-  const clearAllPendingMinLevels = () => {
-    setPendingMinLevels(new Map());
-  };
-
-  const saveAllMinLevels = async () => {
-    if (isSavingMinLevels || pendingMinLevels.size === 0) return;
-    try {
-      setIsSavingMinLevels(true);
-      const updates = Array.from(pendingMinLevels.entries()).map(([id, minStockLevel]) =>
-        stockControlApiClient.updateStockItem(id, { minStockLevel }),
-      );
-      await Promise.all(updates);
-      setPendingMinLevels(new Map());
-      invalidateInventory();
-    } catch (err) {
-      setActionError(err instanceof Error ? err : new Error("Failed to update min stock levels"));
-    } finally {
-      setIsSavingMinLevels(false);
-    }
-  };
-
-  const minLevelForItem = (item: StockItem): number => {
-    return pendingMinLevels.has(item.id) ? pendingMinLevels.get(item.id)! : item.minStockLevel;
-  };
-
-  const priceForItem = (item: StockItem): number => {
-    return pendingPrices.has(item.id) ? pendingPrices.get(item.id)! : item.costPerUnit;
-  };
-
-  const locationForItem = (item: StockItem): number | null => {
-    return pendingLocations.has(item.id) ? pendingLocations.get(item.id)! : item.locationId;
-  };
-
-  const updatePendingPrice = (itemId: number, value: number) => {
-    setPendingPrices((prev) => {
-      const next = new Map(prev);
-      next.set(itemId, value);
-      return next;
-    });
-  };
-
-  const updatePendingLocation = (itemId: number, value: number | null) => {
-    setPendingLocations((prev) => {
-      const next = new Map(prev);
-      next.set(itemId, value);
-      return next;
-    });
-  };
-
-  const clearAllPendingPrices = () => {
-    setPendingPrices(new Map());
-  };
-
-  const clearAllPendingLocations = () => {
-    setPendingLocations(new Map());
-  };
-
-  const saveAllPrices = async () => {
-    if (isSavingPrices || pendingPrices.size === 0) return;
-    try {
-      setIsSavingPrices(true);
-      const updates = Array.from(pendingPrices.entries()).map(([id, costPerUnit]) =>
-        stockControlApiClient.updateStockItem(id, { costPerUnit }),
-      );
-      await Promise.all(updates);
-      setPendingPrices(new Map());
-      invalidateInventory();
-    } catch (err) {
-      setActionError(err instanceof Error ? err : new Error("Failed to update prices"));
-    } finally {
-      setIsSavingPrices(false);
-    }
-  };
-
-  const saveAllLocations = async () => {
-    if (isSavingLocations || pendingLocations.size === 0) return;
-    try {
-      setIsSavingLocations(true);
-      const updates = Array.from(pendingLocations.entries()).map(([id, locationId]) =>
-        stockControlApiClient.updateStockItem(id, { locationId }),
-      );
-      await Promise.all(updates);
-      setPendingLocations(new Map());
-      invalidateInventory();
-    } catch (err) {
-      setActionError(err instanceof Error ? err : new Error("Failed to update locations"));
-    } finally {
-      setIsSavingLocations(false);
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    try {
-      await stockControlApiClient.deleteStockItem(id);
-      invalidateInventory();
-    } catch (err) {
-      setActionError(err instanceof Error ? err : new Error("Failed to delete item"));
-    } finally {
-      setConfirmDeleteId(null);
-    }
-  };
-
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    dragCounterRef.current += 1;
-    if (e.dataTransfer.types.includes("Files")) {
-      setIsDragging(true);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    dragCounterRef.current -= 1;
-    if (dragCounterRef.current === 0) {
-      setIsDragging(false);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    dragCounterRef.current = 0;
-    const droppedFile = e.dataTransfer.files[0];
-    if (!droppedFile) return;
-
-    const validExtensions = [".xlsx", ".xls", ".csv", ".pdf"];
-    const extension = droppedFile.name.toLowerCase().slice(droppedFile.name.lastIndexOf("."));
-    if (!validExtensions.includes(extension)) {
-      setImportError("Unsupported file type. Please use Excel, CSV, or PDF files.");
-      setImportStep("idle");
-      return;
-    }
-
-    setImportFile(droppedFile);
-    setImportError(null);
-    setImportStep("parsing");
-
-    try {
-      const response: ImportUploadResponse =
-        await stockControlApiClient.uploadImportFile(droppedFile);
-      setImportFormat(response.format);
-
-      if (response.format === "excel" && response.headers && response.rawRows) {
-        setImportHeaders(response.headers);
-        setImportRawRows(response.rawRows);
-        setImportMapping(response.mapping || null);
-        setParsedRows([]);
-      } else {
-        setParsedRows(
-          Array.isArray(response.rows) ? (response.rows as Record<string, unknown>[]) : [],
-        );
-        setImportHeaders([]);
-        setImportRawRows([]);
-        setImportMapping(null);
-      }
-
-      setImportStep("preview");
-    } catch (err) {
-      setImportError(err instanceof Error ? err.message : "Failed to parse file");
-      setImportStep("idle");
-    }
-  };
-
-  const handleConfirmImport = async () => {
-    try {
-      setImportStep("importing");
-      setImportError(null);
-
-      const buildFallbackMapping = (headers: string[]): InventoryColumnMapping => {
-        const mapping: InventoryColumnMapping = {
-          sku: null,
-          name: null,
-          description: null,
-          category: null,
-          unitOfMeasure: null,
-          costPerUnit: null,
-          quantity: null,
-          minStockLevel: null,
-          location: null,
-        };
-        headers.forEach((header, idx) => {
-          const h = header.toLowerCase().trim();
-          if (/product.?code|sku|code|item.?code|part.?no/.test(h)) {
-            mapping.sku = idx;
-          } else if (/stock.?count|qty|quantity|soh|on.?hand|count/.test(h)) {
-            mapping.quantity = idx;
-          } else if (/r\/p|unit.?price|cost|price.?per/.test(h)) {
-            mapping.costPerUnit = idx;
-          } else if (/min|minimum|reorder/.test(h)) {
-            mapping.minStockLevel = idx;
-          } else if (/location|loc|warehouse/.test(h)) {
-            mapping.location = idx;
-          } else if (/category|cat|group/.test(h)) {
-            mapping.category = idx;
-          } else if (/unit.?of|uom|measure/.test(h)) {
-            mapping.unitOfMeasure = idx;
-          }
-        });
-        if (mapping.name === null) {
-          const mappedIndices = new Set(
-            Object.values(mapping).filter((v): v is number => v !== null),
-          );
-          if (!mappedIndices.has(0)) {
-            mapping.name = 0;
-          }
-        }
-        return mapping;
-      };
-
-      let effectiveMapping = importMapping;
-      let dataRows = importRawRows;
-
-      if (importFormat === "excel") {
-        const headersEmpty = importHeaders.every((h) => h.trim() === "");
-        if (headersEmpty && importRawRows.length > 0) {
-          effectiveMapping = buildFallbackMapping(importRawRows[0]);
-          dataRows = importRawRows.slice(1);
-        } else if (effectiveMapping && Object.values(effectiveMapping).every((v) => v === null)) {
-          effectiveMapping = buildFallbackMapping(importHeaders);
-        }
-      }
-
-      const rowsToImport =
-        importFormat === "excel" && effectiveMapping
-          ? dataRows
-              .filter((row) => !isImportRowBlank(row) && !isImportSectionTitle(row))
-              .map((row) => {
-                const cellAt = (idx: number | null): string | undefined => {
-                  if (idx === null || idx < 0 || idx >= row.length) {
-                    return undefined;
-                  }
-                  const val = row[idx].trim();
-                  return val === "" ? undefined : val;
-                };
-                const numAt = (idx: number | null): number | undefined => {
-                  const val = cellAt(idx);
-                  if (val === undefined) {
-                    return undefined;
-                  }
-                  const num = Number(val);
-                  return Number.isNaN(num) ? undefined : num;
-                };
-                return {
-                  sku: cellAt(effectiveMapping.sku),
-                  name: cellAt(effectiveMapping.name),
-                  description: cellAt(effectiveMapping.description),
-                  category: cellAt(effectiveMapping.category),
-                  unitOfMeasure: cellAt(effectiveMapping.unitOfMeasure),
-                  costPerUnit: numAt(effectiveMapping.costPerUnit),
-                  quantity: numAt(effectiveMapping.quantity),
-                  minStockLevel: numAt(effectiveMapping.minStockLevel),
-                  location: cellAt(effectiveMapping.location),
-                };
-              })
-          : parsedRows;
-
-      const result = await stockControlApiClient.confirmImport(rowsToImport, isStockTakeMode);
-      setImportResult(result);
-      setImportStep("result");
-      setIsStockTakeMode(false);
-    } catch (err) {
-      setImportError(err instanceof Error ? err.message : "Failed to import data");
-      setImportStep("preview");
-    }
-  };
-
-  const dismissImport = () => {
-    setImportStep("idle");
-    setImportFile(null);
-    setParsedRows([]);
-    setImportHeaders([]);
-    setImportRawRows([]);
-    setImportMapping(null);
-    setImportFormat(null);
-    setImportResult(null);
-    setImportError(null);
-    invalidateInventory();
-  };
+  const inv = useInventoryPageState();
+  const {
+    canEditPrices,
+    state,
+    updateState,
+    printDropdownRef,
+    isGroupedView,
+    isLoading,
+    error,
+    items,
+    total,
+    totalPages,
+    categories,
+    locations,
+    groupedData,
+    allItems,
+    changeViewMode,
+    changeThumbSize,
+    changePageSize,
+    handleSearch,
+    handleCategoryChange,
+    handleLocationChange,
+    toggleGroupExpanded,
+    expandAllGroups,
+    collapseAllGroups,
+    openCreateModal,
+    openEditModal,
+    handleSave,
+    handleDelete,
+    toggleSelectItem,
+    toggleSelectAll,
+    handlePrintStockList,
+    handlePrintPreviewPrint,
+    closePrintPreview,
+    handlePrintSelected,
+    handlePrintAll,
+    updatePendingMinLevel,
+    clearAllPendingMinLevels,
+    saveAllMinLevels,
+    minLevelForItem,
+    priceForItem,
+    locationForItem,
+    updatePendingPrice,
+    updatePendingLocation,
+    clearAllPendingPrices,
+    clearAllPendingLocations,
+    saveAllPrices,
+    saveAllLocations,
+    handleDragEnter,
+    handleDragLeave,
+    handleDragOver,
+    handleDrop,
+    handleConfirmImport,
+    dismissImport,
+  } = inv;
 
   if (isLoading && items.length === 0 && groupedData.length === 0) {
     return (
@@ -764,7 +108,7 @@ export default function InventoryPage() {
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {isDragging && (
+      {state.isDragging && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-600/20 backdrop-blur-sm pointer-events-none">
           <div className="bg-white rounded-2xl shadow-2xl p-12 text-center border-2 border-dashed border-teal-500">
             <svg
@@ -786,16 +130,16 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {importStep === "parsing" && (
+      {state.importStep === "parsing" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/75">
           <div className="bg-white rounded-lg shadow-xl p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
-            <p className="mt-4 text-gray-700 font-medium">Parsing {importFile?.name}...</p>
+            <p className="mt-4 text-gray-700 font-medium">Parsing {state.importFile?.name}...</p>
           </div>
         </div>
       )}
 
-      {importStep === "preview" && (
+      {state.importStep === "preview" && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-start justify-center min-h-screen px-4 py-8">
             <div className="fixed inset-0 bg-gray-500/75" onClick={dismissImport}></div>
@@ -804,10 +148,10 @@ export default function InventoryPage() {
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">Import Preview</h3>
                   <p className="text-sm text-gray-500">
-                    {importFile?.name} -{" "}
-                    {importFormat === "excel"
-                      ? importRawRows.filter((r) => !isImportRowBlank(r)).length
-                      : parsedRows.length}{" "}
+                    {state.importFile?.name} -{" "}
+                    {state.importFormat === "excel"
+                      ? state.importRawRows.filter((r) => !isImportRowBlank(r)).length
+                      : state.parsedRows.length}{" "}
                     rows parsed
                   </p>
                 </div>
@@ -821,16 +165,16 @@ export default function InventoryPage() {
                   <button
                     onClick={handleConfirmImport}
                     disabled={
-                      importFormat === "excel"
-                        ? importRawRows.length === 0
-                        : parsedRows.length === 0
+                      state.importFormat === "excel"
+                        ? state.importRawRows.length === 0
+                        : state.parsedRows.length === 0
                     }
                     className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
                   >
                     Confirm Import (
-                    {importFormat === "excel"
-                      ? importRawRows.filter((r) => !isImportRowBlank(r)).length
-                      : parsedRows.length}{" "}
+                    {state.importFormat === "excel"
+                      ? state.importRawRows.filter((r) => !isImportRowBlank(r)).length
+                      : state.parsedRows.length}{" "}
                     rows)
                   </button>
                 </div>
@@ -839,8 +183,8 @@ export default function InventoryPage() {
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={isStockTakeMode}
-                    onChange={(e) => setIsStockTakeMode(e.target.checked)}
+                    checked={state.isStockTakeMode}
+                    onChange={(e) => updateState({ isStockTakeMode: e.target.checked })}
                     className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
                   />
                   <div>
@@ -852,28 +196,35 @@ export default function InventoryPage() {
                   </div>
                 </label>
               </div>
-              {importMapping && (
+              {state.importMapping && (
                 <div className="mx-6 mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-700">
                     AI mapped columns:{" "}
-                    {Object.entries(importMapping)
+                    {Object.entries(state.importMapping)
                       .filter(([, v]) => v !== null)
-                      .map(([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`)
+                      .map(
+                        ([field, colIdx]) =>
+                          `${field} -> "${state.importHeaders[colIdx as number]}"`,
+                      )
                       .join(", ") || "No columns mapped"}
                   </p>
                 </div>
               )}
-              {importError && (
+              {state.importError && (
                 <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-sm text-red-700">{importError}</p>
+                  <p className="text-sm text-red-700">{state.importError}</p>
                 </div>
               )}
               <div className="overflow-x-auto max-h-96">
-                {importFormat === "excel" ? (
+                {state.importFormat === "excel" ? (
                   (() => {
-                    const headersEmpty = importHeaders.every((h) => h.trim() === "");
-                    const effectiveHeaders = headersEmpty ? importRawRows[0] || [] : importHeaders;
-                    const effectiveDataRows = headersEmpty ? importRawRows.slice(1) : importRawRows;
+                    const headersEmpty = state.importHeaders.every((h) => h.trim() === "");
+                    const effectiveHeaders = headersEmpty
+                      ? state.importRawRows[0] || []
+                      : state.importHeaders;
+                    const effectiveDataRows = headersEmpty
+                      ? state.importRawRows.slice(1)
+                      : state.importRawRows;
                     return (
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 sticky top-0 z-10">
@@ -933,8 +284,8 @@ export default function InventoryPage() {
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                           Row
                         </th>
-                        {parsedRows.length > 0 &&
-                          Object.keys(parsedRows[0]).map((header) => (
+                        {state.parsedRows.length > 0 &&
+                          Object.keys(state.parsedRows[0]).map((header) => (
                             <th
                               key={header}
                               className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
@@ -945,10 +296,10 @@ export default function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {parsedRows.map((row, index) => (
+                      {state.parsedRows.map((row, index) => (
                         <tr key={index} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
-                          {Object.keys(parsedRows[0]).map((header) => (
+                          {Object.keys(state.parsedRows[0]).map((header) => (
                             <td key={header} className="px-4 py-3 text-sm text-gray-900">
                               {String(row[header] || "")}
                             </td>
@@ -964,7 +315,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {importStep === "importing" && (
+      {state.importStep === "importing" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/75">
           <div className="bg-white rounded-lg shadow-xl p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
@@ -973,7 +324,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {importStep === "result" && importResult && (
+      {state.importStep === "result" && state.importResult && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div className="fixed inset-0 bg-gray-500/75" onClick={dismissImport}></div>
@@ -981,23 +332,27 @@ export default function InventoryPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-4">Import Complete</h3>
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-green-50 rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-green-700">{importResult.created}</div>
+                  <div className="text-2xl font-bold text-green-700">
+                    {state.importResult.created}
+                  </div>
                   <div className="text-sm text-green-600">Created</div>
                 </div>
                 <div className="bg-blue-50 rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-700">{importResult.updated}</div>
+                  <div className="text-2xl font-bold text-blue-700">
+                    {state.importResult.updated}
+                  </div>
                   <div className="text-sm text-blue-600">Updated</div>
                 </div>
                 <div className="bg-red-50 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-red-700">
-                    {importResult.errors.length}
+                    {state.importResult.errors.length}
                   </div>
                   <div className="text-sm text-red-600">Errors</div>
                 </div>
               </div>
-              {importResult.errors.length > 0 && (
+              {state.importResult.errors.length > 0 && (
                 <div className="bg-red-50 rounded-lg p-4 mb-4 max-h-40 overflow-y-auto space-y-1">
-                  {importResult.errors.map((err, index) => (
+                  {state.importResult.errors.map((err, index) => (
                     <div key={index} className="text-sm text-red-700">
                       <span className="font-medium">Row {err.row}:</span> {err.message}
                     </div>
@@ -1015,7 +370,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {isPrintingLabels && (
+      {state.isPrintingLabels && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
             <div className="flex flex-col items-center">
@@ -1029,7 +384,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {importError && importStep === "idle" && (
+      {state.importError && state.importStep === "idle" && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
           <div className="flex items-center">
             <svg
@@ -1045,9 +400,12 @@ export default function InventoryPage() {
                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <p className="text-sm text-red-700">{importError}</p>
+            <p className="text-sm text-red-700">{state.importError}</p>
           </div>
-          <button onClick={() => setImportError(null)} className="text-red-400 hover:text-red-600">
+          <button
+            onClick={() => updateState({ importError: null })}
+            className="text-red-400 hover:text-red-600"
+          >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -1067,7 +425,7 @@ export default function InventoryPage() {
           <p className="mt-1 text-lg font-semibold text-gray-800">
             Total SOH <HelpTooltip term="SOH" /> Value:{" "}
             {formatZAR(
-              viewMode === "grouped" || viewMode === "cards"
+              state.viewMode === "grouped" || state.viewMode === "cards"
                 ? groupedData.reduce(
                     (total, group) =>
                       total + group.items.reduce((sum, i) => sum + i.costPerUnit * i.quantity, 0),
@@ -1080,7 +438,7 @@ export default function InventoryPage() {
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={handlePrintAll}
-            disabled={isPrintingLabels}
+            disabled={state.isPrintingLabels}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1091,11 +449,11 @@ export default function InventoryPage() {
                 d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
               />
             </svg>
-            {isPrintingLabels ? "Printing..." : "Print All Labels"}
+            {state.isPrintingLabels ? "Printing..." : "Print All Labels"}
           </button>
           <div className="relative" ref={printDropdownRef}>
             <button
-              onClick={() => setShowPrintDropdown(!showPrintDropdown)}
+              onClick={() => updateState({ showPrintDropdown: !state.showPrintDropdown })}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1116,7 +474,7 @@ export default function InventoryPage() {
                 />
               </svg>
             </button>
-            {showPrintDropdown && (
+            {state.showPrintDropdown && (
               <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                 <div className="py-1">
                   <button
@@ -1127,10 +485,10 @@ export default function InventoryPage() {
                   </button>
                   <button
                     onClick={() => handlePrintStockList("selected")}
-                    disabled={selectedIds.size === 0}
+                    disabled={state.selectedIds.size === 0}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
-                    Print Selected ({selectedIds.size})
+                    Print Selected ({state.selectedIds.size})
                   </button>
                 </div>
               </div>
@@ -1172,7 +530,7 @@ export default function InventoryPage() {
           <button
             onClick={() => handleLocationChange("")}
             className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              locationFilter === ""
+              state.locationFilter === ""
                 ? "bg-teal-600 text-white shadow-sm"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
@@ -1188,7 +546,7 @@ export default function InventoryPage() {
                 key={loc.id}
                 onClick={() => handleLocationChange(String(loc.id))}
                 className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  locationFilter === loc.id
+                  state.locationFilter === loc.id
                     ? "bg-teal-600 text-white shadow-sm"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
@@ -1220,7 +578,7 @@ export default function InventoryPage() {
             <input
               type="text"
               placeholder="Search items..."
-              value={search}
+              value={state.search}
               onChange={(e) => handleSearch(e.target.value)}
               className="block w-full pl-10 rounded-md bg-white border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
             />
@@ -1228,7 +586,7 @@ export default function InventoryPage() {
         </div>
         <div className="flex items-center gap-3">
           <select
-            value={categoryFilter}
+            value={state.categoryFilter}
             onChange={(e) => handleCategoryChange(e.target.value)}
             className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
           >
@@ -1243,7 +601,7 @@ export default function InventoryPage() {
             <button
               onClick={() => changeViewMode("cards")}
               className={`px-3 py-2 text-sm font-medium rounded-l-md border ${
-                viewMode === "cards"
+                state.viewMode === "cards"
                   ? "bg-teal-600 text-white border-teal-600"
                   : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
               }`}
@@ -1261,7 +619,7 @@ export default function InventoryPage() {
             <button
               onClick={() => changeViewMode("grouped")}
               className={`px-3 py-2 text-sm font-medium border-t border-r border-b ${
-                viewMode === "grouped"
+                state.viewMode === "grouped"
                   ? "bg-teal-600 text-white border-teal-600"
                   : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
               }`}
@@ -1279,7 +637,7 @@ export default function InventoryPage() {
             <button
               onClick={() => changeViewMode("list")}
               className={`px-3 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                viewMode === "list"
+                state.viewMode === "list"
                   ? "bg-teal-600 text-white border-teal-600"
                   : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
               }`}
@@ -1295,14 +653,14 @@ export default function InventoryPage() {
               </svg>
             </button>
           </div>
-          {viewMode === "cards" && (
+          {state.viewMode === "cards" && (
             <div className="flex items-center rounded-md shadow-sm border border-gray-300">
               {(["S", "M", "L", "XL"] as const).map((size, idx) => (
                 <button
                   key={size}
                   onClick={() => changeThumbSize(size)}
                   className={`px-2.5 py-2 text-xs font-semibold transition-colors ${
-                    thumbnailSize === size
+                    state.thumbnailSize === size
                       ? "bg-teal-600 text-white"
                       : "bg-white text-gray-600 hover:bg-gray-50"
                   } ${idx === 0 ? "rounded-l-md" : ""} ${idx === 3 ? "rounded-r-md" : ""} ${idx > 0 ? "border-l border-gray-300" : ""}`}
@@ -1315,11 +673,11 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {viewMode === "cards" && (
+      {state.viewMode === "cards" && (
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <select
-            value={cardGroupBy}
-            onChange={(e) => setCardGroupBy(e.target.value as GroupByOption)}
+            value={state.cardGroupBy}
+            onChange={(e) => updateState({ cardGroupBy: e.target.value as GroupByOption })}
             className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
           >
             <option value="none">No Grouping</option>
@@ -1328,11 +686,10 @@ export default function InventoryPage() {
             <option value="stockLevel">Group by Stock Level</option>
           </select>
           <select
-            value={`${cardSortField}-${cardSortDirection}`}
+            value={`${state.cardSortField}-${state.cardSortDirection}`}
             onChange={(e) => {
               const [field, dir] = e.target.value.split("-") as [SortField, SortDirection];
-              setCardSortField(field);
-              setCardSortDirection(dir);
+              updateState({ cardSortField: field, cardSortDirection: dir });
             }}
             className="rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
           >
@@ -1346,15 +703,15 @@ export default function InventoryPage() {
             <option value="updatedAt-asc">Oldest Updated</option>
           </select>
           <button
-            onClick={() => setLowStockOnly(!lowStockOnly)}
+            onClick={() => updateState({ lowStockOnly: !state.lowStockOnly })}
             className={`inline-flex items-center px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
-              lowStockOnly
+              state.lowStockOnly
                 ? "bg-amber-100 text-amber-800 border-amber-300"
                 : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
             }`}
           >
             <svg
-              className={`w-4 h-4 mr-1.5 ${lowStockOnly ? "text-amber-600" : "text-gray-400"}`}
+              className={`w-4 h-4 mr-1.5 ${state.lowStockOnly ? "text-amber-600" : "text-gray-400"}`}
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -1369,21 +726,21 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {selectedIds.size > 0 && (
+      {state.selectedIds.size > 0 && (
         <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <span className="text-sm font-medium text-teal-800">
-            {selectedIds.size} item{selectedIds.size !== 1 ? "s" : ""} selected
+            {state.selectedIds.size} item{state.selectedIds.size !== 1 ? "s" : ""} selected
           </span>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setSelectedIds(new Set())}
+              onClick={() => updateState({ selectedIds: new Set() })}
               className="text-sm text-teal-700 hover:text-teal-900"
             >
               Clear
             </button>
             <button
               onClick={handlePrintSelected}
-              disabled={isPrintingLabels}
+              disabled={state.isPrintingLabels}
               className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50"
             >
               <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1394,16 +751,17 @@ export default function InventoryPage() {
                   d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
                 />
               </svg>
-              {isPrintingLabels ? "Printing..." : "Print Labels"}
+              {state.isPrintingLabels ? "Printing..." : "Print Labels"}
             </button>
           </div>
         </div>
       )}
 
-      {pendingMinLevels.size > 0 && (
+      {state.pendingMinLevels.size > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <span className="text-sm font-medium text-amber-800">
-            {pendingMinLevels.size} unsaved min level change{pendingMinLevels.size !== 1 ? "s" : ""}
+            {state.pendingMinLevels.size} unsaved min level change
+            {state.pendingMinLevels.size !== 1 ? "s" : ""}
           </span>
           <div className="flex items-center gap-3">
             <button
@@ -1414,7 +772,7 @@ export default function InventoryPage() {
             </button>
             <button
               onClick={saveAllMinLevels}
-              disabled={isSavingMinLevels}
+              disabled={state.isSavingMinLevels}
               className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
             >
               <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1425,16 +783,17 @@ export default function InventoryPage() {
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              {isSavingMinLevels ? "Saving..." : "Save All Changes"}
+              {state.isSavingMinLevels ? "Saving..." : "Save All Changes"}
             </button>
           </div>
         </div>
       )}
 
-      {pendingPrices.size > 0 && (
+      {state.pendingPrices.size > 0 && (
         <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <span className="text-sm font-medium text-green-800">
-            {pendingPrices.size} unsaved price change{pendingPrices.size !== 1 ? "s" : ""}
+            {state.pendingPrices.size} unsaved price change
+            {state.pendingPrices.size !== 1 ? "s" : ""}
           </span>
           <div className="flex items-center gap-3">
             <button
@@ -1445,7 +804,7 @@ export default function InventoryPage() {
             </button>
             <button
               onClick={saveAllPrices}
-              disabled={isSavingPrices}
+              disabled={state.isSavingPrices}
               className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
             >
               <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1456,16 +815,17 @@ export default function InventoryPage() {
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              {isSavingPrices ? "Saving..." : "Save Price Changes"}
+              {state.isSavingPrices ? "Saving..." : "Save Price Changes"}
             </button>
           </div>
         </div>
       )}
 
-      {pendingLocations.size > 0 && (
+      {state.pendingLocations.size > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <span className="text-sm font-medium text-blue-800">
-            {pendingLocations.size} unsaved location change{pendingLocations.size !== 1 ? "s" : ""}
+            {state.pendingLocations.size} unsaved location change
+            {state.pendingLocations.size !== 1 ? "s" : ""}
           </span>
           <div className="flex items-center gap-3">
             <button
@@ -1476,7 +836,7 @@ export default function InventoryPage() {
             </button>
             <button
               onClick={saveAllLocations}
-              disabled={isSavingLocations}
+              disabled={state.isSavingLocations}
               className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
               <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1487,13 +847,13 @@ export default function InventoryPage() {
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              {isSavingLocations ? "Saving..." : "Save Location Changes"}
+              {state.isSavingLocations ? "Saving..." : "Save Location Changes"}
             </button>
           </div>
         </div>
       )}
 
-      {(viewMode === "grouped" || viewMode === "cards") && groupedData.length > 0 && (
+      {(state.viewMode === "grouped" || state.viewMode === "cards") && groupedData.length > 0 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">
             {groupedData.length} location{groupedData.length !== 1 ? "s" : ""}, {total} items total
@@ -1513,22 +873,22 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {viewMode === "cards" ? (
+      {state.viewMode === "cards" ? (
         <InventoryCardView
           items={allItems}
           locations={locations}
-          groupBy={cardGroupBy}
-          sortField={cardSortField}
-          sortDirection={cardSortDirection}
-          lowStockOnly={lowStockOnly}
-          selectedIds={selectedIds}
+          groupBy={state.cardGroupBy}
+          sortField={state.cardSortField}
+          sortDirection={state.cardSortDirection}
+          lowStockOnly={state.lowStockOnly}
+          selectedIds={state.selectedIds}
           onToggleSelect={toggleSelectItem}
           onEdit={openEditModal}
-          onDelete={setConfirmDeleteId}
+          onDelete={(id) => updateState({ confirmDeleteId: id })}
           canEditPrices={canEditPrices ?? false}
-          thumbnailSize={thumbnailSize}
+          thumbnailSize={state.thumbnailSize}
         />
-      ) : viewMode === "grouped" ? (
+      ) : state.viewMode === "grouped" ? (
         <div className="space-y-4">
           {groupedData.length === 0 ? (
             <div className="bg-white shadow rounded-lg text-center py-12">
@@ -1608,22 +968,24 @@ export default function InventoryPage() {
                                 type="checkbox"
                                 checked={
                                   group.items.length > 0 &&
-                                  group.items.every((item) => selectedIds.has(item.id))
+                                  group.items.every((item) => state.selectedIds.has(item.id))
                                 }
                                 onChange={() => {
                                   const groupIds = group.items.map((item) => item.id);
-                                  const allSelected = groupIds.every((id) => selectedIds.has(id));
+                                  const allSelected = groupIds.every((id) =>
+                                    state.selectedIds.has(id),
+                                  );
                                   if (allSelected) {
-                                    setSelectedIds((prev) => {
-                                      const next = new Set(prev);
-                                      groupIds.forEach((id) => next.delete(id));
-                                      return next;
+                                    updateState({
+                                      selectedIds: new Set(
+                                        [...state.selectedIds].filter(
+                                          (id) => !groupIds.includes(id),
+                                        ),
+                                      ),
                                     });
                                   } else {
-                                    setSelectedIds((prev) => {
-                                      const next = new Set(prev);
-                                      groupIds.forEach((id) => next.add(id));
-                                      return next;
+                                    updateState({
+                                      selectedIds: new Set([...state.selectedIds, ...groupIds]),
                                     });
                                   }
                                 }}
@@ -1675,7 +1037,7 @@ export default function InventoryPage() {
                                 <td className="px-4 py-4 w-10">
                                   <input
                                     type="checkbox"
-                                    checked={selectedIds.has(item.id)}
+                                    checked={state.selectedIds.has(item.id)}
                                     onChange={() => toggleSelectItem(item.id)}
                                     className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                                   />
@@ -1730,7 +1092,7 @@ export default function InventoryPage() {
                                       )
                                     }
                                     className={`w-16 rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right ${
-                                      pendingMinLevels.has(item.id)
+                                      state.pendingMinLevels.has(item.id)
                                         ? "border-teal-500 bg-teal-50"
                                         : "border-gray-300"
                                     }`}
@@ -1747,7 +1109,7 @@ export default function InventoryPage() {
                                         updatePendingPrice(item.id, parseFloat(e.target.value) || 0)
                                       }
                                       className={`w-24 rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right ${
-                                        pendingPrices.has(item.id)
+                                        state.pendingPrices.has(item.id)
                                           ? "border-green-500 bg-green-50"
                                           : "border-gray-300"
                                       }`}
@@ -1771,7 +1133,7 @@ export default function InventoryPage() {
                                       )
                                     }
                                     className={`w-full rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm ${
-                                      pendingLocations.has(item.id)
+                                      state.pendingLocations.has(item.id)
                                         ? "border-blue-500 bg-blue-50"
                                         : "border-gray-300"
                                     }`}
@@ -1792,7 +1154,7 @@ export default function InventoryPage() {
                                     Edit
                                   </button>
                                   <button
-                                    onClick={() => setConfirmDeleteId(item.id)}
+                                    onClick={() => updateState({ confirmDeleteId: item.id })}
                                     className="text-red-600 hover:text-red-900"
                                   >
                                     Del
@@ -1838,7 +1200,7 @@ export default function InventoryPage() {
                       <input
                         type="checkbox"
                         checked={
-                          items.length > 0 && items.every((item) => selectedIds.has(item.id))
+                          items.length > 0 && items.every((item) => state.selectedIds.has(item.id))
                         }
                         onChange={toggleSelectAll}
                         className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
@@ -1911,7 +1273,7 @@ export default function InventoryPage() {
                         <td className="px-4 py-4 w-10">
                           <input
                             type="checkbox"
-                            checked={selectedIds.has(item.id)}
+                            checked={state.selectedIds.has(item.id)}
                             onChange={() => toggleSelectItem(item.id)}
                             className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                           />
@@ -1965,7 +1327,7 @@ export default function InventoryPage() {
                               updatePendingMinLevel(item.id, parseInt(e.target.value, 10) || 0)
                             }
                             className={`w-16 rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right ${
-                              pendingMinLevels.has(item.id)
+                              state.pendingMinLevels.has(item.id)
                                 ? "border-teal-500 bg-teal-50"
                                 : "border-gray-300"
                             }`}
@@ -1982,7 +1344,7 @@ export default function InventoryPage() {
                                 updatePendingPrice(item.id, parseFloat(e.target.value) || 0)
                               }
                               className={`w-24 rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right ${
-                                pendingPrices.has(item.id)
+                                state.pendingPrices.has(item.id)
                                   ? "border-green-500 bg-green-50"
                                   : "border-gray-300"
                               }`}
@@ -2001,7 +1363,7 @@ export default function InventoryPage() {
                               )
                             }
                             className={`w-full rounded-md shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm ${
-                              pendingLocations.has(item.id)
+                              state.pendingLocations.has(item.id)
                                 ? "border-blue-500 bg-blue-50"
                                 : "border-gray-300"
                             }`}
@@ -2022,7 +1384,7 @@ export default function InventoryPage() {
                             Edit
                           </button>
                           <button
-                            onClick={() => setConfirmDeleteId(item.id)}
+                            onClick={() => updateState({ confirmDeleteId: item.id })}
                             className="text-red-600 hover:text-red-900"
                           >
                             Del
@@ -2037,10 +1399,10 @@ export default function InventoryPage() {
 
           <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="text-sm text-gray-700 text-center sm:text-left">
-              {pageSize > 0 ? (
+              {state.pageSize > 0 ? (
                 <>
-                  Showing {currentPage * pageSize + 1} to{" "}
-                  {Math.min((currentPage + 1) * pageSize, total)} of {total} items
+                  Showing {state.currentPage * state.pageSize + 1} to{" "}
+                  {Math.min((state.currentPage + 1) * state.pageSize, total)} of {total} items
                 </>
               ) : (
                 <>Showing all {total} items</>
@@ -2053,12 +1415,10 @@ export default function InventoryPage() {
                   <button
                     key={size}
                     onClick={() => {
-                      setPageSize(size);
-                      setCurrentPage(0);
-                      localStorage.setItem(PAGE_SIZE_KEY, String(size));
+                      changePageSize(size);
                     }}
                     className={`px-2 py-1 text-sm rounded-md ${
-                      pageSize === size
+                      state.pageSize === size
                         ? "bg-teal-600 text-white"
                         : "border text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                     }`}
@@ -2067,21 +1427,23 @@ export default function InventoryPage() {
                   </button>
                 ))}
               </div>
-              {pageSize > 0 && totalPages > 1 && (
+              {state.pageSize > 0 && totalPages > 1 && (
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
-                    disabled={currentPage === 0}
+                    onClick={() => updateState({ currentPage: Math.max(0, state.currentPage - 1) })}
+                    disabled={state.currentPage === 0}
                     className="px-3 py-1 text-sm border rounded-md text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
                   <span className="text-sm text-gray-600">
-                    Page {currentPage + 1} of {totalPages}
+                    Page {state.currentPage + 1} of {totalPages}
                   </span>
                   <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
-                    disabled={currentPage >= totalPages - 1}
+                    onClick={() =>
+                      updateState({ currentPage: Math.min(totalPages - 1, state.currentPage + 1) })
+                    }
+                    disabled={state.currentPage >= totalPages - 1}
                     className="px-3 py-1 text-sm border rounded-md text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
                   >
                     Next
@@ -2093,16 +1455,16 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {showModal && (
+      {state.showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div
               className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              onClick={() => setShowModal(false)}
+              onClick={() => updateState({ showModal: false })}
             ></div>
             <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingItem ? "Edit Stock Item" : "Add Stock Item"}
+                {state.editingItem ? "Edit Stock Item" : "Add Stock Item"}
               </h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -2110,8 +1472,10 @@ export default function InventoryPage() {
                     <label className="block text-sm font-medium text-gray-700">SKU</label>
                     <input
                       type="text"
-                      value={modalForm.sku}
-                      onChange={(e) => setModalForm({ ...modalForm, sku: e.target.value })}
+                      value={state.modalForm.sku}
+                      onChange={(e) =>
+                        updateState({ modalForm: { ...state.modalForm, sku: e.target.value } })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                     />
                   </div>
@@ -2119,8 +1483,10 @@ export default function InventoryPage() {
                     <label className="block text-sm font-medium text-gray-700">Name</label>
                     <input
                       type="text"
-                      value={modalForm.name}
-                      onChange={(e) => setModalForm({ ...modalForm, name: e.target.value })}
+                      value={state.modalForm.name}
+                      onChange={(e) =>
+                        updateState({ modalForm: { ...state.modalForm, name: e.target.value } })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                     />
                   </div>
@@ -2128,8 +1494,12 @@ export default function InventoryPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Description</label>
                   <textarea
-                    value={modalForm.description}
-                    onChange={(e) => setModalForm({ ...modalForm, description: e.target.value })}
+                    value={state.modalForm.description}
+                    onChange={(e) =>
+                      updateState({
+                        modalForm: { ...state.modalForm, description: e.target.value },
+                      })
+                    }
                     rows={2}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                   />
@@ -2139,8 +1509,10 @@ export default function InventoryPage() {
                     <label className="block text-sm font-medium text-gray-700">Category</label>
                     <input
                       type="text"
-                      value={modalForm.category}
-                      onChange={(e) => setModalForm({ ...modalForm, category: e.target.value })}
+                      value={state.modalForm.category}
+                      onChange={(e) =>
+                        updateState({ modalForm: { ...state.modalForm, category: e.target.value } })
+                      }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                     />
                   </div>
@@ -2150,9 +1522,11 @@ export default function InventoryPage() {
                     </label>
                     <input
                       type="text"
-                      value={modalForm.unitOfMeasure}
+                      value={state.modalForm.unitOfMeasure}
                       onChange={(e) =>
-                        setModalForm({ ...modalForm, unitOfMeasure: e.target.value })
+                        updateState({
+                          modalForm: { ...state.modalForm, unitOfMeasure: e.target.value },
+                        })
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                     />
@@ -2164,9 +1538,14 @@ export default function InventoryPage() {
                     <input
                       type="number"
                       step="0.01"
-                      value={modalForm.costPerUnit}
+                      value={state.modalForm.costPerUnit}
                       onChange={(e) =>
-                        setModalForm({ ...modalForm, costPerUnit: parseFloat(e.target.value) || 0 })
+                        updateState({
+                          modalForm: {
+                            ...state.modalForm,
+                            costPerUnit: parseFloat(e.target.value) || 0,
+                          },
+                        })
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                     />
@@ -2175,9 +1554,14 @@ export default function InventoryPage() {
                     <label className="block text-sm font-medium text-gray-700">Quantity</label>
                     <input
                       type="number"
-                      value={modalForm.quantity}
+                      value={state.modalForm.quantity}
                       onChange={(e) =>
-                        setModalForm({ ...modalForm, quantity: parseInt(e.target.value, 10) || 0 })
+                        updateState({
+                          modalForm: {
+                            ...state.modalForm,
+                            quantity: parseInt(e.target.value, 10) || 0,
+                          },
+                        })
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                     />
@@ -2188,11 +1572,13 @@ export default function InventoryPage() {
                     </label>
                     <input
                       type="number"
-                      value={modalForm.minStockLevel}
+                      value={state.modalForm.minStockLevel}
                       onChange={(e) =>
-                        setModalForm({
-                          ...modalForm,
-                          minStockLevel: parseInt(e.target.value, 10) || 0,
+                        updateState({
+                          modalForm: {
+                            ...state.modalForm,
+                            minStockLevel: parseInt(e.target.value, 10) || 0,
+                          },
                         })
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
@@ -2202,11 +1588,13 @@ export default function InventoryPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Location</label>
                   <select
-                    value={modalForm.locationId != null ? modalForm.locationId : ""}
+                    value={state.modalForm.locationId != null ? state.modalForm.locationId : ""}
                     onChange={(e) =>
-                      setModalForm({
-                        ...modalForm,
-                        locationId: e.target.value ? parseInt(e.target.value, 10) : null,
+                      updateState({
+                        modalForm: {
+                          ...state.modalForm,
+                          locationId: e.target.value ? parseInt(e.target.value, 10) : null,
+                        },
                       })
                     }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
@@ -2222,18 +1610,17 @@ export default function InventoryPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
                   <div className="flex items-center gap-4">
-                    {photoPreview ? (
+                    {state.photoPreview ? (
                       <div className="relative h-20 w-20 shrink-0">
                         <img
-                          src={photoPreview}
+                          src={state.photoPreview}
                           alt="Item photo"
                           className="h-20 w-20 rounded-lg object-cover border border-gray-200"
                         />
                         <button
                           type="button"
                           onClick={() => {
-                            setPhotoFile(null);
-                            setPhotoPreview(null);
+                            updateState({ photoFile: null, photoPreview: null });
                           }}
                           className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
                         >
@@ -2278,7 +1665,7 @@ export default function InventoryPage() {
                             d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
                           />
                         </svg>
-                        {photoPreview ? "Change Photo" : "Add Photo"}
+                        {state.photoPreview ? "Change Photo" : "Add Photo"}
                         <input
                           type="file"
                           accept="image/*"
@@ -2286,8 +1673,10 @@ export default function InventoryPage() {
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              setPhotoFile(file);
-                              setPhotoPreview(URL.createObjectURL(file));
+                              updateState({
+                                photoFile: file,
+                                photoPreview: URL.createObjectURL(file),
+                              });
                             }
                           }}
                         />
@@ -2299,17 +1688,17 @@ export default function InventoryPage() {
               </div>
               <div className="mt-6 flex justify-end space-x-3">
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => updateState({ showModal: false })}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={state.isSaving}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isSaving ? "Saving..." : editingItem ? "Update" : "Create"}
+                  {state.isSaving ? "Saving..." : state.editingItem ? "Update" : "Create"}
                 </button>
               </div>
             </div>
@@ -2317,7 +1706,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {printPreviewItems !== null && (
+      {state.printPreviewItems !== null && (
         <div className="fixed inset-0 z-50 overflow-y-auto print:relative print:overflow-visible">
           <div className="flex items-start justify-center min-h-screen px-4 py-8 print:p-0 print:m-0">
             <div
@@ -2328,7 +1717,7 @@ export default function InventoryPage() {
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between print:hidden">
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">Print Stock List</h3>
-                  <p className="text-sm text-gray-500">{printPreviewItems.length} items</p>
+                  <p className="text-sm text-gray-500">{state.printPreviewItems.length} items</p>
                 </div>
                 <div className="flex items-center space-x-3">
                   <button
@@ -2383,7 +1772,7 @@ export default function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {printPreviewItems
+                      {state.printPreviewItems
                         .filter(
                           (item): item is StockItem => item != null && typeof item === "object",
                         )
@@ -2435,13 +1824,13 @@ export default function InventoryPage() {
                           Total
                         </td>
                         <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 print:px-2 print:py-1">
-                          {printPreviewItems.reduce((sum, i) => sum + i.quantity, 0)}
+                          {state.printPreviewItems.reduce((sum, i) => sum + i.quantity, 0)}
                         </td>
                         <td className="px-4 py-3 print:px-2 print:py-1" />
                         <td className="px-4 py-3 print:px-2 print:py-1" />
                         <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 print:px-2 print:py-1">
                           {formatZAR(
-                            printPreviewItems.reduce(
+                            state.printPreviewItems.reduce(
                               (sum, i) => sum + i.costPerUnit * i.quantity,
                               0,
                             ),
@@ -2462,17 +1851,17 @@ export default function InventoryPage() {
       )}
 
       <ConfirmDialog
-        open={confirmDeleteId !== null}
+        open={state.confirmDeleteId !== null}
         title="Delete Item"
         message="Are you sure you want to delete this item?"
         confirmLabel="Delete"
         variant="danger"
         onConfirm={() => {
-          if (confirmDeleteId !== null) {
-            handleDelete(confirmDeleteId);
+          if (state.confirmDeleteId !== null) {
+            handleDelete(state.confirmDeleteId);
           }
         }}
-        onCancel={() => setConfirmDeleteId(null)}
+        onCancel={() => updateState({ confirmDeleteId: null })}
       />
     </div>
   );

@@ -11,18 +11,14 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useRef } from "react";
 import type {
   ChatConversationResponse,
   ChatMessageResponse,
-  StockControlTeamMember,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useChatState } from "../lib/useChatState";
 
 type ChatMsg = ChatMessageResponse;
-
-type ChatView = "conversations" | "general" | "conversation" | "new-conversation";
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-ZA", {
@@ -190,314 +186,42 @@ function MessageInput({
 }
 
 export function ChatPanel() {
-  const { user, profile } = useStockControlAuth();
-  const [isOpen, setIsOpen] = useState(false);
-  const [view, setView] = useState<ChatView>("general");
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
-  const [lastMessageId, setLastMessageId] = useState<number | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const [conversations, setConversations] = useState<ChatConversationResponse[]>([]);
-  const [activeConversation, setActiveConversation] = useState<ChatConversationResponse | null>(
-    null,
-  );
-  const [convMessages, setConvMessages] = useState<ChatMsg[]>([]);
-  const [convLastMessageId, setConvLastMessageId] = useState<number | null>(null);
-  const [convUnreadCounts, setConvUnreadCounts] = useState<Record<string, number>>({});
-
-  const [teamMembers, setTeamMembers] = useState<StockControlTeamMember[]>([]);
-  const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
-  const [groupName, setGroupName] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [chatError, setChatError] = useState<string | null>(null);
-
-  const messagingEnabled = profile?.messagingEnabled ?? false;
-
-  const lastMessageIdRef = useRef(lastMessageId);
-  lastMessageIdRef.current = lastMessageId;
-  const isOpenRef = useRef(isOpen);
-  isOpenRef.current = isOpen;
-  const viewRef = useRef(view);
-  viewRef.current = view;
-  const convLastMessageIdRef = useRef(convLastMessageId);
-  convLastMessageIdRef.current = convLastMessageId;
-  const activeConversationRef = useRef(activeConversation);
-  activeConversationRef.current = activeConversation;
-
-  const fetchGeneralMessages = useCallback(async () => {
-    if (!messagingEnabled) return;
-
-    try {
-      const msgs = await stockControlApiClient.chatMessages(lastMessageIdRef.current);
-      if (msgs.length === 0) return;
-
-      setMessages((prev) => {
-        const existingIds = new Set(prev.map((m) => m.id));
-        const fresh = msgs.filter((m) => !existingIds.has(m.id));
-        if (fresh.length === 0) return prev;
-        return [...prev, ...fresh];
-      });
-
-      const lastNew = msgs[msgs.length - 1];
-      setLastMessageId(lastNew.id);
-
-      if (!isOpenRef.current || viewRef.current !== "general") {
-        setUnreadCount((prev) => prev + msgs.length);
-      }
-    } catch (e) {
-      console.error("Chat poll failed:", e instanceof Error ? e.message : e);
-    }
-  }, [messagingEnabled]);
-
-  const fetchConvMessages = useCallback(async () => {
-    if (!messagingEnabled || !activeConversationRef.current) return;
-
-    try {
-      const msgs = await stockControlApiClient.chatMessages(
-        convLastMessageIdRef.current,
-        activeConversationRef.current.id,
-      );
-      if (msgs.length === 0) return;
-
-      setConvMessages((prev) => {
-        const existingIds = new Set(prev.map((m) => m.id));
-        const fresh = msgs.filter((m) => !existingIds.has(m.id));
-        if (fresh.length === 0) return prev;
-        return [...prev, ...fresh];
-      });
-
-      const lastNew = msgs[msgs.length - 1];
-      setConvLastMessageId(lastNew.id);
-    } catch (e) {
-      console.error("Conversation poll failed:", e instanceof Error ? e.message : e);
-    }
-  }, [messagingEnabled]);
-
-  useEffect(() => {
-    if (!messagingEnabled) return;
-
-    fetchGeneralMessages();
-    const interval = setInterval(fetchGeneralMessages, 3000);
-    return () => clearInterval(interval);
-  }, [fetchGeneralMessages, messagingEnabled]);
-
-  useEffect(() => {
-    if (!messagingEnabled || !activeConversation) return;
-
-    fetchConvMessages();
-    const interval = setInterval(fetchConvMessages, 3000);
-    return () => clearInterval(interval);
-  }, [fetchConvMessages, messagingEnabled, activeConversation]);
-
-  useEffect(() => {
-    if (!messagingEnabled || !isOpen) return;
-
-    const fetchConversations = async () => {
-      try {
-        const convs = await stockControlApiClient.chatConversations();
-        setConversations(convs);
-      } catch (e) {
-        console.error("Fetch conversations failed:", e instanceof Error ? e.message : e);
-      }
-    };
-
-    fetchConversations();
-    const interval = setInterval(fetchConversations, 5000);
-    return () => clearInterval(interval);
-  }, [messagingEnabled, isOpen]);
-
-  useEffect(() => {
-    if (!messagingEnabled || !isOpen) return;
-
-    const fetchUnread = async () => {
-      try {
-        const counts = await stockControlApiClient.chatUnreadCounts();
-        setConvUnreadCounts(counts);
-      } catch (e) {
-        console.error("Fetch unread counts failed:", e instanceof Error ? e.message : e);
-      }
-    };
-
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 5000);
-    return () => clearInterval(interval);
-  }, [messagingEnabled, isOpen]);
-
-  useEffect(() => {
-    if (isOpen && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages.length, convMessages.length, isOpen, view]);
-
-  useEffect(() => {
-    if (isOpen) {
-      if (view === "general") {
-        setUnreadCount(0);
-      }
-      if (view === "conversation" && activeConversation) {
-        stockControlApiClient
-          .markConversationRead(activeConversation.id)
-          .catch((e) =>
-            console.debug("Failed to mark conversation read:", e instanceof Error ? e.message : e),
-          );
-      }
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
-  }, [isOpen, view, activeConversation]);
-
-  const currentMessages = view === "conversation" ? convMessages : messages;
-
-  const handleSend = async () => {
-    const trimmed = text.trim();
-    if (!trimmed || sending) return;
-
-    if (editingId) {
-      try {
-        const result = await stockControlApiClient.editChatMessage(editingId, trimmed);
-        if (result.success) {
-          const updateMsg = (m: ChatMsg) =>
-            m.id === editingId ? { ...m, text: trimmed, editedAt: new Date().toISOString() } : m;
-          if (view === "conversation") {
-            setConvMessages((prev) => prev.map(updateMsg));
-          } else {
-            setMessages((prev) => prev.map(updateMsg));
-          }
-        }
-      } catch (e) {
-        setChatError(e instanceof Error ? e.message : "Failed to edit message");
-      }
-      setEditingId(null);
-      setText("");
-      return;
-    }
-
-    setSending(true);
-    try {
-      const conversationId =
-        view === "conversation" && activeConversation ? activeConversation.id : null;
-      const newMsg = await stockControlApiClient.sendChatMessage(trimmed, null, conversationId);
-      if (newMsg.id) {
-        if (view === "conversation") {
-          setConvMessages((prev) => [...prev, newMsg]);
-          setConvLastMessageId(newMsg.id);
-        } else {
-          setMessages((prev) => [...prev, newMsg]);
-          setLastMessageId(newMsg.id);
-        }
-      }
-      setText("");
-    } catch (e) {
-      setChatError(e instanceof Error ? e.message : "Failed to send message");
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handlePhotoSelect = async (file: File) => {
-    setUploading(true);
-    try {
-      const { imageUrl } = await stockControlApiClient.uploadChatImage(file);
-      const conversationId =
-        view === "conversation" && activeConversation ? activeConversation.id : null;
-      const newMsg = await stockControlApiClient.sendChatMessage("", imageUrl, conversationId);
-      if (newMsg.id) {
-        if (view === "conversation") {
-          setConvMessages((prev) => [...prev, newMsg]);
-          setConvLastMessageId(newMsg.id);
-        } else {
-          setMessages((prev) => [...prev, newMsg]);
-          setLastMessageId(newMsg.id);
-        }
-      }
-    } catch (e) {
-      setChatError(e instanceof Error ? e.message : "Failed to upload photo");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-    if (e.key === "ArrowUp" && text === "" && !editingId) {
-      e.preventDefault();
-      const myMessages = currentMessages.filter((m) => m.senderId === user?.id);
-      const last = myMessages[myMessages.length - 1];
-      if (last) {
-        setEditingId(last.id);
-        setText(last.text);
-      }
-    }
-    if (e.key === "Escape" && editingId) {
-      setEditingId(null);
-      setText("");
-    }
-  };
-
-  const handleStartEdit = (msg: ChatMsg) => {
-    setEditingId(msg.id);
-    setText(msg.text);
-  };
-
-  const openConversation = (conv: ChatConversationResponse) => {
-    setActiveConversation(conv);
-    setConvMessages([]);
-    setConvLastMessageId(null);
-    setView("conversation");
-    setEditingId(null);
-    setText("");
-  };
-
-  const openNewConversation = async () => {
-    try {
-      const members = await stockControlApiClient.chatTeamMembers();
-      setTeamMembers(members.filter((m) => m.id !== user?.id));
-    } catch (e) {
-      setChatError(e instanceof Error ? e.message : "Failed to load team members");
-    }
-    setSelectedUserIds([]);
-    setGroupName("");
-    setSearchQuery("");
-    setView("new-conversation");
-  };
-
-  const handleCreateConversation = async () => {
-    if (selectedUserIds.length === 0) return;
-
-    try {
-      const name = selectedUserIds.length > 1 ? groupName.trim() || null : null;
-      const conv = await stockControlApiClient.createChatConversation(selectedUserIds, name);
-      setConversations((prev) => [conv, ...prev]);
-      openConversation(conv);
-    } catch (e) {
-      setChatError(e instanceof Error ? e.message : "Failed to create conversation");
-    }
-  };
-
-  const toggleUserSelection = (userId: number) => {
-    setSelectedUserIds((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
-    );
-  };
-
-  const totalDmUnread = Object.values(convUnreadCounts).reduce((a, b) => a + b, 0);
-  const totalUnread = unreadCount + totalDmUnread;
+  const {
+    user,
+    messagingEnabled,
+    state,
+    scrollRef,
+    inputRef,
+    currentMessages,
+    totalDmUnread,
+    totalUnread,
+    filteredTeamMembers,
+    open,
+    close,
+    navigateTo,
+    setView,
+    setText,
+    setEditingId,
+    setSearchQuery,
+    setGroupName,
+    dismissError,
+    sendMessage,
+    uploadPhoto,
+    handleKeyDown,
+    startEdit,
+    openConversation,
+    openNewConversation,
+    createConversation,
+    toggleUserSelection,
+  } = useChatState();
 
   if (!messagingEnabled) return null;
 
-  if (!isOpen) {
+  if (!state.isOpen) {
     return (
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
+        onClick={open}
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg hover:bg-teal-700 transition-colors"
       >
         <MessageCircle className="h-6 w-6" />
@@ -510,27 +234,14 @@ export function ChatPanel() {
     );
   }
 
-  const filteredTeamMembers = teamMembers.filter(
-    (m) =>
-      searchQuery === "" ||
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.email.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col w-80 sm:w-96 h-[480px] rounded-xl bg-white shadow-2xl border border-gray-200 overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-teal-600 text-white">
         <div className="flex items-center gap-2">
-          {(view === "conversation" || view === "new-conversation") && (
+          {(state.view === "conversation" || state.view === "new-conversation") && (
             <button
               type="button"
-              onClick={() => {
-                setView("conversations");
-                setActiveConversation(null);
-                setEditingId(null);
-                setText("");
-              }}
+              onClick={() => navigateTo("conversations")}
               className="p-0.5 rounded hover:bg-teal-700 transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -538,25 +249,24 @@ export function ChatPanel() {
           )}
           <MessageCircle className="h-4 w-4" />
           <span className="text-sm font-semibold">
-            {view === "general" && "Team Chat"}
-            {view === "conversations" && "Messages"}
-            {view === "conversation" &&
-              activeConversation &&
-              conversationDisplayName(activeConversation, user?.id ?? 0)}
-            {view === "new-conversation" && "New Message"}
+            {state.view === "general" && "Team Chat"}
+            {state.view === "conversations" && "Messages"}
+            {state.view === "conversation" &&
+              state.activeConversation &&
+              conversationDisplayName(state.activeConversation, user?.id ?? 0)}
+            {state.view === "new-conversation" && "New Message"}
           </span>
         </div>
         <button
           type="button"
-          onClick={() => setIsOpen(false)}
+          onClick={close}
           className="p-1 rounded hover:bg-teal-700 transition-colors"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      {/* View: General chat */}
-      {view === "general" && (
+      {state.view === "general" && (
         <>
           <div className="flex border-b bg-white">
             <button
@@ -578,46 +288,45 @@ export function ChatPanel() {
               )}
             </button>
           </div>
-          {chatError && (
+          {state.chatError && (
             <div className="px-3 py-2 bg-red-50 text-red-700 text-xs flex items-center justify-between">
-              <span>{chatError}</span>
-              <button type="button" onClick={() => setChatError(null)} className="ml-2 font-bold">
+              <span>{state.chatError}</span>
+              <button type="button" onClick={dismissError} className="ml-2 font-bold">
                 &times;
               </button>
             </div>
           )}
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
-            {messages.length === 0 && (
+            {state.messages.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-12">
                 No messages yet. Start the conversation!
               </p>
             )}
-            {messages.map((msg) => (
+            {state.messages.map((msg) => (
               <MessageBubble
                 key={msg.id}
                 msg={msg}
                 isMe={msg.senderId === user?.id}
-                onStartEdit={handleStartEdit}
+                onStartEdit={startEdit}
               />
             ))}
           </div>
           <MessageInput
-            text={text}
+            text={state.text}
             setText={setText}
-            editingId={editingId}
+            editingId={state.editingId}
             setEditingId={setEditingId}
-            sending={sending}
-            onSend={handleSend}
+            sending={state.sending}
+            onSend={sendMessage}
             onKeyDown={handleKeyDown}
-            onPhotoSelect={handlePhotoSelect}
-            uploading={uploading}
+            onPhotoSelect={uploadPhoto}
+            uploading={state.uploading}
             inputRef={inputRef}
           />
         </>
       )}
 
-      {/* View: Conversations list */}
-      {view === "conversations" && (
+      {state.view === "conversations" && (
         <>
           <div className="flex border-b bg-white">
             <button
@@ -626,9 +335,9 @@ export function ChatPanel() {
               className="flex-1 px-3 py-2 text-xs font-semibold text-gray-500 hover:text-gray-700 relative"
             >
               General
-              {unreadCount > 0 && (
+              {state.unreadCount > 0 && (
                 <span className="ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                  {unreadCount > 99 ? "99+" : unreadCount}
+                  {state.unreadCount > 99 ? "99+" : state.unreadCount}
                 </span>
               )}
             </button>
@@ -650,12 +359,12 @@ export function ChatPanel() {
               </div>
               <span className="text-sm font-medium text-teal-700">New message</span>
             </button>
-            {conversations.length === 0 && (
+            {state.conversations.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-8">No conversations yet</p>
             )}
-            {conversations.map((conv) => {
+            {state.conversations.map((conv) => {
               const displayName = conversationDisplayName(conv, user?.id ?? 0);
-              const unread = convUnreadCounts[String(conv.id)] ?? 0;
+              const unread = state.convUnreadCounts[String(conv.id)] ?? 0;
               return (
                 <button
                   type="button"
@@ -689,54 +398,52 @@ export function ChatPanel() {
         </>
       )}
 
-      {/* View: Active conversation */}
-      {view === "conversation" && activeConversation && (
+      {state.view === "conversation" && state.activeConversation && (
         <>
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50">
-            {convMessages.length === 0 && (
+            {state.convMessages.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-12">
                 No messages yet. Start the conversation!
               </p>
             )}
-            {convMessages.map((msg) => (
+            {state.convMessages.map((msg) => (
               <MessageBubble
                 key={msg.id}
                 msg={msg}
                 isMe={msg.senderId === user?.id}
-                onStartEdit={handleStartEdit}
+                onStartEdit={startEdit}
               />
             ))}
           </div>
           <MessageInput
-            text={text}
+            text={state.text}
             setText={setText}
-            editingId={editingId}
+            editingId={state.editingId}
             setEditingId={setEditingId}
-            sending={sending}
-            onSend={handleSend}
+            sending={state.sending}
+            onSend={sendMessage}
             onKeyDown={handleKeyDown}
-            onPhotoSelect={handlePhotoSelect}
-            uploading={uploading}
+            onPhotoSelect={uploadPhoto}
+            uploading={state.uploading}
             inputRef={inputRef}
           />
         </>
       )}
 
-      {/* View: New conversation */}
-      {view === "new-conversation" && (
+      {state.view === "new-conversation" && (
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="px-3 pt-3 pb-2 space-y-2 border-b bg-white">
             <input
               type="text"
-              value={searchQuery}
+              value={state.searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search team members..."
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
-            {selectedUserIds.length > 1 && (
+            {state.selectedUserIds.length > 1 && (
               <input
                 type="text"
-                value={groupName}
+                value={state.groupName}
                 onChange={(e) => setGroupName(e.target.value)}
                 placeholder="Group name (optional)"
                 maxLength={100}
@@ -746,7 +453,7 @@ export function ChatPanel() {
           </div>
           <div className="flex-1 overflow-y-auto bg-gray-50">
             {filteredTeamMembers.map((member) => {
-              const isSelected = selectedUserIds.includes(member.id);
+              const isSelected = state.selectedUserIds.includes(member.id);
               return (
                 <button
                   type="button"
@@ -776,13 +483,13 @@ export function ChatPanel() {
           <div className="p-3 border-t bg-white">
             <button
               type="button"
-              onClick={handleCreateConversation}
-              disabled={selectedUserIds.length === 0}
+              onClick={createConversation}
+              disabled={state.selectedUserIds.length === 0}
               className="w-full py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:bg-gray-300 transition-colors"
             >
-              {selectedUserIds.length <= 1
+              {state.selectedUserIds.length <= 1
                 ? "Start conversation"
-                : `Create group (${selectedUserIds.length} people)`}
+                : `Create group (${state.selectedUserIds.length} people)`}
             </button>
           </div>
         </div>
