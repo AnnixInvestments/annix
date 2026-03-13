@@ -247,19 +247,19 @@ export default function InventoryPage() {
     localStorage.setItem(THUMB_SIZE_KEY, size);
   };
 
-  const allItems = (): StockItem[] => {
+  const allItems = useMemo((): StockItem[] => {
     if (viewMode === "grouped" || viewMode === "cards") {
       return groupedData
         .flatMap((g) => g.items)
         .filter((item): item is StockItem => item != null && typeof item === "object");
     }
     return items.filter((item): item is StockItem => item != null && typeof item === "object");
-  };
+  }, [viewMode, groupedData, items]);
 
   const handlePrintStockList = (mode: "all" | "selected") => {
     setShowPrintDropdown(false);
     const itemsToPrint =
-      mode === "selected" ? allItems().filter((item) => selectedIds.has(item.id)) : allItems();
+      mode === "selected" ? allItems.filter((item) => selectedIds.has(item.id)) : allItems;
     setPrintPreviewItems(itemsToPrint);
   };
 
@@ -307,7 +307,7 @@ export default function InventoryPage() {
       setIsPrintingLabels(true);
       const idsArray = [...selectedIds];
       await stockControlApiClient.downloadBatchLabelsPdf({ ids: idsArray });
-      const itemsNeedingClear = allItems()
+      const itemsNeedingClear = allItems
         .filter((item) => idsArray.includes(item.id) && item.needsQrPrint)
         .map((item) => item.id);
       if (itemsNeedingClear.length > 0) {
@@ -328,7 +328,7 @@ export default function InventoryPage() {
         search: search || undefined,
         category: categoryFilter || undefined,
       });
-      const itemsNeedingClear = allItems()
+      const itemsNeedingClear = allItems
         .filter((item) => item.needsQrPrint)
         .map((item) => item.id);
       if (itemsNeedingClear.length > 0) {
@@ -1081,7 +1081,7 @@ export default function InventoryPage() {
                       total + group.items.reduce((sum, i) => sum + i.costPerUnit * i.quantity, 0),
                     0,
                   )
-                : allItems().reduce((sum, i) => sum + i.costPerUnit * i.quantity, 0),
+                : allItems.reduce((sum, i) => sum + i.costPerUnit * i.quantity, 0),
             )}
           </p>
         </div>
@@ -1523,7 +1523,7 @@ export default function InventoryPage() {
 
       {viewMode === "cards" ? (
         <InventoryCardView
-          items={allItems()}
+          items={allItems}
           locations={locations}
           groupBy={cardGroupBy}
           sortField={cardSortField}

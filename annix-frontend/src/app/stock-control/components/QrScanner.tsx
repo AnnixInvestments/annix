@@ -23,8 +23,8 @@ export function QrScanner(props: QrScannerProps) {
         if (state === Html5QrcodeScannerState.SCANNING) {
           await scannerRef.current.stop();
         }
-      } catch {
-        // Ignore stop errors
+      } catch (error) {
+        console.debug("Scanner stop error (non-fatal):", error instanceof Error ? error.message : error);
       }
       scannerRef.current = null;
     }

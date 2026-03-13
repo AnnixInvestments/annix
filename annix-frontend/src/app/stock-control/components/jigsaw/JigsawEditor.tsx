@@ -10,7 +10,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RubberDimensionOverride, RubberPlanManualRoll } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import type { ParsedPipeItem, RubberSpec } from "@/app/stock-control/lib/rubberCuttingCalculator";
@@ -73,7 +73,7 @@ export function JigsawEditor(props: {
     ];
   });
 
-  const allPanels = panelsFromParsedItems(parsedItems);
+  const allPanels = useMemo(() => panelsFromParsedItems(parsedItems), [parsedItems]);
 
   const [placedPanels, setPlacedPanels] = useState<PlacedPanel[]>([]);
   const [unplacedPanels, setUnplacedPanels] = useState<JigsawPanel[]>(() => allPanels);

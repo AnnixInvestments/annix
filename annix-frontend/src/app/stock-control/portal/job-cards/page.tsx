@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useCreateJobCard,
@@ -47,7 +47,7 @@ export default function JobCardsPage() {
   const modalFileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: jobCards = [], isLoading, error } = useJobCards(activeTab);
-  const jobCardIds = jobCards.map((jc) => jc.id);
+  const jobCardIds = useMemo(() => jobCards.map((jc) => jc.id), [jobCards]);
   const { data: dataBookStatuses = {} } = useDataBookStatuses(jobCardIds);
   const createJobCard = useCreateJobCard();
   const deleteJobCard = useDeleteJobCard();

@@ -348,7 +348,9 @@ export function ChatPanel() {
         setUnreadCount(0);
       }
       if (view === "conversation" && activeConversation) {
-        stockControlApiClient.markConversationRead(activeConversation.id).catch(() => {});
+        stockControlApiClient.markConversationRead(activeConversation.id).catch((e) =>
+          console.debug("Failed to mark conversation read:", e instanceof Error ? e.message : e),
+        );
       }
       setTimeout(() => inputRef.current?.focus(), 100);
     }
