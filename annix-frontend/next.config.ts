@@ -1,6 +1,5 @@
 import type { NextConfig } from "next";
 import path from "node:path";
-import TerserPlugin from "terser-webpack-plugin";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -39,22 +38,6 @@ const nextConfig: NextConfig = {
     "@heroicons/react/24/solid": {
       transform: "@heroicons/react/24/solid/{{member}}",
     },
-  },
-
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.optimization.minimizer = [
-        new TerserPlugin({
-          terserOptions: {
-            compress: { passes: 2 },
-            mangle: true,
-            format: { comments: false },
-          },
-          extractComments: false,
-        }),
-      ];
-    }
-    return config;
   },
 };
 
