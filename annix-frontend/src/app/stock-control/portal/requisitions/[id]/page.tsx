@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Requisition } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useEffect, useRef, useState } from "react";
 import { formatDateZA } from "@/app/lib/datetime";
 import { exportToExcel, exportToPDF, exportToWord } from "@/app/lib/export/exportTable";
+import { useRequisitionDetail, useUpdateRequisitionItem } from "@/app/lib/query/hooks";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -23,16 +22,16 @@ export default function RequisitionDetailPage() {
   const params = useParams();
   const reqId = Number(params.id);
 
-  const [requisition, setRequisition] = useState<Requisition | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editPackSize, setEditPackSize] = useState<number>(20);
-  const [isSaving, setIsSaving] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [pendingReorderQty, setPendingReorderQty] = useState<Map<number, string>>(new Map());
   const [pendingReqNumber, setPendingReqNumber] = useState<Map<number, string>>(new Map());
+  const [error, setError] = useState<string | null>(null);
+
+  const { data: requisition, isLoading, error: fetchError } = useRequisitionDetail(reqId);
+  const updateItem = useUpdateRequisitionItem(reqId);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -44,42 +43,24 @@ export default function RequisitionDetailPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.requisitionById(reqId);
-      setRequisition(data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load requisition"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [reqId]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
   const handleEditPackSize = (itemId: number, currentPackSize: number) => {
     setEditingItemId(itemId);
     setEditPackSize(Number(currentPackSize));
   };
 
-  const handleSavePackSize = async (itemId: number) => {
+  const handleSavePackSize = (itemId: number) => {
     if (editPackSize <= 0) return;
-    try {
-      setIsSaving(true);
-      await stockControlApiClient.updateRequisitionItem(reqId, itemId, {
-        packSizeLitres: editPackSize,
-      });
-      setEditingItemId(null);
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to update pack size"));
-    } finally {
-      setIsSaving(false);
-    }
+    updateItem.mutate(
+      { itemId, data: { packSizeLitres: editPackSize } },
+      {
+        onSuccess: () => {
+          setEditingItemId(null);
+        },
+        onError: (err) => {
+          setError(err instanceof Error ? err.message : "Failed to update pack size");
+        },
+      },
+    );
   };
 
   const handleCancelEdit = () => {
@@ -90,7 +71,7 @@ export default function RequisitionDetailPage() {
     setPendingReorderQty((prev) => new Map(prev).set(itemId, value));
   };
 
-  const handleReorderQtyBlur = async (itemId: number) => {
+  const handleReorderQtyBlur = (itemId: number) => {
     const value = pendingReorderQty.get(itemId);
     if (value === undefined) return;
 
@@ -98,23 +79,22 @@ export default function RequisitionDetailPage() {
     const currentValue = item?.reorderQty != null ? item.reorderQty.toString() : "";
     if (value === currentValue) return;
 
-    try {
-      setIsSaving(true);
-      const reorderQty = value === "" ? null : parseInt(value, 10);
-      await stockControlApiClient.updateRequisitionItem(reqId, itemId, { reorderQty });
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to update reorder qty"));
-    } finally {
-      setIsSaving(false);
-    }
+    const reorderQty = value === "" ? null : parseInt(value, 10);
+    updateItem.mutate(
+      { itemId, data: { reorderQty } },
+      {
+        onError: (err) => {
+          setError(err instanceof Error ? err.message : "Failed to update reorder qty");
+        },
+      },
+    );
   };
 
   const handleReqNumberChange = (itemId: number, value: string) => {
     setPendingReqNumber((prev) => new Map(prev).set(itemId, value));
   };
 
-  const handleReqNumberBlur = async (itemId: number) => {
+  const handleReqNumberBlur = (itemId: number) => {
     const value = pendingReqNumber.get(itemId);
     if (value === undefined) return;
 
@@ -122,16 +102,15 @@ export default function RequisitionDetailPage() {
     const currentValue = item ? item.reqNumber || "" : "";
     if (value === currentValue) return;
 
-    try {
-      setIsSaving(true);
-      const reqNumber = value === "" ? null : value;
-      await stockControlApiClient.updateRequisitionItem(reqId, itemId, { reqNumber });
-      fetchData();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to update req number"));
-    } finally {
-      setIsSaving(false);
-    }
+    const reqNumber = value === "" ? null : value;
+    updateItem.mutate(
+      { itemId, data: { reqNumber } },
+      {
+        onError: (err) => {
+          setError(err instanceof Error ? err.message : "Failed to update req number");
+        },
+      },
+    );
   };
 
   const reorderQtyValue = (itemId: number, dbValue: number | null): string => {
@@ -194,6 +173,8 @@ export default function RequisitionDetailPage() {
     setShowExportMenu(false);
   };
 
+  const isSaving = updateItem.isPending;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -205,12 +186,14 @@ export default function RequisitionDetailPage() {
     );
   }
 
-  if (error || !requisition) {
+  if (fetchError || !requisition) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message || "Requisition not found"}</p>
+          <p className="text-gray-600">
+            {fetchError instanceof Error ? fetchError.message : "Requisition not found"}
+          </p>
           <Link
             href="/stock-control/portal/requisitions"
             className="mt-4 inline-block text-teal-600 hover:text-teal-800"
@@ -224,6 +207,15 @@ export default function RequisitionDetailPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+          {error}
+          <button onClick={() => setError(null)} className="ml-2 font-medium underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link
