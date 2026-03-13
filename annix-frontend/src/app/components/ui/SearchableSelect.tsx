@@ -32,8 +32,8 @@ const defaultFilterFn = (option: SearchableSelectOption, searchTerm: string): bo
 };
 
 const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectProps>(
-  (
-    {
+  (props, ref) => {
+    const {
       id,
       value,
       onChange,
@@ -45,9 +45,7 @@ const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectPro
       open: controlledOpen,
       onOpenChange,
       filterFn = defaultFilterFn,
-    },
-    ref,
-  ) => {
+    } = props;
     const [internalOpen, setInternalOpen] = React.useState(false);
     const [searchTerm, setSearchTerm] = React.useState("");
     const [highlightedIndex, setHighlightedIndex] = React.useState(0);

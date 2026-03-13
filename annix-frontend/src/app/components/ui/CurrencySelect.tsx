@@ -22,8 +22,8 @@ const currencyOptions: SearchableSelectOption[] = CURRENCIES.map((currency) => (
 }));
 
 const CurrencySelect = React.forwardRef<HTMLButtonElement, CurrencySelectProps>(
-  (
-    {
+  (props, ref) => {
+    const {
       id,
       value,
       onChange,
@@ -32,9 +32,7 @@ const CurrencySelect = React.forwardRef<HTMLButtonElement, CurrencySelectProps>(
       disabled,
       open,
       onOpenChange,
-    },
-    ref,
-  ) => {
+    } = props;
     return (
       <SearchableSelect
         ref={ref}
