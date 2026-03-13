@@ -48,7 +48,9 @@ export class TeamActivityService {
   }
 
   async feed(orgId: number, options: ActivityFeedOptions = {}): Promise<TeamActivity[]> {
-    const { limit = 50, offset = 0, activityTypes, userId } = options;
+    const limit = options.limit ?? 50;
+    const offset = options.offset ?? 0;
+    const { activityTypes, userId } = options;
 
     const qb = this.activityRepo
       .createQueryBuilder("activity")
