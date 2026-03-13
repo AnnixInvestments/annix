@@ -10,6 +10,7 @@ import {
   type QualityAlertDto,
   type RubberAuCocDto,
   type RubberDeliveryNoteDto,
+  type RubberSpecificationDto,
   type RubberSupplierCocDto,
   type SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
@@ -97,6 +98,13 @@ export function useAuRubberCodings(codingType?: string) {
   return useQuery<RubberProductCodingDto[]>({
     queryKey: rubberKeys.codings.list(codingType),
     queryFn: () => auRubberApiClient.productCodings(codingType),
+  });
+}
+
+export function useAuRubberSpecifications() {
+  return useQuery<RubberSpecificationDto[]>({
+    queryKey: rubberKeys.specifications.list(),
+    queryFn: () => auRubberApiClient.rubberSpecifications(),
   });
 }
 

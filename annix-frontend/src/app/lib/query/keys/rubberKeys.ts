@@ -71,4 +71,8 @@ export const rubberKeys = {
     all: ["rubber", "qualityAlerts"] as const,
     list: () => [...rubberKeys.qualityAlerts.all, "list"] as const,
   },
+  specifications: {
+    all: ["rubber", "specifications"] as const,
+    list: () => [...rubberKeys.specifications.all, "list"] as const,
+  },
 } as const;

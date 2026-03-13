@@ -230,31 +230,41 @@ export class RubberPoTemplateService {
       `Extracting using template ${template.id} with ${template.regions.length} regions`,
     );
 
-    const fields: Record<string, { value: string; confidence: number }> = {};
-    const confidences: number[] = [];
-
-    for (const region of template.regions) {
-      const result = await this.documentAnnotationService.extractFromRegion(
-        buffer,
-        region.regionCoordinates,
-        region.fieldName,
-      );
-
-      if (result.text && result.confidence >= region.confidenceThreshold) {
-        fields[region.fieldName] = {
-          value: result.text,
-          confidence: result.confidence,
-        };
-        confidences.push(result.confidence);
-        this.logger.log(
-          `Extracted ${region.fieldName}: "${result.text.substring(0, 50)}..." (${Math.round(result.confidence * 100)}%)`,
+    const { fields, confidences } = await template.regions.reduce(
+      async (accPromise, region) => {
+        const acc = await accPromise;
+        const result = await this.documentAnnotationService.extractFromRegion(
+          buffer,
+          region.regionCoordinates,
+          region.fieldName,
         );
-      } else {
+
+        if (result.text && result.confidence >= region.confidenceThreshold) {
+          this.logger.log(
+            `Extracted ${region.fieldName}: "${result.text.substring(0, 50)}..." (${Math.round(result.confidence * 100)}%)`,
+          );
+          return {
+            fields: {
+              ...acc.fields,
+              [region.fieldName]: {
+                value: result.text,
+                confidence: result.confidence,
+              },
+            },
+            confidences: [...acc.confidences, result.confidence],
+          };
+        }
+
         this.logger.warn(
           `Failed extraction for ${region.fieldName}: text="${result.text?.substring(0, 30) || ""}", confidence=${Math.round(result.confidence * 100)}%, threshold=${Math.round(region.confidenceThreshold * 100)}%`,
         );
-      }
-    }
+        return acc;
+      },
+      Promise.resolve({
+        fields: {} as Record<string, { value: string; confidence: number }>,
+        confidences: [] as number[],
+      }),
+    );
 
     const overallConfidence =
       confidences.length > 0 ? confidences.reduce((sum, c) => sum + c, 0) / confidences.length : 0;

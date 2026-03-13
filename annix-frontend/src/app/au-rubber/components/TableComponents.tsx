@@ -147,8 +147,8 @@ interface IconProps {
 }
 
 export const TableIcons = {
-  document: ({ className = "h-12 w-12" }: IconProps) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  document: (props: IconProps) => (
+    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -157,8 +157,8 @@ export const TableIcons = {
       />
     </svg>
   ),
-  building: ({ className = "h-12 w-12" }: IconProps) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  building: (props: IconProps) => (
+    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -167,8 +167,8 @@ export const TableIcons = {
       />
     </svg>
   ),
-  cube: ({ className = "h-12 w-12" }: IconProps) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  cube: (props: IconProps) => (
+    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -177,8 +177,8 @@ export const TableIcons = {
       />
     </svg>
   ),
-  tag: ({ className = "h-12 w-12" }: IconProps) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  tag: (props: IconProps) => (
+    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -187,8 +187,8 @@ export const TableIcons = {
       />
     </svg>
   ),
-  currency: ({ className = "h-12 w-12" }: IconProps) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  currency: (props: IconProps) => (
+    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

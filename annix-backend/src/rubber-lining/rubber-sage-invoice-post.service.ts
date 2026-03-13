@@ -151,24 +151,34 @@ export class RubberSageInvoicePostService {
       relations: ["company"],
     });
 
-    for (const invoice of invoices) {
-      try {
-        const result = await this.postInvoice(invoice.id, appKey);
-        results.successful.push(result);
-      } catch (err) {
-        results.failed.push({
-          invoiceId: invoice.id,
-          invoiceNumber: invoice.invoiceNumber,
-          error: err instanceof Error ? err.message : "Unknown error",
-        });
-      }
-    }
-
-    this.logger.log(
-      `Bulk post: ${results.successful.length} succeeded, ${results.failed.length} failed`,
+    const finalResults = await invoices.reduce(
+      async (accPromise, invoice) => {
+        const acc = await accPromise;
+        try {
+          const result = await this.postInvoice(invoice.id, appKey);
+          return { ...acc, successful: [...acc.successful, result] };
+        } catch (err) {
+          return {
+            ...acc,
+            failed: [
+              ...acc.failed,
+              {
+                invoiceId: invoice.id,
+                invoiceNumber: invoice.invoiceNumber,
+                error: err instanceof Error ? err.message : "Unknown error",
+              },
+            ],
+          };
+        }
+      },
+      Promise.resolve(results),
     );
 
-    return results;
+    this.logger.log(
+      `Bulk post: ${finalResults.successful.length} succeeded, ${finalResults.failed.length} failed`,
+    );
+
+    return finalResults;
   }
 
   private invoiceLines(

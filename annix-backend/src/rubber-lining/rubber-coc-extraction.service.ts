@@ -130,22 +130,32 @@ export class RubberCocExtractionService {
 
     if (numbers.length === 0) return rollNumbers.join(", ");
 
-    const ranges: string[] = [];
-    let rangeStart = numbers[0];
-    let rangeEnd = numbers[0];
+    const acc = numbers.slice(1).reduce(
+      (state, num) => {
+        if (num === state.rangeEnd + 1) {
+          return { ...state, rangeEnd: num };
+        }
+        return {
+          ranges: [
+            ...state.ranges,
+            state.rangeStart === state.rangeEnd
+              ? `${state.rangeStart}`
+              : `${state.rangeStart}-${state.rangeEnd}`,
+          ],
+          rangeStart: num,
+          rangeEnd: num,
+        };
+      },
+      { ranges: [] as string[], rangeStart: numbers[0], rangeEnd: numbers[0] },
+    );
 
-    for (let i = 1; i < numbers.length; i++) {
-      if (numbers[i] === rangeEnd + 1) {
-        rangeEnd = numbers[i];
-      } else {
-        ranges.push(rangeStart === rangeEnd ? `${rangeStart}` : `${rangeStart}-${rangeEnd}`);
-        rangeStart = numbers[i];
-        rangeEnd = numbers[i];
-      }
-    }
-
-    ranges.push(rangeStart === rangeEnd ? `${rangeStart}` : `${rangeStart}-${rangeEnd}`);
-    return ranges.join(", ");
+    const finalRanges = [
+      ...acc.ranges,
+      acc.rangeStart === acc.rangeEnd
+        ? `${acc.rangeStart}`
+        : `${acc.rangeStart}-${acc.rangeEnd}`,
+    ];
+    return finalRanges.join(", ");
   }
 
   private generateCalendererCocNumber(

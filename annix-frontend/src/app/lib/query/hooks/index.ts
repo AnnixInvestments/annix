@@ -669,5 +669,6 @@ export {
   useAuRubberQualityAlerts,
   useAuRubberQualityTrackingDetail,
   useAuRubberQualityTrackingSummary,
+  useAuRubberSpecifications,
   useAuRubberSupplierCocs,
 } from "./au-rubber/useAuRubber";

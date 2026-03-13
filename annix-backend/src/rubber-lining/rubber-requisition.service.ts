@@ -382,14 +382,15 @@ export class RubberRequisitionService {
       );
     }
 
-    for (const receipt of itemReceipts) {
+    await itemReceipts.reduce(async (prevPromise, receipt) => {
+      await prevPromise;
       const item = requisition.items.find((i) => i.id === receipt.itemId);
       if (item) {
         item.quantityReceivedKg =
           Number(item.quantityReceivedKg) + Number(receipt.quantityReceivedKg);
         await this.requisitionItemRepo.save(item);
       }
-    }
+    }, Promise.resolve());
 
     const updatedRequisition = await this.requisitionRepo.findOne({
       where: { id },
@@ -455,14 +456,14 @@ export class RubberRequisitionService {
       .andWhere("stock.quantity_kg < stock.min_stock_level_kg")
       .getMany();
 
-    const created: RequisitionDto[] = [];
-
-    for (const stock of lowStockItems) {
-      const requisition = await this.createLowStockRequisition(stock.id);
-      if (requisition) {
-        created.push(requisition);
-      }
-    }
+    const created = await lowStockItems.reduce(
+      async (accPromise, stock) => {
+        const acc = await accPromise;
+        const requisition = await this.createLowStockRequisition(stock.id);
+        return requisition ? [...acc, requisition] : acc;
+      },
+      Promise.resolve([] as RequisitionDto[]),
+    );
 
     return created;
   }

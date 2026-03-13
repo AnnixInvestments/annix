@@ -555,27 +555,29 @@ export class RubberDeliveryNoteService {
       return { deliveryNoteIds: [note.id] };
     }
 
-    const deliveryNoteIds: number[] = [];
-    let isFirstGroup = true;
+    const entries = Array.from(rollsByDnNumber.entries());
+    const deliveryNoteIds = await entries.reduce(
+      async (accPromise, [dnNumber, rolls], index) => {
+        const acc = await accPromise;
+        const firstRoll = rolls[0];
+        const deliveryDate = firstRoll.deliveryDate || extractedData.deliveryDate;
 
-    for (const [dnNumber, rolls] of rollsByDnNumber) {
-      const firstRoll = rolls[0];
-      const deliveryDate = firstRoll.deliveryDate || extractedData.deliveryDate;
+        if (index === 0) {
+          note.deliveryNoteNumber = dnNumber;
+          note.deliveryDate = deliveryDate
+            ? fromISO(deliveryDate).toJSDate()
+            : note.deliveryDate;
+          note.status = DeliveryNoteStatus.EXTRACTED;
+          note.extractedData = {
+            ...extractedData,
+            deliveryNoteNumber: dnNumber,
+            deliveryDate,
+            rolls,
+          };
+          await this.deliveryNoteRepository.save(note);
+          return [...acc, note.id];
+        }
 
-      if (isFirstGroup) {
-        note.deliveryNoteNumber = dnNumber;
-        note.deliveryDate = deliveryDate ? fromISO(deliveryDate).toJSDate() : note.deliveryDate;
-        note.status = DeliveryNoteStatus.EXTRACTED;
-        note.extractedData = {
-          ...extractedData,
-          deliveryNoteNumber: dnNumber,
-          deliveryDate,
-          rolls,
-        };
-        await this.deliveryNoteRepository.save(note);
-        deliveryNoteIds.push(note.id);
-        isFirstGroup = false;
-      } else {
         const newNote = this.deliveryNoteRepository.create({
           firebaseUid: `pg_${generateUniqueId()}`,
           deliveryNoteType: note.deliveryNoteType,
@@ -594,9 +596,10 @@ export class RubberDeliveryNoteService {
           },
         });
         const savedNote = await this.deliveryNoteRepository.save(newNote);
-        deliveryNoteIds.push(savedNote.id);
-      }
-    }
+        return [...acc, savedNote.id];
+      },
+      Promise.resolve([] as number[]),
+    );
 
     return { deliveryNoteIds };
   }
@@ -738,58 +741,80 @@ export class RubberDeliveryNoteService {
       `CoC ${supplierCocId}: cocOrderNumber="${cocOrderNumber}", cocBatches=${JSON.stringify(cocBatches)}, cocRollParts=${JSON.stringify(cocRollParts)}, unlinkedNotes=${unlinkedNotes.length}`,
     );
 
-    const linkedIds: number[] = [];
+    const linkedIds = await unlinkedNotes.reduce(
+      async (accPromise, note) => {
+        const acc = await accPromise;
+        const batchRange = note.extractedData?.batchRange;
+        const dnNumber = note.deliveryNoteNumber;
+        const dnCustomerRef = (
+          note.customerReference ||
+          note.extractedData?.customerReference ||
+          ""
+        )
+          .trim()
+          .toUpperCase();
+        const dnRollNumbers = (note.extractedData?.rolls || [])
+          .map((r) => r.rollNumber)
+          .filter(Boolean);
 
-    for (const note of unlinkedNotes) {
-      const batchRange = note.extractedData?.batchRange;
-      const dnNumber = note.deliveryNoteNumber;
-      const dnCustomerRef = (note.customerReference || note.extractedData?.customerReference || "")
-        .trim()
-        .toUpperCase();
-      const dnRollNumbers = (note.extractedData?.rolls || [])
-        .map((r) => r.rollNumber)
-        .filter(Boolean);
+        const batchMatch =
+          batchRange && cocBatches.some((b: string) => batchRange.includes(b));
+        const orderMatch =
+          cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber);
+        const poMatch =
+          cocOrderNumber && dnCustomerRef && cocOrderNumber === dnCustomerRef;
+        const rollMatch =
+          dnRollNumbers.length > 0 &&
+          cocRollParts.length > 0 &&
+          dnRollNumbers.some((dnRoll) =>
+            cocRollParts.some(
+              (cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll),
+            ),
+          );
 
-      const batchMatch = batchRange && cocBatches.some((b: string) => batchRange.includes(b));
-      const orderMatch = cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber);
-      const poMatch = cocOrderNumber && dnCustomerRef && cocOrderNumber === dnCustomerRef;
-      const rollMatch =
-        dnRollNumbers.length > 0 &&
-        cocRollParts.length > 0 &&
-        dnRollNumbers.some((dnRoll) =>
-          cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
+        this.logger.log(
+          `CoC ${supplierCocId} vs DN ${note.id} (${dnNumber}): customerRef="${dnCustomerRef}", dnRolls=${JSON.stringify(dnRollNumbers)}, batchRange="${batchRange}", batchMatch=${batchMatch}, orderMatch=${orderMatch}, poMatch=${poMatch}, rollMatch=${rollMatch}`,
         );
 
-      this.logger.log(
-        `CoC ${supplierCocId} vs DN ${note.id} (${dnNumber}): customerRef="${dnCustomerRef}", dnRolls=${JSON.stringify(dnRollNumbers)}, batchRange="${batchRange}", batchMatch=${batchMatch}, orderMatch=${orderMatch}, poMatch=${poMatch}, rollMatch=${rollMatch}`,
-      );
+        if (batchMatch || orderMatch || (poMatch && rollMatch)) {
+          await this.linkToCoc(note.id, supplierCocId);
+          this.logger.log(
+            `Auto-linked unlinked DN ${note.id} (${dnNumber}) to CoC ${supplierCocId}`,
+          );
+          return [...acc, note.id];
+        }
 
-      if (batchMatch || orderMatch || (poMatch && rollMatch)) {
-        await this.linkToCoc(note.id, supplierCocId);
-        linkedIds.push(note.id);
-        this.logger.log(`Auto-linked unlinked DN ${note.id} (${dnNumber}) to CoC ${supplierCocId}`);
-      }
-    }
+        return acc;
+      },
+      Promise.resolve([] as number[]),
+    );
 
     return linkedIds;
   }
 
   async bulkAutoLinkAllUnlinkedDns(): Promise<{ linked: number; details: string[] }> {
     const allCocs = await this.supplierCocRepository.find();
-    const details: string[] = [];
-    let totalLinked = 0;
-
-    for (const coc of allCocs) {
-      const linkedIds = await this.autoLinkUnlinkedDnsToSupplierCoc(coc.id);
-      if (linkedIds.length > 0) {
-        details.push(`CoC ${coc.id}: linked ${linkedIds.length} DN(s) [${linkedIds.join(", ")}]`);
-        totalLinked += linkedIds.length;
-      }
-    }
+    const result = await allCocs.reduce(
+      async (accPromise, coc) => {
+        const acc = await accPromise;
+        const linkedIds = await this.autoLinkUnlinkedDnsToSupplierCoc(coc.id);
+        if (linkedIds.length > 0) {
+          return {
+            linked: acc.linked + linkedIds.length,
+            details: [
+              ...acc.details,
+              `CoC ${coc.id}: linked ${linkedIds.length} DN(s) [${linkedIds.join(", ")}]`,
+            ],
+          };
+        }
+        return acc;
+      },
+      Promise.resolve({ linked: 0, details: [] as string[] }),
+    );
 
     this.logger.log(
-      `Bulk auto-link complete: ${totalLinked} DN(s) linked across ${allCocs.length} CoC(s)`,
+      `Bulk auto-link complete: ${result.linked} DN(s) linked across ${allCocs.length} CoC(s)`,
     );
-    return { linked: totalLinked, details };
+    return result;
   }
 }

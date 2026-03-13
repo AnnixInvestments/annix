@@ -232,55 +232,67 @@ export class RubberOtherStockService {
       errors: [],
     };
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const rowNum = i + 1;
+    const finalResult = await rows.reduce(
+      async (accPromise, row, index) => {
+        const acc = await accPromise;
+        const rowNum = index + 1;
 
-      if (!row.itemCode || !row.itemName) {
-        result.errors.push({
-          row: rowNum,
-          itemCode: row.itemCode || "EMPTY",
-          error: "Item code and item name are required",
-        });
-        continue;
-      }
-
-      if (!row.quantity || row.quantity < 0) {
-        result.errors.push({
-          row: rowNum,
-          itemCode: row.itemCode,
-          error: "Quantity must be a positive number",
-        });
-        continue;
-      }
-
-      const unitOfMeasure = this.parseUnitOfMeasure(row.unitOfMeasure);
-
-      const existing = await this.otherStockRepository.findOne({
-        where: { itemCode: row.itemCode },
-      });
-
-      if (existing) {
-        existing.quantity = Number(existing.quantity) + row.quantity;
-        if (row.itemName) existing.itemName = row.itemName;
-        if (row.description !== undefined) existing.description = row.description;
-        if (row.category !== undefined) existing.category = row.category;
-        if (unitOfMeasure) existing.unitOfMeasure = unitOfMeasure;
-        if (row.minStockLevel !== undefined && row.minStockLevel !== null) {
-          existing.minStockLevel = row.minStockLevel;
+        if (!row.itemCode || !row.itemName) {
+          return {
+            ...acc,
+            errors: [
+              ...acc.errors,
+              {
+                row: rowNum,
+                itemCode: row.itemCode || "EMPTY",
+                error: "Item code and item name are required",
+              },
+            ],
+          };
         }
-        if (row.reorderPoint !== undefined && row.reorderPoint !== null) {
-          existing.reorderPoint = row.reorderPoint;
-        }
-        if (row.costPerUnit !== undefined) existing.costPerUnit = row.costPerUnit;
-        if (row.pricePerUnit !== undefined) existing.pricePerUnit = row.pricePerUnit;
-        if (row.location) existing.location = row.location;
-        if (row.supplier !== undefined) existing.supplier = row.supplier;
-        if (row.notes !== undefined) existing.notes = row.notes;
 
-        await this.otherStockRepository.save(existing);
-        result.updated++;
-      } else {
+        if (!row.quantity || row.quantity < 0) {
+          return {
+            ...acc,
+            errors: [
+              ...acc.errors,
+              {
+                row: rowNum,
+                itemCode: row.itemCode,
+                error: "Quantity must be a positive number",
+              },
+            ],
+          };
+        }
+
+        const unitOfMeasure = this.parseUnitOfMeasure(row.unitOfMeasure);
+
+        const existing = await this.otherStockRepository.findOne({
+          where: { itemCode: row.itemCode },
+        });
+
+        if (existing) {
+          existing.quantity = Number(existing.quantity) + row.quantity;
+          if (row.itemName) existing.itemName = row.itemName;
+          if (row.description !== undefined) existing.description = row.description;
+          if (row.category !== undefined) existing.category = row.category;
+          if (unitOfMeasure) existing.unitOfMeasure = unitOfMeasure;
+          if (row.minStockLevel !== undefined && row.minStockLevel !== null) {
+            existing.minStockLevel = row.minStockLevel;
+          }
+          if (row.reorderPoint !== undefined && row.reorderPoint !== null) {
+            existing.reorderPoint = row.reorderPoint;
+          }
+          if (row.costPerUnit !== undefined) existing.costPerUnit = row.costPerUnit;
+          if (row.pricePerUnit !== undefined) existing.pricePerUnit = row.pricePerUnit;
+          if (row.location) existing.location = row.location;
+          if (row.supplier !== undefined) existing.supplier = row.supplier;
+          if (row.notes !== undefined) existing.notes = row.notes;
+
+          await this.otherStockRepository.save(existing);
+          return { ...acc, updated: acc.updated + 1 };
+        }
+
         const stock = this.otherStockRepository.create({
           firebaseUid: `pg_${generateUniqueId()}`,
           itemCode: row.itemCode,
@@ -299,11 +311,12 @@ export class RubberOtherStockService {
           isActive: true,
         });
         await this.otherStockRepository.save(stock);
-        result.created++;
-      }
-    }
+        return { ...acc, created: acc.created + 1 };
+      },
+      Promise.resolve(result),
+    );
 
-    return result;
+    return finalResult;
   }
 
   private parseUnitOfMeasure(value: string | null | undefined): OtherStockUnitOfMeasure | null {

@@ -154,21 +154,19 @@ export class RubberBrandingService {
       const faviconAltPattern =
         /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)["']/gi;
       [faviconPattern, faviconAltPattern].forEach((pattern) => {
-        let match: RegExpExecArray | null = null;
-        while ((match = pattern.exec(html)) !== null) {
+        Array.from(html.matchAll(pattern)).forEach((match) => {
           const url = resolveUrl(match[1]);
           if (url) addLogo(url, "favicon");
-        }
+        });
       });
 
       addLogo(resolveUrl("/favicon.ico"), "favicon");
 
       const bgUrlPattern = /background(?:-image)?\s*:[^;]*url\(["']?([^"')]+)["']?\)/gi;
-      let bgMatch: RegExpExecArray | null = null;
-      while ((bgMatch = bgUrlPattern.exec(html)) !== null) {
+      Array.from(html.matchAll(bgUrlPattern)).forEach((bgMatch) => {
         const url = resolveUrl(bgMatch[1]);
         if (url) addHero(url, "bg-image");
-      }
+      });
 
       const sectionPattern = /<section[^>]*>[\s\S]*?<\/section>/gi;
       const sectionBlocks = html.match(sectionPattern) ?? [];
@@ -184,8 +182,7 @@ export class RubberBrandingService {
       });
 
       const srcsetPattern = /srcset=["']([^"']+)["']/gi;
-      let srcsetMatch: RegExpExecArray | null = null;
-      while ((srcsetMatch = srcsetPattern.exec(html)) !== null) {
+      Array.from(html.matchAll(srcsetPattern)).forEach((srcsetMatch) => {
         const srcset = srcsetMatch[1];
         const urls = srcset.split(",").map((s) => s.trim().split(/\s+/)[0]);
         const largestUrl = urls[urls.length - 1];
@@ -193,7 +190,7 @@ export class RubberBrandingService {
         if (resolved && !resolved.toLowerCase().includes("logo")) {
           addHero(resolved, "srcset-img");
         }
-      }
+      });
 
       const wpFeaturedPattern = /wp-post-image|attachment-full|size-full/i;
       imgTags.forEach((tag) => {
@@ -227,12 +224,13 @@ export class RubberBrandingService {
           /nav[^{]*\{[^}]*background(?:-color)?:\s*([#][0-9a-fA-F]{3,6}|rgb[a]?\([^)]+\))/gi,
         ];
 
-        for (const pattern of colorPatterns) {
+        const matchedColor = colorPatterns.reduce<string | null>((found, pattern) => {
+          if (found) return found;
           const match = pattern.exec(html);
-          if (match?.[1] && isValidColorValue(match[1])) {
-            primaryColor = match[1];
-            break;
-          }
+          return match?.[1] && isValidColorValue(match[1]) ? match[1] : null;
+        }, null);
+        if (matchedColor) {
+          primaryColor = matchedColor;
         }
       }
 
@@ -453,12 +451,12 @@ export class RubberBrandingService {
                 'button, .btn, [class*="button"], a[class*="btn"], input[type="submit"]',
               ),
             );
-            for (const btn of buttons.slice(0, 10)) {
+            const matchedBtn = buttons.slice(0, 10).find((btn) => {
               const computed = window.getComputedStyle(btn);
-              if (isValidColor(computed.backgroundColor)) {
-                primaryColor = computed.backgroundColor;
-                break;
-              }
+              return isValidColor(computed.backgroundColor);
+            });
+            if (matchedBtn) {
+              primaryColor = window.getComputedStyle(matchedBtn).backgroundColor;
             }
           }
 
@@ -489,21 +487,22 @@ export class RubberBrandingService {
               ".active",
               ".selected",
             ];
-            for (const sel of accentSelectors) {
-              const els = document.querySelectorAll<HTMLElement>(sel);
-              for (const el of Array.from(els).slice(0, 5)) {
-                const computed = window.getComputedStyle(el);
-                if (isValidColor(computed.backgroundColor)) {
-                  primaryColor = computed.backgroundColor;
-                  break;
-                }
-                if (isValidColor(computed.color)) {
-                  primaryColor = computed.color;
-                  break;
-                }
-              }
-              if (primaryColor) break;
-            }
+            primaryColor = accentSelectors.reduce<string | null>((found, sel) => {
+              if (found) return found;
+              return Array.from(document.querySelectorAll<HTMLElement>(sel))
+                .slice(0, 5)
+                .reduce<string | null>((innerFound, el) => {
+                  if (innerFound) return innerFound;
+                  const computed = window.getComputedStyle(el);
+                  if (isValidColor(computed.backgroundColor)) {
+                    return computed.backgroundColor;
+                  }
+                  if (isValidColor(computed.color)) {
+                    return computed.color;
+                  }
+                  return null;
+                }, null);
+            }, null);
           }
 
           return { logoCandidates, heroCandidates, primaryColor };

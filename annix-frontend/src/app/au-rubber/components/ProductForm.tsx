@@ -1,14 +1,15 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { auRubberApiClient, type RubberSpecificationDto } from "@/app/lib/api/auRubberApi";
 import type {
   CreateRubberProductDto,
-  RubberCompanyDto,
-  RubberProductCodingDto,
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
-import { log } from "@/app/lib/logger";
+import {
+  useAuRubberCodings,
+  useAuRubberCompanies,
+  useAuRubberSpecifications,
+} from "@/app/lib/query/hooks";
 
 export interface ProductFormData {
   title: string;
@@ -101,37 +102,24 @@ export function ProductForm(props: ProductFormProps) {
   const { initialData, onSubmit, onCancel, submitLabel, isSaving } = props;
   const [formData, setFormData] = useState<ProductFormData>(initialData);
   const [error, setError] = useState<string | null>(null);
-  const [codings, setCodings] = useState<RubberProductCodingDto[]>([]);
-  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
-  const [specifications, setSpecifications] = useState<RubberSpecificationDto[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const codingsQuery = useAuRubberCodings();
+  const companiesQuery = useAuRubberCompanies();
+  const specificationsQuery = useAuRubberSpecifications();
+  const codings = codingsQuery.data ?? [];
+  const companies = (companiesQuery.data ?? []).filter((c) => c.isCompoundOwner);
+  const specifications = specificationsQuery.data ?? [];
+  const isLoadingData = codingsQuery.isLoading || companiesQuery.isLoading || specificationsQuery.isLoading;
+  const loadError = codingsQuery.error ?? companiesQuery.error ?? specificationsQuery.error;
 
   useEffect(() => {
-    loadReferenceData();
-  }, []);
+    if (loadError) {
+      setError("Failed to load form data");
+    }
+  }, [loadError]);
 
   useEffect(() => {
     setFormData(initialData);
   }, [initialData]);
-
-  const loadReferenceData = async () => {
-    try {
-      setIsLoadingData(true);
-      const [codingsData, companiesData, specsData] = await Promise.all([
-        auRubberApiClient.productCodings(),
-        auRubberApiClient.companies(),
-        auRubberApiClient.rubberSpecifications(),
-      ]);
-      setCodings(codingsData);
-      setCompanies(companiesData.filter((c) => c.isCompoundOwner));
-      setSpecifications(specsData);
-    } catch (err) {
-      log.error("Failed to load reference data:", err);
-      setError("Failed to load form data");
-    } finally {
-      setIsLoadingData(false);
-    }
-  };
 
   const codingsByType = (type: string) => codings.filter((c) => c.codingType === type);
 
