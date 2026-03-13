@@ -6,9 +6,7 @@ import { useCvReferences } from "@/app/lib/query/hooks";
 
 export default function ReferencesPage() {
   const [filter, setFilter] = useState<string>("all");
-  const { data: references = [], isLoading } = useCvReferences(
-    filter !== "all" ? filter : null,
-  );
+  const { data: references = [], isLoading } = useCvReferences(filter !== "all" ? filter : null);
 
   const statusColor = (status: string) => {
     const colors: Record<string, string> = {

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import type { CustomerPurchaseOrder } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useCpos, useDeleteCpo } from "@/app/lib/query/hooks";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { HelpTooltip } from "../../components/HelpTooltip";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -20,45 +20,21 @@ function fulfillmentPercent(cpo: CustomerPurchaseOrder): number {
 
 export default function PurchaseOrdersPage() {
   const router = useRouter();
-  const [cpos, setCpos] = useState<CustomerPurchaseOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [activeTab, setActiveTab] = useState<string>("all");
-  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: number; cpoNumber: string } | null>(
     null,
   );
   const [isDragging, setIsDragging] = useState(false);
 
-  const fetchCpos = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const status = activeTab === "all" ? undefined : activeTab;
-      const data = await stockControlApiClient.cpos(status);
-      setCpos(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load CPOs"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeTab]);
+  const { data: cpos = [], isLoading, error, refetch } = useCpos(activeTab);
+  const deleteCpo = useDeleteCpo();
 
-  useEffect(() => {
-    fetchCpos();
-  }, [fetchCpos]);
-
-  const handleDelete = async (id: number) => {
-    try {
-      setDeletingId(id);
-      await stockControlApiClient.deleteCpo(id);
-      fetchCpos();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to delete CPO"));
-    } finally {
-      setConfirmDelete(null);
-      setDeletingId(null);
-    }
+  const handleDelete = (id: number) => {
+    deleteCpo.mutate(id, {
+      onSettled: () => {
+        setConfirmDelete(null);
+      },
+    });
   };
 
   const handleFileDrop = (e: React.DragEvent) => {
@@ -95,9 +71,11 @@ export default function PurchaseOrdersPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
+          <p className="text-gray-600">
+            {error instanceof Error ? error.message : "Failed to load CPOs"}
+          </p>
           <button
-            onClick={fetchCpos}
+            onClick={() => refetch()}
             className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
           >
             Retry
@@ -311,10 +289,10 @@ export default function PurchaseOrdersPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
                           onClick={() => setConfirmDelete({ id: cpo.id, cpoNumber: cpo.cpoNumber })}
-                          disabled={deletingId === cpo.id}
+                          disabled={deleteCpo.isPending && deleteCpo.variables === cpo.id}
                           className="text-red-600 hover:text-red-900 disabled:opacity-50"
                         >
-                          {deletingId === cpo.id ? "..." : "Delete"}
+                          {deleteCpo.isPending && deleteCpo.variables === cpo.id ? "..." : "Delete"}
                         </button>
                       </td>
                     </tr>
@@ -332,7 +310,7 @@ export default function PurchaseOrdersPage() {
         message={`Delete CPO ${confirmDelete?.cpoNumber ?? ""}? This cannot be undone.`}
         confirmLabel="Delete"
         variant="danger"
-        loading={deletingId !== null}
+        loading={deleteCpo.isPending}
         onConfirm={() => {
           if (confirmDelete) {
             handleDelete(confirmDelete.id);

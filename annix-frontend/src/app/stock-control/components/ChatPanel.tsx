@@ -12,10 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useRef } from "react";
-import type {
-  ChatConversationResponse,
-  ChatMessageResponse,
-} from "@/app/lib/api/stockControlApi";
+import type { ChatConversationResponse, ChatMessageResponse } from "@/app/lib/api/stockControlApi";
 import { useChatState } from "../lib/useChatState";
 
 type ChatMsg = ChatMessageResponse;

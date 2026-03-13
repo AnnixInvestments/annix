@@ -22,7 +22,10 @@ declare module "./base" {
       clarificationId: number,
       dto: SubmitClarificationDto,
     ): Promise<InvoiceClarification>;
-    skipInvoiceClarification(invoiceId: number, clarificationId: number): Promise<InvoiceClarification>;
+    skipInvoiceClarification(
+      invoiceId: number,
+      clarificationId: number,
+    ): Promise<InvoiceClarification>;
     invoicePriceSummary(invoiceId: number): Promise<PriceChangeSummary>;
     approveInvoice(invoiceId: number): Promise<SupplierInvoice>;
     deleteInvoice(invoiceId: number): Promise<void>;
@@ -31,7 +34,11 @@ declare module "./base" {
       itemId: number,
       updates: { quantity?: number; unitPrice?: number; unitType?: string },
     ): Promise<SupplierInvoiceItem>;
-    manualMatchInvoiceItem(invoiceId: number, itemId: number, stockItemId: number): Promise<SupplierInvoiceItem>;
+    manualMatchInvoiceItem(
+      invoiceId: number,
+      itemId: number,
+      stockItemId: number,
+    ): Promise<SupplierInvoiceItem>;
     deleteSupplierInvoice(id: number): Promise<void>;
     unlinkedInvoices(): Promise<SupplierInvoice[]>;
     suggestedDeliveryNotes(invoiceId: number): Promise<SuggestedDeliveryNote[]>;

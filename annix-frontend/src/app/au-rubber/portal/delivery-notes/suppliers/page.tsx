@@ -77,7 +77,6 @@ export default function SupplierDeliveryNotesPage() {
     }
   };
 
-
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");

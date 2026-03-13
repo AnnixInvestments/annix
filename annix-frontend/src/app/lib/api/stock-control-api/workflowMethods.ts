@@ -19,7 +19,11 @@ import type {
 
 declare module "./base" {
   interface StockControlApiClient {
-    uploadWorkflowDocument(jobCardId: number, file: File, documentType: string): Promise<JobCardDocument>;
+    uploadWorkflowDocument(
+      jobCardId: number,
+      file: File,
+      documentType: string,
+    ): Promise<JobCardDocument>;
     workflowDocuments(jobCardId: number): Promise<JobCardDocument[]>;
     workflowStatus(jobCardId: number): Promise<WorkflowStatus>;
     approvalHistory(jobCardId: number): Promise<JobCardApproval[]>;
@@ -35,10 +39,17 @@ declare module "./base" {
     notificationCount(): Promise<{ count: number }>;
     markNotificationAsRead(notificationId: number): Promise<{ success: boolean }>;
     markAllNotificationsAsRead(): Promise<{ success: boolean }>;
-    startDispatchSession(jobCardId: number): Promise<{ jobCard: JobCard; progress: DispatchProgress }>;
+    startDispatchSession(
+      jobCardId: number,
+    ): Promise<{ jobCard: JobCard; progress: DispatchProgress }>;
     dispatchProgress(jobCardId: number): Promise<DispatchProgress>;
     dispatchHistory(jobCardId: number): Promise<DispatchScan[]>;
-    scanDispatchItem(jobCardId: number, stockItemId: number, quantity: number, notes?: string): Promise<DispatchScan>;
+    scanDispatchItem(
+      jobCardId: number,
+      stockItemId: number,
+      quantity: number,
+      notes?: string,
+    ): Promise<DispatchScan>;
     completeDispatch(jobCardId: number): Promise<JobCard>;
     scanQrCode(qrToken: string): Promise<{ type: "job_card" | "stock_item"; id: number }>;
     downloadSignedJobCardPdf(jobCardId: number): Promise<void>;
@@ -52,7 +63,11 @@ declare module "./base" {
     }): Promise<WorkflowStepConfig>;
     removeWorkflowStep(key: string): Promise<{ success: boolean }>;
     reorderWorkflowSteps(orderedKeys: string[]): Promise<{ success: boolean }>;
-    toggleWorkflowStepBackground(key: string, isBackground: boolean, triggerAfterStep?: string): Promise<WorkflowStepConfig>;
+    toggleWorkflowStepBackground(
+      key: string,
+      isBackground: boolean,
+      triggerAfterStep?: string,
+    ): Promise<WorkflowStepConfig>;
     updateStepFollows(key: string, triggerAfterStep: string | null): Promise<WorkflowStepConfig>;
     backgroundStepConfigs(): Promise<WorkflowStepConfig[]>;
     backgroundStepsForJobCard(jobCardId: number): Promise<BackgroundStepStatus[]>;
@@ -60,7 +75,11 @@ declare module "./base" {
     pendingBackgroundSteps(): Promise<PendingBackgroundStep[]>;
     workflowAssignments(): Promise<WorkflowStepAssignment[]>;
     eligibleUsersForStep(step: string): Promise<EligibleUser[]>;
-    updateWorkflowAssignments(step: string, userIds: number[], primaryUserId?: number): Promise<{ success: boolean }>;
+    updateWorkflowAssignments(
+      step: string,
+      userIds: number[],
+      primaryUserId?: number,
+    ): Promise<{ success: boolean }>;
     notificationRecipients(): Promise<StepNotificationRecipients[]>;
     updateNotificationRecipients(step: string, emails: string[]): Promise<{ success: boolean }>;
     userLocationAssignments(): Promise<UserLocationSummary[]>;
@@ -77,7 +96,9 @@ declare module "./base" {
 const proto = StockControlApiClient.prototype;
 
 proto.uploadWorkflowDocument = async function (jobCardId, file, documentType) {
-  return this.uploadFile(`/stock-control/workflow/job-cards/${jobCardId}/documents`, file, { documentType });
+  return this.uploadFile(`/stock-control/workflow/job-cards/${jobCardId}/documents`, file, {
+    documentType,
+  });
 };
 
 proto.workflowDocuments = async function (jobCardId) {
@@ -128,7 +149,9 @@ proto.notificationCount = async function () {
 };
 
 proto.markNotificationAsRead = async function (notificationId) {
-  return this.request(`/stock-control/workflow/notifications/${notificationId}/read`, { method: "PUT" });
+  return this.request(`/stock-control/workflow/notifications/${notificationId}/read`, {
+    method: "PUT",
+  });
 };
 
 proto.markAllNotificationsAsRead = async function () {
@@ -155,7 +178,9 @@ proto.scanDispatchItem = async function (jobCardId, stockItemId, quantity, notes
 };
 
 proto.completeDispatch = async function (jobCardId) {
-  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/complete`, { method: "POST" });
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/complete`, {
+    method: "POST",
+  });
 };
 
 proto.scanQrCode = async function (qrToken) {
@@ -207,7 +232,9 @@ proto.addWorkflowStep = async function (input) {
 };
 
 proto.removeWorkflowStep = async function (key) {
-  return this.request(`/stock-control/workflow/step-configs/${encodeURIComponent(key)}`, { method: "DELETE" });
+  return this.request(`/stock-control/workflow/step-configs/${encodeURIComponent(key)}`, {
+    method: "DELETE",
+  });
 };
 
 proto.reorderWorkflowSteps = async function (orderedKeys) {

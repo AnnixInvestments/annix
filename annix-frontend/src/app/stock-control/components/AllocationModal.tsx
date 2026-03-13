@@ -91,7 +91,12 @@ export function AllocationModal(props: AllocationModalProps) {
             <h2 id="allocation-modal-title" className="text-lg font-semibold text-gray-900">
               Allocate Stock to Job
             </h2>
-            <button ref={modalFocusRef as React.RefObject<HTMLButtonElement>} aria-label="Close" onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+            <button
+              ref={modalFocusRef as React.RefObject<HTMLButtonElement>}
+              aria-label="Close"
+              onClick={handleClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
@@ -145,9 +150,7 @@ export function AllocationModal(props: AllocationModalProps) {
                   max={selectedItem ? selectedItem.quantity : undefined}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${errors.quantity ? "border-red-500" : "border-gray-300"}`}
                 />
-                {errors.quantity && (
-                  <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>
-                )}
+                {errors.quantity && <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>}
               </div>
 
               <div>

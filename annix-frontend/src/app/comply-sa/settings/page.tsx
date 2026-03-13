@@ -17,8 +17,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { useToast } from "@/app/components/Toast";
 import { COMPLY_SA_VERSION } from "@/app/comply-sa/config/version";
+import { useToast } from "@/app/components/Toast";
 import { formatDateZA } from "@/app/lib/datetime";
 import type { CompanyProfile, NotificationPreferences } from "@/app/lib/query/hooks";
 import {
@@ -76,16 +76,19 @@ function NotificationSection() {
 
   function handleSave() {
     if (!activePrefs) return;
-    updateMutation.mutate({ ...activePrefs }, {
-      onSuccess: () => {
-        setSaved(true);
-        showToast("Notification preferences saved", "success");
+    updateMutation.mutate(
+      { ...activePrefs },
+      {
+        onSuccess: () => {
+          setSaved(true);
+          showToast("Notification preferences saved", "success");
+        },
+        onError: () => {
+          setSaved(false);
+          showToast("Failed to save notification preferences", "error");
+        },
       },
-      onError: () => {
-        setSaved(false);
-        showToast("Failed to save notification preferences", "error");
-      },
-    });
+    );
   }
 
   if (isLoading) {
@@ -190,16 +193,19 @@ function CompanySection() {
 
   function handleSave() {
     if (!activeCompany) return;
-    updateMutation.mutate({ ...activeCompany }, {
-      onSuccess: () => {
-        setSaved(true);
-        showToast("Company profile saved", "success");
+    updateMutation.mutate(
+      { ...activeCompany },
+      {
+        onSuccess: () => {
+          setSaved(true);
+          showToast("Company profile saved", "success");
+        },
+        onError: () => {
+          setSaved(false);
+          showToast("Failed to save company profile", "error");
+        },
       },
-      onError: () => {
-        setSaved(false);
-        showToast("Failed to save company profile", "error");
-      },
-    });
+    );
   }
 
   if (isLoading) {

@@ -95,8 +95,7 @@ function MeetingOutcomesReportContent() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch {
-    }
+    } catch {}
   };
 
   return (

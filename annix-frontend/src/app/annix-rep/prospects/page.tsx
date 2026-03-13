@@ -582,7 +582,7 @@ function parseCsvLine(line: string): string[] {
       }
       if (char === '"') {
         if (acc.inQuotes && line[i + 1] === '"') {
-          return { ...acc, current: acc.current + '"', skip: true };
+          return { ...acc, current: `${acc.current}"`, skip: true };
         }
         return { ...acc, inQuotes: !acc.inQuotes };
       }

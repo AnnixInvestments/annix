@@ -42,9 +42,7 @@ describe("SkeletonText", () => {
 describe("SkeletonTable", () => {
   it("should render default 5 rows and 4 columns", () => {
     const { container } = render(<SkeletonTable />);
-    const headerPulses = container
-      .querySelector(".border-b")
-      ?.querySelectorAll(".animate-pulse");
+    const headerPulses = container.querySelector(".border-b")?.querySelectorAll(".animate-pulse");
     expect(headerPulses).toHaveLength(4);
 
     const bodyRows = container.querySelector(".divide-y")?.children;
@@ -53,9 +51,7 @@ describe("SkeletonTable", () => {
 
   it("should render custom rows and columns", () => {
     const { container } = render(<SkeletonTable rows={3} columns={2} />);
-    const headerPulses = container
-      .querySelector(".border-b")
-      ?.querySelectorAll(".animate-pulse");
+    const headerPulses = container.querySelector(".border-b")?.querySelectorAll(".animate-pulse");
     expect(headerPulses).toHaveLength(2);
 
     const bodyRows = container.querySelector(".divide-y")?.children;

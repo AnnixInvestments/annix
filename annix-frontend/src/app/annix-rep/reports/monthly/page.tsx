@@ -99,8 +99,7 @@ function MonthlySalesReportContent() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch {
-    }
+    } catch {}
   };
 
   const monthDisplay = fromISO(`${month}-01`).toFormat("MMMM yyyy");

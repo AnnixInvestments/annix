@@ -4,13 +4,7 @@ import { useState } from "react";
 import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
 import { useCvCreateJobPosting, useCvUpdateJobPosting } from "@/app/lib/query/hooks";
 
-export function JobFormModal({
-  job,
-  onClose,
-}: {
-  job: JobPosting | null;
-  onClose: () => void;
-}) {
+export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose: () => void }) {
   const [title, setTitle] = useState(job?.title || "");
   const [description, setDescription] = useState(job?.description || "");
   const [skillsInput, setSkillsInput] = useState(job?.requiredSkills.join(", ") || "");

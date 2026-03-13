@@ -500,8 +500,7 @@ export class RecurringMeetingService {
       });
 
       if (parent?.recurrenceRule) {
-        const cutoffStr =
-          fromJSDate(meeting.scheduledStart).minus({ days: 1 }).toFormat("yyyyMMdd") + "T235959Z";
+        const cutoffStr = `${fromJSDate(meeting.scheduledStart).minus({ days: 1 }).toFormat("yyyyMMdd")}T235959Z`;
         const updatedRuleParts = parent.recurrenceRule
           .replace("RRULE:", "")
           .split(";")

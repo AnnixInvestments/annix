@@ -1,9 +1,4 @@
-import type {
-  GroupByOption,
-  SortDirection,
-  SortField,
-  ThumbnailSize,
-} from "../InventoryCardView";
+import type { GroupByOption, SortDirection, SortField, ThumbnailSize } from "../InventoryCardView";
 
 interface InventoryFilterBarProps {
   search: string;
@@ -84,7 +79,10 @@ export function InventoryFilterBar({
           </select>
           <ViewModeSwitcher viewMode={viewMode} onChangeViewMode={onChangeViewMode} />
           {viewMode === "cards" && (
-            <ThumbnailSizePicker thumbnailSize={thumbnailSize} onChangeThumbSize={onChangeThumbSize} />
+            <ThumbnailSizePicker
+              thumbnailSize={thumbnailSize}
+              onChangeThumbSize={onChangeThumbSize}
+            />
           )}
         </div>
       </div>

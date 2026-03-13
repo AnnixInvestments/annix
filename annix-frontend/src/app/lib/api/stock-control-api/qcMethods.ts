@@ -14,35 +14,88 @@ import type {
 declare module "./base" {
   interface StockControlApiClient {
     qcMeasurementsForJobCard(jobCardId: number): Promise<QcMeasurementsAggregate>;
-    createShoreHardness(jobCardId: number, data: Partial<QcShoreHardnessRecord>): Promise<QcShoreHardnessRecord>;
-    updateShoreHardness(jobCardId: number, id: number, data: Partial<QcShoreHardnessRecord>): Promise<QcShoreHardnessRecord>;
+    createShoreHardness(
+      jobCardId: number,
+      data: Partial<QcShoreHardnessRecord>,
+    ): Promise<QcShoreHardnessRecord>;
+    updateShoreHardness(
+      jobCardId: number,
+      id: number,
+      data: Partial<QcShoreHardnessRecord>,
+    ): Promise<QcShoreHardnessRecord>;
     deleteShoreHardness(jobCardId: number, id: number): Promise<void>;
-    createDftReading(jobCardId: number, data: Partial<QcDftReadingRecord>): Promise<QcDftReadingRecord>;
-    updateDftReading(jobCardId: number, id: number, data: Partial<QcDftReadingRecord>): Promise<QcDftReadingRecord>;
+    createDftReading(
+      jobCardId: number,
+      data: Partial<QcDftReadingRecord>,
+    ): Promise<QcDftReadingRecord>;
+    updateDftReading(
+      jobCardId: number,
+      id: number,
+      data: Partial<QcDftReadingRecord>,
+    ): Promise<QcDftReadingRecord>;
     deleteDftReading(jobCardId: number, id: number): Promise<void>;
-    createBlastProfile(jobCardId: number, data: Partial<QcBlastProfileRecord>): Promise<QcBlastProfileRecord>;
-    updateBlastProfile(jobCardId: number, id: number, data: Partial<QcBlastProfileRecord>): Promise<QcBlastProfileRecord>;
+    createBlastProfile(
+      jobCardId: number,
+      data: Partial<QcBlastProfileRecord>,
+    ): Promise<QcBlastProfileRecord>;
+    updateBlastProfile(
+      jobCardId: number,
+      id: number,
+      data: Partial<QcBlastProfileRecord>,
+    ): Promise<QcBlastProfileRecord>;
     deleteBlastProfile(jobCardId: number, id: number): Promise<void>;
-    createDustDebrisTest(jobCardId: number, data: Partial<QcDustDebrisRecord>): Promise<QcDustDebrisRecord>;
-    updateDustDebrisTest(jobCardId: number, id: number, data: Partial<QcDustDebrisRecord>): Promise<QcDustDebrisRecord>;
+    createDustDebrisTest(
+      jobCardId: number,
+      data: Partial<QcDustDebrisRecord>,
+    ): Promise<QcDustDebrisRecord>;
+    updateDustDebrisTest(
+      jobCardId: number,
+      id: number,
+      data: Partial<QcDustDebrisRecord>,
+    ): Promise<QcDustDebrisRecord>;
     deleteDustDebrisTest(jobCardId: number, id: number): Promise<void>;
     createPullTest(jobCardId: number, data: Partial<QcPullTestRecord>): Promise<QcPullTestRecord>;
-    updatePullTest(jobCardId: number, id: number, data: Partial<QcPullTestRecord>): Promise<QcPullTestRecord>;
+    updatePullTest(
+      jobCardId: number,
+      id: number,
+      data: Partial<QcPullTestRecord>,
+    ): Promise<QcPullTestRecord>;
     deletePullTest(jobCardId: number, id: number): Promise<void>;
     releaseCertificatesForJobCard(jobCardId: number): Promise<QcReleaseCertificateRecord[]>;
     releaseCertificateById(jobCardId: number, id: number): Promise<QcReleaseCertificateRecord>;
-    createReleaseCertificate(jobCardId: number, data: Partial<QcReleaseCertificateRecord>): Promise<QcReleaseCertificateRecord>;
-    updateReleaseCertificate(jobCardId: number, id: number, data: Partial<QcReleaseCertificateRecord>): Promise<QcReleaseCertificateRecord>;
+    createReleaseCertificate(
+      jobCardId: number,
+      data: Partial<QcReleaseCertificateRecord>,
+    ): Promise<QcReleaseCertificateRecord>;
+    updateReleaseCertificate(
+      jobCardId: number,
+      id: number,
+      data: Partial<QcReleaseCertificateRecord>,
+    ): Promise<QcReleaseCertificateRecord>;
     deleteReleaseCertificate(jobCardId: number, id: number): Promise<void>;
     controlPlansForJobCard(jobCardId: number): Promise<QcControlPlanRecord[]>;
     controlPlanById(jobCardId: number, id: number): Promise<QcControlPlanRecord>;
-    createControlPlan(jobCardId: number, data: Partial<QcControlPlanRecord>): Promise<QcControlPlanRecord>;
-    updateControlPlan(jobCardId: number, id: number, data: Partial<QcControlPlanRecord>): Promise<QcControlPlanRecord>;
+    createControlPlan(
+      jobCardId: number,
+      data: Partial<QcControlPlanRecord>,
+    ): Promise<QcControlPlanRecord>;
+    updateControlPlan(
+      jobCardId: number,
+      id: number,
+      data: Partial<QcControlPlanRecord>,
+    ): Promise<QcControlPlanRecord>;
     deleteControlPlan(jobCardId: number, id: number): Promise<void>;
     itemsReleasesForJobCard(jobCardId: number): Promise<QcItemsReleaseRecord[]>;
     autoPopulateItemsRelease(jobCardId: number): Promise<QcItemsReleaseRecord>;
-    createItemsRelease(jobCardId: number, data: Partial<QcItemsReleaseRecord>): Promise<QcItemsReleaseRecord>;
-    updateItemsRelease(jobCardId: number, id: number, data: Partial<QcItemsReleaseRecord>): Promise<QcItemsReleaseRecord>;
+    createItemsRelease(
+      jobCardId: number,
+      data: Partial<QcItemsReleaseRecord>,
+    ): Promise<QcItemsReleaseRecord>;
+    updateItemsRelease(
+      jobCardId: number,
+      id: number,
+      data: Partial<QcItemsReleaseRecord>,
+    ): Promise<QcItemsReleaseRecord>;
     deleteItemsRelease(jobCardId: number, id: number): Promise<void>;
   }
 }
@@ -70,7 +123,9 @@ proto.updateShoreHardness = async function (jobCardId, id, data) {
 };
 
 proto.deleteShoreHardness = async function (jobCardId, id) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/qc/shore-hardness/${id}`, { method: "DELETE" });
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/shore-hardness/${id}`, {
+    method: "DELETE",
+  });
 };
 
 proto.createDftReading = async function (jobCardId, data) {
@@ -90,7 +145,9 @@ proto.updateDftReading = async function (jobCardId, id, data) {
 };
 
 proto.deleteDftReading = async function (jobCardId, id) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/qc/dft-readings/${id}`, { method: "DELETE" });
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/dft-readings/${id}`, {
+    method: "DELETE",
+  });
 };
 
 proto.createBlastProfile = async function (jobCardId, data) {
@@ -110,7 +167,9 @@ proto.updateBlastProfile = async function (jobCardId, id, data) {
 };
 
 proto.deleteBlastProfile = async function (jobCardId, id) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/qc/blast-profiles/${id}`, { method: "DELETE" });
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/blast-profiles/${id}`, {
+    method: "DELETE",
+  });
 };
 
 proto.createDustDebrisTest = async function (jobCardId, data) {
@@ -130,7 +189,9 @@ proto.updateDustDebrisTest = async function (jobCardId, id, data) {
 };
 
 proto.deleteDustDebrisTest = async function (jobCardId, id) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/qc/dust-debris/${id}`, { method: "DELETE" });
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/dust-debris/${id}`, {
+    method: "DELETE",
+  });
 };
 
 proto.createPullTest = async function (jobCardId, data) {
@@ -150,7 +211,9 @@ proto.updatePullTest = async function (jobCardId, id, data) {
 };
 
 proto.deletePullTest = async function (jobCardId, id) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/qc/pull-tests/${id}`, { method: "DELETE" });
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/pull-tests/${id}`, {
+    method: "DELETE",
+  });
 };
 
 proto.releaseCertificatesForJobCard = async function (jobCardId) {
@@ -178,7 +241,9 @@ proto.updateReleaseCertificate = async function (jobCardId, id, data) {
 };
 
 proto.deleteReleaseCertificate = async function (jobCardId, id) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/qc/release-certificates/${id}`, { method: "DELETE" });
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/release-certificates/${id}`, {
+    method: "DELETE",
+  });
 };
 
 proto.controlPlansForJobCard = async function (jobCardId) {
@@ -206,7 +271,9 @@ proto.updateControlPlan = async function (jobCardId, id, data) {
 };
 
 proto.deleteControlPlan = async function (jobCardId, id) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/qc/control-plans/${id}`, { method: "DELETE" });
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/control-plans/${id}`, {
+    method: "DELETE",
+  });
 };
 
 proto.itemsReleasesForJobCard = async function (jobCardId) {
@@ -214,7 +281,9 @@ proto.itemsReleasesForJobCard = async function (jobCardId) {
 };
 
 proto.autoPopulateItemsRelease = async function (jobCardId) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/auto-populate`, { method: "POST" });
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/auto-populate`, {
+    method: "POST",
+  });
 };
 
 proto.createItemsRelease = async function (jobCardId, data) {
@@ -234,5 +303,7 @@ proto.updateItemsRelease = async function (jobCardId, id, data) {
 };
 
 proto.deleteItemsRelease = async function (jobCardId, id) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/${id}`, { method: "DELETE" });
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/${id}`, {
+    method: "DELETE",
+  });
 };

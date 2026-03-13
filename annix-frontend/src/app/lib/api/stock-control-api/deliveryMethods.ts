@@ -39,8 +39,14 @@ declare module "./base" {
       deliveryNoteId: number,
     ): Promise<{ status: string | null; extractedData: Record<string, unknown> | null }>;
     analyzeDeliveryNotePhoto(file: File): Promise<AnalyzedDeliveryNoteResult>;
-    acceptAnalyzedDeliveryNote(file: File, analyzedData: AnalyzedDeliveryNoteData): Promise<DeliveryNote>;
-    acceptAnalyzedInvoice(file: File, analyzedData: AnalyzedDeliveryNoteData): Promise<SupplierInvoice>;
+    acceptAnalyzedDeliveryNote(
+      file: File,
+      analyzedData: AnalyzedDeliveryNoteData,
+    ): Promise<DeliveryNote>;
+    acceptAnalyzedInvoice(
+      file: File,
+      analyzedData: AnalyzedDeliveryNoteData,
+    ): Promise<SupplierInvoice>;
   }
 }
 

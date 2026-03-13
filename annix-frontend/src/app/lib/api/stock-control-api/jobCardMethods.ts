@@ -35,7 +35,11 @@ declare module "./base" {
     ): Promise<StockAllocation>;
     jobCardAllocations(jobCardId: number): Promise<StockAllocation[]>;
     jobCardCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis | null>;
-    updateCoatingSurfaceArea(jobCardId: number, extM2: number, intM2: number): Promise<CoatingAnalysis>;
+    updateCoatingSurfaceArea(
+      jobCardId: number,
+      extM2: number,
+      intM2: number,
+    ): Promise<CoatingAnalysis>;
     triggerCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis>;
     acceptCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis>;
     unverifiedCoatingProducts(jobCardId: number): Promise<UnverifiedProduct[]>;
@@ -59,15 +63,30 @@ declare module "./base" {
       pipeLengthMm: number;
       flangeConfig?: string | null;
     }): Promise<RubberDimensionOverride[]>;
-    uploadAllocationPhoto(jobCardId: number, allocationId: number, file: File): Promise<StockAllocation>;
+    uploadAllocationPhoto(
+      jobCardId: number,
+      allocationId: number,
+      file: File,
+    ): Promise<StockAllocation>;
     pendingAllocations(): Promise<StockAllocation[]>;
     approveOverAllocation(jobCardId: number, allocationId: number): Promise<StockAllocation>;
-    rejectOverAllocation(jobCardId: number, allocationId: number, reason: string): Promise<StockAllocation>;
+    rejectOverAllocation(
+      jobCardId: number,
+      allocationId: number,
+      reason: string,
+    ): Promise<StockAllocation>;
     uploadJobCardAmendment(jobCardId: number, file: File, notes?: string): Promise<JobCard>;
     jobCardVersionHistory(jobCardId: number): Promise<import("./types").JobCardVersion[]>;
-    jobCardVersionById(jobCardId: number, versionId: number): Promise<import("./types").JobCardVersion>;
+    jobCardVersionById(
+      jobCardId: number,
+      versionId: number,
+    ): Promise<import("./types").JobCardVersion>;
     jobCardAttachments(jobCardId: number): Promise<JobCardAttachment[]>;
-    uploadJobCardAttachment(jobCardId: number, file: File, notes?: string): Promise<JobCardAttachment>;
+    uploadJobCardAttachment(
+      jobCardId: number,
+      file: File,
+      notes?: string,
+    ): Promise<JobCardAttachment>;
     triggerDrawingExtraction(jobCardId: number, attachmentId: number): Promise<JobCardAttachment>;
     extractAllDrawings(jobCardId: number): Promise<Record<string, unknown>>;
     deleteJobCardAttachment(jobCardId: number, attachmentId: number): Promise<void>;
@@ -147,7 +166,9 @@ proto.triggerCoatingAnalysis = async function (jobCardId) {
 };
 
 proto.acceptCoatingAnalysis = async function (jobCardId) {
-  return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/accept`, { method: "PATCH" });
+  return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/accept`, {
+    method: "PATCH",
+  });
 };
 
 proto.unverifiedCoatingProducts = async function (jobCardId) {
@@ -191,7 +212,10 @@ proto.rubberDimensionSuggestions = async function (params) {
 };
 
 proto.uploadAllocationPhoto = async function (jobCardId, allocationId, file) {
-  return this.uploadFile(`/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/photo`, file);
+  return this.uploadFile(
+    `/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/photo`,
+    file,
+  );
 };
 
 proto.pendingAllocations = async function () {
@@ -199,24 +223,24 @@ proto.pendingAllocations = async function () {
 };
 
 proto.approveOverAllocation = async function (jobCardId, allocationId) {
-  return this.request(
-    `/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/approve`,
-    { method: "POST" },
-  );
+  return this.request(`/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/approve`, {
+    method: "POST",
+  });
 };
 
 proto.rejectOverAllocation = async function (jobCardId, allocationId, reason) {
-  return this.request(
-    `/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/reject`,
-    {
-      method: "POST",
-      body: JSON.stringify({ reason }),
-    },
-  );
+  return this.request(`/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
 };
 
 proto.uploadJobCardAmendment = async function (jobCardId, file, notes) {
-  return this.uploadFile(`/stock-control/job-cards/${jobCardId}/amendment`, file, notes ? { notes } : undefined);
+  return this.uploadFile(
+    `/stock-control/job-cards/${jobCardId}/amendment`,
+    file,
+    notes ? { notes } : undefined,
+  );
 };
 
 proto.jobCardVersionHistory = async function (jobCardId) {
@@ -232,14 +256,17 @@ proto.jobCardAttachments = async function (jobCardId) {
 };
 
 proto.uploadJobCardAttachment = async function (jobCardId, file, notes) {
-  return this.uploadFile(`/stock-control/job-cards/${jobCardId}/attachments`, file, notes ? { notes } : undefined);
+  return this.uploadFile(
+    `/stock-control/job-cards/${jobCardId}/attachments`,
+    file,
+    notes ? { notes } : undefined,
+  );
 };
 
 proto.triggerDrawingExtraction = async function (jobCardId, attachmentId) {
-  return this.request(
-    `/stock-control/job-cards/${jobCardId}/attachments/${attachmentId}/extract`,
-    { method: "POST" },
-  );
+  return this.request(`/stock-control/job-cards/${jobCardId}/attachments/${attachmentId}/extract`, {
+    method: "POST",
+  });
 };
 
 proto.extractAllDrawings = async function (jobCardId) {

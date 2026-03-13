@@ -121,8 +121,7 @@ proto.staffStockReport = async function (filters) {
   if (filters?.staffMemberId) params.set("staffMemberId", String(filters.staffMemberId));
   if (filters?.departmentId) params.set("departmentId", String(filters.departmentId));
   if (filters?.stockItemId) params.set("stockItemId", String(filters.stockItemId));
-  if (filters?.anomalyThreshold)
-    params.set("anomalyThreshold", String(filters.anomalyThreshold));
+  if (filters?.anomalyThreshold) params.set("anomalyThreshold", String(filters.anomalyThreshold));
   const query = params.toString() ? `?${params.toString()}` : "";
   return this.request(`/stock-control/reports/staff-stock${query}`);
 };

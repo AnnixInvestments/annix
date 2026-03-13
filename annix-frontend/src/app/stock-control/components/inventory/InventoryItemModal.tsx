@@ -172,10 +172,7 @@ export function InventoryItemModal({
                 ))}
               </select>
             </div>
-            <PhotoField
-              photoPreview={photoPreview}
-              onUpdateState={onUpdateState}
-            />
+            <PhotoField photoPreview={photoPreview} onUpdateState={onUpdateState} />
           </div>
           <div className="mt-6 flex justify-end space-x-3">
             <button

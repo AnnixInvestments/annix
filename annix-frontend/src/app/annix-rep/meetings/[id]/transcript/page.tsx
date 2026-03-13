@@ -438,11 +438,7 @@ function formatTranscriptAsTxt(transcript: Transcript, meetingTitle: string): st
             ]
           : []),
         ...(transcript.analysis.questions.length > 0
-          ? [
-              "",
-              "Questions:",
-              ...transcript.analysis.questions.map((q: string) => `  ? ${q}`),
-            ]
+          ? ["", "Questions:", ...transcript.analysis.questions.map((q: string) => `  ? ${q}`)]
           : []),
       ]
     : [];

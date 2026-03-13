@@ -139,7 +139,9 @@ proto.deletePositectorDevice = async function (id) {
 };
 
 proto.checkPositectorConnection = async function (id) {
-  return this.request(`/stock-control/positector-devices/${id}/check-connection`, { method: "POST" });
+  return this.request(`/stock-control/positector-devices/${id}/check-connection`, {
+    method: "POST",
+  });
 };
 
 proto.positectorBatches = async function (deviceId) {
@@ -170,10 +172,8 @@ proto.uploadAndImportPositectorFile = async function (file, data) {
   if (data.coatType) extraFields.coatType = data.coatType;
   if (data.paintProduct) extraFields.paintProduct = data.paintProduct;
   if (data.batchNumber) extraFields.batchNumber = data.batchNumber;
-  if (data.specMinMicrons !== undefined)
-    extraFields.specMinMicrons = String(data.specMinMicrons);
-  if (data.specMaxMicrons !== undefined)
-    extraFields.specMaxMicrons = String(data.specMaxMicrons);
+  if (data.specMinMicrons !== undefined) extraFields.specMinMicrons = String(data.specMinMicrons);
+  if (data.specMaxMicrons !== undefined) extraFields.specMaxMicrons = String(data.specMaxMicrons);
   if (data.specMicrons !== undefined) extraFields.specMicrons = String(data.specMicrons);
   if (data.temperature !== undefined && data.temperature !== null)
     extraFields.temperature = String(data.temperature);
@@ -181,8 +181,7 @@ proto.uploadAndImportPositectorFile = async function (file, data) {
     extraFields.humidity = String(data.humidity);
   if (data.rubberSpec) extraFields.rubberSpec = data.rubberSpec;
   if (data.rubberBatchNumber) extraFields.rubberBatchNumber = data.rubberBatchNumber;
-  if (data.requiredShore !== undefined)
-    extraFields.requiredShore = String(data.requiredShore);
+  if (data.requiredShore !== undefined) extraFields.requiredShore = String(data.requiredShore);
 
   return this.uploadFile("/stock-control/positector-devices/upload/import", file, extraFields);
 };
@@ -204,11 +203,15 @@ proto.positectorStreamingSession = async function (sessionId) {
 };
 
 proto.endPositectorStreamingSession = async function (sessionId) {
-  return this.request(`/stock-control/positector-streaming/sessions/${sessionId}/end`, { method: "POST" });
+  return this.request(`/stock-control/positector-streaming/sessions/${sessionId}/end`, {
+    method: "POST",
+  });
 };
 
 proto.discardPositectorStreamingSession = async function (sessionId) {
-  return this.request(`/stock-control/positector-streaming/sessions/${sessionId}`, { method: "DELETE" });
+  return this.request(`/stock-control/positector-streaming/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
 };
 
 proto.addPositectorStreamingReading = async function (sessionId, data) {

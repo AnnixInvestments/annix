@@ -1,9 +1,9 @@
 import type { ImportResult, InventoryColumnMapping } from "@/app/lib/api/stockControlApi";
 import {
-  isRandColumn,
+  formatRandCell,
   isImportRowBlank,
   isImportSectionTitle,
-  formatRandCell,
+  isRandColumn,
 } from "../../lib/useInventoryPageState";
 
 interface InventoryImportOverlayProps {
@@ -226,8 +226,8 @@ function ImportPreviewModal({
               <div>
                 <span className="text-sm font-medium text-amber-800">Monthly Stock Take</span>
                 <p className="text-xs text-amber-600">
-                  Overwrites quantities instead of adding. New items will be highlighted until labels
-                  are printed.
+                  Overwrites quantities instead of adding. New items will be highlighted until
+                  labels are printed.
                 </p>
               </div>
             </label>
@@ -238,9 +238,7 @@ function ImportPreviewModal({
                 AI mapped columns:{" "}
                 {Object.entries(importMapping)
                   .filter(([, v]) => v !== null)
-                  .map(
-                    ([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`,
-                  )
+                  .map(([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`)
                   .join(", ") || "No columns mapped"}
               </p>
             </div>
@@ -252,10 +250,7 @@ function ImportPreviewModal({
           )}
           <div className="overflow-x-auto max-h-96">
             {importFormat === "excel" ? (
-              <ExcelPreviewTable
-                importHeaders={importHeaders}
-                importRawRows={importRawRows}
-              />
+              <ExcelPreviewTable importHeaders={importHeaders} importRawRows={importRawRows} />
             ) : (
               <GenericPreviewTable parsedRows={parsedRows} />
             )}
@@ -386,9 +381,7 @@ function ImportResultModal({ importResult, onDismiss }: ImportResultModalProps) 
               <div className="text-sm text-blue-600">Updated</div>
             </div>
             <div className="bg-red-50 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-red-700">
-                {importResult.errors.length}
-              </div>
+              <div className="text-2xl font-bold text-red-700">{importResult.errors.length}</div>
               <div className="text-sm text-red-600">Errors</div>
             </div>
           </div>

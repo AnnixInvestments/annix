@@ -5,19 +5,14 @@ import { TravelTimeConnector, TravelTimeIndicator } from "./TravelTimeIndicator"
 
 describe("TravelTimeIndicator", () => {
   it("should render travel duration text", () => {
-    render(
-      <TravelTimeIndicator travelInfo={{ estimatedMinutes: 25, distanceKm: 18 }} />,
-    );
+    render(<TravelTimeIndicator travelInfo={{ estimatedMinutes: 25, distanceKm: 18 }} />);
     expect(screen.getByText("25 min travel")).toBeInTheDocument();
     expect(screen.getByText("18 km")).toBeInTheDocument();
   });
 
   it("should render compact variant with abbreviated text", () => {
     render(
-      <TravelTimeIndicator
-        travelInfo={{ estimatedMinutes: 10, distanceKm: 5 }}
-        compact={true}
-      />,
+      <TravelTimeIndicator travelInfo={{ estimatedMinutes: 10, distanceKm: 5 }} compact={true} />,
     );
     expect(screen.getByText("10 min")).toBeInTheDocument();
     expect(screen.queryByText("5 km")).not.toBeInTheDocument();
@@ -50,9 +45,7 @@ describe("TravelTimeIndicator", () => {
 
 describe("TravelTimeConnector", () => {
   it("should render travel time and distance when travelInfo is provided", () => {
-    render(
-      <TravelTimeConnector travelInfo={{ estimatedMinutes: 30, distanceKm: 22 }} />,
-    );
+    render(<TravelTimeConnector travelInfo={{ estimatedMinutes: 30, distanceKm: 22 }} />);
     expect(screen.getByText("30 min")).toBeInTheDocument();
     expect(screen.getByText("(22 km)")).toBeInTheDocument();
   });

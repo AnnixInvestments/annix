@@ -4,8 +4,8 @@ import { useState } from "react";
 import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
 import {
   useCvDeleteJobPosting,
-  useCvJobPostings,
   useCvJobPostingStatusChange,
+  useCvJobPostings,
 } from "@/app/lib/query/hooks";
 import { JobFormModal } from "../components/JobFormModal";
 

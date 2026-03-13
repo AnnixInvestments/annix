@@ -21,8 +21,8 @@ import {
   flangesPerPipe as getFlangesPerPipe,
   flangeWeldCountPerPipe as getFlangeWeldCountPerPipe,
   physicalFlangeCount as getPhysicalFlangeCount,
-  scheduleListForSpec,
   STEEL_DENSITY_KG_M3,
+  scheduleListForSpec,
 } from "@/app/lib/config/rfq";
 import { FLANGE_OD } from "@/app/lib/config/rfq/constants";
 import { fromISO, nowISO } from "@/app/lib/datetime";
@@ -3596,7 +3596,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                   </p>
                   {pendingLocalDraft.lastSaved && (
                     <p className="mt-1 text-xs text-gray-400">
-                      Last saved: {formatLastSaved(fromISO(String(pendingLocalDraft.lastSaved)).toJSDate())}
+                      Last saved:{" "}
+                      {formatLastSaved(fromISO(String(pendingLocalDraft.lastSaved)).toJSDate())}
                     </p>
                   )}
                   {pendingLocalDraft.rfqData?.projectName && (

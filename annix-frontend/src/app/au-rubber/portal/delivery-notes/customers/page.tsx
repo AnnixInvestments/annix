@@ -66,7 +66,6 @@ export default function CustomerDeliveryNotesPage() {
   const [analysisFiles, setAnalysisFiles] = useState<File[]>([]);
   const [reanalyzingId, setReanalyzingId] = useState<number | null>(null);
 
-
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");

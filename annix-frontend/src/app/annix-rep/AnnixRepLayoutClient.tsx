@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect } from "react";
+import { ANNIX_REP_VERSION } from "@/app/annix-rep/config/annix-rep-version";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import {
   OfflineIndicator,
@@ -10,7 +11,6 @@ import {
 } from "@/app/components/pwa";
 import { AnnixRepAuthProvider, useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
 import { LayoutProvider } from "@/app/context/LayoutContext";
-import { ANNIX_REP_VERSION } from "@/app/annix-rep/config/annix-rep-version";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { useOrganization, useRepProfileStatus, useTeamMembers } from "@/app/lib/query/hooks";
 

@@ -134,7 +134,6 @@ export default function SupplierCocsPage() {
     }
   }, [uploadType, companies]);
 
-
   const handleSort = (section: "compounder" | "calenderer", column: SortColumn) => {
     const setter = section === "compounder" ? setCompounderSort : setCalendererSort;
     const current = section === "compounder" ? compounderSort : calendererSort;

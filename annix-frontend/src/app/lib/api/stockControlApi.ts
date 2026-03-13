@@ -1,8 +1,3 @@
-export {
-  StockControlApiClient,
-  stockControlApiClient,
-} from "./stock-control-api";
-
 export type {
   AccountsDashboard,
   AdminDashboard,
@@ -108,14 +103,14 @@ export type {
   QcLiningCheck,
   QcMeasurementsAggregate,
   QcPaintingCheck,
-  QcpActivity,
-  QcpApprovalSignature,
-  QcpPartySignOff,
-  QcpPlanType,
   QcPullTestAreaReading,
   QcPullTestForceGauge,
   QcPullTestRecord,
   QcPullTestSolution,
+  QcpActivity,
+  QcpApprovalSignature,
+  QcpPartySignOff,
+  QcpPlanType,
   QcReleaseCertificateRecord,
   QcShoreHardnessRecord,
   QcSolutionUsed,
@@ -126,9 +121,9 @@ export type {
   RequisitionItem,
   RoleDashboardSummary,
   RubberDimensionOverride,
-  RubberPlyCombination,
   RubberPlanManualRoll,
   RubberPlanOverride,
+  RubberPlyCombination,
   RubberStockOption,
   RubberStockOptionsResponse,
   ScrapedBrandingCandidates,
@@ -175,4 +170,8 @@ export type {
   WorkflowStatus,
   WorkflowStepAssignment,
   WorkflowStepConfig,
+} from "./stock-control-api";
+export {
+  StockControlApiClient,
+  stockControlApiClient,
 } from "./stock-control-api";

@@ -148,7 +148,12 @@ interface IconProps {
 
 export const TableIcons = {
   document: (props: IconProps) => (
-    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className={props.className ?? "h-12 w-12"}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -158,7 +163,12 @@ export const TableIcons = {
     </svg>
   ),
   building: (props: IconProps) => (
-    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className={props.className ?? "h-12 w-12"}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -168,7 +178,12 @@ export const TableIcons = {
     </svg>
   ),
   cube: (props: IconProps) => (
-    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className={props.className ?? "h-12 w-12"}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -178,7 +193,12 @@ export const TableIcons = {
     </svg>
   ),
   tag: (props: IconProps) => (
-    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className={props.className ?? "h-12 w-12"}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -188,7 +208,12 @@ export const TableIcons = {
     </svg>
   ),
   currency: (props: IconProps) => (
-    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className={props.className ?? "h-12 w-12"}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

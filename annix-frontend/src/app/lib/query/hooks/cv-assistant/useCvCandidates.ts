@@ -31,7 +31,13 @@ export function useCvCandidateAction() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, action }: { id: number; action: "reject" | "shortlist" | "accept" }) => {
+    mutationFn: async ({
+      id,
+      action,
+    }: {
+      id: number;
+      action: "reject" | "shortlist" | "accept";
+    }) => {
       if (action === "reject") {
         return cvAssistantApiClient.rejectCandidate(id);
       } else if (action === "shortlist") {

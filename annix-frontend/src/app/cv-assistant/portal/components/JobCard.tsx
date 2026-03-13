@@ -21,9 +21,7 @@ export function JobCard({ job }: { job: ExternalJob }) {
   };
 
   const salary = formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency);
-  const postedDate = job.postedAt
-    ? fromISO(job.postedAt).toFormat("d MMM yyyy")
-    : null;
+  const postedDate = job.postedAt ? fromISO(job.postedAt).toFormat("d MMM yyyy") : null;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
@@ -110,11 +108,7 @@ function MatchRow({ match }: { match: CandidateJobMatch }) {
       <div className="flex items-center gap-3">
         <span
           className={`text-sm font-bold ${
-            scorePct >= 70
-              ? "text-green-600"
-              : scorePct >= 40
-                ? "text-yellow-600"
-                : "text-gray-500"
+            scorePct >= 70 ? "text-green-600" : scorePct >= 40 ? "text-yellow-600" : "text-gray-500"
           }`}
         >
           {scorePct}%

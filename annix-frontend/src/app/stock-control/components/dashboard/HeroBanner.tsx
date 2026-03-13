@@ -18,9 +18,7 @@ export function HeroBanner({ userName, heroImageUrl, backgroundColor }: HeroBann
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/30" />
         <div className="relative px-4 py-5 sm:px-8 sm:py-8">
-          <h1 className="text-xl sm:text-2xl font-bold text-white">
-            Welcome back, {greeting}
-          </h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Welcome back, {greeting}</h1>
           <p className="mt-1 text-white/80 text-xs sm:text-sm">Workflow overview</p>
         </div>
       </div>
@@ -33,9 +31,7 @@ export function HeroBanner({ userName, heroImageUrl, backgroundColor }: HeroBann
       style={{ backgroundColor, minHeight: 80 }}
     >
       <div className="relative px-4 py-4 sm:px-8 sm:py-6">
-        <h1 className="text-lg sm:text-2xl font-bold text-white">
-          Welcome back, {greeting}
-        </h1>
+        <h1 className="text-lg sm:text-2xl font-bold text-white">Welcome back, {greeting}</h1>
         <p className="mt-1 text-white/80 text-xs sm:text-sm">Workflow overview</p>
       </div>
     </div>

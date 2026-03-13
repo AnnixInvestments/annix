@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { adminApiClient } from "@/app/lib/api/adminApi";
 import {
   type CreateUnifiedRfqDto,
+  draftsApi,
   type RfqDraftResponse,
   type SaveRfqDraftDto,
-  draftsApi,
   unifiedRfqApi,
 } from "@/app/lib/api/client";
-import { adminApiClient } from "@/app/lib/api/adminApi";
 import { customerKeys, rfqKeys } from "../../keys";
 
 interface CreateUnifiedRfqResult {
@@ -34,11 +34,7 @@ export function useCreateUnifiedRfq() {
 export function useUpdateUnifiedRfq() {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    UpdateUnifiedRfqResult,
-    Error,
-    { id: number; data: CreateUnifiedRfqDto }
-  >({
+  return useMutation<UpdateUnifiedRfqResult, Error, { id: number; data: CreateUnifiedRfqDto }>({
     mutationFn: ({ id, data }) => unifiedRfqApi.update(id, data),
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: rfqKeys.detail(variables.id) });

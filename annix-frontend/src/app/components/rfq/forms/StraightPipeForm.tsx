@@ -19,7 +19,6 @@ import {
   closureWeight as getClosureWeight,
   flangeWeldCountPerPipe as getFlangeWeldCountPerPipe,
   physicalFlangeCount as getPhysicalFlangeCount,
-  scheduleListForSpec,
   tackWeldEndsPerPipe as getTackWeldEndsPerPipe,
   tackWeldWeight as getTackWeldWeight,
   weldCountPerPipe as getWeldCountPerPipe,
@@ -37,6 +36,7 @@ import {
   SABS62_FITTING_SIZES,
   SABS719_FITTING_SIZES,
   STANDARD_PIPE_LENGTHS_M,
+  scheduleListForSpec,
   WORKING_PRESSURE_BAR,
   WORKING_TEMPERATURE_CELSIUS,
 } from "@/app/lib/config/rfq";
@@ -53,6 +53,7 @@ import {
   useAllRetainingRingWeights,
   useNbToOdMap,
 } from "@/app/lib/query/hooks";
+import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
 import {
   calculateFlangeWeldVolume,
   calculateInsideDiameter,
@@ -63,7 +64,6 @@ import {
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
 import { groupSteelSpecifications, isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
-import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 
 type SteelSpecItem = NonNullable<MasterData["steelSpecs"]>[number];
@@ -115,9 +115,16 @@ const findRecommendedPressureClass = (
       barRating: extractBarRating(pc.designation || "", isSabs1123, isBs4504),
     }))
     .filter((pc: PressureClassItem & { barRating: number }) => pc.barRating > 0)
-    .sort((a: PressureClassItem & { barRating: number }, b: PressureClassItem & { barRating: number }) => a.barRating - b.barRating);
+    .sort(
+      (
+        a: PressureClassItem & { barRating: number },
+        b: PressureClassItem & { barRating: number },
+      ) => a.barRating - b.barRating,
+    );
 
-  const suitableClass = classesWithRating.find((pc: PressureClassItem & { barRating: number }) => pc.barRating >= workingPressure);
+  const suitableClass = classesWithRating.find(
+    (pc: PressureClassItem & { barRating: number }) => pc.barRating >= workingPressure,
+  );
   return suitableClass?.id;
 };
 
@@ -302,7 +309,8 @@ function StraightPipeFormComponent({
       const steelSpecId =
         entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
       const steelSpecName =
-        masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName || "";
+        masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName ||
+        "";
       const pressure = globalSpecs?.workingPressureBar || 0;
       const temperature = globalSpecs?.workingTemperatureC || 20;
 
@@ -393,8 +401,8 @@ function StraightPipeFormComponent({
       const fallbackEffectiveSpecId =
         specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
       const fallbackSpecName =
-        masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === fallbackEffectiveSpecId)?.steelSpecName ||
-        "";
+        masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === fallbackEffectiveSpecId)
+          ?.steelSpecName || "";
       const fallbackSchedules = scheduleListForSpec(
         specs.nominalBoreMm,
         fallbackEffectiveSpecId,
@@ -505,7 +513,9 @@ function StraightPipeFormComponent({
         return;
       }
 
-      const flangeType = masterData?.flangeTypes?.find((ft: FlangeTypeItem) => ft.code === flangeTypeCode);
+      const flangeType = masterData?.flangeTypes?.find(
+        (ft: FlangeTypeItem) => ft.code === flangeTypeCode,
+      );
       const flangeTypeId = flangeType?.id;
       log.debug("StraightPipeForm: fetching with flangeTypeId", flangeTypeId);
 
@@ -869,8 +879,8 @@ function StraightPipeFormComponent({
                   const steelSpecId =
                     specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                   return (
-                    masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName ||
-                    ""
+                    masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)
+                      ?.steelSpecName || ""
                   );
                 })()}
                 effectivePressure={specs.workingPressureBar || globalSpecs?.workingPressureBar}
@@ -886,8 +896,8 @@ function StraightPipeFormComponent({
               {(() => {
                 const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                 const steelSpecName =
-                  masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName ||
-                  "";
+                  masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)
+                    ?.steelSpecName || "";
                 const showPslFields = isApi5LSpec(steelSpecName);
                 const pslLevel = specs.pslLevel;
                 const showCvnFields = pslLevel === "PSL2";
@@ -1381,8 +1391,9 @@ function StraightPipeFormComponent({
                     const fallbackEffectiveSpecId =
                       specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                     const fallbackSpecName =
-                      masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === fallbackEffectiveSpecId)
-                        ?.steelSpecName || "";
+                      masterData.steelSpecs?.find(
+                        (s: SteelSpecItem) => s.id === fallbackEffectiveSpecId,
+                      )?.steelSpecName || "";
                     const allSchedules = scheduleListForSpec(
                       specs.nominalBoreMm,
                       fallbackEffectiveSpecId,
@@ -3665,8 +3676,9 @@ function StraightPipeFormComponent({
                       const pressureClassId =
                         entry.specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                       const pressureClassDesignation = pressureClassId
-                        ? masterData.pressureClasses?.find((p: PressureClassItem) => p.id === pressureClassId)
-                            ?.designation
+                        ? masterData.pressureClasses?.find(
+                            (p: PressureClassItem) => p.id === pressureClassId,
+                          )?.designation
                         : undefined;
                       const surfaceAreaResult = calculateTotalSurfaceArea({
                         outsideDiameterMm: entry.calculation.outsideDiameterMm,

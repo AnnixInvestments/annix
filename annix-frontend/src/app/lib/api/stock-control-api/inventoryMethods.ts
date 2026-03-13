@@ -1,11 +1,6 @@
 import { API_BASE_URL } from "@/lib/api-config";
 import { StockControlApiClient } from "./base";
-import type {
-  ImportResult,
-  ImportUploadResponse,
-  StockItem,
-  StockPriceHistory,
-} from "./types";
+import type { ImportResult, ImportUploadResponse, StockItem, StockPriceHistory } from "./types";
 
 declare module "./base" {
   interface StockControlApiClient {
@@ -111,7 +106,11 @@ proto.uploadStockItemPhoto = async function (id, file) {
 };
 
 proto.identifyFromPhoto = async function (file, context) {
-  return this.uploadFile("/stock-control/inventory/identify-photo", file, context ? { context } : undefined);
+  return this.uploadFile(
+    "/stock-control/inventory/identify-photo",
+    file,
+    context ? { context } : undefined,
+  );
 };
 
 proto.lowStockAlerts = async function () {

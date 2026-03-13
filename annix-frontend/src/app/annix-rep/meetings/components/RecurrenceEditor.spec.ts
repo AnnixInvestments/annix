@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RecurrenceOptions } from "@/app/lib/api/annixRepApi";
-import {
-  defaultRecurrenceOptions,
-  summarizeRecurrence,
-} from "./RecurrenceEditor";
+import { defaultRecurrenceOptions, summarizeRecurrence } from "./RecurrenceEditor";
 
 describe("RecurrenceEditor", () => {
   describe("summarizeRecurrence", () => {
@@ -35,9 +32,7 @@ describe("RecurrenceEditor", () => {
         endType: "never",
       };
 
-      expect(summarizeRecurrence(options)).toBe(
-        "Repeats weekly on Mon, Wed, Fri",
-      );
+      expect(summarizeRecurrence(options)).toBe("Repeats weekly on Mon, Wed, Fri");
     });
 
     it("should include day number for monthly frequency with byMonthDay", () => {
@@ -48,9 +43,7 @@ describe("RecurrenceEditor", () => {
         endType: "never",
       };
 
-      expect(summarizeRecurrence(options)).toBe(
-        "Repeats monthly on day 15",
-      );
+      expect(summarizeRecurrence(options)).toBe("Repeats monthly on day 15");
     });
 
     it("should append count suffix for endType=count", () => {
@@ -72,9 +65,7 @@ describe("RecurrenceEditor", () => {
         until: "2026-12-31",
       };
 
-      expect(summarizeRecurrence(options)).toBe(
-        "Repeats daily, until 2026-12-31",
-      );
+      expect(summarizeRecurrence(options)).toBe("Repeats daily, until 2026-12-31");
     });
 
     it("should return 'Repeats yearly' for yearly frequency with interval 1", () => {

@@ -394,8 +394,7 @@ function PendingInvitationsSection() {
               <div className="flex items-center gap-2 mt-1">
                 <RoleBadge role={invitation.role} />
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Expires{" "}
-                  {fromJSDate(invitation.expiresAt).toFormat("d MMM")}
+                  Expires {fromJSDate(invitation.expiresAt).toFormat("d MMM")}
                 </span>
               </div>
             </div>

@@ -101,7 +101,11 @@ export function ApprovalModal(props: ApprovalModalProps) {
               {mode === "approve" && `Approve: ${stepName}`}
               {mode === "reject" && `Reject: ${jobNumber}`}
             </h2>
-            <button ref={modalFocusRef as React.RefObject<HTMLButtonElement>} onClick={handleClose} className="p-1 hover:bg-gray-100 rounded-full">
+            <button
+              ref={modalFocusRef as React.RefObject<HTMLButtonElement>}
+              onClick={handleClose}
+              className="p-1 hover:bg-gray-100 rounded-full"
+            >
               <X className="h-5 w-5 text-gray-500" />
             </button>
           </div>

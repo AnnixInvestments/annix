@@ -54,7 +54,8 @@ export function useCvCreateJobMarketSource() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateJobMarketSourceDto) => cvAssistantApiClient.createJobMarketSource(data),
+    mutationFn: (data: CreateJobMarketSourceDto) =>
+      cvAssistantApiClient.createJobMarketSource(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cvAssistantKeys.jobMarket.all });
     },

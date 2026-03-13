@@ -18,6 +18,10 @@ export const stockControlKeys = {
     all: ["stock-control", "job-cards"] as const,
     list: (status?: string) => [...stockControlKeys.jobCards.all, "list", status ?? "all"] as const,
     detail: (id: number) => [...stockControlKeys.jobCards.all, "detail", id] as const,
+    dispatchProgress: (id: number) =>
+      [...stockControlKeys.jobCards.all, "dispatch-progress", id] as const,
+    dispatchHistory: (id: number) =>
+      [...stockControlKeys.jobCards.all, "dispatch-history", id] as const,
     dataBookStatuses: (ids: number[]) =>
       [...stockControlKeys.jobCards.all, "data-book-statuses", ...ids] as const,
   },
@@ -25,6 +29,8 @@ export const stockControlKeys = {
     all: ["stock-control", "inventory"] as const,
     list: (params: Record<string, string | number | undefined>) =>
       [...stockControlKeys.inventory.all, "list", params] as const,
+    detail: (id: number) => [...stockControlKeys.inventory.all, "detail", id] as const,
+    movements: (id: number) => [...stockControlKeys.inventory.all, "movements", id] as const,
     grouped: (search?: string, locationId?: number) =>
       [...stockControlKeys.inventory.all, "grouped", search ?? "", locationId ?? "all"] as const,
     categories: () => [...stockControlKeys.inventory.all, "categories"] as const,
@@ -55,6 +61,8 @@ export const stockControlKeys = {
   cpos: {
     all: ["stock-control", "cpos"] as const,
     list: (status?: string) => [...stockControlKeys.cpos.all, "list", status ?? "all"] as const,
+    detail: (id: number) => [...stockControlKeys.cpos.all, "detail", id] as const,
+    calloffRecords: (id: number) => [...stockControlKeys.cpos.all, "calloff-records", id] as const,
   },
   calibration: {
     all: ["stock-control", "calibration"] as const,
@@ -65,5 +73,48 @@ export const stockControlKeys = {
     all: ["stock-control", "requisitions"] as const,
     list: () => [...stockControlKeys.requisitions.all, "list"] as const,
     detail: (id: number) => [...stockControlKeys.requisitions.all, "detail", id] as const,
+  },
+  jobCardDetail: {
+    all: ["stock-control", "job-card-detail"] as const,
+    data: (id: number) => [...stockControlKeys.jobCardDetail.all, "data", id] as const,
+    allocations: (id: number) =>
+      [...stockControlKeys.jobCardDetail.all, "allocations", id] as const,
+    requisition: (id: number) =>
+      [...stockControlKeys.jobCardDetail.all, "requisition", id] as const,
+    deliveryJobCards: (id: number) =>
+      [...stockControlKeys.jobCardDetail.all, "delivery-job-cards", id] as const,
+    workflow: (id: number) => [...stockControlKeys.jobCardDetail.all, "workflow", id] as const,
+    approvals: (id: number) => [...stockControlKeys.jobCardDetail.all, "approvals", id] as const,
+  },
+  reports: {
+    all: ["stock-control", "reports"] as const,
+    costByJob: () => [...stockControlKeys.reports.all, "cost-by-job"] as const,
+    stockValuation: () => [...stockControlKeys.reports.all, "stock-valuation"] as const,
+    movementHistory: (params?: Record<string, string | number | undefined>) =>
+      [...stockControlKeys.reports.all, "movement-history", params ?? {}] as const,
+    staffStock: (filters?: Record<string, string | number | undefined>) =>
+      [...stockControlKeys.reports.all, "staff-stock", filters ?? {}] as const,
+    staffMembers: () => [...stockControlKeys.reports.all, "staff-members"] as const,
+    departments: () => [...stockControlKeys.reports.all, "departments"] as const,
+    stockItems: () => [...stockControlKeys.reports.all, "stock-items"] as const,
+  },
+  certificates: {
+    all: ["stock-control", "certificates"] as const,
+    list: (filters?: Record<string, string | number>) =>
+      [...stockControlKeys.certificates.all, "list", filters ?? {}] as const,
+    suppliers: () => [...stockControlKeys.certificates.all, "suppliers"] as const,
+    stockItems: () => [...stockControlKeys.certificates.all, "stock-items"] as const,
+  },
+  cpoReports: {
+    all: ["stock-control", "cpo-reports"] as const,
+    fulfillment: () => [...stockControlKeys.cpoReports.all, "fulfillment"] as const,
+    calloff: () => [...stockControlKeys.cpoReports.all, "calloff"] as const,
+    overdue: () => [...stockControlKeys.cpoReports.all, "overdue"] as const,
+  },
+  issueStock: {
+    all: ["stock-control", "issue-stock"] as const,
+    staffMembers: () => [...stockControlKeys.issueStock.all, "staff-members"] as const,
+    recentIssuances: () => [...stockControlKeys.issueStock.all, "recent-issuances"] as const,
+    linkedStaff: (id: number) => [...stockControlKeys.issueStock.all, "linked-staff", id] as const,
   },
 };

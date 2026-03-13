@@ -28,7 +28,6 @@ import {
   flangeWeldCountPerBend as getFlangeWeldCountPerBend,
   flangeWeldCountPerFitting as getFlangeWeldCountPerFitting,
   sabs719CenterToFaceBySegments as getSABS719CenterToFaceBySegments,
-  scheduleListForSpec,
   tackWeldWeight as getTackWeldWeight,
   hasLooseFlange,
   isNominalBoreValidForSpec,
@@ -37,6 +36,7 @@ import {
   SABS_1123_PRESSURE_CLASSES,
   SABS719_BEND_TYPES,
   STEEL_SPEC_NB_FALLBACK,
+  scheduleListForSpec,
   segmentedBendDeratingFactor,
   steelStandardBendRules,
   tackWeldEndsPerBend,
@@ -52,6 +52,7 @@ import {
   useAllFlangeTypeWeights,
   useNbToOdMap,
 } from "@/app/lib/query/hooks";
+import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
 import {
   calculateBendWeldVolume,
   calculateMinWallThickness,
@@ -67,7 +68,6 @@ import {
 } from "@/app/lib/utils/sabs62CfData";
 import { groupSteelSpecifications, isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
-import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
 
 type SteelSpecItem = NonNullable<MasterData["steelSpecs"]>[number];
 type FlangeStandardItem = NonNullable<MasterData["flangeStandards"]>[number];
@@ -173,7 +173,9 @@ function BendFormComponent({
         return;
       }
 
-      const flangeType = masterData?.flangeTypes?.find((ft: FlangeTypeItem) => ft.code === flangeTypeCode);
+      const flangeType = masterData?.flangeTypes?.find(
+        (ft: FlangeTypeItem) => ft.code === flangeTypeCode,
+      );
       const flangeTypeId = flangeType?.id;
       log.debug("BendForm: fetching with flangeTypeId", flangeTypeId);
 
@@ -199,7 +201,8 @@ function BendFormComponent({
   ]);
 
   const steelSpec = masterData?.steelSpecs?.find(
-    (s: SteelSpecItem) => s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
+    (s: SteelSpecItem) =>
+      s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
   );
   const steelSpecName = steelSpec?.steelSpecName || "";
   const isSABS719 = steelSpecName.includes("SABS 719") || steelSpecName.includes("SANS 719");
@@ -670,7 +673,8 @@ function BendFormComponent({
               steelSpecName={(() => {
                 const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                 return (
-                  masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName || ""
+                  masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)
+                    ?.steelSpecName || ""
                 );
               })()}
               effectivePressure={specs.workingPressureBar || globalSpecs?.workingPressureBar}
@@ -686,7 +690,8 @@ function BendFormComponent({
             {(() => {
               const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
               const steelSpecName =
-                masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName || "";
+                masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)
+                  ?.steelSpecName || "";
               const showPslFields = isApi5LSpec(steelSpecName);
               const pslLevel = specs.pslLevel;
               const showCvnFields = pslLevel === "PSL2";

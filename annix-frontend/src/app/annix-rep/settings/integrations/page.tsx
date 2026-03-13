@@ -653,9 +653,7 @@ export default function IntegrationsSettingsPage() {
                         Meeting #{session.meetingId ?? "N/A"}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {session.startedAt
-                          ? formatDateTimeZA(session.startedAt)
-                          : "Not started"}
+                        {session.startedAt ? formatDateTimeZA(session.startedAt) : "Not started"}
                         {" - "}
                         {session.transcriptEntryCount} entries
                       </p>

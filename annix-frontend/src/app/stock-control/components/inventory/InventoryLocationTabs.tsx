@@ -32,8 +32,7 @@ export function InventoryLocationTabs({
         <span className="ml-1.5 text-xs opacity-80">{total}</span>
       </button>
       {locations.map((loc) => {
-        const locItemCount =
-          groupedData.find((g) => g.locationId === loc.id)?.items.length ?? 0;
+        const locItemCount = groupedData.find((g) => g.locationId === loc.id)?.items.length ?? 0;
         return (
           <button
             key={loc.id}

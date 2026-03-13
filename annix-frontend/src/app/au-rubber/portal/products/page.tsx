@@ -93,7 +93,6 @@ export default function AuRubberProductsPage() {
   const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-
   const sortProducts = (productsToSort: RubberProductDto[]): RubberProductDto[] => {
     return [...productsToSort].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;

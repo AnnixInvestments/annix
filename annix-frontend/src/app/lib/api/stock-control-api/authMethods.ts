@@ -67,10 +67,19 @@ declare module "./base" {
     ): Promise<StockControlDepartment>;
     deleteDepartment(id: number): Promise<void>;
     locations(): Promise<StockControlLocation[]>;
-    createLocation(name: string, description?: string, displayOrder?: number): Promise<StockControlLocation>;
+    createLocation(
+      name: string,
+      description?: string,
+      displayOrder?: number,
+    ): Promise<StockControlLocation>;
     updateLocation(
       id: number,
-      data: { name?: string; description?: string | null; displayOrder?: number | null; active?: boolean },
+      data: {
+        name?: string;
+        description?: string | null;
+        displayOrder?: number | null;
+        active?: boolean;
+      },
     ): Promise<StockControlLocation>;
     deleteLocation(id: number): Promise<void>;
     companyInvitations(): Promise<StockControlInvitation[]>;

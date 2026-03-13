@@ -71,7 +71,10 @@ declare module "./base" {
       limit?: number;
     }): Promise<{ items: InboundEmail[]; total: number }>;
     inboundEmailDetail(emailId: number): Promise<InboundEmail>;
-    reclassifyAttachment(attachmentId: number, documentType: string): Promise<InboundEmailAttachment>;
+    reclassifyAttachment(
+      attachmentId: number,
+      documentType: string,
+    ): Promise<InboundEmailAttachment>;
     inboundEmailStats(): Promise<InboundEmailStats>;
   }
 }
@@ -195,19 +198,13 @@ proto.resetGlossary = async function () {
 
 proto.inboundEmailConfig = async function () {
   return this.request(
-    "/inbound-email/stock-control/{companyId}/config".replace(
-      "{companyId}",
-      this.companyIdParam(),
-    ),
+    "/inbound-email/stock-control/{companyId}/config".replace("{companyId}", this.companyIdParam()),
   );
 };
 
 proto.updateInboundEmailConfig = async function (dto) {
   return this.request(
-    "/inbound-email/stock-control/{companyId}/config".replace(
-      "{companyId}",
-      this.companyIdParam(),
-    ),
+    "/inbound-email/stock-control/{companyId}/config".replace("{companyId}", this.companyIdParam()),
     {
       method: "PATCH",
       body: JSON.stringify(dto),

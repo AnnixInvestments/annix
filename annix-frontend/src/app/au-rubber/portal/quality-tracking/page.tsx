@@ -11,10 +11,7 @@ import {
   type TrendDirection,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
-import {
-  useAuRubberQualityAlerts,
-  useAuRubberQualityTrackingSummary,
-} from "@/app/lib/query/hooks";
+import { useAuRubberQualityAlerts, useAuRubberQualityTrackingSummary } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import {
   ITEMS_PER_PAGE,
@@ -145,7 +142,10 @@ export default function QualityTrackingPage() {
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={() => { summaryQuery.refetch(); alertsQuery.refetch(); }}
+            onClick={() => {
+              summaryQuery.refetch();
+              alertsQuery.refetch();
+            }}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry

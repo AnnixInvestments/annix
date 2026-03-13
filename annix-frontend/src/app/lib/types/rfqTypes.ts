@@ -232,7 +232,12 @@ export interface GlobalSpecs {
 }
 
 export interface MasterData {
-  steelSpecs?: Array<{ id: number; steelSpecName: string; maxPressureBar?: number; maxTemperatureC?: number }>;
+  steelSpecs?: Array<{
+    id: number;
+    steelSpecName: string;
+    maxPressureBar?: number;
+    maxTemperatureC?: number;
+  }>;
   flangeStandards?: Array<{ id: number; code: string; name: string }>;
   pressureClasses?: Array<{
     id: number;

@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import type {
-  CpoCalloffBreakdown,
-  CpoFulfillmentReportItem,
-  CpoOverdueInvoiceItem,
-} from "@/app/lib/api/stockControlApi";
+import { useState } from "react";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useCpoCalloffBreakdown,
+  useCpoFulfillmentReport,
+  useCpoOverdueInvoices,
+} from "@/app/lib/query/hooks";
 
 type ReportTab = "fulfillment" | "calloff" | "overdue";
 
@@ -23,41 +23,31 @@ function calloffTypeLabel(type: string): string {
 
 export default function CpoReportsPage() {
   const [activeTab, setActiveTab] = useState<ReportTab>("fulfillment");
-  const [fulfillment, setFulfillment] = useState<CpoFulfillmentReportItem[]>([]);
-  const [calloffBreakdown, setCalloffBreakdown] = useState<CpoCalloffBreakdown | null>(null);
-  const [overdueItems, setOverdueItems] = useState<CpoOverdueInvoiceItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
-  const fetchReport = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      if (activeTab === "fulfillment") {
-        const data = await stockControlApiClient.cpoFulfillmentReport();
-        setFulfillment(data);
-      } else if (activeTab === "calloff") {
-        const data = await stockControlApiClient.cpoCalloffBreakdown();
-        setCalloffBreakdown(data);
-      } else if (activeTab === "overdue") {
-        const data = await stockControlApiClient.cpoOverdueInvoices();
-        setOverdueItems(data);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load report");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeTab]);
+  const fulfillmentQuery = useCpoFulfillmentReport();
+  const calloffQuery = useCpoCalloffBreakdown();
+  const overdueQuery = useCpoOverdueInvoices();
 
-  useEffect(() => {
-    fetchReport();
-  }, [fetchReport]);
+  const fulfillment = fulfillmentQuery.data ?? [];
+  const calloffBreakdown = calloffQuery.data ?? null;
+  const overdueItems = overdueQuery.data ?? [];
+
+  const activeQuery =
+    activeTab === "fulfillment"
+      ? fulfillmentQuery
+      : activeTab === "calloff"
+        ? calloffQuery
+        : overdueQuery;
+
+  const isLoading = activeQuery.isLoading;
+  const error = activeQuery.error?.message ?? exportError;
 
   const handleExportCsv = async () => {
     try {
       setIsExporting(true);
+      setExportError(null);
       const blob = await stockControlApiClient.cpoExportCsv();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -66,7 +56,7 @@ export default function CpoReportsPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to export CSV");
+      setExportError(err instanceof Error ? err.message : "Failed to export CSV");
     } finally {
       setIsExporting(false);
     }

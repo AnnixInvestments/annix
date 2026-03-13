@@ -294,7 +294,9 @@ export default function ProspectDetailPage() {
   };
 
   const handleScheduleFollowUp = async (days: number) => {
-    const followUpDate = now().plus({ days }).set({ hour: 9, minute: 0, second: 0, millisecond: 0 });
+    const followUpDate = now()
+      .plus({ days })
+      .set({ hour: 9, minute: 0, second: 0, millisecond: 0 });
     await updateProspect.mutateAsync({
       id,
       dto: { nextFollowUpAt: followUpDate.toISO() ?? "" },
@@ -694,7 +696,8 @@ export default function ProspectDetailPage() {
                 <div className="space-y-6">
                   {visits
                     .sort(
-                      (a, b) => fromJSDate(b.createdAt).toMillis() - fromJSDate(a.createdAt).toMillis(),
+                      (a, b) =>
+                        fromJSDate(b.createdAt).toMillis() - fromJSDate(a.createdAt).toMillis(),
                     )
                     .map((visit) => (
                       <div key={visit.id} className="relative flex gap-4">

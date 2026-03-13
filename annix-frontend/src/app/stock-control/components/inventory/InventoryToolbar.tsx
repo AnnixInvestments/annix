@@ -1,9 +1,9 @@
-import type { RefObject } from "react";
 import Link from "next/link";
+import type { RefObject } from "react";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
-import { HelpTooltip } from "../HelpTooltip";
 import { formatZAR } from "../../lib/currency";
 import type { LocationGroup } from "../../lib/useInventoryPageState";
+import { HelpTooltip } from "../HelpTooltip";
 
 interface InventoryToolbarProps {
   viewMode: string;
@@ -128,12 +128,7 @@ export function InventoryToolbar({
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Add Item
         </button>

@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useDeleteDeliveryNote,
+  useDeliveryNoteDetail,
+  useLinkDeliveryNoteToStock,
+  useUploadDeliveryPhoto,
+} from "@/app/lib/query/hooks";
 import { DeliveryNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
@@ -41,37 +46,27 @@ export default function DeliveryDetailPage() {
   const { confirm, ConfirmDialog } = useConfirm();
   const deliveryId = Number(params.id);
 
-  const [delivery, setDelivery] = useState<DeliveryNote | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { data: delivery, isLoading, error: queryError } = useDeliveryNoteDetail(deliveryId);
+  const uploadPhotoMutation = useUploadDeliveryPhoto();
+  const linkToStockMutation = useLinkDeliveryNoteToStock();
+  const deleteDeliveryMutation = useDeleteDeliveryNote();
+
   const [isUploading, setIsUploading] = useState(false);
-  const [isLinking, setIsLinking] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.deliveryNoteById(deliveryId);
-      setDelivery(data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load delivery note"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [deliveryId]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Failed to load delivery note"
+    : mutationError;
 
   const handlePhotoCapture = async (file: File) => {
     try {
       setIsUploading(true);
-      await stockControlApiClient.uploadDeliveryPhoto(deliveryId, file);
-      await fetchData();
+      setMutationError(null);
+      await uploadPhotoMutation.mutateAsync({ id: deliveryId, file });
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to upload photo"));
+      setMutationError(err instanceof Error ? err.message : "Failed to upload photo");
     } finally {
       setIsUploading(false);
     }
@@ -79,13 +74,10 @@ export default function DeliveryDetailPage() {
 
   const handleLinkToStock = async () => {
     try {
-      setIsLinking(true);
-      await stockControlApiClient.linkDeliveryNoteToStock(deliveryId);
-      await fetchData();
+      setMutationError(null);
+      await linkToStockMutation.mutateAsync(deliveryId);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to link items to stock"));
-    } finally {
-      setIsLinking(false);
+      setMutationError(err instanceof Error ? err.message : "Failed to link items to stock");
     }
   };
 
@@ -101,12 +93,11 @@ export default function DeliveryDetailPage() {
       return;
     }
     try {
-      setIsDeleting(true);
-      await stockControlApiClient.deleteDeliveryNote(deliveryId);
+      setMutationError(null);
+      await deleteDeliveryMutation.mutateAsync(deliveryId);
       router.push("/stock-control/portal/deliveries");
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to delete delivery note"));
-      setIsDeleting(false);
+      setMutationError(err instanceof Error ? err.message : "Failed to delete delivery note");
     }
   };
 
@@ -126,7 +117,7 @@ export default function DeliveryDetailPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message || "Delivery note not found"}</p>
+          <p className="text-gray-600">{error || "Delivery note not found"}</p>
           <Link
             href="/stock-control/portal/deliveries"
             className="mt-4 inline-block text-teal-600 hover:text-teal-800"
@@ -163,10 +154,10 @@ export default function DeliveryDetailPage() {
         </div>
         <button
           onClick={handleDelete}
-          disabled={isDeleting}
+          disabled={deleteDeliveryMutation.isPending}
           className="inline-flex items-center px-3 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isDeleting ? (
+          {deleteDeliveryMutation.isPending ? (
             <>
               <svg
                 className="animate-spin -ml-0.5 mr-2 h-4 w-4 text-red-700"
@@ -359,10 +350,10 @@ export default function DeliveryDetailPage() {
               </p>
               <button
                 onClick={handleLinkToStock}
-                disabled={isLinking}
+                disabled={linkToStockMutation.isPending}
                 className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLinking ? (
+                {linkToStockMutation.isPending ? (
                   <>
                     <svg
                       className="animate-spin -ml-0.5 mr-1.5 h-3 w-3 text-white"

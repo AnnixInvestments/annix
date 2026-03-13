@@ -8,8 +8,8 @@ import {
   useCvJobPostings,
   useCvRecommendedJobs,
 } from "@/app/lib/query/hooks";
-import { UploadCvModal } from "../components/UploadCvModal";
 import { RecommendedJobsPanel } from "../components/RecommendedJobsPanel";
+import { UploadCvModal } from "../components/UploadCvModal";
 
 export default function CandidatesPage() {
   const [selectedJob, setSelectedJob] = useState<string>("all");
@@ -282,12 +282,7 @@ export default function CandidatesPage() {
         </div>
       </div>
 
-      {showUploadModal && (
-        <UploadCvModal
-          jobs={jobs}
-          onClose={() => setShowUploadModal(false)}
-        />
-      )}
+      {showUploadModal && <UploadCvModal jobs={jobs} onClose={() => setShowUploadModal(false)} />}
     </div>
   );
 }

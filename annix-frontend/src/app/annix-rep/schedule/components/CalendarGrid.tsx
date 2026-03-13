@@ -47,7 +47,12 @@ export function CalendarGrid(props: CalendarGridProps) {
   const slots: Date[] = Array.from({ length: totalSlots }, (_, i) => {
     const totalMinutes = startHour * 60 + i * slotDurationMinutes;
     return fromJSDate(date)
-      .set({ hour: Math.floor(totalMinutes / 60), minute: totalMinutes % 60, second: 0, millisecond: 0 })
+      .set({
+        hour: Math.floor(totalMinutes / 60),
+        minute: totalMinutes % 60,
+        second: 0,
+        millisecond: 0,
+      })
       .toJSDate();
   });
 
@@ -127,7 +132,11 @@ export function CalendarGrid(props: CalendarGridProps) {
 
         <div className="flex-1 relative">
           {slots.map((slot, index) => (
-            <TimeSlot key={fromJSDate(slot).toISO() ?? ""} id={fromJSDate(slot).toISO() ?? ""} time={slot} />
+            <TimeSlot
+              key={fromJSDate(slot).toISO() ?? ""}
+              id={fromJSDate(slot).toISO() ?? ""}
+              time={slot}
+            />
           ))}
 
           {showCurrentTimeLine && (

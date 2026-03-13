@@ -2,60 +2,39 @@
 
 import { Bell, Check, CheckCheck, ClipboardCheck, Filter } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { stockControlApiClient, WorkflowNotification } from "@/app/lib/api/stockControlApi";
-import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
+import { useCallback, useState } from "react";
+import type { WorkflowNotification } from "@/app/lib/api/stockControlApi";
+import { formatDateLongZA } from "@/app/lib/datetime";
+import {
+  useCompleteBackgroundStep,
+  useMarkAllNotificationsAsRead,
+  useMarkNotificationAsRead,
+  useWorkflowNotifications,
+} from "@/app/lib/query/hooks";
 
 type FilterType = "all" | "unread";
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
-  const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [completingBgStep, setCompletingBgStep] = useState<number | null>(null);
+  const [bgNotes, setBgNotes] = useState("");
 
-  const fetchNotifications = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data =
-        filter === "unread"
-          ? await stockControlApiClient.unreadNotifications()
-          : await stockControlApiClient.workflowNotifications(100);
-      setNotifications(data);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [filter]);
+  const { data: notifications = [], isLoading: loading } = useWorkflowNotifications(filter);
+  const markAsRead = useMarkNotificationAsRead();
+  const markAllAsRead = useMarkAllNotificationsAsRead();
+  const completeBgStep = useCompleteBackgroundStep();
 
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+  const handleMarkAsRead = useCallback(
+    (notificationId: number) => {
+      markAsRead.mutate(notificationId);
+    },
+    [markAsRead],
+  );
 
-  const handleMarkAsRead = useCallback(async (notificationId: number) => {
-    try {
-      await stockControlApiClient.markNotificationAsRead(notificationId);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, readAt: nowISO() } : n)),
-      );
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
-  }, []);
-
-  const handleMarkAllAsRead = useCallback(async () => {
-    setIsMarkingAll(true);
-    try {
-      await stockControlApiClient.markAllNotificationsAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, readAt: n.readAt || nowISO() })));
-    } catch (error) {
-      console.error("Failed to mark all as read:", error);
-    } finally {
-      setIsMarkingAll(false);
-    }
-  }, []);
+  const handleMarkAllAsRead = useCallback(() => {
+    markAllAsRead.mutate();
+  }, [markAllAsRead]);
 
   const handleNotificationClick = useCallback(
     (notification: WorkflowNotification) => {
@@ -72,36 +51,28 @@ export default function NotificationsPage() {
     [router, handleMarkAsRead],
   );
 
-  const [completingBgStep, setCompletingBgStep] = useState<number | null>(null);
-  const [bgNotes, setBgNotes] = useState("");
-  const [bgSaving, setBgSaving] = useState(false);
-
   const handleCompleteBackgroundStep = useCallback(
-    async (notification: WorkflowNotification) => {
+    (notification: WorkflowNotification) => {
       if (!notification.jobCardId || !notification.message) return;
       const match = notification.message.match(/\[step:([^\]]+)\]/);
       if (!match) return;
 
-      setBgSaving(true);
-      try {
-        await stockControlApiClient.completeBackgroundStep(
-          notification.jobCardId,
-          match[1],
-          bgNotes || undefined,
-        );
-        await stockControlApiClient.markNotificationAsRead(notification.id);
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, readAt: nowISO() } : n)),
-        );
-        setCompletingBgStep(null);
-        setBgNotes("");
-      } catch (error) {
-        console.error("Failed to complete background step:", error);
-      } finally {
-        setBgSaving(false);
-      }
+      completeBgStep.mutate(
+        {
+          jobCardId: notification.jobCardId,
+          stepKey: match[1],
+          notes: bgNotes || undefined,
+        },
+        {
+          onSuccess: () => {
+            markAsRead.mutate(notification.id);
+            setCompletingBgStep(null);
+            setBgNotes("");
+          },
+        },
+      );
     },
-    [bgNotes],
+    [bgNotes, completeBgStep, markAsRead],
   );
 
   const actionTypeLabel = (actionType: string): string => {
@@ -162,7 +133,7 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              disabled={isMarkingAll}
+              disabled={markAllAsRead.isPending}
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-teal-600 hover:text-teal-700 disabled:opacity-50"
             >
               <CheckCheck className="h-4 w-4" />
@@ -207,7 +178,10 @@ export default function NotificationsPage() {
                         {actionTypeLabel(notification.actionType)}
                       </span>
                       {!notification.readAt && (
-                        <span className="inline-flex h-2 w-2 rounded-full bg-teal-500" aria-label="Unread" />
+                        <span
+                          className="inline-flex h-2 w-2 rounded-full bg-teal-500"
+                          aria-label="Unread"
+                        />
                       )}
                     </div>
                     <p className="text-sm font-medium text-gray-900">{notification.title}</p>
@@ -249,10 +223,10 @@ export default function NotificationsPage() {
                                   e.stopPropagation();
                                   handleCompleteBackgroundStep(notification);
                                 }}
-                                disabled={bgSaving}
+                                disabled={completeBgStep.isPending}
                                 className="px-3 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
                               >
-                                {bgSaving ? "..." : "Complete"}
+                                {completeBgStep.isPending ? "..." : "Complete"}
                               </button>
                               <button
                                 onClick={(e) => {

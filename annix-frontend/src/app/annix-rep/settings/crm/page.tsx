@@ -93,7 +93,8 @@ function ConnectionStatusBadge({ config }: { config: CrmConfig }) {
     );
   }
 
-  const tokenExpired = config.tokenExpiresAt && isExpired(fromJSDate(config.tokenExpiresAt).toISO());
+  const tokenExpired =
+    config.tokenExpiresAt && isExpired(fromJSDate(config.tokenExpiresAt).toISO());
 
   if (tokenExpired) {
     return (

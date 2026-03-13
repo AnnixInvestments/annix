@@ -7,12 +7,22 @@ import type {
 
 declare module "./base" {
   interface StockControlApiClient {
-    chatMessages(afterId: number | null, conversationId?: number | null): Promise<ChatMessageResponse[]>;
-    sendChatMessage(text: string, imageUrl?: string | null, conversationId?: number | null): Promise<ChatMessageResponse>;
+    chatMessages(
+      afterId: number | null,
+      conversationId?: number | null,
+    ): Promise<ChatMessageResponse[]>;
+    sendChatMessage(
+      text: string,
+      imageUrl?: string | null,
+      conversationId?: number | null,
+    ): Promise<ChatMessageResponse>;
     editChatMessage(messageId: number, text: string): Promise<{ success: boolean }>;
     uploadChatImage(file: File): Promise<{ imageUrl: string }>;
     chatConversations(): Promise<ChatConversationResponse[]>;
-    createChatConversation(participantUserIds: number[], name?: string | null): Promise<ChatConversationResponse>;
+    createChatConversation(
+      participantUserIds: number[],
+      name?: string | null,
+    ): Promise<ChatConversationResponse>;
     markConversationRead(conversationId: number): Promise<{ success: boolean }>;
     chatUnreadCounts(): Promise<Record<string, number>>;
     chatTeamMembers(): Promise<StockControlTeamMember[]>;
@@ -64,7 +74,9 @@ proto.createChatConversation = async function (participantUserIds, name) {
 };
 
 proto.markConversationRead = async function (conversationId) {
-  return this.request(`/stock-control/chat/conversations/${conversationId}/read`, { method: "POST" });
+  return this.request(`/stock-control/chat/conversations/${conversationId}/read`, {
+    method: "POST",
+  });
 };
 
 proto.chatUnreadCounts = async function () {

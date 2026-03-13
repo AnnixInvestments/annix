@@ -586,7 +586,10 @@ export default function SchedulePage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {calendarEvents
-                  .sort((a, b) => fromJSDate(a.startTime).toMillis() - fromJSDate(b.startTime).toMillis())
+                  .sort(
+                    (a, b) =>
+                      fromJSDate(a.startTime).toMillis() - fromJSDate(b.startTime).toMillis(),
+                  )
                   .map((event) => (
                     <CalendarEventCard key={event.id} event={event} />
                   ))}
@@ -676,8 +679,7 @@ export default function SchedulePage() {
                   >
                     <div>
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {fromJSDate(gap.startTime).toFormat("HH:mm")}{" "}
-                        -{" "}
+                        {fromJSDate(gap.startTime).toFormat("HH:mm")} -{" "}
                         {fromJSDate(gap.endTime).toFormat("HH:mm")}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">

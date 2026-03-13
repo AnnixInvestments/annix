@@ -52,7 +52,10 @@ declare module "./base" {
     batchRecordsForJobCard(jobCardId: number): Promise<IssuanceBatchRecord[]>;
     dataBookStatus(jobCardId: number): Promise<DataBookStatus>;
     dataBookCompleteness(jobCardId: number): Promise<DataBookCompleteness>;
-    compileDataBook(jobCardId: number, force?: boolean): Promise<{ id: number; certificateCount: number }>;
+    compileDataBook(
+      jobCardId: number,
+      force?: boolean,
+    ): Promise<{ id: number; certificateCount: number }>;
     downloadDataBook(jobCardId: number): Promise<void>;
     recentBatches(stockItemId: number): Promise<string[]>;
     uploadCalibrationCertificate(
@@ -220,7 +223,9 @@ proto.updateCalibrationCertificate = async function (id, data) {
 };
 
 proto.deactivateCalibrationCertificate = async function (id) {
-  return this.request(`/stock-control/calibration-certificates/${id}/deactivate`, { method: "POST" });
+  return this.request(`/stock-control/calibration-certificates/${id}/deactivate`, {
+    method: "POST",
+  });
 };
 
 proto.deleteCalibrationCertificate = async function (id) {

@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import type {
-  CreateRubberProductDto,
-  RubberProductDto,
-} from "@/app/lib/api/rubberPortalApi";
+import type { CreateRubberProductDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import {
   useAuRubberCodings,
   useAuRubberCompanies,
@@ -108,7 +105,8 @@ export function ProductForm(props: ProductFormProps) {
   const codings = codingsQuery.data ?? [];
   const companies = (companiesQuery.data ?? []).filter((c) => c.isCompoundOwner);
   const specifications = specificationsQuery.data ?? [];
-  const isLoadingData = codingsQuery.isLoading || companiesQuery.isLoading || specificationsQuery.isLoading;
+  const isLoadingData =
+    codingsQuery.isLoading || companiesQuery.isLoading || specificationsQuery.isLoading;
   const loadError = codingsQuery.error ?? companiesQuery.error ?? specificationsQuery.error;
 
   useEffect(() => {

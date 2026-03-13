@@ -19,7 +19,6 @@ import {
   closureWeight as getClosureWeight,
   fittingFlangeConfig as getFittingFlangeConfig,
   reducerFlangeConfig as getReducerFlangeConfig,
-  scheduleListForSpec,
   tackWeldWeight as getTackWeldWeight,
   weldCountPerFitting as getWeldCountPerFitting,
   hasLooseFlange,
@@ -29,6 +28,7 @@ import {
   SABS_1123_PRESSURE_CLASSES,
   SABS62_FITTING_SIZES,
   SABS719_FITTING_SIZES,
+  scheduleListForSpec,
   standardReducerLengthForNb,
   validSmallNbForLargeNb,
 } from "@/app/lib/config/rfq";
@@ -45,6 +45,7 @@ import {
   useAllRetainingRingWeights,
   useNbToOdMap,
 } from "@/app/lib/query/hooks";
+import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
 import {
   calculateComprehensiveSurfaceArea,
   calculateFittingWeldVolume,
@@ -60,12 +61,16 @@ import { getGussetSection } from "@/app/lib/utils/sabs719TeeData";
 import { groupSteelSpecifications, isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
-import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
 
 type SteelSpecItem = NonNullable<MasterData["steelSpecs"]>[number];
 type FlangeStandardItem = NonNullable<MasterData["flangeStandards"]>[number];
 type PressureClassItem = NonNullable<MasterData["pressureClasses"]>[number];
-type ScheduleItem = { id: number; scheduleDesignation: string; wallThicknessMm: number; scheduleNumber?: number };
+type ScheduleItem = {
+  id: number;
+  scheduleDesignation: string;
+  wallThicknessMm: number;
+  scheduleNumber?: number;
+};
 
 interface StubCalcData {
   stubNB: number;
@@ -547,7 +552,8 @@ function FittingFormComponent({
               steelSpecName={(() => {
                 const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                 return (
-                  masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName || ""
+                  masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)
+                    ?.steelSpecName || ""
                 );
               })()}
               effectivePressure={specs.workingPressureBar || globalSpecs?.workingPressureBar}
@@ -567,14 +573,18 @@ function FittingFormComponent({
 
                   const eligibleSchedules = schedules
                     .filter((s: ScheduleItem) => (s.wallThicknessMm || 0) >= minWT)
-                    .sort((a: ScheduleItem, b: ScheduleItem) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+                    .sort(
+                      (a: ScheduleItem, b: ScheduleItem) =>
+                        (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0),
+                    );
 
                   if (eligibleSchedules.length > 0) {
                     scheduleNumber = eligibleSchedules[0].scheduleDesignation;
                     wallThicknessMm = eligibleSchedules[0].wallThicknessMm;
                   } else if (schedules.length > 0) {
                     const sorted = [...schedules].sort(
-                      (a: ScheduleItem, b: ScheduleItem) => (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0),
+                      (a: ScheduleItem, b: ScheduleItem) =>
+                        (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0),
                     );
                     scheduleNumber = sorted[0].scheduleDesignation;
                     wallThicknessMm = sorted[0].wallThicknessMm;
@@ -595,7 +605,8 @@ function FittingFormComponent({
             {(() => {
               const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
               const steelSpecName =
-                masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName || "";
+                masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)
+                  ?.steelSpecName || "";
               const showPslFields = isApi5LSpec(steelSpecName);
               const pslLevel = specs.pslLevel;
               const showCvnFields = pslLevel === "PSL2";
@@ -1426,11 +1437,7 @@ function FittingFormComponent({
                   }
 
                   const selectId = `fitting-schedule-spec-${entry.id}`;
-                  const allSchedules = scheduleListForSpec(
-                    nbValue,
-                    effectiveSpecId,
-                    steelSpecName,
-                  );
+                  const allSchedules = scheduleListForSpec(nbValue, effectiveSpecId, steelSpecName);
 
                   if (globalSpecs?.workingPressureBar && specs.nominalDiameterMm) {
                     const minWT = getMinWallThicknessForNB(
@@ -1440,7 +1447,8 @@ function FittingFormComponent({
                     const eligibleSchedules = allSchedules
                       .filter((dim: ScheduleItem) => (dim.wallThicknessMm || 0) >= minWT)
                       .sort(
-                        (a: ScheduleItem, b: ScheduleItem) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0),
+                        (a: ScheduleItem, b: ScheduleItem) =>
+                          (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0),
                       );
 
                     const options = eligibleSchedules.map((dim: ScheduleItem, idx: number) => {
@@ -1677,7 +1685,8 @@ function FittingFormComponent({
 
               {(() => {
                 const selectedStandard = masterData.flangeStandards?.find(
-                  (fs: FlangeStandardItem) => fs.id === (specs.flangeStandardId || globalSpecs?.flangeStandardId),
+                  (fs: FlangeStandardItem) =>
+                    fs.id === (specs.flangeStandardId || globalSpecs?.flangeStandardId),
                 );
                 const isSabs1123 =
                   selectedStandard?.code?.toUpperCase().includes("SABS") &&
@@ -1870,14 +1879,16 @@ function FittingFormComponent({
                               const targetDesignation = normalizedTypeCode
                                 ? `${pcValue}/${normalizedTypeCode}`
                                 : null;
-                              const matchingPc = masterData.pressureClasses?.find((mpc: PressureClassItem) => {
-                                if (targetDesignation && mpc.designation === targetDesignation)
-                                  return true;
-                                return (
-                                  mpc.designation?.includes(pcValue) ||
-                                  mpc.designation?.includes(equivalentValue)
-                                );
-                              });
+                              const matchingPc = masterData.pressureClasses?.find(
+                                (mpc: PressureClassItem) => {
+                                  if (targetDesignation && mpc.designation === targetDesignation)
+                                    return true;
+                                  return (
+                                    mpc.designation?.includes(pcValue) ||
+                                    mpc.designation?.includes(equivalentValue)
+                                  );
+                                },
+                              );
                               return matchingPc ? (
                                 <option key={matchingPc.id} value={matchingPc.id}>
                                   {isSabs1123 ? pc.value : pc.label}
@@ -4274,7 +4285,9 @@ function FittingFormComponent({
                       (sum: number, s: StubCalcData) => sum + s.stubBlankWeight,
                       0,
                     );
-                    const stubFlangeCount = stubsData.filter((s: StubCalcData) => s.stubHasFlange).length;
+                    const stubFlangeCount = stubsData.filter(
+                      (s: StubCalcData) => s.stubHasFlange,
+                    ).length;
                     const stubBlankCount = stubsData.filter(
                       (s: StubCalcData) => s.stubHasFlange && s.hasBlankFlange,
                     ).length;
@@ -4784,7 +4797,8 @@ function FittingFormComponent({
           const outerDiameter = entry.calculation?.outsideDiameterMm;
 
           const steelSpec = masterData.steelSpecs?.find(
-            (s: SteelSpecItem) => s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
+            (s: SteelSpecItem) =>
+              s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
           );
 
           const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;

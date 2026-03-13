@@ -211,13 +211,13 @@ export function useVoiceRecorder(
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        sampleRate: RECORDING_SAMPLE_RATE,
-      },
-    });
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: RECORDING_SAMPLE_RATE,
+        },
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Microphone access denied";
       updateState({ state: "error", error: message });
