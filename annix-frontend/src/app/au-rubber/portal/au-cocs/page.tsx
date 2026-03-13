@@ -10,6 +10,7 @@ import {
   type RubberAuCocDto,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAuRubberAuCocs } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import {
   ITEMS_PER_PAGE,
@@ -26,11 +27,14 @@ type SortColumn = "cocNumber" | "customerCompanyName" | "status" | "createdAt";
 export default function AuCocsPage() {
   const { showToast } = useToast();
   const { isAdmin } = useAuRubberAuth();
-  const [cocs, setCocs] = useState<RubberAuCocDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<AuCocStatus | "">("");
+  const cocsQuery = useAuRubberAuCocs({
+    status: filterStatus || undefined,
+  });
+  const cocs = cocsQuery.data ?? [];
+  const isLoading = cocsQuery.isLoading;
+  const error = cocsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -42,25 +46,6 @@ export default function AuCocsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const cocsData = await auRubberApiClient.auCocs({
-        status: filterStatus || undefined,
-      });
-      setCocs(Array.isArray(cocsData) ? cocsData : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load data"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [filterStatus]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -114,7 +99,7 @@ export default function AuCocsPage() {
     try {
       await auRubberApiClient.generateAuCocPdf(id);
       showToast("PDF generated successfully", "success");
-      fetchData();
+      cocsQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to generate PDF", "error");
     }
@@ -143,7 +128,7 @@ export default function AuCocsPage() {
       setShowSendModal(false);
       setSendingId(null);
       setSendEmail("");
-      fetchData();
+      cocsQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to send CoC", "error");
     } finally {
@@ -159,7 +144,7 @@ export default function AuCocsPage() {
       showToast("Certificate deleted successfully", "success");
       setShowDeleteModal(false);
       setDeletingId(null);
-      fetchData();
+      cocsQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to delete certificate", "error");
     } finally {
@@ -233,7 +218,7 @@ export default function AuCocsPage() {
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={fetchData}
+            onClick={() => cocsQuery.refetch()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry

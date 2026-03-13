@@ -25,8 +25,8 @@ import {
   type ExtractedDeliveryNoteData,
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
-import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAuRubberCompanies, useAuRubberDeliveryNotes } from "@/app/lib/query/hooks";
 
 type SortColumn =
   | "deliveryNoteNumber"
@@ -38,13 +38,19 @@ type SortColumn =
 export default function CustomerDeliveryNotesPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [notes, setNotes] = useState<RubberDeliveryNoteDto[]>([]);
-  const [customers, setCustomers] = useState<RubberCompanyDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<DeliveryNoteType | "">("");
   const [filterStatus, setFilterStatus] = useState<DeliveryNoteStatus | "">("");
+  const notesQuery = useAuRubberDeliveryNotes({
+    deliveryNoteType: filterType || undefined,
+    status: filterStatus || undefined,
+  });
+  const companiesQuery = useAuRubberCompanies();
+  const customers = (companiesQuery.data ?? []).filter((c) => c.companyType === "CUSTOMER");
+  const customerIds = new Set(customers.map((c) => c.id));
+  const notes = (notesQuery.data ?? []).filter((n) => customerIds.has(n.supplierCompanyId));
+  const isLoading = notesQuery.isLoading;
+  const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
   const [sortColumn, setSortColumn] = useState<SortColumn>("deliveryDate");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -60,39 +66,6 @@ export default function CustomerDeliveryNotesPage() {
   const [analysisFiles, setAnalysisFiles] = useState<File[]>([]);
   const [reanalyzingId, setReanalyzingId] = useState<number | null>(null);
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [notesData, companiesData] = await Promise.all([
-        auRubberApiClient.deliveryNotes({
-          deliveryNoteType: filterType || undefined,
-          status: filterStatus || undefined,
-        }),
-        auRubberApiClient.companies(),
-      ]);
-
-      const customerCompanies = (Array.isArray(companiesData) ? companiesData : []).filter(
-        (c) => c.companyType === "CUSTOMER",
-      );
-      const customerIds = new Set(customerCompanies.map((c) => c.id));
-
-      const customerNotes = (Array.isArray(notesData) ? notesData : []).filter((n) =>
-        customerIds.has(n.supplierCompanyId),
-      );
-
-      setNotes(customerNotes);
-      setCustomers(customerCompanies);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load data"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [filterType, filterStatus]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -183,7 +156,7 @@ export default function CustomerDeliveryNotesPage() {
       showToast(`Created ${result.deliveryNoteIds.length} delivery note(s)`, "success");
       setAnalysisResult(null);
       setAnalysisFiles([]);
-      await fetchData();
+      await notesQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create delivery notes", "error");
     } finally {
@@ -239,7 +212,7 @@ export default function CustomerDeliveryNotesPage() {
       setUploadDnNumber("");
       setUploadDeliveryDate("");
       setUploadFiles([]);
-      await fetchData();
+      await notesQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create delivery note", "error");
     } finally {
@@ -252,7 +225,7 @@ export default function CustomerDeliveryNotesPage() {
     try {
       await auRubberApiClient.deleteDeliveryNote(id);
       showToast("Delivery note deleted", "success");
-      fetchData();
+      notesQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to delete", "error");
     }
@@ -263,7 +236,7 @@ export default function CustomerDeliveryNotesPage() {
       setReanalyzingId(noteId);
       await auRubberApiClient.extractDeliveryNote(noteId);
       showToast("Re-analysis complete", "success");
-      await fetchData();
+      await notesQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to re-analyze delivery note", "error");
     } finally {
@@ -329,7 +302,7 @@ export default function CustomerDeliveryNotesPage() {
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={fetchData}
+            onClick={() => notesQuery.refetch()}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Retry

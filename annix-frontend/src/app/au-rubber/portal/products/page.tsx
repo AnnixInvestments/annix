@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type { RubberProductCodingDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
+import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { now } from "@/app/lib/datetime";
+import { useAuRubberCodings, useAuRubberProducts } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { ProductFormModal } from "../../components/ProductFormModal";
@@ -73,10 +74,12 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
 export default function AuRubberProductsPage() {
   const { showToast } = useToast();
 
-  const [products, setProducts] = useState<RubberProductDto[]>([]);
-  const [codings, setCodings] = useState<RubberProductCodingDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const productsQuery = useAuRubberProducts();
+  const codingsQuery = useAuRubberCodings();
+  const products = productsQuery.data ?? [];
+  const codings = codingsQuery.data ?? [];
+  const isLoading = productsQuery.isLoading;
+  const error = productsQuery.error;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -90,26 +93,6 @@ export default function AuRubberProductsPage() {
   const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
-  const fetchProducts = async () => {
-    try {
-      setIsLoading(true);
-      const [productsData, codingsData] = await Promise.all([
-        auRubberApiClient.products(),
-        auRubberApiClient.productCodings(),
-      ]);
-      setProducts(productsData);
-      setCodings(codingsData);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load products"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
 
   const sortProducts = (productsToSort: RubberProductDto[]): RubberProductDto[] => {
     return [...productsToSort].sort((a, b) => {
@@ -183,7 +166,7 @@ export default function AuRubberProductsPage() {
         failCount > 0 ? "warning" : "success",
       );
       setSelectedProducts(new Set());
-      fetchProducts();
+      productsQuery.refetch();
     } else if (failCount > 0) {
       showToast(`Failed to delete ${failCount} product${failCount > 1 ? "s" : ""}`, "error");
     }
@@ -223,7 +206,7 @@ export default function AuRubberProductsPage() {
       await auRubberApiClient.deleteProduct(id);
       showToast("Product deleted", "success");
       setDeleteProductId(null);
-      fetchProducts();
+      productsQuery.refetch();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to delete product";
       showToast(errorMessage, "error");
@@ -243,7 +226,7 @@ export default function AuRubberProductsPage() {
             <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Products</div>
             <p className="text-gray-600">{error.message}</p>
             <button
-              onClick={() => fetchProducts()}
+              onClick={() => productsQuery.refetch()}
               className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
             >
               Retry
@@ -610,7 +593,7 @@ export default function AuRubberProductsPage() {
           onSave={() => {
             setShowCreateModal(false);
             showToast("Product created", "success");
-            fetchProducts();
+            productsQuery.refetch();
           }}
           onCancel={() => {
             setShowCreateModal(false);
@@ -632,7 +615,7 @@ export default function AuRubberProductsPage() {
           isOpen={showImportModal}
           onClose={() => setShowImportModal(false)}
           onImportComplete={() => {
-            fetchProducts();
+            productsQuery.refetch();
           }}
           codings={codings}
         />

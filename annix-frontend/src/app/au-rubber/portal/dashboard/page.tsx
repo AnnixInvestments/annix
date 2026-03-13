@@ -6,15 +6,15 @@ import {
   statusLabel,
 } from "@annix/product-data/rubber/orderStatus";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import type { RubberAuCocDto } from "@/app/lib/api/auRubberApi";
+import { useState } from "react";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type {
-  RubberCompanyDto,
-  RubberOrderDto,
-  RubberProductDto,
-} from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useAuRubberCompanies,
+  useAuRubberOrders,
+  useAuRubberPendingAuCocs,
+  useAuRubberProducts,
+} from "@/app/lib/query/hooks";
 import { RequirePermission } from "../../components/RequirePermission";
 import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 
@@ -27,45 +27,25 @@ interface StatusCount {
 const ORDERS_PER_PAGE = 5;
 
 export default function AuRubberDashboard() {
-  const [orders, setOrders] = useState<RubberOrderDto[]>([]);
-  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
-  const [products, setProducts] = useState<RubberProductDto[]>([]);
-  const [pendingAuCocs, setPendingAuCocs] = useState<RubberAuCocDto[]>([]);
+  const ordersQuery = useAuRubberOrders();
+  const companiesQuery = useAuRubberCompanies();
+  const productsQuery = useAuRubberProducts();
+  const pendingAuCocsQuery = useAuRubberPendingAuCocs();
+  const orders = ordersQuery.data ?? [];
+  const companies = companiesQuery.data ?? [];
+  const products = productsQuery.data ?? [];
+  const pendingAuCocs = pendingAuCocsQuery.data ?? [];
   const [generatingIds, setGeneratingIds] = useState<Set<number>>(new Set());
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const isLoading = ordersQuery.isLoading || companiesQuery.isLoading || productsQuery.isLoading;
+  const error = ordersQuery.error ?? companiesQuery.error ?? productsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const [ordersData, companiesData, productsData, pendingData] = await Promise.all([
-          auRubberApiClient.orders(),
-          auRubberApiClient.companies(),
-          auRubberApiClient.products(),
-          auRubberApiClient.pendingAuCocs().catch(() => []),
-        ]);
-        setOrders(Array.isArray(ordersData) ? ordersData : []);
-        setCompanies(Array.isArray(companiesData) ? companiesData : []);
-        setProducts(Array.isArray(productsData) ? productsData : []);
-        setPendingAuCocs(Array.isArray(pendingData) ? pendingData : []);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error("Failed to load data"));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
 
   const triggerGeneration = async (auCocId: number) => {
     setGeneratingIds((prev) => new Set([...prev, auCocId]));
     try {
       const result = await auRubberApiClient.autoGenerateAuCoc(auCocId);
       if (result.generated) {
-        setPendingAuCocs((prev) => prev.filter((c) => c.id !== auCocId));
+        pendingAuCocsQuery.refetch();
       }
     } catch (err) {
       console.error("Failed to auto-generate AU CoC:", err);

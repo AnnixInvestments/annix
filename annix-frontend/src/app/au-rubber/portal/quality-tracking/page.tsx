@@ -7,11 +7,14 @@ import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
   type CompoundQualitySummaryDto,
-  type QualityAlertDto,
   type QualityStatus,
   type TrendDirection,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useAuRubberQualityAlerts,
+  useAuRubberQualityTrackingSummary,
+} from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import {
   ITEMS_PER_PAGE,
@@ -25,42 +28,24 @@ type SortColumn = "compoundCode" | "batchCount" | "lastBatchDate" | "status";
 
 export default function QualityTrackingPage() {
   const { showToast } = useToast();
-  const [summaries, setSummaries] = useState<CompoundQualitySummaryDto[]>([]);
-  const [alerts, setAlerts] = useState<QualityAlertDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const summaryQuery = useAuRubberQualityTrackingSummary();
+  const alertsQuery = useAuRubberQualityAlerts();
+  const summaries = summaryQuery.data ?? [];
+  const alerts = alertsQuery.data ?? [];
+  const isLoading = summaryQuery.isLoading || alertsQuery.isLoading;
+  const error = summaryQuery.error ?? alertsQuery.error;
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<QualityStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);
   const [sortColumn, setSortColumn] = useState<SortColumn>("lastBatchDate");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [summaryData, alertData] = await Promise.all([
-        auRubberApiClient.qualityTrackingSummary(),
-        auRubberApiClient.qualityAlerts(),
-      ]);
-      setSummaries(Array.isArray(summaryData) ? summaryData : []);
-      setAlerts(Array.isArray(alertData) ? alertData : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load data"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const handleAcknowledgeAlert = async (alertId: number) => {
     try {
       await auRubberApiClient.acknowledgeQualityAlert(alertId, "admin");
       showToast("Alert acknowledged", "success");
-      fetchData();
+      alertsQuery.refetch();
+      summaryQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to acknowledge alert", "error");
     }
@@ -160,7 +145,7 @@ export default function QualityTrackingPage() {
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={fetchData}
+            onClick={() => { summaryQuery.refetch(); alertsQuery.refetch(); }}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry

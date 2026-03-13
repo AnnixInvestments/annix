@@ -12,8 +12,8 @@ import {
   type RubberSupplierCocDto,
   type SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
-import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAuRubberCompanies, useAuRubberSupplierCocs } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { FileDropZone } from "../../components/FileDropZone";
 import {
@@ -49,12 +49,16 @@ export default function SupplierCocsPage() {
   const { isAdmin } = useAuRubberAuth();
   const { colors, branding } = useAuRubberBranding();
   const [logoObjectUrl, setLogoObjectUrl] = useState<string | null>(null);
-  const [cocs, setCocs] = useState<RubberSupplierCocDto[]>([]);
-  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<CocProcessingStatus | "">("");
+  const cocsQuery = useAuRubberSupplierCocs({
+    processingStatus: filterStatus || undefined,
+  });
+  const companiesQuery = useAuRubberCompanies();
+  const cocs = cocsQuery.data ?? [];
+  const companies = companiesQuery.data ?? [];
+  const isLoading = cocsQuery.isLoading;
+  const error = cocsQuery.error;
   const [compounderPage, setCompounderPage] = useState(0);
   const [calendererPage, setCalendererPage] = useState(0);
   const [compounderSort, setCompounderSort] = useState<{
@@ -130,28 +134,6 @@ export default function SupplierCocsPage() {
     }
   }, [uploadType, companies]);
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [cocsData, companiesData] = await Promise.all([
-        auRubberApiClient.supplierCocs({
-          processingStatus: filterStatus || undefined,
-        }),
-        auRubberApiClient.companies(),
-      ]);
-      setCocs(Array.isArray(cocsData) ? cocsData : []);
-      setCompanies(Array.isArray(companiesData) ? companiesData : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load data"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [filterStatus]);
 
   const handleSort = (section: "compounder" | "calenderer", column: SortColumn) => {
     const setter = section === "compounder" ? setCompounderSort : setCalendererSort;
@@ -275,7 +257,7 @@ export default function SupplierCocsPage() {
       setShowAnalysisModal(false);
       setAnalysisResult(null);
       setUploadFiles([]);
-      fetchData();
+      cocsQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create CoCs", "error");
     } finally {
@@ -315,7 +297,7 @@ export default function SupplierCocsPage() {
       setUploadCocNumber("");
       setUploadCompoundCode("");
       setUploadFiles([]);
-      fetchData();
+      cocsQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create CoC", "error");
     } finally {
@@ -367,7 +349,7 @@ export default function SupplierCocsPage() {
       showToast("Supplier CoC deleted successfully", "success");
       setShowDeleteModal(false);
       setDeletingId(null);
-      fetchData();
+      cocsQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to delete supplier CoC", "error");
     } finally {
@@ -380,7 +362,7 @@ export default function SupplierCocsPage() {
       setReextractingId(id);
       await auRubberApiClient.extractSupplierCoc(id);
       showToast("Data re-extracted successfully", "success");
-      fetchData();
+      cocsQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to re-extract data", "error");
     } finally {
@@ -433,7 +415,7 @@ export default function SupplierCocsPage() {
       );
       showToast(`Approved ${ids.length} CoC${ids.length > 1 ? "s" : ""} successfully`, "success");
       setSelectedForApproval(new Set());
-      fetchData();
+      cocsQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to approve CoCs", "error");
     } finally {
@@ -448,7 +430,7 @@ export default function SupplierCocsPage() {
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={fetchData}
+            onClick={() => cocsQuery.refetch()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry

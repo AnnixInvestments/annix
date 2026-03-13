@@ -21,8 +21,8 @@ import {
   type ExtractedDeliveryNoteData,
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
-import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAuRubberCompanies, useAuRubberDeliveryNotes } from "@/app/lib/query/hooks";
 
 type SortColumn =
   | "deliveryNoteNumber"
@@ -33,13 +33,20 @@ type SortColumn =
 
 export default function SupplierDeliveryNotesPage() {
   const { showToast } = useToast();
-  const [notes, setNotes] = useState<RubberDeliveryNoteDto[]>([]);
-  const [suppliers, setSuppliers] = useState<RubberCompanyDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<DeliveryNoteType | "">("");
   const [filterStatus, setFilterStatus] = useState<DeliveryNoteStatus | "">("");
+  const notesQuery = useAuRubberDeliveryNotes({
+    deliveryNoteType: filterType || undefined,
+    status: filterStatus || undefined,
+  });
+  const companiesQuery = useAuRubberCompanies();
+  const allCompanies = companiesQuery.data ?? [];
+  const suppliers = allCompanies.filter((c) => c.companyType === "SUPPLIER");
+  const supplierIds = new Set(suppliers.map((c) => c.id));
+  const notes = (notesQuery.data ?? []).filter((n) => supplierIds.has(n.supplierCompanyId));
+  const isLoading = notesQuery.isLoading;
+  const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
   const [sortColumn, setSortColumn] = useState<SortColumn>("deliveryDate");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -50,7 +57,7 @@ export default function SupplierDeliveryNotesPage() {
   const [uploadDeliveryDate, setUploadDeliveryDate] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [customerCompanies, setCustomerCompanies] = useState<RubberCompanyDto[]>([]);
+  const customerCompanies = allCompanies.filter((c) => c.companyType === "CUSTOMER");
   const [isAutoLinking, setIsAutoLinking] = useState(false);
 
   const handleBulkAutoLink = async () => {
@@ -59,7 +66,7 @@ export default function SupplierDeliveryNotesPage() {
       const result = await auRubberApiClient.bulkAutoLinkDeliveryNotes();
       if (result.linked > 0) {
         showToast(`Auto-linked ${result.linked} delivery note(s) to supplier CoCs`, "success");
-        await fetchData();
+        await notesQuery.refetch();
       } else {
         showToast("No matching delivery notes found to link", "info");
       }
@@ -70,40 +77,6 @@ export default function SupplierDeliveryNotesPage() {
     }
   };
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [notesData, companiesData] = await Promise.all([
-        auRubberApiClient.deliveryNotes({
-          deliveryNoteType: filterType || undefined,
-          status: filterStatus || undefined,
-        }),
-        auRubberApiClient.companies(),
-      ]);
-
-      const allCompanies = Array.isArray(companiesData) ? companiesData : [];
-      const supplierCompanies = allCompanies.filter((c) => c.companyType === "SUPPLIER");
-      const customers = allCompanies.filter((c) => c.companyType === "CUSTOMER");
-      const supplierIds = new Set(supplierCompanies.map((c) => c.id));
-
-      const supplierNotes = (Array.isArray(notesData) ? notesData : []).filter((n) =>
-        supplierIds.has(n.supplierCompanyId),
-      );
-
-      setNotes(supplierNotes);
-      setSuppliers(supplierCompanies);
-      setCustomerCompanies(customers);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load data"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [filterType, filterStatus]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -163,7 +136,7 @@ export default function SupplierDeliveryNotesPage() {
     try {
       await auRubberApiClient.deleteDeliveryNote(id);
       showToast("Delivery note deleted", "success");
-      fetchData();
+      notesQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to delete", "error");
     }
@@ -212,7 +185,7 @@ export default function SupplierDeliveryNotesPage() {
       setUploadDnNumber("");
       setUploadDeliveryDate("");
       setUploadFiles([]);
-      fetchData();
+      notesQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create delivery note", "error");
     } finally {
@@ -281,7 +254,7 @@ export default function SupplierDeliveryNotesPage() {
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={fetchData}
+            onClick={() => notesQuery.refetch()}
             className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
           >
             Retry

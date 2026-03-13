@@ -7,12 +7,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { type AnalyzeOrderFilesResult, auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type {
-  RubberCompanyDto,
-  RubberOrderDto,
-  RubberProductDto,
-} from "@/app/lib/api/rubberPortalApi";
+import type { RubberOrderDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
+import {
+  useAuRubberCompanies,
+  useAuRubberOrders,
+  useAuRubberProducts,
+} from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { FileDropZone } from "../../components/FileDropZone";
@@ -80,57 +81,20 @@ export default function AuRubberOrdersPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
 
-  const [orders, setOrders] = useState<RubberOrderDto[]>([]);
-  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
-  const [products, setProducts] = useState<RubberProductDto[]>([]);
+  const ordersQuery = useAuRubberOrders(statusFilter);
+  const companiesQuery = useAuRubberCompanies();
+  const productsQuery = useAuRubberProducts();
+  const orders = ordersQuery.data ?? [];
+  const companies = companiesQuery.data ?? [];
+  const products = productsQuery.data ?? [];
   const statuses = ORDER_STATUS_OPTIONS;
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const isLoading = ordersQuery.isLoading;
+  const error = ordersQuery.error;
   const [isCreating, setIsCreating] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importFiles, setImportFiles] = useState<File[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeOrderFilesResult | null>(null);
-
-  const fetchOrders = async (status?: number) => {
-    try {
-      setIsLoading(true);
-      const data = await auRubberApiClient.orders(status);
-      setOrders(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load orders"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchCompanies = async () => {
-    try {
-      const data = await auRubberApiClient.companies();
-      setCompanies(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Failed to load companies:", err);
-    }
-  };
-
-  const fetchProducts = async () => {
-    try {
-      const data = await auRubberApiClient.products();
-      setProducts(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Failed to load products:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrders(statusFilter);
-  }, [statusFilter]);
-
-  useEffect(() => {
-    fetchCompanies();
-    fetchProducts();
-  }, []);
 
   const handleOrderImported = (orderId: number, orderNumber: string) => {
     showToast(`Order ${orderNumber} imported successfully`, "success");
@@ -223,7 +187,7 @@ export default function AuRubberOrdersPage() {
         failCount > 0 ? "warning" : "success",
       );
       setSelectedOrders(new Set());
-      fetchOrders(statusFilter);
+      ordersQuery.refetch();
     } else if (failCount > 0) {
       showToast(`Failed to delete ${failCount} order${failCount > 1 ? "s" : ""}`, "error");
     }
@@ -277,7 +241,7 @@ export default function AuRubberOrdersPage() {
       await auRubberApiClient.deleteOrder(id);
       showToast("Order deleted", "success");
       setDeleteOrderId(null);
-      fetchOrders(statusFilter);
+      ordersQuery.refetch();
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : "Failed to delete order", "error");
     }
@@ -291,7 +255,7 @@ export default function AuRubberOrdersPage() {
             <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Orders</div>
             <p className="text-gray-600">{error.message}</p>
             <button
-              onClick={() => fetchOrders(statusFilter)}
+              onClick={() => ordersQuery.refetch()}
               className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
             >
               Retry
