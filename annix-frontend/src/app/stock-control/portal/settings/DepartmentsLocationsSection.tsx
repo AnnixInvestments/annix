@@ -14,6 +14,7 @@ export function DepartmentsLocationsSection({
   const [departments, setDepartments] = useState<StockControlDepartment[]>([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(true);
   const [newDepartmentName, setNewDepartmentName] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
   const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(null);
   const [editingDepartmentName, setEditingDepartmentName] = useState("");
   const [departmentError, setDepartmentError] = useState("");
@@ -141,7 +142,22 @@ export function DepartmentsLocationsSection({
 
   return (
     <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Departments & Locations</h2>
+      <button
+        type="button"
+        onClick={() => setCollapsed((prev) => !prev)}
+        className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-gray-700 transition-colors mb-4"
+      >
+        <svg
+          className={`w-5 h-5 text-gray-400 transition-transform ${collapsed ? "" : "rotate-90"}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        Departments & Locations
+      </button>
+      {collapsed ? null : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-2">Departments</h3>
@@ -373,6 +389,7 @@ export function DepartmentsLocationsSection({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

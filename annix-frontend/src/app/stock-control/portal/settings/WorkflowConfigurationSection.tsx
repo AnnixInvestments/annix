@@ -22,6 +22,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [sectionCollapsed, setSectionCollapsed] = useState(false);
   const [success, setSuccess] = useState(false);
   const [backgroundSteps, setBackgroundSteps] = useState<WorkflowStepConfig[]>([]);
 
@@ -105,6 +106,37 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     }),
     {},
   );
+
+  const unifiedSteps = (() => {
+    const result: WorkflowStepConfig[] = [];
+    const insertedBgKeys = new Set<string>();
+
+    const insertChainedBg = (afterKey: string) => {
+      const bgForStep = backgroundStepsByTrigger[afterKey] ?? [];
+      bgForStep.forEach((bg) => {
+        if (!insertedBgKeys.has(bg.key)) {
+          insertedBgKeys.add(bg.key);
+          result.push(bg);
+          insertChainedBg(bg.key);
+        }
+      });
+    };
+
+    stepConfigs.forEach((fg) => {
+      result.push(fg);
+      insertChainedBg(fg.key);
+    });
+
+    backgroundSteps.forEach((bg) => {
+      if (!insertedBgKeys.has(bg.key)) {
+        result.push(bg);
+      }
+    });
+
+    return result;
+  })();
+
+  const allSteps = [...stepConfigs, ...backgroundSteps];
 
   const handleToggleAssignment = async (userId: number, step: string) => {
     const assignment = assignmentsByStep[step];
@@ -196,6 +228,21 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to reorder steps");
       await loadData();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateFollows = async (stepKey: string, triggerAfterStep: string | null) => {
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+    try {
+      await stockControlApiClient.updateStepFollows(stepKey, triggerAfterStep);
+      await loadData();
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update step order");
     } finally {
       setSaving(false);
     }
@@ -648,10 +695,30 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                   <span className="text-xs text-orange-500">No one assigned</span>
                 )}
               </div>
+              {isBackground && (
+                <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-xs text-gray-400">Follows:</span>
+                  <select
+                    value={step.triggerAfterStep ?? ""}
+                    onChange={(e) => handleUpdateFollows(step.key, e.target.value || null)}
+                    disabled={saving}
+                    className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 focus:ring-teal-500 focus:border-teal-500 bg-white cursor-pointer"
+                  >
+                    <option value="">None</option>
+                    {allSteps
+                      .filter((s) => s.key !== step.key)
+                      .map((s) => (
+                        <option key={s.key} value={s.key}>
+                          {s.label}{s.isBackground ? " (bg)" : ""}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {!isBackground && !isExpanded && (
+            {!isExpanded && !isBackground && (
               <>
                 {index > 0 && (
                   <button
@@ -849,8 +916,6 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   };
 
   const renderConnector = (afterStepKey: string, _index: number) => {
-    const bgStepsForThis = backgroundStepsByTrigger[afterStepKey] ?? [];
-
     return (
       <div key={`connector-${afterStepKey}`} className="relative">
         <div className="flex justify-center py-1">
@@ -870,12 +935,6 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
             </svg>
           </div>
         </div>
-
-        {bgStepsForThis.length > 0 && (
-          <div className="ml-12 mb-1 space-y-1.5">
-            {bgStepsForThis.map((bgStep) => renderStepCard(bgStep, -1, true))}
-          </div>
-        )}
 
         <div className="flex justify-center -mt-1">
           <button
@@ -994,33 +1053,47 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     );
   }
 
-  const orphanedBackgroundSteps = backgroundSteps.filter(
-    (bg) => !stepConfigs.some((s) => s.key === bg.triggerAfterStep),
-  );
-
   return (
     <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-lg font-semibold text-gray-900">Workflow Configuration</h2>
         <button
           type="button"
-          onClick={() => {
-            setAddAfterStepKey(
-              stepConfigs.length > 0 ? stepConfigs[stepConfigs.length - 1].key : null,
-            );
-            setShowAddStep(!showAddStep);
-            setNewStepLabel("");
-            setNewStepIsBackground(false);
-            setNewStepTriggerAfter("");
-          }}
-          className="text-xs font-medium text-teal-600 hover:text-teal-700 flex items-center gap-1"
+          onClick={() => setSectionCollapsed((prev) => !prev)}
+          className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-gray-700 transition-colors"
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          <svg
+            className={`w-5 h-5 text-gray-400 transition-transform ${sectionCollapsed ? "" : "rotate-90"}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-          Add Step
+          Workflow Configuration
         </button>
+        {!sectionCollapsed && (
+          <button
+            type="button"
+            onClick={() => {
+              setAddAfterStepKey(
+                stepConfigs.length > 0 ? stepConfigs[stepConfigs.length - 1].key : null,
+              );
+              setShowAddStep(!showAddStep);
+              setNewStepLabel("");
+              setNewStepIsBackground(false);
+              setNewStepTriggerAfter("");
+            }}
+            className="text-xs font-medium text-teal-600 hover:text-teal-700 flex items-center gap-1"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Step
+          </button>
+        )}
       </div>
+      {sectionCollapsed ? null : (
+      <>
       <p className="text-sm text-gray-500 mb-4">
         Define your workflow steps, assign team members, and configure notifications. Click a step
         to expand.
@@ -1032,37 +1105,20 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
       {renderAddStepForm()}
 
       <div className="space-y-0">
-        {stepConfigs.map((step, idx) => (
-          <div key={step.key}>
-            {renderStepCard(step, idx, false)}
-            {idx < stepConfigs.length - 1 && renderConnector(step.key, idx)}
-          </div>
-        ))}
-      </div>
+        {unifiedSteps.map((step, idx) => {
+          const fgIndex = stepConfigs.findIndex((s) => s.key === step.key);
+          const isLastUnified = idx === unifiedSteps.length - 1;
+          const nextStep = !isLastUnified ? unifiedSteps[idx + 1] : null;
+          const showConnector = !isLastUnified && (!step.isBackground || (nextStep && !nextStep.isBackground));
 
-      {orphanedBackgroundSteps.length > 0 && (
-        <div className="mt-6 border-t border-gray-200 pt-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <svg
-              className="w-4 h-4 text-amber-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            Background Steps
-          </h3>
-          <div className="space-y-2 ml-4">
-            {orphanedBackgroundSteps.map((bgStep) => renderStepCard(bgStep, -1, true))}
-          </div>
-        </div>
-      )}
+          return (
+            <div key={step.key}>
+              {renderStepCard(step, fgIndex >= 0 ? fgIndex : idx, step.isBackground)}
+              {showConnector && renderConnector(step.key, idx)}
+            </div>
+          );
+        })}
+      </div>
 
       <div className="mt-4 flex items-center gap-4 text-xs text-gray-400 border-t border-gray-100 pt-3">
         <span>Click to unassign</span>
@@ -1074,6 +1130,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
           = Primary
         </span>
       </div>
+      </>
+      )}
     </div>
   );
 }

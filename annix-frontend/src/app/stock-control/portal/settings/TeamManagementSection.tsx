@@ -21,6 +21,7 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("storeman");
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
   const [sendingAppLinkId, setSendingAppLinkId] = useState<number | null>(null);
@@ -125,16 +126,34 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
   return (
     <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Team Management</h2>
         <button
           type="button"
-          onClick={() => setShowInviteForm(!showInviteForm)}
-          className="px-3 py-1.5 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+          onClick={() => setCollapsed((prev) => !prev)}
+          className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-gray-700 transition-colors"
         >
-          Invite Member
+          <svg
+            className={`w-5 h-5 text-gray-400 transition-transform ${collapsed ? "" : "rotate-90"}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          Team Management
         </button>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={() => setShowInviteForm(!showInviteForm)}
+            className="px-3 py-1.5 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+          >
+            Invite Member
+          </button>
+        )}
       </div>
 
+      {collapsed ? null : (
+      <>
       {showInviteForm && (
         <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -273,6 +292,8 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
             </div>
           )}
         </>
+      )}
+      </>
       )}
     </div>
   );

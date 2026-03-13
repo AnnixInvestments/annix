@@ -288,18 +288,38 @@ function MenuVisibilitySection({
 
   const hiddenItems = ALL_NAV_ITEMS.filter((item) => item.group === "hidden");
 
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-lg font-semibold text-gray-900">Menu Visibility</h2>
         <button
           type="button"
-          onClick={() => setShowAddRole(!showAddRole)}
-          className="px-3 py-1.5 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+          onClick={() => setCollapsed((prev) => !prev)}
+          className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-gray-700 transition-colors"
         >
-          Add Role
+          <svg
+            className={`w-5 h-5 text-gray-400 transition-transform ${collapsed ? "" : "rotate-90"}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          Menu Visibility
         </button>
+        {!collapsed && (
+          <button
+            type="button"
+            onClick={() => setShowAddRole(!showAddRole)}
+            className="px-3 py-1.5 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+          >
+            Add Role
+          </button>
+        )}
       </div>
+      {collapsed ? null : (
+      <>
       <p className="text-sm text-gray-500 mb-4">
         Control which menu items are visible to each role. Click a group header to expand sub-pages.
       </p>
@@ -627,6 +647,8 @@ function MenuVisibilitySection({
           </button>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }
@@ -643,6 +665,7 @@ function UserLocationAssignmentsSection({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const activeLocations = locations.filter((l) => l.active);
   const eligibleMembers = teamMembers.filter(
@@ -694,7 +717,23 @@ function UserLocationAssignmentsSection({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-1">Store Location Assignments</h2>
+      <button
+        type="button"
+        onClick={() => setCollapsed((prev) => !prev)}
+        className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-gray-700 transition-colors mb-1"
+      >
+        <svg
+          className={`w-5 h-5 text-gray-400 transition-transform ${collapsed ? "" : "rotate-90"}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        Store Location Assignments
+      </button>
+      {collapsed ? null : (
+      <>
       <p className="text-sm text-gray-500 mb-4">
         Click a cell to toggle access. Users with no locations assigned can access all locations.
       </p>
@@ -785,6 +824,8 @@ function UserLocationAssignmentsSection({
           </table>
         </div>
       )}
+      </>
+      )}
     </div>
   );
 }
@@ -803,6 +844,7 @@ function ActionPermissionsSection({
   const [success, setSuccess] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState(false);
 
   const loadPermissions = useCallback(async () => {
     try {
@@ -885,12 +927,22 @@ function ActionPermissionsSection({
   return (
     <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-2">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Action Permissions</h2>
-          <p className="text-xs text-gray-500">
-            Control which roles can perform specific actions like importing, deleting, or approving
-          </p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setCollapsed((prev) => !prev)}
+          className="flex items-center gap-2 text-lg font-semibold text-gray-900 hover:text-gray-700 transition-colors"
+        >
+          <svg
+            className={`w-5 h-5 text-gray-400 transition-transform ${collapsed ? "" : "rotate-90"}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          Action Permissions
+        </button>
+        {!collapsed && (
         <div className="flex items-center gap-2">
           {success && <span className="text-xs text-green-600 font-medium">Saved</span>}
           {dirty && (
@@ -913,8 +965,14 @@ function ActionPermissionsSection({
             </>
           )}
         </div>
+        )}
       </div>
 
+      {collapsed ? null : (
+      <>
+      <p className="text-xs text-gray-500 mb-2">
+        Control which roles can perform specific actions like importing, deleting, or approving
+      </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -953,6 +1011,8 @@ function ActionPermissionsSection({
           </tbody>
         </table>
       </div>
+      </>
+      )}
     </div>
   );
 }
