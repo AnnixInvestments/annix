@@ -21,6 +21,22 @@ import { CpoService } from "./cpo.service";
 import { validPositiveNumber } from "./extraction-validation";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
+interface ExtractedLineItem {
+  description?: string;
+  itemCode?: string;
+  productCode?: string;
+  quantity?: number;
+  unitOfMeasure?: string;
+  unitPrice?: number;
+  lineTotal?: number;
+  isReturned?: boolean;
+  isPaint?: boolean;
+  isTwoPack?: boolean;
+  volumeLitersPerPack?: number;
+  totalLiters?: number;
+  costPerLiter?: number;
+}
+
 @Injectable()
 export class DeliveryService {
   private readonly logger = new Logger(DeliveryService.name);
@@ -500,21 +516,7 @@ export class DeliveryService {
   private async createStockItemsFromExtracted(
     companyId: number,
     deliveryNote: DeliveryNote,
-    lineItems: Array<{
-      description?: string;
-      itemCode?: string;
-      productCode?: string;
-      quantity?: number;
-      unitOfMeasure?: string;
-      unitPrice?: number;
-      lineTotal?: number;
-      isReturned?: boolean;
-      isPaint?: boolean;
-      isTwoPack?: boolean;
-      volumeLitersPerPack?: number;
-      totalLiters?: number;
-      costPerLiter?: number;
-    }>,
+    lineItems: Array<ExtractedLineItem>,
     receivedBy?: string,
   ): Promise<void> {
     for (const item of lineItems) {
@@ -530,82 +532,17 @@ export class DeliveryService {
       }
 
       const sku = this.generateSku(item);
+      const { quantity, costPerUnit, unitOfMeasure } = this.calculateItemMetrics(item);
 
-      let quantity: number;
-      let costPerUnit: number;
-      let unitOfMeasure: string;
-
-      if (item.isPaint) {
-        const totalLiters =
-          item.totalLiters ??
-          (item.volumeLitersPerPack && item.quantity
-            ? item.volumeLitersPerPack * item.quantity
-            : (item.volumeLitersPerPack ?? 1));
-        quantity = validPositiveNumber(totalLiters, 1);
-        unitOfMeasure = "L";
-        costPerUnit =
-          item.costPerLiter ?? (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
-        this.logger.log(
-          `Paint item: ${item.description} - ${quantity}L @ R${costPerUnit.toFixed(2)}/L`,
-        );
-      } else {
-        quantity = validPositiveNumber(item.quantity, 1);
-        unitOfMeasure = item.unitOfMeasure || "each";
-        costPerUnit =
-          validPositiveNumber(item.unitPrice, 0) ||
-          (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
-      }
-
-      let stockItem = await this.stockItemRepo.findOne({
-        where: { sku, companyId },
-      });
-
-      if (stockItem) {
-        stockItem.quantity = stockItem.quantity + quantity;
-        if (costPerUnit > 0) {
-          stockItem.costPerUnit = costPerUnit;
-        }
-        await this.stockItemRepo.save(stockItem);
-        this.logger.log(`Updated existing stock item ${sku}: +${quantity}`);
-      } else {
-        const matchResult = await this.findMatchingStockItem(
-          companyId,
-          deliveryNote.supplierName,
-          item.description,
-          sku,
-        );
-
-        if (matchResult.existingItem && matchResult.sameSupplier) {
-          stockItem = matchResult.existingItem;
-          const oldSku = stockItem.sku;
-          stockItem.sku = sku;
-          stockItem.quantity = stockItem.quantity + quantity;
-          if (costPerUnit > 0) {
-            stockItem.costPerUnit = costPerUnit;
-          }
-          await this.stockItemRepo.save(stockItem);
-          this.logger.log(
-            `Merged item: updated SKU from ${oldSku} to ${sku}, added ${quantity} (same supplier: ${deliveryNote.supplierName})`,
-          );
-        } else {
-          stockItem = this.stockItemRepo.create({
-            sku,
-            name: item.description,
-            description: null,
-            category: item.isPaint ? "Paint" : "Uncategorized",
-            unitOfMeasure,
-            costPerUnit,
-            quantity,
-            minStockLevel: 0,
-            needsQrPrint: true,
-            companyId,
-          });
-          await this.stockItemRepo.save(stockItem);
-          this.logger.log(
-            `Created new stock item ${sku}: ${item.description} @ R${costPerUnit.toFixed(2)}`,
-          );
-        }
-      }
+      const stockItem = await this.resolveOrCreateStockItem(
+        companyId,
+        deliveryNote.supplierName,
+        item,
+        sku,
+        quantity,
+        costPerUnit,
+        unitOfMeasure,
+      );
 
       const noteItem = this.deliveryNoteItemRepo.create({
         deliveryNote,
@@ -630,21 +567,101 @@ export class DeliveryService {
     }
   }
 
+  private calculateItemMetrics(item: ExtractedLineItem): {
+    quantity: number;
+    costPerUnit: number;
+    unitOfMeasure: string;
+  } {
+    if (item.isPaint) {
+      const totalLiters =
+        item.totalLiters ??
+        (item.volumeLitersPerPack && item.quantity
+          ? item.volumeLitersPerPack * item.quantity
+          : (item.volumeLitersPerPack ?? 1));
+      const quantity = validPositiveNumber(totalLiters, 1);
+      const costPerUnit =
+        item.costPerLiter ?? (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
+      this.logger.log(
+        `Paint item: ${item.description} - ${quantity}L @ R${costPerUnit.toFixed(2)}/L`,
+      );
+      return { quantity, costPerUnit, unitOfMeasure: "L" };
+    }
+
+    const quantity = validPositiveNumber(item.quantity, 1);
+    const costPerUnit =
+      validPositiveNumber(item.unitPrice, 0) ||
+      (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
+    return { quantity, costPerUnit, unitOfMeasure: item.unitOfMeasure || "each" };
+  }
+
+  private async resolveOrCreateStockItem(
+    companyId: number,
+    supplierName: string,
+    item: ExtractedLineItem,
+    sku: string,
+    quantity: number,
+    costPerUnit: number,
+    unitOfMeasure: string,
+  ): Promise<StockItem> {
+    const existingBySku = await this.stockItemRepo.findOne({
+      where: { sku, companyId },
+    });
+
+    if (existingBySku) {
+      existingBySku.quantity = existingBySku.quantity + quantity;
+      if (costPerUnit > 0) {
+        existingBySku.costPerUnit = costPerUnit;
+      }
+      await this.stockItemRepo.save(existingBySku);
+      this.logger.log(`Updated existing stock item ${sku}: +${quantity}`);
+      return existingBySku;
+    }
+
+    const matchResult = await this.findMatchingStockItem(
+      companyId,
+      supplierName,
+      item.description!,
+      sku,
+    );
+
+    if (matchResult.existingItem && matchResult.sameSupplier) {
+      const matched = matchResult.existingItem;
+      const oldSku = matched.sku;
+      matched.sku = sku;
+      matched.quantity = matched.quantity + quantity;
+      if (costPerUnit > 0) {
+        matched.costPerUnit = costPerUnit;
+      }
+      await this.stockItemRepo.save(matched);
+      this.logger.log(
+        `Merged item: updated SKU from ${oldSku} to ${sku}, added ${quantity} (same supplier: ${supplierName})`,
+      );
+      return matched;
+    }
+
+    const created = this.stockItemRepo.create({
+      sku,
+      name: item.description!,
+      description: null,
+      category: item.isPaint ? "Paint" : "Uncategorized",
+      unitOfMeasure,
+      costPerUnit,
+      quantity,
+      minStockLevel: 0,
+      needsQrPrint: true,
+      companyId,
+    });
+    await this.stockItemRepo.save(created);
+    this.logger.log(
+      `Created new stock item ${sku}: ${item.description} @ R${costPerUnit.toFixed(2)}`,
+    );
+    return created;
+  }
+
   private async handleReturnedItem(
     companyId: number,
     deliveryNote: DeliveryNote,
-    item: {
-      description?: string;
-      itemCode?: string;
-      productCode?: string;
-      quantity?: number;
-      unitOfMeasure?: string;
-      unitPrice?: number;
-      lineTotal?: number;
-      isPaint?: boolean;
-      volumeLitersPerPack?: number;
-      totalLiters?: number;
-    },
+    item: ExtractedLineItem,
     receivedBy?: string,
   ): Promise<void> {
     const sku = this.generateSku(item);
