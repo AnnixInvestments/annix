@@ -25,11 +25,11 @@ export function useSettingsTeamMembers() {
 
 export function useInvalidateCompanyRoles() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.settings.companyRoles() });
+  return () =>
+    queryClient.invalidateQueries({ queryKey: stockControlKeys.settings.companyRoles() });
 }
 
 export function useInvalidateSettingsTeamMembers() {
   const queryClient = useQueryClient();
-  return () =>
-    queryClient.invalidateQueries({ queryKey: stockControlKeys.settings.teamMembers() });
+  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.settings.teamMembers() });
 }
