@@ -104,93 +104,109 @@ export class CpoService {
       createdCpoIds: [],
     };
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
+    return rows.reduce(
+      async (accPromise, row, i) => {
+        const acc = await accPromise;
 
-      if (!row.jobNumber || !row.jobName) {
-        result.errors.push({ row: i + 1, message: "Job Number and Job Name are required" });
-        continue;
-      }
+        if (!row.jobNumber || !row.jobName) {
+          return {
+            ...acc,
+            errors: [
+              ...acc.errors,
+              { row: i + 1, message: "Job Number and Job Name are required" },
+            ],
+          };
+        }
 
-      try {
-        const cpoNumber = this.generateCpoNumber(row.jobNumber, row.jcNumber);
+        try {
+          const cpoNumber = this.generateCpoNumber(row.jobNumber, row.jcNumber);
 
-        const existing = await this.cpoRepo.findOne({
-          where: { cpoNumber, companyId },
-        });
-
-        if (existing) {
-          result.errors.push({
-            row: i + 1,
-            message: `CPO ${cpoNumber} already exists`,
+          const existing = await this.cpoRepo.findOne({
+            where: { cpoNumber, companyId },
           });
-          result.skipped++;
-          continue;
+
+          if (existing) {
+            return {
+              ...acc,
+              skipped: acc.skipped + 1,
+              errors: [
+                ...acc.errors,
+                { row: i + 1, message: `CPO ${cpoNumber} already exists` },
+              ],
+            };
+          }
+
+          const validLineItems = (row.lineItems || []).filter(isValidLineItem);
+          const totalQuantity = validLineItems.reduce((sum, li) => {
+            const qty = li.quantity ? parseFloat(li.quantity) : 0;
+            return sum + (Number.isNaN(qty) ? 0 : qty);
+          }, 0);
+
+          const customFields =
+            row.customFields && Object.keys(row.customFields).length > 0
+              ? row.customFields
+              : null;
+
+          const cpo = this.cpoRepo.create({
+            companyId,
+            cpoNumber,
+            jobNumber: row.jobNumber,
+            jobName: row.jobName || null,
+            customerName: row.customerName || null,
+            poNumber: row.poNumber || null,
+            siteLocation: row.siteLocation || null,
+            contactPerson: row.contactPerson || null,
+            dueDate: row.dueDate || null,
+            notes: row.notes || null,
+            reference: row.reference || null,
+            customFields,
+            status: CpoStatus.ACTIVE,
+            totalItems: validLineItems.length,
+            totalQuantity,
+            fulfilledQuantity: 0,
+            createdBy,
+          });
+          const saved = await this.cpoRepo.save(cpo);
+
+          if (validLineItems.length > 0) {
+            const itemEntities = validLineItems.map((li, idx) =>
+              this.cpoItemRepo.create({
+                cpoId: saved.id,
+                companyId,
+                itemCode: li.itemCode || null,
+                itemDescription: li.itemDescription || null,
+                itemNo: li.itemNo || null,
+                quantityOrdered: li.quantity ? parseFloat(li.quantity) : 0,
+                quantityFulfilled: 0,
+                jtNo: li.jtNo || null,
+                m2: li.m2 ?? null,
+                sortOrder: idx,
+              }),
+            );
+            await this.cpoItemRepo.save(itemEntities);
+          }
+
+          this.initialiseCpoCoatingAndRequisition(companyId, saved, createdBy).catch((err) => {
+            const msg = err instanceof Error ? err.message : "Unknown error";
+            this.logger.error(`Failed post-creation tasks for CPO ${saved.cpoNumber}: ${msg}`);
+          });
+
+          return {
+            ...acc,
+            created: acc.created + 1,
+            createdCpoIds: [...acc.createdCpoIds, saved.id],
+          };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          this.logger.error(`Failed to create CPO for row ${i + 1}: ${message}`);
+          return {
+            ...acc,
+            errors: [...acc.errors, { row: i + 1, message }],
+          };
         }
-
-        const validLineItems = (row.lineItems || []).filter(isValidLineItem);
-        const totalQuantity = validLineItems.reduce((sum, li) => {
-          const qty = li.quantity ? parseFloat(li.quantity) : 0;
-          return sum + (Number.isNaN(qty) ? 0 : qty);
-        }, 0);
-
-        const customFields =
-          row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
-
-        const cpo = this.cpoRepo.create({
-          companyId,
-          cpoNumber,
-          jobNumber: row.jobNumber,
-          jobName: row.jobName || null,
-          customerName: row.customerName || null,
-          poNumber: row.poNumber || null,
-          siteLocation: row.siteLocation || null,
-          contactPerson: row.contactPerson || null,
-          dueDate: row.dueDate || null,
-          notes: row.notes || null,
-          reference: row.reference || null,
-          customFields,
-          status: CpoStatus.ACTIVE,
-          totalItems: validLineItems.length,
-          totalQuantity,
-          fulfilledQuantity: 0,
-          createdBy,
-        });
-        const saved = await this.cpoRepo.save(cpo);
-
-        if (validLineItems.length > 0) {
-          const itemEntities = validLineItems.map((li, idx) =>
-            this.cpoItemRepo.create({
-              cpoId: saved.id,
-              companyId,
-              itemCode: li.itemCode || null,
-              itemDescription: li.itemDescription || null,
-              itemNo: li.itemNo || null,
-              quantityOrdered: li.quantity ? parseFloat(li.quantity) : 0,
-              quantityFulfilled: 0,
-              jtNo: li.jtNo || null,
-              m2: li.m2 ?? null,
-              sortOrder: idx,
-            }),
-          );
-          await this.cpoItemRepo.save(itemEntities);
-        }
-
-        result.created++;
-        result.createdCpoIds.push(saved.id);
-
-        this.initialiseCpoCoatingAndRequisition(companyId, saved, createdBy).catch((err) => {
-          const msg = err instanceof Error ? err.message : "Unknown error";
-          this.logger.error(`Failed post-creation tasks for CPO ${saved.cpoNumber}: ${msg}`);
-        });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        this.logger.error(`Failed to create CPO for row ${i + 1}: ${message}`);
-        result.errors.push({ row: i + 1, message });
-      }
-    }
-
-    return result;
+      },
+      Promise.resolve(result),
+    );
   }
 
   async deleteCpo(companyId: number, id: number): Promise<void> {

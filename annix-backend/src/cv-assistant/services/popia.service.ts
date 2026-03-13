@@ -33,18 +33,18 @@ export class PopiaService {
       relations: ["references"],
     });
 
-    let purged = 0;
-
-    for (const candidate of inactiveCandidates) {
+    const purged = await inactiveCandidates.reduce(async (accPromise, candidate) => {
+      const acc = await accPromise;
       try {
         await this.eraseCandidateData(candidate);
-        purged += 1;
+        return acc + 1;
       } catch (error) {
         this.logger.error(
           `Failed to purge candidate ${candidate.id}: ${error instanceof Error ? error.message : String(error)}`,
         );
+        return acc;
       }
-    }
+    }, Promise.resolve(0));
 
     if (purged > 0) {
       this.logger.log(

@@ -440,7 +440,7 @@ export class IssuanceService {
     await queryRunner.startTransaction();
 
     try {
-      const result: BatchIssuanceResult = {
+      let result: BatchIssuanceResult = {
         created: 0,
         issuances: [],
         errors: [],
@@ -454,98 +454,123 @@ export class IssuanceService {
       });
       const stockItemMap = new Map(stockItems.map((si) => [si.id, si]));
 
-      for (const item of dto.items) {
-        const stockItem = stockItemMap.get(item.stockItemId) ?? null;
+      const issuanceResult = await dto.items.reduce(
+        async (accPromise, item) => {
+          const acc = await accPromise;
+          const stockItem = stockItemMap.get(item.stockItemId) ?? null;
 
-        if (!stockItem) {
-          result.errors.push({ stockItemId: item.stockItemId, message: "Stock item not found" });
-          continue;
-        }
+          if (!stockItem) {
+            return {
+              ...acc,
+              errors: [
+                ...acc.errors,
+                { stockItemId: item.stockItemId, message: "Stock item not found" },
+              ],
+            };
+          }
 
-        if (item.quantity <= 0) {
-          result.errors.push({
-            stockItemId: item.stockItemId,
-            message: "Quantity must be greater than 0",
-          });
-          continue;
-        }
+          if (item.quantity <= 0) {
+            return {
+              ...acc,
+              errors: [
+                ...acc.errors,
+                { stockItemId: item.stockItemId, message: "Quantity must be greater than 0" },
+              ],
+            };
+          }
 
-        if (stockItem.quantity < item.quantity) {
-          result.errors.push({
-            stockItemId: item.stockItemId,
-            message: `Insufficient stock. Available: ${stockItem.quantity}, Requested: ${item.quantity}`,
-          });
-          continue;
-        }
+          if (stockItem.quantity < item.quantity) {
+            return {
+              ...acc,
+              errors: [
+                ...acc.errors,
+                {
+                  stockItemId: item.stockItemId,
+                  message: `Insufficient stock. Available: ${stockItem.quantity}, Requested: ${item.quantity}`,
+                },
+              ],
+            };
+          }
 
-        const issuance = queryRunner.manager.create(StockIssuance, {
-          companyId,
-          stockItemId: item.stockItemId,
-          issuerStaffId: dto.issuerStaffId,
-          recipientStaffId: dto.recipientStaffId,
-          jobCardId: dto.jobCardId ?? null,
-          quantity: item.quantity,
-          notes: dto.notes ?? null,
-          issuedByUserId: user.id,
-          issuedByName: user.name,
-          issuedAt,
-        });
-
-        const savedIssuance = await queryRunner.manager.save(StockIssuance, issuance);
-
-        stockItem.quantity = stockItem.quantity - item.quantity;
-        await queryRunner.manager.save(StockItem, stockItem);
-
-        const movement = queryRunner.manager.create(StockMovement, {
-          companyId,
-          stockItem,
-          movementType: MovementType.OUT,
-          quantity: item.quantity,
-          referenceType: ReferenceType.ISSUANCE,
-          referenceId: savedIssuance.id,
-          notes: `Issued to ${recipient.name} by ${issuer.name}${jobCard ? ` for job ${jobCard.jobNumber}` : ""}`,
-          createdBy: user.name,
-        });
-
-        await queryRunner.manager.save(StockMovement, movement);
-
-        if (jobCard) {
-          const allocation = queryRunner.manager.create(StockAllocation, {
-            stockItem,
-            jobCard,
-            quantityUsed: item.quantity,
-            notes: dto.notes ?? `Issued via mobile by ${issuer.name}`,
-            allocatedBy: user.name,
-            staffMemberId: dto.recipientStaffId,
+          const issuance = queryRunner.manager.create(StockIssuance, {
             companyId,
-            pendingApproval: false,
+            stockItemId: item.stockItemId,
+            issuerStaffId: dto.issuerStaffId,
+            recipientStaffId: dto.recipientStaffId,
+            jobCardId: dto.jobCardId ?? null,
+            quantity: item.quantity,
+            notes: dto.notes ?? null,
+            issuedByUserId: user.id,
+            issuedByName: user.name,
+            issuedAt,
           });
-          await queryRunner.manager.save(StockAllocation, allocation);
-        }
 
-        result.issuances.push(savedIssuance);
-        result.created++;
+          const savedIssuance = await queryRunner.manager.save(StockIssuance, issuance);
 
-        this.logger.log(
-          `Stock issuance created: ${item.quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
-        );
-      }
+          stockItem.quantity = stockItem.quantity - item.quantity;
+          await queryRunner.manager.save(StockItem, stockItem);
+
+          const movement = queryRunner.manager.create(StockMovement, {
+            companyId,
+            stockItem,
+            movementType: MovementType.OUT,
+            quantity: item.quantity,
+            referenceType: ReferenceType.ISSUANCE,
+            referenceId: savedIssuance.id,
+            notes: `Issued to ${recipient.name} by ${issuer.name}${jobCard ? ` for job ${jobCard.jobNumber}` : ""}`,
+            createdBy: user.name,
+          });
+
+          await queryRunner.manager.save(StockMovement, movement);
+
+          if (jobCard) {
+            const allocation = queryRunner.manager.create(StockAllocation, {
+              stockItem,
+              jobCard,
+              quantityUsed: item.quantity,
+              notes: dto.notes ?? `Issued via mobile by ${issuer.name}`,
+              allocatedBy: user.name,
+              staffMemberId: dto.recipientStaffId,
+              companyId,
+              pendingApproval: false,
+            });
+            await queryRunner.manager.save(StockAllocation, allocation);
+          }
+
+          this.logger.log(
+            `Stock issuance created: ${item.quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
+          );
+
+          return {
+            ...acc,
+            created: acc.created + 1,
+            issuances: [...acc.issuances, savedIssuance],
+          };
+        },
+        Promise.resolve(result),
+      );
+      result = issuanceResult;
 
       await queryRunner.commitTransaction();
 
-      for (const item of dto.items) {
-        const matchingIssuance = result.issuances.find((i) => i.stockItemId === item.stockItemId);
-        if (item.batchNumber && matchingIssuance) {
-          await this.createBatchRecord(
-            companyId,
-            matchingIssuance.id,
-            item.stockItemId,
-            dto.jobCardId ?? null,
-            item.batchNumber,
-            item.quantity,
+      await dto.items
+        .filter((item) => item.batchNumber)
+        .reduce(async (prev, item) => {
+          await prev;
+          const matchingIssuance = result.issuances.find(
+            (i) => i.stockItemId === item.stockItemId,
           );
-        }
-      }
+          if (matchingIssuance) {
+            await this.createBatchRecord(
+              companyId,
+              matchingIssuance.id,
+              item.stockItemId,
+              dto.jobCardId ?? null,
+              item.batchNumber!,
+              item.quantity,
+            );
+          }
+        }, Promise.resolve());
 
       if (dto.jobCardId && result.created > 0) {
         await this.markDataBookStale(companyId, dto.jobCardId);

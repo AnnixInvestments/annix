@@ -49,17 +49,11 @@ export class ScEmailClassifierService implements IDocumentClassifier {
   classifyFromSubject(subject: string, filename: string): ClassificationResult | null {
     const combined = `${subject} ${filename}`.toLowerCase();
 
-    for (const [pattern, docType] of SUBJECT_KEYWORDS) {
-      if (pattern.test(combined)) {
-        return {
-          documentType: docType,
-          confidence: 0.7,
-          source: "subject",
-        };
-      }
-    }
+    const match = SUBJECT_KEYWORDS.find(([pattern]) => pattern.test(combined));
 
-    return null;
+    return match
+      ? { documentType: match[1], confidence: 0.7, source: "subject" as const }
+      : null;
   }
 
   async classifyFromContent(

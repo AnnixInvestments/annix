@@ -307,64 +307,76 @@ export class RubberStockService {
     });
     const codingMap = new Map(codings.map((c) => [c.code.toLowerCase(), c]));
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const rowNum = i + 1;
+    const totals = await rows.reduce(
+      async (accPromise, row, i) => {
+        const acc = await accPromise;
+        const rowNum = i + 1;
 
-      const coding = codingMap.get(row.compoundCode.toLowerCase());
-      if (!coding) {
-        result.errors.push({
-          row: rowNum,
-          compoundCode: row.compoundCode,
-          error: `Compound code '${row.compoundCode}' not found`,
+        const coding = codingMap.get(row.compoundCode.toLowerCase());
+        if (!coding) {
+          return {
+            ...acc,
+            errors: [
+              ...acc.errors,
+              {
+                row: rowNum,
+                compoundCode: row.compoundCode,
+                error: `Compound code '${row.compoundCode}' not found`,
+              },
+            ],
+          };
+        }
+
+        if (!row.quantityKg || row.quantityKg <= 0) {
+          return {
+            ...acc,
+            errors: [
+              ...acc.errors,
+              {
+                row: rowNum,
+                compoundCode: row.compoundCode,
+                error: "Quantity must be greater than 0",
+              },
+            ],
+          };
+        }
+
+        const existing = await this.compoundStockRepository.findOne({
+          where: { compoundCodingId: coding.id },
         });
-        continue;
-      }
 
-      if (!row.quantityKg || row.quantityKg <= 0) {
-        result.errors.push({
-          row: rowNum,
-          compoundCode: row.compoundCode,
-          error: "Quantity must be greater than 0",
-        });
-        continue;
-      }
+        if (existing) {
+          existing.quantityKg = Number(existing.quantityKg) + row.quantityKg;
+          if (row.costPerKg !== undefined && row.costPerKg !== null) {
+            existing.costPerKg = row.costPerKg;
+          }
+          if (row.minStockLevelKg !== undefined && row.minStockLevelKg !== null) {
+            existing.minStockLevelKg = row.minStockLevelKg;
+          }
+          if (row.reorderPointKg !== undefined && row.reorderPointKg !== null) {
+            existing.reorderPointKg = row.reorderPointKg;
+          }
+          if (row.location) {
+            existing.location = row.location;
+          }
+          if (row.batchNumber) {
+            existing.batchNumber = row.batchNumber;
+          }
+          await this.compoundStockRepository.save(existing);
 
-      const existing = await this.compoundStockRepository.findOne({
-        where: { compoundCodingId: coding.id },
-      });
+          const movement = this.movementRepository.create({
+            compoundStockId: existing.id,
+            movementType: CompoundMovementType.IN,
+            quantityKg: row.quantityKg,
+            referenceType: CompoundMovementReferenceType.OPENING_STOCK,
+            batchNumber: row.batchNumber ?? null,
+            notes: "Opening stock import",
+          });
+          await this.movementRepository.save(movement);
 
-      if (existing) {
-        existing.quantityKg = Number(existing.quantityKg) + row.quantityKg;
-        if (row.costPerKg !== undefined && row.costPerKg !== null) {
-          existing.costPerKg = row.costPerKg;
+          return { ...acc, updated: acc.updated + 1 };
         }
-        if (row.minStockLevelKg !== undefined && row.minStockLevelKg !== null) {
-          existing.minStockLevelKg = row.minStockLevelKg;
-        }
-        if (row.reorderPointKg !== undefined && row.reorderPointKg !== null) {
-          existing.reorderPointKg = row.reorderPointKg;
-        }
-        if (row.location) {
-          existing.location = row.location;
-        }
-        if (row.batchNumber) {
-          existing.batchNumber = row.batchNumber;
-        }
-        await this.compoundStockRepository.save(existing);
 
-        const movement = this.movementRepository.create({
-          compoundStockId: existing.id,
-          movementType: CompoundMovementType.IN,
-          quantityKg: row.quantityKg,
-          referenceType: CompoundMovementReferenceType.OPENING_STOCK,
-          batchNumber: row.batchNumber ?? null,
-          notes: "Opening stock import",
-        });
-        await this.movementRepository.save(movement);
-
-        result.updated++;
-      } else {
         const stock = this.compoundStockRepository.create({
           firebaseUid: `pg_${generateUniqueId()}`,
           compoundCodingId: coding.id,
@@ -387,11 +399,12 @@ export class RubberStockService {
         });
         await this.movementRepository.save(movement);
 
-        result.created++;
-      }
-    }
+        return { ...acc, created: acc.created + 1 };
+      },
+      Promise.resolve({ created: 0, updated: 0, errors: [] as typeof result.errors }),
+    );
 
-    return result;
+    return { totalRows: rows.length, created: totals.created, updated: totals.updated, errors: totals.errors };
   }
 
   async manualAdjustment(dto: AdjustCompoundDto): Promise<RubberCompoundMovementDto> {

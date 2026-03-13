@@ -265,12 +265,12 @@ export class ZoomMeetingProvider implements IMeetingPlatformProvider {
 
     const meetingMap = new Map<string, PlatformMeetingData>();
 
-    for (const meeting of pastMeetings) {
+    pastMeetings.forEach((meeting) => {
       const data = this.mapZoomMeeting(meeting);
       meetingMap.set(data.platformMeetingId, data);
-    }
+    });
 
-    for (const recording of recordings) {
+    recordings.forEach((recording) => {
       const meetingId = String(recording.id);
       const existing = meetingMap.get(meetingId);
 
@@ -293,7 +293,7 @@ export class ZoomMeetingProvider implements IMeetingPlatformProvider {
           rawData: recording as unknown as Record<string, unknown>,
         });
       }
-    }
+    });
 
     return Array.from(meetingMap.values());
   }
@@ -468,14 +468,11 @@ export class ZoomMeetingProvider implements IMeetingPlatformProvider {
 
     const data: ZoomParticipantsResponse = await response.json();
 
-    const uniqueParticipants = new Set<string>();
-    for (const p of data.participants) {
-      if (p.user_email) {
-        uniqueParticipants.add(p.user_email);
-      } else if (p.name) {
-        uniqueParticipants.add(p.name);
-      }
-    }
+    const uniqueParticipants = new Set(
+      data.participants
+        .map((p) => p.user_email || p.name || null)
+        .filter((value): value is string => value !== null),
+    );
 
     return Array.from(uniqueParticipants);
   }

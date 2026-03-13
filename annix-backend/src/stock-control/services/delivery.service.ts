@@ -72,7 +72,8 @@ export class DeliveryService {
       });
       const savedNote = await queryRunner.manager.save(DeliveryNote, deliveryNote);
 
-      for (const itemData of data.items) {
+      await data.items.reduce(async (prev, itemData) => {
+        await prev;
         const stockItem = await queryRunner.manager.findOne(StockItem, {
           where: { id: itemData.stockItemId, companyId },
           lock: { mode: "pessimistic_write" },
@@ -104,7 +105,7 @@ export class DeliveryService {
           companyId,
         });
         await queryRunner.manager.save(StockMovement, movement);
-      }
+      }, Promise.resolve());
 
       await queryRunner.commitTransaction();
 
@@ -195,7 +196,8 @@ export class DeliveryService {
         relations: ["stockItem"],
       });
 
-      for (const movement of movements) {
+      await movements.reduce(async (prev, movement) => {
+        await prev;
         if (movement.stockItem) {
           const stockItem = await queryRunner.manager.findOne(StockItem, {
             where: { id: movement.stockItem.id, companyId },
@@ -208,7 +210,7 @@ export class DeliveryService {
           }
         }
         await queryRunner.manager.remove(StockMovement, movement);
-      }
+      }, Promise.resolve());
 
       if (note.items && note.items.length > 0) {
         await queryRunner.manager.remove(DeliveryNoteItem, note.items);

@@ -121,19 +121,15 @@ export class BoqParserService {
   }
 
   private mapHeaders(headers: string[]): Record<string, string | undefined> {
-    const headerMap: Record<string, string | undefined> = {};
-
-    for (const [field, aliases] of Object.entries(this.columnMappings)) {
-      for (const header of headers) {
-        const normalizedHeader = header.toLowerCase().trim();
-        if (aliases.includes(normalizedHeader)) {
-          headerMap[field] = header;
-          break;
-        }
-      }
-    }
-
-    return headerMap;
+    return Object.entries(this.columnMappings).reduce(
+      (acc, [field, aliases]) => {
+        const matchingHeader = headers.find((header) =>
+          aliases.includes(header.toLowerCase().trim()),
+        );
+        return matchingHeader ? { ...acc, [field]: matchingHeader } : acc;
+      },
+      {} as Record<string, string | undefined>,
+    );
   }
 
   private parseRow(

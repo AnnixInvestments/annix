@@ -364,21 +364,26 @@ export class InvoiceExtractionService {
     }
 
     const candidates = await this.deliveryNoteRepo.find({ where: { companyId } });
-    const details: string[] = [];
-    let linked = 0;
 
-    for (const invoice of unlinked) {
-      const dnNumbers = this.normalizeDeliveryNoteNumbers(invoice.extractedData || {});
-      const matches = this.findDeliveryNoteMatches(invoice, dnNumbers, candidates);
-      if (matches.length > 0) {
-        invoice.deliveryNoteId = matches[0].id;
-        invoice.linkedDeliveryNoteIds = matches.map((m) => m.id);
-        await this.invoiceRepo.save(invoice);
-        const dnLabels = matches.map((m) => m.deliveryNumber).join(", ");
-        details.push(`Invoice ${invoice.invoiceNumber} → DN ${dnLabels}`);
-        linked++;
-      }
-    }
+    const { linked, details } = await unlinked.reduce(
+      async (accPromise, invoice) => {
+        const acc = await accPromise;
+        const dnNumbers = this.normalizeDeliveryNoteNumbers(invoice.extractedData || {});
+        const matches = this.findDeliveryNoteMatches(invoice, dnNumbers, candidates);
+        if (matches.length > 0) {
+          invoice.deliveryNoteId = matches[0].id;
+          invoice.linkedDeliveryNoteIds = matches.map((m) => m.id);
+          await this.invoiceRepo.save(invoice);
+          const dnLabels = matches.map((m) => m.deliveryNumber).join(", ");
+          return {
+            linked: acc.linked + 1,
+            details: [...acc.details, `Invoice ${invoice.invoiceNumber} → DN ${dnLabels}`],
+          };
+        }
+        return acc;
+      },
+      Promise.resolve({ linked: 0, details: [] as string[] }),
+    );
 
     this.logger.log(
       `Bulk auto-link complete for company ${companyId}: ${linked}/${unlinked.length} invoices linked`,
@@ -417,7 +422,8 @@ export class InvoiceExtractionService {
     const items = await this.invoiceItemRepo.find({ where: { invoiceId } });
     const stockItems = await this.stockItemRepo.find({ where: { companyId: invoice.companyId } });
 
-    for (const item of items) {
+    await items.reduce(async (prev, item) => {
+      await prev;
       const match = this.fuzzyMatchStockItem(
         item.extractedDescription || "",
         item.extractedSku || "",
@@ -437,7 +443,7 @@ export class InvoiceExtractionService {
       }
 
       await this.invoiceItemRepo.save(item);
-    }
+    }, Promise.resolve());
   }
 
   private fuzzyMatchStockItem(
@@ -487,7 +493,8 @@ export class InvoiceExtractionService {
     const partAItems = items.filter((item) => item.isPartA);
     const partBItems = items.filter((item) => item.isPartB);
 
-    for (const partA of partAItems) {
+    await partAItems.reduce(async (prev, partA) => {
+      await prev;
       const baseProduct = this.extractBaseProductName(partA.extractedDescription || "");
 
       const matchingPartB = partBItems.find((partB) => {
@@ -499,7 +506,7 @@ export class InvoiceExtractionService {
         matchingPartB.linkedItemId = partA.id;
         await this.invoiceItemRepo.save(matchingPartB);
       }
-    }
+    }, Promise.resolve());
   }
 
   private extractBaseProductName(description: string): string {
@@ -534,7 +541,8 @@ export class InvoiceExtractionService {
 
     const stockItems = await this.stockItemRepo.find({ where: { companyId: invoice.companyId } });
 
-    for (const item of items) {
+    await items.reduce(async (prev, item) => {
+      await prev;
       if (item.matchStatus === InvoiceItemMatchStatus.UNMATCHED) {
         await this.createUnmatchedClarification(invoice, item, stockItems);
       } else if (item.matchStatus === InvoiceItemMatchStatus.CLARIFICATION_NEEDED) {
@@ -542,7 +550,7 @@ export class InvoiceExtractionService {
       } else if (item.stockItem && item.unitPrice !== null) {
         await this.checkPriceChangeApproval(invoice, item);
       }
-    }
+    }, Promise.resolve());
   }
 
   private async createUnmatchedClarification(
@@ -809,16 +817,19 @@ export class InvoiceExtractionService {
     });
     const skippedItemIds = new Set(skippedPriceClarifications.map((c) => c.invoiceItemId));
 
-    for (const item of invoice.items) {
-      if (
-        item.stockItemId &&
-        item.unitPrice !== null &&
-        item.quantity > 0 &&
-        !item.priceUpdated &&
-        !skippedItemIds.has(item.id)
-      ) {
+    await invoice.items
+      .filter(
+        (item) =>
+          item.stockItemId &&
+          item.unitPrice !== null &&
+          item.quantity > 0 &&
+          !item.priceUpdated &&
+          !skippedItemIds.has(item.id),
+      )
+      .reduce(async (prev, item) => {
+        await prev;
         const stockItem =
-          item.stockItem || (await this.stockItemRepo.findOne({ where: { id: item.stockItemId } }));
+          item.stockItem || (await this.stockItemRepo.findOne({ where: { id: item.stockItemId! } }));
 
         if (stockItem) {
           const oldPrice = Number(stockItem.costPerUnit) || null;
@@ -844,8 +855,7 @@ export class InvoiceExtractionService {
           item.priceUpdated = true;
           await this.invoiceItemRepo.save(item);
         }
-      }
-    }
+      }, Promise.resolve());
 
     invoice.extractionStatus = InvoiceExtractionStatus.COMPLETED;
     invoice.approvedBy = approvedBy;

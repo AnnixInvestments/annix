@@ -104,9 +104,10 @@ export class RubberEmailMonitorService implements OnModuleInit {
 
       this.logger.log(`Found ${messages.length} unread emails to process`);
 
-      for (const message of messages) {
+      await messages.reduce(async (prev, message) => {
+        await prev;
         await this.processEmail(message);
-      }
+      }, Promise.resolve());
     } finally {
       if (connection) {
         connection.end();
@@ -142,7 +143,8 @@ export class RubberEmailMonitorService implements OnModuleInit {
         tax_invoice: "tax-invoices",
       };
 
-      for (const attachment of pdfAttachments) {
+      await pdfAttachments.reduce(async (prev, attachment) => {
+        await prev;
         const messageId = parsed.messageId || `${nowMillis()}-${Math.random()}`;
         const filename = attachment.filename || "attachment.pdf";
 
@@ -160,7 +162,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
 
         if (!supplierInfo) {
           this.logger.warn(`Could not identify supplier for attachment: ${filename}`);
-          continue;
+          return;
         }
 
         this.logger.log(
@@ -257,7 +259,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
           );
           this.logger.log(`Created Delivery Note ${dn.id} from email attachment: ${filename}`);
         }
-      }
+      }, Promise.resolve());
     } catch (error) {
       this.logger.error(`Failed to process email: ${error.message}`);
     }
@@ -540,36 +542,40 @@ ${truncatedText}`;
       }
     }
 
-    for (const company of companies) {
+    const impiloMatch = companies.find((company) => {
       const companyNameLower = company.name.toLowerCase();
-
-      if (companyNameLower.includes("impilo") || companyNameLower.includes("calendarer")) {
-        if (
-          fromEmailLower.includes("impilo") ||
+      return (
+        (companyNameLower.includes("impilo") || companyNameLower.includes("calendarer")) &&
+        (fromEmailLower.includes("impilo") ||
           subjectLower.includes("impilo") ||
-          subjectLower.includes("calendarer")
-        ) {
-          return {
-            company,
-            cocType: SupplierCocType.CALENDARER,
-            deliveryNoteType: DeliveryNoteType.ROLL,
-          };
-        }
-      }
+          subjectLower.includes("calendarer"))
+      );
+    });
 
-      if (companyNameLower.includes("s&n") || companyNameLower.includes("compounder")) {
-        if (
-          fromEmailLower.includes("sandrubber") ||
+    if (impiloMatch) {
+      return {
+        company: impiloMatch,
+        cocType: SupplierCocType.CALENDARER,
+        deliveryNoteType: DeliveryNoteType.ROLL,
+      };
+    }
+
+    const snMatch = companies.find((company) => {
+      const companyNameLower = company.name.toLowerCase();
+      return (
+        (companyNameLower.includes("s&n") || companyNameLower.includes("compounder")) &&
+        (fromEmailLower.includes("sandrubber") ||
           fromEmailLower.includes("snrubber") ||
-          subjectLower.includes("s&n")
-        ) {
-          return {
-            company,
-            cocType: SupplierCocType.COMPOUNDER,
-            deliveryNoteType: DeliveryNoteType.COMPOUND,
-          };
-        }
-      }
+          subjectLower.includes("s&n"))
+      );
+    });
+
+    if (snMatch) {
+      return {
+        company: snMatch,
+        cocType: SupplierCocType.COMPOUNDER,
+        deliveryNoteType: DeliveryNoteType.COMPOUND,
+      };
     }
 
     return null;

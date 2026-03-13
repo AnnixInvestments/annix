@@ -266,11 +266,11 @@ export class JobCardsController {
       ),
     ].filter(Boolean);
 
-    let rubberSpec: ReturnType<typeof parseRubberSpecNote> = null;
-    for (const text of allNoteSources) {
-      rubberSpec = parseRubberSpecNote(text);
-      if (rubberSpec) break;
-    }
+    const rubberSpec = allNoteSources.reduce(
+      (found: ReturnType<typeof parseRubberSpecNote>, text) =>
+        found || parseRubberSpecNote(text),
+      null,
+    );
 
     const rubberStock = await this.stockItemRepo.find({
       where: {

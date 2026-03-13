@@ -184,8 +184,7 @@ export class RoutePlanningService {
       }
     }
 
-    for (let i = 0; i < meetings.length - 1; i++) {
-      const currentMeeting = meetings[i];
+    meetings.slice(0, -1).forEach((currentMeeting, i) => {
       const nextMeeting = meetings[i + 1];
 
       const adjustedCurrentEnd = fromJSDate(currentMeeting.scheduledEnd)
@@ -204,7 +203,7 @@ export class RoutePlanningService {
       if (gapMinutes >= minGapMinutes) {
         gaps.push(createGap(adjustedCurrentEnd, adjustedNextStart, currentMeeting, nextMeeting));
       }
-    }
+    });
 
     const lastMeeting = meetings[meetings.length - 1];
     const adjustedLastEnd = fromJSDate(lastMeeting.scheduledEnd)
@@ -250,67 +249,58 @@ export class RoutePlanningService {
       return [];
     }
 
-    const suggestions: ColdCallSuggestion[] = [];
-
-    for (const gap of gaps) {
+    const suggestions = gaps.reduce<ColdCallSuggestion[]>((acc, gap) => {
       const availableMinutes = gap.durationMinutes - this.COLD_CALL_DURATION_MINUTES;
-      if (availableMinutes < this.MIN_AVAILABLE_MINUTES) continue;
+      if (availableMinutes < this.MIN_AVAILABLE_MINUTES) return acc;
 
-      let referencePoint: { lat: number; lng: number } | null = null;
+      const referencePoint =
+        gap.precedingMeeting?.latitude && gap.precedingMeeting?.longitude
+          ? {
+              lat: Number(gap.precedingMeeting.latitude),
+              lng: Number(gap.precedingMeeting.longitude),
+            }
+          : currentLat && currentLng
+            ? { lat: currentLat, lng: currentLng }
+            : null;
 
-      if (gap.precedingMeeting?.latitude && gap.precedingMeeting?.longitude) {
-        referencePoint = {
-          lat: Number(gap.precedingMeeting.latitude),
-          lng: Number(gap.precedingMeeting.longitude),
-        };
-      } else if (currentLat && currentLng) {
-        referencePoint = { lat: currentLat, lng: currentLng };
-      }
-
-      if (!referencePoint) continue;
+      if (!referencePoint) return acc;
 
       const maxTravelMinutes = (availableMinutes - this.COLD_CALL_DURATION_MINUTES) / 2;
       const maxDistanceKm = (maxTravelMinutes / 60) * this.AVERAGE_SPEED_KMH;
 
       const nearbyProspects = prospects
-        .map((prospect) => {
-          const distance = this.haversineDistance(
-            referencePoint!.lat,
-            referencePoint!.lng,
+        .map((prospect) => ({
+          prospect,
+          distance: this.haversineDistance(
+            referencePoint.lat,
+            referencePoint.lng,
             Number(prospect.latitude),
             Number(prospect.longitude),
-          );
-          return { prospect, distance };
-        })
+          ),
+        }))
         .filter((p) => p.distance <= maxDistanceKm)
         .sort((a, b) => a.distance - b.distance);
 
-      for (const { prospect, distance } of nearbyProspects.slice(
-        0,
-        this.MAX_NEARBY_PROSPECTS_PER_GAP,
-      )) {
-        const travelMinutes = (distance / this.AVERAGE_SPEED_KMH) * 60;
-        const suggestedCallTime = fromJSDate(gap.startTime)
-          .plus({ minutes: travelMinutes })
-          .toJSDate();
-
-        const reason = this.suggestionReason(prospect, gap);
-        const priority = this.suggestionPriority(prospect, distance);
-
-        const alreadySuggested = suggestions.some((s) => s.prospect.id === prospect.id);
-        if (!alreadySuggested) {
-          suggestions.push({
+      const newSuggestions = nearbyProspects
+        .slice(0, this.MAX_NEARBY_PROSPECTS_PER_GAP)
+        .filter(({ prospect }) => !acc.some((s) => s.prospect.id === prospect.id))
+        .map(({ prospect, distance }) => {
+          const travelMinutes = (distance / this.AVERAGE_SPEED_KMH) * 60;
+          return {
             prospect,
             distanceKm: Math.round(distance * 10) / 10,
             estimatedTravelMinutes: Math.round(travelMinutes),
-            reason,
-            priority,
-            suggestedCallTime,
+            reason: this.suggestionReason(prospect, gap),
+            priority: this.suggestionPriority(prospect, distance),
+            suggestedCallTime: fromJSDate(gap.startTime)
+              .plus({ minutes: travelMinutes })
+              .toJSDate(),
             gap,
-          });
-        }
-      }
-    }
+          };
+        });
+
+      return [...acc, ...newSuggestions];
+    }, []);
 
     return suggestions
       .sort((a, b) => {
@@ -336,11 +326,12 @@ export class RoutePlanningService {
       },
     ];
 
-    for (const stop of stops) {
+    await stops.reduce(async (accPromise, stop) => {
+      const acc = await accPromise;
       if (stop.type === "prospect") {
         const prospect = await this.prospectRepo.findOne({ where: { id: stop.id } });
         if (prospect?.latitude && prospect.longitude) {
-          stopDetails.push({
+          acc.push({
             type: "prospect",
             id: prospect.id,
             name: prospect.companyName,
@@ -361,7 +352,7 @@ export class RoutePlanningService {
             "minutes",
           ).minutes;
 
-          stopDetails.push({
+          acc.push({
             type: "meeting",
             id: meeting.id,
             name: meeting.title,
@@ -374,7 +365,8 @@ export class RoutePlanningService {
           });
         }
       }
-    }
+      return acc;
+    }, Promise.resolve(stopDetails));
 
     if (stopDetails.length <= 2) {
       return this.buildRouteResult(stopDetails, returnToStart);
@@ -421,9 +413,12 @@ export class RoutePlanningService {
 
     if (includeColdCalls && currentLat && currentLng) {
       const suggestions = await this.coldCallSuggestions(userId, date, currentLat, currentLng, 3);
-      for (const suggestion of suggestions) {
-        stops.push({ id: suggestion.prospect.id, type: "prospect" });
-      }
+      stops.push(
+        ...suggestions.map((suggestion) => ({
+          id: suggestion.prospect.id,
+          type: "prospect" as const,
+        })),
+      );
     }
 
     const startLat = currentLat ?? (meetings[0]?.latitude ? Number(meetings[0].latitude) : 0);

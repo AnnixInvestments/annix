@@ -158,14 +158,11 @@ export function getCapabilityForSection(sectionType: string): string | undefined
  * Get all sections a supplier can access based on their capabilities
  */
 export function getSectionsForCapabilities(capabilities: string[]): string[] {
-  const sections: Set<string> = new Set();
-  for (const capability of capabilities) {
-    const capabilitySections = CAPABILITY_TO_SECTIONS[capability];
-    if (capabilitySections) {
-      capabilitySections.forEach((section) => sections.add(section));
-    }
-  }
-  return Array.from(sections);
+  return [
+    ...new Set(
+      capabilities.flatMap((capability) => CAPABILITY_TO_SECTIONS[capability] ?? []),
+    ),
+  ];
 }
 
 /**

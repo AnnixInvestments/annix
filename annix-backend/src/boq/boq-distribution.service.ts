@@ -239,20 +239,21 @@ export class BoqDistributionService {
     // Delete existing sections for this BOQ (in case of re-submission)
     await this.sectionRepository.delete({ boqId });
 
-    const sections: BoqSection[] = [];
+    const sections = Object.entries(DATA_KEY_TO_SECTION).reduce(
+      (acc, [dataKey, sectionType]) => {
+        const items = boqData[dataKey as keyof ConsolidatedBoqData];
 
-    for (const [dataKey, sectionType] of Object.entries(DATA_KEY_TO_SECTION)) {
-      const items = boqData[dataKey as keyof ConsolidatedBoqData];
+        if (!items || !Array.isArray(items) || items.length === 0) {
+          return acc;
+        }
 
-      if (items && Array.isArray(items) && items.length > 0) {
         const capabilityKey = BOQ_SECTION_TO_CAPABILITY[sectionType];
 
         if (!capabilityKey) {
           this.logger.warn(`No capability mapping for section type: ${sectionType}`);
-          continue;
+          return acc;
         }
 
-        // Calculate total weight for section
         const totalWeightKg = items.reduce((sum, item) => sum + (item.weightKg || 0), 0);
 
         const section = this.sectionRepository.create({
@@ -265,9 +266,10 @@ export class BoqDistributionService {
           itemCount: items.length,
         });
 
-        sections.push(section);
-      }
-    }
+        return [...acc, section];
+      },
+      [] as BoqSection[],
+    );
 
     if (sections.length > 0) {
       await this.sectionRepository.save(sections);
@@ -325,41 +327,39 @@ export class BoqDistributionService {
       relations: ["supplierProfile", "supplierProfile.user", "supplierProfile.company"],
     });
 
-    // Map suppliers to their capability keys
-    const supplierCapabilities = new Map<number, Set<string>>();
-
-    for (const cap of capabilities) {
+    const supplierCapabilities = capabilities.reduce((acc, cap) => {
       const capabilityKey = PRODUCT_CATEGORY_TO_CAPABILITY[cap.productCategory];
-      if (!capabilityKey) continue;
-
-      if (!supplierCapabilities.has(cap.supplierProfileId)) {
-        supplierCapabilities.set(cap.supplierProfileId, new Set());
+      if (!capabilityKey) {
+        return acc;
       }
-      supplierCapabilities.get(cap.supplierProfileId)!.add(capabilityKey);
-    }
 
-    // Create access records for matching suppliers
-    const accessRecords: BoqSupplierAccess[] = [];
+      const existing = acc.get(cap.supplierProfileId) ?? new Set<string>();
+      return new Map(acc).set(cap.supplierProfileId, new Set([...existing, capabilityKey]));
+    }, new Map<number, Set<string>>());
 
-    for (const [supplierProfileId, capabilityKeys] of supplierCapabilities) {
-      // Find which sections this supplier can access
-      const allowedSections = sections
-        .filter((s) => capabilityKeys.has(s.capabilityKey))
-        .map((s) => s.sectionType);
+    const accessRecords = [...supplierCapabilities.entries()].reduce(
+      (acc, [supplierProfileId, capabilityKeys]) => {
+        const allowedSections = sections
+          .filter((s) => capabilityKeys.has(s.capabilityKey))
+          .map((s) => s.sectionType);
 
-      if (allowedSections.length === 0) continue;
+        if (allowedSections.length === 0) {
+          return acc;
+        }
 
-      const access = this.accessRepository.create({
-        boqId,
-        supplierProfileId,
-        allowedSections,
-        status: SupplierBoqStatus.PENDING,
-        customerInfo,
-        projectInfo,
-      });
+        const access = this.accessRepository.create({
+          boqId,
+          supplierProfileId,
+          allowedSections,
+          status: SupplierBoqStatus.PENDING,
+          customerInfo,
+          projectInfo,
+        });
 
-      accessRecords.push(access);
-    }
+        return [...acc, access];
+      },
+      [] as BoqSupplierAccess[],
+    );
 
     if (accessRecords.length > 0) {
       await this.accessRepository.save(accessRecords);
@@ -387,46 +387,52 @@ export class BoqDistributionService {
 
     const supplierProfileMap = new Map(supplierProfiles.map((profile) => [profile.id, profile]));
 
-    let notifiedCount = 0;
-    const accessesToUpdate: BoqSupplierAccess[] = [];
+    const result = await accessRecords.reduce(
+      async (accPromise, access) => {
+        const acc = await accPromise;
+        try {
+          const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
 
-    for (const access of accessRecords) {
-      try {
-        const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
+          if (!supplierProfile?.user?.email) {
+            this.logger.warn(`Supplier profile ${access.supplierProfileId} has no email`);
+            return acc;
+          }
 
-        if (!supplierProfile?.user?.email) {
-          this.logger.warn(`Supplier profile ${access.supplierProfileId} has no email`);
-          continue;
+          const sectionTitles = access.allowedSections.map((s) => getSectionTitle(s));
+
+          const success = await this.emailService.sendSupplierBoqNotification(
+            supplierProfile.user.email,
+            supplierProfile.company?.tradingName ||
+              supplierProfile.company?.legalName ||
+              `${supplierProfile.firstName} ${supplierProfile.lastName}`,
+            access.projectInfo?.name || boq.title || "New Project",
+            boq.boqNumber,
+            sectionTitles,
+            access.customerInfo,
+          );
+
+          if (success) {
+            access.notificationSentAt = now().toJSDate();
+            return {
+              notifiedCount: acc.notifiedCount + 1,
+              accessesToUpdate: [...acc.accessesToUpdate, access],
+            };
+          }
+
+          return acc;
+        } catch (error) {
+          this.logger.error(`Failed to notify supplier ${access.supplierProfileId}:`, error);
+          return acc;
         }
+      },
+      Promise.resolve({ notifiedCount: 0, accessesToUpdate: [] as BoqSupplierAccess[] }),
+    );
 
-        const sectionTitles = access.allowedSections.map((s) => getSectionTitle(s));
-
-        const success = await this.emailService.sendSupplierBoqNotification(
-          supplierProfile.user.email,
-          supplierProfile.company?.tradingName ||
-            supplierProfile.company?.legalName ||
-            `${supplierProfile.firstName} ${supplierProfile.lastName}`,
-          access.projectInfo?.name || boq.title || "New Project",
-          boq.boqNumber,
-          sectionTitles,
-          access.customerInfo,
-        );
-
-        if (success) {
-          access.notificationSentAt = now().toJSDate();
-          accessesToUpdate.push(access);
-          notifiedCount++;
-        }
-      } catch (error) {
-        this.logger.error(`Failed to notify supplier ${access.supplierProfileId}:`, error);
-      }
+    if (result.accessesToUpdate.length > 0) {
+      await this.accessRepository.save(result.accessesToUpdate);
     }
 
-    if (accessesToUpdate.length > 0) {
-      await this.accessRepository.save(accessesToUpdate);
-    }
-
-    return notifiedCount;
+    return result.notifiedCount;
   }
 
   /**
@@ -836,13 +842,14 @@ export class BoqDistributionService {
 
     const supplierProfileMap = new Map(supplierProfiles.map((profile) => [profile.id, profile]));
 
-    let notifiedCount = 0;
-
-    for (const access of accessRecords) {
+    const notifiedCount = await accessRecords.reduce(async (accPromise, access) => {
+      const acc = await accPromise;
       try {
         const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
 
-        if (!supplierProfile?.user?.email) continue;
+        if (!supplierProfile?.user?.email) {
+          return acc;
+        }
 
         const sectionTitles = access.allowedSections.map((s) => getSectionTitle(s));
 
@@ -856,16 +863,15 @@ export class BoqDistributionService {
           sectionTitles,
         );
 
-        if (success) {
-          notifiedCount++;
-        }
+        return success ? acc + 1 : acc;
       } catch (error) {
         this.logger.error(
           `Failed to send update notification to supplier ${access.supplierProfileId}:`,
           error,
         );
+        return acc;
       }
-    }
+    }, Promise.resolve(0));
 
     return notifiedCount;
   }
@@ -902,30 +908,34 @@ export class BoqDistributionService {
     });
 
     const sectionsByBoqId = allBoqSections.reduce((acc, section) => {
-      const sections = acc.get(section.boqId) || [];
-      sections.push(section.sectionType);
-      acc.set(section.boqId, sections);
-      return acc;
+      const existing = acc.get(section.boqId) || [];
+      return new Map(acc).set(section.boqId, [...existing, section.sectionType]);
     }, new Map<number, string[]>());
 
-    const accessesToUpdate: BoqSupplierAccess[] = [];
-    const accessesToRemove: BoqSupplierAccess[] = [];
+    const { accessesToUpdate, accessesToRemove } = accessRecords.reduce(
+      (acc, access) => {
+        const boqSectionTypes = sectionsByBoqId.get(access.boqId) || [];
+        const newAllowedSections = boqSectionTypes.filter((sectionType) =>
+          capabilitySections.includes(sectionType),
+        );
 
-    for (const access of accessRecords) {
-      const boqSectionTypes = sectionsByBoqId.get(access.boqId) || [];
-      const newAllowedSections = boqSectionTypes.filter((sectionType) =>
-        capabilitySections.includes(sectionType),
-      );
+        if (newAllowedSections.length === 0) {
+          return { ...acc, accessesToRemove: [...acc.accessesToRemove, access] };
+        } else if (
+          JSON.stringify(newAllowedSections.sort()) !==
+          JSON.stringify(access.allowedSections.sort())
+        ) {
+          access.allowedSections = newAllowedSections;
+          return { ...acc, accessesToUpdate: [...acc.accessesToUpdate, access] };
+        }
 
-      if (newAllowedSections.length === 0) {
-        accessesToRemove.push(access);
-      } else if (
-        JSON.stringify(newAllowedSections.sort()) !== JSON.stringify(access.allowedSections.sort())
-      ) {
-        access.allowedSections = newAllowedSections;
-        accessesToUpdate.push(access);
-      }
-    }
+        return acc;
+      },
+      {
+        accessesToUpdate: [] as BoqSupplierAccess[],
+        accessesToRemove: [] as BoqSupplierAccess[],
+      },
+    );
 
     if (accessesToRemove.length > 0) {
       await this.accessRepository.remove(accessesToRemove);

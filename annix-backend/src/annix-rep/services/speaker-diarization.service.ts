@@ -144,31 +144,26 @@ export class SpeakerDiarizationService {
     frameSize: number,
     hopSize: number,
   ): AudioFrame[] {
-    const frames: AudioFrame[] = [];
     const frameDuration = frameSize / sampleRate;
-    const hopDuration = hopSize / sampleRate;
+    const frameCount = Math.floor((samples.length - frameSize) / hopSize) + 1;
 
-    for (let i = 0; i + frameSize <= samples.length; i += hopSize) {
+    return Array.from({ length: Math.max(0, frameCount) }, (_, idx) => {
+      const i = idx * hopSize;
       const frameSamples = samples.slice(i, i + frameSize);
       const energy = this.computeEnergy(frameSamples);
       const startTime = i / sampleRate;
 
-      frames.push({
+      return {
         startTime,
         endTime: startTime + frameDuration,
         energy,
         samples: frameSamples,
-      });
-    }
-
-    return frames;
+      };
+    });
   }
 
   private computeEnergy(samples: Float32Array): number {
-    let sum = 0;
-    for (let i = 0; i < samples.length; i++) {
-      sum += samples[i] * samples[i];
-    }
+    const sum = Array.from(samples).reduce((acc, sample) => acc + sample * sample, 0);
     return Math.sqrt(sum / samples.length);
   }
 
@@ -199,12 +194,9 @@ export class SpeakerDiarizationService {
           avgEnergy: frame.energy,
         });
       } else {
-        let lowestEnergySpeaker = speakers[0];
-        for (const speaker of speakers) {
-          if (speaker.avgEnergy < lowestEnergySpeaker.avgEnergy) {
-            lowestEnergySpeaker = speaker;
-          }
-        }
+        const lowestEnergySpeaker = speakers.reduce((lowest, speaker) =>
+          speaker.avgEnergy < lowest.avgEnergy ? speaker : lowest,
+        );
         lowestEnergySpeaker.frames.push(frame);
       }
     }
@@ -216,11 +208,10 @@ export class SpeakerDiarizationService {
     if (speaker.frames.length === 0) return 0;
 
     const recentFrames = speaker.frames.slice(-10);
-    let totalCorrelation = 0;
-
-    for (const speakerFrame of recentFrames) {
-      totalCorrelation += this.pearsonCorrelation(frame.samples, speakerFrame.samples);
-    }
+    const totalCorrelation = recentFrames.reduce(
+      (sum, speakerFrame) => sum + this.pearsonCorrelation(frame.samples, speakerFrame.samples),
+      0,
+    );
 
     return totalCorrelation / recentFrames.length;
   }
@@ -254,71 +245,70 @@ export class SpeakerDiarizationService {
   }
 
   private buildSegments(speakers: SpeakerProfile[], minDuration: number): SpeakerSegment[] {
-    const allFrames: Array<{ frame: AudioFrame; speakerId: string }> = [];
-
-    for (const speaker of speakers) {
-      for (const frame of speaker.frames) {
-        allFrames.push({ frame, speakerId: speaker.id });
-      }
-    }
+    const allFrames = speakers.flatMap((speaker) =>
+      speaker.frames.map((frame) => ({ frame, speakerId: speaker.id })),
+    );
 
     allFrames.sort((a, b) => a.frame.startTime - b.frame.startTime);
 
-    const segments: SpeakerSegment[] = [];
-    let currentSegment: SpeakerSegment | null = null;
-
-    for (const { frame, speakerId } of allFrames) {
-      if (!currentSegment || currentSegment.speakerLabel !== speakerId) {
-        if (currentSegment) {
-          const duration = currentSegment.endTime - currentSegment.startTime;
-          if (duration >= minDuration) {
-            segments.push(currentSegment);
+    const { segments, current } = allFrames.reduce(
+      (acc, { frame, speakerId }) => {
+        if (!acc.current || acc.current.speakerLabel !== speakerId) {
+          if (acc.current) {
+            const duration = acc.current.endTime - acc.current.startTime;
+            if (duration >= minDuration) {
+              return {
+                segments: [...acc.segments, acc.current],
+                current: {
+                  startTime: frame.startTime,
+                  endTime: frame.endTime,
+                  speakerLabel: speakerId,
+                  confidence: null,
+                },
+              };
+            }
           }
+          return {
+            segments: acc.segments,
+            current: {
+              startTime: frame.startTime,
+              endTime: frame.endTime,
+              speakerLabel: speakerId,
+              confidence: null,
+            },
+          };
         }
-
-        currentSegment = {
-          startTime: frame.startTime,
-          endTime: frame.endTime,
-          speakerLabel: speakerId,
-          confidence: null,
+        return {
+          segments: acc.segments,
+          current: { ...acc.current, endTime: frame.endTime },
         };
-      } else {
-        currentSegment.endTime = frame.endTime;
-      }
-    }
+      },
+      { segments: [] as SpeakerSegment[], current: null as SpeakerSegment | null },
+    );
 
-    if (currentSegment) {
-      const duration = currentSegment.endTime - currentSegment.startTime;
-      if (duration >= minDuration) {
-        segments.push(currentSegment);
-      }
-    }
+    const finalSegments =
+      current && current.endTime - current.startTime >= minDuration
+        ? [...segments, current]
+        : segments;
 
-    return this.mergeAdjacentSegments(segments, 0.3);
+    return this.mergeAdjacentSegments(finalSegments, 0.3);
   }
 
   private mergeAdjacentSegments(segments: SpeakerSegment[], maxGap: number): SpeakerSegment[] {
     if (segments.length <= 1) return segments;
 
-    const merged: SpeakerSegment[] = [];
-    let current = { ...segments[0] };
-
-    for (let i = 1; i < segments.length; i++) {
-      const next = segments[i];
-
-      if (
-        next.speakerLabel === current.speakerLabel &&
-        next.startTime - current.endTime <= maxGap
-      ) {
-        current.endTime = next.endTime;
-      } else {
-        merged.push(current);
-        current = { ...next };
-      }
-    }
-
-    merged.push(current);
-
-    return merged;
+    return segments.slice(1).reduce(
+      (acc, next) => {
+        const current = acc[acc.length - 1];
+        if (
+          next.speakerLabel === current.speakerLabel &&
+          next.startTime - current.endTime <= maxGap
+        ) {
+          return [...acc.slice(0, -1), { ...current, endTime: next.endTime }];
+        }
+        return [...acc, { ...next }];
+      },
+      [{ ...segments[0] }] as SpeakerSegment[],
+    );
   }
 }

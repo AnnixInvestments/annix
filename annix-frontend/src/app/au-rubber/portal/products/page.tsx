@@ -147,17 +147,11 @@ export default function AuRubberProductsPage() {
   const handleBulkDelete = async () => {
     setShowBulkDeleteModal(false);
     const ids = Array.from(selectedProducts);
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const id of ids) {
-      try {
-        await auRubberApiClient.deleteProduct(id);
-        successCount++;
-      } catch {
-        failCount++;
-      }
-    }
+    const results = await Promise.allSettled(
+      ids.map((id) => auRubberApiClient.deleteProduct(id)),
+    );
+    const successCount = results.filter((r) => r.status === "fulfilled").length;
+    const failCount = results.filter((r) => r.status === "rejected").length;
 
     if (successCount > 0) {
       showToast(

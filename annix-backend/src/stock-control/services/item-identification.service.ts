@@ -99,30 +99,34 @@ If you cannot identify any items or the image is unclear, return an empty items 
 
     const uniqueTerms = [...new Set(searchTerms)];
 
-    const matchingItems: Map<number, { item: StockItem; score: number }> = new Map();
+    const validTerms = uniqueTerms.filter((term) => term && term.length >= 2);
 
-    for (const term of uniqueTerms) {
-      if (!term || term.length < 2) continue;
+    const matchingItems = await validTerms.reduce(
+      async (accPromise, term) => {
+        const acc = await accPromise;
+        const items = await this.stockItemRepo.find({
+          where: [
+            { companyId, name: ILike(`%${term}%`) },
+            { companyId, category: ILike(`%${term}%`) },
+            { companyId, description: ILike(`%${term}%`) },
+          ],
+          take: 10,
+        });
 
-      const items = await this.stockItemRepo.find({
-        where: [
-          { companyId, name: ILike(`%${term}%`) },
-          { companyId, category: ILike(`%${term}%`) },
-          { companyId, description: ILike(`%${term}%`) },
-        ],
-        take: 10,
-      });
-
-      for (const item of items) {
-        const existing = matchingItems.get(item.id);
-        const termScore = this.calculateSimilarity(term, item.name);
-        if (existing) {
-          existing.score = Math.max(existing.score, termScore);
-        } else {
-          matchingItems.set(item.id, { item, score: termScore });
-        }
-      }
-    }
+        return items.reduce((innerAcc, item) => {
+          const existing = innerAcc.get(item.id);
+          const termScore = this.calculateSimilarity(term, item.name);
+          if (existing) {
+            return new Map([
+              ...innerAcc,
+              [item.id, { item, score: Math.max(existing.score, termScore) }],
+            ]);
+          }
+          return new Map([...innerAcc, [item.id, { item, score: termScore }]]);
+        }, acc);
+      },
+      Promise.resolve(new Map<number, { item: StockItem; score: number }>()),
+    );
 
     return Array.from(matchingItems.values())
       .sort((a, b) => b.score - a.score)
@@ -148,14 +152,9 @@ If you cannot identify any items or the image is unclear, return an empty items 
     const termWords = normalizedTerm.split(/\s+/);
     const textWords = normalizedText.split(/\s+/);
 
-    let matchedWords = 0;
-    for (const termWord of termWords) {
-      if (
-        textWords.some((textWord) => textWord.includes(termWord) || termWord.includes(textWord))
-      ) {
-        matchedWords++;
-      }
-    }
+    const matchedWords = termWords.filter((termWord) =>
+      textWords.some((textWord) => textWord.includes(termWord) || termWord.includes(textWord)),
+    ).length;
 
     return matchedWords / Math.max(termWords.length, textWords.length);
   }

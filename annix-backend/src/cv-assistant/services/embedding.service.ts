@@ -167,20 +167,19 @@ export class EmbeddingService {
       .andWhere("(c.raw_cv_text IS NOT NULL OR c.extracted_data IS NOT NULL)")
       .getMany();
 
-    let processed = 0;
-    let failed = 0;
+    const result = await candidates.reduce(
+      async (accPromise, candidate) => {
+        const acc = await accPromise;
+        const success = await this.embedCandidate(candidate.id);
+        return success
+          ? { ...acc, processed: acc.processed + 1 }
+          : { ...acc, failed: acc.failed + 1 };
+      },
+      Promise.resolve({ processed: 0, failed: 0 }),
+    );
 
-    for (const candidate of candidates) {
-      const success = await this.embedCandidate(candidate.id);
-      if (success) {
-        processed += 1;
-      } else {
-        failed += 1;
-      }
-    }
-
-    this.logger.log(`Backfilled embeddings: ${processed} processed, ${failed} failed`);
-    return { processed, failed };
+    this.logger.log(`Backfilled embeddings: ${result.processed} processed, ${result.failed} failed`);
+    return result;
   }
 
   async backfillExternalJobEmbeddings(): Promise<{ processed: number; failed: number }> {
@@ -189,20 +188,19 @@ export class EmbeddingService {
       .where("j.embedding IS NULL")
       .getMany();
 
-    let processed = 0;
-    let failed = 0;
+    const result = await jobs.reduce(
+      async (accPromise, job) => {
+        const acc = await accPromise;
+        const success = await this.embedExternalJob(job.id);
+        return success
+          ? { ...acc, processed: acc.processed + 1 }
+          : { ...acc, failed: acc.failed + 1 };
+      },
+      Promise.resolve({ processed: 0, failed: 0 }),
+    );
 
-    for (const job of jobs) {
-      const success = await this.embedExternalJob(job.id);
-      if (success) {
-        processed += 1;
-      } else {
-        failed += 1;
-      }
-    }
-
-    this.logger.log(`Backfilled job embeddings: ${processed} processed, ${failed} failed`);
-    return { processed, failed };
+    this.logger.log(`Backfilled job embeddings: ${result.processed} processed, ${result.failed} failed`);
+    return result;
   }
 
   dimensions(): number {

@@ -29,7 +29,8 @@ export class JobIngestionService {
 
     const dueForIngestion = sources.filter((source) => this.isDueForIngestion(source));
 
-    for (const source of dueForIngestion) {
+    await dueForIngestion.reduce(async (prev, source) => {
+      await prev;
       try {
         await this.ingestFromSource(source);
       } catch (error) {
@@ -37,7 +38,7 @@ export class JobIngestionService {
           `Failed to ingest from source ${source.name} (${source.id}): ${error instanceof Error ? error.message : String(error)}`,
         );
       }
-    }
+    }, Promise.resolve());
   }
 
   async ingestFromSource(source: JobMarketSource): Promise<{ ingested: number; skipped: number }> {
@@ -55,21 +56,23 @@ export class JobIngestionService {
       return { ingested: 0, skipped: 0 };
     }
 
-    let totalIngested = 0;
-    let totalSkipped = 0;
+    const countryCategories = source.countryCodes.flatMap((country) => {
+      const categories =
+        source.categories.length > 0 ? source.categories : [undefined as string | undefined];
+      return categories.map((category) => ({ country, category }));
+    });
 
-    for (const country of source.countryCodes) {
-      const categories = source.categories.length > 0 ? source.categories : [undefined];
-
-      for (const category of categories) {
+    const totals = await countryCategories.reduce(
+      async (accPromise, { country, category }) => {
+        const acc = await accPromise;
         if (source.requestsToday >= source.rateLimitPerDay) {
-          break;
+          return acc;
         }
 
         try {
           const { jobs } = await this.adzunaService.searchJobs(
-            source.apiId,
-            source.apiKeyEncrypted,
+            source.apiId!,
+            source.apiKeyEncrypted!,
             country,
             {
               category: category ?? undefined,
@@ -81,22 +84,26 @@ export class JobIngestionService {
           source.requestsToday += 1;
 
           const result = await this.upsertJobs(jobs, source, country);
-          totalIngested += result.ingested;
-          totalSkipped += result.skipped;
+          return {
+            ingested: acc.ingested + result.ingested,
+            skipped: acc.skipped + result.skipped,
+          };
         } catch (error) {
           this.logger.error(
             `Error fetching ${category ?? "all"} jobs for ${country}: ${error instanceof Error ? error.message : String(error)}`,
           );
+          return acc;
         }
-      }
-    }
+      },
+      Promise.resolve({ ingested: 0, skipped: 0 }),
+    );
 
     source.lastIngestedAt = DateTime.now().toJSDate();
     await this.sourceRepo.save(source);
 
-    this.logger.log(`Source ${source.name}: ingested ${totalIngested}, skipped ${totalSkipped}`);
+    this.logger.log(`Source ${source.name}: ingested ${totals.ingested}, skipped ${totals.skipped}`);
 
-    return { ingested: totalIngested, skipped: totalSkipped };
+    return totals;
   }
 
   async triggerIngestion(sourceId: number): Promise<{ ingested: number; skipped: number }> {

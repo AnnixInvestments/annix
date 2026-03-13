@@ -170,24 +170,24 @@ export class TranscriptionService {
     return whisperSegments.map((whisperSeg) => {
       const midPoint = (whisperSeg.start_time + whisperSeg.end_time) / 2;
 
-      let bestMatch: SpeakerSegment | null = null;
-      let bestOverlap = 0;
+      const midPointMatch = speakerSegments.find(
+        (seg) => midPoint >= seg.startTime && midPoint <= seg.endTime,
+      );
 
-      for (const speakerSeg of speakerSegments) {
-        const overlapStart = Math.max(whisperSeg.start_time, speakerSeg.startTime);
-        const overlapEnd = Math.min(whisperSeg.end_time, speakerSeg.endTime);
-        const overlap = Math.max(0, overlapEnd - overlapStart);
-
-        if (overlap > bestOverlap) {
-          bestOverlap = overlap;
-          bestMatch = speakerSeg;
-        }
-
-        if (midPoint >= speakerSeg.startTime && midPoint <= speakerSeg.endTime) {
-          bestMatch = speakerSeg;
-          break;
-        }
-      }
+      const bestMatch =
+        midPointMatch ??
+        speakerSegments.reduce<{ match: SpeakerSegment | null; overlap: number }>(
+          (best, speakerSeg) => {
+            const overlapStart = Math.max(whisperSeg.start_time, speakerSeg.startTime);
+            const overlapEnd = Math.min(whisperSeg.end_time, speakerSeg.endTime);
+            const overlap = Math.max(0, overlapEnd - overlapStart);
+            if (overlap > best.overlap) {
+              return { match: speakerSeg, overlap };
+            }
+            return best;
+          },
+          { match: null, overlap: 0 },
+        ).match;
 
       const rawLabel = bestMatch?.speakerLabel ?? "Speaker";
       const displayLabel = speakerLabels[rawLabel] ?? rawLabel;
@@ -241,17 +241,16 @@ export class TranscriptionService {
 
     const topics = new Set<string>();
 
-    for (const sentence of sentences) {
-      for (const pattern of topicPatterns) {
-        const matches = sentence.matchAll(pattern);
-        for (const match of matches) {
+    sentences.forEach((sentence) => {
+      topicPatterns.forEach((pattern) => {
+        Array.from(sentence.matchAll(pattern)).forEach((match) => {
           const topic = match[2]?.trim();
           if (topic && topic.length > 3 && topic.length < 100) {
             topics.add(this.capitalizeFirst(topic));
           }
-        }
-      }
-    }
+        });
+      });
+    });
 
     const keywordTopics = this.extractKeywordTopics(sentences.join(" "));
     keywordTopics.forEach((t) => topics.add(t));
@@ -281,40 +280,35 @@ export class TranscriptionService {
       "requirement",
     ];
 
-    const found: string[] = [];
     const lowerText = text.toLowerCase();
 
-    for (const keyword of businessKeywords) {
-      if (lowerText.includes(keyword)) {
-        found.push(this.capitalizeFirst(keyword));
-      }
-    }
-
-    return found.slice(0, 5);
+    return businessKeywords
+      .filter((keyword) => lowerText.includes(keyword))
+      .map((keyword) => this.capitalizeFirst(keyword))
+      .slice(0, 5);
   }
 
   private extractQuestions(sentences: string[]): string[] {
-    const questions: string[] = [];
+    const questionStarters = [
+      /^(how|what|when|where|why|who|which|can|could|would|will|do|does|is|are|have|has)\b/i,
+    ];
 
-    for (const sentence of sentences) {
+    const questions = sentences.reduce<string[]>((acc, sentence) => {
       const trimmed = sentence.trim();
 
       if (trimmed.includes("?")) {
-        questions.push(trimmed);
-        continue;
+        return [...acc, trimmed];
       }
 
-      const questionStarters = [
-        /^(how|what|when|where|why|who|which|can|could|would|will|do|does|is|are|have|has)\b/i,
-      ];
-
-      for (const pattern of questionStarters) {
-        if (pattern.test(trimmed) && trimmed.length > 10) {
-          questions.push(`${trimmed}?`);
-          break;
-        }
+      const isQuestion = questionStarters.some(
+        (pattern) => pattern.test(trimmed) && trimmed.length > 10,
+      );
+      if (isQuestion) {
+        return [...acc, `${trimmed}?`];
       }
-    }
+
+      return acc;
+    }, []);
 
     return questions.slice(0, 15);
   }
@@ -326,18 +320,10 @@ export class TranscriptionService {
       /\b(competitor|alternative|other option|consider(?:ing)?)\b/i,
     ];
 
-    const objections: string[] = [];
-
-    for (const sentence of sentences) {
-      for (const pattern of objectionPatterns) {
-        if (pattern.test(sentence)) {
-          objections.push(sentence.trim());
-          break;
-        }
-      }
-    }
-
-    return objections.slice(0, 10);
+    return sentences
+      .filter((sentence) => objectionPatterns.some((pattern) => pattern.test(sentence)))
+      .map((sentence) => sentence.trim())
+      .slice(0, 10);
   }
 
   private extractActionItems(sentences: string[]): ActionItem[] {
@@ -352,33 +338,22 @@ export class TranscriptionService {
       /\b([A-Z][a-z]+)\s+to\s+(send|email|call|follow up|schedule)/,
     ];
 
-    const actionItems: ActionItem[] = [];
+    return sentences
+      .filter((sentence) => actionPatterns.some((pattern) => pattern.test(sentence)))
+      .map((sentence) => {
+        const assigneeMatch = assigneePatterns.reduce<RegExpMatchArray | null>(
+          (found, pattern) => found ?? sentence.match(pattern),
+          null,
+        );
 
-    for (const sentence of sentences) {
-      for (const pattern of actionPatterns) {
-        if (pattern.test(sentence)) {
-          let assignee: string | null = null;
-
-          for (const assigneePattern of assigneePatterns) {
-            const match = sentence.match(assigneePattern);
-            if (match) {
-              assignee = match[1];
-              break;
-            }
-          }
-
-          actionItems.push({
-            task: sentence.trim(),
-            assignee,
-            dueDate: null,
-            extracted: true,
-          });
-          break;
-        }
-      }
-    }
-
-    return actionItems.slice(0, 15);
+        return {
+          task: sentence.trim(),
+          assignee: assigneeMatch?.[1] ?? null,
+          dueDate: null,
+          extracted: true,
+        };
+      })
+      .slice(0, 15);
   }
 
   private extractKeyPoints(sentences: string[]): string[] {
@@ -388,16 +363,11 @@ export class TranscriptionService {
       /\b(bottom line|in summary|to summarize|in conclusion|the point is)\b/i,
     ];
 
-    const keyPoints: string[] = [];
-
-    for (const sentence of sentences) {
-      for (const pattern of keyPointIndicators) {
-        if (pattern.test(sentence) && sentence.trim().length > 20) {
-          keyPoints.push(sentence.trim());
-          break;
-        }
-      }
-    }
+    const keyPoints = sentences
+      .filter((sentence) =>
+        keyPointIndicators.some((pattern) => pattern.test(sentence) && sentence.trim().length > 20),
+      )
+      .map((sentence) => sentence.trim());
 
     if (keyPoints.length < 3 && sentences.length > 5) {
       const longSentences = sentences.filter((s) => s.trim().length > 50).slice(0, 3);
@@ -464,14 +434,16 @@ export class TranscriptionService {
     const lowerText = text.toLowerCase();
     const words = lowerText.split(/\s+/);
 
-    let positiveCount = 0;
-    let negativeCount = 0;
-
-    for (const word of words) {
-      const cleanWord = word.replace(/[^a-z]/g, "");
-      if (positiveWords.includes(cleanWord)) positiveCount++;
-      if (negativeWords.includes(cleanWord)) negativeCount++;
-    }
+    const { positiveCount, negativeCount } = words.reduce(
+      (counts, word) => {
+        const cleanWord = word.replace(/[^a-z]/g, "");
+        return {
+          positiveCount: counts.positiveCount + (positiveWords.includes(cleanWord) ? 1 : 0),
+          negativeCount: counts.negativeCount + (negativeWords.includes(cleanWord) ? 1 : 0),
+        };
+      },
+      { positiveCount: 0, negativeCount: 0 },
+    );
 
     const total = positiveCount + negativeCount;
 
@@ -585,19 +557,19 @@ export class TranscriptionService {
       },
     ];
 
-    for (const signal of buyingSignals) {
-      if (signal.pattern.test(lowerText)) {
+    buyingSignals
+      .filter((signal) => signal.pattern.test(lowerText))
+      .forEach((signal) => {
         score += signal.weight;
         positiveFactors.push(signal.label);
-      }
-    }
+      });
 
-    for (const signal of warningSignals) {
-      if (signal.pattern.test(lowerText)) {
+    warningSignals
+      .filter((signal) => signal.pattern.test(lowerText))
+      .forEach((signal) => {
         score += signal.weight;
         negativeFactors.push(signal.label);
-      }
-    }
+      });
 
     if (sentiment === "positive") {
       score += 10;
@@ -726,18 +698,15 @@ export class TranscriptionService {
 
     return objections.map((objection) => {
       const lowerObjection = objection.toLowerCase();
-      let matchedCategory: ObjectionResponse["category"] = "general";
-      let suggestedResponse =
-        "Thank you for raising this point. Let's discuss how we can address your specific needs and find a solution that works for you.";
+      const matchedEntry = Object.entries(responseTemplates).find(([keyword]) =>
+        lowerObjection.includes(keyword),
+      );
 
-      for (const [keyword, template] of Object.entries(responseTemplates)) {
-        if (lowerObjection.includes(keyword)) {
-          matchedCategory = template.category;
-          suggestedResponse =
-            template.responses[Math.floor(Math.random() * template.responses.length)];
-          break;
-        }
-      }
+      const matchedCategory: ObjectionResponse["category"] =
+        matchedEntry?.[1].category ?? "general";
+      const suggestedResponse = matchedEntry
+        ? matchedEntry[1].responses[Math.floor(Math.random() * matchedEntry[1].responses.length)]
+        : "Thank you for raising this point. Let's discuss how we can address your specific needs and find a solution that works for you.";
 
       return {
         objection,

@@ -497,9 +497,9 @@ export class RfqService {
     const savedRfq = await this.rfqRepository.save(rfq);
     this.logger.log(`Created unified RFQ ${rfqNumber} with ${dto.items.length} items`);
 
-    let lineNumber = 0;
-    for (const item of dto.items) {
-      lineNumber++;
+    await dto.items.reduce(async (prevPromise, item, index) => {
+      await prevPromise;
+      const lineNumber = index + 1;
 
       if (item.itemType === "straight_pipe" && item.straightPipe) {
         const calculation = await this.calculateStraightPipeRequirements(item.straightPipe);
@@ -865,7 +865,7 @@ export class RfqService {
         await this.tankChuteRfqRepository.save(tankChuteRfq);
         this.logger.log(`Created tank/chute item #${lineNumber}: ${item.description}`);
       }
-    }
+    }, Promise.resolve());
 
     const finalRfq = await this.rfqRepository.findOne({
       where: { id: savedRfq.id },
@@ -882,7 +882,7 @@ export class RfqService {
       ],
     });
 
-    return { rfq: finalRfq!, itemsCreated: lineNumber };
+    return { rfq: finalRfq!, itemsCreated: dto.items.length };
   }
 
   async updateUnifiedRfq(
@@ -926,9 +926,9 @@ export class RfqService {
     const savedRfq = await this.rfqRepository.save(existingRfq);
     this.logger.log(`Updated RFQ ${existingRfq.rfqNumber} with ${dto.items.length} new items`);
 
-    let lineNumber = 0;
-    for (const item of dto.items) {
-      lineNumber++;
+    await dto.items.reduce(async (prevPromise, item, index) => {
+      await prevPromise;
+      const lineNumber = index + 1;
 
       if (item.itemType === "straight_pipe" && item.straightPipe) {
         const calculation = await this.calculateStraightPipeRequirements(item.straightPipe);
@@ -1286,7 +1286,7 @@ export class RfqService {
 
         await this.tankChuteRfqRepository.save(tankChuteRfq);
       }
-    }
+    }, Promise.resolve());
 
     const finalRfq = await this.rfqRepository.findOne({
       where: { id: savedRfq.id },
@@ -1303,7 +1303,7 @@ export class RfqService {
       ],
     });
 
-    return { rfq: finalRfq!, itemsUpdated: lineNumber };
+    return { rfq: finalRfq!, itemsUpdated: dto.items.length };
   }
 
   private async createRfqItem(params: {
@@ -2226,9 +2226,6 @@ export class RfqService {
 
     this.logger.log(`Notifying suppliers of RFQ update for ${rfq.rfqNumber}`);
 
-    let suppliersNotified = 0;
-    let suppliersSkipped = 0;
-
     const boqs = await this.boqRepository.find({
       where: { rfq: { id: rfqId } },
     });
@@ -2263,44 +2260,49 @@ export class RfqService {
 
     const supplierProfileMap = new Map(supplierProfiles.map((profile) => [profile.id, profile]));
 
-    for (const access of allSupplierAccessRecords) {
-      try {
-        const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
+    const counts = await allSupplierAccessRecords.reduce(
+      async (accPromise, access) => {
+        const acc = await accPromise;
+        try {
+          const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
 
-        if (!supplierProfile?.user?.email) {
-          this.logger.warn(`Supplier profile ${access.supplierProfileId} has no email - skipping`);
-          suppliersSkipped++;
-          continue;
+          if (!supplierProfile?.user?.email) {
+            this.logger.warn(
+              `Supplier profile ${access.supplierProfileId} has no email - skipping`,
+            );
+            return { ...acc, skipped: acc.skipped + 1 };
+          }
+
+          const supplierName =
+            supplierProfile.company?.tradingName ||
+            supplierProfile.company?.legalName ||
+            `${supplierProfile.firstName} ${supplierProfile.lastName}`;
+
+          const success = await this.emailService.sendRfqUpdateNotification(
+            supplierProfile.user.email,
+            supplierName,
+            rfq.projectName,
+            rfq.rfqNumber,
+          );
+
+          if (success) {
+            this.logger.log(`Notified supplier ${supplierProfile.user.email} of RFQ update`);
+            return { ...acc, notified: acc.notified + 1 };
+          }
+
+          return { ...acc, skipped: acc.skipped + 1 };
+        } catch (error) {
+          this.logger.error(`Failed to notify supplier ${access.supplierProfileId}:`, error);
+          return { ...acc, skipped: acc.skipped + 1 };
         }
-
-        const supplierName =
-          supplierProfile.company?.tradingName ||
-          supplierProfile.company?.legalName ||
-          `${supplierProfile.firstName} ${supplierProfile.lastName}`;
-
-        const success = await this.emailService.sendRfqUpdateNotification(
-          supplierProfile.user.email,
-          supplierName,
-          rfq.projectName,
-          rfq.rfqNumber,
-        );
-
-        if (success) {
-          suppliersNotified++;
-          this.logger.log(`Notified supplier ${supplierProfile.user.email} of RFQ update`);
-        } else {
-          suppliersSkipped++;
-        }
-      } catch (error) {
-        this.logger.error(`Failed to notify supplier ${access.supplierProfileId}:`, error);
-        suppliersSkipped++;
-      }
-    }
-
-    this.logger.log(
-      `RFQ update notification complete: ${suppliersNotified} notified, ${suppliersSkipped} skipped`,
+      },
+      Promise.resolve({ notified: 0, skipped: 0 }),
     );
 
-    return { suppliersNotified, suppliersSkipped };
+    this.logger.log(
+      `RFQ update notification complete: ${counts.notified} notified, ${counts.skipped} skipped`,
+    );
+
+    return { suppliersNotified: counts.notified, suppliersSkipped: counts.skipped };
   }
 }

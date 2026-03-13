@@ -125,27 +125,24 @@ function detectHeaders(firstRow: Record<string, unknown>): Record<string, string
 }
 
 function extractString(row: Record<string, unknown>, possibleKeys: string[]): string | null {
-  for (const key of possibleKeys) {
+  const matchedKey = possibleKeys.find((key) => {
     const value = row[key];
-    if (value !== null && value !== undefined && String(value).trim()) {
-      return String(value).trim();
-    }
-  }
-  return null;
+    return value !== null && value !== undefined && String(value).trim();
+  });
+  return matchedKey ? String(row[matchedKey]).trim() : null;
 }
 
 function extractNumber(row: Record<string, unknown>, possibleKeys: string[]): number | null {
-  for (const key of possibleKeys) {
+  return possibleKeys.reduce<number | null>((found, key) => {
+    if (found !== null) return found;
     const value = row[key];
-    if (value !== null && value !== undefined) {
-      const strValue = String(value)
-        .replace(/[R$,\s]/g, "")
-        .trim();
-      const num = parseFloat(strValue);
-      if (!Number.isNaN(num)) return num;
-    }
-  }
-  return null;
+    if (value === null || value === undefined) return null;
+    const strValue = String(value)
+      .replace(/[R$,\s]/g, "")
+      .trim();
+    const num = parseFloat(strValue);
+    return Number.isNaN(num) ? null : num;
+  }, null);
 }
 
 export function ProductImportModal(props: ProductImportModalProps) {
@@ -177,31 +174,40 @@ export function ProductImportModal(props: ProductImportModalProps) {
     setError(null);
 
     try {
-      const allLines: AnalyzedProductLine[] = [];
-      const analyzedFiles: AnalyzedProductData[] = [];
+      const { allLines, analyzedFiles } = await selectedFiles.reduce(
+        async (accPromise, file) => {
+          const acc = await accPromise;
+          const isExcel =
+            file.name.toLowerCase().endsWith(".xlsx") || file.name.toLowerCase().endsWith(".xls");
 
-      for (const file of selectedFiles) {
-        const isExcel =
-          file.name.toLowerCase().endsWith(".xlsx") || file.name.toLowerCase().endsWith(".xls");
+          if (isExcel) {
+            const lines = await parseExcelClientSide(file);
+            return {
+              allLines: [...acc.allLines, ...lines],
+              analyzedFiles: [
+                ...acc.analyzedFiles,
+                {
+                  filename: file.name,
+                  fileType: "excel" as const,
+                  lines,
+                  confidence: lines.length > 0 ? 0.9 : 0,
+                  errors: [],
+                },
+              ],
+            };
+          }
 
-        if (isExcel) {
-          const lines = await parseExcelClientSide(file);
-          allLines.push(...lines);
-          analyzedFiles.push({
-            filename: file.name,
-            fileType: "excel",
-            lines,
-            confidence: lines.length > 0 ? 0.9 : 0,
-            errors: [],
-          });
-        } else {
-          const result = await auRubberApiClient.analyzeProductFiles([file]);
-          result.files.forEach((f) => {
-            allLines.push(...f.lines);
-            analyzedFiles.push(f);
-          });
-        }
-      }
+          const apiResult = await auRubberApiClient.analyzeProductFiles([file]);
+          return {
+            allLines: [...acc.allLines, ...apiResult.files.flatMap((f) => f.lines)],
+            analyzedFiles: [...acc.analyzedFiles, ...apiResult.files],
+          };
+        },
+        Promise.resolve({
+          allLines: [] as AnalyzedProductLine[],
+          analyzedFiles: [] as AnalyzedProductData[],
+        }),
+      );
 
       const result: AnalyzeProductFilesResult = {
         files: analyzedFiles,

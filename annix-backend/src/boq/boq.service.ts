@@ -479,10 +479,9 @@ export class BoqService {
     });
 
     const existingIds = new Set(existingItems.map((i) => i.id));
-    for (const id of dto.itemIds) {
-      if (!existingIds.has(id)) {
-        throw new BadRequestException(`Line item ${id} does not belong to this BOQ`);
-      }
+    const invalidId = dto.itemIds.find((id) => !existingIds.has(id));
+    if (invalidId) {
+      throw new BadRequestException(`Line item ${invalidId} does not belong to this BOQ`);
     }
 
     const lineNumberCases = dto.itemIds.map((id, i) => `WHEN id = ${id} THEN ${i + 1}`).join(" ");

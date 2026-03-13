@@ -96,14 +96,18 @@ export class CoatingAnalysisService {
   ) {}
 
   async analyseJobCards(jobCardIds: number[], companyId: number): Promise<void> {
-    for (const jobCardId of jobCardIds) {
-      try {
-        await this.analyseJobCard(jobCardId, companyId);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        this.logger.error(`Coating analysis failed for job card ${jobCardId}: ${message}`);
+    const results = await Promise.allSettled(
+      jobCardIds.map((jobCardId) => this.analyseJobCard(jobCardId, companyId)),
+    );
+    results.forEach((result, idx) => {
+      if (result.status === "rejected") {
+        const message =
+          result.reason instanceof Error ? result.reason.message : "Unknown error";
+        this.logger.error(
+          `Coating analysis failed for job card ${jobCardIds[idx]}: ${message}`,
+        );
       }
-    }
+    });
   }
 
   async analyseJobCard(jobCardId: number, companyId: number): Promise<JobCardCoatingAnalysis> {

@@ -220,24 +220,29 @@ export class DrawingExtractionService {
   ): Promise<DrawingExtractionResult> {
     const contentParts: (TextContent | ImageContent)[] = [];
 
-    for (const { buffer, filename } of pdfBuffers) {
-      contentParts.push({
-        type: "text",
-        text: `--- Pages from: ${filename} ---`,
-      });
-      const images = await this.convertPdfToImages(buffer);
-      const imageContents = images.map(
-        (img): ImageContent => ({
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: "image/png",
-            data: img.toString("base64"),
-          },
-        }),
-      );
-      contentParts.push(...imageContents);
-    }
+    const pdfContentParts = await pdfBuffers.reduce(
+      async (accPromise, { buffer, filename }) => {
+        const acc = await accPromise;
+        const images = await this.convertPdfToImages(buffer);
+        const imageContents = images.map(
+          (img): ImageContent => ({
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: "image/png",
+              data: img.toString("base64"),
+            },
+          }),
+        );
+        return [
+          ...acc,
+          { type: "text" as const, text: `--- Pages from: ${filename} ---` },
+          ...imageContents,
+        ];
+      },
+      Promise.resolve([] as (TextContent | ImageContent)[]),
+    );
+    contentParts.push(...pdfContentParts);
 
     if (contentParts.length === 0) {
       return this.emptyResult();
@@ -419,39 +424,51 @@ export class DrawingExtractionService {
     try {
       const contentParts: (TextContent | ImageContent)[] = [];
 
-      for (const attachment of allAttachments) {
-        const isDxf = this.isDxfFile(attachment);
-        const isPdf = this.isPdfFile(attachment);
+      const attachmentParts = await allAttachments.reduce(
+        async (accPromise, attachment) => {
+          const acc = await accPromise;
+          const isPdf = this.isPdfFile(attachment);
+          const isDxf = this.isDxfFile(attachment);
 
-        if (isPdf) {
-          contentParts.push({
-            type: "text",
-            text: `--- Pages from: ${attachment.originalFilename} ---`,
-          });
-          const normalizedPath = this.normalizeStoragePath(attachment.filePath);
-          const pdfBuffer = await this.storageService.download(normalizedPath);
-          const images = await this.convertPdfToImages(pdfBuffer);
-          const imageContents = images.map(
-            (img): ImageContent => ({
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: "image/png",
-                data: img.toString("base64"),
+          if (isPdf) {
+            const normalizedPath = this.normalizeStoragePath(attachment.filePath);
+            const pdfBuffer = await this.storageService.download(normalizedPath);
+            const images = await this.convertPdfToImages(pdfBuffer);
+            const imageContents = images.map(
+              (img): ImageContent => ({
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/png",
+                  data: img.toString("base64"),
+                },
+              }),
+            );
+            return [
+              ...acc,
+              {
+                type: "text" as const,
+                text: `--- Pages from: ${attachment.originalFilename} ---`,
               },
-            }),
-          );
-          contentParts.push(...imageContents);
-        } else if (isDxf) {
-          const normalizedPath = this.normalizeStoragePath(attachment.filePath);
-          const fileBuffer = await this.storageService.download(normalizedPath);
-          const dxfText = this.parseDxfFile(fileBuffer);
-          contentParts.push({
-            type: "text",
-            text: `--- DXF data from: ${attachment.originalFilename} ---\n${dxfText}`,
-          });
-        }
-      }
+              ...imageContents,
+            ];
+          } else if (isDxf) {
+            const normalizedPath = this.normalizeStoragePath(attachment.filePath);
+            const fileBuffer = await this.storageService.download(normalizedPath);
+            const dxfText = this.parseDxfFile(fileBuffer);
+            return [
+              ...acc,
+              {
+                type: "text" as const,
+                text: `--- DXF data from: ${attachment.originalFilename} ---\n${dxfText}`,
+              },
+            ];
+          }
+          return acc;
+        },
+        Promise.resolve([] as (TextContent | ImageContent)[]),
+      );
+      contentParts.push(...attachmentParts);
 
       if (contentParts.length === 0) {
         await this.attachmentRepo.update(

@@ -479,13 +479,14 @@ export class JobCardPdfService {
         ...(jobCard.lineItems || []).map((li) => li.notes || ""),
       ].filter(Boolean);
 
-      for (const noteText of allNotes) {
-        const specFromNotes = parseRubberSpecNote(noteText);
-        if (specFromNotes) {
-          plan.rubberSpec = specFromNotes;
-          plan.totalThicknessMm = specFromNotes.thicknessMm;
-          break;
-        }
+      const specFromNotes = allNotes.reduce(
+        (found: ReturnType<typeof parseRubberSpecNote>, noteText) =>
+          found || parseRubberSpecNote(noteText),
+        null,
+      );
+      if (specFromNotes) {
+        plan.rubberSpec = specFromNotes;
+        plan.totalThicknessMm = specFromNotes.thicknessMm;
       }
     }
 

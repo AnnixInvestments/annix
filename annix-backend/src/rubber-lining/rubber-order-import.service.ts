@@ -237,12 +237,13 @@ export class RubberOrderImportService {
     const companies = await this.companyRepository.find();
     const textLower = text.toLowerCase();
 
-    for (const company of companies) {
-      const companyNameLower = company.name.toLowerCase();
-      if (textLower.includes(companyNameLower)) {
-        this.logger.log(`Detected company "${company.name}" from document text`);
-        return company.id;
-      }
+    const matchedCompany = companies.find((company) =>
+      textLower.includes(company.name.toLowerCase()),
+    );
+
+    if (matchedCompany) {
+      this.logger.log(`Detected company "${matchedCompany.name}" from document text`);
+      return matchedCompany.id;
     }
 
     return null;

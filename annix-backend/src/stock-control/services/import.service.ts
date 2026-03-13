@@ -180,20 +180,17 @@ export class ImportService {
     const data = await pdfParse(buffer);
     const lines = data.text.split("\n").filter((line: string) => line.trim().length > 0);
 
-    const rows: ImportRow[] = [];
-    for (const line of lines) {
-      const parts = line.split(/\t|,|;/).map((p: string) => p.trim());
-      if (parts.length >= 2 && parts[0] && parts[1]) {
-        rows.push({
-          sku: parts[0],
-          name: parts[1],
-          description: parts[2] || undefined,
-          category: parts[3] || undefined,
-          quantity: Number(parts[4]) || undefined,
-          costPerUnit: Number(parts[5]) || undefined,
-        });
-      }
-    }
+    const rows: ImportRow[] = lines
+      .map((line: string) => line.split(/\t|,|;/).map((p: string) => p.trim()))
+      .filter((parts: string[]) => parts.length >= 2 && parts[0] && parts[1])
+      .map((parts: string[]) => ({
+        sku: parts[0],
+        name: parts[1],
+        description: parts[2] || undefined,
+        category: parts[3] || undefined,
+        quantity: Number(parts[4]) || undefined,
+        costPerUnit: Number(parts[5]) || undefined,
+      }));
 
     return rows;
   }
@@ -264,99 +261,87 @@ export class ImportService {
     const rowsNeedingCategory = rows.filter((r) => !r.category && r.name);
     const categoryMap = await this.inferCategories(rowsNeedingCategory, existingCategories);
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
+    const normalizedRows = rows
+      .map((row, i) => ({ row, index: i }))
+      .filter(({ row }) => row.name || row.sku)
+      .map(({ row, index }) => {
+        const name = row.name || row.sku!;
+        const category =
+          row.category || (name && categoryMap.has(name) ? categoryMap.get(name) : undefined);
+        const sku =
+          row.sku ||
+          name
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")
+            .slice(0, 20);
+        const quantity = row.quantity !== undefined ? Math.round(row.quantity) : undefined;
+        const minStockLevel =
+          row.minStockLevel !== undefined ? Math.round(row.minStockLevel) : undefined;
+        return {
+          ...row,
+          name,
+          sku,
+          category,
+          quantity,
+          minStockLevel,
+          originalIndex: index,
+        };
+      });
 
-      if (!row.name) {
-        if (!row.sku) {
-          continue;
-        }
-        row.name = row.sku;
-      }
+    return normalizedRows.reduce(
+      async (accPromise, row) => {
+        const acc = await accPromise;
 
-      if (!row.category && row.name && categoryMap.has(row.name)) {
-        row.category = categoryMap.get(row.name);
-      }
+        try {
+          const existing = await this.stockItemRepo.findOne({
+            where: { sku: row.sku, companyId },
+          });
 
-      if (!row.sku) {
-        row.sku = row.name
-          .toUpperCase()
-          .replace(/[^A-Z0-9]+/g, "-")
-          .replace(/^-|-$/g, "")
-          .slice(0, 20);
-      }
-
-      if (row.quantity !== undefined) {
-        row.quantity = Math.round(row.quantity);
-      }
-      if (row.minStockLevel !== undefined) {
-        row.minStockLevel = Math.round(row.minStockLevel);
-      }
-
-      try {
-        const existing = await this.stockItemRepo.findOne({ where: { sku: row.sku, companyId } });
-
-        if (existing) {
-          if (!isStockTake) {
-            Object.assign(existing, {
-              name: row.name || existing.name,
-              description: row.description ?? existing.description,
-              category: row.category ?? existing.category,
-              unitOfMeasure: row.unitOfMeasure ?? existing.unitOfMeasure,
-              costPerUnit: row.costPerUnit ?? existing.costPerUnit,
-              minStockLevel: row.minStockLevel ?? existing.minStockLevel,
-              location: row.location ?? existing.location,
-            });
-          }
-
-          if (row.quantity !== undefined) {
-            const importedQty = row.quantity;
-            let finalSoh = importedQty;
-            let movementNotes = isStockTake ? "Stock take adjustment" : "Updated via import";
-
-            if (isStockTake && stockTakeDate) {
-              const cutoff = fromISO(stockTakeDate).endOf("day").toJSDate();
-              const postMovements = await this.movementRepo
-                .createQueryBuilder("m")
-                .where("m.stock_item_id = :itemId", { itemId: existing.id })
-                .andWhere("m.company_id = :companyId", { companyId })
-                .andWhere("m.created_at > :cutoff", { cutoff })
-                .andWhere("m.reference_type != :stockTake", { stockTake: ReferenceType.STOCK_TAKE })
-                .getMany();
-
-              const netDelta = postMovements.reduce((acc, m) => {
-                if (m.movementType === MovementType.IN) {
-                  return acc + m.quantity;
-                } else if (m.movementType === MovementType.OUT) {
-                  return acc - m.quantity;
-                }
-                return acc;
-              }, 0);
-
-              finalSoh = importedQty + netDelta;
-              movementNotes = `Stock take (${stockTakeDate}): counted ${importedQty}, +${postMovements.filter((m) => m.movementType === MovementType.IN).reduce((s, m) => s + m.quantity, 0)} in / -${postMovements.filter((m) => m.movementType === MovementType.OUT).reduce((s, m) => s + m.quantity, 0)} out since count = ${finalSoh}`;
-            }
-
-            if (finalSoh !== existing.quantity) {
-              const delta = finalSoh - existing.quantity;
-              existing.quantity = finalSoh;
-
-              const movement = this.movementRepo.create({
-                stockItem: existing,
-                movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
-                quantity: Math.abs(delta),
-                referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
-                notes: movementNotes,
-                createdBy: createdBy || null,
-                companyId,
+          if (existing) {
+            if (!isStockTake) {
+              Object.assign(existing, {
+                name: row.name || existing.name,
+                description: row.description ?? existing.description,
+                category: row.category ?? existing.category,
+                unitOfMeasure: row.unitOfMeasure ?? existing.unitOfMeasure,
+                costPerUnit: row.costPerUnit ?? existing.costPerUnit,
+                minStockLevel: row.minStockLevel ?? existing.minStockLevel,
+                location: row.location ?? existing.location,
               });
-              await this.movementRepo.save(movement);
             }
+
+            if (row.quantity !== undefined) {
+              const importedQty = row.quantity;
+              const { finalSoh, movementNotes } = await this.resolveStockTakeQuantity(
+                existing,
+                importedQty,
+                companyId,
+                isStockTake,
+                stockTakeDate,
+              );
+
+              if (finalSoh !== existing.quantity) {
+                const delta = finalSoh - existing.quantity;
+                existing.quantity = finalSoh;
+
+                const movement = this.movementRepo.create({
+                  stockItem: existing,
+                  movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
+                  quantity: Math.abs(delta),
+                  referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
+                  notes: movementNotes,
+                  createdBy: createdBy || null,
+                  companyId,
+                });
+                await this.movementRepo.save(movement);
+              }
+            }
+
+            await this.stockItemRepo.save(existing);
+            return { ...acc, updated: acc.updated + 1 };
           }
 
-          await this.stockItemRepo.save(existing);
-          result.updated++;
-        } else {
           const item = this.stockItemRepo.create({
             sku: row.sku,
             name: row.name,
@@ -385,15 +370,55 @@ export class ImportService {
             await this.movementRepo.save(movement);
           }
 
-          result.created++;
+          return { ...acc, created: acc.created + 1 };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          return {
+            ...acc,
+            errors: [...acc.errors, { row: row.originalIndex + 1, message }],
+          };
         }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        result.errors.push({ row: i + 1, message });
-      }
+      },
+      Promise.resolve(result),
+    );
+  }
+
+  private async resolveStockTakeQuantity(
+    existing: StockItem,
+    importedQty: number,
+    companyId: number,
+    isStockTake: boolean,
+    stockTakeDate: string | null,
+  ): Promise<{ finalSoh: number; movementNotes: string }> {
+    if (!isStockTake || !stockTakeDate) {
+      return {
+        finalSoh: importedQty,
+        movementNotes: isStockTake ? "Stock take adjustment" : "Updated via import",
+      };
     }
 
-    return result;
+    const cutoff = fromISO(stockTakeDate).endOf("day").toJSDate();
+    const postMovements = await this.movementRepo
+      .createQueryBuilder("m")
+      .where("m.stock_item_id = :itemId", { itemId: existing.id })
+      .andWhere("m.company_id = :companyId", { companyId })
+      .andWhere("m.created_at > :cutoff", { cutoff })
+      .andWhere("m.reference_type != :stockTake", { stockTake: ReferenceType.STOCK_TAKE })
+      .getMany();
+
+    const netDelta = postMovements.reduce((acc, m) => {
+      if (m.movementType === MovementType.IN) {
+        return acc + m.quantity;
+      } else if (m.movementType === MovementType.OUT) {
+        return acc - m.quantity;
+      }
+      return acc;
+    }, 0);
+
+    const finalSoh = importedQty + netDelta;
+    const movementNotes = `Stock take (${stockTakeDate}): counted ${importedQty}, +${postMovements.filter((m) => m.movementType === MovementType.IN).reduce((s, m) => s + m.quantity, 0)} in / -${postMovements.filter((m) => m.movementType === MovementType.OUT).reduce((s, m) => s + m.quantity, 0)} out since count = ${finalSoh}`;
+
+    return { finalSoh, movementNotes };
   }
 
   private async inferCategories(

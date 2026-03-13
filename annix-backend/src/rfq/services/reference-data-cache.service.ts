@@ -45,20 +45,14 @@ export class ReferenceDataCacheService implements OnModuleInit {
 
   private async loadNbNpsLookup(): Promise<void> {
     const data = await this.nbNpsLookupRepository.find();
-    const map = new Map<number, NbNpsLookup>();
-    for (const item of data) {
-      map.set(item.nb_mm, item);
-    }
+    const map = new Map(data.map((item) => [item.nb_mm, item]));
     this.nbNpsLookupCache = { data: map, loadedAt: now().toJSDate() };
     this.logger.debug(`Loaded ${data.length} NB-NPS lookup entries`);
   }
 
   private async loadSteelSpecifications(): Promise<void> {
     const data = await this.steelSpecRepository.find();
-    const map = new Map<number, SteelSpecification>();
-    for (const item of data) {
-      map.set(item.id, item);
-    }
+    const map = new Map(data.map((item) => [item.id, item]));
     this.steelSpecCache = { data: map, loadedAt: now().toJSDate() };
     this.logger.debug(`Loaded ${data.length} steel specifications`);
   }
@@ -67,15 +61,14 @@ export class ReferenceDataCacheService implements OnModuleInit {
     const data = await this.pipeDimensionRepository.find({
       relations: ["nominalOutsideDiameter", "steelSpecification"],
     });
-    const map = new Map<number, PipeDimension[]>();
-    for (const item of data) {
+    const map = data.reduce((acc, item) => {
       const nb = item.nominalOutsideDiameter?.nominal_diameter_mm;
-      if (nb !== undefined) {
-        const existing = map.get(nb) || [];
-        existing.push(item);
-        map.set(nb, existing);
+      if (nb === undefined) {
+        return acc;
       }
-    }
+      const existing = acc.get(nb) || [];
+      return new Map(acc).set(nb, [...existing, item]);
+    }, new Map<number, PipeDimension[]>());
     this.pipeDimensionsByNbCache = { data: map, loadedAt: now().toJSDate() };
     this.logger.debug(`Loaded ${data.length} pipe dimensions`);
   }
@@ -84,16 +77,15 @@ export class ReferenceDataCacheService implements OnModuleInit {
     const data = await this.flangeDimensionRepository.find({
       relations: ["nominalOutsideDiameter", "standard", "pressureClass", "bolt"],
     });
-    const map = new Map<string, FlangeDimension[]>();
-    for (const item of data) {
+    const map = data.reduce((acc, item) => {
       const nb = item.nominalOutsideDiameter?.nominal_diameter_mm;
-      if (nb !== undefined) {
-        const key = `${nb}`;
-        const existing = map.get(key) || [];
-        existing.push(item);
-        map.set(key, existing);
+      if (nb === undefined) {
+        return acc;
       }
-    }
+      const key = `${nb}`;
+      const existing = acc.get(key) || [];
+      return new Map(acc).set(key, [...existing, item]);
+    }, new Map<string, FlangeDimension[]>());
     this.flangeDimensionsByNbCache = { data: map, loadedAt: now().toJSDate() };
     this.logger.debug(`Loaded ${data.length} flange dimensions`);
   }
