@@ -30,6 +30,8 @@ const DELIVERY_NOTE_TYPE_LABELS: Record<DeliveryNoteType, string> = {
 
 const DELIVERY_NOTE_STATUS_LABELS: Record<DeliveryNoteStatus, string> = {
   [DeliveryNoteStatus.PENDING]: "Pending",
+  [DeliveryNoteStatus.EXTRACTED]: "Extracted",
+  [DeliveryNoteStatus.APPROVED]: "Approved",
   [DeliveryNoteStatus.LINKED]: "Linked",
   [DeliveryNoteStatus.STOCK_CREATED]: "Stock Created",
 };
@@ -532,6 +534,8 @@ export class RubberDeliveryNoteService {
 
     const extractedData = note.extractedData;
     if (!extractedData || !extractedData.rolls || extractedData.rolls.length === 0) {
+      note.status = DeliveryNoteStatus.EXTRACTED;
+      await this.deliveryNoteRepository.save(note);
       return { deliveryNoteIds: [note.id] };
     }
 
@@ -546,6 +550,8 @@ export class RubberDeliveryNoteService {
       });
 
     if (rollsByDnNumber.size <= 1) {
+      note.status = DeliveryNoteStatus.EXTRACTED;
+      await this.deliveryNoteRepository.save(note);
       return { deliveryNoteIds: [note.id] };
     }
 
@@ -559,6 +565,7 @@ export class RubberDeliveryNoteService {
       if (isFirstGroup) {
         note.deliveryNoteNumber = dnNumber;
         note.deliveryDate = deliveryDate ? new Date(deliveryDate) : note.deliveryDate;
+        note.status = DeliveryNoteStatus.EXTRACTED;
         note.extractedData = {
           ...extractedData,
           deliveryNoteNumber: dnNumber,
@@ -577,7 +584,7 @@ export class RubberDeliveryNoteService {
           customerReference: note.customerReference,
           supplierCompanyId: note.supplierCompanyId,
           documentPath: note.documentPath,
-          status: DeliveryNoteStatus.PENDING,
+          status: DeliveryNoteStatus.EXTRACTED,
           createdBy: note.createdBy,
           extractedData: {
             ...extractedData,

@@ -274,11 +274,15 @@ export default function CustomerDeliveryNotesPage() {
   const statusBadge = (status: DeliveryNoteStatus) => {
     const colors: Record<DeliveryNoteStatus, string> = {
       PENDING: "bg-gray-100 text-gray-800",
+      EXTRACTED: "bg-purple-100 text-purple-800",
+      APPROVED: "bg-teal-100 text-teal-800",
       LINKED: "bg-blue-100 text-blue-800",
       STOCK_CREATED: "bg-green-100 text-green-800",
     };
     const labels: Record<DeliveryNoteStatus, string> = {
       PENDING: "Pending",
+      EXTRACTED: "Extracted",
+      APPROVED: "Approved",
       LINKED: "Linked",
       STOCK_CREATED: "Stock Created",
     };
@@ -417,6 +421,8 @@ export default function CustomerDeliveryNotesPage() {
             >
               <option value="">All Statuses</option>
               <option value="PENDING">Pending</option>
+              <option value="EXTRACTED">Extracted</option>
+              <option value="APPROVED">Approved</option>
               <option value="LINKED">Linked</option>
               <option value="STOCK_CREATED">Stock Created</option>
             </select>

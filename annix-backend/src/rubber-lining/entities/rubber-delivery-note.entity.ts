@@ -17,6 +17,8 @@ export enum DeliveryNoteType {
 
 export enum DeliveryNoteStatus {
   PENDING = "PENDING",
+  EXTRACTED = "EXTRACTED",
+  APPROVED = "APPROVED",
   LINKED = "LINKED",
   STOCK_CREATED = "STOCK_CREATED",
 }
