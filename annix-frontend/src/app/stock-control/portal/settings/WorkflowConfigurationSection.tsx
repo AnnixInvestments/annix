@@ -696,7 +696,10 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                 )}
               </div>
               {isBackground && (
-                <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="flex items-center gap-1.5 mt-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <span className="text-xs text-gray-400">Follows:</span>
                   <select
                     value={step.triggerAfterStep ?? ""}
@@ -709,7 +712,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                       .filter((s) => s.key !== step.key)
                       .map((s) => (
                         <option key={s.key} value={s.key}>
-                          {s.label}{s.isBackground ? " (bg)" : ""}
+                          {s.label}
+                          {s.isBackground ? " (bg)" : ""}
                         </option>
                       ))}
                   </select>
@@ -1086,51 +1090,57 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
             className="text-xs font-medium text-teal-600 hover:text-teal-700 flex items-center gap-1"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
             Add Step
           </button>
         )}
       </div>
       {sectionCollapsed ? null : (
-      <>
-      <p className="text-sm text-gray-500 mb-4">
-        Define your workflow steps, assign team members, and configure notifications. Click a step
-        to expand.
-      </p>
+        <>
+          <p className="text-sm text-gray-500 mb-4">
+            Define your workflow steps, assign team members, and configure notifications. Click a
+            step to expand.
+          </p>
 
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
-      {success && <p className="text-sm text-green-600 mb-3">Updated successfully.</p>}
+          {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+          {success && <p className="text-sm text-green-600 mb-3">Updated successfully.</p>}
 
-      {renderAddStepForm()}
+          {renderAddStepForm()}
 
-      <div className="space-y-0">
-        {unifiedSteps.map((step, idx) => {
-          const fgIndex = stepConfigs.findIndex((s) => s.key === step.key);
-          const isLastUnified = idx === unifiedSteps.length - 1;
-          const nextStep = !isLastUnified ? unifiedSteps[idx + 1] : null;
-          const showConnector = !isLastUnified && (!step.isBackground || (nextStep && !nextStep.isBackground));
+          <div className="space-y-0">
+            {unifiedSteps.map((step, idx) => {
+              const fgIndex = stepConfigs.findIndex((s) => s.key === step.key);
+              const isLastUnified = idx === unifiedSteps.length - 1;
+              const nextStep = !isLastUnified ? unifiedSteps[idx + 1] : null;
+              const showConnector =
+                !isLastUnified && (!step.isBackground || (nextStep && !nextStep.isBackground));
 
-          return (
-            <div key={step.key}>
-              {renderStepCard(step, fgIndex >= 0 ? fgIndex : idx, step.isBackground)}
-              {showConnector && renderConnector(step.key, idx)}
-            </div>
-          );
-        })}
-      </div>
+              return (
+                <div key={step.key}>
+                  {renderStepCard(step, fgIndex >= 0 ? fgIndex : idx, step.isBackground)}
+                  {showConnector && renderConnector(step.key, idx)}
+                </div>
+              );
+            })}
+          </div>
 
-      <div className="mt-4 flex items-center gap-4 text-xs text-gray-400 border-t border-gray-100 pt-3">
-        <span>Click to unassign</span>
-        <span>Right-click to set primary</span>
-        <span className="inline-flex items-center gap-1">
-          <svg className="w-3 h-3 text-teal-600" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-          </svg>
-          = Primary
-        </span>
-      </div>
-      </>
+          <div className="mt-4 flex items-center gap-4 text-xs text-gray-400 border-t border-gray-100 pt-3">
+            <span>Click to unassign</span>
+            <span>Right-click to set primary</span>
+            <span className="inline-flex items-center gap-1">
+              <svg className="w-3 h-3 text-teal-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+              </svg>
+              = Primary
+            </span>
+          </div>
+        </>
       )}
     </div>
   );

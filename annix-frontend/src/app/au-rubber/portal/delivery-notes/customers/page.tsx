@@ -622,10 +622,7 @@ export default function CustomerDeliveryNotesPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        handleDeleteNote(
-                          note.id,
-                          note.deliveryNoteNumber || `DN-${note.id}`,
-                        )
+                        handleDeleteNote(note.id, note.deliveryNoteNumber || `DN-${note.id}`)
                       }
                       className="text-red-400 hover:text-red-600"
                       title="Delete delivery note"

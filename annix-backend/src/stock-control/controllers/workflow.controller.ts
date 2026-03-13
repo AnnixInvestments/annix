@@ -28,9 +28,9 @@ import {
   ScanDispatchItemDto,
   ScanQrDto,
   ToggleStepBackgroundDto,
-  UpdateStepFollowsDto,
   UpdateNotificationRecipientsDto,
   UpdateStepAssignmentsDto,
+  UpdateStepFollowsDto,
   UpdateStepLabelDto,
   UpdateUserLocationsDto,
 } from "../dto/workflow.dto";

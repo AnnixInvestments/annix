@@ -319,335 +319,338 @@ function MenuVisibilitySection({
         )}
       </div>
       {collapsed ? null : (
-      <>
-      <p className="text-sm text-gray-500 mb-4">
-        Control which menu items are visible to each role. Click a group header to expand sub-pages.
-      </p>
+        <>
+          <p className="text-sm text-gray-500 mb-4">
+            Control which menu items are visible to each role. Click a group header to expand
+            sub-pages.
+          </p>
 
-      {showAddRole && (
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="flex gap-3">
-            <input
-              type="text"
-              placeholder="Role name"
-              value={newRoleLabel}
-              onChange={(e) => {
-                setNewRoleLabel(e.target.value);
-                setRoleError("");
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddRole();
-              }}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-            />
-            <button
-              type="button"
-              onClick={handleAddRole}
-              disabled={!newRoleLabel.trim()}
-              className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
-            >
-              Create
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowAddRole(false);
-                setNewRoleLabel("");
-                setRoleError("");
-              }}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-          {roleError && <p className="mt-2 text-sm text-red-600">{roleError}</p>}
-        </div>
-      )}
+          {showAddRole && (
+            <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Role name"
+                  value={newRoleLabel}
+                  onChange={(e) => {
+                    setNewRoleLabel(e.target.value);
+                    setRoleError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddRole();
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddRole}
+                  disabled={!newRoleLabel.trim()}
+                  className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                >
+                  Create
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddRole(false);
+                    setNewRoleLabel("");
+                    setRoleError("");
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+              {roleError && <p className="mt-2 text-sm text-red-600">{roleError}</p>}
+            </div>
+          )}
 
-      {rolesLoading ? (
-        <div className="text-center py-8 text-gray-500">Loading roles...</div>
-      ) : (
-        <div className="overflow-x-auto -mx-6 px-6">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left text-xs font-medium text-gray-500 uppercase pb-3 pr-2 min-w-[160px]">
-                  Menu Item
-                </th>
-                {roles.map((role, roleIndex) => (
-                  <th
-                    key={role.key}
-                    className="text-center text-xs font-medium text-gray-500 uppercase pb-3 px-2 min-w-[80px]"
-                  >
-                    {editingRoleId === role.id ? (
-                      <div className="flex flex-col items-center gap-1">
-                        <input
-                          type="text"
-                          value={editingRoleLabel}
-                          onChange={(e) => setEditingRoleLabel(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSaveRoleLabel(role.id);
-                            if (e.key === "Escape") setEditingRoleId(null);
-                          }}
-                          autoFocus
-                          className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded text-center focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-                        />
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleSaveRoleLabel(role.id)}
-                            className="text-[10px] text-teal-600 hover:text-teal-800 font-medium"
-                          >
-                            Save
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingRoleId(null)}
-                            className="text-[10px] text-gray-500 hover:text-gray-700 font-medium"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-0.5">
-                        <div className="flex items-center gap-1">
-                          {role.key !== "admin" && roleIndex > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => handleMoveRole(role.id, "left")}
-                              className="text-gray-400 hover:text-gray-600 p-0.5"
-                              title="Move left"
-                            >
-                              <svg
-                                className="w-3 h-3"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+          {rolesLoading ? (
+            <div className="text-center py-8 text-gray-500">Loading roles...</div>
+          ) : (
+            <div className="overflow-x-auto -mx-6 px-6">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left text-xs font-medium text-gray-500 uppercase pb-3 pr-2 min-w-[160px]">
+                      Menu Item
+                    </th>
+                    {roles.map((role, roleIndex) => (
+                      <th
+                        key={role.key}
+                        className="text-center text-xs font-medium text-gray-500 uppercase pb-3 px-2 min-w-[80px]"
+                      >
+                        {editingRoleId === role.id ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <input
+                              type="text"
+                              value={editingRoleLabel}
+                              onChange={(e) => setEditingRoleLabel(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveRoleLabel(role.id);
+                                if (e.key === "Escape") setEditingRoleId(null);
+                              }}
+                              autoFocus
+                              className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded text-center focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                            />
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveRoleLabel(role.id)}
+                                className="text-[10px] text-teal-600 hover:text-teal-800 font-medium"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M15 19l-7-7 7-7"
-                                />
-                              </svg>
-                            </button>
-                          )}
-                          <span>{role.label}</span>
-                          {role.key !== "admin" && roleIndex < roles.length - 2 && (
-                            <button
-                              type="button"
-                              onClick={() => handleMoveRole(role.id, "right")}
-                              className="text-gray-400 hover:text-gray-600 p-0.5"
-                              title="Move right"
-                            >
-                              <svg
-                                className="w-3 h-3"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingRoleId(null)}
+                                className="text-[10px] text-gray-500 hover:text-gray-700 font-medium"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 5l7 7-7 7"
-                                />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingRoleId(role.id);
-                              setEditingRoleLabel(role.label);
-                            }}
-                            className="text-[10px] text-teal-600 hover:text-teal-800 font-medium"
-                          >
-                            Edit
-                          </button>
-                          {!role.isSystem && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteRole(role.id)}
-                              className="text-[10px] text-red-500 hover:text-red-700 font-medium"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {standaloneItems.map((item) => {
-                const itemRoles = localConfig[item.key] ?? item.defaultRoles;
-                return (
-                  <tr key={item.key} className="border-b border-gray-100">
-                    <td className="py-3 pr-2 text-sm text-gray-700">{item.label}</td>
-                    {roleKeys.map((rk) => {
-                      const checked = itemRoles.includes(rk);
-                      const disabled = rk === "admin" || item.immutable === true;
-                      return (
-                        <td key={rk} className="py-3 px-2 text-center">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={disabled}
-                            onChange={() => handleToggle(item.key, rk)}
-                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          />
-                        </td>
-                      );
-                    })}
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center gap-0.5">
+                            <div className="flex items-center gap-1">
+                              {role.key !== "admin" && roleIndex > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveRole(role.id, "left")}
+                                  className="text-gray-400 hover:text-gray-600 p-0.5"
+                                  title="Move left"
+                                >
+                                  <svg
+                                    className="w-3 h-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 19l-7-7 7-7"
+                                    />
+                                  </svg>
+                                </button>
+                              )}
+                              <span>{role.label}</span>
+                              {role.key !== "admin" && roleIndex < roles.length - 2 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveRole(role.id, "right")}
+                                  className="text-gray-400 hover:text-gray-600 p-0.5"
+                                  title="Move right"
+                                >
+                                  <svg
+                                    className="w-3 h-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 5l7 7-7 7"
+                                    />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingRoleId(role.id);
+                                  setEditingRoleLabel(role.label);
+                                }}
+                                className="text-[10px] text-teal-600 hover:text-teal-800 font-medium"
+                              >
+                                Edit
+                              </button>
+                              {!role.isSystem && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteRole(role.id)}
+                                  className="text-[10px] text-red-500 hover:text-red-700 font-medium"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </th>
+                    ))}
                   </tr>
-                );
-              })}
+                </thead>
+                <tbody>
+                  {standaloneItems.map((item) => {
+                    const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+                    return (
+                      <tr key={item.key} className="border-b border-gray-100">
+                        <td className="py-3 pr-2 text-sm text-gray-700">{item.label}</td>
+                        {roleKeys.map((rk) => {
+                          const checked = itemRoles.includes(rk);
+                          const disabled = rk === "admin" || item.immutable === true;
+                          return (
+                            <td key={rk} className="py-3 px-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={disabled}
+                                onChange={() => handleToggle(item.key, rk)}
+                                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
 
-              {groups.map((group) => {
-                const isExpanded = expandedGroups[group.name] === true;
-                return [
-                  <tr
-                    key={`group-${group.name}`}
-                    className="border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100"
-                    onClick={() => toggleGroup(group.name)}
-                  >
-                    <td className="py-3 pr-2 text-sm font-semibold text-gray-900">
-                      <span className="flex items-center gap-1.5">
-                        <svg
-                          className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                        {group.name}
-                        <span className="text-xs font-normal text-gray-400">
-                          ({group.items.length})
-                        </span>
-                      </span>
-                    </td>
-                    {roleKeys.map((rk) => {
-                      const allChecked = isGroupAllChecked(group.name, rk);
-                      const partial = isGroupPartialChecked(group.name, rk);
-                      const disabled = rk === "admin";
-                      return (
-                        <td key={rk} className="py-3 px-2 text-center">
-                          <input
-                            type="checkbox"
-                            checked={allChecked}
-                            ref={(el) => {
-                              if (el) {
-                                el.indeterminate = partial;
-                              }
-                            }}
-                            disabled={disabled}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              handleToggleGroup(group.name, rk);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          />
+                  {groups.map((group) => {
+                    const isExpanded = expandedGroups[group.name] === true;
+                    return [
+                      <tr
+                        key={`group-${group.name}`}
+                        className="border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                        onClick={() => toggleGroup(group.name)}
+                      >
+                        <td className="py-3 pr-2 text-sm font-semibold text-gray-900">
+                          <span className="flex items-center gap-1.5">
+                            <svg
+                              className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
+                            </svg>
+                            {group.name}
+                            <span className="text-xs font-normal text-gray-400">
+                              ({group.items.length})
+                            </span>
+                          </span>
                         </td>
-                      );
-                    })}
-                  </tr>,
-                  ...(isExpanded
-                    ? group.items.map((item) => {
-                        const itemRoles = localConfig[item.key] ?? item.defaultRoles;
-                        return (
-                          <tr key={item.key} className="border-b border-gray-100 bg-white">
-                            <td className="py-2.5 pr-2 text-sm text-gray-600 pl-8">{item.label}</td>
-                            {roleKeys.map((rk) => {
-                              const checked = itemRoles.includes(rk);
-                              const disabled = rk === "admin" || item.immutable === true;
-                              return (
-                                <td key={rk} className="py-2.5 px-2 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    disabled={disabled}
-                                    onChange={() => handleToggle(item.key, rk)}
-                                    className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  />
+                        {roleKeys.map((rk) => {
+                          const allChecked = isGroupAllChecked(group.name, rk);
+                          const partial = isGroupPartialChecked(group.name, rk);
+                          const disabled = rk === "admin";
+                          return (
+                            <td key={rk} className="py-3 px-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={allChecked}
+                                ref={(el) => {
+                                  if (el) {
+                                    el.indeterminate = partial;
+                                  }
+                                }}
+                                disabled={disabled}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleGroup(group.name, rk);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>,
+                      ...(isExpanded
+                        ? group.items.map((item) => {
+                            const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+                            return (
+                              <tr key={item.key} className="border-b border-gray-100 bg-white">
+                                <td className="py-2.5 pr-2 text-sm text-gray-600 pl-8">
+                                  {item.label}
                                 </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })
-                    : []),
-                ];
-              })}
+                                {roleKeys.map((rk) => {
+                                  const checked = itemRoles.includes(rk);
+                                  const disabled = rk === "admin" || item.immutable === true;
+                                  return (
+                                    <td key={rk} className="py-2.5 px-2 text-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        disabled={disabled}
+                                        onChange={() => handleToggle(item.key, rk)}
+                                        className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      />
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })
+                        : []),
+                    ];
+                  })}
 
-              {hiddenItems.map((item) => {
-                const itemRoles = localConfig[item.key] ?? item.defaultRoles;
-                return (
-                  <tr key={item.key} className="border-b border-gray-100">
-                    <td className="py-3 pr-2 text-sm text-gray-700">{item.label}</td>
-                    {roleKeys.map((rk) => {
-                      const checked = itemRoles.includes(rk);
-                      const disabled = rk === "admin" || item.immutable === true;
-                      return (
-                        <td key={rk} className="py-3 px-2 text-center">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            disabled={disabled}
-                            onChange={() => handleToggle(item.key, rk)}
-                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          />
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                  {hiddenItems.map((item) => {
+                    const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+                    return (
+                      <tr key={item.key} className="border-b border-gray-100">
+                        <td className="py-3 pr-2 text-sm text-gray-700">{item.label}</td>
+                        {roleKeys.map((rk) => {
+                          const checked = itemRoles.includes(rk);
+                          const disabled = rk === "admin" || item.immutable === true;
+                          return (
+                            <td key={rk} className="py-3 px-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={disabled}
+                                onChange={() => handleToggle(item.key, rk)}
+                                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-      <p className="mt-4 text-xs text-gray-500">
-        Admin always has full access. Settings is always admin-only.
-      </p>
+          <p className="mt-4 text-xs text-gray-500">
+            Admin always has full access. Settings is always admin-only.
+          </p>
 
-      {roleError && !showAddRole && <p className="mt-3 text-sm text-red-600">{roleError}</p>}
-      {success && (
-        <p className="mt-3 text-sm text-green-600">Menu visibility updated successfully.</p>
-      )}
+          {roleError && !showAddRole && <p className="mt-3 text-sm text-red-600">{roleError}</p>}
+          {success && (
+            <p className="mt-3 text-sm text-green-600">Menu visibility updated successfully.</p>
+          )}
 
-      <div className="mt-4 flex gap-3">
-        <button
-          onClick={handleSave}
-          disabled={saving || !dirty}
-          className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
-        >
-          {saving ? "Saving..." : "Save"}
-        </button>
-        {dirty && (
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            Reset
-          </button>
-        )}
-      </div>
-      </>
+          <div className="mt-4 flex gap-3">
+            <button
+              onClick={handleSave}
+              disabled={saving || !dirty}
+              className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+            {dirty && (
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
@@ -733,98 +736,101 @@ function UserLocationAssignmentsSection({
         Store Location Assignments
       </button>
       {collapsed ? null : (
-      <>
-      <p className="text-sm text-gray-500 mb-4">
-        Click a cell to toggle access. Users with no locations assigned can access all locations.
-      </p>
+        <>
+          <p className="text-sm text-gray-500 mb-4">
+            Click a cell to toggle access. Users with no locations assigned can access all
+            locations.
+          </p>
 
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
-      {success && <p className="text-sm text-green-600 mb-3">Updated successfully.</p>}
+          {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+          {success && <p className="text-sm text-green-600 mb-3">Updated successfully.</p>}
 
-      {activeLocations.length === 0 ? (
-        <p className="text-sm text-gray-500 italic">
-          No store locations configured. Add locations in the Locations section above first.
-        </p>
-      ) : loading ? (
-        <div className="text-center py-8 text-gray-500">Loading location assignments...</div>
-      ) : (
-        <div className="overflow-x-auto -mx-6 px-6">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr>
-                <th className="text-left py-2 pr-4 pl-1 font-medium text-gray-700 sticky left-0 bg-white min-w-[160px]">
-                  Team Member
-                </th>
-                {activeLocations.map((loc) => (
-                  <th
-                    key={loc.id}
-                    className="py-2 px-1 font-medium text-gray-700 text-center min-w-[72px]"
-                  >
-                    <span className="text-xs leading-tight block">{loc.name}</span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {eligibleMembers.map((member) => {
-                const userLoc = userLocations.find((ul) => ul.userId === member.id);
-                const hasAny = (userLoc?.locationIds?.length ?? 0) > 0;
-
-                return (
-                  <tr key={member.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-2.5 pr-4 pl-1 sticky left-0 bg-inherit">
-                      <div className="font-medium text-gray-900 text-sm">{member.name}</div>
-                      <div className="text-xs text-gray-400">
-                        {roleLabel(member.role)}
-                        {!hasAny && <span className="ml-1 text-amber-500">(all locations)</span>}
-                      </div>
-                    </td>
-                    {activeLocations.map((loc) => {
-                      const assigned = isLocationAssigned(member.id, loc.id);
-                      return (
-                        <td key={loc.id} className="py-2.5 px-1 text-center">
-                          <button
-                            type="button"
-                            disabled={saving}
-                            onClick={() => handleToggleLocation(member.id, loc.id)}
-                            className={`w-8 h-8 rounded-md border transition-all inline-flex items-center justify-center ${
-                              assigned
-                                ? "bg-emerald-100 border-emerald-300 text-emerald-700"
-                                : "bg-white border-gray-200 text-gray-300 hover:border-gray-300"
-                            } ${saving ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
-                            title={
-                              assigned
-                                ? `${member.name} can access ${loc.name}`
-                                : `Grant ${member.name} access to ${loc.name}`
-                            }
-                          >
-                            {assigned && (
-                              <svg
-                                className="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2.5}
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="M4.5 12.75l6 6 9-13.5"
-                                />
-                              </svg>
-                            )}
-                          </button>
-                        </td>
-                      );
-                    })}
+          {activeLocations.length === 0 ? (
+            <p className="text-sm text-gray-500 italic">
+              No store locations configured. Add locations in the Locations section above first.
+            </p>
+          ) : loading ? (
+            <div className="text-center py-8 text-gray-500">Loading location assignments...</div>
+          ) : (
+            <div className="overflow-x-auto -mx-6 px-6">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr>
+                    <th className="text-left py-2 pr-4 pl-1 font-medium text-gray-700 sticky left-0 bg-white min-w-[160px]">
+                      Team Member
+                    </th>
+                    {activeLocations.map((loc) => (
+                      <th
+                        key={loc.id}
+                        className="py-2 px-1 font-medium text-gray-700 text-center min-w-[72px]"
+                      >
+                        <span className="text-xs leading-tight block">{loc.name}</span>
+                      </th>
+                    ))}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-      </>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {eligibleMembers.map((member) => {
+                    const userLoc = userLocations.find((ul) => ul.userId === member.id);
+                    const hasAny = (userLoc?.locationIds?.length ?? 0) > 0;
+
+                    return (
+                      <tr key={member.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="py-2.5 pr-4 pl-1 sticky left-0 bg-inherit">
+                          <div className="font-medium text-gray-900 text-sm">{member.name}</div>
+                          <div className="text-xs text-gray-400">
+                            {roleLabel(member.role)}
+                            {!hasAny && (
+                              <span className="ml-1 text-amber-500">(all locations)</span>
+                            )}
+                          </div>
+                        </td>
+                        {activeLocations.map((loc) => {
+                          const assigned = isLocationAssigned(member.id, loc.id);
+                          return (
+                            <td key={loc.id} className="py-2.5 px-1 text-center">
+                              <button
+                                type="button"
+                                disabled={saving}
+                                onClick={() => handleToggleLocation(member.id, loc.id)}
+                                className={`w-8 h-8 rounded-md border transition-all inline-flex items-center justify-center ${
+                                  assigned
+                                    ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                                    : "bg-white border-gray-200 text-gray-300 hover:border-gray-300"
+                                } ${saving ? "opacity-50 cursor-wait" : "cursor-pointer"}`}
+                                title={
+                                  assigned
+                                    ? `${member.name} can access ${loc.name}`
+                                    : `Grant ${member.name} access to ${loc.name}`
+                                }
+                              >
+                                {assigned && (
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                    strokeWidth={2.5}
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="M4.5 12.75l6 6 9-13.5"
+                                    />
+                                  </svg>
+                                )}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -943,75 +949,77 @@ function ActionPermissionsSection({
           Action Permissions
         </button>
         {!collapsed && (
-        <div className="flex items-center gap-2">
-          {success && <span className="text-xs text-green-600 font-medium">Saved</span>}
-          {dirty && (
-            <>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Reset
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="px-3 py-1.5 text-xs text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
-            </>
-          )}
-        </div>
+          <div className="flex items-center gap-2">
+            {success && <span className="text-xs text-green-600 font-medium">Saved</span>}
+            {dirty && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="px-3 py-1.5 text-xs text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-3 py-1.5 text-xs text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+              </>
+            )}
+          </div>
         )}
       </div>
 
       {collapsed ? null : (
-      <>
-      <p className="text-xs text-gray-500 mb-2">
-        Control which roles can perform specific actions like importing, deleting, or approving
-      </p>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500 w-64">Action</th>
-              {roles.map((role) => (
-                <th
-                  key={role.key}
-                  className="text-center py-2 px-2 text-xs font-medium text-gray-500 min-w-[70px]"
-                >
-                  {role.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {groupNames.map((groupName) => {
-              const expanded = expandedGroups[groupName] !== false;
-              const groupActions = groups[groupName];
+        <>
+          <p className="text-xs text-gray-500 mb-2">
+            Control which roles can perform specific actions like importing, deleting, or approving
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 pr-4 text-xs font-medium text-gray-500 w-64">
+                    Action
+                  </th>
+                  {roles.map((role) => (
+                    <th
+                      key={role.key}
+                      className="text-center py-2 px-2 text-xs font-medium text-gray-500 min-w-[70px]"
+                    >
+                      {role.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {groupNames.map((groupName) => {
+                  const expanded = expandedGroups[groupName] !== false;
+                  const groupActions = groups[groupName];
 
-              return (
-                <GroupRows
-                  key={groupName}
-                  groupName={groupName}
-                  expanded={expanded}
-                  onToggleExpand={() => toggleGroup(groupName)}
-                  actionKeys={groupActions}
-                  labels={labels}
-                  config={config}
-                  roleKeys={roleKeys}
-                  roles={roles}
-                  onToggle={handleToggle}
-                />
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      </>
+                  return (
+                    <GroupRows
+                      key={groupName}
+                      groupName={groupName}
+                      expanded={expanded}
+                      onToggleExpand={() => toggleGroup(groupName)}
+                      actionKeys={groupActions}
+                      labels={labels}
+                      config={config}
+                      roleKeys={roleKeys}
+                      roles={roles}
+                      onToggle={handleToggle}
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
