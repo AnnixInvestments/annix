@@ -14,6 +14,7 @@ import { ALL_NAV_ITEMS, NAV_GROUP_ORDER } from "../../config/navItems";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
 import { roleLabel } from "../../lib/roleLabels";
 import { DepartmentsLocationsSection } from "./DepartmentsLocationsSection";
+import { InboundEmailConfigSection } from "./InboundEmailConfigSection";
 import { TeamManagementSection } from "./TeamManagementSection";
 import { WorkflowConfigurationSection } from "./WorkflowConfigurationSection";
 
@@ -80,6 +81,7 @@ export default function StockControlSettingsPage() {
 
       <WorkflowConfigurationSection teamMembers={teamMembers} />
       <UserLocationAssignmentsSection locations={locations} teamMembers={teamMembers} />
+      <InboundEmailConfigSection />
     </div>
   );
 }

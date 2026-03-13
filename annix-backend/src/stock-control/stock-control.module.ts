@@ -134,6 +134,9 @@ import { SearchService } from "./services/search.service";
 import { SignatureService } from "./services/signature.service";
 import { StaffService } from "./services/staff.service";
 import { WebPushService } from "./services/web-push.service";
+import { ScEmailClassifierService } from "./services/sc-email-classifier.service";
+import { ScEmailRegistrationService } from "./services/sc-email-registration.service";
+import { ScEmailRouterService } from "./services/sc-email-router.service";
 import { WorkflowAssignmentService } from "./services/workflow-assignment.service";
 import { WorkflowNotificationService } from "./services/workflow-notification.service";
 import { WorkflowStepConfigService } from "./services/workflow-step-config.service";
@@ -293,6 +296,9 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ChatService,
     WorkflowStepConfigService,
     BackgroundStepService,
+    ScEmailClassifierService,
+    ScEmailRouterService,
+    ScEmailRegistrationService,
   ],
 })
 export class StockControlModule {}

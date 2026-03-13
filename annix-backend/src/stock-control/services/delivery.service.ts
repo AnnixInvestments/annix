@@ -122,6 +122,24 @@ export class DeliveryService {
     return this.findById(companyId, savedNote.id);
   }
 
+  async createFromEmail(
+    companyId: number,
+    data: {
+      deliveryNumber: string;
+      supplierName: string;
+      photoUrl?: string | null;
+    },
+  ): Promise<DeliveryNote> {
+    const deliveryNote = this.deliveryNoteRepo.create({
+      deliveryNumber: data.deliveryNumber,
+      supplierName: data.supplierName,
+      receivedDate: now().toJSDate(),
+      photoUrl: data.photoUrl ?? null,
+      companyId,
+    });
+    return this.deliveryNoteRepo.save(deliveryNote);
+  }
+
   async findAll(companyId: number, page: number = 1, limit: number = 50): Promise<DeliveryNote[]> {
     const notes = await this.deliveryNoteRepo.find({
       where: { companyId },

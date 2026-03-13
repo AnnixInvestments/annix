@@ -206,6 +206,10 @@ export class InvoiceService {
     return this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
   }
 
+  async linkScanPath(invoiceId: number, s3Path: string): Promise<void> {
+    await this.invoiceRepo.update(invoiceId, { scanUrl: s3Path });
+  }
+
   private mimeToMediaType(
     mime: string,
   ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf" {

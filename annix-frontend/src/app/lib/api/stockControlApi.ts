@@ -125,6 +125,73 @@ export interface SmtpConfigUpdate {
   notificationEmails?: string[];
 }
 
+export interface InboundEmailConfigResponse {
+  emailHost: string | null;
+  emailPort: number | null;
+  emailUser: string | null;
+  emailPassSet: boolean;
+  tlsEnabled: boolean;
+  tlsServerName: string | null;
+  enabled: boolean;
+  lastPollAt: string | null;
+  lastError: string | null;
+}
+
+export interface InboundEmailConfigUpdate {
+  emailHost: string | null;
+  emailPort: number | null;
+  emailUser: string | null;
+  emailPass: string | null;
+  tlsEnabled: boolean;
+  tlsServerName: string | null;
+  enabled: boolean;
+}
+
+export interface InboundEmailAttachment {
+  id: number;
+  inboundEmailId: number;
+  originalFilename: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  s3Path: string | null;
+  documentType: string;
+  classificationConfidence: number | null;
+  classificationSource: string | null;
+  linkedEntityType: string | null;
+  linkedEntityId: number | null;
+  extractionStatus: string;
+  extractedData: Record<string, unknown> | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InboundEmail {
+  id: number;
+  configId: number;
+  app: string;
+  companyId: number | null;
+  messageId: string;
+  fromEmail: string;
+  fromName: string | null;
+  subject: string | null;
+  receivedAt: string | null;
+  attachmentCount: number;
+  processingStatus: string;
+  errorMessage: string | null;
+  attachments: InboundEmailAttachment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InboundEmailStats {
+  total: number;
+  completed: number;
+  failed: number;
+  unclassified: number;
+  pending: number;
+}
+
 export interface StockControlCompany {
   id: number;
   name: string;
@@ -4885,6 +4952,70 @@ class StockControlApiClient {
 
   async chatTeamMembers(): Promise<StockControlTeamMember[]> {
     return this.request("/stock-control/chat/team");
+  }
+
+  async inboundEmailConfig(): Promise<InboundEmailConfigResponse> {
+    return this.request("/inbound-email/stock-control/{companyId}/config".replace("{companyId}", this.companyIdParam()));
+  }
+
+  async updateInboundEmailConfig(dto: InboundEmailConfigUpdate): Promise<{ message: string }> {
+    return this.request("/inbound-email/stock-control/{companyId}/config".replace("{companyId}", this.companyIdParam()), {
+      method: "PATCH",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async testInboundEmailConnection(): Promise<{ success: boolean; error?: string }> {
+    return this.request("/inbound-email/stock-control/{companyId}/test-connection".replace("{companyId}", this.companyIdParam()), {
+      method: "POST",
+    });
+  }
+
+  async inboundEmails(filters?: {
+    status?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    documentType?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ items: InboundEmail[]; total: number }> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.dateFrom) params.set("dateFrom", filters.dateFrom);
+    if (filters?.dateTo) params.set("dateTo", filters.dateTo);
+    if (filters?.documentType) params.set("documentType", filters.documentType);
+    if (filters?.page) params.set("page", String(filters.page));
+    if (filters?.limit) params.set("limit", String(filters.limit));
+    const qs = params.toString();
+    return this.request(`/inbound-email/stock-control/${this.companyIdParam()}/emails${qs ? `?${qs}` : ""}`);
+  }
+
+  async inboundEmailDetail(emailId: number): Promise<InboundEmail> {
+    return this.request(`/inbound-email/stock-control/${this.companyIdParam()}/emails/${emailId}`);
+  }
+
+  async reclassifyAttachment(attachmentId: number, documentType: string): Promise<InboundEmailAttachment> {
+    return this.request(`/inbound-email/attachments/${attachmentId}/reclassify`, {
+      method: "PATCH",
+      body: JSON.stringify({ documentType }),
+    });
+  }
+
+  async inboundEmailStats(): Promise<InboundEmailStats> {
+    return this.request(`/inbound-email/stock-control/${this.companyIdParam()}/stats`);
+  }
+
+  private companyIdParam(): string {
+    const stored = typeof window !== "undefined" ? localStorage.getItem("sc_user") : null;
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        return String(parsed.companyId ?? "0");
+      } catch {
+        return "0";
+      }
+    }
+    return "0";
   }
 }
 

@@ -20,6 +20,7 @@ import { FeatureFlagsModule } from "./feature-flags/feature-flags.module";
 import { FeedbackModule } from "./feedback/feedback.module";
 import { HdpeModule } from "./hdpe/hdpe.module";
 import { HeavyFeaturesModule } from "./heavy-features";
+import { InboundEmailModule } from "./inbound-email/inbound-email.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { NominalOutsideDiameterMmModule } from "./nominal-outside-diameter-mm/nominal-outside-diameter-mm.module";
 import { PipeSteelWorkModule } from "./pipe-steel-work/pipe-steel-work.module";
@@ -73,6 +74,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     StorageModule,
     EmailModule,
     AuditModule,
+    InboundEmailModule,
 
     ReferenceDataModule,
 

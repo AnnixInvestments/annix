@@ -40,4 +40,12 @@ export const stockControlKeys = {
     list: () => [...stockControlKeys.deliveries.all, "list"] as const,
     detail: (id: number) => [...stockControlKeys.deliveries.all, "detail", id] as const,
   },
+  inboundEmails: {
+    all: ["stock-control", "inbound-emails"] as const,
+    config: () => [...stockControlKeys.inboundEmails.all, "config"] as const,
+    list: (filters?: Record<string, string | number | undefined>) =>
+      [...stockControlKeys.inboundEmails.all, "list", filters ?? {}] as const,
+    detail: (id: number) => [...stockControlKeys.inboundEmails.all, "detail", id] as const,
+    stats: () => [...stockControlKeys.inboundEmails.all, "stats"] as const,
+  },
 };
