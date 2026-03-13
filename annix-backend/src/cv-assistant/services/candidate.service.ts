@@ -62,7 +62,7 @@ export class CandidateService {
 
   async findAllForCompany(
     companyId: number,
-    filters?: { status?: string; jobPostingId?: number },
+    filters?: { status?: string; jobPostingId?: number | null },
   ): Promise<Candidate[]> {
     const queryBuilder = this.candidateRepo
       .createQueryBuilder("candidate")
@@ -98,13 +98,13 @@ export class CandidateService {
       throw new NotFoundException("Candidate not found");
     }
 
-    if (data.extractedData !== undefined) candidate.extractedData = data.extractedData;
-    if (data.matchAnalysis !== undefined) candidate.matchAnalysis = data.matchAnalysis;
-    if (data.matchScore !== undefined) candidate.matchScore = data.matchScore;
-    if (data.name !== undefined) candidate.name = data.name;
-    if (data.email !== undefined) candidate.email = data.email;
-    if (data.rawCvText !== undefined) candidate.rawCvText = data.rawCvText;
-    if (data.status !== undefined) candidate.status = data.status;
+    if (data.extractedData != null) candidate.extractedData = data.extractedData;
+    if (data.matchAnalysis != null) candidate.matchAnalysis = data.matchAnalysis;
+    if (data.matchScore != null) candidate.matchScore = data.matchScore;
+    if (data.name != null) candidate.name = data.name;
+    if (data.email != null) candidate.email = data.email;
+    if (data.rawCvText != null) candidate.rawCvText = data.rawCvText;
+    if (data.status != null) candidate.status = data.status;
 
     return this.candidateRepo.save(candidate);
   }

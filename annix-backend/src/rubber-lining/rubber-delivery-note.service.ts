@@ -762,7 +762,7 @@ export class RubberDeliveryNoteService {
           dnRollNumbers.length > 0 &&
           cocRollParts.length > 0 &&
           dnRollNumbers.some((dnRoll) =>
-            cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
+            dnRoll != null && cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
           );
 
         this.logger.log(
@@ -846,7 +846,7 @@ export class RubberDeliveryNoteService {
             dnRollNumbers.length > 0 &&
             cocRollParts.length > 0 &&
             dnRollNumbers.some((dnRoll) =>
-              cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
+              dnRoll != null && cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
             );
 
           return batchMatch || orderMatch || (poMatch && rollMatch);

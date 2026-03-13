@@ -33,7 +33,7 @@ export class BoqService {
     private auditService: AuditService,
   ) {}
 
-  private async generateBoqNumber(rfqNumber?: string): Promise<string> {
+  private async generateBoqNumber(rfqNumber?: string | null): Promise<string> {
     if (rfqNumber) {
       return rfqNumber.replace("RFQ-", "BOQ-");
     }
@@ -57,7 +57,7 @@ export class BoqService {
   }
 
   async create(dto: CreateBoqDto, user: User): Promise<Boq> {
-    let rfqNumber: string | undefined;
+    let rfqNumber: string | null = null;
     let rfqItems: RfqItem[] = [];
 
     if (dto.rfqId) {
@@ -81,8 +81,8 @@ export class BoqService {
       description: dto.description,
       status: BoqStatus.DRAFT,
       createdBy: user,
-      drawing: dto.drawingId ? ({ id: dto.drawingId } as any) : undefined,
-      rfq: dto.rfqId ? ({ id: dto.rfqId } as any) : undefined,
+      drawing: dto.drawingId ? ({ id: dto.drawingId } as any) : null,
+      rfq: dto.rfqId ? ({ id: dto.rfqId } as any) : null,
     });
 
     const savedBoq = await this.boqRepository.save(boq);
@@ -99,8 +99,8 @@ export class BoqService {
         lineItem.quantity = rfqItem.quantity || 1;
         lineItem.unitWeightKg = rfqItem.weightPerUnitKg
           ? Number(rfqItem.weightPerUnitKg)
-          : undefined;
-        lineItem.totalWeightKg = rfqItem.totalWeightKg ? Number(rfqItem.totalWeightKg) : undefined;
+          : null;
+        lineItem.totalWeightKg = rfqItem.totalWeightKg ? Number(rfqItem.totalWeightKg) : null;
         lineItem.notes = rfqItem.notes;
         return lineItem;
       });
@@ -235,10 +235,10 @@ export class BoqService {
     if (dto.title) boq.title = dto.title;
     if (dto.description !== undefined) boq.description = dto.description;
     if (dto.drawingId !== undefined) {
-      boq.drawing = dto.drawingId ? ({ id: dto.drawingId } as any) : undefined;
+      boq.drawing = dto.drawingId ? ({ id: dto.drawingId } as any) : null;
     }
     if (dto.rfqId !== undefined) {
-      boq.rfq = dto.rfqId ? ({ id: dto.rfqId } as any) : undefined;
+      boq.rfq = dto.rfqId ? ({ id: dto.rfqId } as any) : null;
     }
 
     await this.boqRepository.save(boq);
@@ -302,9 +302,9 @@ export class BoqService {
     lineItem.unitOfMeasure = dto.unitOfMeasure;
     lineItem.quantity = dto.quantity;
     lineItem.unitWeightKg = dto.unitWeightKg;
-    lineItem.totalWeightKg = dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : undefined;
+    lineItem.totalWeightKg = dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : null;
     lineItem.unitPrice = dto.unitPrice;
-    lineItem.totalPrice = dto.unitPrice ? dto.quantity * dto.unitPrice : undefined;
+    lineItem.totalPrice = dto.unitPrice ? dto.quantity * dto.unitPrice : null;
     lineItem.notes = dto.notes;
     lineItem.drawingReference = dto.drawingReference;
     lineItem.specifications = dto.specifications;
@@ -354,9 +354,9 @@ export class BoqService {
         unitOfMeasure: dto.unitOfMeasure,
         quantity: dto.quantity,
         unitWeightKg: dto.unitWeightKg,
-        totalWeightKg: dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : undefined,
+        totalWeightKg: dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : null,
         unitPrice: dto.unitPrice,
-        totalPrice: dto.unitPrice ? dto.quantity * dto.unitPrice : undefined,
+        totalPrice: dto.unitPrice ? dto.quantity * dto.unitPrice : null,
         notes: dto.notes,
         drawingReference: dto.drawingReference,
         specifications: dto.specifications,
@@ -416,8 +416,8 @@ export class BoqService {
     // Recalculate totals
     lineItem.totalWeightKg = lineItem.unitWeightKg
       ? lineItem.quantity * lineItem.unitWeightKg
-      : undefined;
-    lineItem.totalPrice = lineItem.unitPrice ? lineItem.quantity * lineItem.unitPrice : undefined;
+      : null;
+    lineItem.totalPrice = lineItem.unitPrice ? lineItem.quantity * lineItem.unitPrice : null;
 
     const updated = await this.lineItemRepository.save(lineItem);
     await this.recalculateTotals(boqId);

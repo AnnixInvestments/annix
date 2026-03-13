@@ -89,7 +89,7 @@ export class InventoryController {
     return this.inventoryService.groupedByCategory(
       req.user.companyId,
       search,
-      parsedLocationId ?? undefined,
+      parsedLocationId ?? null,
       parsedPage,
       parsedLimit,
     );

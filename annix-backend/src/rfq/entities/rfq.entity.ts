@@ -64,7 +64,7 @@ export class Rfq {
 
   @ApiProperty({ description: "Required delivery date", required: false })
   @Column({ name: "required_date", type: "date", nullable: true })
-  requiredDate?: Date;
+  requiredDate?: Date | null;
 
   @ApiProperty({ description: "RFQ status", enum: RfqStatus })
   @Column({

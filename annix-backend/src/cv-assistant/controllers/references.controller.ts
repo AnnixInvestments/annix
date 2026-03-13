@@ -10,7 +10,7 @@ export class ReferencesController {
 
   @Get()
   async findAll(@Request() req: { user: { companyId: number } }, @Query("status") status?: string) {
-    const referenceStatus = status ? (status as ReferenceStatus) : undefined;
+    const referenceStatus = status ? (status as ReferenceStatus) : null;
     return this.referenceService.referencesForCompany(req.user.companyId, referenceStatus);
   }
 

@@ -120,31 +120,31 @@ export class RfqResponseDto {
   projectName: string;
 
   @ApiProperty({ description: "Project description", required: false })
-  description?: string;
+  description?: string | null;
 
   @ApiProperty({ description: "Customer company name", required: false })
-  customerName?: string;
+  customerName?: string | null;
 
   @ApiProperty({ description: "Customer email", required: false })
-  customerEmail?: string;
+  customerEmail?: string | null;
 
   @ApiProperty({ description: "Customer phone number", required: false })
-  customerPhone?: string;
+  customerPhone?: string | null;
 
   @ApiProperty({ description: "Required delivery date", required: false })
-  requiredDate?: Date;
+  requiredDate?: Date | null;
 
   @ApiProperty({ description: "RFQ status", example: "draft" })
   status: string;
 
   @ApiProperty({ description: "Additional notes", required: false })
-  notes?: string;
+  notes?: string | null;
 
   @ApiProperty({ description: "Total estimated weight in kg", required: false })
-  totalWeightKg?: number;
+  totalWeightKg?: number | null;
 
   @ApiProperty({ description: "Total estimated cost", required: false })
-  totalCost?: number;
+  totalCost?: number | null;
 
   @ApiProperty({ description: "Creation date" })
   createdAt: Date;

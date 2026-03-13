@@ -50,7 +50,7 @@ export default function ReferenceFeedbackPage() {
     setError(null);
 
     try {
-      await cvAssistantApiClient.submitReferenceFeedback(token, rating, feedbackText || undefined);
+      await cvAssistantApiClient.submitReferenceFeedback(token, rating, feedbackText || null);
       setIsSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit feedback");

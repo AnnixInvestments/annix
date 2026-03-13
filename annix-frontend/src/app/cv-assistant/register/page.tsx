@@ -24,7 +24,7 @@ export default function CvAssistantRegisterPage() {
         name,
         email,
         password,
-        companyName: companyName || undefined,
+        companyName: companyName || null,
       });
       setSuccess(true);
     } catch (err) {

@@ -27,7 +27,7 @@ export default function SignupPage() {
         email,
         password,
         companyName,
-        registrationNumber: registrationNumber || undefined,
+        registrationNumber: registrationNumber || null,
       });
       router.push("/comply-sa/onboarding");
     } catch (err) {

@@ -1048,45 +1048,46 @@ ${truncatedText}`;
       try {
         const isRoll = dnType === DeliveryNoteType.ROLL;
 
-        let extractedData;
-        if (isRoll) {
-          const customerResult =
-            await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
+        const extractedData = await (async () => {
+          if (isRoll) {
+            const customerResult =
+              await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
 
-          const allRolls = customerResult.deliveryNotes.flatMap((dn, dnIdx) =>
-            (dn.lineItems || [])
-              .filter((item) => item != null && typeof item === "object")
-              .map((item) => ({
-                rollNumber: item.rollNumber ?? null,
-                thicknessMm: item.thicknessMm ?? null,
-                widthMm: item.widthMm ?? null,
-                lengthM: item.lengthM ?? null,
-                weightKg: item.actualWeightKg ?? null,
-                areaSqM: item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
-                deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
-                deliveryDate: dn.deliveryDate ?? null,
-                customerName: dn.customerName ?? null,
-                customerReference: dn.customerReference ?? null,
-                pageNumber: dnIdx + 1,
-              })),
-          );
+            const allRolls = customerResult.deliveryNotes.flatMap((dn, dnIdx) =>
+              (dn.lineItems || [])
+                .filter((item) => item != null && typeof item === "object")
+                .map((item) => ({
+                  rollNumber: item.rollNumber ?? null,
+                  thicknessMm: item.thicknessMm ?? null,
+                  widthMm: item.widthMm ?? null,
+                  lengthM: item.lengthM ?? null,
+                  weightKg: item.actualWeightKg ?? null,
+                  areaSqM: item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
+                  deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
+                  deliveryDate: dn.deliveryDate ?? null,
+                  customerName: dn.customerName ?? null,
+                  customerReference: dn.customerReference ?? null,
+                  pageNumber: dnIdx + 1,
+                })),
+            );
 
-          const dnMetadata = customerResult.deliveryNotes[0];
-          extractedData = {
-            deliveryNoteNumber: dnMetadata?.deliveryNoteNumber,
-            deliveryDate: dnMetadata?.deliveryDate,
-            customerName: dnMetadata?.customerName,
-            customerReference: dnMetadata?.customerReference,
-            rolls: allRolls,
-          };
-        } else {
-          const pdfText = await this.extractTextFromPdf(pdfBuffer);
-          const useOcr = pdfText.length < 50;
-          const extractionResult = useOcr
-            ? await this.cocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
-            : await this.cocExtractionService.extractDeliveryNote(pdfText);
-          extractedData = extractionResult.data;
-        }
+            const dnMetadata = customerResult.deliveryNotes[0];
+            return {
+              deliveryNoteNumber: dnMetadata?.deliveryNoteNumber ?? null,
+              deliveryDate: dnMetadata?.deliveryDate ?? null,
+              customerName: dnMetadata?.customerName ?? null,
+              customerReference: dnMetadata?.customerReference ?? null,
+              rolls: allRolls,
+            };
+          } else {
+            const pdfText = await this.extractTextFromPdf(pdfBuffer);
+            const useOcr = pdfText.length < 50;
+            const extractionResult = useOcr
+              ? await this.cocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
+              : await this.cocExtractionService.extractDeliveryNote(pdfText);
+            return extractionResult.data;
+          }
+        })();
 
         await this.deliveryNoteService.setExtractedData(deliveryNoteId, extractedData);
         this.logger.log(`Auto-extracted delivery note ${deliveryNoteId}`);
@@ -1142,16 +1143,19 @@ ${truncatedText}`;
         const companyId = supplierInfo?.companyId || null;
         const company = companyId ? companies.find((c) => c.id === companyId) : null;
 
-        let extractedData: Record<string, unknown> | null = null;
-        try {
-          const extraction = await this.cocExtractionService.extractByType(cocType, pdfText);
-          extractedData = extraction.data as Record<string, unknown>;
-          this.logger.log(
-            `Extracted data for ${file.originalname}: ${JSON.stringify(extractedData).substring(0, 200)}`,
-          );
-        } catch (error) {
-          this.logger.error(`Failed to extract data from ${file.originalname}: ${error.message}`);
-        }
+        const extractedData: Record<string, unknown> | null = await (async () => {
+          try {
+            const extraction = await this.cocExtractionService.extractByType(cocType, pdfText);
+            const data = extraction.data as Record<string, unknown>;
+            this.logger.log(
+              `Extracted data for ${file.originalname}: ${JSON.stringify(data).substring(0, 200)}`,
+            );
+            return data;
+          } catch (error) {
+            this.logger.error(`Failed to extract data from ${file.originalname}: ${error.message}`);
+            return null;
+          }
+        })();
 
         const batchNumbersFromExtraction = (extractedData?.batchNumbers as string[]) || [];
         const batchNumbers =
@@ -1160,9 +1164,10 @@ ${truncatedText}`;
             : batchNumbersFromExtraction;
 
         const compoundCodeFromFilename = filenameInfo.compoundCode;
-        if (compoundCodeFromFilename && extractedData) {
-          extractedData.compoundCode = compoundCodeFromFilename;
-        }
+        const finalExtractedData =
+          compoundCodeFromFilename && extractedData
+            ? { ...extractedData, compoundCode: compoundCodeFromFilename }
+            : extractedData;
 
         return {
           filename: file.originalname,
@@ -1170,7 +1175,7 @@ ${truncatedText}`;
           cocType,
           companyId,
           companyName: company?.name || null,
-          extractedData,
+          extractedData: finalExtractedData,
           batchNumbers,
           linkedToIndex: null,
           pdfText,
@@ -1199,9 +1204,9 @@ ${truncatedText}`;
               const normalizedDataBatches = dataFile.batchNumbers.map((b) => b.replace(/^B/i, ""));
               return normalizedGraphBatches.some((gbn) => normalizedDataBatches.includes(gbn));
             })
-          : undefined;
+          : null;
 
-      if (batchMatchIdx !== undefined) {
+      if (batchMatchIdx != null) {
         const dataFile = analyzedFiles[batchMatchIdx];
         this.logger.log(
           `Linked graph ${file.filename} to data PDF ${dataFile.filename} via batch numbers`,
@@ -1229,7 +1234,7 @@ ${truncatedText}`;
         return dataBase === graphBase;
       });
 
-      if (filenameMatchIdx !== undefined) {
+      if (filenameMatchIdx != null) {
         const dataFile = analyzedFiles[filenameMatchIdx];
         this.logger.log(
           `Linked graph ${file.filename} to data PDF ${dataFile.filename} via filename similarity`,
@@ -1265,12 +1270,12 @@ ${truncatedText}`;
 
         const batchNumbers =
           filenameInfo.batchNumbers.length > 0 ? filenameInfo.batchNumbers : analyzed.batchNumbers;
-        const cocNumber = batchNumbers.length > 0 ? this.formatBatchRange(batchNumbers) : undefined;
+        const cocNumber = batchNumbers.length > 0 ? this.formatBatchRange(batchNumbers) : null;
 
         const compoundCode =
           compoundInfo.compoundCode ||
           (analyzed.extractedData?.compoundCode as string) ||
-          undefined;
+          null;
 
         const subPath = analyzed.companyId
           ? `au-rubber/cocs/${analyzed.companyId}`
@@ -1281,7 +1286,7 @@ ${truncatedText}`;
         const coc = await this.cocService.createSupplierCoc(
           {
             cocType: analyzed.cocType || SupplierCocType.COMPOUNDER,
-            supplierCompanyId: analyzed.companyId || undefined,
+            supplierCompanyId: analyzed.companyId || null,
             documentPath: storageResult.path,
             cocNumber,
             compoundCode,
@@ -1344,7 +1349,7 @@ ${truncatedText}`;
         const coc = await this.cocService.createSupplierCoc(
           {
             cocType: analyzed.cocType || SupplierCocType.COMPOUNDER,
-            supplierCompanyId: analyzed.companyId || undefined,
+            supplierCompanyId: analyzed.companyId || null,
             documentPath: storageResult.path,
           },
           createdBy,
@@ -1468,22 +1473,18 @@ ${truncatedText}`;
                 ? SupplierCocType.CALENDARER
                 : SupplierCocType.COMPOUNDER;
 
-            let companyId: number | undefined;
-            if (cocType === SupplierCocType.CALENDARER) {
-              const calendarerCompany = companies.find(
-                (c) =>
-                  c.name.toLowerCase().includes("impilo") ||
-                  c.name.toLowerCase().includes("calendarer"),
-              );
-              companyId = calendarerCompany?.id;
-            } else {
-              const compounderCompany = companies.find(
-                (c) =>
-                  c.name.toLowerCase().includes("s&n") ||
-                  c.name.toLowerCase().includes("compounder"),
-              );
-              companyId = compounderCompany?.id;
-            }
+            const companyId: number | undefined =
+              cocType === SupplierCocType.CALENDARER
+                ? companies.find(
+                    (c) =>
+                      c.name.toLowerCase().includes("impilo") ||
+                      c.name.toLowerCase().includes("calendarer"),
+                  )?.id
+                : companies.find(
+                    (c) =>
+                      c.name.toLowerCase().includes("s&n") ||
+                      c.name.toLowerCase().includes("compounder"),
+                  )?.id;
 
             return { cocType, companyId, documentType: parsed.documentType };
           }
@@ -1847,25 +1848,26 @@ ${truncatedText}`;
     const fullCode = `${parsedCode.brand}${parsedCode.grade}${parsedCode.shoreHardness}${parsedCode.color}${parsedCode.curingMethod}`;
     const fullName = `${parsedCode.rubberType} ${parsedCode.grade}-Grade ${parsedCode.shoreHardness} Shore ${parsedCode.colorName} ${parsedCode.curingMethodName}`;
 
-    let coding = await this.productCodingRepository.findOne({
+    const existingCoding = await this.productCodingRepository.findOne({
       where: {
         codingType: ProductCodingType.COMPOUND,
         code: fullCode,
       },
     });
 
-    if (!coding) {
-      this.logger.log(`Creating new compound coding: ${fullCode} - ${fullName}`);
-      coding = this.productCodingRepository.create({
-        firebaseUid: `pg_${generateUniqueId()}`,
-        codingType: ProductCodingType.COMPOUND,
-        code: fullCode,
-        name: fullName,
-      });
-      await this.productCodingRepository.save(coding);
-    } else {
-      this.logger.log(`Found existing compound coding: ${coding.code} - ${coding.name}`);
+    if (existingCoding) {
+      this.logger.log(`Found existing compound coding: ${existingCoding.code} - ${existingCoding.name}`);
+      return existingCoding;
     }
+
+    this.logger.log(`Creating new compound coding: ${fullCode} - ${fullName}`);
+    const coding = this.productCodingRepository.create({
+      firebaseUid: `pg_${generateUniqueId()}`,
+      codingType: ProductCodingType.COMPOUND,
+      code: fullCode,
+      name: fullName,
+    });
+    await this.productCodingRepository.save(coding);
 
     return coding;
   }
@@ -1912,31 +1914,34 @@ ${truncatedText}`;
           `Analyzing customer DN file ${i + 1}/${files.length}: ${file.originalname}`,
         );
 
-        let deliveryNotesFromFile: Array<Record<string, unknown>> = [];
-        let newErrors: string[] = [];
-        try {
-          const isAvailable = await this.cocExtractionService.isAvailable();
-          if (!isAvailable) {
-            throw new Error("GEMINI_API_KEY not configured - AI extraction unavailable");
+        const { deliveryNotesFromFile, newErrors } = await (async (): Promise<{
+          deliveryNotesFromFile: Array<Record<string, unknown>>;
+          newErrors: string[];
+        }> => {
+          try {
+            const isAvailable = await this.cocExtractionService.isAvailable();
+            if (!isAvailable) {
+              throw new Error("GEMINI_API_KEY not configured - AI extraction unavailable");
+            }
+
+            this.logger.log(`Using OCR-based extraction for ${file.originalname}`);
+            const extraction = await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(
+              file.buffer,
+            );
+            const notes = extraction.deliveryNotes as Array<Record<string, unknown>>;
+            this.logger.log(
+              `Extracted ${notes.length} customer DN(s) from ${file.originalname} via OCR`,
+            );
+            return {
+              deliveryNotesFromFile: notes.length > 0 ? notes : [{}],
+              newErrors: [],
+            };
+          } catch (error) {
+            const errorMsg = `Failed to extract from ${file.originalname}: ${error.message}`;
+            this.logger.error(errorMsg);
+            return { deliveryNotesFromFile: [{}], newErrors: [errorMsg] };
           }
-
-          this.logger.log(`Using OCR-based extraction for ${file.originalname}`);
-          const extraction = await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(
-            file.buffer,
-          );
-          deliveryNotesFromFile = extraction.deliveryNotes as Array<Record<string, unknown>>;
-          this.logger.log(
-            `Extracted ${deliveryNotesFromFile.length} customer DN(s) from ${file.originalname} via OCR`,
-          );
-        } catch (error) {
-          const errorMsg = `Failed to extract from ${file.originalname}: ${error.message}`;
-          this.logger.error(errorMsg);
-          newErrors = [errorMsg];
-        }
-
-        if (deliveryNotesFromFile.length === 0) {
-          deliveryNotesFromFile = [{}];
-        }
+        })();
 
         const dnFiles = deliveryNotesFromFile.map((extractedData, dnIndex) => {
           const customerName = (extractedData.customerName as string) || null;
@@ -1945,23 +1950,24 @@ ${truncatedText}`;
             `[CustomerDN] Extracted DN #${dnIndex + 1}: number=${extractedData.deliveryNoteNumber}, ref=${customerReference}, customer=${customerName}`,
           );
 
-          let customerId: number | null = null;
-          let newUnmatched: string[] = [];
-
-          if (customerName) {
-            const matchedCompany = this.matchCustomerByName(customerName, customerCompanies);
+          const matchedCompany = customerName
+            ? this.matchCustomerByName(customerName, customerCompanies)
+            : null;
+          const customerId: number | null = matchedCompany?.id ?? null;
+          const newUnmatched: string[] = (() => {
+            if (!customerName) return [];
             if (matchedCompany) {
-              customerId = matchedCompany.id;
               this.logger.log(
                 `Matched customer "${customerName}" to company ${matchedCompany.name} (ID: ${matchedCompany.id})`,
               );
+              return [];
             } else {
-              newUnmatched = [customerName];
               this.logger.warn(
                 `Could not match customer "${customerName}" to any existing company`,
               );
+              return [customerName];
             }
-          }
+          })();
 
           const lineItems = ((extractedData.lineItems as Array<Record<string, unknown>>) || []).map(
             (item) => ({
@@ -2207,34 +2213,34 @@ ${truncatedText}`;
             customerId,
           );
 
-          let dnId: number;
-
-          if (existingDn) {
-            this.logger.log(
-              `Found existing DN ${existingDn.id} for ${deliveryNoteNumber} - overwriting`,
-            );
-            await this.deliveryNoteService.updateDeliveryNote(existingDn.id, {
-              deliveryNoteNumber,
-              deliveryDate: deliveryDate || undefined,
-              status: DeliveryNoteStatus.PENDING,
-            });
-            await this.deliveryNoteService.updateDocumentPath(existingDn.id, storageResult.path);
-            await this.deliveryNoteService.replaceDeliveryNoteItems(existingDn.id);
-            dnId = existingDn.id;
-          } else {
-            const dn = await this.deliveryNoteService.createDeliveryNote(
-              {
-                deliveryNoteType: DeliveryNoteType.ROLL,
-                supplierCompanyId: customerId,
-                documentPath: storageResult.path,
+          const dnId: number = await (async () => {
+            if (existingDn) {
+              this.logger.log(
+                `Found existing DN ${existingDn.id} for ${deliveryNoteNumber} - overwriting`,
+              );
+              await this.deliveryNoteService.updateDeliveryNote(existingDn.id, {
                 deliveryNoteNumber,
-                deliveryDate: deliveryDate || undefined,
-                customerReference: customerReference || undefined,
-              },
-              createdBy,
-            );
-            dnId = dn.id;
-          }
+                deliveryDate: deliveryDate || null,
+                status: DeliveryNoteStatus.PENDING,
+              });
+              await this.deliveryNoteService.updateDocumentPath(existingDn.id, storageResult.path);
+              await this.deliveryNoteService.replaceDeliveryNoteItems(existingDn.id);
+              return existingDn.id;
+            } else {
+              const dn = await this.deliveryNoteService.createDeliveryNote(
+                {
+                  deliveryNoteType: DeliveryNoteType.ROLL,
+                  supplierCompanyId: customerId,
+                  documentPath: storageResult.path,
+                  deliveryNoteNumber,
+                  deliveryDate: deliveryDate || null,
+                  customerReference: customerReference || null,
+                },
+                createdBy,
+              );
+              return dn.id;
+            }
+          })();
 
           await group.allLineItems.reduce(async (itemPromise, lineItem) => {
             await itemPromise;

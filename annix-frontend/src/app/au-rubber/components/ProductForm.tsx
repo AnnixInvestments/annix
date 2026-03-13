@@ -63,27 +63,27 @@ export function formDataFromProduct(product: RubberProductDto): ProductFormData 
 
 export function formDataToDto(formData: ProductFormData): CreateRubberProductDto {
   return {
-    title: formData.title.trim() || undefined,
-    description: formData.description.trim() || undefined,
-    specificGravity: formData.specificGravity ? parseFloat(formData.specificGravity) : undefined,
-    compoundOwnerFirebaseUid: formData.compoundOwnerFirebaseUid || undefined,
-    compoundFirebaseUid: formData.compoundFirebaseUid || undefined,
+    title: formData.title.trim() || null,
+    description: formData.description.trim() || null,
+    specificGravity: formData.specificGravity ? parseFloat(formData.specificGravity) : null,
+    compoundOwnerFirebaseUid: formData.compoundOwnerFirebaseUid || null,
+    compoundFirebaseUid: formData.compoundFirebaseUid || null,
     typeFirebaseUid:
       formData.typeFirebaseUid && formData.typeFirebaseUid !== "NONE"
         ? formData.typeFirebaseUid
-        : undefined,
-    costPerKg: formData.costPerKg ? parseFloat(formData.costPerKg) : undefined,
-    colourFirebaseUid: formData.colourFirebaseUid || undefined,
-    hardnessFirebaseUid: formData.hardnessFirebaseUid || undefined,
-    curingMethodFirebaseUid: formData.curingMethodFirebaseUid || undefined,
-    gradeFirebaseUid: formData.gradeFirebaseUid || undefined,
+        : null,
+    costPerKg: formData.costPerKg ? parseFloat(formData.costPerKg) : null,
+    colourFirebaseUid: formData.colourFirebaseUid || null,
+    hardnessFirebaseUid: formData.hardnessFirebaseUid || null,
+    curingMethodFirebaseUid: formData.curingMethodFirebaseUid || null,
+    gradeFirebaseUid: formData.gradeFirebaseUid || null,
     tensileStrengthMpa: formData.tensileStrengthMpa
       ? parseFloat(formData.tensileStrengthMpa)
-      : undefined,
+      : null,
     elongationAtBreak: formData.elongationAtBreak
       ? parseInt(formData.elongationAtBreak, 10)
-      : undefined,
-    markup: formData.markup ? parseFloat(formData.markup) : undefined,
+      : null,
+    markup: formData.markup ? parseFloat(formData.markup) : null,
   };
 }
 

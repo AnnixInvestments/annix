@@ -572,10 +572,10 @@ export interface AnalyzeCustomerDnsResult {
 }
 
 export interface CustomerDnOverride {
-  deliveryNoteNumber?: string;
-  customerId?: number;
-  customerReference?: string;
-  deliveryDate?: string;
+  deliveryNoteNumber?: string | null;
+  customerId?: number | null;
+  customerReference?: string | null;
+  deliveryDate?: string | null;
 }
 
 export interface RubberRollStockDto {
@@ -1747,7 +1747,7 @@ class AuRubberApiClient {
     });
   }
 
-  async compoundOrders(status?: RubberCompoundOrderStatus): Promise<RubberCompoundOrderDto[]> {
+  async compoundOrders(status?: RubberCompoundOrderStatus | null): Promise<RubberCompoundOrderDto[]> {
     const query = status ? `?status=${status}` : "";
     return this.request(`/rubber-lining/portal/compound-orders${query}`);
   }
@@ -1759,9 +1759,9 @@ class AuRubberApiClient {
   async createCompoundOrder(data: {
     compoundStockId: number;
     quantityKg: number;
-    supplierName?: string;
-    expectedDelivery?: string;
-    notes?: string;
+    supplierName?: string | null;
+    expectedDelivery?: string | null;
+    notes?: string | null;
   }): Promise<RubberCompoundOrderDto> {
     return this.request("/rubber-lining/portal/compound-orders", {
       method: "POST",
@@ -1783,8 +1783,8 @@ class AuRubberApiClient {
     id: number,
     data: {
       actualQuantityKg: number;
-      batchNumber?: string;
-      notes?: string;
+      batchNumber?: string | null;
+      notes?: string | null;
     },
   ): Promise<RubberCompoundOrderDto> {
     return this.request(`/rubber-lining/portal/compound-orders/${id}/receive`, {

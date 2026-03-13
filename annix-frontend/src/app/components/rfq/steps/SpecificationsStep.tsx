@@ -818,7 +818,7 @@ export default function SpecificationsStep(props: {
   const [materialWarning, setMaterialWarning] = useState<{
     show: boolean;
     specName: string;
-    specId: number | undefined;
+    specId: number | null;
     warnings: string[];
     recommendation?: string;
     limits?: {
@@ -827,8 +827,8 @@ export default function SpecificationsStep(props: {
       maxPressureBar: number;
       type: string;
       notes?: string;
-    };
-  }>({ show: false, specName: "", specId: undefined, warnings: [] });
+    } | null;
+  }>({ show: false, specName: "", specId: null, warnings: [] });
 
   // Confirmation warning popup state (shows when specs have issues but user tries to confirm)
   const [confirmationWarning, setConfirmationWarning] = useState<{
@@ -895,7 +895,7 @@ export default function SpecificationsStep(props: {
     gasketRecommendation,
     isLoading: ptLoading,
   } = usePtRecommendations({
-    standardId: globalSpecs?.flangeStandardId !== "PE" ? globalSpecs?.flangeStandardId : undefined,
+    standardId: globalSpecs?.flangeStandardId !== "PE" ? globalSpecs?.flangeStandardId : null,
     workingPressureBar: globalSpecs?.workingPressureBar,
     temperatureCelsius: globalSpecs?.workingTemperatureC,
     currentPressureClassId: globalSpecs?.flangePressureClassId,
@@ -921,7 +921,7 @@ export default function SpecificationsStep(props: {
   }, [globalSpecs?.flangeStandardId]);
 
   // Helper to extract numeric value from pressure class designation for comparison
-  const extractPressureNumeric = (designation: string | undefined): number => {
+  const extractPressureNumeric = (designation: string | null): number => {
     if (!designation) return 0;
     const match = designation.match(/^(\d+)/);
     return match ? parseInt(match[1], 10) : 0;
@@ -996,13 +996,13 @@ export default function SpecificationsStep(props: {
 
   // Derive Installation Conditions from Page 1 data
   // Installation Type: Default to AboveGround for mining applications
-  const derivedInstallationType = globalSpecs?.mineSelected ? "AboveGround" : undefined;
+  const derivedInstallationType = globalSpecs?.mineSelected ? "AboveGround" : null;
   const effectiveInstallationType = globalSpecs?.ecpInstallationType || derivedInstallationType;
   const isInstallationTypeAutoFilled =
     !globalSpecs?.ecpInstallationType && !!derivedInstallationType;
 
   // UV Exposure: Derive from ISO 12944 category or mining environment
-  const deriveUvExposure = (): string | undefined => {
+  const deriveUvExposure = (): string | null => {
     // If mine is selected, mining environments typically have high UV exposure (outdoor operations)
     if (globalSpecs?.mineSelected) {
       // If we have ISO 12944, use it to refine
@@ -1012,14 +1012,14 @@ export default function SpecificationsStep(props: {
       if (iso === "C1" || iso === "C2") return "Moderate";
       return "High"; // Default for mining is High (outdoor)
     }
-    return undefined;
+    return null;
   };
   const derivedUvExposure = deriveUvExposure();
   const effectiveUvExposure = globalSpecs?.ecpUvExposure || derivedUvExposure;
   const isUvExposureAutoFilled = !globalSpecs?.ecpUvExposure && !!derivedUvExposure;
 
   // Mechanical Risk: Mining environments are typically high mechanical risk
-  const derivedMechanicalRisk = globalSpecs?.mineSelected ? "High" : undefined;
+  const derivedMechanicalRisk = globalSpecs?.mineSelected ? "High" : null;
   const effectiveMechanicalRisk = globalSpecs?.ecpMechanicalRisk || derivedMechanicalRisk;
   const isMechanicalRiskAutoFilled = !globalSpecs?.ecpMechanicalRisk && !!derivedMechanicalRisk;
 
@@ -1031,7 +1031,7 @@ export default function SpecificationsStep(props: {
 
   // Map Service Life to ISO 12944-5 durability codes
   const serviceLifeToDurability = (
-    serviceLife: string | undefined,
+    serviceLife: string | null,
   ): "L" | "M" | "H" | "VH" | null => {
     switch (serviceLife) {
       case "Short":
@@ -1215,7 +1215,7 @@ export default function SpecificationsStep(props: {
                       <select
                         value={globalSpecs?.workingPressureBar || ""}
                         onChange={async (e) => {
-                          const newPressure = e.target.value ? Number(e.target.value) : undefined;
+                          const newPressure = e.target.value ? Number(e.target.value) : null;
                           let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
                           if (newPressure && globalSpecs?.flangeStandardId) {
                             // Get material group from selected steel spec
@@ -1265,10 +1265,10 @@ export default function SpecificationsStep(props: {
                       <select
                         value={globalSpecs?.workingTemperatureC || ""}
                         onChange={async (e) => {
-                          const newTemp = e.target.value ? Number(e.target.value) : undefined;
+                          const newTemp = e.target.value ? Number(e.target.value) : null;
                           let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
                           if (
-                            newTemp !== undefined &&
+                            newTemp !== null &&
                             globalSpecs?.workingPressureBar &&
                             globalSpecs?.flangeStandardId
                           ) {
@@ -1408,7 +1408,7 @@ export default function SpecificationsStep(props: {
                                           type: suitability.limits.materialType,
                                           notes: suitability.limits.notes,
                                         }
-                                      : undefined;
+                                      : null;
 
                                     setMaterialWarning({
                                       show: true,
@@ -1708,7 +1708,7 @@ export default function SpecificationsStep(props: {
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
                                   flangeStandardId: "PE",
-                                  flangePressureClassId: undefined,
+                                  flangePressureClassId: null,
                                 });
                                 setFlangeStandardDropdownOpen(false);
                                 return;
@@ -1716,7 +1716,7 @@ export default function SpecificationsStep(props: {
 
                               const standardId =
                                 typeof rawValue === "number" ? rawValue : Number(rawValue);
-                              let recommendedPressureClassId: number | undefined;
+                              let recommendedPressureClassId: number | null = null;
                               const standardChanged = standardId !== globalSpecs?.flangeStandardId;
                               const steelSpec = masterData.steelSpecs?.find(
                                 (s: any) => s.id === globalSpecs?.steelSpecificationId,
@@ -1740,7 +1740,7 @@ export default function SpecificationsStep(props: {
                                       globalSpecs.workingPressureBar,
                                       globalSpecs.workingTemperatureC,
                                       materialGroup,
-                                    )) || undefined;
+                                    )) || null;
                                   console.log(
                                     "[PT-DEBUG] fetchAndSelectPressureClass returned:",
                                     recommendedPressureClassId,
@@ -1920,7 +1920,7 @@ export default function SpecificationsStep(props: {
                                 ...globalSpecs,
                                 flangePressureClassId: e.target.value
                                   ? Number(e.target.value)
-                                  : undefined,
+                                  : null,
                               })
                             }
                             className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 ${
@@ -2130,7 +2130,7 @@ export default function SpecificationsStep(props: {
                           <select
                             value={globalSpecs?.flangeTypeCode || ""}
                             onChange={(e) => {
-                              const newFlangeTypeCode = e.target.value || undefined;
+                              const newFlangeTypeCode = e.target.value || null;
                               let newPressureClassId = globalSpecs?.flangePressureClassId;
 
                               if (
@@ -2413,7 +2413,7 @@ export default function SpecificationsStep(props: {
                               onChange={(e) =>
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpInstallationType: e.target.value || undefined,
+                                  ecpInstallationType: e.target.value || null,
                                 })
                               }
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isInstallationTypeAutoFilled)}`}
@@ -2437,7 +2437,7 @@ export default function SpecificationsStep(props: {
                               onChange={(e) =>
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpUvExposure: e.target.value || undefined,
+                                  ecpUvExposure: e.target.value || null,
                                 })
                               }
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isUvExposureAutoFilled)}`}
@@ -2460,7 +2460,7 @@ export default function SpecificationsStep(props: {
                               onChange={(e) =>
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpMechanicalRisk: e.target.value || undefined,
+                                  ecpMechanicalRisk: e.target.value || null,
                                 })
                               }
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isMechanicalRiskAutoFilled)}`}
@@ -2502,7 +2502,7 @@ export default function SpecificationsStep(props: {
                               onChange={(e) =>
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpIso12944Category: e.target.value || undefined,
+                                  ecpIso12944Category: e.target.value || null,
                                 })
                               }
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isIso12944AutoFilled)}`}
@@ -2528,7 +2528,7 @@ export default function SpecificationsStep(props: {
                               onChange={(e) =>
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpMarineInfluence: e.target.value || undefined,
+                                  ecpMarineInfluence: e.target.value || null,
                                 })
                               }
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isMarineInfluenceAutoFilled)}`}
@@ -2551,7 +2551,7 @@ export default function SpecificationsStep(props: {
                               onChange={(e) =>
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpIndustrialPollution: e.target.value || undefined,
+                                  ecpIndustrialPollution: e.target.value || null,
                                 })
                               }
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(isIndustrialPollutionAutoFilled)}`}
@@ -2584,7 +2584,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    ecpSoilType: e.target.value || undefined,
+                                    ecpSoilType: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
@@ -2605,7 +2605,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    ecpSoilResistivity: e.target.value || undefined,
+                                    ecpSoilResistivity: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
@@ -2626,7 +2626,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    ecpSoilMoisture: e.target.value || undefined,
+                                    ecpSoilMoisture: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
@@ -2665,7 +2665,7 @@ export default function SpecificationsStep(props: {
                               onChange={(e) =>
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpTemperature: e.target.value || undefined,
+                                  ecpTemperature: e.target.value || null,
                                 })
                               }
                               className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${
@@ -2690,7 +2690,7 @@ export default function SpecificationsStep(props: {
                               onChange={(e) =>
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
-                                  ecpServiceLife: e.target.value || undefined,
+                                  ecpServiceLife: e.target.value || null,
                                 })
                               }
                               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
@@ -2722,7 +2722,7 @@ export default function SpecificationsStep(props: {
                                       ? true
                                       : e.target.value === "false"
                                         ? false
-                                        : undefined,
+                                        : null,
                                 })
                               }
                               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-orange-500 text-gray-900"
@@ -3042,7 +3042,7 @@ export default function SpecificationsStep(props: {
                                         } else {
                                           onUpdateGlobalSpecs({
                                             ...globalSpecs,
-                                            recExternalTopcoatColour: e.target.value || undefined,
+                                            recExternalTopcoatColour: e.target.value || null,
                                           });
                                         }
                                       }}
@@ -3145,7 +3145,7 @@ export default function SpecificationsStep(props: {
                                                 ...globalSpecs,
                                                 recExternalTopcoatColour: newColour,
                                                 showRecCustomColourInput: false,
-                                                recCustomColourInput: undefined,
+                                                recCustomColourInput: null,
                                               });
                                             }
                                           }}
@@ -3160,7 +3160,7 @@ export default function SpecificationsStep(props: {
                                             onUpdateGlobalSpecs({
                                               ...globalSpecs,
                                               showRecCustomColourInput: false,
-                                              recCustomColourInput: undefined,
+                                              recCustomColourInput: null,
                                             })
                                           }
                                           className="px-1.5 py-0.5 bg-gray-500 text-white text-[10px] rounded hover:bg-gray-600"
@@ -3189,10 +3189,10 @@ export default function SpecificationsStep(props: {
                                         } else {
                                           onUpdateGlobalSpecs({
                                             ...globalSpecs,
-                                            recExternalBand1Colour: e.target.value || undefined,
+                                            recExternalBand1Colour: e.target.value || null,
                                             ...(e.target.value
                                               ? {}
-                                              : { recExternalBand2Colour: undefined }),
+                                              : { recExternalBand2Colour: null }),
                                           });
                                         }
                                       }}
@@ -3265,7 +3265,7 @@ export default function SpecificationsStep(props: {
                                                 ...globalSpecs,
                                                 recExternalBand1Colour: newColour,
                                                 showRecBand1Input: false,
-                                                recBand1Input: undefined,
+                                                recBand1Input: null,
                                               });
                                             }
                                           }}
@@ -3280,7 +3280,7 @@ export default function SpecificationsStep(props: {
                                             onUpdateGlobalSpecs({
                                               ...globalSpecs,
                                               showRecBand1Input: false,
-                                              recBand1Input: undefined,
+                                              recBand1Input: null,
                                             })
                                           }
                                           className="px-1.5 py-0.5 bg-gray-500 text-white text-[10px] rounded hover:bg-gray-600"
@@ -3310,7 +3310,7 @@ export default function SpecificationsStep(props: {
                                           } else {
                                             onUpdateGlobalSpecs({
                                               ...globalSpecs,
-                                              recExternalBand2Colour: e.target.value || undefined,
+                                              recExternalBand2Colour: e.target.value || null,
                                             });
                                           }
                                         }}
@@ -3384,7 +3384,7 @@ export default function SpecificationsStep(props: {
                                                   ...globalSpecs,
                                                   recExternalBand2Colour: newColour,
                                                   showRecBand2Input: false,
-                                                  recBand2Input: undefined,
+                                                  recBand2Input: null,
                                                 });
                                               }
                                             }}
@@ -3399,7 +3399,7 @@ export default function SpecificationsStep(props: {
                                               onUpdateGlobalSpecs({
                                                 ...globalSpecs,
                                                 showRecBand2Input: false,
-                                                recBand2Input: undefined,
+                                                recBand2Input: null,
                                               })
                                             }
                                             className="px-1.5 py-0.5 bg-gray-500 text-white text-[10px] rounded hover:bg-gray-600"
@@ -3426,7 +3426,7 @@ export default function SpecificationsStep(props: {
                                     externalCoatingRecommendationRejected: false,
                                     externalBlastingGrade:
                                       recommendation.coatingType === "Galvanized"
-                                        ? undefined
+                                        ? null
                                         : "SA 2.5 (ISO 8501-1)",
                                     externalTopcoatColour: globalSpecs?.recExternalTopcoatColour,
                                     externalBand1Colour: globalSpecs?.recExternalBand1Colour,
@@ -3744,7 +3744,7 @@ export default function SpecificationsStep(props: {
                           onUpdateGlobalSpecs({
                             ...globalSpecs,
                             externalCoatingConfirmed: false,
-                            externalCoatingRecommendation: undefined,
+                            externalCoatingRecommendation: null,
                             externalCoatingActionLog: [
                               ...(globalSpecs?.externalCoatingActionLog || []),
                               { action: "UNLOCKED_FOR_EDIT", timestamp: nowISO() },
@@ -3809,7 +3809,7 @@ export default function SpecificationsStep(props: {
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
                               externalCoatingRecommendationRejected: false,
-                              externalCoatingType: undefined,
+                              externalCoatingType: null,
                               showExternalCoatingProfile: true,
                               externalCoatingActionLog: [
                                 ...(globalSpecs?.externalCoatingActionLog || []),
@@ -3834,19 +3834,19 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalCoatingType: e.target.value || undefined,
+                              externalCoatingType: e.target.value || null,
                               // Clear related fields when changing coating type
-                              externalPrimerType: undefined,
-                              externalPrimerMicrons: undefined,
-                              externalIntermediateType: undefined,
-                              externalIntermediateMicrons: undefined,
-                              externalTopcoatType: undefined,
-                              externalTopcoatMicrons: undefined,
-                              externalPaintConfirmed: undefined,
-                              externalRubberType: undefined,
-                              externalRubberThickness: undefined,
-                              externalRubberColour: undefined,
-                              externalRubberHardness: undefined,
+                              externalPrimerType: null,
+                              externalPrimerMicrons: null,
+                              externalIntermediateType: null,
+                              externalIntermediateMicrons: null,
+                              externalTopcoatType: null,
+                              externalTopcoatMicrons: null,
+                              externalPaintConfirmed: null,
+                              externalRubberType: null,
+                              externalRubberThickness: null,
+                              externalRubberColour: null,
+                              externalRubberHardness: null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -3941,7 +3941,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalRubberType: e.target.value || undefined,
+                              externalRubberType: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -3970,7 +3970,7 @@ export default function SpecificationsStep(props: {
                               ...globalSpecs,
                               externalRubberThickness: e.target.value
                                 ? Number(e.target.value)
-                                : undefined,
+                                : null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -3997,7 +3997,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalRubberColour: e.target.value || undefined,
+                              externalRubberColour: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -4024,7 +4024,7 @@ export default function SpecificationsStep(props: {
                               ...globalSpecs,
                               externalRubberHardness: e.target.value
                                 ? Number(e.target.value)
-                                : undefined,
+                                : null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -4256,7 +4256,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalBlastingGrade: e.target.value || undefined,
+                              externalBlastingGrade: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -4278,7 +4278,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalPrimerType: e.target.value || undefined,
+                              externalPrimerType: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -4308,7 +4308,7 @@ export default function SpecificationsStep(props: {
                               ...globalSpecs,
                               externalPrimerMicrons: e.target.value
                                 ? Number(e.target.value)
-                                : undefined,
+                                : null,
                             })
                           }
                           placeholder="50-75"
@@ -4330,7 +4330,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalIntermediateType: e.target.value || undefined,
+                              externalIntermediateType: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -4357,7 +4357,7 @@ export default function SpecificationsStep(props: {
                                 ...globalSpecs,
                                 externalIntermediateMicrons: e.target.value
                                   ? Number(e.target.value)
-                                  : undefined,
+                                  : null,
                               })
                             }
                             placeholder="125-200"
@@ -4380,7 +4380,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalTopcoatType: e.target.value || undefined,
+                              externalTopcoatType: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -4409,7 +4409,7 @@ export default function SpecificationsStep(props: {
                                   ...globalSpecs,
                                   externalTopcoatMicrons: e.target.value
                                     ? Number(e.target.value)
-                                    : undefined,
+                                    : null,
                                 })
                               }
                               placeholder="50-75"
@@ -4435,7 +4435,7 @@ export default function SpecificationsStep(props: {
                                   } else {
                                     onUpdateGlobalSpecs({
                                       ...globalSpecs,
-                                      externalTopcoatColour: e.target.value || undefined,
+                                      externalTopcoatColour: e.target.value || null,
                                     });
                                   }
                                 }}
@@ -4565,7 +4565,7 @@ export default function SpecificationsStep(props: {
                                           ...globalSpecs,
                                           externalTopcoatColour: newColour,
                                           showCustomColourInput: false,
-                                          customColourInput: undefined,
+                                          customColourInput: null,
                                         });
                                       }
                                     }}
@@ -4580,7 +4580,7 @@ export default function SpecificationsStep(props: {
                                       onUpdateGlobalSpecs({
                                         ...globalSpecs,
                                         showCustomColourInput: false,
-                                        customColourInput: undefined,
+                                        customColourInput: null,
                                       })
                                     }
                                     className="px-3 py-2 bg-gray-500 text-white text-sm rounded-lg hover:bg-gray-600"
@@ -4615,8 +4615,8 @@ export default function SpecificationsStep(props: {
                                 } else {
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    externalBand1Colour: e.target.value || undefined,
-                                    ...(e.target.value ? {} : { externalBand2Colour: undefined }),
+                                    externalBand1Colour: e.target.value || null,
+                                    ...(e.target.value ? {} : { externalBand2Colour: null }),
                                   });
                                 }
                               }}
@@ -4714,7 +4714,7 @@ export default function SpecificationsStep(props: {
                                         ...globalSpecs,
                                         externalBand1Colour: newColour,
                                         showCustomBand1Input: false,
-                                        customBand1Input: undefined,
+                                        customBand1Input: null,
                                       });
                                     }
                                   }}
@@ -4729,7 +4729,7 @@ export default function SpecificationsStep(props: {
                                     onUpdateGlobalSpecs({
                                       ...globalSpecs,
                                       showCustomBand1Input: false,
-                                      customBand1Input: undefined,
+                                      customBand1Input: null,
                                     })
                                   }
                                   className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
@@ -4758,7 +4758,7 @@ export default function SpecificationsStep(props: {
                                 } else {
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    externalBand2Colour: e.target.value || undefined,
+                                    externalBand2Colour: e.target.value || null,
                                   });
                                 }
                               }}
@@ -4857,7 +4857,7 @@ export default function SpecificationsStep(props: {
                                         ...globalSpecs,
                                         externalBand2Colour: newColour,
                                         showCustomBand2Input: false,
-                                        customBand2Input: undefined,
+                                        customBand2Input: null,
                                       });
                                     }
                                   }}
@@ -4872,7 +4872,7 @@ export default function SpecificationsStep(props: {
                                     onUpdateGlobalSpecs({
                                       ...globalSpecs,
                                       showCustomBand2Input: false,
-                                      customBand2Input: undefined,
+                                      customBand2Input: null,
                                     })
                                   }
                                   className="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600"
@@ -5282,7 +5282,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpParticleSize: e.target.value || undefined,
+                                    mtpParticleSize: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
@@ -5303,7 +5303,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpParticleShape: e.target.value || undefined,
+                                    mtpParticleShape: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
@@ -5323,7 +5323,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpHardnessClass: e.target.value || undefined,
+                                    mtpHardnessClass: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
@@ -5343,7 +5343,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpSilicaContent: e.target.value || undefined,
+                                    mtpSilicaContent: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
@@ -5363,7 +5363,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpSpecificGravity: e.target.value || undefined,
+                                    mtpSpecificGravity: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-gray-900"
@@ -5395,7 +5395,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpPhRange: e.target.value || undefined,
+                                    mtpPhRange: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
@@ -5415,7 +5415,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpChlorides: e.target.value || undefined,
+                                    mtpChlorides: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
@@ -5435,7 +5435,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpTemperatureRange: e.target.value || undefined,
+                                    mtpTemperatureRange: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
@@ -5467,7 +5467,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpVelocity: e.target.value || undefined,
+                                    mtpVelocity: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
@@ -5487,7 +5487,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpImpactAngle: e.target.value || undefined,
+                                    mtpImpactAngle: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
@@ -5507,7 +5507,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpEquipmentType: e.target.value || undefined,
+                                    mtpEquipmentType: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
@@ -5529,7 +5529,7 @@ export default function SpecificationsStep(props: {
                                 onChange={(e) =>
                                   onUpdateGlobalSpecs({
                                     ...globalSpecs,
-                                    mtpSolidsPercent: e.target.value || undefined,
+                                    mtpSolidsPercent: e.target.value || null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
@@ -5561,7 +5561,7 @@ export default function SpecificationsStep(props: {
                                         ? true
                                         : e.target.value === "false"
                                           ? false
-                                          : undefined,
+                                          : null,
                                   })
                                 }
                                 className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
@@ -5762,28 +5762,28 @@ export default function SpecificationsStep(props: {
                         onChange={(e) =>
                           onUpdateGlobalSpecs({
                             ...globalSpecs,
-                            internalLiningType: e.target.value || undefined,
+                            internalLiningType: e.target.value || null,
                             // Clear related fields when changing lining type
-                            internalPrimerType: undefined,
-                            internalPrimerMicrons: undefined,
-                            internalIntermediateType: undefined,
-                            internalIntermediateMicrons: undefined,
-                            internalTopcoatType: undefined,
-                            internalTopcoatMicrons: undefined,
-                            internalPaintConfirmed: undefined,
-                            internalRubberType: undefined,
-                            internalRubberThickness: undefined,
-                            internalRubberColour: undefined,
-                            internalRubberHardness: undefined,
-                            internalCeramicType: undefined,
-                            internalCeramicShape: undefined,
-                            internalCeramicThickness: undefined,
-                            internalHdpeMaterialGrade: undefined,
-                            internalHdpePressureRating: undefined,
-                            internalHdpeSdr: undefined,
-                            internalHdpePipeType: undefined,
-                            internalPuThickness: undefined,
-                            internalPuHardness: undefined,
+                            internalPrimerType: null,
+                            internalPrimerMicrons: null,
+                            internalIntermediateType: null,
+                            internalIntermediateMicrons: null,
+                            internalTopcoatType: null,
+                            internalTopcoatMicrons: null,
+                            internalPaintConfirmed: null,
+                            internalRubberType: null,
+                            internalRubberThickness: null,
+                            internalRubberColour: null,
+                            internalRubberHardness: null,
+                            internalCeramicType: null,
+                            internalCeramicShape: null,
+                            internalCeramicThickness: null,
+                            internalHdpeMaterialGrade: null,
+                            internalHdpePressureRating: null,
+                            internalHdpeSdr: null,
+                            internalHdpePipeType: null,
+                            internalPuThickness: null,
+                            internalPuHardness: null,
                           })
                         }
                         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -5873,7 +5873,7 @@ export default function SpecificationsStep(props: {
                         <select
                           value={globalSpecs?.internalRubberSansType || ""}
                           onChange={(e) => {
-                            const sansType = e.target.value ? Number(e.target.value) : undefined;
+                            const sansType = e.target.value ? Number(e.target.value) : null;
                             const typeMap: Record<number, string> = {
                               1: "Natural Rubber",
                               2: "Bromobutyl Rubber",
@@ -5884,7 +5884,7 @@ export default function SpecificationsStep(props: {
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
                               internalRubberSansType: sansType,
-                              internalRubberType: sansType ? typeMap[sansType] : undefined,
+                              internalRubberType: sansType ? typeMap[sansType] : null,
                             });
                           }}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -5907,7 +5907,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalRubberGrade: e.target.value || undefined,
+                              internalRubberGrade: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -5931,7 +5931,7 @@ export default function SpecificationsStep(props: {
                               ...globalSpecs,
                               internalRubberHardness: e.target.value
                                 ? Number(e.target.value)
-                                : undefined,
+                                : null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -5955,7 +5955,7 @@ export default function SpecificationsStep(props: {
                               ...globalSpecs,
                               internalRubberThickness: e.target.value
                                 ? Number(e.target.value)
-                                : undefined,
+                                : null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -5985,7 +5985,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalRubberVulcanizationMethod: e.target.value || undefined,
+                              internalRubberVulcanizationMethod: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6007,7 +6007,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalRubberColour: e.target.value || undefined,
+                              internalRubberColour: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6121,7 +6121,7 @@ export default function SpecificationsStep(props: {
                                 onUpdateGlobalSpecs({
                                   ...globalSpecs,
                                   internalRubberSpecialProperties:
-                                    updated.length > 0 ? updated : undefined,
+                                    updated.length > 0 ? updated : null,
                                 });
                               }}
                               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -6315,7 +6315,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalCeramicType: e.target.value || undefined,
+                              internalCeramicType: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6341,7 +6341,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalCeramicShape: e.target.value || undefined,
+                              internalCeramicShape: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6367,7 +6367,7 @@ export default function SpecificationsStep(props: {
                               ...globalSpecs,
                               internalCeramicThickness: e.target.value
                                 ? Number(e.target.value)
-                                : undefined,
+                                : null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6466,7 +6466,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalHdpeMaterialGrade: e.target.value || undefined,
+                              internalHdpeMaterialGrade: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6488,7 +6488,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalHdpePressureRating: e.target.value || undefined,
+                              internalHdpePressureRating: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6515,7 +6515,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalHdpeSdr: e.target.value || undefined,
+                              internalHdpeSdr: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6540,7 +6540,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalHdpePipeType: e.target.value || undefined,
+                              internalHdpePipeType: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6640,7 +6640,7 @@ export default function SpecificationsStep(props: {
                               ...globalSpecs,
                               internalPuThickness: e.target.value
                                 ? Number(e.target.value)
-                                : undefined,
+                                : null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6675,7 +6675,7 @@ export default function SpecificationsStep(props: {
                               ...globalSpecs,
                               internalPuHardness: e.target.value
                                 ? Number(e.target.value)
-                                : undefined,
+                                : null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6864,7 +6864,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalPrimerType: e.target.value || undefined,
+                              internalPrimerType: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6891,7 +6891,7 @@ export default function SpecificationsStep(props: {
                               ...globalSpecs,
                               internalPrimerMicrons: e.target.value
                                 ? Number(e.target.value)
-                                : undefined,
+                                : null,
                             })
                           }
                           placeholder="50-75"
@@ -6910,7 +6910,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalIntermediateType: e.target.value || undefined,
+                              internalIntermediateType: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6938,7 +6938,7 @@ export default function SpecificationsStep(props: {
                                 ...globalSpecs,
                                 internalIntermediateMicrons: e.target.value
                                   ? Number(e.target.value)
-                                  : undefined,
+                                  : null,
                               })
                             }
                             placeholder="125-200"
@@ -6958,7 +6958,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalTopcoatType: e.target.value || undefined,
+                              internalTopcoatType: e.target.value || null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6984,7 +6984,7 @@ export default function SpecificationsStep(props: {
                                 ...globalSpecs,
                                 internalTopcoatMicrons: e.target.value
                                   ? Number(e.target.value)
-                                  : undefined,
+                                  : null,
                               })
                             }
                             placeholder="50-75"
@@ -7364,7 +7364,7 @@ export default function SpecificationsStep(props: {
                       onChange={(e) =>
                         onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          boltGrade: e.target.value || undefined,
+                          boltGrade: e.target.value || null,
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
@@ -7401,7 +7401,7 @@ export default function SpecificationsStep(props: {
                     </select>
                     {!globalSpecs?.boltGrade &&
                       boltRecommendation &&
-                      globalSpecs?.workingTemperatureC !== undefined && (
+                      globalSpecs?.workingTemperatureC != null && (
                         <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                           <div className="flex items-start gap-2">
                             <svg
@@ -7445,7 +7445,7 @@ export default function SpecificationsStep(props: {
                     {globalSpecs?.boltGrade &&
                       boltRecommendation &&
                       globalSpecs.boltGrade !== boltRecommendation.grade &&
-                      globalSpecs?.workingTemperatureC !== undefined && (
+                      globalSpecs?.workingTemperatureC != null && (
                         <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
                           <div className="flex items-start gap-2">
                             <svg
@@ -7483,7 +7483,7 @@ export default function SpecificationsStep(props: {
                       onChange={(e) =>
                         onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          gasketType: e.target.value || undefined,
+                          gasketType: e.target.value || null,
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
@@ -7539,7 +7539,7 @@ export default function SpecificationsStep(props: {
                     {/* Gasket Recommendation - show when no gasket selected */}
                     {!globalSpecs?.gasketType &&
                       gasketRecommendation &&
-                      globalSpecs?.workingTemperatureC !== undefined && (
+                      globalSpecs?.workingTemperatureC != null && (
                         <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                           <div className="flex items-start gap-2">
                             <svg
@@ -7583,7 +7583,7 @@ export default function SpecificationsStep(props: {
                     {globalSpecs?.gasketType &&
                       gasketRecommendation &&
                       globalSpecs.gasketType !== gasketRecommendation.gasketCode &&
-                      globalSpecs?.workingTemperatureC !== undefined && (
+                      globalSpecs?.workingTemperatureC != null && (
                         <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
                           <div className="flex items-start gap-2">
                             <svg
@@ -7801,7 +7801,7 @@ export default function SpecificationsStep(props: {
                     setMaterialWarning({
                       show: false,
                       specName: "",
-                      specId: undefined,
+                      specId: null,
                       warnings: [],
                     })
                   }
@@ -7842,7 +7842,7 @@ export default function SpecificationsStep(props: {
                     setMaterialWarning({
                       show: false,
                       specName: "",
-                      specId: undefined,
+                      specId: null,
                       warnings: [],
                     });
                   }}
@@ -7943,8 +7943,8 @@ export default function SpecificationsStep(props: {
   );
 }
 
-function deriveTemperatureCategory(tempC: number | undefined | null): string | undefined {
-  if (tempC === undefined || tempC === null) return undefined;
+function deriveTemperatureCategory(tempC: number | null): string | null {
+  if (tempC == null) return null;
   if (tempC < -20 || tempC > 60) {
     if (tempC >= 60 && tempC <= 120) return "Elevated";
     if (tempC > 120 && tempC <= 200) return "High";

@@ -21,8 +21,8 @@ export function AddSourceForm({
     onSubmit({
       provider: "adzuna",
       name,
-      apiId: apiId || undefined,
-      apiKey: apiKey || undefined,
+      apiId: apiId || null,
+      apiKey: apiKey || null,
       countryCodes: countryCodes
         .split(",")
         .map((c) => c.trim().toLowerCase())

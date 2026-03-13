@@ -24,25 +24,26 @@ export enum DeliveryNoteStatus {
 }
 
 export interface ExtractedDeliveryNoteRoll {
-  rollNumber: string;
+  rollNumber: string | null;
   thicknessMm?: number | null;
   widthMm?: number | null;
   lengthM?: number | null;
   weightKg?: number | null;
   areaSqM?: number | null;
-  deliveryNoteNumber?: string;
-  deliveryDate?: string;
-  customerName?: string;
+  deliveryNoteNumber?: string | null;
+  deliveryDate?: string | null;
+  customerName?: string | null;
+  customerReference?: string | null;
   pageNumber?: number;
 }
 
 export interface ExtractedDeliveryNoteData {
-  deliveryNoteNumber?: string;
-  deliveryDate?: string;
-  supplierName?: string;
-  customerName?: string;
-  customerReference?: string;
-  batchRange?: string;
+  deliveryNoteNumber?: string | null;
+  deliveryDate?: string | null;
+  supplierName?: string | null;
+  customerName?: string | null;
+  customerReference?: string | null;
+  batchRange?: string | null;
   totalWeightKg?: number | null;
   rolls?: ExtractedDeliveryNoteRoll[];
   userCorrected?: boolean;

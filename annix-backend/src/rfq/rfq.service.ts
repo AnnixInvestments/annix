@@ -918,7 +918,7 @@ export class RfqService {
     existingRfq.customerPhone = dto.rfq.customerPhone;
     existingRfq.requiredDate = dto.rfq.requiredDate
       ? fromISO(dto.rfq.requiredDate).toJSDate()
-      : undefined;
+      : null;
     existingRfq.notes = dto.rfq.notes;
     existingRfq.totalWeightKg = totalWeight;
     existingRfq.status = RfqStatus.SUBMITTED;

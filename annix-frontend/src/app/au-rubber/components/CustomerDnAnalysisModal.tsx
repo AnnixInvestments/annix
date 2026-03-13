@@ -31,9 +31,9 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
   const [overrides, setOverrides] = useState<CustomerDnOverride[]>(
     analysis.groups.map((group) => ({
       deliveryNoteNumber: group.deliveryNoteNumber,
-      customerId: group.customerId || undefined,
-      customerReference: group.customerReference || undefined,
-      deliveryDate: group.deliveryDate || undefined,
+      customerId: group.customerId || null,
+      customerReference: group.customerReference || null,
+      deliveryDate: group.deliveryDate || null,
     })),
   );
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set([0]));
@@ -50,7 +50,7 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
 
   const updateOverride = (index: number, field: keyof CustomerDnOverride, value: unknown) => {
     setOverrides((prev) =>
-      prev.map((o, i) => (i === index ? { ...o, [field]: value === "" ? undefined : value } : o)),
+      prev.map((o, i) => (i === index ? { ...o, [field]: value === "" ? null : value } : o)),
     );
   };
 
@@ -262,7 +262,7 @@ function GroupCard({
                 onChange={(e) =>
                   onUpdateOverride(
                     "customerId",
-                    e.target.value ? Number(e.target.value) : undefined,
+                    e.target.value ? Number(e.target.value) : null,
                   )
                 }
                 className={`block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 ${

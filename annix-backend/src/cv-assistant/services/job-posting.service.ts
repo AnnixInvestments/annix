@@ -45,22 +45,22 @@ export class JobPostingService {
   async update(companyId: number, id: number, dto: UpdateJobPostingDto): Promise<JobPosting> {
     const jobPosting = await this.findById(companyId, id);
 
-    if (dto.title !== undefined) jobPosting.title = dto.title;
-    if (dto.description !== undefined) jobPosting.description = dto.description;
-    if (dto.requiredSkills !== undefined) jobPosting.requiredSkills = dto.requiredSkills;
-    if (dto.minExperienceYears !== undefined)
+    if (dto.title != null) jobPosting.title = dto.title;
+    if (dto.description != null) jobPosting.description = dto.description;
+    if (dto.requiredSkills != null) jobPosting.requiredSkills = dto.requiredSkills;
+    if (dto.minExperienceYears != null)
       jobPosting.minExperienceYears = dto.minExperienceYears;
-    if (dto.requiredEducation !== undefined) jobPosting.requiredEducation = dto.requiredEducation;
-    if (dto.requiredCertifications !== undefined)
+    if (dto.requiredEducation != null) jobPosting.requiredEducation = dto.requiredEducation;
+    if (dto.requiredCertifications != null)
       jobPosting.requiredCertifications = dto.requiredCertifications;
-    if (dto.emailSubjectPattern !== undefined)
+    if (dto.emailSubjectPattern != null)
       jobPosting.emailSubjectPattern = dto.emailSubjectPattern;
-    if (dto.autoRejectEnabled !== undefined) jobPosting.autoRejectEnabled = dto.autoRejectEnabled;
-    if (dto.autoRejectThreshold !== undefined)
+    if (dto.autoRejectEnabled != null) jobPosting.autoRejectEnabled = dto.autoRejectEnabled;
+    if (dto.autoRejectThreshold != null)
       jobPosting.autoRejectThreshold = dto.autoRejectThreshold;
-    if (dto.autoAcceptThreshold !== undefined)
+    if (dto.autoAcceptThreshold != null)
       jobPosting.autoAcceptThreshold = dto.autoAcceptThreshold;
-    if (dto.status !== undefined) jobPosting.status = dto.status as JobPostingStatus;
+    if (dto.status != null) jobPosting.status = dto.status as JobPostingStatus;
 
     return this.jobPostingRepo.save(jobPosting);
   }

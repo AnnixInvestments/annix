@@ -61,12 +61,12 @@ export default function SettingsPage() {
   const handleSaveImap = () => {
     updateImapMutation.mutate(
       {
-        imapHost: imapHost || undefined,
-        imapPort: imapPort ? parseInt(imapPort, 10) : undefined,
-        imapUser: imapUser || undefined,
-        imapPassword: imapPassword || undefined,
+        imapHost: imapHost || null,
+        imapPort: imapPort ? parseInt(imapPort, 10) : null,
+        imapUser: imapUser || null,
+        imapPassword: imapPassword || null,
         monitoringEnabled,
-        emailFromAddress: emailFromAddress || undefined,
+        emailFromAddress: emailFromAddress || null,
       },
       {
         onSuccess: () => setImapPassword(""),

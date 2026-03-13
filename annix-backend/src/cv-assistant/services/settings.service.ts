@@ -27,14 +27,14 @@ export class SettingsService {
   ): Promise<CvAssistantCompany> {
     const company = await this.companySettings(companyId);
 
-    if (dto.imapHost !== undefined) company.imapHost = dto.imapHost;
-    if (dto.imapPort !== undefined) company.imapPort = dto.imapPort;
-    if (dto.imapUser !== undefined) company.imapUser = dto.imapUser;
-    if (dto.imapPassword !== undefined) {
+    if (dto.imapHost != null) company.imapHost = dto.imapHost;
+    if (dto.imapPort != null) company.imapPort = dto.imapPort;
+    if (dto.imapUser != null) company.imapUser = dto.imapUser;
+    if (dto.imapPassword != null) {
       company.imapPasswordEncrypted = this.encryptPassword(dto.imapPassword);
     }
-    if (dto.monitoringEnabled !== undefined) company.monitoringEnabled = dto.monitoringEnabled;
-    if (dto.emailFromAddress !== undefined) company.emailFromAddress = dto.emailFromAddress;
+    if (dto.monitoringEnabled != null) company.monitoringEnabled = dto.monitoringEnabled;
+    if (dto.emailFromAddress != null) company.emailFromAddress = dto.emailFromAddress;
 
     return this.companyRepo.save(company);
   }
@@ -42,7 +42,7 @@ export class SettingsService {
   async updateCompany(companyId: number, dto: UpdateCompanyDto): Promise<CvAssistantCompany> {
     const company = await this.companySettings(companyId);
 
-    if (dto.name !== undefined) company.name = dto.name;
+    if (dto.name != null) company.name = dto.name;
 
     return this.companyRepo.save(company);
   }

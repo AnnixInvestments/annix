@@ -610,13 +610,13 @@ ${truncatedText}`;
       return partialMatch;
     }
 
-    const addressObj = details?.address ? { street: details.address } : undefined;
+    const addressObj = details?.address ? { street: details.address } : null;
 
     const created = await this.rubberLiningService.createCompany({
       name: companyName,
       companyType: CompanyType.CUSTOMER,
-      vatNumber: details?.vatNumber || undefined,
-      registrationNumber: details?.registrationNumber || undefined,
+      vatNumber: details?.vatNumber || null,
+      registrationNumber: details?.registrationNumber || null,
       address: addressObj,
     });
 
@@ -627,8 +627,8 @@ ${truncatedText}`;
   async createOrderFromAnalysis(dto: CreateOrderFromAnalysisDto): Promise<{ orderId: number }> {
     const { analysis, overrides } = dto;
 
-    let companyId = overrides?.companyId ?? analysis.companyId ?? undefined;
-    const poNumber = overrides?.poNumber ?? analysis.poNumber ?? undefined;
+    let companyId = overrides?.companyId ?? analysis.companyId ?? null;
+    const poNumber = overrides?.poNumber ?? analysis.poNumber ?? null;
 
     if (!companyId && overrides?.newCompany) {
       const company = await this.resolveOrCreateCompany(
@@ -641,11 +641,11 @@ ${truncatedText}`;
     const items = (overrides?.lines || analysis.lines).map((line, idx) => {
       const analysisLine = analysis.lines[idx] || {};
       return {
-        productId: ("productId" in line ? line.productId : analysisLine.productId) || undefined,
-        thickness: ("thickness" in line ? line.thickness : analysisLine.thickness) || undefined,
-        width: ("width" in line ? line.width : analysisLine.width) || undefined,
-        length: ("length" in line ? line.length : analysisLine.length) || undefined,
-        quantity: ("quantity" in line ? line.quantity : analysisLine.quantity) || undefined,
+        productId: ("productId" in line ? line.productId : analysisLine.productId) || null,
+        thickness: ("thickness" in line ? line.thickness : analysisLine.thickness) || null,
+        width: ("width" in line ? line.width : analysisLine.width) || null,
+        length: ("length" in line ? line.length : analysisLine.length) || null,
+        quantity: ("quantity" in line ? line.quantity : analysisLine.quantity) || null,
       };
     });
 
@@ -662,11 +662,11 @@ ${truncatedText}`;
   private async extractLinesWithVision(
     buffer: Buffer,
     filename: string,
-  ): Promise<{ lines: AnalyzedOrderLine[]; poNumber?: string }> {
+  ): Promise<{ lines: AnalyzedOrderLine[]; poNumber: string | null }> {
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
       this.logger.warn("Gemini API key not available for vision extraction");
-      return { lines: [] };
+      return { lines: [], poNumber: null };
     }
 
     try {
@@ -675,7 +675,7 @@ ${truncatedText}`;
       const pagesResult = await this.documentAnnotationService.convertPdfToImages(buffer, 2.0);
       if (pagesResult.pages.length === 0) {
         this.logger.warn("No pages extracted from PDF for vision analysis");
-        return { lines: [] };
+        return { lines: [], poNumber: null };
       }
 
       const firstPage = pagesResult.pages[0];
@@ -741,7 +741,7 @@ Respond ONLY with JSON:
       if (!response.ok) {
         const errorText = await response.text();
         this.logger.error(`Gemini Vision API error: ${response.status} - ${errorText}`);
-        return { lines: [] };
+        return { lines: [], poNumber: null };
       }
 
       const data = await response.json();
@@ -766,13 +766,13 @@ Respond ONLY with JSON:
         if (parsed.poNumber) {
           this.logger.log(`Vision extracted PO Number: ${parsed.poNumber}`);
         }
-        return { lines, poNumber: parsed.poNumber || undefined };
+        return { lines, poNumber: parsed.poNumber || null };
       }
     } catch (error) {
       this.logger.error(`Vision extraction failed: ${error.message}`);
     }
 
-    return { lines: [] };
+    return { lines: [], poNumber: null };
   }
 
   private extractPoFromFilename(filename: string): string | null {

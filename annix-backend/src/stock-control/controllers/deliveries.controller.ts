@@ -59,7 +59,7 @@ export class DeliveriesController {
   async create(@Body() dto: CreateDeliveryNoteDto, @Req() req: any) {
     return this.deliveryService.create(req.user.companyId, {
       ...dto,
-      receivedDate: dto.receivedDate ? new Date(dto.receivedDate) : undefined,
+      receivedDate: dto.receivedDate ? new Date(dto.receivedDate) : null,
       receivedBy: req.user.name,
     });
   }

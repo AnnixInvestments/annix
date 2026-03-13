@@ -45,7 +45,7 @@ export class CandidateController {
   ) {
     return this.candidateService.findAllForCompany(req.user.companyId, {
       status,
-      jobPostingId: jobPostingId ? parseInt(jobPostingId, 10) : undefined,
+      jobPostingId: jobPostingId ? parseInt(jobPostingId, 10) : null,
     });
   }
 
@@ -140,16 +140,16 @@ export class CandidateController {
   ) {
     const candidate = await this.candidateService.findById(req.user.companyId, id);
 
-    if (dto.beeLevel !== undefined) {
+    if (dto.beeLevel != null) {
       candidate.beeLevel = dto.beeLevel;
     }
-    if (dto.popiaConsent !== undefined) {
+    if (dto.popiaConsent != null) {
       candidate.popiaConsent = dto.popiaConsent;
       if (dto.popiaConsent) {
         candidate.popiaConsentedAt = now().toJSDate();
       }
     }
-    if (dto.jobAlertsOptIn !== undefined) {
+    if (dto.jobAlertsOptIn != null) {
       candidate.jobAlertsOptIn = dto.jobAlertsOptIn;
     }
 

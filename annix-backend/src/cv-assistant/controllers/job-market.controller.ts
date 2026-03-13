@@ -83,8 +83,8 @@ export class JobMarketController {
       country,
       category,
       search,
-      page: page ? Number.parseInt(page, 10) : undefined,
-      limit: limit ? Number.parseInt(limit, 10) : undefined,
+      page: page ? Number.parseInt(page, 10) : null,
+      limit: limit ? Number.parseInt(limit, 10) : null,
     });
   }
 

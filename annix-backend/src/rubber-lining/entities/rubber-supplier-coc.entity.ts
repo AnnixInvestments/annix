@@ -46,7 +46,7 @@ export interface ExtractedCocData {
   cocNumber?: string;
   productionDate?: string;
   customerName?: string;
-  compoundCode?: string;
+  compoundCode?: string | null;
   compoundDescription?: string;
   batchNumbers?: string[];
   rollNumbers?: string[];
@@ -70,6 +70,8 @@ export interface ExtractedCocData {
     passFailStatus?: string;
   }>;
   linkedCompounderCocIds?: number[];
+  compoundCodingId?: number | null;
+  parsedCompoundInfo?: Record<string, any> | null;
 }
 
 @Entity("rubber_supplier_cocs")

@@ -74,7 +74,7 @@ export class BoqLineItem {
     scale: 3,
     nullable: true,
   })
-  unitWeightKg?: number;
+  unitWeightKg?: number | null;
 
   @ApiProperty({ description: "Total weight in kg", required: false })
   @Column({
@@ -84,7 +84,7 @@ export class BoqLineItem {
     scale: 2,
     nullable: true,
   })
-  totalWeightKg?: number;
+  totalWeightKg?: number | null;
 
   @ApiProperty({ description: "Unit price", required: false })
   @Column({
@@ -94,7 +94,7 @@ export class BoqLineItem {
     scale: 2,
     nullable: true,
   })
-  unitPrice?: number;
+  unitPrice?: number | null;
 
   @ApiProperty({ description: "Total price", required: false })
   @Column({
@@ -104,7 +104,7 @@ export class BoqLineItem {
     scale: 2,
     nullable: true,
   })
-  totalPrice?: number;
+  totalPrice?: number | null;
 
   @ApiProperty({ description: "Additional notes", required: false })
   @Column({ name: "notes", type: "text", nullable: true })

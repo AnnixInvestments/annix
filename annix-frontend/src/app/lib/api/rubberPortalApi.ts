@@ -63,20 +63,20 @@ export interface RubberProductDto {
 }
 
 export interface CreateRubberProductDto {
-  title?: string;
-  description?: string;
-  specificGravity?: number;
-  compoundOwnerFirebaseUid?: string;
-  compoundFirebaseUid?: string;
-  typeFirebaseUid?: string;
-  costPerKg?: number;
-  colourFirebaseUid?: string;
-  hardnessFirebaseUid?: string;
-  curingMethodFirebaseUid?: string;
-  gradeFirebaseUid?: string;
-  tensileStrengthMpa?: number;
-  elongationAtBreak?: number;
-  markup?: number;
+  title?: string | null;
+  description?: string | null;
+  specificGravity?: number | null;
+  compoundOwnerFirebaseUid?: string | null;
+  compoundFirebaseUid?: string | null;
+  typeFirebaseUid?: string | null;
+  costPerKg?: number | null;
+  colourFirebaseUid?: string | null;
+  hardnessFirebaseUid?: string | null;
+  curingMethodFirebaseUid?: string | null;
+  gradeFirebaseUid?: string | null;
+  tensileStrengthMpa?: number | null;
+  elongationAtBreak?: number | null;
+  markup?: number | null;
 }
 
 export interface CallOffEvent {

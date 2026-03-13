@@ -42,25 +42,25 @@ export interface AnalyzeOrderFilesResult {
 }
 
 export interface CreateOrderLineFromAnalysisDto {
-  productId?: number;
-  thickness?: number;
-  width?: number;
-  length?: number;
-  quantity?: number;
+  productId?: number | null;
+  thickness?: number | null;
+  width?: number | null;
+  length?: number | null;
+  quantity?: number | null;
 }
 
 export interface NewCompanyFromAnalysis {
   name: string;
-  vatNumber?: string;
-  address?: string;
-  registrationNumber?: string;
+  vatNumber?: string | null;
+  address?: string | null;
+  registrationNumber?: string | null;
 }
 
 export interface CreateOrderFromAnalysisDto {
   analysis: AnalyzedOrderData;
   overrides?: {
-    companyId?: number;
-    poNumber?: string;
+    companyId?: number | null;
+    poNumber?: string | null;
     lines?: CreateOrderLineFromAnalysisDto[];
     newCompany?: NewCompanyFromAnalysis;
   };

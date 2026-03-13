@@ -125,15 +125,15 @@ export class CreateRubberCompanyDto {
 
   @IsOptional()
   @IsString()
-  vatNumber?: string;
+  vatNumber?: string | null;
 
   @IsOptional()
   @IsString()
-  registrationNumber?: string;
+  registrationNumber?: string | null;
 
   @IsOptional()
   @IsObject()
-  address?: CompanyAddressDto;
+  address?: CompanyAddressDto | null;
 
   @IsOptional()
   @IsString()
@@ -342,23 +342,23 @@ export class RubberOrderItemDto {
 export class CreateRubberOrderItemDto {
   @IsOptional()
   @IsNumber()
-  productId?: number;
+  productId?: number | null;
 
   @IsOptional()
   @IsNumber()
-  thickness?: number;
+  thickness?: number | null;
 
   @IsOptional()
   @IsNumber()
-  width?: number;
+  width?: number | null;
 
   @IsOptional()
   @IsNumber()
-  length?: number;
+  length?: number | null;
 
   @IsOptional()
   @IsNumber()
-  quantity?: number;
+  quantity?: number | null;
 
   @IsOptional()
   @IsArray()
@@ -414,11 +414,11 @@ export class CreateRubberOrderDto {
 
   @IsOptional()
   @IsString()
-  companyOrderNumber?: string;
+  companyOrderNumber?: string | null;
 
   @IsOptional()
   @IsNumber()
-  companyId?: number;
+  companyId?: number | null;
 
   @IsOptional()
   @IsArray()

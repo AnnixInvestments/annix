@@ -45,13 +45,13 @@ export class JobMarketSourceService {
   ): Promise<JobMarketSource> {
     const source = await this.findById(id, companyId);
 
-    if (dto.name !== undefined) source.name = dto.name;
-    if (dto.apiId !== undefined) source.apiId = dto.apiId;
-    if (dto.apiKey !== undefined) source.apiKeyEncrypted = dto.apiKey;
-    if (dto.countryCodes !== undefined) source.countryCodes = dto.countryCodes;
-    if (dto.categories !== undefined) source.categories = dto.categories;
-    if (dto.enabled !== undefined) source.enabled = dto.enabled;
-    if (dto.ingestionIntervalHours !== undefined)
+    if (dto.name != null) source.name = dto.name;
+    if (dto.apiId != null) source.apiId = dto.apiId;
+    if (dto.apiKey != null) source.apiKeyEncrypted = dto.apiKey;
+    if (dto.countryCodes != null) source.countryCodes = dto.countryCodes;
+    if (dto.categories != null) source.categories = dto.categories;
+    if (dto.enabled != null) source.enabled = dto.enabled;
+    if (dto.ingestionIntervalHours != null)
       source.ingestionIntervalHours = dto.ingestionIntervalHours;
 
     return this.sourceRepo.save(source);

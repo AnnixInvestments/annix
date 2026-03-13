@@ -54,13 +54,13 @@ export class NotificationController {
   ) {
     const updates: Partial<CvAssistantUser> = {};
 
-    if (body.matchAlertThreshold !== undefined) {
+    if (body.matchAlertThreshold != null) {
       updates.matchAlertThreshold = Math.max(0, Math.min(100, body.matchAlertThreshold));
     }
-    if (body.digestEnabled !== undefined) {
+    if (body.digestEnabled != null) {
       updates.digestEnabled = body.digestEnabled;
     }
-    if (body.pushEnabled !== undefined) {
+    if (body.pushEnabled != null) {
       updates.pushEnabled = body.pushEnabled;
     }
 

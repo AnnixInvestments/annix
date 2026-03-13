@@ -150,8 +150,8 @@ export interface JobMarketSource {
 export interface CreateJobMarketSourceDto {
   provider: string;
   name: string;
-  apiId?: string;
-  apiKey?: string;
+  apiId?: string | null;
+  apiKey?: string | null;
   countryCodes?: string[];
   categories?: string[];
   ingestionIntervalHours?: number;
@@ -527,7 +527,7 @@ class CvAssistantApiClient {
     email: string;
     password: string;
     name: string;
-    companyName?: string;
+    companyName?: string | null;
   }): Promise<{ message: string; user: CvAssistantUser }> {
     return this.request("/cv-assistant/auth/register", {
       method: "POST",
@@ -765,7 +765,7 @@ class CvAssistantApiClient {
   async submitReferenceFeedback(
     token: string,
     rating: number,
-    feedbackText?: string,
+    feedbackText?: string | null,
   ): Promise<{ message: string }> {
     return this.request(`/cv-assistant/reference-feedback/${token}`, {
       method: "POST",
@@ -900,7 +900,7 @@ class CvAssistantApiClient {
     return this.request<MarketTrendsResponse>("/cv-assistant/analytics/market-trends");
   }
 
-  async analyticsExportFunnelCsv(dateFrom?: string, dateTo?: string): Promise<string> {
+  async analyticsExportFunnelCsv(dateFrom?: string | null, dateTo?: string | null): Promise<string> {
     const params = new URLSearchParams();
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);

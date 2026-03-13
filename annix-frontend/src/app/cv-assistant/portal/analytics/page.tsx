@@ -114,8 +114,8 @@ export default function AnalyticsPage() {
     setExportingFunnel(true);
     try {
       const csv = await cvAssistantApiClient.analyticsExportFunnelCsv(
-        dateFrom || undefined,
-        dateTo || undefined,
+        dateFrom || null,
+        dateTo || null,
       );
       const filename = `conversion-funnel-${now().toISODate()}.csv`;
       downloadCsv(csv, filename);

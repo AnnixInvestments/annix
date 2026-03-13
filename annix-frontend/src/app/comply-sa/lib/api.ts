@@ -65,7 +65,7 @@ export function signup(data: {
   email: string;
   password: string;
   companyName: string;
-  registrationNumber?: string;
+  registrationNumber?: string | null;
 }): Promise<{ user: Record<string, unknown> }> {
   return request("/auth/signup", {
     method: "POST",

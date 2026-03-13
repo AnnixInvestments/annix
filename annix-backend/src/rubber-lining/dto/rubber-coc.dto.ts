@@ -46,7 +46,7 @@ export class CreateSupplierCocDto {
 
   @IsOptional()
   @IsNumber()
-  supplierCompanyId?: number;
+  supplierCompanyId?: number | null;
 
   @IsString()
   documentPath: string;

@@ -199,7 +199,7 @@ export class ReferenceService {
 
   async referencesForCompany(
     companyId: number,
-    status?: ReferenceStatus,
+    status?: ReferenceStatus | null,
   ): Promise<CandidateReference[]> {
     const queryBuilder = this.referenceRepo
       .createQueryBuilder("reference")

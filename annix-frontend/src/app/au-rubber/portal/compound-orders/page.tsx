@@ -62,7 +62,7 @@ export default function CompoundOrdersPage() {
     try {
       setIsLoading(true);
       const [ordersData, stocksData] = await Promise.all([
-        auRubberApiClient.compoundOrders(statusFilter || undefined),
+        auRubberApiClient.compoundOrders(statusFilter || null),
         auRubberApiClient.compoundStocks(),
       ]);
       setOrders(Array.isArray(ordersData) ? ordersData : []);
@@ -121,9 +121,9 @@ export default function CompoundOrdersPage() {
       await auRubberApiClient.createCompoundOrder({
         compoundStockId: newCompoundStockId,
         quantityKg: Number(newQuantity),
-        supplierName: newSupplier || undefined,
-        expectedDelivery: newExpectedDelivery || undefined,
-        notes: newNotes || undefined,
+        supplierName: newSupplier || null,
+        expectedDelivery: newExpectedDelivery || null,
+        notes: newNotes || null,
       });
       showToast("Order created", "success");
       setShowNewModal(false);
@@ -166,8 +166,8 @@ export default function CompoundOrdersPage() {
       setIsSubmitting(true);
       await auRubberApiClient.receiveCompoundOrder(receiveOrderId, {
         actualQuantityKg: Number(receiveQty),
-        batchNumber: receiveBatch || undefined,
-        notes: receiveNotes || undefined,
+        batchNumber: receiveBatch || null,
+        notes: receiveNotes || null,
       });
       showToast("Order received", "success");
       setShowReceiveModal(false);

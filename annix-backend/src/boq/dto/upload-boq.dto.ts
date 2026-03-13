@@ -26,15 +26,15 @@ export class UploadBoqDto {
 }
 
 export interface ParsedBoqLineItem {
-  itemCode?: string;
+  itemCode: string | null;
   description: string;
   itemType: string;
   unitOfMeasure: string;
   quantity: number;
-  unitWeightKg?: number;
-  unitPrice?: number;
-  notes?: string;
-  drawingReference?: string;
+  unitWeightKg: number | null;
+  unitPrice: number | null;
+  notes: string | null;
+  drawingReference: string | null;
 }
 
 export interface ParsedBoqData {
