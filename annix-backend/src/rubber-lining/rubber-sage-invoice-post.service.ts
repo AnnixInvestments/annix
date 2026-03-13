@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { now } from "../lib/datetime";
+import { fromJSDate, now } from "../lib/datetime";
 import type {
   SageInvoiceLine,
   SagePurchaseInvoicePayload,
@@ -83,7 +83,7 @@ export class RubberSageInvoicePostService {
     const lines = this.invoiceLines(invoice, vatTaxType);
 
     const dateStr = invoice.invoiceDate
-      ? new Date(invoice.invoiceDate).toISOString().split("T")[0]
+      ? (fromJSDate(invoice.invoiceDate).toISODate() ?? "")
       : (now().toISODate() ?? "");
 
     if (invoice.invoiceType === TaxInvoiceType.SUPPLIER) {

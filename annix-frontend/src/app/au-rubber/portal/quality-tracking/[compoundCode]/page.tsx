@@ -36,15 +36,14 @@ interface MetricCardProps {
   specNominal?: number | null;
 }
 
-function MetricCard({
-  label,
-  stats,
-  unit = "",
-  decimals = 2,
-  specMin,
-  specMax,
-  specNominal,
-}: MetricCardProps) {
+function MetricCard(props: MetricCardProps) {
+  const label = props.label;
+  const stats = props.stats;
+  const unit = props.unit ?? "";
+  const decimals = props.decimals ?? 2;
+  const specMin = props.specMin;
+  const specMax = props.specMax;
+  const specNominal = props.specNominal;
   const hasSpec = specMin !== null || specMax !== null || specNominal !== null;
 
   if (!stats) {

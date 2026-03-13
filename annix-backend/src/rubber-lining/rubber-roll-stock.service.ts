@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
-import { generateUniqueId, now } from "../lib/datetime";
+import { fromISO, generateUniqueId, now } from "../lib/datetime";
 import {
   CreateOpeningStockDto,
   CreateRollStockDto,
@@ -455,7 +455,7 @@ export class RubberRollStockService {
       notes: dto.notes ?? null,
       locationId: dto.locationId ?? null,
       location: locationName,
-      productionDate: dto.productionDate ? new Date(dto.productionDate) : null,
+      productionDate: dto.productionDate ? fromISO(dto.productionDate).toJSDate() : null,
     });
 
     const saved = await this.rollStockRepository.save(roll);
@@ -517,7 +517,7 @@ export class RubberRollStockService {
           costZar: row.costZar ?? null,
           priceZar: row.priceZar ?? null,
           location: row.location ?? null,
-          productionDate: row.productionDate ? new Date(row.productionDate) : null,
+          productionDate: row.productionDate ? fromISO(row.productionDate).toJSDate() : null,
         });
         await this.rollStockRepository.save(roll);
         result.created++;

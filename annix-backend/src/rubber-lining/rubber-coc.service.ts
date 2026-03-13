@@ -1,7 +1,7 @@
 import { BadRequestException, forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { generateUniqueId, now } from "../lib/datetime";
+import { fromISO, generateUniqueId, now } from "../lib/datetime";
 import {
   CreateCompoundBatchDto,
   CreateSupplierCocDto,
@@ -123,7 +123,7 @@ export class RubberCocService {
       documentPath: dto.documentPath,
       graphPdfPath: dto.graphPdfPath ?? null,
       cocNumber: dto.cocNumber ?? null,
-      productionDate: dto.productionDate ? new Date(dto.productionDate) : null,
+      productionDate: dto.productionDate ? fromISO(dto.productionDate).toJSDate() : null,
       compoundCode: dto.compoundCode ?? null,
       orderNumber: dto.orderNumber ?? null,
       ticketNumber: dto.ticketNumber ?? null,
@@ -155,7 +155,7 @@ export class RubberCocService {
     if (dto.graphPdfPath !== undefined) coc.graphPdfPath = dto.graphPdfPath;
     if (dto.cocNumber !== undefined) coc.cocNumber = dto.cocNumber;
     if (dto.productionDate !== undefined) {
-      coc.productionDate = dto.productionDate ? new Date(dto.productionDate) : null;
+      coc.productionDate = dto.productionDate ? fromISO(dto.productionDate).toJSDate() : null;
     }
     if (dto.compoundCode !== undefined) coc.compoundCode = dto.compoundCode;
     if (dto.orderNumber !== undefined) coc.orderNumber = dto.orderNumber;
@@ -180,7 +180,7 @@ export class RubberCocService {
     coc.processingStatus = CocProcessingStatus.EXTRACTED;
 
     if (extractedData.cocNumber) coc.cocNumber = extractedData.cocNumber;
-    if (extractedData.productionDate) coc.productionDate = new Date(extractedData.productionDate);
+    if (extractedData.productionDate) coc.productionDate = fromISO(extractedData.productionDate).toJSDate();
     if (extractedData.compoundCode) coc.compoundCode = extractedData.compoundCode;
     if (extractedData.orderNumber) coc.orderNumber = extractedData.orderNumber;
     if (extractedData.ticketNumber) coc.ticketNumber = extractedData.ticketNumber;
@@ -210,7 +210,7 @@ export class RubberCocService {
       coc.extractedData = dto.extractedData;
       if (dto.extractedData.cocNumber) coc.cocNumber = dto.extractedData.cocNumber;
       if (dto.extractedData.productionDate) {
-        coc.productionDate = new Date(dto.extractedData.productionDate);
+        coc.productionDate = fromISO(dto.extractedData.productionDate).toJSDate();
       }
       if (dto.extractedData.compoundCode) coc.compoundCode = dto.extractedData.compoundCode;
       if (dto.extractedData.orderNumber) coc.orderNumber = dto.extractedData.orderNumber;
@@ -267,7 +267,7 @@ export class RubberCocService {
     coc.processingStatus = CocProcessingStatus.EXTRACTED;
 
     if (extractedData.cocNumber) coc.cocNumber = extractedData.cocNumber;
-    if (extractedData.productionDate) coc.productionDate = new Date(extractedData.productionDate);
+    if (extractedData.productionDate) coc.productionDate = fromISO(extractedData.productionDate).toJSDate();
     if (extractedData.compoundCode) coc.compoundCode = extractedData.compoundCode;
     if (extractedData.orderNumber) coc.orderNumber = extractedData.orderNumber;
     if (extractedData.ticketNumber) coc.ticketNumber = extractedData.ticketNumber;
@@ -447,7 +447,7 @@ export class RubberCocService {
       existingCoc.supplierCompanyId = supplierCompanyId;
 
       if (extractedData.productionDate) {
-        existingCoc.productionDate = new Date(extractedData.productionDate);
+        existingCoc.productionDate = fromISO(extractedData.productionDate).toJSDate();
       }
       if (extractedData.compoundCode) {
         existingCoc.compoundCode = extractedData.compoundCode;
@@ -481,7 +481,7 @@ export class RubberCocService {
       cocNumber: normalizedCocNumber,
       extractedData,
       processingStatus: CocProcessingStatus.EXTRACTED,
-      productionDate: extractedData.productionDate ? new Date(extractedData.productionDate) : null,
+      productionDate: extractedData.productionDate ? fromISO(extractedData.productionDate).toJSDate() : null,
       compoundCode: extractedData.compoundCode ?? null,
       orderNumber: extractedData.orderNumber ?? null,
       ticketNumber: extractedData.ticketNumber ?? null,

@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
+import { fromISO, now } from "../lib/datetime";
 import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
 import {
   RequisitionItemType,
@@ -135,7 +136,7 @@ export class RubberRequisitionService {
       status: RequisitionStatus.PENDING,
       supplierCompanyId: data.supplierCompanyId || null,
       externalPoNumber: data.externalPoNumber || null,
-      expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null,
+      expectedDeliveryDate: data.expectedDeliveryDate ? fromISO(data.expectedDeliveryDate).toJSDate() : null,
       notes: data.notes || null,
       createdBy: data.createdBy || null,
       items: data.items.map((item) =>
@@ -181,11 +182,11 @@ export class RubberRequisitionService {
       supplierCompanyId: data.supplierCompanyId || null,
       externalPoNumber: data.externalPoNumber,
       externalPoDocumentPath: data.externalPoDocumentPath || null,
-      expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null,
+      expectedDeliveryDate: data.expectedDeliveryDate ? fromISO(data.expectedDeliveryDate).toJSDate() : null,
       notes: data.notes || null,
       createdBy: data.createdBy || null,
       approvedBy: data.createdBy || "System",
-      approvedAt: new Date(),
+      approvedAt: now().toJSDate(),
       items: data.items.map((item) =>
         this.requisitionItemRepo.create({
           itemType: item.itemType,
@@ -295,7 +296,7 @@ export class RubberRequisitionService {
 
     requisition.status = RequisitionStatus.APPROVED;
     requisition.approvedBy = approvedBy;
-    requisition.approvedAt = new Date();
+    requisition.approvedAt = now().toJSDate();
 
     await this.requisitionRepo.save(requisition);
     return this.requisitionById(id);
@@ -319,7 +320,7 @@ export class RubberRequisitionService {
 
     requisition.status = RequisitionStatus.CANCELLED;
     requisition.rejectedBy = rejectedBy;
-    requisition.rejectedAt = new Date();
+    requisition.rejectedAt = now().toJSDate();
     requisition.rejectionReason = reason;
 
     await this.requisitionRepo.save(requisition);
@@ -346,13 +347,13 @@ export class RubberRequisitionService {
     }
 
     requisition.status = RequisitionStatus.ORDERED;
-    requisition.orderedAt = new Date();
+    requisition.orderedAt = now().toJSDate();
 
     if (data?.externalPoNumber) {
       requisition.externalPoNumber = data.externalPoNumber;
     }
     if (data?.expectedDeliveryDate) {
-      requisition.expectedDeliveryDate = new Date(data.expectedDeliveryDate);
+      requisition.expectedDeliveryDate = fromISO(data.expectedDeliveryDate).toJSDate();
     }
 
     await this.requisitionRepo.save(requisition);
@@ -406,7 +407,7 @@ export class RubberRequisitionService {
 
     if (totalReceived >= totalOrdered) {
       updatedRequisition!.status = RequisitionStatus.RECEIVED;
-      updatedRequisition!.receivedAt = new Date();
+      updatedRequisition!.receivedAt = now().toJSDate();
     } else if (totalReceived > 0) {
       updatedRequisition!.status = RequisitionStatus.PARTIALLY_RECEIVED;
     }

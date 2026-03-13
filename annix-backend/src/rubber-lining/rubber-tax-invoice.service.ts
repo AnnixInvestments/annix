@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { formatISODate, generateUniqueId } from "../lib/datetime";
+import { formatISODate, fromISO, generateUniqueId } from "../lib/datetime";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
@@ -140,7 +140,7 @@ export class RubberTaxInvoiceService {
     const invoice = this.taxInvoiceRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       invoiceNumber: dto.invoiceNumber,
-      invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : null,
+      invoiceDate: dto.invoiceDate ? fromISO(dto.invoiceDate).toJSDate() : null,
       invoiceType: dto.invoiceType,
       companyId: dto.companyId,
       documentPath: dto.documentPath ?? null,
@@ -222,7 +222,7 @@ export class RubberTaxInvoiceService {
 
     if (dto.invoiceNumber !== undefined) invoice.invoiceNumber = dto.invoiceNumber;
     if (dto.invoiceDate !== undefined) {
-      invoice.invoiceDate = dto.invoiceDate ? new Date(dto.invoiceDate) : null;
+      invoice.invoiceDate = dto.invoiceDate ? fromISO(dto.invoiceDate).toJSDate() : null;
     }
     if (dto.status !== undefined) invoice.status = dto.status;
     if (dto.totalAmount !== undefined) {
@@ -432,7 +432,7 @@ export class RubberTaxInvoiceService {
       invoice.invoiceNumber = data.invoiceNumber;
     }
     if (data.invoiceDate) {
-      invoice.invoiceDate = new Date(data.invoiceDate);
+      invoice.invoiceDate = fromISO(data.invoiceDate).toJSDate();
     }
     if (data.totalAmount != null) {
       invoice.totalAmount = String(data.totalAmount);
