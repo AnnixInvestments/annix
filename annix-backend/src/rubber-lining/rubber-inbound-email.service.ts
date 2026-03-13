@@ -953,15 +953,15 @@ ${truncatedText}`;
         if (isPdf) {
           const pdfText = await this.extractTextFromPdf(file.buffer);
           if (pdfText.length >= 50) {
-            const extractionResult =
-              await this.cocExtractionService.extractTaxInvoice(pdfText);
+            const extractionResult = await this.cocExtractionService.extractTaxInvoice(pdfText);
             await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
             this.logger.log(
               `Auto-extracted Tax Invoice ${invoiceId} in ${extractionResult.processingTimeMs}ms`,
             );
           } else {
-            const extractionResult =
-              await this.cocExtractionService.extractTaxInvoiceFromImages(file.buffer);
+            const extractionResult = await this.cocExtractionService.extractTaxInvoiceFromImages(
+              file.buffer,
+            );
             await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
             this.logger.log(
               `Auto-extracted Tax Invoice ${invoiceId} via OCR in ${extractionResult.processingTimeMs}ms`,
@@ -972,8 +972,7 @@ ${truncatedText}`;
           const textResult = await mammoth.extractRawText({ buffer: file.buffer });
           const docText = textResult.value || "";
           if (docText.length >= 20) {
-            const extractionResult =
-              await this.cocExtractionService.extractTaxInvoice(docText);
+            const extractionResult = await this.cocExtractionService.extractTaxInvoice(docText);
             await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
             this.logger.log(
               `Auto-extracted Tax Invoice ${invoiceId} from document in ${extractionResult.processingTimeMs}ms`,
