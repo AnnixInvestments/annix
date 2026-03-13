@@ -1042,8 +1042,7 @@ ${truncatedText}`;
                 widthMm: item.widthMm ?? null,
                 lengthM: item.lengthM ?? null,
                 weightKg: item.actualWeightKg ?? null,
-                areaSqM:
-                  item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
+                areaSqM: item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
                 deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
                 deliveryDate: dn.deliveryDate ?? null,
                 customerName: dn.customerName ?? null,
