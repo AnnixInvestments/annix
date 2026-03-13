@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { formatDateZA, fromJSDate } from "../lib/datetime";
 
@@ -80,29 +80,40 @@ export class ComplySaAdvisorService {
       relations: ["clientCompany"],
     });
 
-    const summaries = await Promise.all(
-      clients.map(async (client) => {
-        const statuses = await this.statusRepository.find({
-          where: { companyId: client.clientCompanyId },
-        });
+    const clientCompanyIds = clients.map((c) => c.clientCompanyId);
 
-        const totalCount = statuses.length;
-        const compliantCount = statuses.filter((s) => s.status === "compliant").length;
-        const overdueCount = statuses.filter((s) => s.status === "overdue").length;
-        const warningCount = statuses.filter((s) => s.status === "warning").length;
-        const score = totalCount > 0 ? Math.round((compliantCount / totalCount) * 100) : 0;
+    if (clientCompanyIds.length === 0) {
+      return [];
+    }
 
-        return {
-          companyId: client.clientCompanyId,
-          companyName: client.clientCompany.name,
-          score,
-          overdueCount,
-          warningCount,
-        };
+    const allStatuses = await this.statusRepository.find({
+      where: { companyId: In(clientCompanyIds) },
+    });
+
+    const statusesByCompany = allStatuses.reduce<Record<number, ComplySaComplianceStatus[]>>(
+      (acc, status) => ({
+        ...acc,
+        [status.companyId]: [...(acc[status.companyId] ?? []), status],
       }),
+      {},
     );
 
-    return summaries;
+    return clients.map((client) => {
+      const statuses = statusesByCompany[client.clientCompanyId] ?? [];
+      const totalCount = statuses.length;
+      const compliantCount = statuses.filter((s) => s.status === "compliant").length;
+      const overdueCount = statuses.filter((s) => s.status === "overdue").length;
+      const warningCount = statuses.filter((s) => s.status === "warning").length;
+      const score = totalCount > 0 ? Math.round((compliantCount / totalCount) * 100) : 0;
+
+      return {
+        companyId: client.clientCompanyId,
+        companyName: client.clientCompany.name,
+        score,
+        overdueCount,
+        warningCount,
+      };
+    });
   }
 
   async clientDashboard(advisorUserId: number): Promise<DashboardStats> {
@@ -143,31 +154,36 @@ export class ComplySaAdvisorService {
       relations: ["clientCompany"],
     });
 
-    const allDeadlines = await Promise.all(
-      clients.map(async (client) => {
-        const statuses = await this.statusRepository.find({
-          where: { companyId: client.clientCompanyId },
-          relations: ["requirement"],
-        });
+    const clientCompanyIds = clients.map((c) => c.clientCompanyId);
 
-        return statuses
-          .filter((status) => {
-            if (status.nextDueDate === null) {
-              return false;
-            }
-            const dueDate = fromJSDate(status.nextDueDate);
-            return dueDate.month === month && dueDate.year === year;
-          })
-          .map((status) => ({
-            companyId: client.clientCompanyId,
-            companyName: client.clientCompany.name,
-            requirementName: status.requirement?.name ?? "Unknown",
-            dueDate: formatDateZA(fromJSDate(status.nextDueDate!)),
-            status: status.status,
-          }));
-      }),
+    if (clientCompanyIds.length === 0) {
+      return [];
+    }
+
+    const allStatuses = await this.statusRepository.find({
+      where: { companyId: In(clientCompanyIds) },
+      relations: ["requirement"],
+    });
+
+    const companyNameById = clients.reduce<Record<number, string>>(
+      (acc, client) => ({ ...acc, [client.clientCompanyId]: client.clientCompany.name }),
+      {},
     );
 
-    return allDeadlines.flat();
+    return allStatuses
+      .filter((status) => {
+        if (status.nextDueDate === null) {
+          return false;
+        }
+        const dueDate = fromJSDate(status.nextDueDate);
+        return dueDate.month === month && dueDate.year === year;
+      })
+      .map((status) => ({
+        companyId: status.companyId,
+        companyName: companyNameById[status.companyId] ?? "Unknown",
+        requirementName: status.requirement?.name ?? "Unknown",
+        dueDate: formatDateZA(fromJSDate(status.nextDueDate!)),
+        status: status.status,
+      }));
   }
 }

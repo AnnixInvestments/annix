@@ -485,12 +485,16 @@ export class BoqService {
       }
     }
 
-    // Update line numbers
-    for (let i = 0; i < dto.itemIds.length; i++) {
-      await this.lineItemRepository.update(dto.itemIds[i], {
-        lineNumber: i + 1,
-      });
-    }
+    const lineNumberCases = dto.itemIds
+      .map((id, i) => `WHEN id = ${id} THEN ${i + 1}`)
+      .join(" ");
+
+    await this.lineItemRepository
+      .createQueryBuilder()
+      .update(BoqLineItem)
+      .set({ lineNumber: () => `CASE ${lineNumberCases} END` })
+      .whereInIds(dto.itemIds)
+      .execute();
 
     await this.auditService.log({
       entityType: "boq",
@@ -557,12 +561,19 @@ export class BoqService {
       order: { lineNumber: "ASC" },
     });
 
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].lineNumber !== i + 1) {
-        await this.lineItemRepository.update(items[i].id, {
-          lineNumber: i + 1,
-        });
-      }
+    const itemsNeedingUpdate = items.filter((item, i) => item.lineNumber !== i + 1);
+
+    if (itemsNeedingUpdate.length > 0) {
+      const lineNumberCases = items
+        .map((item, i) => `WHEN id = ${item.id} THEN ${i + 1}`)
+        .join(" ");
+
+      await this.lineItemRepository
+        .createQueryBuilder()
+        .update(BoqLineItem)
+        .set({ lineNumber: () => `CASE ${lineNumberCases} END` })
+        .whereInIds(itemsNeedingUpdate.map((item) => item.id))
+        .execute();
     }
   }
 }

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { DateTime } from "../../lib/datetime";
+import { In, Repository } from "typeorm";
+import { DateTime, fromISO } from "../../lib/datetime";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
 import { AdzunaJobResult, AdzunaService } from "./adzuna.service";
@@ -203,38 +203,41 @@ export class JobIngestionService {
     source: JobMarketSource,
     country: string,
   ): Promise<{ ingested: number; skipped: number }> {
-    let ingested = 0;
-    let skipped = 0;
+    const externalIds = jobs.map((job) => job.id);
 
-    for (const job of jobs) {
-      const existing = await this.externalJobRepo.findOne({
-        where: { sourceExternalId: job.id, sourceId: source.id },
-      });
+    const existingJobs = await this.externalJobRepo.find({
+      where: { sourceExternalId: In(externalIds), sourceId: source.id },
+      select: ["sourceExternalId"],
+    });
 
-      if (existing) {
-        skipped += 1;
-        continue;
-      }
+    const existingExternalIds = new Set(existingJobs.map((j) => j.sourceExternalId));
 
-      const externalJob = this.externalJobRepo.create({
-        title: job.title,
-        company: job.company,
-        country,
-        locationRaw: job.locationDisplayName,
-        locationArea: job.locationArea,
-        salaryMin: job.salaryMin,
-        salaryMax: job.salaryMax,
-        salaryCurrency: country === "za" ? "ZAR" : null,
-        description: job.description,
-        category: job.category,
-        sourceExternalId: job.id,
-        sourceUrl: job.redirectUrl,
-        postedAt: job.created ? new Date(job.created) : null,
-        expiresAt: this.adzunaService.estimateExpiry(job.created),
-        sourceId: source.id,
-      });
+    const newJobs = jobs.filter((job) => !existingExternalIds.has(job.id));
 
-      const saved = await this.externalJobRepo.save(externalJob);
+    const savedJobs = await Promise.all(
+      newJobs.map((job) => {
+        const externalJob = this.externalJobRepo.create({
+          title: job.title,
+          company: job.company,
+          country,
+          locationRaw: job.locationDisplayName,
+          locationArea: job.locationArea,
+          salaryMin: job.salaryMin,
+          salaryMax: job.salaryMax,
+          salaryCurrency: country === "za" ? "ZAR" : null,
+          description: job.description,
+          category: job.category,
+          sourceExternalId: job.id,
+          sourceUrl: job.redirectUrl,
+          postedAt: job.created ? fromISO(job.created).toJSDate() : null,
+          expiresAt: this.adzunaService.estimateExpiry(job.created),
+          sourceId: source.id,
+        });
+        return this.externalJobRepo.save(externalJob);
+      }),
+    );
+
+    savedJobs.forEach((saved) => {
       this.embeddingService
         .embedExternalJob(saved.id)
         .then((embedded) => {
@@ -246,10 +249,9 @@ export class JobIngestionService {
         .catch((err) => {
           this.logger.warn(`Failed to embed/match job ${saved.id}: ${err.message}`);
         });
-      ingested += 1;
-    }
+    });
 
-    return { ingested, skipped };
+    return { ingested: savedJobs.length, skipped: jobs.length - newJobs.length };
   }
 
   private isDueForIngestion(source: JobMarketSource): boolean {

@@ -708,40 +708,54 @@ export class BoqDistributionService {
       order: { createdAt: "DESC" },
     });
 
-    const results: {
-      access: BoqSupplierAccess;
-      boq: Boq;
-      sectionSummary: { type: string; title: string; itemCount: number }[];
-    }[] = [];
-
-    for (const access of accessRecords) {
+    const validAccessRecords = accessRecords.filter((access) => {
       if (!access.boq) {
         this.logger.warn(`BOQ not found for access record ${access.id}, boqId: ${access.boqId}`);
-        continue;
+        return false;
       }
+      return true;
+    });
 
-      // Get section summaries for allowed sections
-      const sections = await this.sectionRepository.find({
-        where: {
-          boqId: access.boqId,
-          sectionType: In(access.allowedSections),
-        },
-      });
+    const allBoqIds = [...new Set(validAccessRecords.map((a) => a.boqId))];
+    const allAllowedSections = [
+      ...new Set(validAccessRecords.flatMap((a) => a.allowedSections)),
+    ];
 
-      const sectionSummary = sections.map((s) => ({
-        type: s.sectionType,
-        title: s.sectionTitle,
-        itemCount: s.itemCount,
-      }));
+    const allSections =
+      allBoqIds.length > 0
+        ? await this.sectionRepository.find({
+            where: {
+              boqId: In(allBoqIds),
+              sectionType: In(allAllowedSections),
+            },
+          })
+        : [];
 
-      results.push({
+    const sectionsByBoqId = allSections.reduce(
+      (acc, section) => {
+        const existing = acc[section.boqId] ?? [];
+        return { ...acc, [section.boqId]: [...existing, section] };
+      },
+      {} as Record<number, BoqSection[]>,
+    );
+
+    return validAccessRecords.map((access) => {
+      const boqSections = sectionsByBoqId[access.boqId] ?? [];
+      const allowedSet = new Set(access.allowedSections);
+      const sectionSummary = boqSections
+        .filter((s) => allowedSet.has(s.sectionType))
+        .map((s) => ({
+          type: s.sectionType,
+          title: s.sectionTitle,
+          itemCount: s.itemCount,
+        }));
+
+      return {
         access,
         boq: access.boq,
         sectionSummary,
-      });
-    }
-
-    return results;
+      };
+    });
   }
 
   /**

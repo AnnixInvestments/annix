@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Not, Repository } from "typeorm";
+import { In, IsNull, Not, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { ComplySaUser } from "../companies/entities/user.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
@@ -85,18 +85,69 @@ export class ComplySaNotificationsService {
           } => n !== null,
         );
 
+      const affectedCompanyIds = [
+        ...new Set(pendingNotifications.map(({ status }) => status.companyId)),
+      ];
+
+      const allUsers =
+        affectedCompanyIds.length > 0
+          ? await this.userRepository.find({
+              where: { companyId: In(affectedCompanyIds) },
+            })
+          : [];
+
+      const allUserIds = allUsers.map((u) => u.id);
+
+      const allPreferences =
+        allUserIds.length > 0
+          ? await this.preferencesRepository.find({
+              where: { userId: In(allUserIds) },
+            })
+          : [];
+
+      const usersByCompany = allUsers.reduce<Record<number, ComplySaUser[]>>(
+        (acc, user) => ({
+          ...acc,
+          [user.companyId]: [...(acc[user.companyId] ?? []), user],
+        }),
+        {},
+      );
+
+      const preferencesByUserId = allPreferences.reduce<
+        Record<number, ComplySaNotificationPreferences>
+      >(
+        (acc, prefs) => ({
+          ...acc,
+          [prefs.userId]: prefs,
+        }),
+        {},
+      );
+
+      const channelsFromPreferences = (userId: number): DeliveryChannels => {
+        const prefs = preferencesByUserId[userId] ?? null;
+
+        if (prefs === null) {
+          return { inApp: true, email: true, sms: false, whatsapp: false };
+        }
+
+        return {
+          inApp: prefs.inAppEnabled,
+          email: prefs.emailEnabled,
+          sms: prefs.smsEnabled,
+          whatsapp: prefs.whatsappEnabled,
+        };
+      };
+
       await Promise.all(
         pendingNotifications.map(async ({ status, type, daysUntilDue }) => {
           const message = this.buildMessage(status, type, daysUntilDue);
           const isCritical = type === "overdue" || type === "reminder_3d";
-
-          const users = await this.userRepository.find({
-            where: { companyId: status.companyId },
-          });
+          const users = usersByCompany[status.companyId] ?? [];
 
           await Promise.all(
             users.map(async (user) => {
-              const channels = await this.channelsForUser(user.id);
+              const channels = channelsFromPreferences(user.id);
+              const prefs = preferencesByUserId[user.id] ?? null;
 
               if (channels.inApp) {
                 const notification = this.notificationRepository.create({
@@ -118,22 +169,12 @@ export class ComplySaNotificationsService {
                 );
               }
 
-              if (isCritical && channels.sms) {
-                const prefs = await this.preferencesRepository.findOne({
-                  where: { userId: user.id },
-                });
-                if (prefs !== null && prefs.phone !== null) {
-                  await this.sendSms(prefs.phone, message);
-                }
+              if (isCritical && channels.sms && prefs !== null && prefs.phone !== null) {
+                await this.sendSms(prefs.phone, message);
               }
 
-              if (isCritical && channels.whatsapp) {
-                const prefs = await this.preferencesRepository.findOne({
-                  where: { userId: user.id },
-                });
-                if (prefs !== null && prefs.phone !== null) {
-                  await this.sendWhatsApp(prefs.phone, message);
-                }
+              if (isCritical && channels.whatsapp && prefs !== null && prefs.phone !== null) {
+                await this.sendWhatsApp(prefs.phone, message);
               }
             }),
           );
@@ -183,7 +224,6 @@ export class ComplySaNotificationsService {
   async processDocumentExpiryWarnings(): Promise<void> {
     try {
       const today = now();
-      const thirtyDaysFromNow = today.plus({ days: REMINDER_THRESHOLD_DAYS }).toJSDate();
 
       const allDocumentsWithExpiry = await this.documentRepository.find({
         where: { expiryDate: Not(IsNull()) },
@@ -194,6 +234,57 @@ export class ComplySaNotificationsService {
         const daysUntil = daysBetween(today, expiryDt);
         return daysUntil >= -1 && daysUntil <= REMINDER_THRESHOLD_DAYS;
       });
+
+      const docCompanyIds = [...new Set(documentsInRange.map((doc) => doc.companyId))];
+
+      const docUsers =
+        docCompanyIds.length > 0
+          ? await this.userRepository.find({
+              where: { companyId: In(docCompanyIds) },
+            })
+          : [];
+
+      const docUserIds = docUsers.map((u) => u.id);
+
+      const docPreferences =
+        docUserIds.length > 0
+          ? await this.preferencesRepository.find({
+              where: { userId: In(docUserIds) },
+            })
+          : [];
+
+      const docUsersByCompany = docUsers.reduce<Record<number, ComplySaUser[]>>(
+        (acc, user) => ({
+          ...acc,
+          [user.companyId]: [...(acc[user.companyId] ?? []), user],
+        }),
+        {},
+      );
+
+      const docPrefsByUserId = docPreferences.reduce<
+        Record<number, ComplySaNotificationPreferences>
+      >(
+        (acc, prefs) => ({
+          ...acc,
+          [prefs.userId]: prefs,
+        }),
+        {},
+      );
+
+      const docChannelsFromPreferences = (userId: number): DeliveryChannels => {
+        const prefs = docPrefsByUserId[userId] ?? null;
+
+        if (prefs === null) {
+          return { inApp: true, email: true, sms: false, whatsapp: false };
+        }
+
+        return {
+          inApp: prefs.inAppEnabled,
+          email: prefs.emailEnabled,
+          sms: prefs.smsEnabled,
+          whatsapp: prefs.whatsappEnabled,
+        };
+      };
 
       await Promise.all(
         documentsInRange.map(async (doc) => {
@@ -207,14 +298,11 @@ export class ComplySaNotificationsService {
               : `EXPIRING: Document "${doc.name}" expires on ${formattedDate} (${daysUntil} days). Please renew before expiry.`;
 
           const type = daysUntil < 0 ? "document_expired" : "document_expiring";
-
-          const users = await this.userRepository.find({
-            where: { companyId: doc.companyId },
-          });
+          const users = docUsersByCompany[doc.companyId] ?? [];
 
           await Promise.all(
             users.map(async (user) => {
-              const channels = await this.channelsForUser(user.id);
+              const channels = docChannelsFromPreferences(user.id);
 
               if (channels.inApp) {
                 const notification = this.notificationRepository.create({
@@ -265,23 +353,6 @@ export class ComplySaNotificationsService {
     }
 
     return notification!;
-  }
-
-  private async channelsForUser(userId: number): Promise<DeliveryChannels> {
-    const prefs = await this.preferencesRepository.findOne({
-      where: { userId },
-    });
-
-    if (prefs === null) {
-      return { inApp: true, email: true, sms: false, whatsapp: false };
-    }
-
-    return {
-      inApp: prefs.inAppEnabled,
-      email: prefs.emailEnabled,
-      sms: prefs.smsEnabled,
-      whatsapp: prefs.whatsappEnabled,
-    };
   }
 
   private buildMessage(
