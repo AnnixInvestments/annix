@@ -111,7 +111,7 @@ export function QrScanner(props: QrScannerProps) {
       <div className="relative h-full flex flex-col">
         <div className="flex items-center justify-between p-4 bg-black/80">
           <h2 className="text-white font-medium">Scan QR Code</h2>
-          <button onClick={handleClose} className="p-2 text-white hover:bg-white/10 rounded-full">
+          <button aria-label="Close scanner" onClick={handleClose} className="p-2 text-white hover:bg-white/10 rounded-full">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"

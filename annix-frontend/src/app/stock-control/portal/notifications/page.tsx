@@ -207,7 +207,7 @@ export default function NotificationsPage() {
                         {actionTypeLabel(notification.actionType)}
                       </span>
                       {!notification.readAt && (
-                        <span className="inline-flex h-2 w-2 rounded-full bg-teal-500" />
+                        <span className="inline-flex h-2 w-2 rounded-full bg-teal-500" aria-label="Unread" />
                       )}
                     </div>
                     <p className="text-sm font-medium text-gray-900">{notification.title}</p>

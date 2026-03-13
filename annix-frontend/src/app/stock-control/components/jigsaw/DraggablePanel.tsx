@@ -109,6 +109,7 @@ export function DraggablePanel(props: {
         {showRotateBtn && (
           <button
             type="button"
+            aria-label="Rotate panel"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();

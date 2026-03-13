@@ -102,7 +102,7 @@ export function StockItemModal(props: StockItemModalProps) {
             <h2 id="stock-item-modal-title" className="text-lg font-semibold text-gray-900">
               {item ? "Edit Stock Item" : "New Stock Item"}
             </h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <button aria-label="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
