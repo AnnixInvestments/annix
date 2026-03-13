@@ -826,21 +826,18 @@ export class RubberInboundEmailController {
 
     this.logger.log(`Uploading ${files.length} tax invoice files for company ${companyId}`);
 
-    const taxInvoiceIds: number[] = [];
+    const result = await this.inboundEmailService.uploadFiles(
+      files,
+      "tax_invoice",
+      {
+        companyId,
+        invoiceType,
+        invoiceNumber: body.invoiceNumber || undefined,
+        invoiceDate: body.invoiceDate || undefined,
+      },
+      createdBy,
+    );
 
-    for (const file of files) {
-      const invoice = await this.taxInvoiceService.createTaxInvoice(
-        {
-          invoiceNumber: body.invoiceNumber || file.originalname.replace(/\.pdf$/i, ""),
-          invoiceDate: body.invoiceDate || undefined,
-          invoiceType,
-          companyId,
-        },
-        createdBy,
-      );
-      taxInvoiceIds.push(invoice.id);
-    }
-
-    return { taxInvoiceIds };
+    return { taxInvoiceIds: result.taxInvoiceIds || [] };
   }
 }

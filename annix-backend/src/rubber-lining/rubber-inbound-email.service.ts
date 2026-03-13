@@ -828,7 +828,7 @@ ${truncatedText}`;
 
   async uploadFiles(
     files: Express.Multer.File[],
-    documentType: "supplier_coc" | "delivery_note",
+    documentType: "supplier_coc" | "delivery_note" | "tax_invoice",
     metadata: {
       supplierCompanyId?: number;
       cocType?: SupplierCocType;
@@ -837,10 +837,14 @@ ${truncatedText}`;
       compoundCode?: string;
       deliveryNoteNumber?: string;
       deliveryDate?: string;
+      invoiceType?: TaxInvoiceType;
+      companyId?: number;
+      invoiceNumber?: string;
+      invoiceDate?: string;
     },
     createdBy?: string,
-  ): Promise<{ cocIds?: number[]; deliveryNoteIds?: number[] }> {
-    const result: { cocIds?: number[]; deliveryNoteIds?: number[] } = {};
+  ): Promise<{ cocIds?: number[]; deliveryNoteIds?: number[]; taxInvoiceIds?: number[] }> {
+    const result: { cocIds?: number[]; deliveryNoteIds?: number[]; taxInvoiceIds?: number[] } = {};
 
     if (documentType === "supplier_coc") {
       result.cocIds = [];
@@ -890,6 +894,30 @@ ${truncatedText}`;
 
         this.autoExtractCoc(coc.id, detectedCocType, pdfText);
       }
+    } else if (documentType === "tax_invoice") {
+      result.taxInvoiceIds = [];
+      const companyId = metadata.companyId as number;
+      const subPath = `au-rubber/tax-invoices/${companyId}`;
+
+      for (const file of files) {
+        const storageResult = await this.storageService.upload(file, subPath);
+
+        const invoiceNumber = metadata.invoiceNumber || file.originalname.replace(/\.\w+$/i, "");
+        const invoice = await this.taxInvoiceService.createTaxInvoice(
+          {
+            invoiceNumber,
+            invoiceDate: metadata.invoiceDate,
+            invoiceType: metadata.invoiceType || TaxInvoiceType.SUPPLIER,
+            companyId,
+            documentPath: storageResult.path,
+          },
+          createdBy,
+        );
+
+        result.taxInvoiceIds.push(invoice.id);
+
+        this.autoExtractTaxInvoice(invoice.id, file);
+      }
     } else {
       result.deliveryNoteIds = [];
       const subPath = `au-rubber/delivery-notes/${metadata.supplierCompanyId || "unknown"}`;
@@ -914,6 +942,50 @@ ${truncatedText}`;
     }
 
     return result;
+  }
+
+  private autoExtractTaxInvoice(invoiceId: number, file: Express.Multer.File): void {
+    const ext = file.originalname.split(".").pop()?.toLowerCase() || "";
+    const isPdf = ext === "pdf";
+
+    (async () => {
+      try {
+        if (isPdf) {
+          const pdfText = await this.extractTextFromPdf(file.buffer);
+          if (pdfText.length >= 50) {
+            const extractionResult =
+              await this.cocExtractionService.extractTaxInvoice(pdfText);
+            await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
+            this.logger.log(
+              `Auto-extracted Tax Invoice ${invoiceId} in ${extractionResult.processingTimeMs}ms`,
+            );
+          } else {
+            const extractionResult =
+              await this.cocExtractionService.extractTaxInvoiceFromImages(file.buffer);
+            await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
+            this.logger.log(
+              `Auto-extracted Tax Invoice ${invoiceId} via OCR in ${extractionResult.processingTimeMs}ms`,
+            );
+          }
+        } else {
+          const mammoth = await import("mammoth");
+          const textResult = await mammoth.extractRawText({ buffer: file.buffer });
+          const docText = textResult.value || "";
+          if (docText.length >= 20) {
+            const extractionResult =
+              await this.cocExtractionService.extractTaxInvoice(docText);
+            await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
+            this.logger.log(
+              `Auto-extracted Tax Invoice ${invoiceId} from document in ${extractionResult.processingTimeMs}ms`,
+            );
+          }
+        }
+      } catch (error) {
+        this.logger.error(
+          `Failed to auto-extract Tax Invoice ${invoiceId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    })();
   }
 
   async analyzeFiles(files: Express.Multer.File[]): Promise<AnalyzeFilesResult> {
