@@ -107,6 +107,49 @@ export function useDeleteInvoice() {
   });
 }
 
+export function useCreateDeliveryNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      deliveryNumber: string;
+      supplierName: string;
+      receivedDate?: string;
+      notes?: string;
+      receivedBy?: string;
+      items: { stockItemId: number; quantityReceived: number }[];
+    }) => stockControlApiClient.createDeliveryNote(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
+    },
+  });
+}
+
+export function useDeleteDeliveryNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => stockControlApiClient.deleteDeliveryNote(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
+    },
+  });
+}
+
+export function useLinkDeliveryNoteToStock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => stockControlApiClient.linkDeliveryNoteToStock(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.inventory.all });
+    },
+  });
+}
+
+export function useInvalidateDeliveries() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
+}
+
 export function useInvalidateInvoices() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.invoices.all });

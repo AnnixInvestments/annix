@@ -1,11 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { DeliveryNote, StockItem } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useCreateDeliveryNote,
+  useDeleteDeliveryNote,
+  useDeliveryNotes,
+  useLinkDeliveryNoteToStock,
+} from "@/app/lib/query/hooks";
 
 function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boolean } {
   const linkedCount = delivery.items ? delivery.items.length : 0;
@@ -31,10 +37,12 @@ interface DeliveryFormItem {
 
 export default function DeliveriesPage() {
   const { showToast } = useToast();
-  const [deliveries, setDeliveries] = useState<DeliveryNote[]>([]);
+  const { data: deliveries = [], isLoading, error } = useDeliveryNotes();
+  const createMutation = useCreateDeliveryNote();
+  const deleteMutation = useDeleteDeliveryNote();
+  const linkMutation = useLinkDeliveryNoteToStock();
+
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     deliveryNumber: "",
@@ -46,35 +54,16 @@ export default function DeliveriesPage() {
   const [formItems, setFormItems] = useState<DeliveryFormItem[]>([
     { stockItemId: 0, quantityReceived: 1 },
   ]);
-  const [isCreating, setIsCreating] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeliveryNote | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const fetchDeliveries = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.deliveryNotes();
-      setDeliveries(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load delivery notes"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDeliveries();
-  }, [fetchDeliveries]);
 
   const fetchStockItems = async () => {
     try {
       const result = await stockControlApiClient.stockItems({ limit: "1000" });
       setStockItems(Array.isArray(result.items) ? result.items : []);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load stock items"));
+      showToast("Failed to load stock items", "error");
     }
   };
 
@@ -103,28 +92,26 @@ export default function DeliveriesPage() {
     setFormItems(formItems.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
   };
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     const validItems = formItems.filter(
       (item) => item.stockItemId > 0 && item.quantityReceived > 0,
     );
     if (validItems.length === 0) return;
 
-    try {
-      setIsCreating(true);
-      await stockControlApiClient.createDeliveryNote({
-        ...createForm,
+    createMutation.mutate(
+      {
+        deliveryNumber: createForm.deliveryNumber,
+        supplierName: createForm.supplierName,
         receivedDate: createForm.receivedDate || undefined,
         notes: createForm.notes || undefined,
         receivedBy: createForm.receivedBy || undefined,
         items: validItems,
-      });
-      setShowModal(false);
-      fetchDeliveries();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to create delivery note"));
-    } finally {
-      setIsCreating(false);
-    }
+      },
+      {
+        onSuccess: () => setShowModal(false),
+        onError: () => showToast("Failed to create delivery note", "error"),
+      },
+    );
   };
 
   const toggleSelection = (id: number) => {
@@ -153,7 +140,7 @@ export default function DeliveriesPage() {
     setIsBulkAdding(true);
     const ids = Array.from(selectedIds);
     const results = await Promise.allSettled(
-      ids.map((id) => stockControlApiClient.linkDeliveryNoteToStock(id)),
+      ids.map((id) => linkMutation.mutateAsync(id)),
     );
     const successCount = results.filter((r) => r.status === "fulfilled").length;
     const failCount = results.filter((r) => r.status === "rejected").length;
@@ -167,21 +154,14 @@ export default function DeliveriesPage() {
 
     setSelectedIds(new Set());
     setIsBulkAdding(false);
-    fetchDeliveries();
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      await stockControlApiClient.deleteDeliveryNote(deleteTarget.id);
-      setDeleteTarget(null);
-      fetchDeliveries();
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to delete delivery note"));
-    } finally {
-      setIsDeleting(false);
-    }
+    deleteMutation.mutate(deleteTarget.id, {
+      onSuccess: () => setDeleteTarget(null),
+      onError: () => showToast("Failed to delete delivery note", "error"),
+    });
   };
 
   if (isLoading && deliveries.length === 0) {
@@ -499,17 +479,17 @@ export default function DeliveriesPage() {
               <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteTarget(null)}
-                  disabled={isDeleting}
+                  disabled={deleteMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
-                  disabled={isDeleting}
+                  disabled={deleteMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
                 >
-                  {isDeleting ? "Deleting..." : "Delete"}
+                  {deleteMutation.isPending ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </div>
@@ -660,10 +640,10 @@ export default function DeliveriesPage() {
                 </button>
                 <button
                   onClick={handleCreate}
-                  disabled={isCreating || !createForm.deliveryNumber || !createForm.supplierName}
+                  disabled={createMutation.isPending || !createForm.deliveryNumber || !createForm.supplierName}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isCreating ? "Creating..." : "Create Delivery Note"}
+                  {createMutation.isPending ? "Creating..." : "Create Delivery Note"}
                 </button>
               </div>
             </div>

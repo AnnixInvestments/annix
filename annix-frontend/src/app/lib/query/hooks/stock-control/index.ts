@@ -21,11 +21,14 @@ export {
   useWorkflowLaneCounts,
 } from "./useStockControlDashboard";
 export {
+  useCreateDeliveryNote,
   useCreateJobCard,
   useDataBookStatuses,
+  useDeleteDeliveryNote,
   useDeleteInvoice,
   useDeleteJobCard,
   useDeliveryNotes,
+  useInvalidateDeliveries,
   useInvalidateInventory,
   useInvalidateInvoices,
   useInvalidateJobCards,
@@ -35,4 +38,5 @@ export {
   useInventoryLocations,
   useInvoices,
   useJobCards,
+  useLinkDeliveryNoteToStock,
 } from "./useStockControlData";

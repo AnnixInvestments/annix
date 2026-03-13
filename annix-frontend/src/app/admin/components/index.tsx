@@ -267,8 +267,8 @@ export function SearchBar(props: SearchBarProps) {
 
 // Common Icons
 export const Icons = {
-  Document: ({ className = "w-6 h-6 text-white" }: { className?: string }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Document: (props: { className?: string }) => (
+    <svg className={props.className ?? "w-6 h-6 text-white"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -277,8 +277,8 @@ export const Icons = {
       />
     </svg>
   ),
-  Clock: ({ className = "w-6 h-6 text-white" }: { className?: string }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Clock: (props: { className?: string }) => (
+    <svg className={props.className ?? "w-6 h-6 text-white"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -287,8 +287,8 @@ export const Icons = {
       />
     </svg>
   ),
-  Clipboard: ({ className = "w-6 h-6 text-white" }: { className?: string }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Clipboard: (props: { className?: string }) => (
+    <svg className={props.className ?? "w-6 h-6 text-white"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -297,8 +297,8 @@ export const Icons = {
       />
     </svg>
   ),
-  CheckCircle: ({ className = "w-6 h-6 text-white" }: { className?: string }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  CheckCircle: (props: { className?: string }) => (
+    <svg className={props.className ?? "w-6 h-6 text-white"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -307,8 +307,8 @@ export const Icons = {
       />
     </svg>
   ),
-  Users: ({ className = "w-6 h-6 text-white" }: { className?: string }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Users: (props: { className?: string }) => (
+    <svg className={props.className ?? "w-6 h-6 text-white"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -317,8 +317,8 @@ export const Icons = {
       />
     </svg>
   ),
-  NoData: ({ className = "h-12 w-12" }: { className?: string }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  NoData: (props: { className?: string }) => (
+    <svg className={props.className ?? "h-12 w-12"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

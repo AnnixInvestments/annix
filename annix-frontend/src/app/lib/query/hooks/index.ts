@@ -539,10 +539,12 @@ export {
 } from "./rfq/useRfqs";
 export {
   useCpoSummary,
+  useCreateDeliveryNote,
   useCreateJobCard,
   useDashboardPreferences,
   useDashboardStats,
   useDataBookStatuses,
+  useDeleteDeliveryNote,
   useDeleteInvoice,
   useDeleteJobCard,
   useDeliveryNotes,
@@ -550,6 +552,7 @@ export {
   useInboundEmailDetail,
   useInboundEmailStats,
   useInboundEmails,
+  useInvalidateDeliveries,
   useInvalidateInventory,
   useInvalidateInvoices,
   useInvalidateJobCards,
@@ -559,6 +562,7 @@ export {
   useInventoryLocations,
   useInvoices,
   useJobCards,
+  useLinkDeliveryNoteToStock,
   usePendingApprovals,
   useRecentActivity,
   useReclassifyAttachment,
