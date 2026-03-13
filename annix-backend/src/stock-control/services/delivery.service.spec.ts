@@ -5,13 +5,13 @@ import { DataSource } from "typeorm";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
-import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
-import { SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { CpoService } from "./cpo.service";
+import { DeliveryExtractionService } from "./delivery-extraction.service";
+import { DeliveryInvoiceService } from "./delivery-invoice.service";
+import { DeliverySupplierService } from "./delivery-supplier.service";
 import { DeliveryService } from "./delivery.service";
-import { InvoiceExtractionService } from "./invoice-extraction.service";
 
 describe("DeliveryService", () => {
   let service: DeliveryService;
@@ -20,27 +20,6 @@ describe("DeliveryService", () => {
     create: jest.fn().mockImplementation((data) => ({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
     findOne: jest.fn(),
-    find: jest.fn(),
-    remove: jest.fn(),
-  };
-
-  const mockDeliveryNoteItemRepo = {
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-    remove: jest.fn(),
-    createQueryBuilder: jest.fn(),
-  };
-
-  const mockStockItemRepo = {
-    findOne: jest.fn(),
-    find: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-  };
-
-  const mockMovementRepo = {
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
     find: jest.fn(),
     remove: jest.fn(),
   };
@@ -57,31 +36,32 @@ describe("DeliveryService", () => {
     download: jest.fn(),
   };
 
-  const mockExtractionService = {
-    extractDeliveryNoteFromImage: jest.fn(),
-  };
-
-  const mockInvoiceRepo = {
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-    findOne: jest.fn(),
-    find: jest.fn(),
-  };
-
-  const mockSupplierRepo = {
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-    findOne: jest.fn(),
-    find: jest.fn(),
-    createQueryBuilder: jest.fn().mockReturnValue({
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      getOne: jest.fn().mockResolvedValue(null),
-    }),
-  };
-
   const mockCpoService = {
     linkDeliveryToCalloffs: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockSupplierService = {
+    resolveOrCreateSupplier: jest.fn().mockResolvedValue({ id: 1, name: "Supplier" }),
+    findMatchingStockItem: jest.fn().mockResolvedValue({ existingItem: null, sameSupplier: false }),
+    normalizeForComparison: jest.fn((text: string) =>
+      text.toLowerCase().replace(/[^a-z0-9]/g, "").trim(),
+    ),
+  };
+
+  const mockDeliveryExtractionService = {
+    extractFromPhoto: jest.fn().mockResolvedValue(undefined),
+    linkExtractedItemsToStock: jest.fn().mockResolvedValue(undefined),
+    createStockItemsFromExtracted: jest.fn().mockResolvedValue(undefined),
+    calculateItemMetrics: jest.fn(),
+    generateSku: jest.fn((item: { itemCode?: string }) =>
+      item.itemCode?.toUpperCase().replace(/\s+/g, "-") || "ITEM",
+    ),
+    inferMediaTypeFromUrl: jest.fn().mockReturnValue("image/jpeg"),
+  };
+
+  const mockDeliveryInvoiceService = {
+    createFromAnalyzedData: jest.fn().mockResolvedValue({ id: 1 }),
+    mimeToMediaType: jest.fn().mockReturnValue("image/jpeg"),
   };
 
   const mockQueryRunner = {
@@ -108,15 +88,12 @@ describe("DeliveryService", () => {
       providers: [
         DeliveryService,
         { provide: getRepositoryToken(DeliveryNote), useValue: mockDeliveryNoteRepo },
-        { provide: getRepositoryToken(DeliveryNoteItem), useValue: mockDeliveryNoteItemRepo },
-        { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
-        { provide: getRepositoryToken(StockMovement), useValue: mockMovementRepo },
-        { provide: getRepositoryToken(SupplierInvoice), useValue: mockInvoiceRepo },
-        { provide: getRepositoryToken(StockControlSupplier), useValue: mockSupplierRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
-        { provide: InvoiceExtractionService, useValue: mockExtractionService },
         { provide: CpoService, useValue: mockCpoService },
         { provide: DataSource, useValue: mockDataSource },
+        { provide: DeliverySupplierService, useValue: mockSupplierService },
+        { provide: DeliveryExtractionService, useValue: mockDeliveryExtractionService },
+        { provide: DeliveryInvoiceService, useValue: mockDeliveryInvoiceService },
       ],
     }).compile();
 
@@ -272,37 +249,38 @@ describe("DeliveryService", () => {
     });
   });
 
-  describe("handleReturnedItem (via create)", () => {
-    it("reduces stock for returned items found in stock", async () => {
-      const stockItem = { id: 1, name: "Paint", sku: "PAINT-RED", quantity: 50 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockResolvedValue(stockItem);
+  describe("createFromAnalyzedData delegation", () => {
+    it("delegates line item processing to extraction service", async () => {
       mockDeliveryNoteRepo.findOne
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 1, items: [], photoUrl: null });
       mockDeliveryNoteRepo.save.mockResolvedValue({ id: 1 });
 
+      const lineItems = [
+        {
+          description: "PAINT RED returned",
+          isReturned: true,
+          quantity: 5,
+          itemCode: "PAINT-RED",
+        },
+      ];
+
       const file = { size: 1000, buffer: Buffer.from(""), originalname: "dn.jpg" } as any;
       await service.createFromAnalyzedData(1, file, {
         deliveryNoteNumber: "DN-003",
         fromCompany: { name: "Supplier" },
-        lineItems: [
-          {
-            description: "PAINT RED returned",
-            isReturned: true,
-            quantity: 5,
-            itemCode: "PAINT-RED",
-          },
-        ],
+        lineItems,
       });
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ quantity: 45 }),
+      expect(mockDeliveryExtractionService.createStockItemsFromExtracted).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ id: 1 }),
+        lineItems,
+        undefined,
       );
     });
 
-    it("skips returned items not in stock", async () => {
-      mockStockItemRepo.findOne.mockResolvedValue(null);
+    it("resolves supplier via supplier service", async () => {
       mockDeliveryNoteRepo.findOne
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 1, items: [], photoUrl: null });
@@ -311,60 +289,29 @@ describe("DeliveryService", () => {
       const file = { size: 1000, buffer: Buffer.from(""), originalname: "dn.jpg" } as any;
       await service.createFromAnalyzedData(1, file, {
         deliveryNoteNumber: "DN-004",
-        fromCompany: { name: "Supplier" },
-        lineItems: [
-          {
-            description: "UNKNOWN ITEM returned",
-            isReturned: true,
-            quantity: 3,
-            itemCode: "UNKNOWN",
-          },
-        ],
+        fromCompany: { name: "Test Supplier" },
       });
 
-      expect(mockMovementRepo.save).not.toHaveBeenCalled();
+      expect(mockSupplierService.resolveOrCreateSupplier).toHaveBeenCalledWith(
+        1,
+        "Test Supplier",
+        expect.any(Object),
+      );
     });
-  });
 
-  describe("paint handling", () => {
-    it("calculates totalLiters for paint items", async () => {
-      mockStockItemRepo.findOne.mockResolvedValue(null);
-      mockStockItemRepo.find.mockResolvedValue([]);
-      mockDeliveryNoteRepo.findOne
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: 1, items: [], photoUrl: null });
-      mockDeliveryNoteRepo.save.mockResolvedValue({ id: 1 });
-      mockDeliveryNoteItemRepo.createQueryBuilder.mockReturnValue({
-        innerJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([]),
-      });
-
-      const file = { size: 1000, buffer: Buffer.from(""), originalname: "dn.jpg" } as any;
-      await service.createFromAnalyzedData(1, file, {
-        deliveryNoteNumber: "DN-005",
+    it("delegates invoice creation to invoice service", async () => {
+      const file = { size: 1000, buffer: Buffer.from(""), originalname: "inv.pdf" } as any;
+      const analyzedData = {
+        invoiceNumber: "INV-001",
         fromCompany: { name: "Supplier" },
-        lineItems: [
-          {
-            description: "PENGUARD EXPRESS MIO",
-            isPaint: true,
-            quantity: 2,
-            volumeLitersPerPack: 20,
-            totalLiters: 40,
-            costPerLiter: 150,
-            itemCode: "PEM-001",
-          },
-        ],
-      });
+      };
 
-      expect(mockStockItemRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          quantity: 40,
-          unitOfMeasure: "L",
-          category: "Paint",
-        }),
+      await service.createInvoiceFromAnalyzedData(1, file, analyzedData);
+
+      expect(mockDeliveryInvoiceService.createFromAnalyzedData).toHaveBeenCalledWith(
+        1,
+        file,
+        analyzedData,
       );
     });
   });

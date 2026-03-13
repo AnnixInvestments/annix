@@ -104,6 +104,9 @@ import { CompanyRoleService } from "./services/company-role.service";
 import { CpoService } from "./services/cpo.service";
 import { DashboardService } from "./services/dashboard.service";
 import { DataBookPdfService } from "./services/data-book-pdf.service";
+import { DeliveryExtractionService } from "./services/delivery-extraction.service";
+import { DeliveryInvoiceService } from "./services/delivery-invoice.service";
+import { DeliverySupplierService } from "./services/delivery-supplier.service";
 import { DeliveryService } from "./services/delivery.service";
 import { DispatchService } from "./services/dispatch.service";
 import { DrawingExtractionService } from "./services/drawing-extraction.service";
@@ -257,6 +260,9 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     InventoryService,
     IssuanceService,
     JobCardService,
+    DeliverySupplierService,
+    DeliveryExtractionService,
+    DeliveryInvoiceService,
     DeliveryService,
     MovementService,
     ImportService,

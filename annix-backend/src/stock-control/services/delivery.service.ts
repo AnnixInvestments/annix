@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   forwardRef,
   Inject,
@@ -13,29 +12,13 @@ import { fromISO, now, nowMillis } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
-import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
-import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
+import { SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { CpoService } from "./cpo.service";
-import { validPositiveNumber } from "./extraction-validation";
-import { InvoiceExtractionService } from "./invoice-extraction.service";
-
-interface ExtractedLineItem {
-  description?: string;
-  itemCode?: string;
-  productCode?: string;
-  quantity?: number;
-  unitOfMeasure?: string;
-  unitPrice?: number;
-  lineTotal?: number;
-  isReturned?: boolean;
-  isPaint?: boolean;
-  isTwoPack?: boolean;
-  volumeLitersPerPack?: number;
-  totalLiters?: number;
-  costPerLiter?: number;
-}
+import { DeliveryExtractionService } from "./delivery-extraction.service";
+import { DeliveryInvoiceService } from "./delivery-invoice.service";
+import { DeliverySupplierService } from "./delivery-supplier.service";
 
 @Injectable()
 export class DeliveryService {
@@ -44,22 +27,14 @@ export class DeliveryService {
   constructor(
     @InjectRepository(DeliveryNote)
     private readonly deliveryNoteRepo: Repository<DeliveryNote>,
-    @InjectRepository(DeliveryNoteItem)
-    private readonly deliveryNoteItemRepo: Repository<DeliveryNoteItem>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(StockMovement)
-    private readonly movementRepo: Repository<StockMovement>,
-    @InjectRepository(SupplierInvoice)
-    private readonly invoiceRepo: Repository<SupplierInvoice>,
-    @InjectRepository(StockControlSupplier)
-    private readonly supplierRepo: Repository<StockControlSupplier>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
-    private readonly extractionService: InvoiceExtractionService,
     @Inject(forwardRef(() => CpoService))
     private readonly cpoService: CpoService,
     private readonly dataSource: DataSource,
+    private readonly supplierService: DeliverySupplierService,
+    private readonly extractionService: DeliveryExtractionService,
+    private readonly invoiceService: DeliveryInvoiceService,
   ) {}
 
   async create(
@@ -267,46 +242,8 @@ export class DeliveryService {
 
   async extractFromPhoto(companyId: number, id: number): Promise<DeliveryNote> {
     const note = await this.findById(companyId, id);
-
-    if (!note.photoUrl) {
-      throw new BadRequestException("Delivery note has no photo to extract from");
-    }
-
-    note.extractionStatus = "processing";
-    await this.deliveryNoteRepo.save(note);
-
-    try {
-      const photoBuffer = await this.storageService.download(note.photoUrl);
-      const imageBase64 = photoBuffer.toString("base64");
-      const mediaType = this.inferMediaTypeFromUrl(note.photoUrl);
-
-      const extractedData = await this.extractionService.extractDeliveryNoteFromImage(
-        imageBase64,
-        mediaType,
-      );
-
-      note.extractedData = extractedData;
-      note.extractionStatus = "completed";
-      await this.deliveryNoteRepo.save(note);
-
-      return this.findById(companyId, id);
-    } catch (error) {
-      note.extractionStatus = "failed";
-      note.extractedData = { rawText: error.message };
-      await this.deliveryNoteRepo.save(note);
-      throw error;
-    }
-  }
-
-  private inferMediaTypeFromUrl(
-    url: string,
-  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf" {
-    const lower = url.toLowerCase();
-    if (lower.includes(".pdf")) return "application/pdf";
-    if (lower.includes(".png")) return "image/png";
-    if (lower.includes(".gif")) return "image/gif";
-    if (lower.includes(".webp")) return "image/webp";
-    return "image/jpeg";
+    await this.extractionService.extractFromPhoto(note);
+    return this.findById(companyId, id);
   }
 
   async extractionStatus(
@@ -326,40 +263,7 @@ export class DeliveryService {
     receivedBy?: string,
   ): Promise<DeliveryNote> {
     const note = await this.findById(companyId, id);
-
-    if (note.items && note.items.length > 0) {
-      this.logger.log(`Delivery note ${id} already has ${note.items.length} linked items`);
-      return note;
-    }
-
-    const extractedData = note.extractedData as {
-      lineItems?: Array<{
-        description?: string;
-        itemCode?: string;
-        productCode?: string;
-        quantity?: number;
-        unitOfMeasure?: string;
-        unitPrice?: number;
-        lineTotal?: number;
-        isReturned?: boolean;
-        isPaint?: boolean;
-        isTwoPack?: boolean;
-        volumeLitersPerPack?: number;
-        totalLiters?: number;
-        costPerLiter?: number;
-      }>;
-    } | null;
-
-    if (!extractedData?.lineItems || extractedData.lineItems.length === 0) {
-      this.logger.log(`Delivery note ${id} has no extracted line items to link`);
-      return note;
-    }
-
-    this.logger.log(
-      `Linking ${extractedData.lineItems.length} extracted items to stock for delivery note ${id}`,
-    );
-    await this.createStockItemsFromExtracted(companyId, note, extractedData.lineItems, receivedBy);
-
+    await this.extractionService.linkExtractedItemsToStock(companyId, note, receivedBy);
     return this.findById(companyId, id);
   }
 
@@ -373,32 +277,8 @@ export class DeliveryService {
       phone?: string;
       email?: string;
     },
-  ): Promise<StockControlSupplier> {
-    const existing = await this.supplierRepo
-      .createQueryBuilder("supplier")
-      .where("supplier.companyId = :companyId", { companyId })
-      .andWhere("LOWER(supplier.name) = LOWER(:name)", { name: supplierName })
-      .getOne();
-
-    if (existing) {
-      return existing;
-    }
-
-    const supplier = this.supplierRepo.create({
-      companyId,
-      name: supplierName,
-      vatNumber: details?.vatNumber || null,
-      address: details?.address || null,
-      contactPerson: details?.contactPerson || null,
-      phone: details?.phone || null,
-      email: details?.email || null,
-    });
-
-    const saved = await this.supplierRepo.save(supplier);
-    this.logger.log(
-      `Auto-created supplier "${supplierName}" (id=${saved.id}) for company ${companyId}`,
-    );
-    return saved;
+  ): Promise<import("../entities/stock-control-supplier.entity").StockControlSupplier> {
+    return this.supplierService.resolveOrCreateSupplier(companyId, supplierName, details);
   }
 
   async createFromAnalyzedData(
@@ -463,7 +343,7 @@ export class DeliveryService {
 
     let supplierId: number | null = null;
     if (analyzedData.fromCompany?.name) {
-      const supplier = await this.resolveOrCreateSupplier(
+      const supplier = await this.supplierService.resolveOrCreateSupplier(
         companyId,
         analyzedData.fromCompany.name,
         {
@@ -497,7 +377,7 @@ export class DeliveryService {
       this.logger.log(
         `Auto-creating ${analyzedData.lineItems.length} stock items from extracted data`,
       );
-      await this.createStockItemsFromExtracted(
+      await this.extractionService.createStockItemsFromExtracted(
         companyId,
         savedNote,
         analyzedData.lineItems,
@@ -511,322 +391,6 @@ export class DeliveryService {
     });
 
     return this.findById(companyId, savedNote.id);
-  }
-
-  private async createStockItemsFromExtracted(
-    companyId: number,
-    deliveryNote: DeliveryNote,
-    lineItems: Array<ExtractedLineItem>,
-    receivedBy?: string,
-  ): Promise<void> {
-    for (const item of lineItems) {
-      if (!item.description) {
-        continue;
-      }
-
-      const isReturned = item.isReturned || /\breturned?\b/i.test(item.description);
-
-      if (isReturned) {
-        await this.handleReturnedItem(companyId, deliveryNote, item, receivedBy);
-        continue;
-      }
-
-      const sku = this.generateSku(item);
-      const { quantity, costPerUnit, unitOfMeasure } = this.calculateItemMetrics(item);
-
-      const stockItem = await this.resolveOrCreateStockItem(
-        companyId,
-        deliveryNote.supplierName,
-        item,
-        sku,
-        quantity,
-        costPerUnit,
-        unitOfMeasure,
-      );
-
-      const noteItem = this.deliveryNoteItemRepo.create({
-        deliveryNote,
-        stockItem,
-        quantityReceived: quantity,
-        photoUrl: null,
-        companyId,
-      });
-      await this.deliveryNoteItemRepo.save(noteItem);
-
-      const movement = this.movementRepo.create({
-        stockItem,
-        movementType: MovementType.IN,
-        quantity,
-        referenceType: ReferenceType.DELIVERY,
-        referenceId: deliveryNote.id,
-        notes: `Received via delivery ${deliveryNote.deliveryNumber}`,
-        createdBy: receivedBy || null,
-        companyId,
-      });
-      await this.movementRepo.save(movement);
-    }
-  }
-
-  private calculateItemMetrics(item: ExtractedLineItem): {
-    quantity: number;
-    costPerUnit: number;
-    unitOfMeasure: string;
-  } {
-    if (item.isPaint) {
-      const totalLiters =
-        item.totalLiters ??
-        (item.volumeLitersPerPack && item.quantity
-          ? item.volumeLitersPerPack * item.quantity
-          : (item.volumeLitersPerPack ?? 1));
-      const quantity = validPositiveNumber(totalLiters, 1);
-      const costPerUnit =
-        item.costPerLiter ?? (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
-      this.logger.log(
-        `Paint item: ${item.description} - ${quantity}L @ R${costPerUnit.toFixed(2)}/L`,
-      );
-      return { quantity, costPerUnit, unitOfMeasure: "L" };
-    }
-
-    const quantity = validPositiveNumber(item.quantity, 1);
-    const costPerUnit =
-      validPositiveNumber(item.unitPrice, 0) ||
-      (item.lineTotal && quantity > 0 ? item.lineTotal / quantity : 0);
-    return { quantity, costPerUnit, unitOfMeasure: item.unitOfMeasure || "each" };
-  }
-
-  private async resolveOrCreateStockItem(
-    companyId: number,
-    supplierName: string,
-    item: ExtractedLineItem,
-    sku: string,
-    quantity: number,
-    costPerUnit: number,
-    unitOfMeasure: string,
-  ): Promise<StockItem> {
-    const existingBySku = await this.stockItemRepo.findOne({
-      where: { sku, companyId },
-    });
-
-    if (existingBySku) {
-      existingBySku.quantity = existingBySku.quantity + quantity;
-      if (costPerUnit > 0) {
-        existingBySku.costPerUnit = costPerUnit;
-      }
-      await this.stockItemRepo.save(existingBySku);
-      this.logger.log(`Updated existing stock item ${sku}: +${quantity}`);
-      return existingBySku;
-    }
-
-    const matchResult = await this.findMatchingStockItem(
-      companyId,
-      supplierName,
-      item.description!,
-      sku,
-    );
-
-    if (matchResult.existingItem && matchResult.sameSupplier) {
-      const matched = matchResult.existingItem;
-      const oldSku = matched.sku;
-      matched.sku = sku;
-      matched.quantity = matched.quantity + quantity;
-      if (costPerUnit > 0) {
-        matched.costPerUnit = costPerUnit;
-      }
-      await this.stockItemRepo.save(matched);
-      this.logger.log(
-        `Merged item: updated SKU from ${oldSku} to ${sku}, added ${quantity} (same supplier: ${supplierName})`,
-      );
-      return matched;
-    }
-
-    const created = this.stockItemRepo.create({
-      sku,
-      name: item.description!,
-      description: null,
-      category: item.isPaint ? "Paint" : "Uncategorized",
-      unitOfMeasure,
-      costPerUnit,
-      quantity,
-      minStockLevel: 0,
-      needsQrPrint: true,
-      companyId,
-    });
-    await this.stockItemRepo.save(created);
-    this.logger.log(
-      `Created new stock item ${sku}: ${item.description} @ R${costPerUnit.toFixed(2)}`,
-    );
-    return created;
-  }
-
-  private async handleReturnedItem(
-    companyId: number,
-    deliveryNote: DeliveryNote,
-    item: ExtractedLineItem,
-    receivedBy?: string,
-  ): Promise<void> {
-    const sku = this.generateSku(item);
-
-    const stockItem = await this.stockItemRepo.findOne({
-      where: { sku, companyId },
-    });
-
-    if (!stockItem) {
-      this.logger.log(
-        `Returned item not found in stock, skipping: ${item.description} (SKU: ${sku})`,
-      );
-      return;
-    }
-
-    let quantity: number;
-    if (item.isPaint) {
-      quantity =
-        item.totalLiters ??
-        (item.volumeLitersPerPack && item.quantity
-          ? item.volumeLitersPerPack * item.quantity
-          : (item.volumeLitersPerPack ?? 1));
-    } else {
-      quantity = item.quantity ?? 1;
-    }
-
-    stockItem.quantity = Math.max(0, stockItem.quantity - quantity);
-    await this.stockItemRepo.save(stockItem);
-    this.logger.log(
-      `Reduced stock for returned item ${sku}: -${quantity} (new qty: ${stockItem.quantity})`,
-    );
-
-    const movement = this.movementRepo.create({
-      stockItem,
-      movementType: MovementType.OUT,
-      quantity,
-      referenceType: ReferenceType.DELIVERY,
-      referenceId: deliveryNote.id,
-      notes: `Returned via delivery ${deliveryNote.deliveryNumber}`,
-      createdBy: receivedBy || null,
-      companyId,
-    });
-    await this.movementRepo.save(movement);
-  }
-
-  private async findMatchingStockItem(
-    companyId: number,
-    supplierName: string,
-    description: string,
-    newSku: string,
-  ): Promise<{ existingItem: StockItem | null; sameSupplier: boolean }> {
-    const normalizedDesc = this.normalizeForComparison(description);
-    const normalizedNewSku = newSku.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-    const allItems = await this.stockItemRepo.find({ where: { companyId } });
-
-    const candidateItems = allItems.filter((item) => {
-      const normalizedItemName = this.normalizeForComparison(item.name);
-      const normalizedItemSku = item.sku.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-      const nameMatch =
-        normalizedDesc === normalizedItemName ||
-        (normalizedDesc.length > 15 && normalizedItemName.includes(normalizedDesc)) ||
-        (normalizedItemName.length > 15 && normalizedDesc.includes(normalizedItemName));
-
-      const skuSimilar =
-        normalizedNewSku.length > 5 &&
-        normalizedItemSku.length > 5 &&
-        (normalizedNewSku.includes(normalizedItemSku.slice(-5)) ||
-          normalizedItemSku.includes(normalizedNewSku.slice(-5)));
-
-      return nameMatch || skuSimilar;
-    });
-
-    if (candidateItems.length === 0) {
-      return { existingItem: null, sameSupplier: false };
-    }
-
-    const candidateIds = candidateItems.map((item) => item.id);
-    const supplierRows: { stockItemId: number; supplierName: string }[] =
-      await this.deliveryNoteItemRepo
-        .createQueryBuilder("dni")
-        .innerJoin("dni.deliveryNote", "dn")
-        .where("dni.stock_item_id IN (:...candidateIds)", { candidateIds })
-        .andWhere("dni.company_id = :companyId", { companyId })
-        .select("DISTINCT dni.stock_item_id", "stockItemId")
-        .addSelect("dn.supplierName", "supplierName")
-        .getRawMany();
-
-    const suppliersByItemId = supplierRows.reduce<Record<number, string[]>>((acc, row) => {
-      const id = Number(row.stockItemId);
-      const existing = acc[id] ?? [];
-      return { ...acc, [id]: [...existing, row.supplierName?.toLowerCase() || ""] };
-    }, {});
-
-    const normalizedCurrentSupplier = supplierName?.toLowerCase() || "";
-
-    for (const item of candidateItems) {
-      const suppliers = suppliersByItemId[item.id] ?? [];
-
-      const sameSupplier = suppliers.some(
-        (s) =>
-          s === normalizedCurrentSupplier ||
-          s.includes(normalizedCurrentSupplier) ||
-          normalizedCurrentSupplier.includes(s),
-      );
-
-      if (sameSupplier) {
-        this.logger.log(
-          `Found matching item: "${item.name}" (SKU: ${item.sku}) from same supplier: ${supplierName}`,
-        );
-        return { existingItem: item, sameSupplier: true };
-      }
-
-      this.logger.log(
-        `Found similar item: "${item.name}" but from different supplier(s): ${suppliers.join(", ")} vs current: ${supplierName}`,
-      );
-    }
-
-    return { existingItem: null, sameSupplier: false };
-  }
-
-  private normalizeForComparison(text: string): string {
-    return text
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "")
-      .trim();
-  }
-
-  private generateSku(item: {
-    itemCode?: string;
-    productCode?: string;
-    description?: string;
-  }): string {
-    if (item.itemCode) {
-      return item.itemCode.toUpperCase().replace(/\s+/g, "-");
-    }
-    if (item.productCode) {
-      return item.productCode.toUpperCase().replace(/\s+/g, "-");
-    }
-    const descWords = (item.description || "ITEM")
-      .toUpperCase()
-      .replace(/[^A-Z0-9\s]/g, "")
-      .split(/\s+/)
-      .filter((w) => w.length > 0)
-      .slice(0, 4)
-      .join("-");
-    return descWords || `ITEM-${nowMillis()}`;
-  }
-
-  private mimeToMediaType(
-    mime: string,
-  ): "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf" {
-    const mimeMap: Record<
-      string,
-      "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf"
-    > = {
-      "image/jpeg": "image/jpeg",
-      "image/jpg": "image/jpeg",
-      "image/png": "image/png",
-      "image/gif": "image/gif",
-      "image/webp": "image/webp",
-      "application/pdf": "application/pdf",
-    };
-    return mimeMap[mime] || "image/jpeg";
   }
 
   async createInvoiceFromAnalyzedData(
@@ -851,60 +415,6 @@ export class DeliveryService {
       };
     },
   ): Promise<SupplierInvoice> {
-    const uploadResult = await this.storageService.upload(
-      file,
-      `${StorageArea.STOCK_CONTROL}/invoices`,
-    );
-
-    const invoiceNumber =
-      analyzedData.invoiceNumber || analyzedData.deliveryNoteNumber || `INV-${nowMillis()}`;
-
-    const invoiceDate = analyzedData.deliveryDate
-      ? fromISO(analyzedData.deliveryDate).toJSDate()
-      : null;
-
-    const invoiceSupplierName = analyzedData.fromCompany?.name || "Unknown Supplier";
-
-    let invoiceSupplierId: number | null = null;
-    if (analyzedData.fromCompany?.name) {
-      const supplier = await this.resolveOrCreateSupplier(
-        companyId,
-        analyzedData.fromCompany.name,
-        {
-          vatNumber: analyzedData.fromCompany.vatNumber,
-          address: analyzedData.fromCompany.address,
-          contactPerson: analyzedData.fromCompany.contactPerson,
-          phone: analyzedData.fromCompany.phone,
-          email: analyzedData.fromCompany.email,
-        },
-      );
-      invoiceSupplierId = supplier.id;
-    }
-
-    const invoice = this.invoiceRepo.create({
-      companyId,
-      invoiceNumber,
-      supplierName: invoiceSupplierName,
-      supplierId: invoiceSupplierId,
-      invoiceDate,
-      totalAmount: analyzedData.totals?.grandTotalInclVat ?? null,
-      vatAmount: analyzedData.totals?.vatTotal ?? null,
-      scanUrl: uploadResult.path,
-      extractionStatus: InvoiceExtractionStatus.PENDING,
-      extractedData: analyzedData,
-    });
-
-    const saved = await this.invoiceRepo.save(invoice);
-    this.logger.log(`Created invoice ${saved.id} (${invoiceNumber}) from scan`);
-
-    const imageBase64 = file.buffer.toString("base64");
-    const mediaType = this.mimeToMediaType(file.mimetype);
-    this.extractionService
-      .extractFromImage(saved.id, imageBase64, mediaType)
-      .catch((err) =>
-        this.logger.error(`Background extraction failed for invoice ${saved.id}: ${err.message}`),
-      );
-
-    return saved;
+    return this.invoiceService.createFromAnalyzedData(companyId, file, analyzedData);
   }
 }
