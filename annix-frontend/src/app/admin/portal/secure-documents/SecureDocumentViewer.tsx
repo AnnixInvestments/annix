@@ -351,7 +351,8 @@ export default function SecureDocumentViewer(props: SecureDocumentViewerProps) {
                   : { backgroundColor: "transparent" }
               }
               components={{
-                pre: ({ children, ...props }) => {
+                pre: (preProps) => {
+                  const children = preProps.children;
                   const codeChild = React.Children.toArray(children).find(
                     (
                       child,
@@ -365,7 +366,7 @@ export default function SecureDocumentViewer(props: SecureDocumentViewerProps) {
                       return <MermaidBlock chart={text} />;
                     }
                   }
-                  return <pre {...props}>{children}</pre>;
+                  return <pre>{children}</pre>;
                 },
               }}
             />

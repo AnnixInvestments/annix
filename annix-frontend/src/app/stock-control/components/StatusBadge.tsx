@@ -25,7 +25,10 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-export function StatusBadge({ status, label, className }: StatusBadgeProps) {
+export function StatusBadge(props: StatusBadgeProps) {
+  const status = props.status;
+  const label = props.label;
+  const className = props.className;
   const colorClasses = STATUS_COLORS[status.toLowerCase()] ?? "bg-gray-100 text-gray-800";
   const displayLabel = label ?? status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   return (

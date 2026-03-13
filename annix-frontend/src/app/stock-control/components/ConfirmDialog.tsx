@@ -20,17 +20,16 @@ const VARIANT_STYLES = {
   default: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
 };
 
-export function ConfirmDialog({
-  open,
-  title,
-  message,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
-  variant = "default",
-  loading = false,
-  onConfirm,
-  onCancel,
-}: ConfirmDialogProps) {
+export function ConfirmDialog(props: ConfirmDialogProps) {
+  const open = props.open;
+  const title = props.title;
+  const message = props.message;
+  const confirmLabel = props.confirmLabel ?? "Confirm";
+  const cancelLabel = props.cancelLabel ?? "Cancel";
+  const variant = props.variant ?? "default";
+  const loading = props.loading ?? false;
+  const onConfirm = props.onConfirm;
+  const onCancel = props.onCancel;
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {

@@ -14,14 +14,13 @@ interface ConversationThreadProps {
   onDownloadAttachment?: (attachment: Attachment) => void;
 }
 
-function ConversationThreadComponent({
-  messages,
-  currentUserId,
-  onLoadMore,
-  hasMore = false,
-  isLoadingMore = false,
-  onDownloadAttachment,
-}: ConversationThreadProps) {
+function ConversationThreadComponent(props: ConversationThreadProps) {
+  const messages = props.messages;
+  const currentUserId = props.currentUserId;
+  const onLoadMore = props.onLoadMore;
+  const hasMore = props.hasMore ?? false;
+  const isLoadingMore = props.isLoadingMore ?? false;
+  const onDownloadAttachment = props.onDownloadAttachment;
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -76,17 +75,17 @@ function ConversationThreadComponent({
         </div>
       )}
 
-      {groupedMessages.map(({ date, messages: dayMessages }) => (
-        <div key={date}>
+      {groupedMessages.map((group) => (
+        <div key={group.date}>
           <div className="flex items-center justify-center my-4">
             <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
-            <span className="px-3 text-xs text-gray-500 dark:text-gray-400">{date}</span>
+            <span className="px-3 text-xs text-gray-500 dark:text-gray-400">{group.date}</span>
             <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
           </div>
 
-          {dayMessages.map((message, index) => {
+          {group.messages.map((message, index) => {
             const isOwnMessage = message.senderId === currentUserId;
-            const prevMessage = index > 0 ? dayMessages[index - 1] : null;
+            const prevMessage = index > 0 ? group.messages[index - 1] : null;
             const showSender =
               !isOwnMessage && (!prevMessage || prevMessage.senderId !== message.senderId);
 
