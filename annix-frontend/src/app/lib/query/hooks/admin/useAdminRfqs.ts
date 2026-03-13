@@ -12,6 +12,7 @@ export function useAdminRfqs(params?: AdminRfqQueryDto) {
   return useQuery<AdminRfqListResponse>({
     queryKey: adminKeys.rfqs.list(params),
     queryFn: () => adminApiClient.listRfqs(params),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -30,6 +31,7 @@ export function useAdminRfqDetail(id: number) {
       ]);
       return { rfq, fullDraft };
     },
+    staleTime: 2 * 60 * 1000,
     enabled: id > 0,
   });
 }

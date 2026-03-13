@@ -6,6 +6,7 @@ export function useCustomerRfqs() {
   return useQuery<RfqResponse[]>({
     queryKey: customerKeys.rfqs.list(),
     queryFn: () => rfqApi.getAll(),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -13,6 +14,7 @@ export function useCustomerRfqDetail(id: number) {
   return useQuery({
     queryKey: customerKeys.rfqs.detail(id),
     queryFn: () => rfqApi.getById(id),
+    staleTime: 2 * 60 * 1000,
     enabled: id > 0,
   });
 }
@@ -24,6 +26,7 @@ export function useDeleteDraft() {
     mutationFn: (draftId: number) => draftsApi.delete(draftId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customerKeys.drafts.all });
+      queryClient.invalidateQueries({ queryKey: customerKeys.rfqs.all });
     },
   });
 }

@@ -16,8 +16,14 @@ interface Rfq {
   updatedAt: string;
 }
 
-async function fetchRfqs(): Promise<Rfq[]> {
-  const response = await fetch(`${browserBaseUrl()}/rfq`, {
+async function fetchRfqs(params?: RfqQueryParams): Promise<Rfq[]> {
+  const searchParams = new URLSearchParams();
+  if (params?.status) {
+    searchParams.set("status", params.status);
+  }
+  const query = searchParams.toString();
+  const url = query ? `${browserBaseUrl()}/rfq?${query}` : `${browserBaseUrl()}/rfq`;
+  const response = await fetch(url, {
     headers: getAuthHeaders(),
   });
 
@@ -32,7 +38,8 @@ async function fetchRfqs(): Promise<Rfq[]> {
 export function useRfqs(params?: RfqQueryParams) {
   return useQuery<Rfq[]>({
     queryKey: rfqKeys.list(params),
-    queryFn: fetchRfqs,
+    queryFn: () => fetchRfqs(params),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -106,6 +113,7 @@ export function useRfqDetail(id: number) {
   return useQuery<RfqDetail>({
     queryKey: rfqKeys.detail(id),
     queryFn: () => fetchRfqDetail(id),
+    staleTime: 2 * 60 * 1000,
     enabled: id > 0,
   });
 }
@@ -187,8 +195,9 @@ async function fetchPublicRfqDetail(id: number): Promise<RfqPublicDetail> {
 
 export function usePublicRfqDetail(id: number) {
   return useQuery<RfqPublicDetail>({
-    queryKey: [...rfqKeys.all, "public-detail", id] as const,
+    queryKey: rfqKeys.publicDetail(id),
     queryFn: () => fetchPublicRfqDetail(id),
+    staleTime: 2 * 60 * 1000,
     enabled: id > 0,
   });
 }

@@ -76,7 +76,7 @@ export class AnonymousDraftController {
     description: "Draft not found or expired",
   })
   async getDraftByToken(@Param("token") token: string): Promise<AnonymousDraftFullResponseDto> {
-    return this.anonymousDraftService.getDraftByToken(token);
+    return this.anonymousDraftService.draftByToken(token);
   }
 
   @Post("request-recovery")

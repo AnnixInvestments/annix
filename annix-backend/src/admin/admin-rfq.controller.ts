@@ -52,7 +52,7 @@ export class AdminRfqController {
     type: RfqListResponseDto,
   })
   async getAllRfqs(@Query() queryDto: RfqQueryDto): Promise<RfqListResponseDto> {
-    return this.rfqService.getAllRfqs(queryDto);
+    return this.rfqService.listRfqs(queryDto);
   }
 
   @Get(":id")
@@ -64,7 +64,7 @@ export class AdminRfqController {
   })
   @ApiResponse({ status: 404, description: "RFQ not found" })
   async getRfqDetail(@Param("id", ParseIntPipe) id: number): Promise<RfqDetailDto> {
-    return this.rfqService.getRfqDetail(id);
+    return this.rfqService.rfqDetail(id);
   }
 
   @Get(":id/full")
@@ -76,7 +76,7 @@ export class AdminRfqController {
   })
   @ApiResponse({ status: 404, description: "RFQ not found" })
   async getRfqFullDraft(@Param("id", ParseIntPipe) id: number): Promise<RfqFullDraftDto> {
-    return this.rfqService.getRfqFullDraft(id);
+    return this.rfqService.rfqFullDraft(id);
   }
 
   @Get(":id/items")
@@ -88,7 +88,7 @@ export class AdminRfqController {
   })
   @ApiResponse({ status: 404, description: "RFQ not found" })
   async getRfqItems(@Param("id", ParseIntPipe) id: number): Promise<RfqItemDetailDto[]> {
-    return this.rfqService.getRfqItems(id);
+    return this.rfqService.rfqItems(id);
   }
 
   @Get(":id/documents")
@@ -100,7 +100,7 @@ export class AdminRfqController {
   })
   @ApiResponse({ status: 404, description: "RFQ not found" })
   async getRfqDocuments(@Param("id", ParseIntPipe) id: number): Promise<RfqDocumentDto[]> {
-    return this.rfqService.getRfqDocuments(id);
+    return this.rfqService.rfqDocuments(id);
   }
 
   @Get("documents/:documentId")

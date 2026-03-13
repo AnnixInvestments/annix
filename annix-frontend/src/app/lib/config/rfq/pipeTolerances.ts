@@ -152,6 +152,8 @@ export const calculateTolerances = (
   standard: ToleranceStandard,
   npsInches: number,
 ): ToleranceCalculation | null => {
+  if (odMm <= 0 || wallMm <= 0) return null;
+
   const spec = toleranceForPipe(standard, npsInches);
   if (!spec) return null;
 

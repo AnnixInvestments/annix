@@ -758,14 +758,29 @@ export const interpolatePTRating = (
 
   const upperIndex = sortedRatings.findIndex((point) => point.temperatureC > temperatureC);
 
-  if (upperIndex <= 0) {
+  if (upperIndex < 0) {
     return null;
+  }
+
+  if (upperIndex === 0) {
+    return {
+      pressureBar: sortedRatings[0].pressureBar,
+      isExact: false,
+      notes: `Temperature ${temperatureC}°C at or below first table point ${sortedRatings[0].temperatureC}°C - using first value`,
+    };
   }
 
   const lowerPoint = sortedRatings[upperIndex - 1];
   const upperPoint = sortedRatings[upperIndex];
 
   const tempRange = upperPoint.temperatureC - lowerPoint.temperatureC;
+  if (tempRange === 0) {
+    return {
+      pressureBar: lowerPoint.pressureBar,
+      isExact: true,
+      notes: `Adjacent table points have same temperature ${lowerPoint.temperatureC}°C`,
+    };
+  }
   const tempOffset = temperatureC - lowerPoint.temperatureC;
   const tempRatio = tempOffset / tempRange;
 

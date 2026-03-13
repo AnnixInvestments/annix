@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { IsDateString, IsEnum, IsIn, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export enum RfqStatus {
   DRAFT = "DRAFT",
@@ -26,19 +26,19 @@ export class RfqQueryDto {
   customerId?: number;
 
   @IsOptional()
-  @IsString()
-  dateFrom?: string; // ISO date string
+  @IsDateString()
+  dateFrom?: string;
 
   @IsOptional()
-  @IsString()
-  dateTo?: string; // ISO date string
+  @IsDateString()
+  dateTo?: string;
 
   @IsOptional()
-  @IsString()
-  sortBy?: string; // 'createdAt' | 'projectName' | 'status'
+  @IsIn(["createdAt", "projectName", "status"])
+  sortBy?: "createdAt" | "projectName" | "status";
 
   @IsOptional()
-  @IsString()
+  @IsIn(["ASC", "DESC"])
   sortOrder?: "ASC" | "DESC";
 
   @IsOptional()

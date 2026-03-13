@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDateZA, nowISO } from "@/app/lib/datetime";
 import type { GlobalSpecs } from "@/app/lib/hooks/useRfqForm";
 
 interface SpecificationSheetGeneratorProps {
@@ -81,7 +82,7 @@ export function SpecificationSheetGenerator(props: SpecificationSheetGeneratorPr
       <strong>Customer:</strong> ${customerName}
     </div>
     <div>
-      <strong>Date:</strong> ${new Date().toLocaleDateString()}<br>
+      <strong>Date:</strong> ${formatDateZA(nowISO())}<br>
       <strong>Rev:</strong> A
     </div>
   </div>

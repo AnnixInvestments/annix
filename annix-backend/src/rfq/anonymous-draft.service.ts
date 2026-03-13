@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from "@nes
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, Repository } from "typeorm";
+import { formatDateZA, now } from "../lib/datetime";
 import { EmailService } from "../email/email.service";
 import {
   AnonymousDraftFullResponseDto,
@@ -29,9 +30,7 @@ export class AnonymousDraftService {
   }
 
   private calculateExpiryDate(): Date {
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + this.DRAFT_EXPIRY_DAYS);
-    return expiryDate;
+    return now().plus({ days: this.DRAFT_EXPIRY_DAYS }).toJSDate();
   }
 
   async saveDraft(dto: SaveAnonymousDraftDto): Promise<AnonymousDraftResponseDto> {
@@ -94,7 +93,7 @@ export class AnonymousDraftService {
     return this.mapToResponse(draft);
   }
 
-  async getDraftByToken(token: string): Promise<AnonymousDraftFullResponseDto> {
+  async draftByToken(token: string): Promise<AnonymousDraftFullResponseDto> {
     this.logger.log(`Getting draft by token: ${token.substring(0, 8)}...`);
     const draft = await this.anonymousDraftRepo.findOne({
       where: { recoveryToken: token },
@@ -114,7 +113,7 @@ export class AnonymousDraftService {
       `Draft globalSpecs keys: ${draft.globalSpecs ? Object.keys(draft.globalSpecs).join(", ") : "null"}`,
     );
 
-    if (new Date() > draft.expiresAt) {
+    if (now().toJSDate() > draft.expiresAt) {
       throw new NotFoundException("Draft has expired");
     }
 
@@ -141,7 +140,7 @@ export class AnonymousDraftService {
       };
     }
 
-    if (new Date() > draft.expiresAt) {
+    if (now().toJSDate() > draft.expiresAt) {
       return {
         message: "If a draft exists for this email, a recovery link has been sent.",
         draftFound: false,
@@ -170,7 +169,7 @@ export class AnonymousDraftService {
             <p style="margin: 5px 0 0 0;">
               ${draft.projectName ? `<strong>Project:</strong> ${draft.projectName}<br/>` : ""}
               <strong>Progress:</strong> Step ${draft.currentStep} of 5<br/>
-              <strong>Last Saved:</strong> ${draft.updatedAt.toLocaleDateString()}
+              <strong>Last Saved:</strong> ${formatDateZA(draft.updatedAt)}
             </p>
           </div>
 
@@ -202,7 +201,7 @@ export class AnonymousDraftService {
       Your RFQ Details:
       Project: ${draft.projectName || "Unnamed"}
       Progress: Step ${draft.currentStep} of 5
-      Last Saved: ${draft.updatedAt.toLocaleDateString()}
+      Last Saved: ${formatDateZA(draft.updatedAt)}
 
       Click here to continue: ${recoveryLink}
 
@@ -219,7 +218,7 @@ export class AnonymousDraftService {
     });
 
     draft.recoveryEmailSent = true;
-    draft.recoveryEmailSentAt = new Date();
+    draft.recoveryEmailSentAt = now().toJSDate();
     await this.anonymousDraftRepo.save(draft);
 
     this.logger.log(`Sent recovery email to ${customerEmail} for draft ${draft.id}`);
@@ -257,7 +256,7 @@ export class AnonymousDraftService {
 
   async cleanupExpiredDrafts(): Promise<number> {
     const result = await this.anonymousDraftRepo.delete({
-      expiresAt: LessThan(new Date()),
+      expiresAt: LessThan(now().toJSDate()),
     });
 
     const deletedCount = result.affected || 0;

@@ -5,5 +5,4 @@ export const materialValidationKeys = {
     [...materialValidationKeys.all, "suitability", specName, temp, pressure] as const,
   suitableMaterials: (temp?: number, pressure?: number) =>
     [...materialValidationKeys.all, "suitable-materials", temp, pressure] as const,
-  limitsBySpec: (specName: string) => [...materialValidationKeys.all, "by-spec", specName] as const,
 } as const;

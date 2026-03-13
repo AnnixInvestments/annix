@@ -21,11 +21,11 @@ import {
   flangesPerPipe as getFlangesPerPipe,
   flangeWeldCountPerPipe as getFlangeWeldCountPerPipe,
   physicalFlangeCount as getPhysicalFlangeCount,
-  getScheduleListForSpec,
+  scheduleListForSpec,
   STEEL_DENSITY_KG_M3,
 } from "@/app/lib/config/rfq";
 import { FLANGE_OD } from "@/app/lib/config/rfq/constants";
-import { nowISO } from "@/app/lib/datetime";
+import { fromISO, nowISO } from "@/app/lib/datetime";
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
 import { formatLastSaved, useRfqDraftStorage } from "@/app/lib/hooks/useRfqDraftStorage";
 import type {
@@ -678,8 +678,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         let draftSource = "recovery link";
 
         if (localDraft?.lastSaved && serverDraft.updatedAt) {
-          const localDate = new Date(localDraft.lastSaved);
-          const serverDate = new Date(serverDraft.updatedAt);
+          const localDate = fromISO(localDraft.lastSaved);
+          const serverDate = fromISO(serverDraft.updatedAt);
 
           log.debug("Comparing draft timestamps:", {
             local: localDraft.lastSaved,
@@ -1429,7 +1429,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   const fetchAvailableSchedules = useCallback(
     async (entryId: string, steelSpecId: number, nominalBoreMm: number) => {
       // Check for fallback data first to provide immediate response - use correct schedule list based on steel spec
-      const fallbackSchedules = getScheduleListForSpec(nominalBoreMm, steelSpecId);
+      const fallbackSchedules = scheduleListForSpec(nominalBoreMm, steelSpecId);
 
       // If we already have schedules for this entry, don't fetch from API
       // This prevents API data with different schedule names from breaking the selection
@@ -2214,7 +2214,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           const bendEffectiveSpecId =
             bendEntry.specs?.steelSpecificationId ??
             rfqDataRef.current.globalSpecs?.steelSpecificationId;
-          const schedules = getScheduleListForSpec(nominalBoreMm, bendEffectiveSpecId);
+          const schedules = scheduleListForSpec(nominalBoreMm, bendEffectiveSpecId);
           const scheduleData = schedules.find((s: any) => s.scheduleDesignation === scheduleNumber);
           const wallThickness = scheduleData?.wallThicknessMm || 6.35;
 
@@ -3023,6 +3023,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
         if (failedCount > 0) {
           log.warn(`⚠️ ${failedCount} document(s) failed to upload`);
+          showToast(
+            `${failedCount} of ${allDocuments.length} document(s) failed to upload. Please re-upload from the RFQ detail page.`,
+            "error",
+          );
         }
 
         setPendingDocuments([]);
@@ -3592,7 +3596,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                   </p>
                   {pendingLocalDraft.lastSaved && (
                     <p className="mt-1 text-xs text-gray-400">
-                      Last saved: {formatLastSaved(new Date(pendingLocalDraft.lastSaved))}
+                      Last saved: {formatLastSaved(fromISO(String(pendingLocalDraft.lastSaved)).toJSDate())}
                     </p>
                   )}
                   {pendingLocalDraft.rfqData?.projectName && (

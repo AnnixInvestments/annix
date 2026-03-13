@@ -28,7 +28,7 @@ import {
   flangeWeldCountPerBend as getFlangeWeldCountPerBend,
   flangeWeldCountPerFitting as getFlangeWeldCountPerFitting,
   sabs719CenterToFaceBySegments as getSABS719CenterToFaceBySegments,
-  getScheduleListForSpec,
+  scheduleListForSpec,
   tackWeldWeight as getTackWeldWeight,
   hasLooseFlange,
   isNominalBoreValidForSpec,
@@ -1056,7 +1056,7 @@ function BendFormComponent({
                             );
                             if (nbValidForNewSpec) {
                               keepNB = true;
-                              const schedules = getScheduleListForSpec(
+                              const schedules = scheduleListForSpec(
                                 nominalBore,
                                 newSpecId,
                                 newSpecName,
@@ -1214,7 +1214,7 @@ function BendFormComponent({
                             const nbEffectiveSpecId =
                               entry?.specs?.steelSpecificationId ??
                               globalSpecs?.steelSpecificationId;
-                            const schedules = getScheduleListForSpec(
+                            const schedules = scheduleListForSpec(
                               nominalBore,
                               nbEffectiveSpecId,
                               steelSpecName,
@@ -1363,7 +1363,7 @@ function BendFormComponent({
                     const selectId = `bend-schedule-${entry.id}`;
                     const schedEffectiveSpecId =
                       specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                    const schedules = getScheduleListForSpec(
+                    const schedules = scheduleListForSpec(
                       specs.nominalBoreMm || 0,
                       schedEffectiveSpecId,
                       steelSpecName,

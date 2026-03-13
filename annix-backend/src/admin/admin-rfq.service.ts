@@ -53,7 +53,7 @@ export class AdminRfqService {
    * Get all RFQ Drafts with filtering and pagination (VIEW-ONLY)
    * Includes both registered customer drafts and anonymous (unregistered) drafts
    */
-  async getAllRfqs(queryDto: RfqQueryDto): Promise<RfqListResponseDto> {
+  async listRfqs(queryDto: RfqQueryDto): Promise<RfqListResponseDto> {
     const {
       search,
       status,
@@ -73,9 +73,10 @@ export class AdminRfqService {
 
     // Apply search filter
     if (search) {
+      const escapedSearch = search.replace(/%/g, "\\%").replace(/_/g, "\\_");
       queryBuilder.andWhere(
         "(draft.projectName ILIKE :search OR draft.draftNumber ILIKE :search OR user.email ILIKE :search)",
-        { search: `%${search}%` },
+        { search: `%${escapedSearch}%` },
       );
     }
 
@@ -121,9 +122,10 @@ export class AdminRfqService {
 
     // Apply search filter for anonymous drafts
     if (search) {
+      const escapedSearch = search.replace(/%/g, "\\%").replace(/_/g, "\\_");
       anonQueryBuilder.andWhere(
         "(anon.projectName ILIKE :search OR anon.customerEmail ILIKE :search)",
-        { search: `%${search}%` },
+        { search: `%${escapedSearch}%` },
       );
     }
 
@@ -218,7 +220,7 @@ export class AdminRfqService {
    * Get RFQ Draft detail by ID (VIEW-ONLY)
    * Negative IDs indicate anonymous drafts
    */
-  async getRfqDetail(rfqId: number): Promise<RfqDetailDto> {
+  async rfqDetail(rfqId: number): Promise<RfqDetailDto> {
     if (rfqId < 0) {
       const anonDraft = await this.anonymousDraftRepo.findOne({
         where: { id: Math.abs(rfqId) },
@@ -279,7 +281,7 @@ export class AdminRfqService {
    * Get full RFQ Draft data for editing
    * Negative IDs indicate anonymous drafts
    */
-  async getRfqFullDraft(rfqId: number): Promise<RfqFullDraftDto> {
+  async rfqFullDraft(rfqId: number): Promise<RfqFullDraftDto> {
     if (rfqId < 0) {
       const anonDraft = await this.anonymousDraftRepo.findOne({
         where: { id: Math.abs(rfqId) },
@@ -337,7 +339,7 @@ export class AdminRfqService {
    * Get RFQ Draft items with specifications (VIEW-ONLY)
    * Negative IDs indicate anonymous drafts
    */
-  async getRfqItems(rfqId: number): Promise<RfqItemDetailDto[]> {
+  async rfqItems(rfqId: number): Promise<RfqItemDetailDto[]> {
     if (rfqId < 0) {
       const anonDraft = await this.anonymousDraftRepo.findOne({
         where: { id: Math.abs(rfqId) },
@@ -385,7 +387,7 @@ export class AdminRfqService {
   /**
    * Get RFQ Draft documents (VIEW-ONLY)
    */
-  async getRfqDocuments(rfqId: number): Promise<RfqDocumentDto[]> {
+  async rfqDocuments(rfqId: number): Promise<RfqDocumentDto[]> {
     const draft = await this.rfqDraftRepo.findOne({
       where: { id: rfqId },
       relations: ["createdBy"],

@@ -19,7 +19,7 @@ import {
   closureWeight as getClosureWeight,
   fittingFlangeConfig as getFittingFlangeConfig,
   reducerFlangeConfig as getReducerFlangeConfig,
-  getScheduleListForSpec,
+  scheduleListForSpec,
   tackWeldWeight as getTackWeldWeight,
   weldCountPerFitting as getWeldCountPerFitting,
   hasLooseFlange,
@@ -539,7 +539,7 @@ function FittingFormComponent({
                 let wallThicknessMm = specs.wallThicknessMm;
 
                 if (nominalDiameter && globalSpecs?.workingPressureBar) {
-                  const schedules = getScheduleListForSpec(nominalDiameter, spec.id);
+                  const schedules = scheduleListForSpec(nominalDiameter, spec.id);
                   const minWT = getMinWallThicknessForNB(
                     nominalDiameter,
                     globalSpecs.workingPressureBar,
@@ -1096,7 +1096,7 @@ function FittingFormComponent({
                               ) {
                                 const effectiveSpecId2 =
                                   specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                                const availableSchedules = getScheduleListForSpec(
+                                const availableSchedules = scheduleListForSpec(
                                   nominalDiameter,
                                   effectiveSpecId2,
                                 );
@@ -1357,8 +1357,8 @@ function FittingFormComponent({
                     const currentGrade = specs.scheduleNumber || "MEDIUM";
                     const isHeavy = currentGrade === "HEAVY";
 
-                    const mediumSchedules = getScheduleListForSpec(nbValue, 7, "SABS 62 Medium");
-                    const heavySchedules = getScheduleListForSpec(nbValue, 7, "SABS 62 Heavy");
+                    const mediumSchedules = scheduleListForSpec(nbValue, 7, "SABS 62 Medium");
+                    const heavySchedules = scheduleListForSpec(nbValue, 7, "SABS 62 Heavy");
                     const mediumWT = mediumSchedules[0]?.wallThicknessMm || 0;
                     const heavyWT = heavySchedules[0]?.wallThicknessMm || 0;
 
@@ -1381,7 +1381,7 @@ function FittingFormComponent({
                           value={currentGrade}
                           onChange={(grade) => {
                             if (!grade) return;
-                            const schedules = getScheduleListForSpec(
+                            const schedules = scheduleListForSpec(
                               nbValue,
                               7,
                               grade === "HEAVY" ? "SABS 62 Heavy" : "SABS 62 Medium",
@@ -1406,7 +1406,7 @@ function FittingFormComponent({
                   }
 
                   const selectId = `fitting-schedule-spec-${entry.id}`;
-                  const allSchedules = getScheduleListForSpec(
+                  const allSchedules = scheduleListForSpec(
                     nbValue,
                     effectiveSpecId,
                     steelSpecName,
@@ -1517,7 +1517,7 @@ function FittingFormComponent({
                         value={specs.scheduleNumber || ""}
                         onChange={(scheduleNumber) => {
                           if (!scheduleNumber) return;
-                          const schedules = getScheduleListForSpec(
+                          const schedules = scheduleListForSpec(
                             nbValue,
                             effectiveSpecId,
                             steelSpecName,

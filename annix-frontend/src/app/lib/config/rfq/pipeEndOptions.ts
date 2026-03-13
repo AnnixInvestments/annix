@@ -845,9 +845,9 @@ export const recommendedPressureClassId = (
     })
     .filter((pc) => pc.barRating > 0);
 
-  classesWithRating.sort((a, b) => a.barRating - b.barRating);
+  const sorted = [...classesWithRating].sort((a, b) => a.barRating - b.barRating);
 
-  const suitableClass = classesWithRating.find((pc) => pc.barRating >= workingPressureBar);
+  const suitableClass = sorted.find((pc) => pc.barRating >= workingPressureBar);
 
   return suitableClass?.id || null;
 };

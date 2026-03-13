@@ -237,6 +237,7 @@ export const closureWeight = (
   nbToOdMap: Record<number, number>,
 ): number => {
   if (!closureLengthMm || closureLengthMm <= 0) return 0;
+  if (nominalBoreMm <= 0 || wallThicknessMm <= 0) return 0;
 
   const pipeOd = nbToOdMap[nominalBoreMm] || nominalBoreMm * 1.1;
   const pipeId = pipeOd - 2 * wallThicknessMm;

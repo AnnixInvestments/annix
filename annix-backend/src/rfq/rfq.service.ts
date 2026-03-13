@@ -74,9 +74,8 @@ import {
 } from "./entities/valve-rfq.entity";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
 
-// Maximum number of documents allowed per RFQ
+const STEEL_DENSITY_KG_DM3 = 7.85;
 const MAX_DOCUMENTS_PER_RFQ = 10;
-// Maximum file size in bytes (50 MB)
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 @Injectable()
@@ -262,9 +261,8 @@ export class RfqService {
     } else {
       // Fallback: Calculate pipe weight per meter using the formula
       // Weight (kg/m) = π × WT × (OD - WT) × Density / 1,000,000
-      const steelDensity = 7.85; // kg/dm³ (default for carbon steel)
       pipeWeightPerMeter =
-        (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * steelDensity) / 1000;
+        (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * STEEL_DENSITY_KG_DM3) / 1000;
     }
 
     // Convert length to meters if needed
@@ -395,7 +393,7 @@ export class RfqService {
     userId: number,
   ): Promise<{ rfq: Rfq; calculation: StraightPipeCalculationResultDto }> {
     // Find user (optional - for when authentication is implemented)
-    const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => { this.logger.warn("Failed to find user for RFQ creation", err.message); return null; });
 
     // Calculate requirements first (outside transaction as it doesn't modify DB)
     const calculation = await this.calculateStraightPipeRequirements(dto.straightPipe);
@@ -471,7 +469,7 @@ export class RfqService {
     dto: CreateUnifiedRfqDto,
     userId: number,
   ): Promise<{ rfq: Rfq; itemsCreated: number }> {
-    const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => { this.logger.warn("Failed to find user for RFQ creation", err.message); return null; });
 
     const rfqNumber = await this.nextRfqNumber();
 
@@ -1510,8 +1508,8 @@ export class RfqService {
       totalFlangeWeldLength: (dto.numberOfTangents * Math.PI * dto.nominalBoreMm) / 1000,
       numberOfButtWelds: dto.numberOfTangents > 0 ? 1 : 0,
       totalButtWeldLength: dto.numberOfTangents > 0 ? (Math.PI * dto.nominalBoreMm) / 1000 : 0,
-      outsideDiameterMm: dto.nominalBoreMm + 20, // Simplified OD calculation
-      wallThicknessMm: this.getWallThicknessFromSchedule(dto.scheduleNumber),
+      outsideDiameterMm: this.referenceDataCache.nbNpsLookupByNb(dto.nominalBoreMm)?.outside_diameter_mm ?? dto.nominalBoreMm * 1.25,
+      wallThicknessMm: this.wallThicknessFromSchedule(dto.scheduleNumber),
     };
   }
 
@@ -1519,7 +1517,7 @@ export class RfqService {
     // Simplified weight calculation based on nominal bore and bend specifications
     const baseWeight = (dto.nominalBoreMm / 25) ** 2 * 2; // Base bend weight
     const tangentWeight = dto.tangentLengths.reduce((total, length) => {
-      return total + (length / 1000) * (dto.nominalBoreMm / 25) * 7.85; // Steel density approximation
+      return total + (length / 1000) * (dto.nominalBoreMm / 25) * STEEL_DENSITY_KG_DM3;
     }, 0);
     return baseWeight + tangentWeight;
   }
@@ -1528,16 +1526,16 @@ export class RfqService {
     if (!dto.bendType) {
       return dto.nominalBoreMm * 1.5;
     }
-    const radius = this.getBendRadius(dto.bendType, dto.nominalBoreMm);
+    const radius = this.bendRadius(dto.bendType, dto.nominalBoreMm);
     return radius * Math.sin((dto.bendDegrees * Math.PI) / 180 / 2);
   }
 
-  private getBendRadius(bendType: string, nominalBoreMm: number): number {
+  private bendRadius(bendType: string, nominalBoreMm: number): number {
     const multiplier = parseFloat(bendType.replace("D", "")) || 1.5;
     return nominalBoreMm * multiplier;
   }
 
-  private getWallThicknessFromSchedule(scheduleNumber: string): number {
+  private wallThicknessFromSchedule(scheduleNumber: string): number {
     // Simplified wall thickness lookup
     const scheduleMap: { [key: string]: number } = {
       Sch10: 2.77,
@@ -1555,7 +1553,7 @@ export class RfqService {
     userId: number,
   ): Promise<{ rfq: Rfq; calculation: BendCalculationResultDto }> {
     // Find user (optional - for when authentication is implemented)
-    const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => { this.logger.warn("Failed to find user for RFQ creation", err.message); return null; });
 
     // Calculate bend requirements first
     const calculation = await this.calculateBendRequirements(dto.bend);
@@ -1618,6 +1616,22 @@ export class RfqService {
 
     const estimatedEfficiency = this.estimatePumpEfficiency(flowRate, totalHead, dto.pumpType);
 
+    if (estimatedEfficiency <= 0) {
+      return {
+        hydraulicPowerKw: Math.round(hydraulicPowerKw * 100) / 100,
+        estimatedMotorPowerKw: 0,
+        estimatedEfficiency: 0,
+        specificSpeed: 0,
+        recommendedPumpType: "Unknown",
+        npshRequired: 0,
+        bepFlowRate: 0,
+        bepHead: 0,
+        operatingPointPercentBep: 0,
+        warnings: ["Pump efficiency could not be estimated. Check flow rate and head inputs."],
+        recommendations: [],
+      };
+    }
+
     const estimatedMotorPowerKw = hydraulicPowerKw / (estimatedEfficiency / 100);
 
     const specificSpeed = this.calculateSpecificSpeed(flowRate, totalHead);
@@ -1628,7 +1642,7 @@ export class RfqService {
 
     const bepFlowRate = flowRate * 1.1;
     const bepHead = totalHead * 1.05;
-    const operatingPointPercentBep = (flowRate / bepFlowRate) * 100;
+    const operatingPointPercentBep = bepFlowRate <= 0 ? 0 : (flowRate / bepFlowRate) * 100;
 
     const warnings: string[] = [];
     const recommendations: string[] = [];
@@ -1743,7 +1757,7 @@ export class RfqService {
     dto: CreatePumpRfqWithItemDto,
     userId: number,
   ): Promise<{ rfq: Rfq; calculation: PumpCalculationResultDto }> {
-    const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => { this.logger.warn("Failed to find user for RFQ creation", err.message); return null; });
 
     const calculation = await this.calculatePumpRequirements(dto.pump);
 
@@ -1878,7 +1892,7 @@ export class RfqService {
     return this.mapDocumentToResponse(savedDocument);
   }
 
-  async getDocuments(rfqId: number): Promise<RfqDocumentResponseDto[]> {
+  async documents(rfqId: number): Promise<RfqDocumentResponseDto[]> {
     const rfq = await this.rfqRepository.findOne({
       where: { id: rfqId },
     });
@@ -1896,7 +1910,7 @@ export class RfqService {
     return documents.map((doc) => this.mapDocumentToResponse(doc));
   }
 
-  async getDocumentById(documentId: number): Promise<RfqDocument> {
+  async documentById(documentId: number): Promise<RfqDocument> {
     const document = await this.rfqDocumentRepository.findOne({
       where: { id: documentId },
       relations: ["rfq", "uploadedBy"],
@@ -1910,14 +1924,14 @@ export class RfqService {
   }
 
   async downloadDocument(documentId: number): Promise<{ buffer: Buffer; document: RfqDocument }> {
-    const document = await this.getDocumentById(documentId);
+    const document = await this.documentById(documentId);
     const buffer = await this.storageService.download(document.filePath);
 
     return { buffer, document };
   }
 
   async deleteDocument(documentId: number, user?: User): Promise<void> {
-    const document = await this.getDocumentById(documentId);
+    const document = await this.documentById(documentId);
 
     // Delete file from storage
     await this.storageService.delete(document.filePath);
@@ -2014,7 +2028,7 @@ export class RfqService {
     return this.mapDraftToResponse(savedDraft);
   }
 
-  async getDrafts(userId: number): Promise<RfqDraftResponseDto[]> {
+  async drafts(userId: number): Promise<RfqDraftResponseDto[]> {
     const drafts = await this.rfqDraftRepository
       .createQueryBuilder("draft")
       .leftJoinAndSelect("draft.convertedRfq", "rfq")
@@ -2189,7 +2203,7 @@ export class RfqService {
   /**
    * Get a single draft with full data
    */
-  async getDraftById(draftId: number, userId: number): Promise<RfqDraftFullResponseDto> {
+  async draftById(draftId: number, userId: number): Promise<RfqDraftFullResponseDto> {
     const draft = await this.rfqDraftRepository
       .createQueryBuilder("draft")
       .where("draft.id = :draftId", { draftId })
@@ -2206,7 +2220,7 @@ export class RfqService {
   /**
    * Get a draft by draft number
    */
-  async getDraftByNumber(draftNumber: string, userId: number): Promise<RfqDraftFullResponseDto> {
+  async draftByNumber(draftNumber: string, userId: number): Promise<RfqDraftFullResponseDto> {
     const draft = await this.rfqDraftRepository
       .createQueryBuilder("draft")
       .where("draft.draft_number = :draftNumber", { draftNumber })

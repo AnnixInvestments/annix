@@ -704,7 +704,7 @@ export class RfqController {
   })
   async getDrafts(@Req() req: CustomerRequest): Promise<RfqDraftResponseDto[]> {
     const userId = req.customer.userId;
-    return this.rfqService.getDrafts(userId);
+    return this.rfqService.drafts(userId);
   }
 
   @Get("drafts/number/:draftNumber")
@@ -733,7 +733,7 @@ export class RfqController {
     @Req() req: CustomerRequest,
   ): Promise<RfqDraftFullResponseDto> {
     const userId = req.customer.userId;
-    return this.rfqService.getDraftByNumber(draftNumber, userId);
+    return this.rfqService.draftByNumber(draftNumber, userId);
   }
 
   @Get("drafts/:id")
@@ -758,7 +758,7 @@ export class RfqController {
     @Req() req: CustomerRequest,
   ): Promise<RfqDraftFullResponseDto> {
     const userId = req.customer.userId;
-    return this.rfqService.getDraftById(id, userId);
+    return this.rfqService.draftById(id, userId);
   }
 
   @Delete("drafts/:id")
@@ -942,7 +942,7 @@ export class RfqController {
   ): Promise<RfqDocumentResponseDto[]> {
     const userId = req.customer.userId;
     await this.rfqService.verifyRfqOwnership(id, userId);
-    return this.rfqService.getDocuments(id);
+    return this.rfqService.documents(id);
   }
 
   @Get("documents/:documentId/download")

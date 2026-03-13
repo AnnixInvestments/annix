@@ -547,7 +547,7 @@ export const STEEL_SPEC_NB_RANGES: Record<string, number[]> = {
 };
 
 // Get valid NBs for a given steel spec (by name or ID)
-export const getValidNBsForSpec = (steelSpecName?: string, steelSpecId?: number): number[] => {
+export const validNBsForSpec = (steelSpecName?: string, steelSpecId?: number): number[] => {
   if (steelSpecName) {
     return STEEL_SPEC_NB_RANGES[steelSpecName] || Object.keys(FALLBACK_PIPE_SCHEDULES).map(Number);
   }
@@ -579,7 +579,7 @@ export const isSabs62Heavy = (steelSpecName?: string): boolean => {
 };
 
 // Helper function to get appropriate schedule list based on steel spec (MODULE SCOPE)
-export const getScheduleListForSpec = (
+export const scheduleListForSpec = (
   nominalDiameter: number,
   steelSpecId: number | undefined,
   steelSpecName?: string,
@@ -656,7 +656,7 @@ export const wallThicknessDisplayInfo = (
   steelSpecName: string | undefined,
   selectedSchedule?: string,
 ): WallThicknessDisplayInfo => {
-  const schedules = getScheduleListForSpec(nominalDiameter, steelSpecId, steelSpecName);
+  const schedules = scheduleListForSpec(nominalDiameter, steelSpecId, steelSpecName);
   const isHeavy = isSabs62Heavy(steelSpecName);
 
   // SABS 62: No schedule selector - wall thickness is fixed by spec grade (Medium/Heavy)

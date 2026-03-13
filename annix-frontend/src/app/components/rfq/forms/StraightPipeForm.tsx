@@ -19,7 +19,7 @@ import {
   closureWeight as getClosureWeight,
   flangeWeldCountPerPipe as getFlangeWeldCountPerPipe,
   physicalFlangeCount as getPhysicalFlangeCount,
-  getScheduleListForSpec,
+  scheduleListForSpec,
   tackWeldEndsPerPipe as getTackWeldEndsPerPipe,
   tackWeldWeight as getTackWeldWeight,
   weldCountPerPipe as getWeldCountPerPipe,
@@ -302,7 +302,7 @@ function StraightPipeFormComponent({
 
       const nbEffectiveSpecId =
         entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-      const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId, steelSpecName);
+      const schedules = scheduleListForSpec(nominalBore, nbEffectiveSpecId, steelSpecName);
 
       if (schedules.length > 0) {
         setAvailableSchedulesMap((prev: Record<string, any[]>) => ({
@@ -389,7 +389,7 @@ function StraightPipeFormComponent({
       const fallbackSpecName =
         masterData.steelSpecs?.find((s: any) => s.id === fallbackEffectiveSpecId)?.steelSpecName ||
         "";
-      const fallbackSchedules = getScheduleListForSpec(
+      const fallbackSchedules = scheduleListForSpec(
         specs.nominalBoreMm,
         fallbackEffectiveSpecId,
         fallbackSpecName,
@@ -775,7 +775,7 @@ function StraightPipeFormComponent({
                             const specName =
                               masterData.steelSpecs?.find((s: any) => s.id === specId)
                                 ?.steelSpecName || "";
-                            const schedules = getScheduleListForSpec(nominalBore, specId, specName);
+                            const schedules = scheduleListForSpec(nominalBore, specId, specName);
                             const pressure = globalSpecs?.workingPressureBar || 0;
                             const temperature = globalSpecs?.workingTemperatureC || 20;
 
@@ -1287,7 +1287,7 @@ function StraightPipeFormComponent({
                             masterData.steelSpecs?.find(
                               (s: any) => s.id === fallbackEffectiveSpecId,
                             )?.steelSpecName || "";
-                          const fallbackSchedules = getScheduleListForSpec(
+                          const fallbackSchedules = scheduleListForSpec(
                             specs.nominalBoreMm,
                             fallbackEffectiveSpecId,
                             fallbackSpecName,
@@ -1377,7 +1377,7 @@ function StraightPipeFormComponent({
                     const fallbackSpecName =
                       masterData.steelSpecs?.find((s: any) => s.id === fallbackEffectiveSpecId)
                         ?.steelSpecName || "";
-                    const allSchedules = getScheduleListForSpec(
+                    const allSchedules = scheduleListForSpec(
                       specs.nominalBoreMm,
                       fallbackEffectiveSpecId,
                       fallbackSpecName,

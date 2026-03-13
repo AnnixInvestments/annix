@@ -6,6 +6,7 @@ export const rfqKeys = {
   all: ["rfq"] as const,
   list: (params?: RfqQueryParams) => [...rfqKeys.all, "list", params ?? {}] as const,
   detail: (id: number) => [...rfqKeys.all, "detail", id] as const,
+  publicDetail: (id: number) => [...rfqKeys.all, "public-detail", id] as const,
   drafts: {
     all: ["rfq", "drafts"] as const,
     list: () => ["rfq", "drafts", "list"] as const,
