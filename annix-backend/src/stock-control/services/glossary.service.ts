@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { now } from "../../lib/datetime";
 import { GlossaryTerm } from "../entities/glossary-term.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 
@@ -192,8 +193,8 @@ export class GlossaryService {
       companyId,
       isCustom: false,
       company: null as unknown as StockControlCompany,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now().toJSDate(),
+      updatedAt: now().toJSDate(),
     }));
 
     return [...customTerms, ...defaults].sort((a, b) =>

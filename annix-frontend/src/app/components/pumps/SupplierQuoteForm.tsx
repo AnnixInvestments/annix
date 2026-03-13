@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
+import { addDaysFromNowISODate, generateUniqueId, nowMillis } from "@/app/lib/datetime";
 
 interface PumpRfqItem {
   id: string;
@@ -93,12 +94,8 @@ const ATTACHMENT_TYPES = [
 
 export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
   const { rfqItems, rfqNumber, customerName, onSubmit, onSaveDraft, onCancel } = props;
-  const [quoteNumber, setQuoteNumber] = useState(`QT-${Date.now().toString(36).toUpperCase()}`);
-  const [validUntil, setValidUntil] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() + 30);
-    return date.toISOString().split("T")[0];
-  });
+  const [quoteNumber, setQuoteNumber] = useState(`QT-${nowMillis().toString(36).toUpperCase()}`);
+  const [validUntil, setValidUntil] = useState(() => addDaysFromNowISODate(30));
   const [currency, setCurrency] = useState("ZAR");
   const [deliveryTerms, setDeliveryTerms] = useState("dap");
   const [paymentTerms, setPaymentTerms] = useState("net_30");
@@ -149,7 +146,7 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
     if (!file) return;
 
     const newAttachment: QuoteAttachment = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: generateUniqueId(),
       file,
       type: selectedAttachmentType,
     };

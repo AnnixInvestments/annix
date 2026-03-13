@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { nowMillis } from "@/app/lib/datetime";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 
 const DISMISS_KEY = "stock-control-push-dismissed";
@@ -14,7 +15,7 @@ export function PushNotificationBanner() {
   useEffect(() => {
     const dismissedAt = localStorage.getItem(DISMISS_KEY);
     if (dismissedAt) {
-      const elapsed = Date.now() - Number(dismissedAt);
+      const elapsed = nowMillis() - Number(dismissedAt);
       if (elapsed < DISMISS_DAYS * 24 * 60 * 60 * 1000) {
         setDismissed(true);
       }
@@ -60,7 +61,7 @@ export function PushNotificationBanner() {
         <button
           type="button"
           onClick={() => {
-            localStorage.setItem(DISMISS_KEY, String(Date.now()));
+            localStorage.setItem(DISMISS_KEY, String(nowMillis()));
             setDismissed(true);
           }}
           className="text-sm text-teal-600 hover:text-teal-800 px-3 py-1.5"

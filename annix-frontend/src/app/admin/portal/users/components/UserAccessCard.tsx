@@ -1,7 +1,7 @@
 "use client";
 
 import type { RbacUserAccess } from "@/app/lib/api/adminApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateZA, isExpired as checkExpired } from "@/app/lib/datetime";
 
 interface UserAccessCardProps {
   access: RbacUserAccess;
@@ -12,7 +12,7 @@ interface UserAccessCardProps {
 export function UserAccessCard(props: UserAccessCardProps) {
   const { access, onEdit, onRevoke } = props;
   const displayName = [access.firstName, access.lastName].filter(Boolean).join(" ") || access.email;
-  const isExpired = access.expiresAt && new Date(access.expiresAt) < new Date();
+  const isExpired = access.expiresAt && checkExpired(access.expiresAt);
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">

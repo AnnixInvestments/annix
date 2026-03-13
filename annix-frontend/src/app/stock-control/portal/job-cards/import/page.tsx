@@ -11,6 +11,7 @@ import type {
   M2Result,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { nowMillis } from "@/app/lib/datetime";
 import { consumePendingImportFile } from "./pending-file";
 
 type ImportStep = "upload" | "mapping" | "preview" | "delivery-matching" | "result";
@@ -850,7 +851,7 @@ export default function JobCardImportPage() {
   const handleAddCustomField = () => {
     const name = customFieldInput.trim();
     if (!name) return;
-    const id = `custom_${Date.now()}`;
+    const id = `custom_${nowMillis()}`;
     const colorIdx = customFields.length % CUSTOM_FIELD_COLORS.length;
     setCustomFields([
       ...customFields,

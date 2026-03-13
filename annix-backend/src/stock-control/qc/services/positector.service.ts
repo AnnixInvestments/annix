@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { now } from "../../../lib/datetime";
 import { PositectorDevice } from "../entities/positector-device.entity";
 
 export interface RegisterDeviceDto {
@@ -177,7 +178,7 @@ export class PositectorService {
       }
 
       const updates: Partial<PositectorDevice> = {
-        lastConnectedAt: new Date(),
+        lastConnectedAt: now().toJSDate(),
       };
 
       if (detectedProbe && !device.probeType) {
@@ -235,7 +236,7 @@ export class PositectorService {
       }),
     );
 
-    await this.deviceRepo.update({ id: device.id }, { lastConnectedAt: new Date() });
+    await this.deviceRepo.update({ id: device.id }, { lastConnectedAt: now().toJSDate() });
 
     return summaries;
   }
@@ -258,7 +259,7 @@ export class PositectorService {
       this.logger.debug(`No statistics.txt found for batch ${buid}`);
     }
 
-    await this.deviceRepo.update({ id: device.id }, { lastConnectedAt: new Date() });
+    await this.deviceRepo.update({ id: device.id }, { lastConnectedAt: now().toJSDate() });
 
     return { buid, header, readings, statistics };
   }

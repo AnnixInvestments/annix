@@ -14,6 +14,7 @@ import {
   type ValidationIssue,
 } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
+import { fromISO, now, nowISO, nowMillis } from "@/app/lib/datetime";
 
 const NIX_SESSION_STORAGE_KEY = "nix-chat-session-id";
 
@@ -627,10 +628,10 @@ export function NixChatPanel(props: NixChatPanelProps) {
     setStreamingContent("Thinking...");
 
     const tempUserMessage: ChatMessage = {
-      id: Date.now(),
+      id: nowMillis(),
       role: "user",
       content: userMessage,
-      createdAt: new Date().toISOString(),
+      createdAt: nowISO(),
     };
 
     setMessages((prev) => [...prev, tempUserMessage]);
@@ -667,7 +668,7 @@ export function NixChatPanel(props: NixChatPanelProps) {
             role: "assistant",
             content: displayContent,
             metadata: result.metadata as ChatMessage["metadata"],
-            createdAt: new Date().toISOString(),
+            createdAt: nowISO(),
           };
           setMessages((prev) => [...prev, assistantMessage]);
           setStreamingContent("");
@@ -681,11 +682,11 @@ export function NixChatPanel(props: NixChatPanelProps) {
             error instanceof Error ? error.message : "Something went wrong. Please try again.";
 
           const errorMessage: ChatMessage = {
-            id: Date.now() + 1,
+            id: nowMillis() + 1,
             role: "assistant",
             content: errorContent,
             metadata: { intent: "error" },
-            createdAt: new Date().toISOString(),
+            createdAt: nowISO(),
           };
 
           setMessages((prev) => [...prev, errorMessage]);
@@ -721,15 +722,15 @@ export function NixChatPanel(props: NixChatPanelProps) {
   const exportChatAsText = useCallback(() => {
     const lines = messages.map((msg) => {
       const role = msg.role === "user" ? "You" : "Nix";
-      const timestamp = new Date(msg.createdAt).toLocaleString();
+      const timestamp = fromISO(msg.createdAt).toLocaleString();
       return `[${timestamp}] ${role}:\n${msg.content}\n`;
     });
-    const content = `Nix Chat Export\nExported: ${new Date().toLocaleString()}\n${"=".repeat(50)}\n\n${lines.join("\n")}`;
+    const content = `Nix Chat Export\nExported: ${now().toLocaleString()}\n${"=".repeat(50)}\n\n${lines.join("\n")}`;
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `nix-chat-${new Date().toISOString().split("T")[0]}.txt`;
+    a.download = `nix-chat-${now().toISODate()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     setShowExportMenu(false);
@@ -737,7 +738,7 @@ export function NixChatPanel(props: NixChatPanelProps) {
 
   const exportChatAsJson = useCallback(() => {
     const exportData = {
-      exportedAt: new Date().toISOString(),
+      exportedAt: nowISO(),
       sessionId,
       portalContext,
       messages: messages.map((msg) => ({
@@ -752,7 +753,7 @@ export function NixChatPanel(props: NixChatPanelProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `nix-chat-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `nix-chat-${now().toISODate()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     setShowExportMenu(false);
@@ -775,10 +776,10 @@ export function NixChatPanel(props: NixChatPanelProps) {
       "Please provide a brief summary of our conversation so far, highlighting the key topics discussed and any important decisions or items mentioned.";
 
     const tempUserMessage: ChatMessage = {
-      id: Date.now(),
+      id: nowMillis(),
       role: "user",
       content: summaryPrompt,
-      createdAt: new Date().toISOString(),
+      createdAt: nowISO(),
     };
 
     setMessages((prev) => [...prev, tempUserMessage]);
@@ -804,7 +805,7 @@ export function NixChatPanel(props: NixChatPanelProps) {
             role: "assistant",
             content: displayContent,
             metadata: result.metadata as ChatMessage["metadata"],
-            createdAt: new Date().toISOString(),
+            createdAt: nowISO(),
           };
           setMessages((prev) => [...prev, assistantMessage]);
           setStreamingContent("");
@@ -815,11 +816,11 @@ export function NixChatPanel(props: NixChatPanelProps) {
           setStreamingContent("");
 
           const errorMessage: ChatMessage = {
-            id: Date.now() + 1,
+            id: nowMillis() + 1,
             role: "assistant",
             content: "Sorry, I couldn't generate a summary. Please try again.",
             metadata: { intent: "error" },
-            createdAt: new Date().toISOString(),
+            createdAt: nowISO(),
           };
 
           setMessages((prev) => [...prev, errorMessage]);

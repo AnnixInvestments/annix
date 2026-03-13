@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { nowMillis } from "@/app/lib/datetime";
 import { type HdpeNominalSize, pipeDimensions, totalPipeWeight } from "./hdpeDimensions";
 import type { HdpeGradeCode } from "./hdpeGrades";
 import {
@@ -76,7 +77,7 @@ const createHdpeRfqItem = (
   const colorCode = "blue";
 
   return {
-    id: `hdpe-${itemType}-${Date.now()}`,
+    id: `hdpe-${itemType}-${nowMillis()}`,
     itemType,
     materialType: "hdpe",
     description: `HDPE ${itemType} DN${dnMm} SDR${sdr} ${peGrade}`,
@@ -105,7 +106,7 @@ const createSteelRfqItem = (
   lengthM: number,
 ): MockSteelRfqItem => {
   return {
-    id: `steel-${itemType}-${Date.now()}`,
+    id: `steel-${itemType}-${nowMillis()}`,
     itemType,
     materialType: "steel",
     description: `Steel ${itemType} DN${dnMm} ${schedule}`,

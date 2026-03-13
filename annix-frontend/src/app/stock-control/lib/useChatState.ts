@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { nowISO } from "@/app/lib/datetime";
 import type {
   ChatConversationResponse,
   ChatMessageResponse,
@@ -286,7 +287,7 @@ export function useChatState() {
         if (result.success) {
           const editId = state.editingId;
           const updateMsg = (m: ChatMsg) =>
-            m.id === editId ? { ...m, text: trimmed, editedAt: new Date().toISOString() } : m;
+            m.id === editId ? { ...m, text: trimmed, editedAt: nowISO() } : m;
           setState((prev) =>
             prev.view === "conversation"
               ? {

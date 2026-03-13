@@ -1,3 +1,5 @@
+import { nowMillis } from "@/app/lib/datetime";
+
 const CHUNK_ERROR_RELOAD_KEY = "chunk-error-reload";
 const RELOAD_COOLDOWN_MS = 10000;
 
@@ -12,10 +14,10 @@ export function isChunkLoadError(error: Error): boolean {
 
 export function attemptChunkErrorRecovery(): boolean {
   const lastReload = sessionStorage.getItem(CHUNK_ERROR_RELOAD_KEY);
-  const now = Date.now();
+  const currentTime = nowMillis();
 
-  if (!lastReload || now - Number(lastReload) > RELOAD_COOLDOWN_MS) {
-    sessionStorage.setItem(CHUNK_ERROR_RELOAD_KEY, String(now));
+  if (!lastReload || currentTime - Number(lastReload) > RELOAD_COOLDOWN_MS) {
+    sessionStorage.setItem(CHUNK_ERROR_RELOAD_KEY, String(currentTime));
     window.location.reload();
     return true;
   }

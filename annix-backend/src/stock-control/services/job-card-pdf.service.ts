@@ -4,7 +4,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
 import { ILike, MoreThan, Repository } from "typeorm";
-import { formatDateTime } from "../../lib/datetime";
+import { formatDateTime, now } from "../../lib/datetime";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import type { RubberPlanManualRoll } from "../entities/job-card.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -1249,7 +1249,7 @@ export class JobCardPdfService {
     const pageHeight = doc.page.height;
     const range = doc.bufferedPageRange();
     const totalPages = range.count;
-    const generatedText = `Generated: ${formatDateTime(new Date())}`;
+    const generatedText = `Generated: ${formatDateTime(now().toJSDate())}`;
 
     Array.from({ length: totalPages }, (_, i) => i).forEach((i) => {
       doc.switchToPage(i);

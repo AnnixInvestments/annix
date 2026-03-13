@@ -44,9 +44,14 @@ export class AddRubberEntityIndexes1807000000020 implements MigrationInterface {
       `CREATE INDEX IF NOT EXISTS "IDX_rubber_tax_invoices_status" ON "rubber_tax_invoices" ("status")`,
     );
 
-    await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS "IDX_rubber_other_stock_location_id" ON "rubber_other_stock" ("location_id")`,
+    const tableExists = await queryRunner.query(
+      `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'rubber_other_stock')`,
     );
+    if (tableExists[0]?.exists) {
+      await queryRunner.query(
+        `CREATE INDEX IF NOT EXISTS "IDX_rubber_other_stock_location_id" ON "rubber_other_stock" ("location_id")`,
+      );
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

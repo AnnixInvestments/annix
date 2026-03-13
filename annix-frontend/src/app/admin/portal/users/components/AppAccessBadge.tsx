@@ -1,6 +1,7 @@
 "use client";
 
 import type { RbacAppAccessSummary } from "@/app/lib/api/adminApi";
+import { isExpired as checkExpired } from "@/app/lib/datetime";
 
 interface AppAccessBadgeProps {
   access: RbacAppAccessSummary;
@@ -23,7 +24,7 @@ export function AppAccessBadge(props: AppAccessBadgeProps) {
     ? `Custom (${access.permissionCount ?? 0})`
     : (access.roleName ?? "No Role");
 
-  const isExpired = access.expiresAt && new Date(access.expiresAt) < new Date();
+  const isExpired = access.expiresAt && checkExpired(access.expiresAt);
 
   return (
     <span

@@ -3,7 +3,7 @@ import { BadRequestException, Inject, Injectable, Logger, NotFoundException } fr
 import { InjectRepository } from "@nestjs/typeorm";
 import { PDFDocument } from "pdf-lib";
 import { Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { fromISO, now } from "../../lib/datetime";
 import {
   type IStorageService,
   STORAGE_SERVICE,
@@ -665,8 +665,7 @@ export class CertificateService {
     );
 
     const expiredCals = calCerts.filter((c) => {
-      const expiryMs = new Date(c.expiryDate).getTime();
-      return expiryMs < Date.now();
+      return fromISO(c.expiryDate) < now();
     });
     if (expiredCals.length > 0) {
       const msg = `${expiredCals.length} calibration certificate(s) expired`;

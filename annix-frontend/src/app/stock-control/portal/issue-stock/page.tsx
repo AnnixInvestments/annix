@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { fromISO, nowISO, nowMillis } from "@/app/lib/datetime";
 import type {
   BatchIssuanceDto,
   BatchIssuanceResult,
@@ -87,7 +88,7 @@ function updateFavourites(recipient: StaffMember, items: IssuanceItem[]): void {
     updated[matchIndex] = {
       ...updated[matchIndex],
       useCount: updated[matchIndex].useCount + 1,
-      lastUsed: new Date().toISOString(),
+      lastUsed: nowISO(),
     };
     saveFavourites(updated);
   } else {
@@ -98,7 +99,7 @@ function updateFavourites(recipient: StaffMember, items: IssuanceItem[]): void {
       itemIds,
       itemNames: items.map((i) => i.stockItem.name),
       useCount: 1,
-      lastUsed: new Date().toISOString(),
+      lastUsed: nowISO(),
     };
     saveFavourites([newFav, ...existing].slice(0, 50));
   }
@@ -530,7 +531,7 @@ export default function IssueStockPage() {
           .join(", ");
 
         const sessionEntry: SessionIssuance = {
-          id: Date.now(),
+          id: nowMillis(),
           issuanceIds: result.issuances.map((i) => i.id),
           issuerName: issuer.name,
           recipientName: recipient.name,
@@ -538,7 +539,7 @@ export default function IssueStockPage() {
           itemCount: items.length,
           totalQty: items.reduce((sum, item) => sum + item.quantity, 0),
           jobNumber: jobCard?.jobNumber ?? null,
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
           canUndo: true,
         };
 
@@ -568,7 +569,7 @@ export default function IssueStockPage() {
   };
 
   const handleUndo = async (sessionEntry: SessionIssuance) => {
-    const elapsed = Date.now() - new Date(sessionEntry.timestamp).getTime();
+    const elapsed = nowMillis() - fromISO(sessionEntry.timestamp).toMillis();
     if (elapsed > UNDO_WINDOW_MS) {
       setError("Undo window has expired (5 minutes)");
       return;

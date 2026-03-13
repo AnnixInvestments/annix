@@ -10,6 +10,7 @@ import { JwtService } from "@nestjs/jwt";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
+import { now } from "../../lib/datetime";
 import { EmailService } from "../../email/email.service";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { StaffMember } from "../entities/staff-member.entity";
@@ -130,13 +131,13 @@ describe("StockControlAuthService", () => {
       sageCompanyId: null,
       sageCompanyName: null,
       sageConnectedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now().toJSDate(),
+      updatedAt: now().toJSDate(),
     },
     linkedStaff: null,
     linkedStaffId: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
   };
 
   beforeEach(async () => {
@@ -221,7 +222,7 @@ describe("StockControlAuthService", () => {
     });
 
     it("accepts invitation token and assigns role from invitation", async () => {
-      const futureDate = new Date(Date.now() + 86400000);
+      const futureDate = now().plus({ days: 1 }).toJSDate();
       const invitation = {
         token: "invite-token",
         status: StockControlInvitationStatus.PENDING,
@@ -262,7 +263,7 @@ describe("StockControlAuthService", () => {
     });
 
     it("throws BadRequestException for expired invitation", async () => {
-      const pastDate = new Date(Date.now() - 86400000);
+      const pastDate = now().minus({ days: 1 }).toJSDate();
       const invitation = {
         token: "expired-token",
         status: StockControlInvitationStatus.PENDING,
@@ -665,14 +666,14 @@ describe("StockControlAuthService", () => {
           name: "Alice",
           email: "alice@test.com",
           role: StockControlRole.ADMIN,
-          createdAt: new Date(),
+          createdAt: now().toJSDate(),
         },
         {
           id: 2,
           name: "Bob",
           email: "bob@test.com",
           role: StockControlRole.STOREMAN,
-          createdAt: new Date(),
+          createdAt: now().toJSDate(),
         },
       ];
       mockUserRepo.find.mockResolvedValue(users);

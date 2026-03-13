@@ -481,11 +481,11 @@ export class CpoService {
     record.status = status;
 
     if (status === CalloffStatus.CALLED_OFF && !record.calledOffAt) {
-      record.calledOffAt = new Date();
+      record.calledOffAt = now().toJSDate();
     } else if (status === CalloffStatus.DELIVERED && !record.deliveredAt) {
-      record.deliveredAt = new Date();
+      record.deliveredAt = now().toJSDate();
     } else if (status === CalloffStatus.INVOICED && !record.invoicedAt) {
-      record.invoicedAt = new Date();
+      record.invoicedAt = now().toJSDate();
     }
 
     return this.calloffRepo.save(record);

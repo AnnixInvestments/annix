@@ -1,4 +1,5 @@
 import { annixRepApi, type Meeting, type Visit } from "@/app/lib/api/annixRepApi";
+import { fromMillis, now, nowMillis } from "@/app/lib/datetime";
 import {
   addPendingAction,
   pendingActions,
@@ -64,7 +65,7 @@ export async function queueOfflineAction(
     method,
     headers,
     body,
-    timestamp: Date.now(),
+    timestamp: nowMillis(),
   });
 
   const actions = await pendingActions();
@@ -127,7 +128,7 @@ export async function syncPendingActions(): Promise<{ synced: number; failed: nu
   updateStatus({
     isSyncing: false,
     pendingCount: remainingActions.length,
-    lastSyncAt: new Date(),
+    lastSyncAt: now().toJSDate(),
   });
 
   return { synced, failed };
@@ -141,7 +142,7 @@ export async function syncProspectsToOffline(): Promise<void> {
     await saveProspects(prospects);
     await updateSyncMeta({
       key: "prospects",
-      lastSyncAt: Date.now(),
+      lastSyncAt: nowMillis(),
     });
   } catch (error) {
     console.error("Failed to sync prospects to offline:", error);
@@ -166,7 +167,7 @@ export async function syncMeetingsToOffline(): Promise<void> {
     await saveMeetings(Array.from(meetingsMap.values()));
     await updateSyncMeta({
       key: "meetings",
-      lastSyncAt: Date.now(),
+      lastSyncAt: nowMillis(),
     });
   } catch (error) {
     console.error("Failed to sync meetings to offline:", error);
@@ -190,7 +191,7 @@ export async function syncVisitsToOffline(): Promise<void> {
     await saveVisits(Array.from(visitsMap.values()));
     await updateSyncMeta({
       key: "visits",
-      lastSyncAt: Date.now(),
+      lastSyncAt: nowMillis(),
     });
   } catch (error) {
     console.error("Failed to sync visits to offline:", error);
@@ -205,7 +206,7 @@ export async function syncAllToOffline(): Promise<void> {
 
     updateStatus({
       isSyncing: false,
-      lastSyncAt: new Date(),
+      lastSyncAt: now().toJSDate(),
     });
   } catch (error) {
     updateStatus({
@@ -217,7 +218,7 @@ export async function syncAllToOffline(): Promise<void> {
 
 export async function lastSyncTime(key: string): Promise<Date | null> {
   const meta = await syncMeta(key);
-  return meta ? new Date(meta.lastSyncAt) : null;
+  return meta ? fromMillis(meta.lastSyncAt).toJSDate() : null;
 }
 
 let syncIntervalId: ReturnType<typeof setInterval> | null = null;

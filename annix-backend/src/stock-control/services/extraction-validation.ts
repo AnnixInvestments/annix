@@ -1,4 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
+import { nowMillis } from "../../lib/datetime";
 import { ExtractedInvoiceData, ExtractedLineItem } from "../entities/supplier-invoice.entity";
 
 export function validString(value: unknown, fallback: string): string {
@@ -41,7 +42,7 @@ export function validateInvoiceExtraction(parsed: unknown): ExtractedInvoiceData
   }
   const data = parsed as Record<string, unknown>;
   return {
-    invoiceNumber: validString(data.invoiceNumber, `INV-${Date.now()}`),
+    invoiceNumber: validString(data.invoiceNumber, `INV-${nowMillis()}`),
     supplierName: validString(data.supplierName, "Unknown Supplier"),
     invoiceDate: typeof data.invoiceDate === "string" ? data.invoiceDate : undefined,
     totalAmount: validPositiveNumber(data.totalAmount, 0),
@@ -85,7 +86,7 @@ export function validateDeliveryExtraction(parsed: unknown): {
       ? (data.fromCompany as Record<string, unknown>)
       : {};
   return {
-    deliveryNoteNumber: validString(data.deliveryNoteNumber, `DN-${Date.now()}`),
+    deliveryNoteNumber: validString(data.deliveryNoteNumber, `DN-${nowMillis()}`),
     deliveryDate: typeof data.deliveryDate === "string" ? data.deliveryDate : null,
     fromCompany: { name: validString(fromCompany.name, "Unknown Supplier") },
     lineItems: validArray<Record<string, unknown>>(data.lineItems),

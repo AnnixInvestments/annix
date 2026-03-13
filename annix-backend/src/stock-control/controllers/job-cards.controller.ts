@@ -19,6 +19,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, MoreThan, Repository } from "typeorm";
+import { now, nowISO } from "../../lib/datetime";
 import {
   MarkOffcutAsWastageDto,
   UpdateRubberPlanDto,
@@ -327,7 +328,7 @@ export class JobCardsController {
       selectedPlyCombination: dto.selectedPlyCombination || null,
       manualRolls: dto.manualRolls || null,
       reviewedBy: req.user.name,
-      reviewedAt: new Date().toISOString(),
+      reviewedAt: nowISO(),
     };
     const result = await this.jobCardService.update(req.user.companyId, id, {
       rubberPlanOverride: jobCard.rubberPlanOverride,
@@ -434,7 +435,7 @@ export class JobCardsController {
             calculatedWidthMm: ov.calculatedWidthMm,
             calculatedLengthMm: ov.calculatedLengthMm,
             usageCount: existing.usageCount + 1,
-            lastUsedAt: new Date(),
+            lastUsedAt: now().toJSDate(),
           });
         } else {
           await this.dimensionOverrideRepo.save({
@@ -450,7 +451,7 @@ export class JobCardsController {
             overrideWidthMm: ov.overrideWidthMm,
             overrideLengthMm: ov.overrideLengthMm,
             usageCount: 1,
-            lastUsedAt: new Date(),
+            lastUsedAt: now().toJSDate(),
           });
         }
       }),

@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as nodemailer from "nodemailer";
 import { Repository } from "typeorm";
+import { nowMillis } from "../../lib/datetime";
 import { EmailOptions, EmailService } from "../../email/email.service";
 import { decrypt, encrypt } from "../../secure-documents/crypto.util";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
@@ -78,7 +79,7 @@ export class CompanyEmailService {
       const from = `"${fromName}" <${fromEmail}>`;
 
       const domain = fromEmail.split("@")[1] || "annix.co.za";
-      const messageId = `<${Date.now()}.${Math.random().toString(36).substring(2)}@${domain}>`;
+      const messageId = `<${nowMillis()}.${Math.random().toString(36).substring(2)}@${domain}>`;
 
       const ccRecipients = (company.notificationEmails ?? []).filter(
         (email) => email !== options.to,

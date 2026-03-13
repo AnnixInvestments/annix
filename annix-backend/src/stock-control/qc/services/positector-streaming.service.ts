@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { filter, map, Observable, Subject } from "rxjs";
 import { Repository } from "typeorm";
-import { nowISO } from "../../../lib/datetime";
+import { nowISO, nowMillis } from "../../../lib/datetime";
 import type { BlastProfileReadingEntry } from "../entities/qc-blast-profile.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import type { DftReadingEntry } from "../entities/qc-dft-reading.entity";
@@ -101,7 +101,7 @@ export class PositectorStreamingService implements OnModuleDestroy {
       return existingSession;
     }
 
-    const sessionId = `${companyId}-${deviceId}-${Date.now()}`;
+    const sessionId = `${companyId}-${deviceId}-${nowMillis()}`;
     const session: StreamingSession = {
       sessionId,
       companyId,

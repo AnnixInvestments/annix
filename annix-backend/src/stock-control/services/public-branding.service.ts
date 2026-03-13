@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import sharp from "sharp";
 import { Repository } from "typeorm";
+import { nowMillis } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { PublicBrandingDto } from "../dto/public-branding.dto";
 import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
@@ -45,7 +46,7 @@ export class PublicBrandingService {
     const cacheKey = `${companyId}-${size}`;
     const cached = this.iconCache.get(cacheKey);
 
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    if (cached && nowMillis() - cached.timestamp < CACHE_TTL_MS) {
       return cached.buffer;
     }
 
@@ -62,7 +63,7 @@ export class PublicBrandingService {
     const iconBuffer = await this.fetchAndResizeIcon(company.logoUrl, size);
 
     if (iconBuffer) {
-      this.iconCache.set(cacheKey, { buffer: iconBuffer, timestamp: Date.now() });
+      this.iconCache.set(cacheKey, { buffer: iconBuffer, timestamp: nowMillis() });
     }
 
     return iconBuffer;

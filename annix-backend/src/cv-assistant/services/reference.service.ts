@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
+import { fromJSDate, now } from "../../lib/datetime";
 import { Candidate, CandidateStatus, ExtractedCvData } from "../entities/candidate.entity";
 import { CandidateReference, ReferenceStatus } from "../entities/candidate-reference.entity";
 
@@ -35,7 +36,7 @@ export class ReferenceService {
           email: ref.email,
           relationship: ref.relationship,
           feedbackToken: uuidv4(),
-          tokenExpiresAt: new Date(Date.now() + TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
+          tokenExpiresAt: now().plus({ days: TOKEN_EXPIRY_DAYS }).toJSDate(),
           status: ReferenceStatus.PENDING,
         });
         const saved = await this.referenceRepo.save(reference);
@@ -70,7 +71,7 @@ export class ReferenceService {
 
         if (sent) {
           reference.status = ReferenceStatus.REQUESTED;
-          reference.requestSentAt = new Date();
+          reference.requestSentAt = now().toJSDate();
           await this.referenceRepo.save(reference);
           sentCount++;
         }
@@ -100,7 +101,7 @@ export class ReferenceService {
       return { valid: false };
     }
 
-    if (reference.tokenExpiresAt < new Date()) {
+    if (fromJSDate(reference.tokenExpiresAt) < now()) {
       reference.status = ReferenceStatus.EXPIRED;
       await this.referenceRepo.save(reference);
       return { valid: false };
@@ -127,7 +128,7 @@ export class ReferenceService {
 
     reference.feedbackRating = rating;
     reference.feedbackText = feedbackText || null;
-    reference.feedbackSubmittedAt = new Date();
+    reference.feedbackSubmittedAt = now().toJSDate();
     reference.status = ReferenceStatus.RESPONDED;
     await this.referenceRepo.save(reference);
 
@@ -153,7 +154,7 @@ export class ReferenceService {
   }
 
   async sendReminders(): Promise<number> {
-    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const twoDaysAgo = now().minus({ days: 2 }).toJSDate();
 
     const pendingRefs = await this.referenceRepo.find({
       where: {
@@ -167,7 +168,7 @@ export class ReferenceService {
     let sentCount = 0;
 
     for (const reference of pendingRefs) {
-      if (reference.tokenExpiresAt > new Date()) {
+      if (fromJSDate(reference.tokenExpiresAt) > now()) {
         const sent = await this.emailService.sendCvAssistantReferenceReminderEmail(
           reference.email,
           reference.name,
@@ -177,7 +178,7 @@ export class ReferenceService {
         );
 
         if (sent) {
-          reference.reminderSentAt = new Date();
+          reference.reminderSentAt = now().toJSDate();
           await this.referenceRepo.save(reference);
           sentCount++;
         }

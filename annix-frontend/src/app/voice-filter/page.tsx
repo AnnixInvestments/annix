@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useVoiceFilterAuth } from "@/app/context/VoiceFilterAuthContext";
 import { VoiceFilterCalendarEvent, voiceFilterApi } from "@/app/lib/api/voiceFilterApi";
-import { fromISO } from "@/app/lib/datetime";
+import { fromISO, now } from "@/app/lib/datetime";
 
 const MicrophoneIcon = () => (
   <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,10 +206,10 @@ export default function VoiceFilterPage() {
               {upcomingEvents.map((event) => {
                 const startTime = fromISO(event.startTime);
                 const endTime = fromISO(event.endTime);
-                const now = fromISO(new Date().toISOString());
-                const isToday = startTime.hasSame(now, "day");
-                const isTomorrow = startTime.hasSame(now.plus({ days: 1 }), "day");
-                const daysUntil = startTime.diff(now, "days").days;
+                const currentTime = now();
+                const isToday = startTime.hasSame(currentTime, "day");
+                const isTomorrow = startTime.hasSame(currentTime.plus({ days: 1 }), "day");
+                const daysUntil = startTime.diff(currentTime, "days").days;
                 const isThisWeek = daysUntil >= 0 && daysUntil < 7;
 
                 const dateLabel = isToday

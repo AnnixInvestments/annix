@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { fromISO, now } from "../../lib/datetime";
 import { JobCard } from "../entities/job-card.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { QcBlastProfile } from "../qc/entities/qc-blast-profile.entity";
@@ -33,7 +34,7 @@ function makeJobCard(overrides: Record<string, any> = {}) {
     customerName: "Test Customer",
     poNumber: "PO-001",
     reference: "REF-001",
-    createdAt: new Date("2026-01-15"),
+    createdAt: fromISO("2026-01-15").toJSDate(),
     lineItems: [],
     ...overrides,
   };
@@ -63,8 +64,8 @@ function makeShoreHardness(overrides: Record<string, any> = {}) {
     readingDate: "2026-03-01",
     capturedByName: "Inspector",
     capturedById: 5,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
     ...overrides,
   };
 }
@@ -87,8 +88,8 @@ function makeDftReading(coatType: DftCoatType, overrides: Record<string, any> = 
     readingDate: "2026-03-02",
     capturedByName: "Inspector",
     capturedById: 5,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
     ...overrides,
   };
 }
@@ -107,8 +108,8 @@ function makeBlastProfile(overrides: Record<string, any> = {}) {
     readingDate: "2026-03-01",
     capturedByName: "Inspector",
     capturedById: 5,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
     ...overrides,
   };
 }
@@ -131,8 +132,8 @@ function makeDustDebrisTest(overrides: Record<string, any> = {}) {
     readingDate: "2026-03-01",
     capturedByName: "Inspector",
     capturedById: 5,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
     ...overrides,
   };
 }
@@ -151,8 +152,8 @@ function makePullTest(overrides: Record<string, any> = {}) {
     readingDate: "2026-03-01",
     capturedByName: "Inspector",
     capturedById: 5,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
     ...overrides,
   };
 }
@@ -186,8 +187,8 @@ function makeControlPlan(overrides: Record<string, any> = {}) {
     approvalSignatures: [],
     createdByName: "Admin",
     createdById: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
     ...overrides,
   };
 }
@@ -215,8 +216,8 @@ function makeReleaseCert(overrides: Record<string, any> = {}) {
     certificateDate: "2026-03-05",
     capturedByName: "Inspector",
     capturedById: 5,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
     ...overrides,
   };
 }
@@ -243,8 +244,8 @@ function makeItemsRelease(overrides: Record<string, any> = {}) {
     plsSignOff: { name: null, date: null, signatureUrl: null },
     mpsSignOff: { name: null, date: null, signatureUrl: null },
     clientSignOff: { name: null, date: null, signatureUrl: null },
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: now().toJSDate(),
+    updatedAt: now().toJSDate(),
     ...overrides,
   };
 }

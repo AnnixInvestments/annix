@@ -2,6 +2,7 @@ import { ConflictException, Injectable, Logger, NotFoundException } from "@nestj
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
+import { now } from "../../lib/datetime";
 import { EmailService } from "../../email/email.service";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import {
@@ -45,7 +46,7 @@ export class StockControlInvitationService {
     }
 
     const token = uuidv4();
-    const expiresAt = new Date(Date.now() + INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    const expiresAt = now().plus({ days: INVITATION_EXPIRY_DAYS }).toJSDate();
 
     const invitation = this.invitationRepo.create({
       companyId,
@@ -108,7 +109,7 @@ export class StockControlInvitationService {
         }
 
         inv.status = StockControlInvitationStatus.ACCEPTED;
-        inv.acceptedAt = new Date();
+        inv.acceptedAt = now().toJSDate();
         await this.invitationRepo.save(inv);
         resolvedInvitationIds.add(inv.id);
       }),
@@ -126,7 +127,7 @@ export class StockControlInvitationService {
     if (
       invitation &&
       invitation.status === StockControlInvitationStatus.PENDING &&
-      new Date() > invitation.expiresAt
+      now().toJSDate() > invitation.expiresAt
     ) {
       invitation.status = StockControlInvitationStatus.EXPIRED;
       await this.invitationRepo.save(invitation);
@@ -166,7 +167,7 @@ export class StockControlInvitationService {
     }
 
     invitation.token = uuidv4();
-    invitation.expiresAt = new Date(Date.now() + INVITATION_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    invitation.expiresAt = now().plus({ days: INVITATION_EXPIRY_DAYS }).toJSDate();
 
     const saved = await this.invitationRepo.save(invitation);
 

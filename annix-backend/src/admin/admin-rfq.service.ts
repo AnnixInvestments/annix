@@ -10,7 +10,7 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { fromISO, now } from "../lib/datetime";
+import { fromISO, fromJSDate, now } from "../lib/datetime";
 import { CreateUnifiedRfqDto } from "../rfq/dto/create-unified-rfq.dto";
 import { RfqDraftResponseDto, SaveRfqDraftDto } from "../rfq/dto/rfq-draft.dto";
 import { AnonymousDraft } from "../rfq/entities/anonymous-draft.entity";
@@ -149,7 +149,7 @@ export class AdminRfqService {
     const today = now().startOf("day");
     const registeredItems: RfqListItemDto[] = registeredDrafts.map((draft) => {
       const requiredDate = draft.formData?.requiredDate
-        ? new Date(draft.formData.requiredDate)
+        ? fromISO(draft.formData.requiredDate).toJSDate()
         : undefined;
       const isPastDeadline = requiredDate
         ? fromISO(draft.formData.requiredDate).startOf("day") < today
@@ -172,7 +172,7 @@ export class AdminRfqService {
     // Map anonymous drafts to DTOs (use negative IDs to distinguish them)
     const anonymousItems: RfqListItemDto[] = anonymousDrafts.map((draft) => {
       const requiredDate = draft.formData?.requiredDate
-        ? new Date(draft.formData.requiredDate)
+        ? fromISO(draft.formData.requiredDate).toJSDate()
         : undefined;
       const isPastDeadline = requiredDate
         ? fromISO(draft.formData.requiredDate).startOf("day") < today
@@ -197,9 +197,9 @@ export class AdminRfqService {
     const allItems = [...registeredItems, ...anonymousItems];
     allItems.sort((a, b) => {
       if (sortOrder === "DESC") {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return fromJSDate(b.createdAt).toMillis() - fromJSDate(a.createdAt).toMillis();
       }
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return fromJSDate(a.createdAt).toMillis() - fromJSDate(b.createdAt).toMillis();
     });
 
     // Calculate total and apply pagination

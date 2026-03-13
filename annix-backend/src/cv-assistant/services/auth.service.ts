@@ -11,6 +11,7 @@ import * as bcrypt from "bcrypt";
 import { MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
+import { now } from "../../lib/datetime";
 import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 import { CvAssistantRole, CvAssistantUser } from "../entities/cv-assistant-user.entity";
 
@@ -35,7 +36,7 @@ export class CvAssistantAuthService {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const verificationToken = uuidv4();
-    const verificationExpires = new Date(Date.now() + VERIFICATION_EXPIRY_HOURS * 60 * 60 * 1000);
+    const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
     const company = this.companyRepo.create({
       name: companyName || `${name} Company`,
@@ -72,7 +73,7 @@ export class CvAssistantAuthService {
     const user = await this.userRepo.findOne({
       where: {
         emailVerificationToken: token,
-        emailVerificationExpires: MoreThan(new Date()),
+        emailVerificationExpires: MoreThan(now().toJSDate()),
       },
     });
 
@@ -110,7 +111,7 @@ export class CvAssistantAuthService {
     }
 
     const verificationToken = uuidv4();
-    const verificationExpires = new Date(Date.now() + VERIFICATION_EXPIRY_HOURS * 60 * 60 * 1000);
+    const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
     user.emailVerificationToken = verificationToken;
     user.emailVerificationExpires = verificationExpires;
@@ -126,7 +127,7 @@ export class CvAssistantAuthService {
 
     if (user?.emailVerified) {
       const resetToken = uuidv4();
-      const resetExpires = new Date(Date.now() + 60 * 60 * 1000);
+      const resetExpires = now().plus({ hours: 1 }).toJSDate();
 
       user.resetPasswordToken = resetToken;
       user.resetPasswordExpires = resetExpires;
@@ -144,7 +145,7 @@ export class CvAssistantAuthService {
     const user = await this.userRepo.findOne({
       where: {
         resetPasswordToken: token,
-        resetPasswordExpires: MoreThan(new Date()),
+        resetPasswordExpires: MoreThan(now().toJSDate()),
       },
     });
 

@@ -7,6 +7,7 @@ import type {
   PositectorStreamingSession,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { nowISO } from "@/app/lib/datetime";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
   dft: "DFT Reading",
@@ -239,7 +240,7 @@ export default function PositectorBlePage() {
               units: null,
               probeType: null,
               serialNumber: bleDevice.device.name ?? null,
-              timestamp: new Date().toISOString(),
+              timestamp: nowISO(),
             };
 
             setReadings((prev) => [...prev, reading]);
@@ -286,7 +287,7 @@ export default function PositectorBlePage() {
             units: null,
             probeType: null,
             serialNumber: bleDevice.device.name ?? null,
-            timestamp: new Date().toISOString(),
+            timestamp: nowISO(),
           };
           setReadings((prev) => [...prev, reading]);
 

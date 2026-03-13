@@ -1,6 +1,7 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { now } from "../lib/datetime";
 import { EmailService } from "../email/email.service";
 import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
@@ -380,7 +381,7 @@ describe("RubberQualityTrackingService", () => {
       tensileStrengthMpa: 20,
       elongationPercent: 400,
       rheometerTc90: 5.5,
-      createdAt: new Date(),
+      createdAt: now().toJSDate(),
       ...overrides,
     });
 
@@ -416,8 +417,8 @@ describe("RubberQualityTrackingService", () => {
         (alerts as Partial<RubberQualityAlert>[]).map((a, i) => ({
           ...a,
           id: i + 1,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createdAt: now().toJSDate(),
+          updatedAt: now().toJSDate(),
           acknowledgedAt: null,
           acknowledgedBy: null,
         })),

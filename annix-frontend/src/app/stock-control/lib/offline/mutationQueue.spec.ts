@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { nowMillis } from "@/app/lib/datetime";
 
 vi.mock("./stores", () => ({
   offlinePendingActions: {
@@ -31,7 +32,7 @@ function makePendingAction(overrides?: Partial<PendingAction>): PendingAction {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: '{"name":"test"}',
-    timestamp: Date.now(),
+    timestamp: nowMillis(),
     retryCount: 0,
     ...overrides,
   };

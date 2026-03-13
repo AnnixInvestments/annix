@@ -5,6 +5,7 @@ import type {
   RbacAppAccessSummary,
   RbacUserWithAccessSummary,
 } from "@/app/lib/api/adminApi";
+import { formatDateZA, isExpired as checkExpired } from "@/app/lib/datetime";
 
 interface UserAccessDetailsProps {
   user: RbacUserWithAccessSummary;
@@ -29,7 +30,7 @@ export function UserAccessDetails(props: UserAccessDetailsProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {apps.map((app) => {
           const access = accessByApp[app.code];
-          const isExpired = access?.expiresAt && new Date(access.expiresAt) < new Date();
+          const isExpired = access?.expiresAt && checkExpired(access.expiresAt);
 
           return (
             <div
@@ -49,7 +50,7 @@ export function UserAccessDetails(props: UserAccessDetailsProps) {
                       {isExpired && <p className="text-xs text-yellow-600 font-medium">Expired</p>}
                       {access.expiresAt && !isExpired && (
                         <p className="text-xs text-gray-500">
-                          Expires: {new Date(access.expiresAt).toLocaleDateString()}
+                          Expires: {formatDateZA(access.expiresAt)}
                         </p>
                       )}
                     </div>

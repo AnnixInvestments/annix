@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { nowMillis } from "../../lib/datetime";
 import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
 
 export const DEFAULT_ACTION_PERMISSIONS: Record<string, string[]> = {
@@ -73,7 +74,7 @@ export class ActionPermissionService {
 
   async permissionsForCompany(companyId: number): Promise<Record<string, string[]>> {
     const cached = this.cache.get(companyId);
-    if (cached && cached.expiresAt > Date.now()) {
+    if (cached && cached.expiresAt > nowMillis()) {
       return cached.data;
     }
 
@@ -81,7 +82,7 @@ export class ActionPermissionService {
 
     if (rows.length === 0) {
       const defaults = { ...DEFAULT_ACTION_PERMISSIONS };
-      this.cache.set(companyId, { data: defaults, expiresAt: Date.now() + 60_000 });
+      this.cache.set(companyId, { data: defaults, expiresAt: nowMillis() + 60_000 });
       return defaults;
     }
 
@@ -100,7 +101,7 @@ export class ActionPermissionService {
       }
     });
 
-    this.cache.set(companyId, { data: config, expiresAt: Date.now() + 60_000 });
+    this.cache.set(companyId, { data: config, expiresAt: nowMillis() + 60_000 });
     return config;
   }
 

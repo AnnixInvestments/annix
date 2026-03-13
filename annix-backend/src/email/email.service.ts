@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
 import { Transporter } from "nodemailer";
+import { formatDateZA, nowMillis } from "../lib/datetime";
 
 export interface EmailAttachment {
   filename: string;
@@ -65,7 +66,7 @@ export class EmailService {
     const from = `"${fromName}" <${fromEmail}>`;
 
     const domain = fromEmail.split("@")[1] || "annix.com";
-    const messageId = `<${Date.now()}.${Math.random().toString(36).substring(2)}@${domain}>`;
+    const messageId = `<${nowMillis()}.${Math.random().toString(36).substring(2)}@${domain}>`;
 
     const headers: Record<string, string> = {
       "X-Mailer": "Annix Platform",
@@ -1612,7 +1613,7 @@ Powered by Annix Rep
             </a>
           </td>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #dc2626;">
-            ${p.nextFollowUpAt ? new Date(p.nextFollowUpAt).toLocaleDateString("en-ZA") : "Not set"}
+            ${p.nextFollowUpAt ? formatDateZA(p.nextFollowUpAt) : "Not set"}
           </td>
         </tr>
       `,
@@ -1672,7 +1673,7 @@ Hello ${recipientName},
 
 You have ${prospects.length} overdue follow-up${prospects.length === 1 ? "" : "s"}:
 
-${prospects.map((p) => `- ${p.companyName} (Due: ${p.nextFollowUpAt ? new Date(p.nextFollowUpAt).toLocaleDateString("en-ZA") : "Not set"})`).join("\n")}
+${prospects.map((p) => `- ${p.companyName} (Due: ${p.nextFollowUpAt ? formatDateZA(p.nextFollowUpAt) : "Not set"})`).join("\n")}
 
 View your prospects: ${prospectsLink}
 

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { now } from "../../lib/datetime";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { JobPosting } from "../entities/job-posting.entity";
 
@@ -110,14 +111,14 @@ export class CandidateService {
 
   async markRejectionSent(id: number): Promise<void> {
     await this.candidateRepo.update(id, {
-      rejectionSentAt: new Date(),
+      rejectionSentAt: now().toJSDate(),
       status: CandidateStatus.REJECTED,
     });
   }
 
   async markAcceptanceSent(id: number): Promise<void> {
     await this.candidateRepo.update(id, {
-      acceptanceSentAt: new Date(),
+      acceptanceSentAt: now().toJSDate(),
     });
   }
 

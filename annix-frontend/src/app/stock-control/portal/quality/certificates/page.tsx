@@ -10,7 +10,7 @@ import type {
   SupplierCertificate,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateZA, fromISO, now, nowMillis } from "@/app/lib/datetime";
 
 interface IdentifiedCertificate {
   supplierName: string | null;
@@ -250,7 +250,7 @@ function CertificatesTab() {
       await stockControlApiClient.uploadCertificate(sourceFile, {
         supplierId: matchedSupplier.id,
         certificateType: cert.certificateType || "COC",
-        batchNumber: cert.batchNumber || `BATCH-${Date.now()}`,
+        batchNumber: cert.batchNumber || `BATCH-${nowMillis()}`,
         description: [cert.productInfo, `Pages: ${cert.pageNumbers.join(", ")}`]
           .filter(Boolean)
           .join(" | "),
@@ -739,14 +739,13 @@ function CalibrationTab() {
   };
 
   const isExpiringSoon = (expiryDate: string): boolean => {
-    const expiry = new Date(expiryDate);
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-    return expiry <= thirtyDaysFromNow && expiry >= new Date();
+    const expiry = fromISO(expiryDate);
+    const thirtyDaysFromNow = now().plus({ days: 30 });
+    return expiry <= thirtyDaysFromNow && expiry >= now();
   };
 
   const isExpired = (expiryDate: string): boolean => {
-    return new Date(expiryDate) < new Date();
+    return fromISO(expiryDate) < now();
   };
 
   return (

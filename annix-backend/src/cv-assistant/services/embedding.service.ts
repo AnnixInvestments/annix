@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { nowMillis } from "../../lib/datetime";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
@@ -41,7 +42,7 @@ export class EmbeddingService {
 
     const url = `${GEMINI_EMBEDDING_URL}/${GEMINI_EMBEDDING_MODEL}:embedContent?key=${this.apiKey}`;
 
-    const startTime = Date.now();
+    const startTime = nowMillis();
 
     const response = await fetch(url, {
       method: "POST",
@@ -61,7 +62,7 @@ export class EmbeddingService {
     }
 
     const data: GeminiEmbeddingResponse = await response.json();
-    const processingTimeMs = Date.now() - startTime;
+    const processingTimeMs = nowMillis() - startTime;
 
     this.aiUsageService.log({
       app: AiApp.CV_ASSISTANT,

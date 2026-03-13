@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { now } from "../lib/datetime";
 import { RubberCompoundMovement } from "./entities/rubber-compound-movement.entity";
 import { RubberCompoundOrder } from "./entities/rubber-compound-order.entity";
 import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
@@ -121,8 +122,8 @@ describe("RubberStockService", () => {
         location: null,
         batchNumber: null,
         compoundCoding: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now().toJSDate(),
+        updatedAt: now().toJSDate(),
       });
 
       expect(dto.isLowStock).toBe(true);
@@ -140,8 +141,8 @@ describe("RubberStockService", () => {
         location: "Bay A",
         batchNumber: "B100",
         compoundCoding: { name: "Test Compound", code: "TC01" },
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now().toJSDate(),
+        updatedAt: now().toJSDate(),
       });
 
       expect(dto.isLowStock).toBe(false);
@@ -162,8 +163,8 @@ describe("RubberStockService", () => {
         location: null,
         batchNumber: null,
         compoundCoding: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now().toJSDate(),
+        updatedAt: now().toJSDate(),
       });
 
       expect(dto.quantityKg).toBe(100.5);
@@ -184,8 +185,8 @@ describe("RubberStockService", () => {
         location: null,
         batchNumber: null,
         compoundCoding: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now().toJSDate(),
+        updatedAt: now().toJSDate(),
       });
 
       expect(dto.costPerKg).toBeNull();
@@ -215,8 +216,8 @@ describe("RubberStockService", () => {
         notes: null,
         createdBy: null,
         completedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now().toJSDate(),
+        updatedAt: now().toJSDate(),
       });
 
       expect(dto.compoundRequiredKg).toBeCloseTo(82.8);
@@ -242,8 +243,8 @@ describe("RubberStockService", () => {
         notes: null,
         createdBy: null,
         completedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now().toJSDate(),
+        updatedAt: now().toJSDate(),
       });
 
       expect(dto.compoundRequiredKg).toBeCloseTo(50);
@@ -268,8 +269,8 @@ describe("RubberStockService", () => {
         notes: null,
         createdBy: null,
         completedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now().toJSDate(),
+        updatedAt: now().toJSDate(),
       });
 
       expect(dto.compoundRequiredKg).toBeCloseTo(50);

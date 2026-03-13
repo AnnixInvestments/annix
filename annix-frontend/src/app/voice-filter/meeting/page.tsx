@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
+import { now } from "@/app/lib/datetime";
 
 const BackIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,7 +80,7 @@ export default function VoiceFilterMeetingPage() {
 
   const handleStartMeeting = () => {
     if (!meetingName.trim()) {
-      setMeetingName(`Meeting ${new Date().toLocaleDateString()}`);
+      setMeetingName(`Meeting ${now().toLocaleString({ year: "numeric", month: "short", day: "numeric" })}`);
     }
     setIsRecording(true);
     setElapsedTime(0);
