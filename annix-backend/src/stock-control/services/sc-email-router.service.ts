@@ -9,8 +9,8 @@ import {
 import { nowMillis } from "../../lib/datetime";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { DeliveryService } from "./delivery.service";
-import { InvoiceExtractionService } from "./invoice-extraction.service";
 import { InvoiceService } from "./invoice.service";
+import { InvoiceExtractionService } from "./invoice-extraction.service";
 import { ScDocumentType } from "./sc-email-classifier.service";
 
 const SUPPORTED_MIME_TYPES = [

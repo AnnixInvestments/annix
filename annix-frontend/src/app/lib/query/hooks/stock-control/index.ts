@@ -1,4 +1,13 @@
 export {
+  useInboundEmailConfig,
+  useInboundEmailDetail,
+  useInboundEmailStats,
+  useInboundEmails,
+  useReclassifyAttachment,
+  useTestInboundEmailConnection,
+  useUpdateInboundEmailConfig,
+} from "./useInboundEmails";
+export {
   useCpoSummary,
   useDashboardPreferences,
   useDashboardStats,
@@ -11,15 +20,6 @@ export {
   useUpdateDashboardPreferences,
   useWorkflowLaneCounts,
 } from "./useStockControlDashboard";
-export {
-  useInboundEmailConfig,
-  useInboundEmailDetail,
-  useInboundEmails,
-  useInboundEmailStats,
-  useReclassifyAttachment,
-  useTestInboundEmailConnection,
-  useUpdateInboundEmailConfig,
-} from "./useInboundEmails";
 export {
   useCreateJobCard,
   useDataBookStatuses,

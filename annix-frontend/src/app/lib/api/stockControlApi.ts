@@ -4955,20 +4955,37 @@ class StockControlApiClient {
   }
 
   async inboundEmailConfig(): Promise<InboundEmailConfigResponse> {
-    return this.request("/inbound-email/stock-control/{companyId}/config".replace("{companyId}", this.companyIdParam()));
+    return this.request(
+      "/inbound-email/stock-control/{companyId}/config".replace(
+        "{companyId}",
+        this.companyIdParam(),
+      ),
+    );
   }
 
   async updateInboundEmailConfig(dto: InboundEmailConfigUpdate): Promise<{ message: string }> {
-    return this.request("/inbound-email/stock-control/{companyId}/config".replace("{companyId}", this.companyIdParam()), {
-      method: "PATCH",
-      body: JSON.stringify(dto),
-    });
+    return this.request(
+      "/inbound-email/stock-control/{companyId}/config".replace(
+        "{companyId}",
+        this.companyIdParam(),
+      ),
+      {
+        method: "PATCH",
+        body: JSON.stringify(dto),
+      },
+    );
   }
 
   async testInboundEmailConnection(): Promise<{ success: boolean; error?: string }> {
-    return this.request("/inbound-email/stock-control/{companyId}/test-connection".replace("{companyId}", this.companyIdParam()), {
-      method: "POST",
-    });
+    return this.request(
+      "/inbound-email/stock-control/{companyId}/test-connection".replace(
+        "{companyId}",
+        this.companyIdParam(),
+      ),
+      {
+        method: "POST",
+      },
+    );
   }
 
   async inboundEmails(filters?: {
@@ -4987,14 +5004,19 @@ class StockControlApiClient {
     if (filters?.page) params.set("page", String(filters.page));
     if (filters?.limit) params.set("limit", String(filters.limit));
     const qs = params.toString();
-    return this.request(`/inbound-email/stock-control/${this.companyIdParam()}/emails${qs ? `?${qs}` : ""}`);
+    return this.request(
+      `/inbound-email/stock-control/${this.companyIdParam()}/emails${qs ? `?${qs}` : ""}`,
+    );
   }
 
   async inboundEmailDetail(emailId: number): Promise<InboundEmail> {
     return this.request(`/inbound-email/stock-control/${this.companyIdParam()}/emails/${emailId}`);
   }
 
-  async reclassifyAttachment(attachmentId: number, documentType: string): Promise<InboundEmailAttachment> {
+  async reclassifyAttachment(
+    attachmentId: number,
+    documentType: string,
+  ): Promise<InboundEmailAttachment> {
     return this.request(`/inbound-email/attachments/${attachmentId}/reclassify`, {
       method: "PATCH",
       body: JSON.stringify({ documentType }),
