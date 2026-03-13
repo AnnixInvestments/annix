@@ -919,3 +919,15 @@ export function useInvalidateIssueStock() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.issueStock.all });
 }
+
+export function useScanQrCode() {
+  return useMutation({
+    mutationFn: (qrToken: string) => stockControlApiClient.scanQrCode(qrToken),
+  });
+}
+
+export function useDownloadStockItemQrPdf() {
+  return useMutation({
+    mutationFn: (id: number) => stockControlApiClient.downloadStockItemQrPdf(id),
+  });
+}

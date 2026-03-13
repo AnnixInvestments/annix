@@ -1,22 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { StaffMember, StockControlDepartment } from "@/app/lib/api/stockControlApi";
+import { useMemo, useState } from "react";
+import type { StaffMember } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useInvalidateStaff, useStaffDepartments, useStaffMembers } from "@/app/lib/query/hooks";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 
 export default function StaffPage() {
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [showActiveOnly, setShowActiveOnly] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
-  const [departments, setDepartments] = useState<StockControlDepartment[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     employeeNumber: "",
@@ -26,33 +24,17 @@ export default function StaffPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showLimitWarning, setShowLimitWarning] = useState(false);
 
-  const fetchStaff = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const params: { search?: string; active?: string } = {};
-      if (search) {
-        params.search = search;
-      }
-      if (showActiveOnly) {
-        params.active = "true";
-      }
-      const [data, depts] = await Promise.all([
-        stockControlApiClient.staffMembers(params),
-        stockControlApiClient.departments(),
-      ]);
-      setStaffMembers(Array.isArray(data) ? data : []);
-      setDepartments(depts);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load staff members");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [search, showActiveOnly]);
+  const staffParams = useMemo(
+    () => ({
+      ...(search ? { search } : {}),
+      ...(showActiveOnly ? { active: "true" } : {}),
+    }),
+    [search, showActiveOnly],
+  );
 
-  useEffect(() => {
-    fetchStaff();
-  }, [fetchStaff]);
+  const { data: staffMembers = [], isLoading } = useStaffMembers(staffParams);
+  const { data: departments = [] } = useStaffDepartments();
+  const invalidateStaff = useInvalidateStaff();
 
   const openCreateModal = () => {
     setEditingMember(null);
@@ -99,7 +81,7 @@ export default function StaffPage() {
 
       setShowModal(false);
       setCapturedFile(null);
-      fetchStaff();
+      invalidateStaff();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save staff member");
     } finally {
@@ -116,7 +98,7 @@ export default function StaffPage() {
           active: true,
         } as Partial<StaffMember>);
       }
-      fetchStaff();
+      invalidateStaff();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update staff member");
     }

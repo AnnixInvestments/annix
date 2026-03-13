@@ -3,57 +3,40 @@
 import { CheckCircle, Package, QrCode, Truck, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  AllocationSummary,
-  DispatchProgress,
-  DispatchScan,
-  JobCard,
-} from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useEffect, useRef, useState } from "react";
+import type { AllocationSummary } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
+import {
+  useCompleteDispatch,
+  useDispatchHistory,
+  useDispatchProgress,
+  useJobCardDetail,
+  useScanDispatchItem,
+  useScanQrCode,
+} from "@/app/lib/query/hooks";
 
 export default function DispatchPage() {
   const params = useParams();
   const router = useRouter();
   const jobId = Number(params.id);
 
-  const [jobCard, setJobCard] = useState<JobCard | null>(null);
-  const [progress, setProgress] = useState<DispatchProgress | null>(null);
-  const [history, setHistory] = useState<DispatchScan[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: jobCard, isLoading: isLoadingJob } = useJobCardDetail(jobId);
+  const { data: progress, isLoading: isLoadingProgress } = useDispatchProgress(jobId);
+  const { data: history = [] } = useDispatchHistory(jobId);
+
+  const scanQrCodeMutation = useScanQrCode();
+  const scanDispatchItemMutation = useScanDispatchItem();
+  const completeDispatchMutation = useCompleteDispatch();
+
   const [error, setError] = useState<string | null>(null);
   const [scanInput, setScanInput] = useState("");
-  const [isScanning, setIsScanning] = useState(false);
   const [scanQuantity, setScanQuantity] = useState(1);
   const [scanNotes, setScanNotes] = useState("");
   const [showScanModal, setShowScanModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<AllocationSummary | null>(null);
-  const [isCompleting, setIsCompleting] = useState(false);
   const scanInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [jobData, progressData, historyData] = await Promise.all([
-        stockControlApiClient.jobCardById(jobId),
-        stockControlApiClient.dispatchProgress(jobId),
-        stockControlApiClient.dispatchHistory(jobId),
-      ]);
-      setJobCard(jobData);
-      setProgress(progressData);
-      setHistory(historyData);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load dispatch data");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [jobId]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const isLoading = isLoadingJob || isLoadingProgress;
 
   useEffect(() => {
     if (scanInputRef.current && !showScanModal) {
@@ -66,8 +49,7 @@ export default function DispatchPage() {
     if (!scanInput.trim()) return;
 
     try {
-      setIsScanning(true);
-      const result = await stockControlApiClient.scanQrCode(scanInput.trim());
+      const result = await scanQrCodeMutation.mutateAsync(scanInput.trim());
 
       if (result.type === "job_card") {
         if (result.id !== jobId) {
@@ -90,7 +72,6 @@ export default function DispatchPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Scan failed");
     } finally {
-      setIsScanning(false);
       setScanInput("");
     }
   };
@@ -105,22 +86,18 @@ export default function DispatchPage() {
     if (!selectedItem) return;
 
     try {
-      setIsScanning(true);
-      await stockControlApiClient.scanDispatchItem(
-        jobId,
-        selectedItem.stockItemId,
-        scanQuantity,
-        scanNotes || undefined,
-      );
+      await scanDispatchItemMutation.mutateAsync({
+        jobCardId: jobId,
+        stockItemId: selectedItem.stockItemId,
+        quantity: scanQuantity,
+        notes: scanNotes || undefined,
+      });
       setShowScanModal(false);
       setSelectedItem(null);
       setScanQuantity(1);
       setScanNotes("");
-      fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Dispatch failed");
-    } finally {
-      setIsScanning(false);
     }
   };
 
@@ -131,13 +108,10 @@ export default function DispatchPage() {
     }
 
     try {
-      setIsCompleting(true);
-      await stockControlApiClient.completeDispatch(jobId);
+      await completeDispatchMutation.mutateAsync(jobId);
       router.push(`/stock-control/portal/job-cards/${jobId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to complete dispatch");
-    } finally {
-      setIsCompleting(false);
     }
   };
 
@@ -210,11 +184,11 @@ export default function DispatchPage() {
         {progress.isComplete && (
           <button
             onClick={handleCompleteDispatch}
-            disabled={isCompleting}
+            disabled={completeDispatchMutation.isPending}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
           >
             <CheckCircle className="w-4 h-4 mr-2" />
-            {isCompleting ? "Completing..." : "Complete Dispatch"}
+            {completeDispatchMutation.isPending ? "Completing..." : "Complete Dispatch"}
           </button>
         )}
       </div>
@@ -251,10 +225,10 @@ export default function DispatchPage() {
           />
           <button
             type="submit"
-            disabled={isScanning || !scanInput.trim()}
+            disabled={scanQrCodeMutation.isPending || !scanInput.trim()}
             className="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:bg-gray-300 font-medium"
           >
-            {isScanning ? "Scanning..." : "Scan"}
+            {scanQrCodeMutation.isPending ? "Scanning..." : "Scan"}
           </button>
         </form>
       </div>
@@ -460,10 +434,10 @@ export default function DispatchPage() {
                 </button>
                 <button
                   onClick={handleConfirmDispatch}
-                  disabled={isScanning}
+                  disabled={scanDispatchItemMutation.isPending}
                   className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:bg-gray-300"
                 >
-                  {isScanning ? "Dispatching..." : "Confirm Dispatch"}
+                  {scanDispatchItemMutation.isPending ? "Dispatching..." : "Confirm Dispatch"}
                 </button>
               </div>
             </div>

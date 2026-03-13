@@ -117,4 +117,19 @@ export const stockControlKeys = {
     recentIssuances: () => [...stockControlKeys.issueStock.all, "recent-issuances"] as const,
     linkedStaff: (id: number) => [...stockControlKeys.issueStock.all, "linked-staff", id] as const,
   },
+  positector: {
+    all: ["stock-control", "positector"] as const,
+    devices: () => [...stockControlKeys.positector.all, "devices"] as const,
+  },
+  staff: {
+    all: ["stock-control", "staff"] as const,
+    list: (params: { search?: string; active?: string }) =>
+      [...stockControlKeys.staff.all, "list", params] as const,
+    departments: () => [...stockControlKeys.staff.all, "departments"] as const,
+  },
+  settings: {
+    all: ["stock-control", "settings"] as const,
+    companyRoles: () => [...stockControlKeys.settings.all, "company-roles"] as const,
+    teamMembers: () => [...stockControlKeys.settings.all, "team-members"] as const,
+  },
 };

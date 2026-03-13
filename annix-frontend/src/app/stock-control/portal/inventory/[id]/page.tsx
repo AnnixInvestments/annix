@@ -2,11 +2,18 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import type { StockControlLocation, StockItem, StockMovement } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useCreateManualAdjustment,
+  useDownloadStockItemQrPdf,
+  useInventoryItemDetail,
+  useInventoryLocations,
+  useStockMovements,
+  useUpdateStockItem,
+  useUploadStockItemPhoto,
+} from "@/app/lib/query/hooks";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 import { formatZAR } from "@/app/stock-control/lib/currency";
 
@@ -25,18 +32,22 @@ export default function InventoryDetailPage() {
   const itemId = Number(params.id);
   const { user } = useStockControlAuth();
 
-  const [item, setItem] = useState<StockItem | null>(null);
-  const [movements, setMovements] = useState<StockMovement[]>([]);
-  const [locations, setLocations] = useState<StockControlLocation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { data: item, isLoading: isLoadingItem, error: itemError } = useInventoryItemDetail(itemId);
+  const { data: movements = [] } = useStockMovements(itemId);
+  const { data: locations = [] } = useInventoryLocations();
+
+  const updateStockItemMutation = useUpdateStockItem();
+  const createManualAdjustmentMutation = useCreateManualAdjustment();
+  const uploadPhotoMutation = useUploadStockItemPhoto();
+  const downloadQrMutation = useDownloadStockItemQrPdf();
+
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustForm, setAdjustForm] = useState({
     movementType: "in" as "in" | "out" | "adjustment",
     quantity: 0,
     notes: "",
   });
-  const [isAdjusting, setIsAdjusting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalForm, setModalForm] = useState({
     sku: "",
@@ -49,30 +60,12 @@ export default function InventoryDetailPage() {
     minStockLevel: 0,
     locationId: null as number | null,
   });
-  const [isSaving, setIsSaving] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [itemData, movementsData, locs] = await Promise.all([
-        stockControlApiClient.stockItemById(itemId),
-        stockControlApiClient.stockMovements({ stockItemId: itemId }),
-        stockControlApiClient.locations(),
-      ]);
-      setItem(itemData);
-      setMovements(Array.isArray(movementsData) ? movementsData : []);
-      setLocations(locs);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load item details"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [itemId]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const error = itemError
+    ? itemError instanceof Error
+      ? itemError.message
+      : "Failed to load item details"
+    : mutationError;
 
   const openEditModal = () => {
     if (!item) return;
@@ -92,22 +85,19 @@ export default function InventoryDetailPage() {
 
   const handleSave = async () => {
     try {
-      setIsSaving(true);
-      await stockControlApiClient.updateStockItem(itemId, modalForm);
+      setMutationError(null);
+      await updateStockItemMutation.mutateAsync({ id: itemId, data: modalForm });
       setShowModal(false);
-      fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to update item"));
-    } finally {
-      setIsSaving(false);
+      setMutationError(err instanceof Error ? err.message : "Failed to update item");
     }
   };
 
   const handleAdjust = async () => {
     if (adjustForm.quantity <= 0 && adjustForm.movementType !== "adjustment") return;
     try {
-      setIsAdjusting(true);
-      await stockControlApiClient.createManualAdjustment({
+      setMutationError(null);
+      await createManualAdjustmentMutation.mutateAsync({
         stockItemId: itemId,
         movementType: adjustForm.movementType,
         quantity: adjustForm.quantity,
@@ -115,43 +105,32 @@ export default function InventoryDetailPage() {
       });
       setShowAdjustModal(false);
       setAdjustForm({ movementType: "in", quantity: 0, notes: "" });
-      fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to adjust stock"));
-    } finally {
-      setIsAdjusting(false);
+      setMutationError(err instanceof Error ? err.message : "Failed to adjust stock");
     }
   };
 
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [isDownloadingQr, setIsDownloadingQr] = useState(false);
-
   const handlePrintQr = async () => {
     try {
-      setIsDownloadingQr(true);
-      await stockControlApiClient.downloadStockItemQrPdf(itemId);
+      setMutationError(null);
+      await downloadQrMutation.mutateAsync(itemId);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to download QR label"));
-    } finally {
-      setIsDownloadingQr(false);
+      setMutationError(err instanceof Error ? err.message : "Failed to download QR label");
     }
   };
 
   const handlePhotoCapture = async (file: File) => {
     try {
-      setIsUploadingPhoto(true);
-      const updatedItem = await stockControlApiClient.uploadStockItemPhoto(itemId, file);
-      setItem(updatedItem);
+      setMutationError(null);
+      await uploadPhotoMutation.mutateAsync({ id: itemId, file });
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to upload photo"));
-    } finally {
-      setIsUploadingPhoto(false);
+      setMutationError(err instanceof Error ? err.message : "Failed to upload photo");
     }
   };
 
   const canAdjustStock = user?.role === "manager" || user?.role === "admin";
 
-  if (isLoading) {
+  if (isLoadingItem) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -167,7 +146,7 @@ export default function InventoryDetailPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message || "Item not found"}</p>
+          <p className="text-gray-600">{error || "Item not found"}</p>
           <Link
             href="/stock-control/portal/inventory"
             className="mt-4 inline-block text-teal-600 hover:text-teal-800"
@@ -204,7 +183,7 @@ export default function InventoryDetailPage() {
         <div className="flex items-center space-x-3">
           <button
             onClick={handlePrintQr}
-            disabled={isDownloadingQr}
+            disabled={downloadQrMutation.isPending}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,7 +194,7 @@ export default function InventoryDetailPage() {
                 d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
               />
             </svg>
-            {isDownloadingQr ? "Generating..." : "Print QR"}
+            {downloadQrMutation.isPending ? "Generating..." : "Print QR"}
           </button>
           {canAdjustStock && (
             <button
@@ -341,7 +320,7 @@ export default function InventoryDetailPage() {
                   className="w-full rounded-lg object-cover mb-3"
                 />
               )}
-              {isUploadingPhoto ? (
+              {uploadPhotoMutation.isPending ? (
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
                   Uploading...
@@ -549,10 +528,10 @@ export default function InventoryDetailPage() {
                 </button>
                 <button
                   onClick={handleAdjust}
-                  disabled={isAdjusting}
+                  disabled={createManualAdjustmentMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isAdjusting ? "Adjusting..." : "Apply Adjustment"}
+                  {createManualAdjustmentMutation.isPending ? "Adjusting..." : "Apply Adjustment"}
                 </button>
               </div>
             </div>
@@ -694,10 +673,10 @@ export default function InventoryDetailPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={updateStockItemMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isSaving ? "Saving..." : "Update"}
+                  {updateStockItemMutation.isPending ? "Saving..." : "Update"}
                 </button>
               </div>
             </div>

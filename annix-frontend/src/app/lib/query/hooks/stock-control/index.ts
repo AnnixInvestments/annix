@@ -21,6 +21,24 @@ export {
   useWorkflowLaneCounts,
 } from "./useStockControlDashboard";
 export {
+  useCompileDataBook,
+  useInvalidatePositectorDevices,
+  usePositectorDevices,
+  useSearchBatch,
+  useSearchDataBook,
+} from "./useStockControlQuality";
+export {
+  useCompanyRoles,
+  useInvalidateCompanyRoles,
+  useInvalidateSettingsTeamMembers,
+  useSettingsTeamMembers,
+} from "./useStockControlSettings";
+export {
+  useInvalidateStaff,
+  useStaffDepartments,
+  useStaffMembers,
+} from "./useStockControlStaff";
+export {
   useAllocateStock,
   useAnalyzeDeliveryNote,
   useApproveOverAllocation,
@@ -55,6 +73,7 @@ export {
   useDeliveryNotes,
   useDispatchHistory,
   useDispatchProgress,
+  useDownloadStockItemQrPdf,
   useInvalidateCalibration,
   useInvalidateCertificates,
   useInvalidateCpos,
@@ -93,6 +112,7 @@ export {
   useRequisitionDetail,
   useRequisitions,
   useScanDispatchItem,
+  useScanQrCode,
   useStaffStockReport,
   useStockMovements,
   useStockValuationReport,

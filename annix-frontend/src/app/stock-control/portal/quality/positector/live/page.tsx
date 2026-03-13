@@ -14,6 +14,7 @@ import type {
   PositectorStreamingSession,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { usePositectorDevices } from "@/app/lib/query/hooks";
 import { QrScanner } from "@/app/stock-control/components/QrScanner";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
@@ -47,8 +48,7 @@ function specStatusDot(status: "in-spec" | "out-of-spec" | "unknown"): string {
 }
 
 export default function PositectorLiveStreamingPage() {
-  const [devices, setDevices] = useState<PositectorDevice[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: devices = [], isLoading } = usePositectorDevices();
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<PositectorStreamingSession | null>(null);
   const [readings, setReadings] = useState<PositectorStreamingReading[]>([]);
@@ -60,22 +60,6 @@ export default function PositectorLiveStreamingPage() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
-
-  const fetchDevices = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.positectorDevices({ active: true });
-      setDevices(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load devices");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDevices();
-  }, [fetchDevices]);
 
   const checkForActiveSessions = useCallback(async () => {
     try {

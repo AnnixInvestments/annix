@@ -10,6 +10,11 @@ import type {
   UserLocationSummary,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import {
+  useCompanyRoles,
+  useInvalidateCompanyRoles,
+  useSettingsTeamMembers,
+} from "@/app/lib/query/hooks";
 import { ALL_NAV_ITEMS, NAV_GROUP_ORDER } from "../../config/navItems";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
 import { roleLabel } from "../../lib/roleLabels";
@@ -22,44 +27,19 @@ export default function StockControlSettingsPage() {
   const router = useRouter();
   const { user } = useStockControlAuth();
 
-  const [companyRoles, setCompanyRoles] = useState<CompanyRole[]>([]);
-  const [companyRolesLoading, setCompanyRolesLoading] = useState(true);
-
-  const loadCompanyRoles = useCallback(async () => {
-    setCompanyRolesLoading(true);
-    try {
-      const data = await stockControlApiClient.companyRoles();
-      setCompanyRoles(data);
-    } catch {
-      setCompanyRoles([]);
-    } finally {
-      setCompanyRolesLoading(false);
-    }
-  }, []);
-
-  const [teamMembers, setTeamMembers] = useState<StockControlTeamMember[]>([]);
+  const isAdmin = user?.role === "admin";
+  const { data: companyRoles = [], isLoading: companyRolesLoading } = useCompanyRoles();
+  const invalidateCompanyRoles = useInvalidateCompanyRoles();
+  const { data: teamMembers = [] } = useSettingsTeamMembers();
   const [locations, setLocations] = useState<StockControlLocation[]>([]);
 
-  const loadTeamMembers = useCallback(async () => {
-    try {
-      const members = await stockControlApiClient.teamMembers();
-      setTeamMembers(members);
-    } catch {
-      setTeamMembers([]);
-    }
-  }, []);
-
   useEffect(() => {
-    if (user?.role !== "admin") {
+    if (!isAdmin) {
       router.push("/stock-control/portal/dashboard");
-      return;
     }
+  }, [isAdmin, router]);
 
-    loadTeamMembers();
-    loadCompanyRoles();
-  }, [user, router, loadTeamMembers, loadCompanyRoles]);
-
-  if (user?.role !== "admin") {
+  if (!isAdmin) {
     return null;
   }
 
@@ -70,7 +50,7 @@ export default function StockControlSettingsPage() {
       <MenuVisibilitySection
         roles={companyRoles}
         rolesLoading={companyRolesLoading}
-        onRolesChanged={loadCompanyRoles}
+        onRolesChanged={invalidateCompanyRoles}
       />
 
       <ActionPermissionsSection roles={companyRoles} rolesLoading={companyRolesLoading} />

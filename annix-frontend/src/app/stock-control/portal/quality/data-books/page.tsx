@@ -1,61 +1,45 @@
 "use client";
 
 import { useState } from "react";
-import type {
-  DataBookStatus,
-  IssuanceBatchRecord,
-  SupplierCertificate,
-} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useCompileDataBook, useSearchDataBook } from "@/app/lib/query/hooks";
 
 export default function DataBooksPage() {
   const [jobCardId, setJobCardId] = useState("");
-  const [status, setStatus] = useState<DataBookStatus | null>(null);
-  const [certs, setCerts] = useState<SupplierCertificate[]>([]);
-  const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isCompiling, setIsCompiling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const searchMutation = useSearchDataBook();
+  const compileMutation = useCompileDataBook();
 
   const handleSearch = async () => {
     const id = parseInt(jobCardId, 10);
     if (!id) return;
 
-    try {
-      setIsLoading(true);
-      setError(null);
-      const [statusRes, certsRes, recordsRes] = await Promise.all([
-        stockControlApiClient.dataBookStatus(id),
-        stockControlApiClient.certificatesForJobCard(id),
-        stockControlApiClient.batchRecordsForJobCard(id),
-      ]);
-      setStatus(statusRes);
-      setCerts(certsRes);
-      setBatchRecords(recordsRes);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load data book status");
-    } finally {
-      setIsLoading(false);
-    }
+    setError(null);
+    setSuccess(null);
+    searchMutation.mutate(id, {
+      onError: (err) => {
+        setError(err instanceof Error ? err.message : "Failed to load data book status");
+      },
+    });
   };
 
   const handleCompile = async () => {
     const id = parseInt(jobCardId, 10);
     if (!id) return;
 
-    try {
-      setIsCompiling(true);
-      setError(null);
-      const result = await stockControlApiClient.compileDataBook(id);
-      setSuccess(`Data book compiled with ${result.certificateCount} certificates`);
-      handleSearch();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to compile data book");
-    } finally {
-      setIsCompiling(false);
-    }
+    setError(null);
+    compileMutation.mutate(id, {
+      onSuccess: (result) => {
+        setSuccess(`Data book compiled with ${result.certificateCount} certificates`);
+        searchMutation.mutate(id);
+      },
+      onError: (err) => {
+        setError(err instanceof Error ? err.message : "Failed to compile data book");
+      },
+    });
   };
 
   const handleDownload = async () => {
@@ -68,6 +52,10 @@ export default function DataBooksPage() {
       setError(err instanceof Error ? err.message : "Failed to download data book");
     }
   };
+
+  const status = searchMutation.data?.status ?? null;
+  const certs = searchMutation.data?.certs ?? [];
+  const batchRecords = searchMutation.data?.batchRecords ?? [];
 
   return (
     <div className="space-y-6">
@@ -86,10 +74,10 @@ export default function DataBooksPage() {
           />
           <button
             onClick={handleSearch}
-            disabled={!jobCardId || isLoading}
+            disabled={!jobCardId || searchMutation.isPending}
             className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
           >
-            {isLoading ? "Loading..." : "Search"}
+            {searchMutation.isPending ? "Loading..." : "Search"}
           </button>
         </div>
 
@@ -124,10 +112,10 @@ export default function DataBooksPage() {
                 {status.certificateCount > 0 && (
                   <button
                     onClick={handleCompile}
-                    disabled={isCompiling}
+                    disabled={compileMutation.isPending}
                     className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
                   >
-                    {isCompiling
+                    {compileMutation.isPending
                       ? "Compiling..."
                       : status.exists
                         ? "Recompile"

@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import type { CpoCalloffRecord, CustomerPurchaseOrder } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useState } from "react";
+import type { CpoCalloffRecord } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
+import {
+  useCpoCalloffRecords,
+  useCpoDetail,
+  useUpdateCalloffRecordStatus,
+  useUpdateCpoStatus,
+} from "@/app/lib/query/hooks";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -70,44 +75,29 @@ function itemFulfillmentPercent(ordered: number, fulfilled: number): number {
 export default function CpoDetailPage() {
   const params = useParams();
   const id = Number(params.id);
-  const [cpo, setCpo] = useState<CustomerPurchaseOrder | null>(null);
-  const [calloffRecords, setCalloffRecords] = useState<CpoCalloffRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  const { data: cpo, isLoading: isLoadingCpo, error: cpoError } = useCpoDetail(id);
+  const { data: calloffRecords = [] } = useCpoCalloffRecords(id);
+
+  const updateCpoStatusMutation = useUpdateCpoStatus();
+  const updateCalloffRecordStatusMutation = useUpdateCalloffRecordStatus();
+
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const [updatingRecordId, setUpdatingRecordId] = useState<number | null>(null);
 
-  const fetchCpo = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [cpoData, records] = await Promise.all([
-        stockControlApiClient.cpoById(id),
-        stockControlApiClient.cpoCalloffRecords(id),
-      ]);
-      setCpo(cpoData);
-      setCalloffRecords(Array.isArray(records) ? records : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load CPO");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    fetchCpo();
-  }, [fetchCpo]);
+  const error = cpoError
+    ? cpoError instanceof Error
+      ? cpoError.message
+      : "Failed to load CPO"
+    : mutationError;
 
   const handleStatusChange = async (newStatus: string) => {
     if (!cpo) return;
     try {
-      setIsUpdatingStatus(true);
-      const updated = await stockControlApiClient.updateCpoStatus(cpo.id, newStatus);
-      setCpo(updated);
+      setMutationError(null);
+      await updateCpoStatusMutation.mutateAsync({ id: cpo.id, status: newStatus });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status");
-    } finally {
-      setIsUpdatingStatus(false);
+      setMutationError(err instanceof Error ? err.message : "Failed to update status");
     }
   };
 
@@ -116,16 +106,20 @@ export default function CpoDetailPage() {
     if (!next) return;
     try {
       setUpdatingRecordId(record.id);
-      const updated = await stockControlApiClient.updateCalloffRecordStatus(record.id, next);
-      setCalloffRecords((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      setMutationError(null);
+      await updateCalloffRecordStatusMutation.mutateAsync({
+        recordId: record.id,
+        status: next,
+        cpoId: id,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update calloff status");
+      setMutationError(err instanceof Error ? err.message : "Failed to update calloff status");
     } finally {
       setUpdatingRecordId(null);
     }
   };
 
-  if (isLoading) {
+  if (isLoadingCpo) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -196,14 +190,14 @@ export default function CpoDetailPage() {
             <>
               <button
                 onClick={() => handleStatusChange("fulfilled")}
-                disabled={isUpdatingStatus}
+                disabled={updateCpoStatusMutation.isPending}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
               >
                 Mark Fulfilled
               </button>
               <button
                 onClick={() => handleStatusChange("cancelled")}
-                disabled={isUpdatingStatus}
+                disabled={updateCpoStatusMutation.isPending}
                 className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
               >
                 Cancel

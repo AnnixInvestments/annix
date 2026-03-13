@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type {
   PositectorBatchDetail,
   PositectorBatchSummary,
@@ -9,6 +9,7 @@ import type {
   PositectorImportResult,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useInvalidatePositectorDevices, usePositectorDevices } from "@/app/lib/query/hooks";
 
 const PROBE_TYPE_LABELS: Record<string, string> = {
   "6000": "DFT (Coating Thickness)",
@@ -35,9 +36,13 @@ function probeTypeLabel(probeType: string | null): string {
 }
 
 export default function PositectorPage() {
-  const [devices, setDevices] = useState<PositectorDevice[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: devices = [],
+    isLoading,
+    error: devicesError,
+  } = usePositectorDevices();
+  const invalidateDevices = useInvalidatePositectorDevices();
+  const [error, setError] = useState<string | null>(devicesError?.message ?? null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [connectionStatuses, setConnectionStatuses] = useState<
     Record<number, PositectorConnectionStatus>
@@ -50,23 +55,6 @@ export default function PositectorPage() {
   const [loadingBatch, setLoadingBatch] = useState(false);
   const [showImportWizard, setShowImportWizard] = useState(false);
   const [lastImportResult, setLastImportResult] = useState<PositectorImportResult | null>(null);
-
-  const fetchDevices = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.positectorDevices({ active: true });
-      setDevices(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load devices");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDevices();
-  }, [fetchDevices]);
 
   const handleCheckConnection = async (deviceId: number) => {
     try {
@@ -111,7 +99,7 @@ export default function PositectorPage() {
   const handleDelete = async (id: number) => {
     try {
       await stockControlApiClient.deletePositectorDevice(id);
-      setDevices((prev) => prev.filter((d) => d.id !== id));
+      invalidateDevices();
       if (selectedDevice?.id === id) {
         setSelectedDevice(null);
         setBatches([]);
@@ -456,7 +444,7 @@ export default function PositectorPage() {
           onClose={() => setShowAddModal(false)}
           onAdded={() => {
             setShowAddModal(false);
-            fetchDevices();
+            invalidateDevices();
           }}
         />
       )}

@@ -1,36 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import type { IssuanceBatchRecord, SupplierCertificate } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useSearchBatch } from "@/app/lib/query/hooks";
 
 export default function BatchLookupPage() {
   const [batchNumber, setBatchNumber] = useState("");
-  const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
-  const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  const handleSearch = async () => {
+  const searchMutation = useSearchBatch();
+
+  const handleSearch = () => {
     if (!batchNumber.trim()) return;
 
-    try {
-      setIsLoading(true);
-      const [certsData, recordsData] = await Promise.all([
-        stockControlApiClient.certificatesByBatchNumber(batchNumber.trim()),
-        stockControlApiClient.batchRecordsByBatchNumber(batchNumber.trim()),
-      ]);
-      setCertificates(certsData);
-      setBatchRecords(recordsData);
-      setSearched(true);
-    } catch {
-      setCertificates([]);
-      setBatchRecords([]);
-      setSearched(true);
-    } finally {
-      setIsLoading(false);
-    }
+    setSearched(false);
+    searchMutation.mutate(batchNumber.trim(), {
+      onSettled: () => {
+        setSearched(true);
+      },
+    });
   };
 
   const handleView = async (id: number) => {
@@ -40,9 +29,12 @@ export default function BatchLookupPage() {
         window.open(cert.downloadUrl, "_blank");
       }
     } catch {
-      setCertificates((prev) => prev);
+      // View failed silently
     }
   };
+
+  const certificates = searchMutation.data?.certificates ?? [];
+  const batchRecords = searchMutation.data?.batchRecords ?? [];
 
   return (
     <div className="space-y-6">
@@ -62,10 +54,10 @@ export default function BatchLookupPage() {
           />
           <button
             onClick={handleSearch}
-            disabled={!batchNumber.trim() || isLoading}
+            disabled={!batchNumber.trim() || searchMutation.isPending}
             className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
           >
-            {isLoading ? "Searching..." : "Search"}
+            {searchMutation.isPending ? "Searching..." : "Search"}
           </button>
         </div>
 
