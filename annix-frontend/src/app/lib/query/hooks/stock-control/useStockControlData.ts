@@ -1,18 +1,33 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CalibrationCertificate,
+  CostByJob,
+  CpoCalloffBreakdown,
   CpoCalloffRecord,
+  CpoFulfillmentReportItem,
+  CpoOverdueInvoiceItem,
   CustomerPurchaseOrder,
   DeliveryNote,
   DispatchProgress,
   DispatchScan,
   JobCard,
+  JobCardApproval,
   Requisition,
+  StaffMember,
+  StaffStockFilters,
+  StaffStockReportResult,
+  StockAllocation,
+  StockControlDepartment,
   StockControlLocation,
+  StockControlSupplierDto,
+  StockIssuance,
   StockItem,
   StockMovement,
+  StockValuation,
+  SupplierCertificate,
   SupplierInvoice,
   WorkflowNotification,
+  WorkflowStatus,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { stockControlKeys } from "../../keys/stockControlKeys";
