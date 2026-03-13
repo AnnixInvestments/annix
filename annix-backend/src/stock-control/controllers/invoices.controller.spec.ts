@@ -139,7 +139,7 @@ describe("InvoicesController", () => {
       const invoices = [{ id: 1 }];
       const invoiceIds = [1];
       sageAdapter.exportableInvoices.mockResolvedValue({ invoices, invoiceIds } as any);
-      sageExportService.generateCsv.mockReturnValue("csv-data");
+      sageExportService.generateCsv.mockReturnValue(Buffer.from("csv-data"));
 
       const res = {
         setHeader: jest.fn(),

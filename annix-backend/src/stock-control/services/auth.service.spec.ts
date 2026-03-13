@@ -243,7 +243,7 @@ describe("StockControlAuthService", () => {
         "invited@example.com",
         "password",
         "Invited",
-        null,
+        undefined,
         "invite-token",
       );
 
@@ -257,7 +257,7 @@ describe("StockControlAuthService", () => {
       mockInvitationRepo.findOne.mockResolvedValue(null);
 
       await expect(
-        service.register("test@example.com", "password", "Test", null, "bad-token"),
+        service.register("test@example.com", "password", "Test", undefined, "bad-token"),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -274,7 +274,7 @@ describe("StockControlAuthService", () => {
       mockInvitationRepo.findOne.mockResolvedValue(invitation);
 
       await expect(
-        service.register("test@example.com", "password", "Test", null, "expired-token"),
+        service.register("test@example.com", "password", "Test", undefined, "expired-token"),
       ).rejects.toThrow(BadRequestException);
       expect(invitation.status).toBe(StockControlInvitationStatus.EXPIRED);
     });
@@ -720,7 +720,7 @@ describe("StockControlAuthService", () => {
 
   describe("setBranding", () => {
     it("sets custom branding on company", async () => {
-      mockCompanyRepo.findOne.mockResolvedValue({ id: 10, ...baseUser.company });
+      mockCompanyRepo.findOne.mockResolvedValue({ ...baseUser.company, id: 10 });
 
       const result = await service.setBranding(
         10,
@@ -738,7 +738,7 @@ describe("StockControlAuthService", () => {
     });
 
     it("resets branding fields when set to annix", async () => {
-      const company = { id: 10, ...baseUser.company };
+      const company = { ...baseUser.company, id: 10 };
       mockCompanyRepo.findOne.mockResolvedValue(company);
 
       await service.setBranding(10, BrandingType.ANNIX);
@@ -764,7 +764,7 @@ describe("StockControlAuthService", () => {
 
   describe("updateCompanyDetails", () => {
     it("updates company details", async () => {
-      mockCompanyRepo.findOne.mockResolvedValue({ id: 10, ...baseUser.company });
+      mockCompanyRepo.findOne.mockResolvedValue({ ...baseUser.company, id: 10 });
 
       const result = await service.updateCompanyDetails(10, {
         name: "Updated Company",

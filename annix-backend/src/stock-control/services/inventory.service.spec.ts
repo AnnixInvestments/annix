@@ -590,7 +590,7 @@ describe("InventoryService", () => {
     it("applies location filter", async () => {
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
 
-      await service.groupedByCategory(1, null, 5);
+      await service.groupedByCategory(1, undefined, 5);
 
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith("item.location_id = :locationId", {
         locationId: 5,
