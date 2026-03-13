@@ -9,8 +9,8 @@ import {
   MeetingStatus,
   MeetingType,
   RecordingProcessingStatus,
-} from "../src/fieldflow/entities";
-import { AnnixRepModule } from "../src/fieldflow/fieldflow.module";
+} from "../src/annix-rep/entities";
+import { AnnixRepModule } from "../src/annix-rep/annix-rep.module";
 import { User } from "../src/user/entities/user.entity";
 
 describe("RecordingController (e2e)", () => {

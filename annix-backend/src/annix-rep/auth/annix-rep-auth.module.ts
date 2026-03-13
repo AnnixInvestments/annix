@@ -6,8 +6,8 @@ import { TeamMember } from "../entities/team-member.entity";
 import { RepProfile } from "../rep-profile/rep-profile.entity";
 import { TeamService } from "../services/team.service";
 import { AnnixRepSession } from "./entities";
-import { AnnixRepAuthController } from "./fieldflow-auth.controller";
-import { AnnixRepAuthService } from "./fieldflow-auth.service";
+import { AnnixRepAuthController } from "./annix-rep-auth.controller";
+import { AnnixRepAuthService } from "./annix-rep-auth.service";
 import { AnnixRepAuthGuard, TeamRoleGuard } from "./guards";
 import { OAuthLoginProvider } from "./oauth-login.provider";
 

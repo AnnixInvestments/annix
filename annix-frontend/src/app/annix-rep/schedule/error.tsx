@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { PageErrorFallback } from "../components/ErrorBoundary";
 
 export default function ScheduleError(props: {
@@ -8,9 +7,6 @@ export default function ScheduleError(props: {
   reset: () => void;
 }) {
   const { error, reset } = props;
-  useEffect(() => {
-    console.error("Schedule error:", error);
-  }, [error]);
 
   return (
     <PageErrorFallback

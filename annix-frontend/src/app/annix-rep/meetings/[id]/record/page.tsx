@@ -9,7 +9,7 @@ import {
   RECORDING_CHUNK_INTERVAL_MS,
   RECORDING_MIME_TYPE,
   RECORDING_SAMPLE_RATE,
-} from "@/app/fieldflow/config/recording";
+} from "@/app/annix-rep/config/recording";
 import { nowMillis } from "@/app/lib/datetime";
 import {
   useCompleteRecordingUpload,

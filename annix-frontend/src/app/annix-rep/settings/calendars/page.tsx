@@ -481,7 +481,7 @@ export default function CalendarsSettingsPage() {
       )}
 
       {connections && connections.length > 0 && (
-        <Link href="/fieldflow/settings/calendars/conflicts">
+        <Link href="/annix-rep/settings/calendars/conflicts">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">

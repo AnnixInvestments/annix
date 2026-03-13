@@ -195,8 +195,7 @@ export default function RepSetupPage() {
           formData.customSearchTerms.length > 0 ? formData.customSearchTerms : undefined,
       });
       setStep("complete");
-    } catch (error) {
-      console.error("Failed to save profile:", error);
+    } catch {
     }
   };
 

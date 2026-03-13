@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RECORDING_SAMPLE_RATE } from "@/app/fieldflow/config/recording";
+import { RECORDING_SAMPLE_RATE } from "@/app/annix-rep/config/recording";
 
 export type RecordingState = "idle" | "requesting" | "recording" | "paused" | "stopped" | "error";
 export type SpeechState = "silence" | "speech";

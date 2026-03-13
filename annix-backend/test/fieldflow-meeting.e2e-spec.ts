@@ -2,8 +2,8 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
-import { Meeting, MeetingStatus, MeetingType, Prospect } from "../src/fieldflow/entities";
-import { AnnixRepModule } from "../src/fieldflow/fieldflow.module";
+import { Meeting, MeetingStatus, MeetingType, Prospect } from "../src/annix-rep/entities";
+import { AnnixRepModule } from "../src/annix-rep/annix-rep.module";
 import { User } from "../src/user/entities/user.entity";
 
 describe("MeetingController (e2e)", () => {

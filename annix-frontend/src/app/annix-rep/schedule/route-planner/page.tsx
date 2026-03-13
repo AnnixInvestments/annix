@@ -294,9 +294,7 @@ export default function RoutePlannerPage() {
             lng: position.coords.longitude,
           });
         },
-        () => {
-          console.log("Geolocation permission denied or unavailable");
-        },
+        () => {},
       );
     }
   }, []);

@@ -405,9 +405,8 @@ function OAuthProviderCard({
           setIsConnecting(false);
         }
       }, 1000);
-    } catch (error) {
+    } catch {
       setIsConnecting(false);
-      console.error("Failed to get OAuth URL:", error);
     }
   };
 

@@ -575,28 +575,25 @@ function CreateProspectModal({
 }
 
 function parseCsvLine(line: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
+  const state = Array.from(line).reduce(
+    (acc, char, i) => {
+      if (acc.skip) {
+        return { ...acc, skip: false };
       }
-    } else if (char === "," && !inQuotes) {
-      result.push(current.trim());
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  result.push(current.trim());
-  return result;
+      if (char === '"') {
+        if (acc.inQuotes && line[i + 1] === '"') {
+          return { ...acc, current: acc.current + '"', skip: true };
+        }
+        return { ...acc, inQuotes: !acc.inQuotes };
+      }
+      if (char === "," && !acc.inQuotes) {
+        return { ...acc, fields: [...acc.fields, acc.current.trim()], current: "" };
+      }
+      return { ...acc, current: acc.current + char };
+    },
+    { fields: [] as string[], current: "", inQuotes: false, skip: false },
+  );
+  return [...state.fields, state.current.trim()];
 }
 
 function parseCsv(text: string): ImportProspectRow[] {

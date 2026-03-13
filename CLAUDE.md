@@ -185,8 +185,8 @@ All apps follow the same **semantic versioning** rules (major.minor.patch):
 | Stock Control | `annix-frontend/src/app/stock-control/config/version.ts` | `STOCK_CONTROL_VERSION` | Toolbar header, Settings > App Info |
 | RFQ | `annix-frontend/src/app/lib/config/rfq/version.ts` | `RFQ_VERSION` | PortalToolbar (admin/customer/supplier) |
 | AU Rubber | `annix-frontend/src/app/au-rubber/config/version.ts` | `AU_RUBBER_VERSION` | AuHeader |
-| FieldFlow/Voice | `annix-frontend/src/app/fieldflow/config/version.ts` | `FIELDFLOW_VERSION` | PortalToolbar |
-| Annix Rep | `annix-frontend/src/app/fieldflow/config/annix-rep-version.ts` | `ANNIX_REP_VERSION` | PortalToolbar |
+| FieldFlow/Voice | `annix-frontend/src/app/annix-rep/config/version.ts` | `FIELDFLOW_VERSION` | PortalToolbar |
+| Annix Rep | `annix-frontend/src/app/annix-rep/config/annix-rep-version.ts` | `ANNIX_REP_VERSION` | PortalToolbar |
 | CV Assistant | `annix-frontend/src/app/cv-assistant/config/version.ts` | `CV_ASSISTANT_VERSION` | Portal layout header |
 
 ## Communication

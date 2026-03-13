@@ -47,7 +47,7 @@ function PlatformOAuthCallbackContent() {
       return;
     }
 
-    const redirectUri = `${window.location.origin}/fieldflow/settings/integrations/callback`;
+    const redirectUri = `${window.location.origin}/annix-rep/settings/integrations/callback`;
 
     connectPlatform.mutate(
       {
@@ -78,7 +78,7 @@ function PlatformOAuthCallbackContent() {
     if (window.opener) {
       window.close();
     } else {
-      router.push("/fieldflow/settings/integrations");
+      router.push("/annix-rep/settings/integrations");
     }
   };
 

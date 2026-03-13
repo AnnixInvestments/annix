@@ -174,7 +174,7 @@ export function RecurrenceEditor(props: RecurrenceEditorProps) {
   );
 }
 
-function summarizeRecurrence(options: RecurrenceOptions): string {
+export function summarizeRecurrence(options: RecurrenceOptions): string {
   const interval = options.interval ?? 1;
   let summary = "Repeats ";
 

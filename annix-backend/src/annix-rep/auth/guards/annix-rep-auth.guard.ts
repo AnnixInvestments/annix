@@ -5,7 +5,7 @@ import { isString } from "es-toolkit/compat";
 import { Request } from "express";
 import { TeamRole } from "../../entities/team-member.entity";
 import { TeamService } from "../../services/team.service";
-import { AnnixRepAuthService, AnnixRepJwtPayload } from "../fieldflow-auth.service";
+import { AnnixRepAuthService, AnnixRepJwtPayload } from "../annix-rep-auth.service";
 
 export interface AnnixRepUser {
   userId: number;

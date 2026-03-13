@@ -1,1 +1,1 @@
-export * from "./fieldflow-session.entity";
+export * from "./annix-rep-session.entity";

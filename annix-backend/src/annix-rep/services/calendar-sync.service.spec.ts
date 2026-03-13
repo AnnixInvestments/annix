@@ -46,7 +46,8 @@ describe("CalendarSyncService", () => {
     };
 
     mockCalendarService = {
-      syncCalendar: jest.fn().mockResolvedValue(undefined),
+      refreshTokenIfNeeded: jest.fn().mockResolvedValue(null),
+      syncConnectionInternal: jest.fn().mockResolvedValue(null),
     };
 
     const module: TestingModule = await Test.createTestingModule({

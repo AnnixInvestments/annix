@@ -127,7 +127,7 @@ function RecordingCard({ record }: { record: PlatformMeetingRecord }) {
       {record.meetingId && (
         <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-700">
           <Link
-            href={`/fieldflow/meetings/${record.meetingId}`}
+            href={`/annix-rep/meetings/${record.meetingId}`}
             className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
           >
             <svg
@@ -179,7 +179,7 @@ export default function PlatformRecordingsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/fieldflow/settings/integrations"
+          href="/annix-rep/settings/integrations"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg

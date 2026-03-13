@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { PageErrorFallback } from "./components/ErrorBoundary";
 
 export default function AnnixRepError(props: {
@@ -8,9 +7,6 @@ export default function AnnixRepError(props: {
   reset: () => void;
 }) {
   const { error, reset } = props;
-  useEffect(() => {
-    console.error("Annix Rep error:", error);
-  }, [error]);
 
   return (
     <PageErrorFallback

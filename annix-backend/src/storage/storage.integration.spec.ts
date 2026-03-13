@@ -53,7 +53,7 @@ describe("Storage Integration Tests", () => {
     it("should have correct area prefixes", () => {
       expect(StorageArea.ANNIX_APP).toBe("annix-app");
       expect(StorageArea.AU_RUBBER).toBe("au-rubber");
-      expect(StorageArea.FIELDFLOW).toBe("fieldflow");
+      expect(StorageArea.ANNIX_REP).toBe("fieldflow");
       expect(StorageArea.CV_ASSISTANT).toBe("cv-assistant");
       expect(StorageArea.SECURE_DOCUMENTS).toBe("secure-documents");
       expect(StorageArea.STOCK_CONTROL).toBe("stock-control");
@@ -133,11 +133,11 @@ describe("Storage Integration Tests", () => {
       it("should upload to fieldflow/recordings path", async () => {
         const file = createMockFile("meeting-recording.webm", "audio/webm");
         const meetingId = 101;
-        const subPath = `${StorageArea.FIELDFLOW}/recordings/${meetingId}`;
+        const subPath = `${StorageArea.ANNIX_REP}/recordings/${meetingId}`;
 
         const result = await storageService.upload(file, subPath);
 
-        expect(result.path).toMatch(new RegExp(`^${StorageArea.FIELDFLOW}/recordings/101/`));
+        expect(result.path).toMatch(new RegExp(`^${StorageArea.ANNIX_REP}/recordings/101/`));
         expect(result.mimeType).toBe("audio/webm");
       });
     });
@@ -252,7 +252,7 @@ describe("Storage Integration Tests", () => {
       mockFsPromises.access.mockResolvedValue(undefined);
 
       const result = await storageService.exists(
-        `${StorageArea.FIELDFLOW}/recordings/1/audio.webm`,
+        `${StorageArea.ANNIX_REP}/recordings/1/audio.webm`,
       );
 
       expect(result).toBe(true);
@@ -262,7 +262,7 @@ describe("Storage Integration Tests", () => {
       mockFsPromises.access.mockRejectedValue(new Error("ENOENT"));
 
       const result = await storageService.exists(
-        `${StorageArea.FIELDFLOW}/recordings/999/missing.webm`,
+        `${StorageArea.ANNIX_REP}/recordings/999/missing.webm`,
       );
 
       expect(result).toBe(false);
@@ -292,7 +292,7 @@ describe("Storage Integration Tests", () => {
 
   describe("Presigned URLs", () => {
     it("should generate presigned URL for file access", async () => {
-      const path = `${StorageArea.FIELDFLOW}/recordings/1/audio.webm`;
+      const path = `${StorageArea.ANNIX_REP}/recordings/1/audio.webm`;
 
       const url = await storageService.getPresignedUrl(path, 3600);
 
@@ -339,11 +339,11 @@ describe("Storage Integration Tests", () => {
 
       const webmResult = await storageService.upload(
         webmFile,
-        `${StorageArea.FIELDFLOW}/recordings/1`,
+        `${StorageArea.ANNIX_REP}/recordings/1`,
       );
       const mp3Result = await storageService.upload(
         mp3File,
-        `${StorageArea.FIELDFLOW}/recordings/1`,
+        `${StorageArea.ANNIX_REP}/recordings/1`,
       );
 
       expect(webmResult.mimeType).toBe("audio/webm");
@@ -367,7 +367,7 @@ describe("Storage Integration Tests", () => {
         stream: null as unknown as Readable,
       };
 
-      const result = await storageService.upload(file, `${StorageArea.FIELDFLOW}/recordings/1`);
+      const result = await storageService.upload(file, `${StorageArea.ANNIX_REP}/recordings/1`);
 
       expect(result.size).toBe(10 * 1024 * 1024);
     });

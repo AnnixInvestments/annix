@@ -485,7 +485,7 @@ export default function MeetingDetailPage() {
                   </div>
                   <div className="flex gap-2">
                     <Link
-                      href={`/fieldflow/meetings/${meetingId}/transcript`}
+                      href={`/annix-rep/meetings/${meetingId}/transcript`}
                       className="flex-1 px-3 py-1.5 text-sm font-medium text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md text-center"
                     >
                       View Live Transcript

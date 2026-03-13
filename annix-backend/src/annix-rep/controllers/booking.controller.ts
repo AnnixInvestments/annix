@@ -18,6 +18,7 @@ import {
   CreateBookingLinkDto,
   UpdateBookingLinkDto,
 } from "../dto/booking.dto";
+import { BookingLink } from "../entities/booking-link.entity";
 import { BookingService } from "../services/booking.service";
 
 interface AnnixRepRequest extends Request {
@@ -94,7 +95,7 @@ export class BookingController {
     await this.bookingService.deleteLink(req.annixRepUser.userId, id);
   }
 
-  private toResponseDto(link: any): BookingLinkResponseDto {
+  private toResponseDto(link: BookingLink): BookingLinkResponseDto {
     return {
       id: link.id,
       userId: link.userId,

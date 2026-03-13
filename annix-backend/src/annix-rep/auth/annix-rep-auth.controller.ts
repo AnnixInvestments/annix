@@ -23,7 +23,7 @@ import {
   AnnixRepRegisterDto,
   CheckEmailResponseDto,
 } from "./dto";
-import { AnnixRepAuthService } from "./fieldflow-auth.service";
+import { AnnixRepAuthService } from "./annix-rep-auth.service";
 import { AnnixRepAuthGuard } from "./guards";
 import { OAuthProvider } from "./oauth-login.provider";
 

@@ -2,8 +2,8 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
-import { RepProfile } from "../src/fieldflow/rep-profile/rep-profile.entity";
-import { RepProfileModule } from "../src/fieldflow/rep-profile/rep-profile.module";
+import { RepProfile } from "../src/annix-rep/rep-profile/rep-profile.entity";
+import { RepProfileModule } from "../src/annix-rep/rep-profile/rep-profile.module";
 import { User } from "../src/user/entities/user.entity";
 
 describe("RepProfileController - Setup Flow (e2e)", () => {

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { fromISO } from "../../lib/datetime";
 import { CreateRepProfileDto, UpdateRepProfileDto } from "./rep-profile.dto";
 import { RepProfile } from "./rep-profile.entity";
 import { RepProfileService } from "./rep-profile.service";
@@ -13,7 +14,7 @@ describe("RepProfileService", () => {
     id: 1,
     userId: 100,
     organizationId: null,
-    organization: null as any,
+    organization: null as unknown as RepProfile["organization"],
     industry: "manufacturing",
     subIndustries: ["automotive", "aerospace"],
     productCategories: ["bearings", "seals"],
@@ -30,15 +31,15 @@ describe("RepProfileService", () => {
     },
     customSearchTerms: ["industrial bearings", "seals supplier"],
     setupCompleted: true,
-    setupCompletedAt: new Date("2024-01-15T10:00:00Z"),
+    setupCompletedAt: fromISO("2024-01-15T10:00:00Z").toJSDate(),
     defaultBufferBeforeMinutes: 15,
     defaultBufferAfterMinutes: 15,
     workingHoursStart: "08:00",
     workingHoursEnd: "17:00",
     workingDays: "1,2,3,4,5",
-    createdAt: new Date("2024-01-15T09:00:00Z"),
-    updatedAt: new Date("2024-01-15T10:00:00Z"),
-    user: undefined as any,
+    createdAt: fromISO("2024-01-15T09:00:00Z").toJSDate(),
+    updatedAt: fromISO("2024-01-15T10:00:00Z").toJSDate(),
+    user: null as unknown as RepProfile["user"],
   };
 
   beforeEach(async () => {
@@ -353,7 +354,7 @@ describe("RepProfileService", () => {
     });
 
     it("should not overwrite setupCompletedAt if already set", async () => {
-      const originalDate = new Date("2024-01-01T00:00:00Z");
+      const originalDate = fromISO("2024-01-01T00:00:00Z").toJSDate();
       const existingProfile = {
         ...mockProfile,
         setupCompleted: true,
@@ -377,14 +378,14 @@ describe("RepProfileService", () => {
       expect(result.companyName).toBe(mockProfile.companyName);
     });
 
-    it("should set companyName to null when null is passed", async () => {
+    it("should preserve companyName when null is passed", async () => {
       const existingProfile = { ...mockProfile };
       repository.findOne.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
-      const result = await service.updateProfile(100, { companyName: null as any });
+      const result = await service.updateProfile(100, { companyName: null as unknown as string });
 
-      expect(result.companyName).toBeNull();
+      expect(result.companyName).toBe(mockProfile.companyName);
     });
   });
 

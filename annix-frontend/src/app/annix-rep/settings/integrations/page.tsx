@@ -307,7 +307,7 @@ function ConnectionCard({
           )}
         </button>
         <Link
-          href={`/fieldflow/settings/integrations/${connection.id}/recordings`}
+          href={`/annix-rep/settings/integrations/${connection.id}/recordings`}
           className="px-3 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700"
         >
           View Recordings
@@ -351,7 +351,7 @@ function PlatformConnectCard({
   const handleConnect = async () => {
     setIsConnecting(true);
     try {
-      const redirectUri = `${window.location.origin}/fieldflow/settings/integrations/callback`;
+      const redirectUri = `${window.location.origin}/annix-rep/settings/integrations/callback`;
       const { url } = await annixRepApi.meetingPlatforms.oauthUrl(platform.id, redirectUri);
 
       const width = 600;
@@ -377,9 +377,8 @@ function PlatformConnectCard({
           setIsConnecting(false);
         }
       }, 1000);
-    } catch (error) {
+    } catch {
       setIsConnecting(false);
-      console.error("Failed to get OAuth URL:", error);
     }
   };
 
@@ -480,7 +479,7 @@ export default function IntegrationsSettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/fieldflow/settings"
+          href="/annix-rep/settings"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg
@@ -613,7 +612,7 @@ export default function IntegrationsSettingsPage() {
               {activeBotSessions.map((session) => (
                 <Link
                   key={session.id}
-                  href={`/fieldflow/meetings/${session.meetingId}/transcript`}
+                  href={`/annix-rep/meetings/${session.meetingId}/transcript`}
                   className="block bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
                 >
                   <div className="flex items-center justify-between">

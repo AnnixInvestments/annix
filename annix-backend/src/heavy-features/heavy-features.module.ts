@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AdminModule } from "../admin/admin.module";
 import { CvAssistantModule } from "../cv-assistant/cv-assistant.module";
-import { AnnixRepModule } from "../fieldflow/fieldflow.module";
+import { AnnixRepModule } from "../annix-rep/annix-rep.module";
 import { MinesModule } from "../mines/mines.module";
 import { NixModule } from "../nix/nix.module";
 import { PumpOrderModule } from "../pump-order/pump-order.module";

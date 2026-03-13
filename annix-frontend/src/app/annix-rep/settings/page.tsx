@@ -266,7 +266,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/fieldflow/settings/integrations">
+        <Link href="/annix-rep/settings/integrations">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
@@ -325,7 +325,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/fieldflow/settings/booking-links">
+        <Link href="/annix-rep/settings/booking-links">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -355,7 +355,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/fieldflow/settings/team">
+        <Link href="/annix-rep/settings/team">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
@@ -385,7 +385,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/fieldflow/settings/territories">
+        <Link href="/annix-rep/settings/territories">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
