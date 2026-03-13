@@ -879,10 +879,10 @@ export class RubberAuCocService {
   private drawLabDataTable(doc: PDFKit.PDFDocument, data: CocPdfData): void {
     const tableTop = 295;
     const colWidths = [85, 55, 55, 55, 55, 65, 65, 65];
-    const colStarts = [40];
-    colWidths.forEach((w, i) => {
-      if (i > 0) colStarts.push(colStarts[i - 1] + colWidths[i - 1]);
-    });
+    const colStarts = colWidths.reduce(
+      (starts, _, i) => (i === 0 ? starts : [...starts, starts[i - 1] + colWidths[i - 1]]),
+      [40],
+    );
 
     const headers = [
       "Compound\nDetails",
@@ -1177,9 +1177,7 @@ export class RubberAuCocService {
       .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
       .getMany();
 
-    const matchedCocs: RubberSupplierCoc[] = [];
-
-    rollNumbers.forEach((rollNumber) => {
+    const matchedCocs = rollNumbers.reduce<RubberSupplierCoc[]>((acc, rollNumber) => {
       const normalizedRoll = rollNumber.trim().toUpperCase();
 
       const matchingCoc = calendererCocs.find((coc) => {
@@ -1205,10 +1203,11 @@ export class RubberAuCocService {
         return rollMatch || orderMatch;
       });
 
-      if (matchingCoc && !matchedCocs.find((c) => c.id === matchingCoc.id)) {
-        matchedCocs.push(matchingCoc);
+      if (matchingCoc && !acc.find((c) => c.id === matchingCoc.id)) {
+        return [...acc, matchingCoc];
       }
-    });
+      return acc;
+    }, []);
 
     if (matchedCocs.length === 0) {
       return {
@@ -1220,25 +1219,16 @@ export class RubberAuCocService {
 
     this.logger.log(`Found ${matchedCocs.length} matching supplier COC(s)`);
 
-    const allTestData: ExtractedCocData["batches"] = [];
-    let compoundCode = "";
-    let compoundDescription = "";
-    let graphPdfPath: string | null = null;
-
-    matchedCocs.forEach((coc) => {
-      const extractedBatches = coc.extractedData?.batches || [];
-      allTestData.push(...extractedBatches);
-
-      if (!compoundCode && coc.compoundCode) {
-        compoundCode = coc.compoundCode;
-      }
-      if (!compoundDescription && coc.extractedData?.compoundDescription) {
-        compoundDescription = coc.extractedData.compoundDescription;
-      }
-      if (!graphPdfPath && coc.graphPdfPath) {
-        graphPdfPath = coc.graphPdfPath;
-      }
-    });
+    const allTestData: ExtractedCocData["batches"] = matchedCocs.flatMap(
+      (coc) => coc.extractedData?.batches || [],
+    );
+    const compoundCode =
+      matchedCocs.find((coc) => coc.compoundCode)?.compoundCode ?? "";
+    const compoundDescription =
+      matchedCocs.find((coc) => coc.extractedData?.compoundDescription)?.extractedData
+        ?.compoundDescription ?? "";
+    const graphPdfPath =
+      matchedCocs.find((coc) => coc.graphPdfPath)?.graphPdfPath ?? null;
 
     const customer = await this.companyRepository.findOne({
       where: { id: customerCompanyId },

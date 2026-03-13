@@ -427,35 +427,37 @@ export class RubberDeliveryNoteService {
       return [];
     }
 
-    const createdItems: RubberDeliveryNoteItem[] = [];
+    const compoundItems =
+      note.deliveryNoteType === DeliveryNoteType.COMPOUND && extractedData.batchRange
+        ? [
+            this.deliveryNoteItemRepository.create({
+              firebaseUid: `pg_${generateUniqueId()}`,
+              deliveryNoteId,
+              batchNumberStart: extractedData.batchRange.split("-")[0]?.trim() ?? null,
+              batchNumberEnd: extractedData.batchRange.split("-")[1]?.trim() ?? null,
+              weightKg: extractedData.totalWeightKg ?? null,
+              linkedBatchIds: [],
+            }),
+          ]
+        : [];
 
-    if (note.deliveryNoteType === DeliveryNoteType.COMPOUND && extractedData.batchRange) {
-      const item = this.deliveryNoteItemRepository.create({
-        firebaseUid: `pg_${generateUniqueId()}`,
-        deliveryNoteId,
-        batchNumberStart: extractedData.batchRange.split("-")[0]?.trim() ?? null,
-        batchNumberEnd: extractedData.batchRange.split("-")[1]?.trim() ?? null,
-        weightKg: extractedData.totalWeightKg ?? null,
-        linkedBatchIds: [],
-      });
-      createdItems.push(item);
-    }
+    const rollItems =
+      note.deliveryNoteType === DeliveryNoteType.ROLL && extractedData.rolls
+        ? extractedData.rolls.map((roll) =>
+            this.deliveryNoteItemRepository.create({
+              firebaseUid: `pg_${generateUniqueId()}`,
+              deliveryNoteId,
+              rollNumber: roll.rollNumber,
+              rollWeightKg: roll.weightKg ?? null,
+              widthMm: roll.widthMm ?? null,
+              thicknessMm: roll.thicknessMm ?? null,
+              lengthM: roll.lengthM ?? null,
+              linkedBatchIds: [],
+            }),
+          )
+        : [];
 
-    if (note.deliveryNoteType === DeliveryNoteType.ROLL && extractedData.rolls) {
-      const rollItems = extractedData.rolls.map((roll) =>
-        this.deliveryNoteItemRepository.create({
-          firebaseUid: `pg_${generateUniqueId()}`,
-          deliveryNoteId,
-          rollNumber: roll.rollNumber,
-          rollWeightKg: roll.weightKg ?? null,
-          widthMm: roll.widthMm ?? null,
-          thicknessMm: roll.thicknessMm ?? null,
-          lengthM: roll.lengthM ?? null,
-          linkedBatchIds: [],
-        }),
-      );
-      createdItems.push(...rollItems);
-    }
+    const createdItems: RubberDeliveryNoteItem[] = [...compoundItems, ...rollItems];
 
     if (createdItems.length > 0) {
       const saved = await this.deliveryNoteItemRepository.save(createdItems);
@@ -539,15 +541,13 @@ export class RubberDeliveryNoteService {
       return { deliveryNoteIds: [note.id] };
     }
 
-    const rollsByDnNumber = new Map<string, typeof extractedData.rolls>();
-    extractedData.rolls
+    const rollsByDnNumber = extractedData.rolls
       .filter((roll) => roll != null && typeof roll === "object")
-      .forEach((roll) => {
+      .reduce((map, roll) => {
         const dnNumber = roll.deliveryNoteNumber || note.deliveryNoteNumber || `DN-${note.id}`;
-        const existing = rollsByDnNumber.get(dnNumber) || [];
-        existing.push(roll);
-        rollsByDnNumber.set(dnNumber, existing);
-      });
+        const existing = map.get(dnNumber) || [];
+        return new Map(map).set(dnNumber, [...existing, roll]);
+      }, new Map<string, typeof extractedData.rolls>());
 
     if (rollsByDnNumber.size <= 1) {
       note.status = DeliveryNoteStatus.EXTRACTED;

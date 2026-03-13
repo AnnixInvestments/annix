@@ -117,9 +117,10 @@ export class RubberAuCocReadinessService {
     const compounderApproved = compounderCoc.processingStatus === CocProcessingStatus.APPROVED;
 
     if (!calendererApproved || !compounderApproved) {
-      const missing: string[] = [];
-      if (!calendererApproved) missing.push("Calenderer CoC approval");
-      if (!compounderApproved) missing.push("Compounder CoC approval");
+      const missing = [
+        ...(!calendererApproved ? ["Calenderer CoC approval"] : []),
+        ...(!compounderApproved ? ["Compounder CoC approval"] : []),
+      ];
 
       const result: ReadinessResult = {
         ready: false,

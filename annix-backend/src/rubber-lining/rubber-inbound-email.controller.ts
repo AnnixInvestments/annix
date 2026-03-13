@@ -764,19 +764,21 @@ export class RubberInboundEmailController {
       const invoiceType =
         body.invoiceType === "CUSTOMER" ? TaxInvoiceType.CUSTOMER : TaxInvoiceType.SUPPLIER;
 
-      const taxInvoiceIds: number[] = [];
-
-      for (const att of pdfAttachments) {
-        const invoice = await this.taxInvoiceService.createTaxInvoice(
-          {
-            invoiceNumber: att.filename.replace(/\.pdf$/i, ""),
-            invoiceType,
-            companyId: body.companyId ? Number(body.companyId) : 0,
-          },
-          emailData.from,
-        );
-        taxInvoiceIds.push(invoice.id);
-      }
+      const taxInvoiceIds = await pdfAttachments.reduce(
+        async (accPromise, att) => {
+          const acc = await accPromise;
+          const invoice = await this.taxInvoiceService.createTaxInvoice(
+            {
+              invoiceNumber: att.filename.replace(/\.pdf$/i, ""),
+              invoiceType,
+              companyId: body.companyId ? Number(body.companyId) : 0,
+            },
+            emailData.from,
+          );
+          return [...acc, invoice.id];
+        },
+        Promise.resolve([] as number[]),
+      );
 
       return { success: true, taxInvoiceIds, errors: [] };
     } catch (error) {

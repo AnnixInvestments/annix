@@ -165,19 +165,10 @@ export class RubberCocExtractionService {
   ): string | null {
     if (!orderNumber) return null;
 
-    const allRolls: string[] = [];
-
-    if (ticketNumber) {
-      allRolls.push(ticketNumber);
-    }
-
-    if (rollNumbers && rollNumbers.length > 0) {
-      rollNumbers.forEach((r) => {
-        if (!allRolls.includes(r)) {
-          allRolls.push(r);
-        }
-      });
-    }
+    const allRolls = [
+      ...(ticketNumber ? [ticketNumber] : []),
+      ...(rollNumbers ?? []).filter((r) => r !== ticketNumber),
+    ];
 
     if (allRolls.length === 0) return orderNumber;
 

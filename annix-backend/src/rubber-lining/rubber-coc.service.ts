@@ -733,23 +733,30 @@ export class RubberCocService {
       .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
       .getMany();
 
-    const linkedCocIds: number[] = [];
-    const linkedBatches: string[] = [];
+    const matches = compounderCocs.reduce(
+      (acc, compCoc) => {
+        const compBatches = compCoc.extractedData?.batchNumbers || [];
+        const compBatchesFromData =
+          compCoc.extractedData?.batches?.map((b) => b.batchNumber) || [];
+        const allCompBatches = [...new Set([...compBatches, ...compBatchesFromData])];
 
-    compounderCocs.forEach((compCoc) => {
-      const compBatches = compCoc.extractedData?.batchNumbers || [];
-      const compBatchesFromData = compCoc.extractedData?.batches?.map((b) => b.batchNumber) || [];
-      const allCompBatches = [...new Set([...compBatches, ...compBatchesFromData])];
+        const matchingBatches = batchNumbers.filter((bn) =>
+          allCompBatches.some((cb) => cb.toLowerCase().trim() === bn.toLowerCase().trim()),
+        );
 
-      const matchingBatches = batchNumbers.filter((bn) =>
-        allCompBatches.some((cb) => cb.toLowerCase().trim() === bn.toLowerCase().trim()),
-      );
+        if (matchingBatches.length > 0) {
+          return {
+            cocIds: [...acc.cocIds, compCoc.id],
+            batches: [...acc.batches, ...matchingBatches],
+          };
+        }
+        return acc;
+      },
+      { cocIds: [] as number[], batches: [] as string[] },
+    );
 
-      if (matchingBatches.length > 0) {
-        linkedCocIds.push(compCoc.id);
-        linkedBatches.push(...matchingBatches);
-      }
-    });
+    const linkedCocIds = matches.cocIds;
+    const linkedBatches = matches.batches;
 
     if (linkedCocIds.length > 0) {
       const updatedExtractedData = {
