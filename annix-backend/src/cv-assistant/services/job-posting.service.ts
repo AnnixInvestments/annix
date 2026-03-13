@@ -48,18 +48,14 @@ export class JobPostingService {
     if (dto.title != null) jobPosting.title = dto.title;
     if (dto.description != null) jobPosting.description = dto.description;
     if (dto.requiredSkills != null) jobPosting.requiredSkills = dto.requiredSkills;
-    if (dto.minExperienceYears != null)
-      jobPosting.minExperienceYears = dto.minExperienceYears;
+    if (dto.minExperienceYears != null) jobPosting.minExperienceYears = dto.minExperienceYears;
     if (dto.requiredEducation != null) jobPosting.requiredEducation = dto.requiredEducation;
     if (dto.requiredCertifications != null)
       jobPosting.requiredCertifications = dto.requiredCertifications;
-    if (dto.emailSubjectPattern != null)
-      jobPosting.emailSubjectPattern = dto.emailSubjectPattern;
+    if (dto.emailSubjectPattern != null) jobPosting.emailSubjectPattern = dto.emailSubjectPattern;
     if (dto.autoRejectEnabled != null) jobPosting.autoRejectEnabled = dto.autoRejectEnabled;
-    if (dto.autoRejectThreshold != null)
-      jobPosting.autoRejectThreshold = dto.autoRejectThreshold;
-    if (dto.autoAcceptThreshold != null)
-      jobPosting.autoAcceptThreshold = dto.autoAcceptThreshold;
+    if (dto.autoRejectThreshold != null) jobPosting.autoRejectThreshold = dto.autoRejectThreshold;
+    if (dto.autoAcceptThreshold != null) jobPosting.autoAcceptThreshold = dto.autoAcceptThreshold;
     if (dto.status != null) jobPosting.status = dto.status as JobPostingStatus;
 
     return this.jobPostingRepo.save(jobPosting);

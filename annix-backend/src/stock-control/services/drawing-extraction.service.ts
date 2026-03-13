@@ -907,86 +907,105 @@ export class DrawingExtractionService {
       .filter(Boolean)
       .join(" ");
 
-    const newItems: Partial<JobCardLineItem>[] = tankData.sections.length > 0
-      ? tankData.sections.reduce(
-          (acc, section) => {
-            const sectionLabel = `Section ${section.mark}${section.description ? ` - ${section.description}` : ""}`;
+    const newItems: Partial<JobCardLineItem>[] =
+      tankData.sections.length > 0
+        ? tankData.sections.reduce(
+            (acc, section) => {
+              const sectionLabel = `Section ${section.mark}${section.description ? ` - ${section.description}` : ""}`;
 
-            const liningItem = section.liningAreaM2 && section.liningAreaM2 > 0
-              ? [{
-                  jobCardId,
-                  companyId,
-                  itemDescription: [`${assemblyLabel} ${sectionLabel} - R/L${drawingRef}`, liningSpec || null]
-                    .filter(Boolean)
-                    .join(" - "),
-                  itemCode: `R/L ${section.mark}`,
-                  quantity: 1,
-                  m2: Math.round(section.liningAreaM2 * 100) / 100,
-                  sortOrder: acc.nextOrder,
-                }]
-              : [];
+              const liningItem =
+                section.liningAreaM2 && section.liningAreaM2 > 0
+                  ? [
+                      {
+                        jobCardId,
+                        companyId,
+                        itemDescription: [
+                          `${assemblyLabel} ${sectionLabel} - R/L${drawingRef}`,
+                          liningSpec || null,
+                        ]
+                          .filter(Boolean)
+                          .join(" - "),
+                        itemCode: `R/L ${section.mark}`,
+                        quantity: 1,
+                        m2: Math.round(section.liningAreaM2 * 100) / 100,
+                        sortOrder: acc.nextOrder,
+                      },
+                    ]
+                  : [];
 
-            const coatingItem = section.coatingAreaM2 && section.coatingAreaM2 > 0
-              ? [{
-                  jobCardId,
-                  companyId,
-                  itemDescription: [
-                    `${assemblyLabel} ${sectionLabel} - External Coating${drawingRef}`,
-                    tankData.coatingSystem || null,
-                    tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" - "),
-                  itemCode: `COAT ${section.mark}`,
-                  quantity: 1,
-                  m2: Math.round(section.coatingAreaM2 * 100) / 100,
-                  sortOrder: acc.nextOrder + liningItem.length,
-                }]
-              : [];
+              const coatingItem =
+                section.coatingAreaM2 && section.coatingAreaM2 > 0
+                  ? [
+                      {
+                        jobCardId,
+                        companyId,
+                        itemDescription: [
+                          `${assemblyLabel} ${sectionLabel} - External Coating${drawingRef}`,
+                          tankData.coatingSystem || null,
+                          tankData.surfacePrepStandard
+                            ? `Prep: ${tankData.surfacePrepStandard}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" - "),
+                        itemCode: `COAT ${section.mark}`,
+                        quantity: 1,
+                        m2: Math.round(section.coatingAreaM2 * 100) / 100,
+                        sortOrder: acc.nextOrder + liningItem.length,
+                      },
+                    ]
+                  : [];
 
-            return {
-              items: [...acc.items, ...liningItem, ...coatingItem],
-              nextOrder: acc.nextOrder + liningItem.length + coatingItem.length,
-            };
-          },
-          { items: [] as Partial<JobCardLineItem>[], nextOrder: maxSortOrder + 1 },
-        ).items
-      : [
-          ...(tankData.liningAreaM2 && tankData.liningAreaM2 > 0
-            ? [{
-                jobCardId,
-                companyId,
-                itemDescription: [
-                  `${assemblyLabel} Internal Lining${drawingRef}`,
-                  tankData.liningType ? `Type: ${tankData.liningType}` : null,
-                  tankData.liningThicknessMm ? `${tankData.liningThicknessMm}mm thick` : null,
+              return {
+                items: [...acc.items, ...liningItem, ...coatingItem],
+                nextOrder: acc.nextOrder + liningItem.length + coatingItem.length,
+              };
+            },
+            { items: [] as Partial<JobCardLineItem>[], nextOrder: maxSortOrder + 1 },
+          ).items
+        : [
+            ...(tankData.liningAreaM2 && tankData.liningAreaM2 > 0
+              ? [
+                  {
+                    jobCardId,
+                    companyId,
+                    itemDescription: [
+                      `${assemblyLabel} Internal Lining${drawingRef}`,
+                      tankData.liningType ? `Type: ${tankData.liningType}` : null,
+                      tankData.liningThicknessMm ? `${tankData.liningThicknessMm}mm thick` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" - "),
+                    itemCode: tankData.drawingReference || null,
+                    quantity: 1,
+                    m2: Math.round(tankData.liningAreaM2 * 100) / 100,
+                    sortOrder: maxSortOrder + 1,
+                  },
                 ]
-                  .filter(Boolean)
-                  .join(" - "),
-                itemCode: tankData.drawingReference || null,
-                quantity: 1,
-                m2: Math.round(tankData.liningAreaM2 * 100) / 100,
-                sortOrder: maxSortOrder + 1,
-              }]
-            : []),
-          ...(tankData.coatingAreaM2 && tankData.coatingAreaM2 > 0
-            ? [{
-                jobCardId,
-                companyId,
-                itemDescription: [
-                  `${assemblyLabel} External Coating${drawingRef}`,
-                  tankData.coatingSystem || null,
-                  tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
+              : []),
+            ...(tankData.coatingAreaM2 && tankData.coatingAreaM2 > 0
+              ? [
+                  {
+                    jobCardId,
+                    companyId,
+                    itemDescription: [
+                      `${assemblyLabel} External Coating${drawingRef}`,
+                      tankData.coatingSystem || null,
+                      tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" - "),
+                    itemCode: tankData.drawingReference || null,
+                    quantity: 1,
+                    m2: Math.round(tankData.coatingAreaM2 * 100) / 100,
+                    sortOrder:
+                      maxSortOrder +
+                      1 +
+                      (tankData.liningAreaM2 && tankData.liningAreaM2 > 0 ? 1 : 0),
+                  },
                 ]
-                  .filter(Boolean)
-                  .join(" - "),
-                itemCode: tankData.drawingReference || null,
-                quantity: 1,
-                m2: Math.round(tankData.coatingAreaM2 * 100) / 100,
-                sortOrder: maxSortOrder + 1 + (tankData.liningAreaM2 && tankData.liningAreaM2 > 0 ? 1 : 0),
-              }]
-            : []),
-        ];
+              : []),
+          ];
 
     if (newItems.length > 0) {
       const created = this.lineItemRepo.create(newItems);

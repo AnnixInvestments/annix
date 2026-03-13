@@ -97,9 +97,7 @@ export class BoqService {
         lineItem.itemType = this.mapRfqItemTypeToBoqItemType(rfqItem.itemType);
         lineItem.unitOfMeasure = "EA";
         lineItem.quantity = rfqItem.quantity || 1;
-        lineItem.unitWeightKg = rfqItem.weightPerUnitKg
-          ? Number(rfqItem.weightPerUnitKg)
-          : null;
+        lineItem.unitWeightKg = rfqItem.weightPerUnitKg ? Number(rfqItem.weightPerUnitKg) : null;
         lineItem.totalWeightKg = rfqItem.totalWeightKg ? Number(rfqItem.totalWeightKg) : null;
         lineItem.notes = rfqItem.notes;
         return lineItem;

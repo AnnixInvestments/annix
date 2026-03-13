@@ -57,8 +57,7 @@ export class JobIngestionService {
     }
 
     const countryCategories = source.countryCodes.flatMap((country) => {
-      const categories =
-        source.categories.length > 0 ? source.categories : [null as string | null];
+      const categories = source.categories.length > 0 ? source.categories : [null as string | null];
       return categories.map((category) => ({ country, category }));
     });
 
