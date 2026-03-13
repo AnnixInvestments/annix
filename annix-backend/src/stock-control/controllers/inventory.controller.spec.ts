@@ -138,7 +138,7 @@ describe("InventoryController", () => {
       expect(inventoryService.groupedByCategory).toHaveBeenCalledWith(
         1,
         undefined,
-        undefined,
+        null,
         1,
         500,
       );
