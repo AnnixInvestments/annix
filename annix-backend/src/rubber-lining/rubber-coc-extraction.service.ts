@@ -613,17 +613,12 @@ export class RubberCocExtractionService {
   }
 
   private parseJsonResponse(content: string): Record<string, unknown> {
-    let jsonStr = content.trim();
-    if (jsonStr.startsWith("```json")) {
-      jsonStr = jsonStr.slice(7);
-    }
-    if (jsonStr.startsWith("```")) {
-      jsonStr = jsonStr.slice(3);
-    }
-    if (jsonStr.endsWith("```")) {
-      jsonStr = jsonStr.slice(0, -3);
-    }
-    jsonStr = jsonStr.trim();
+    const jsonStr = content
+      .trim()
+      .replace(/^```json/, "")
+      .replace(/^```/, "")
+      .replace(/```$/, "")
+      .trim();
 
     try {
       return JSON.parse(jsonStr);

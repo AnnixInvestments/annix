@@ -281,79 +281,85 @@ function extractMappedRows(
   const hasLineItems = Array.from(LINE_ITEM_KEYS).some((k) => regions[k] !== null);
 
   if (hasLineItems) {
-    const grouped = new Map<
-      string,
-      { meta: Record<string, string>; notesList: string[]; lines: Record<string, string>[] }
-    >();
+    type GroupEntry = {
+      meta: Record<string, string>;
+      notesList: string[];
+      lines: Record<string, string>[];
+    };
 
-    let lastJobNumber = "";
+    const { grouped } = Array.from({ length: maxRow - minRow + 1 }, (_, i) => minRow + i).reduce<{
+      grouped: Map<string, GroupEntry>;
+      lastJobNumber: string;
+    }>(
+      (acc, r) => {
+        const gridRow = grid[r] ?? [];
+        const cellVal = (key: string): string => {
+          const region = regions[key];
+          return region ? (gridRow[region.col] ?? "").trim() : "";
+        };
+        const metaCellVal = (key: string): string => {
+          const region = regions[key];
+          if (!region) return "";
+          if (r >= region.startRow && r <= region.endRow) {
+            return (gridRow[region.col] ?? "").trim();
+          }
+          return ((grid[region.startRow] ?? [])[region.col] ?? "").trim();
+        };
 
-    Array.from({ length: maxRow - minRow + 1 }, (_, i) => minRow + i).forEach((r) => {
-      const gridRow = grid[r] ?? [];
-      const cellVal = (key: string): string => {
-        const region = regions[key];
-        return region ? (gridRow[region.col] ?? "").trim() : "";
-      };
-      const metaCellVal = (key: string): string => {
-        const region = regions[key];
-        if (!region) return "";
-        if (r >= region.startRow && r <= region.endRow) {
-          return (gridRow[region.col] ?? "").trim();
-        }
-        return ((grid[region.startRow] ?? [])[region.col] ?? "").trim();
-      };
+        const jobNumberRegion = regions["jobNumber"];
+        const inJobNumberRange =
+          jobNumberRegion && r >= jobNumberRegion.startRow && r <= jobNumberRegion.endRow;
+        const jobNumber = inJobNumberRange ? cellVal("jobNumber") : "";
 
-      const jobNumberRegion = regions["jobNumber"];
-      const inJobNumberRange =
-        jobNumberRegion && r >= jobNumberRegion.startRow && r <= jobNumberRegion.endRow;
-      const jobNumber = inJobNumberRange ? cellVal("jobNumber") : "";
+        const currentJobNumber = jobNumber || acc.lastJobNumber;
 
-      if (jobNumber) {
-        lastJobNumber = jobNumber;
-
-        if (!grouped.has(jobNumber)) {
-          const meta: Record<string, string> = {};
-          ALL_FIELDS.filter((f) => !LINE_ITEM_KEYS.has(f.key)).forEach((f) => {
+        if (jobNumber && !acc.grouped.has(jobNumber)) {
+          const meta = ALL_FIELDS.filter((f) => !LINE_ITEM_KEYS.has(f.key)).reduce<
+            Record<string, string>
+          >((m, f) => {
             const val = metaCellVal(f.key);
-            if (val) meta[f.key] = val;
-          });
+            return val ? { ...m, [f.key]: val } : m;
+          }, {});
 
-          const cfValues: Record<string, string> = {};
-          customFields.forEach((cf) => {
+          const cfValues = customFields.reduce<Record<string, string>>((cv, cf) => {
             const cfRegion = customRegions[cf.id];
             if (cfRegion) {
               const val = (gridRow[cfRegion.col] ?? "").trim();
-              if (val) cfValues[cf.fieldName] = val;
+              return val ? { ...cv, [cf.fieldName]: val } : cv;
             }
-          });
+            return cv;
+          }, {});
 
-          grouped.set(jobNumber, {
+          acc.grouped.set(jobNumber, {
             meta: { ...meta, customFieldsJson: JSON.stringify(cfValues) },
             notesList: meta.notes ? [meta.notes] : [],
             lines: [],
           });
         }
-      }
 
-      if (!lastJobNumber || !grouped.has(lastJobNumber)) return;
-
-      const lineItem: Record<string, string> = {};
-      let hasAnyLineData = false;
-      Array.from(LINE_ITEM_KEYS).forEach((key) => {
-        const region = regions[key];
-        if (region && r >= region.startRow && r <= region.endRow) {
-          const val = (gridRow[region.col] ?? "").trim();
-          if (val) {
-            lineItem[key] = val;
-            hasAnyLineData = true;
-          }
+        if (!currentJobNumber || !acc.grouped.has(currentJobNumber)) {
+          return { ...acc, lastJobNumber: currentJobNumber };
         }
-      });
 
-      if (hasAnyLineData) {
-        grouped.get(lastJobNumber)!.lines.push(lineItem);
-      }
-    });
+        const lineItem = Array.from(LINE_ITEM_KEYS).reduce<Record<string, string>>((li, key) => {
+          const region = regions[key];
+          if (region && r >= region.startRow && r <= region.endRow) {
+            const val = (gridRow[region.col] ?? "").trim();
+            if (val) {
+              return { ...li, [key]: val };
+            }
+          }
+          return li;
+        }, {});
+
+        if (Object.keys(lineItem).length > 0) {
+          acc.grouped.get(currentJobNumber)!.lines.push(lineItem);
+        }
+
+        return { ...acc, lastJobNumber: currentJobNumber };
+      },
+      { grouped: new Map<string, GroupEntry>(), lastJobNumber: "" },
+    );
 
     const FOOTER_LABEL_PATTERN =
       /^(production|foreman?\s*sign|forman\s*sign|material\s*spec|job\s*comp|completion\s*date|supervisor|quality\s*control|qc\s*sign|inspector|approved\s*by|checked\s*by|signature|remarks|comments)\b/i;

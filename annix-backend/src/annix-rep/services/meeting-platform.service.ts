@@ -321,35 +321,39 @@ export class MeetingPlatformService {
 
     const meetings = await provider.listRecentMeetings(config, fromDate, toDate);
 
-    let synced = 0;
-    let recordings = 0;
+    const { synced, recordings } = await meetings.reduce(
+      async (accPromise, meeting) => {
+        const acc = await accPromise;
+        const existing = await this.recordRepo.findOne({
+          where: {
+            connectionId: connection.id,
+            platformMeetingId: meeting.platformMeetingId,
+          },
+        });
 
-    for (const meeting of meetings) {
-      const existing = await this.recordRepo.findOne({
-        where: {
-          connectionId: connection.id,
-          platformMeetingId: meeting.platformMeetingId,
-        },
-      });
+        if (existing) {
+          existing.title = meeting.title;
+          existing.topic = meeting.topic;
+          existing.hostEmail = meeting.hostEmail;
+          existing.endTime = meeting.endTime;
+          existing.durationSeconds = meeting.durationSeconds;
+          existing.participants = meeting.participants;
+          existing.participantCount = meeting.participantCount;
+          existing.joinUrl = meeting.joinUrl;
+          existing.rawMeetingData = meeting.rawData;
+          existing.fetchedAt = now().toJSDate();
 
-      if (existing) {
-        existing.title = meeting.title;
-        existing.topic = meeting.topic;
-        existing.hostEmail = meeting.hostEmail;
-        existing.endTime = meeting.endTime;
-        existing.durationSeconds = meeting.durationSeconds;
-        existing.participants = meeting.participants;
-        existing.participantCount = meeting.participantCount;
-        existing.joinUrl = meeting.joinUrl;
-        existing.rawMeetingData = meeting.rawData;
-        existing.fetchedAt = now().toJSDate();
+          const hasNewRecording =
+            meeting.hasRecording && existing.recordingStatus === PlatformRecordingStatus.PENDING;
 
-        if (meeting.hasRecording && existing.recordingStatus === PlatformRecordingStatus.PENDING) {
-          recordings++;
+          await this.recordRepo.save(existing);
+
+          return {
+            synced: acc.synced + 1,
+            recordings: acc.recordings + (hasNewRecording ? 1 : 0),
+          };
         }
 
-        await this.recordRepo.save(existing);
-      } else {
         const record = this.recordRepo.create({
           connectionId: connection.id,
           platformMeetingId: meeting.platformMeetingId,
@@ -371,13 +375,13 @@ export class MeetingPlatformService {
 
         await this.recordRepo.save(record);
 
-        if (meeting.hasRecording) {
-          recordings++;
-        }
-      }
-
-      synced++;
-    }
+        return {
+          synced: acc.synced + 1,
+          recordings: acc.recordings + (meeting.hasRecording ? 1 : 0),
+        };
+      },
+      Promise.resolve({ synced: 0, recordings: 0 }),
+    );
 
     connection.lastRecordingSyncAt = now().toJSDate();
     await this.connectionRepo.save(connection);

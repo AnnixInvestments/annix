@@ -186,17 +186,27 @@ function CertificatesTab() {
     setSavedCerts(new Set());
 
     try {
-      const allCertificates: IdentifiedCertificate[] = [];
-      let totalPages = 0;
-      let totalTime = 0;
-
-      for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
-        const result = await stockControlApiClient.analyzeCertificateDocument(files[fileIdx]);
-        const tagged = result.certificates.map((c) => ({ ...c, sourceFileIndex: fileIdx }));
-        allCertificates.push(...tagged);
-        totalPages += result.totalPages;
-        totalTime += result.processingTimeMs;
-      }
+      const {
+        certificates: allCertificates,
+        totalPages,
+        totalTime,
+      } = await files.reduce(
+        async (accPromise, file, fileIdx) => {
+          const acc = await accPromise;
+          const result = await stockControlApiClient.analyzeCertificateDocument(file);
+          const tagged = result.certificates.map((c) => ({ ...c, sourceFileIndex: fileIdx }));
+          return {
+            certificates: [...acc.certificates, ...tagged],
+            totalPages: acc.totalPages + result.totalPages,
+            totalTime: acc.totalTime + result.processingTimeMs,
+          };
+        },
+        Promise.resolve({
+          certificates: [] as IdentifiedCertificate[],
+          totalPages: 0,
+          totalTime: 0,
+        }),
+      );
 
       setAnalysisResult({ certificates: allCertificates, totalPages, processingTimeMs: totalTime });
       setViewMode("review");

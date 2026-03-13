@@ -101,7 +101,9 @@ export class JobIngestionService {
     source.lastIngestedAt = DateTime.now().toJSDate();
     await this.sourceRepo.save(source);
 
-    this.logger.log(`Source ${source.name}: ingested ${totals.ingested}, skipped ${totals.skipped}`);
+    this.logger.log(
+      `Source ${source.name}: ingested ${totals.ingested}, skipped ${totals.skipped}`,
+    );
 
     return totals;
   }

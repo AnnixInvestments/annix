@@ -623,8 +623,6 @@ export class ProspectService {
   }
 
   calculateScore(prospect: Prospect): number {
-    let score = 0;
-
     const statusScores: Record<ProspectStatus, number> = {
       [ProspectStatus.NEW]: 5,
       [ProspectStatus.CONTACTED]: 10,
@@ -633,23 +631,24 @@ export class ProspectService {
       [ProspectStatus.WON]: 25,
       [ProspectStatus.LOST]: 0,
     };
-    score += statusScores[prospect.status] ?? 0;
 
-    if (prospect.lastContactedAt) {
+    const contactRecencyScore = (() => {
+      if (!prospect.lastContactedAt) return 0;
       const contactedAt = isDate(prospect.lastContactedAt)
         ? fromJSDate(prospect.lastContactedAt).toMillis()
         : fromISO(String(prospect.lastContactedAt)).toMillis();
       const daysSinceContact = Math.floor((nowMillis() - contactedAt) / (1000 * 60 * 60 * 24));
       if (daysSinceContact <= 7) {
-        score += 20;
+        return 20;
       } else if (daysSinceContact <= 14) {
-        score += 15;
+        return 15;
       } else if (daysSinceContact <= 30) {
-        score += 10;
+        return 10;
       } else if (daysSinceContact <= 60) {
-        score += 5;
+        return 5;
       }
-    }
+      return 0;
+    })();
 
     const priorityScores: Record<ProspectPriority, number> = {
       [ProspectPriority.LOW]: 3,
@@ -657,44 +656,53 @@ export class ProspectService {
       [ProspectPriority.HIGH]: 12,
       [ProspectPriority.URGENT]: 15,
     };
-    score += priorityScores[prospect.priority] ?? 0;
 
-    if (prospect.estimatedValue) {
+    const valueScore = (() => {
+      if (!prospect.estimatedValue) return 0;
       if (prospect.estimatedValue >= 1000000) {
-        score += 20;
+        return 20;
       } else if (prospect.estimatedValue >= 500000) {
-        score += 16;
+        return 16;
       } else if (prospect.estimatedValue >= 100000) {
-        score += 12;
+        return 12;
       } else if (prospect.estimatedValue >= 50000) {
-        score += 8;
+        return 8;
       } else if (prospect.estimatedValue > 0) {
-        score += 4;
+        return 4;
       }
-    }
+      return 0;
+    })();
 
-    if (prospect.nextFollowUpAt) {
+    const followUpScore = (() => {
+      if (!prospect.nextFollowUpAt) return 0;
       const followUpMillis = isDate(prospect.nextFollowUpAt)
         ? fromJSDate(prospect.nextFollowUpAt).toMillis()
         : fromISO(String(prospect.nextFollowUpAt)).toMillis();
       const todayMillis = nowMillis();
       if (followUpMillis >= todayMillis) {
-        score += 10;
-      } else {
-        const daysOverdue = Math.floor((todayMillis - followUpMillis) / (1000 * 60 * 60 * 24));
-        score += Math.max(0, 10 - daysOverdue);
+        return 10;
       }
-    }
+      const daysOverdue = Math.floor((todayMillis - followUpMillis) / (1000 * 60 * 60 * 24));
+      return Math.max(0, 10 - daysOverdue);
+    })();
 
-    let completeness = 0;
-    if (prospect.companyName) completeness += 2;
-    if (prospect.contactName) completeness += 2;
-    if (prospect.contactEmail) completeness += 2;
-    if (prospect.contactPhone) completeness += 1;
-    if (prospect.streetAddress) completeness += 1;
-    if (prospect.city) completeness += 1;
-    if (prospect.notes) completeness += 1;
-    score += completeness;
+    const completeness = [
+      prospect.companyName ? 2 : 0,
+      prospect.contactName ? 2 : 0,
+      prospect.contactEmail ? 2 : 0,
+      prospect.contactPhone ? 1 : 0,
+      prospect.streetAddress ? 1 : 0,
+      prospect.city ? 1 : 0,
+      prospect.notes ? 1 : 0,
+    ].reduce((sum, val) => sum + val, 0);
+
+    const score =
+      (statusScores[prospect.status] ?? 0) +
+      contactRecencyScore +
+      (priorityScores[prospect.priority] ?? 0) +
+      valueScore +
+      followUpScore +
+      completeness;
 
     return Math.min(100, Math.max(0, score));
   }

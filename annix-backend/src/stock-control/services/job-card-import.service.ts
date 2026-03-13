@@ -1014,109 +1014,101 @@ export class JobCardImportService {
       deliveryMatches: [],
     };
 
-    return rows.reduce(
-      async (accPromise, row, i) => {
-        const acc = await accPromise;
+    return rows.reduce(async (accPromise, row, i) => {
+      const acc = await accPromise;
 
-        if (!row.jobNumber || !row.jobName) {
-          return {
-            ...acc,
-            errors: [
-              ...acc.errors,
-              { row: i + 1, message: "Job Number and Job Name are required" },
-            ],
-          };
-        }
+      if (!row.jobNumber || !row.jobName) {
+        return {
+          ...acc,
+          errors: [...acc.errors, { row: i + 1, message: "Job Number and Job Name are required" }],
+        };
+      }
 
-        try {
-          const jtDnNumber = detectJtDnNumber(row);
+      try {
+        const jtDnNumber = detectJtDnNumber(row);
 
-          const existing = await this.jobCardRepo.findOne({
-            where: { jobNumber: row.jobNumber, companyId, parentJobCardId: IsNull() },
-            relations: ["lineItems"],
-          });
+        const existing = await this.jobCardRepo.findOne({
+          where: { jobNumber: row.jobNumber, companyId, parentJobCardId: IsNull() },
+          relations: ["lineItems"],
+        });
 
-          if (existing && jtDnNumber) {
-            const { jobCardId, deliveryMatch } = await this.createDeliveryJobCard(
-              existing,
-              row,
-              jtDnNumber,
-              companyId,
-            );
-
-            return {
-              ...acc,
-              created: acc.created + 1,
-              createdJobCardIds: [...acc.createdJobCardIds, jobCardId],
-              deliveryMatches: deliveryMatch
-                ? [...acc.deliveryMatches, deliveryMatch]
-                : acc.deliveryMatches,
-            };
-          } else if (existing && !jtDnNumber) {
-            const savedId = await this.archiveAndOverwrite(existing, row, companyId);
-
-            await this.cpoService.matchJobCardToCpo(companyId, savedId).catch((err) => {
-              this.logger.warn(
-                `CPO matching failed for JC ${savedId}: ${err instanceof Error ? err.message : "Unknown"}`,
-              );
-            });
-
-            return {
-              ...acc,
-              updated: acc.updated + 1,
-              createdJobCardIds: [...acc.createdJobCardIds, savedId],
-            };
-          }
-
-          const customFields =
-            row.customFields && Object.keys(row.customFields).length > 0
-              ? row.customFields
-              : null;
-
-          const jobCard = this.jobCardRepo.create({
-            jobNumber: row.jobNumber,
-            jcNumber: row.jcNumber || null,
-            pageNumber: row.pageNumber || null,
-            jobName: row.jobName,
-            customerName: row.customerName || null,
-            description: row.description || null,
-            poNumber: row.poNumber || null,
-            siteLocation: row.siteLocation || null,
-            contactPerson: row.contactPerson || null,
-            dueDate: row.dueDate || null,
-            notes: row.notes || null,
-            reference: row.reference || null,
-            customFields,
-            status: JobCardStatus.DRAFT,
+        if (existing && jtDnNumber) {
+          const { jobCardId, deliveryMatch } = await this.createDeliveryJobCard(
+            existing,
+            row,
+            jtDnNumber,
             companyId,
-          });
-          const saved = await this.jobCardRepo.save(jobCard);
-
-          if (row.lineItems && row.lineItems.length > 0) {
-            const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
-            await this.lineItemRepo.save(entities);
-          }
-
-          await this.cpoService.matchJobCardToCpo(companyId, saved.id).catch((err) => {
-            this.logger.warn(
-              `CPO matching failed for JC ${saved.id}: ${err instanceof Error ? err.message : "Unknown"}`,
-            );
-          });
+          );
 
           return {
             ...acc,
             created: acc.created + 1,
-            createdJobCardIds: [...acc.createdJobCardIds, saved.id],
+            createdJobCardIds: [...acc.createdJobCardIds, jobCardId],
+            deliveryMatches: deliveryMatch
+              ? [...acc.deliveryMatches, deliveryMatch]
+              : acc.deliveryMatches,
           };
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Unknown error";
+        } else if (existing && !jtDnNumber) {
+          const savedId = await this.archiveAndOverwrite(existing, row, companyId);
+
+          await this.cpoService.matchJobCardToCpo(companyId, savedId).catch((err) => {
+            this.logger.warn(
+              `CPO matching failed for JC ${savedId}: ${err instanceof Error ? err.message : "Unknown"}`,
+            );
+          });
+
           return {
             ...acc,
-            errors: [...acc.errors, { row: i + 1, message }],
+            updated: acc.updated + 1,
+            createdJobCardIds: [...acc.createdJobCardIds, savedId],
           };
         }
-      },
-      Promise.resolve(result),
-    );
+
+        const customFields =
+          row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
+
+        const jobCard = this.jobCardRepo.create({
+          jobNumber: row.jobNumber,
+          jcNumber: row.jcNumber || null,
+          pageNumber: row.pageNumber || null,
+          jobName: row.jobName,
+          customerName: row.customerName || null,
+          description: row.description || null,
+          poNumber: row.poNumber || null,
+          siteLocation: row.siteLocation || null,
+          contactPerson: row.contactPerson || null,
+          dueDate: row.dueDate || null,
+          notes: row.notes || null,
+          reference: row.reference || null,
+          customFields,
+          status: JobCardStatus.DRAFT,
+          companyId,
+        });
+        const saved = await this.jobCardRepo.save(jobCard);
+
+        if (row.lineItems && row.lineItems.length > 0) {
+          const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
+          await this.lineItemRepo.save(entities);
+        }
+
+        await this.cpoService.matchJobCardToCpo(companyId, saved.id).catch((err) => {
+          this.logger.warn(
+            `CPO matching failed for JC ${saved.id}: ${err instanceof Error ? err.message : "Unknown"}`,
+          );
+        });
+
+        return {
+          ...acc,
+          created: acc.created + 1,
+          createdJobCardIds: [...acc.createdJobCardIds, saved.id],
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return {
+          ...acc,
+          errors: [...acc.errors, { row: i + 1, message }],
+        };
+      }
+    }, Promise.resolve(result));
   }
 }

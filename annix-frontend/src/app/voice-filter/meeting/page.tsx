@@ -59,13 +59,14 @@ export default function VoiceFilterMeetingPage() {
   }, []);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording) {
-      interval = setInterval(() => {
-        setElapsedTime((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
+    const interval: NodeJS.Timeout | null = isRecording
+      ? setInterval(() => {
+          setElapsedTime((prev) => prev + 1);
+        }, 1000)
+      : null;
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isRecording]);
 
   const formatTime = (seconds: number) => {

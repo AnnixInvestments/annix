@@ -308,13 +308,10 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
       fromJSDate(endTime).diff(fromJSDate(startTime), "seconds").seconds,
     );
 
-    let meetUrl: string | null = event.hangoutLink ?? null;
-    if (!meetUrl && event.conferenceData?.entryPoints) {
-      const videoEntry = event.conferenceData.entryPoints.find(
-        (ep) => ep.entryPointType === "video",
-      );
-      meetUrl = videoEntry?.uri ?? null;
-    }
+    const meetUrl: string | null =
+      event.hangoutLink ??
+      event.conferenceData?.entryPoints?.find((ep) => ep.entryPointType === "video")?.uri ??
+      null;
 
     const participants = event.attendees?.map((a) => a.email) ?? null;
 
@@ -465,14 +462,15 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
   }
 
   async downloadRecording(config: PlatformProviderConfig, downloadUrl: string): Promise<Buffer> {
-    let url = downloadUrl;
-
-    if (downloadUrl.includes("drive.google.com/file/d/")) {
-      const fileIdMatch = downloadUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (fileIdMatch) {
-        url = `${this.driveApiUrl}/files/${fileIdMatch[1]}?alt=media`;
+    const url = (() => {
+      if (downloadUrl.includes("drive.google.com/file/d/")) {
+        const fileIdMatch = downloadUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (fileIdMatch) {
+          return `${this.driveApiUrl}/files/${fileIdMatch[1]}?alt=media`;
+        }
       }
-    }
+      return downloadUrl;
+    })();
 
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${config.accessToken}` },

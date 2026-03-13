@@ -248,16 +248,18 @@ export class PositectorService {
     const header = await this.fetchBatchHeader(baseUrl, buid);
     const readings = await this.fetchBatchReadings(baseUrl, buid);
 
-    let statistics: Record<string, string> | null = null;
-    try {
-      const statsText = await this.fetchFromDevice(
-        `${baseUrl}/usbms/${buid}/statistics.txt`,
-        10000,
-      );
-      statistics = this.parseHeaderTxt(statsText);
-    } catch {
-      this.logger.debug(`No statistics.txt found for batch ${buid}`);
-    }
+    const statistics: Record<string, string> | null = await (async () => {
+      try {
+        const statsText = await this.fetchFromDevice(
+          `${baseUrl}/usbms/${buid}/statistics.txt`,
+          10000,
+        );
+        return this.parseHeaderTxt(statsText);
+      } catch {
+        this.logger.debug(`No statistics.txt found for batch ${buid}`);
+        return null;
+      }
+    })();
 
     await this.deviceRepo.update({ id: device.id }, { lastConnectedAt: now().toJSDate() });
 
@@ -574,37 +576,38 @@ export class PositectorService {
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
 
-    const metadata: Record<string, string> = {};
-    let dataStartIdx = -1;
+    const { metadata, dataStartIdx } = lines.reduce(
+      (acc, line, idx) => {
+        if (acc.dataStartIdx >= 0) return acc;
 
-    lines.forEach((line, idx) => {
-      if (dataStartIdx >= 0) return;
-
-      const lower = line.toLowerCase();
-      if (
-        lower.startsWith("#") ||
-        lower.startsWith("reading") ||
-        lower.startsWith("id,") ||
-        lower.startsWith("no,") ||
-        lower.startsWith("no.,")
-      ) {
-        dataStartIdx = idx;
-        return;
-      }
-
-      const commaIdx = line.indexOf(",");
-      if (commaIdx > 0) {
-        const key = line.substring(0, commaIdx).trim();
-        const value = line
-          .substring(commaIdx + 1)
-          .trim()
-          .replace(/^"|"$/g, "");
-
-        if (key.length > 0 && key.length < 50) {
-          metadata[key] = value;
+        const lower = line.toLowerCase();
+        if (
+          lower.startsWith("#") ||
+          lower.startsWith("reading") ||
+          lower.startsWith("id,") ||
+          lower.startsWith("no,") ||
+          lower.startsWith("no.,")
+        ) {
+          return { ...acc, dataStartIdx: idx };
         }
-      }
-    });
+
+        const commaIdx = line.indexOf(",");
+        if (commaIdx > 0) {
+          const key = line.substring(0, commaIdx).trim();
+          const value = line
+            .substring(commaIdx + 1)
+            .trim()
+            .replace(/^"|"$/g, "");
+
+          if (key.length > 0 && key.length < 50) {
+            return { ...acc, metadata: { ...acc.metadata, [key]: value } };
+          }
+        }
+
+        return acc;
+      },
+      { metadata: {} as Record<string, string>, dataStartIdx: -1 },
+    );
 
     const serialKey = Object.keys(metadata).find(
       (k) => k.toLowerCase().includes("gage s/n") || k.toLowerCase().includes("gage serial"),
@@ -622,12 +625,8 @@ export class PositectorService {
     const batchName = batchKey ? metadata[batchKey] : null;
     const units = unitsKey ? metadata[unitsKey] : null;
 
-    let readings: PositectorReading[] = [];
-
-    if (dataStartIdx >= 0) {
-      const dataLines = lines.slice(dataStartIdx);
-      readings = this.parseCsvReadings(dataLines.join("\n"));
-    }
+    const readings: PositectorReading[] =
+      dataStartIdx >= 0 ? this.parseCsvReadings(lines.slice(dataStartIdx).join("\n")) : [];
 
     return {
       buid: "upload",

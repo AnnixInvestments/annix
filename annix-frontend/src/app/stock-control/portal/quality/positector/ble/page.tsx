@@ -156,21 +156,21 @@ export default function PositectorBlePage() {
 
       const server = await bleDevice.device.gatt.connect();
 
-      let services: BluetoothRemoteGATTService[] = [];
-      try {
-        services = await server.getPrimaryServices();
-      } catch {
-        if (customServiceUuid) {
-          try {
-            const singleService = await server.getPrimaryService(customServiceUuid);
-            services = [singleService];
-          } catch (serviceErr) {
-            setError(
-              `Could not find service ${customServiceUuid}: ${serviceErr instanceof Error ? serviceErr.message : serviceErr}`,
-            );
+      const services: BluetoothRemoteGATTService[] = await server
+        .getPrimaryServices()
+        .catch(async () => {
+          if (customServiceUuid) {
+            try {
+              const singleService = await server.getPrimaryService(customServiceUuid);
+              return [singleService];
+            } catch (serviceErr) {
+              setError(
+                `Could not find service ${customServiceUuid}: ${serviceErr instanceof Error ? serviceErr.message : serviceErr}`,
+              );
+            }
           }
-        }
-      }
+          return [];
+        });
 
       const discovered: DiscoveredService[] = [];
 

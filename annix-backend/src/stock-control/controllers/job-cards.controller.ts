@@ -267,8 +267,7 @@ export class JobCardsController {
     ].filter(Boolean);
 
     const rubberSpec = allNoteSources.reduce(
-      (found: ReturnType<typeof parseRubberSpecNote>, text) =>
-        found || parseRubberSpecNote(text),
+      (found: ReturnType<typeof parseRubberSpecNote>, text) => found || parseRubberSpecNote(text),
       null,
     );
 
@@ -362,24 +361,25 @@ export class JobCardsController {
     const wastageName = `Rubber Wastage - ${colour}`;
     const wastageSku = `RW-${colour.toUpperCase().replace(/\s+/g, "-")}`;
 
-    let wastageItem = await this.stockItemRepo.findOne({
+    const existingWastageItem = await this.stockItemRepo.findOne({
       where: { companyId, sku: wastageSku, category: "rubber-wastage" },
     });
 
-    if (!wastageItem) {
-      wastageItem = this.stockItemRepo.create({
-        companyId,
-        sku: wastageSku,
-        name: wastageName,
-        description: `Rubber wastage scraps (${colour}). Mixed hardnesses/compounds allowed within same colour.`,
-        category: "rubber-wastage",
-        unitOfMeasure: "kg",
-        quantity: 0,
-        minStockLevel: 0,
-        color: colour,
-      });
-      wastageItem = await this.stockItemRepo.save(wastageItem);
-    }
+    const wastageItem = existingWastageItem
+      ? existingWastageItem
+      : await this.stockItemRepo.save(
+          this.stockItemRepo.create({
+            companyId,
+            sku: wastageSku,
+            name: wastageName,
+            description: `Rubber wastage scraps (${colour}). Mixed hardnesses/compounds allowed within same colour.`,
+            category: "rubber-wastage",
+            unitOfMeasure: "kg",
+            quantity: 0,
+            minStockLevel: 0,
+            color: colour,
+          }),
+        );
 
     const roundedKg = Math.round(weightKg * 100) / 100;
     const wholeKg = Math.max(1, Math.round(weightKg));

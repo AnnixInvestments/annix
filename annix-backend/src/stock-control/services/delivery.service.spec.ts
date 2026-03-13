@@ -245,10 +245,7 @@ describe("DeliveryService", () => {
       });
 
       const result = await service.findById(1, 1);
-      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
-        "stock-control/photo.jpg",
-        3600,
-      );
+      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith("stock-control/photo.jpg", 3600);
     });
   });
 

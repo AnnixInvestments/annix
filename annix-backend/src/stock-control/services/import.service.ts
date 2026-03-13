@@ -289,98 +289,95 @@ export class ImportService {
         };
       });
 
-    return normalizedRows.reduce(
-      async (accPromise, row) => {
-        const acc = await accPromise;
+    return normalizedRows.reduce(async (accPromise, row) => {
+      const acc = await accPromise;
 
-        try {
-          const existing = await this.stockItemRepo.findOne({
-            where: { sku: row.sku, companyId },
-          });
+      try {
+        const existing = await this.stockItemRepo.findOne({
+          where: { sku: row.sku, companyId },
+        });
 
-          if (existing) {
-            if (!isStockTake) {
-              Object.assign(existing, {
-                name: row.name || existing.name,
-                description: row.description ?? existing.description,
-                category: row.category ?? existing.category,
-                unitOfMeasure: row.unitOfMeasure ?? existing.unitOfMeasure,
-                costPerUnit: row.costPerUnit ?? existing.costPerUnit,
-                minStockLevel: row.minStockLevel ?? existing.minStockLevel,
-                location: row.location ?? existing.location,
-              });
-            }
-
-            if (row.quantity !== undefined) {
-              const importedQty = row.quantity;
-              const { finalSoh, movementNotes } = await this.resolveStockTakeQuantity(
-                existing,
-                importedQty,
-                companyId,
-                isStockTake,
-                stockTakeDate,
-              );
-
-              if (finalSoh !== existing.quantity) {
-                const delta = finalSoh - existing.quantity;
-                existing.quantity = finalSoh;
-
-                const movement = this.movementRepo.create({
-                  stockItem: existing,
-                  movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
-                  quantity: Math.abs(delta),
-                  referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
-                  notes: movementNotes,
-                  createdBy: createdBy || null,
-                  companyId,
-                });
-                await this.movementRepo.save(movement);
-              }
-            }
-
-            await this.stockItemRepo.save(existing);
-            return { ...acc, updated: acc.updated + 1 };
-          }
-
-          const item = this.stockItemRepo.create({
-            sku: row.sku,
-            name: row.name,
-            description: row.description || null,
-            category: row.category || null,
-            unitOfMeasure: row.unitOfMeasure || "each",
-            costPerUnit: row.costPerUnit || 0,
-            quantity: row.quantity || 0,
-            minStockLevel: row.minStockLevel || 0,
-            location: row.location || null,
-            companyId,
-            needsQrPrint: isStockTake,
-          });
-          const saved = await this.stockItemRepo.save(item);
-
-          if (row.quantity && row.quantity > 0) {
-            const movement = this.movementRepo.create({
-              stockItem: saved,
-              movementType: MovementType.IN,
-              quantity: row.quantity,
-              referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
-              notes: isStockTake ? "Stock take - new item" : "Initial import",
-              createdBy: createdBy || null,
-              companyId,
+        if (existing) {
+          if (!isStockTake) {
+            Object.assign(existing, {
+              name: row.name || existing.name,
+              description: row.description ?? existing.description,
+              category: row.category ?? existing.category,
+              unitOfMeasure: row.unitOfMeasure ?? existing.unitOfMeasure,
+              costPerUnit: row.costPerUnit ?? existing.costPerUnit,
+              minStockLevel: row.minStockLevel ?? existing.minStockLevel,
+              location: row.location ?? existing.location,
             });
-            await this.movementRepo.save(movement);
           }
 
-          return { ...acc, created: acc.created + 1 };
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Unknown error";
-          return {
-            ...acc,
-            errors: [...acc.errors, { row: row.originalIndex + 1, message }],
-          };
+          if (row.quantity !== undefined) {
+            const importedQty = row.quantity;
+            const { finalSoh, movementNotes } = await this.resolveStockTakeQuantity(
+              existing,
+              importedQty,
+              companyId,
+              isStockTake,
+              stockTakeDate,
+            );
+
+            if (finalSoh !== existing.quantity) {
+              const delta = finalSoh - existing.quantity;
+              existing.quantity = finalSoh;
+
+              const movement = this.movementRepo.create({
+                stockItem: existing,
+                movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
+                quantity: Math.abs(delta),
+                referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
+                notes: movementNotes,
+                createdBy: createdBy || null,
+                companyId,
+              });
+              await this.movementRepo.save(movement);
+            }
+          }
+
+          await this.stockItemRepo.save(existing);
+          return { ...acc, updated: acc.updated + 1 };
         }
-      },
-      Promise.resolve(result),
-    );
+
+        const item = this.stockItemRepo.create({
+          sku: row.sku,
+          name: row.name,
+          description: row.description || null,
+          category: row.category || null,
+          unitOfMeasure: row.unitOfMeasure || "each",
+          costPerUnit: row.costPerUnit || 0,
+          quantity: row.quantity || 0,
+          minStockLevel: row.minStockLevel || 0,
+          location: row.location || null,
+          companyId,
+          needsQrPrint: isStockTake,
+        });
+        const saved = await this.stockItemRepo.save(item);
+
+        if (row.quantity && row.quantity > 0) {
+          const movement = this.movementRepo.create({
+            stockItem: saved,
+            movementType: MovementType.IN,
+            quantity: row.quantity,
+            referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
+            notes: isStockTake ? "Stock take - new item" : "Initial import",
+            createdBy: createdBy || null,
+            companyId,
+          });
+          await this.movementRepo.save(movement);
+        }
+
+        return { ...acc, created: acc.created + 1 };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return {
+          ...acc,
+          errors: [...acc.errors, { row: row.originalIndex + 1, message }],
+        };
+      }
+    }, Promise.resolve(result));
   }
 
   private async resolveStockTakeQuantity(

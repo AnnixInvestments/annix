@@ -462,12 +462,11 @@ export class RubberAuCocService {
 
     const compoundCode = batches[0]?.supplierCoc?.compoundCode || compoundCoding?.code || "Unknown";
 
-    let qualityConfig: RubberCompoundQualityConfig | null = null;
-    if (compoundCode) {
-      qualityConfig = await this.qualityConfigRepository.findOne({
-        where: { compoundCode },
-      });
-    }
+    const qualityConfig: RubberCompoundQualityConfig | null = compoundCode
+      ? await this.qualityConfigRepository.findOne({
+          where: { compoundCode },
+        })
+      : null;
 
     const rollDimensions = firstRoll
       ? `${firstRoll.thicknessMm ?? "-"}mm x ${firstRoll.widthMm ?? "-"}mm x ${firstRoll.lengthM ?? "-"}m`

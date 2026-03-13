@@ -59,17 +59,16 @@ export class RepProfileService {
   }
 
   async updateProfile(userId: number, dto: UpdateRepProfileDto): Promise<RepProfile> {
-    let profile = await this.profileByUserId(userId);
-
-    if (!profile) {
-      profile = this.repProfileRepo.create({
+    const existingProfile = await this.profileByUserId(userId);
+    const profile =
+      existingProfile ??
+      this.repProfileRepo.create({
         userId,
         industry: dto.industry ?? "",
         subIndustries: dto.subIndustries ?? [],
         productCategories: dto.productCategories ?? [],
         setupCompleted: false,
       });
-    }
 
     if (dto.industry != null) {
       profile.industry = dto.industry;

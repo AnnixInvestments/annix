@@ -455,27 +455,24 @@ export class InvoiceExtractionService {
     const normalizedSku = sku.toLowerCase().trim();
 
     const scored = stockItems.map((stockItem) => {
-      let score = 0;
-
-      if (normalizedSku && stockItem.sku.toLowerCase() === normalizedSku) {
-        score = 100;
-      } else {
-        const stockName = stockItem.name.toLowerCase().replace(/\s+/g, " ").trim();
-        const stockSku = stockItem.sku.toLowerCase();
-
-        if (normalizedSku && stockSku.includes(normalizedSku)) {
-          score += 40;
+      const score = (() => {
+        if (normalizedSku && stockItem.sku.toLowerCase() === normalizedSku) {
+          return 100;
         }
 
+        const stockName = stockItem.name.toLowerCase().replace(/\s+/g, " ").trim();
+        const stockSku = stockItem.sku.toLowerCase();
+        const skuBonus = normalizedSku && stockSku.includes(normalizedSku) ? 40 : 0;
         const descWords = normalizedDesc.split(" ").filter((w) => w.length > 2);
         const matchingWords = descWords.filter((word) => stockName.includes(word));
         const wordScore = descWords.length > 0 ? (matchingWords.length / descWords.length) * 60 : 0;
-        score += wordScore;
+        const accumulated = skuBonus + wordScore;
 
         if (stockName.includes(normalizedDesc) || normalizedDesc.includes(stockName)) {
-          score = Math.max(score, 85);
+          return Math.max(accumulated, 85);
         }
-      }
+        return accumulated;
+      })();
 
       return { stockItem, confidence: Math.min(score, 100) };
     });
@@ -654,22 +651,19 @@ export class InvoiceExtractionService {
     const normalizedSku = sku.toLowerCase().trim();
 
     const scored = stockItems.map((stockItem) => {
-      let score = 0;
-
-      if (normalizedSku && stockItem.sku.toLowerCase() === normalizedSku) {
-        score = 100;
-      } else {
-        const stockName = stockItem.name.toLowerCase().replace(/\s+/g, " ").trim();
-        const stockSkuLower = stockItem.sku.toLowerCase();
-
-        if (normalizedSku && stockSkuLower.includes(normalizedSku)) {
-          score += 30;
+      const score = (() => {
+        if (normalizedSku && stockItem.sku.toLowerCase() === normalizedSku) {
+          return 100;
         }
 
+        const stockName = stockItem.name.toLowerCase().replace(/\s+/g, " ").trim();
+        const stockSkuLower = stockItem.sku.toLowerCase();
+        const skuBonus = normalizedSku && stockSkuLower.includes(normalizedSku) ? 30 : 0;
         const descWords = normalizedDesc.split(" ").filter((w) => w.length > 2);
         const matchingWords = descWords.filter((word) => stockName.includes(word));
-        score += descWords.length > 0 ? (matchingWords.length / descWords.length) * 70 : 0;
-      }
+        const wordScore = descWords.length > 0 ? (matchingWords.length / descWords.length) * 70 : 0;
+        return skuBonus + wordScore;
+      })();
 
       return {
         stockItemId: stockItem.id,
@@ -829,7 +823,8 @@ export class InvoiceExtractionService {
       .reduce(async (prev, item) => {
         await prev;
         const stockItem =
-          item.stockItem || (await this.stockItemRepo.findOne({ where: { id: item.stockItemId! } }));
+          item.stockItem ||
+          (await this.stockItemRepo.findOne({ where: { id: item.stockItemId! } }));
 
         if (stockItem) {
           const oldPrice = Number(stockItem.costPerUnit) || null;

@@ -239,37 +239,34 @@ export class BoqDistributionService {
     // Delete existing sections for this BOQ (in case of re-submission)
     await this.sectionRepository.delete({ boqId });
 
-    const sections = Object.entries(DATA_KEY_TO_SECTION).reduce(
-      (acc, [dataKey, sectionType]) => {
-        const items = boqData[dataKey as keyof ConsolidatedBoqData];
+    const sections = Object.entries(DATA_KEY_TO_SECTION).reduce((acc, [dataKey, sectionType]) => {
+      const items = boqData[dataKey as keyof ConsolidatedBoqData];
 
-        if (!items || !Array.isArray(items) || items.length === 0) {
-          return acc;
-        }
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return acc;
+      }
 
-        const capabilityKey = BOQ_SECTION_TO_CAPABILITY[sectionType];
+      const capabilityKey = BOQ_SECTION_TO_CAPABILITY[sectionType];
 
-        if (!capabilityKey) {
-          this.logger.warn(`No capability mapping for section type: ${sectionType}`);
-          return acc;
-        }
+      if (!capabilityKey) {
+        this.logger.warn(`No capability mapping for section type: ${sectionType}`);
+        return acc;
+      }
 
-        const totalWeightKg = items.reduce((sum, item) => sum + (item.weightKg || 0), 0);
+      const totalWeightKg = items.reduce((sum, item) => sum + (item.weightKg || 0), 0);
 
-        const section = this.sectionRepository.create({
-          boqId,
-          sectionType,
-          capabilityKey,
-          sectionTitle: sectionTitle(sectionType),
-          items,
-          totalWeightKg,
-          itemCount: items.length,
-        });
+      const section = this.sectionRepository.create({
+        boqId,
+        sectionType,
+        capabilityKey,
+        sectionTitle: sectionTitle(sectionType),
+        items,
+        totalWeightKg,
+        itemCount: items.length,
+      });
 
-        return [...acc, section];
-      },
-      [] as BoqSection[],
-    );
+      return [...acc, section];
+    }, [] as BoqSection[]);
 
     if (sections.length > 0) {
       await this.sectionRepository.save(sections);

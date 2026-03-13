@@ -123,10 +123,9 @@ export class PipedriveAdapter implements ICrmAdapter {
     try {
       const isUpdate = Boolean(prospect.crmExternalId);
 
-      let orgId: number | null = null;
-      if (prospect.companyName) {
-        orgId = await this.findOrCreateOrganization(prospect);
-      }
+      const orgId: number | null = prospect.companyName
+        ? await this.findOrCreateOrganization(prospect)
+        : null;
 
       const personData: Record<string, unknown> = {
         name: prospect.contactName ?? prospect.companyName,
@@ -360,10 +359,9 @@ export class PipedriveAdapter implements ICrmAdapter {
       throw new Error("Pipedrive not configured");
     }
 
-    let url = this.apiUrl("/persons?limit=100&sort=update_time ASC");
-    if (since) {
-      url += `&since=${since.toISOString()}`;
-    }
+    const url =
+      this.apiUrl("/persons?limit=100&sort=update_time ASC") +
+      (since ? `&since=${since.toISOString()}` : "");
 
     const response = await fetch(url, { headers: this.headers() });
     const result: PipedriveResponse<PipedrivePerson[] | null> = await response.json();
@@ -385,10 +383,9 @@ export class PipedriveAdapter implements ICrmAdapter {
       throw new Error("Pipedrive not configured");
     }
 
-    let url = this.apiUrl("/activities?limit=100&sort=update_time ASC");
-    if (since) {
-      url += `&since=${since.toISOString()}`;
-    }
+    const url =
+      this.apiUrl("/activities?limit=100&sort=update_time ASC") +
+      (since ? `&since=${since.toISOString()}` : "");
 
     const response = await fetch(url, { headers: this.headers() });
     const result: PipedriveResponse<PipedriveActivity[] | null> = await response.json();

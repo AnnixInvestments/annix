@@ -87,16 +87,14 @@ export class CertificateAnalysisService {
     }
 
     const contentParts: (TextContent | ImageContent)[] = [
-      ...images.map(
-        (img): TextContent | ImageContent => ({
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: "image/png",
-            data: img.toString("base64"),
-          },
-        }),
-      ),
+      ...images.map((img): TextContent | ImageContent => ({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/png",
+          data: img.toString("base64"),
+        },
+      })),
       {
         type: "text",
         text: `You are viewing ${images.length} page(s). Identify all distinct COC/COA certificate documents across these pages. Respond with JSON only.`,

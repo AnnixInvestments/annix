@@ -178,7 +178,9 @@ export class EmbeddingService {
       Promise.resolve({ processed: 0, failed: 0 }),
     );
 
-    this.logger.log(`Backfilled embeddings: ${result.processed} processed, ${result.failed} failed`);
+    this.logger.log(
+      `Backfilled embeddings: ${result.processed} processed, ${result.failed} failed`,
+    );
     return result;
   }
 
@@ -199,7 +201,9 @@ export class EmbeddingService {
       Promise.resolve({ processed: 0, failed: 0 }),
     );
 
-    this.logger.log(`Backfilled job embeddings: ${result.processed} processed, ${result.failed} failed`);
+    this.logger.log(
+      `Backfilled job embeddings: ${result.processed} processed, ${result.failed} failed`,
+    );
     return result;
   }
 

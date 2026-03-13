@@ -277,9 +277,7 @@ export default function AuRubberOrderDetailPage() {
 
     return [
       ...(itemsWithoutProduct.length > 0
-        ? [
-            `${itemsWithoutProduct.length} item(s) have no product selected and will be removed`,
-          ]
+        ? [`${itemsWithoutProduct.length} item(s) have no product selected and will be removed`]
         : []),
       ...(itemsWithoutDimensions.length > 0
         ? [`${itemsWithoutDimensions.length} item(s) are missing dimensions`]

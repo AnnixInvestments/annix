@@ -153,9 +153,7 @@ export function capabilityForSection(sectionType: string): string | undefined {
 
 export function sectionsForCapabilities(capabilities: string[]): string[] {
   return [
-    ...new Set(
-      capabilities.flatMap((capability) => CAPABILITY_TO_SECTIONS[capability] ?? []),
-    ),
+    ...new Set(capabilities.flatMap((capability) => CAPABILITY_TO_SECTIONS[capability] ?? [])),
   ];
 }
 

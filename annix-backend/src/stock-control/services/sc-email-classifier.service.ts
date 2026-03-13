@@ -51,9 +51,7 @@ export class ScEmailClassifierService implements IDocumentClassifier {
 
     const match = SUBJECT_KEYWORDS.find(([pattern]) => pattern.test(combined));
 
-    return match
-      ? { documentType: match[1], confidence: 0.7, source: "subject" as const }
-      : null;
+    return match ? { documentType: match[1], confidence: 0.7, source: "subject" as const } : null;
   }
 
   async classifyFromContent(

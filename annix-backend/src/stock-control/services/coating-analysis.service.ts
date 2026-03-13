@@ -101,11 +101,8 @@ export class CoatingAnalysisService {
     );
     results.forEach((result, idx) => {
       if (result.status === "rejected") {
-        const message =
-          result.reason instanceof Error ? result.reason.message : "Unknown error";
-        this.logger.error(
-          `Coating analysis failed for job card ${jobCardIds[idx]}: ${message}`,
-        );
+        const message = result.reason instanceof Error ? result.reason.message : "Unknown error";
+        this.logger.error(`Coating analysis failed for job card ${jobCardIds[idx]}: ${message}`);
       }
     });
   }
@@ -141,17 +138,16 @@ export class CoatingAnalysisService {
       });
 
       const paintM2 = this.sumPaintM2(lineItems);
-      let calculatedExtM2 = 0;
-      let calculatedIntM2 = 0;
-
-      if (paintM2 === 0) {
-        const calculated = await this.calculatePipeM2(lineItems);
-        calculatedExtM2 = calculated.extM2;
-        calculatedIntM2 = calculated.intM2;
-        this.logger.log(
-          `No paint line items for JC ${jobCardId}, calculated from pipe dims: ext=${calculatedExtM2.toFixed(2)}, int=${calculatedIntM2.toFixed(2)}`,
-        );
-      }
+      const { calculatedExtM2, calculatedIntM2 } = await (async () => {
+        if (paintM2 === 0) {
+          const calculated = await this.calculatePipeM2(lineItems);
+          this.logger.log(
+            `No paint line items for JC ${jobCardId}, calculated from pipe dims: ext=${calculated.extM2.toFixed(2)}, int=${calculated.intM2.toFixed(2)}`,
+          );
+          return { calculatedExtM2: calculated.extM2, calculatedIntM2: calculated.intM2 };
+        }
+        return { calculatedExtM2: 0, calculatedIntM2: 0 };
+      })();
 
       const lineItemTotalM2 = this.sumLineItemM2WithQuantity(lineItems);
       if (calculatedExtM2 === 0 && calculatedIntM2 === 0 && lineItemTotalM2 > 0) {

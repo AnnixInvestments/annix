@@ -398,12 +398,13 @@ export class ReportsService {
     });
 
     const detailedMeetings = meetings.map((m) => {
-      let duration: number | null = null;
-      if (m.actualStart && m.actualEnd) {
-        const startTime = DateTime.fromJSDate(m.actualStart);
-        const endTime = DateTime.fromJSDate(m.actualEnd);
-        duration = Math.round(endTime.diff(startTime, "minutes").minutes);
-      }
+      const duration: number | null =
+        m.actualStart && m.actualEnd
+          ? Math.round(
+              DateTime.fromJSDate(m.actualEnd).diff(DateTime.fromJSDate(m.actualStart), "minutes")
+                .minutes,
+            )
+          : null;
 
       return {
         id: m.id,

@@ -1521,14 +1521,17 @@ Formula: totalPrice = totalKg × salePricePerKg
     }
 
     const pdfBuffer = await this.storageService.download(coc.documentPath);
-    let pdfText = "";
-    try {
-      const pdfData = await pdfParse(pdfBuffer);
-      pdfText = pdfData.text || "";
-    } catch (error) {
-      this.logger.warn(`PDF text extraction failed for CoC ${id}: ${error instanceof Error ? error.message : error}`);
-      pdfText = "";
-    }
+    const pdfText = await (async () => {
+      try {
+        const pdfData = await pdfParse(pdfBuffer);
+        return pdfData.text || "";
+      } catch (error) {
+        this.logger.warn(
+          `PDF text extraction failed for CoC ${id}: ${error instanceof Error ? error.message : error}`,
+        );
+        return "";
+      }
+    })();
 
     if (pdfText.length < 50) {
       throw new NotFoundException(
@@ -1746,13 +1749,14 @@ Formula: totalPrice = totalKg × salePricePerKg
         rolls: filteredRolls.length > 0 ? filteredRolls : allRolls,
       };
     } else {
-      let pdfText = "";
-      try {
-        const pdfData = await pdfParse(pdfBuffer);
-        pdfText = pdfData.text || "";
-      } catch {
-        pdfText = "";
-      }
+      const pdfText = await (async () => {
+        try {
+          const pdfData = await pdfParse(pdfBuffer);
+          return pdfData.text || "";
+        } catch {
+          return "";
+        }
+      })();
 
       const useOcr = pdfText.length < 50;
       const extractionResult = useOcr
@@ -2919,13 +2923,14 @@ Formula: totalPrice = totalKg × salePricePerKg
         correctionHints,
       );
     } else {
-      let pdfText = "";
-      try {
-        const pdfData = await pdfParse(docBuffer);
-        pdfText = pdfData.text || "";
-      } catch {
-        pdfText = "";
-      }
+      const pdfText = await (async () => {
+        try {
+          const pdfData = await pdfParse(docBuffer);
+          return pdfData.text || "";
+        } catch {
+          return "";
+        }
+      })();
 
       if (pdfText.length >= 50) {
         extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(

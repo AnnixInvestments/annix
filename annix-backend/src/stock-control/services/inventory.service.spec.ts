@@ -420,10 +420,7 @@ describe("InventoryService", () => {
 
       const result = await service.findByIdWithPhoto(1, 1);
 
-      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
-        "stock-control/photo.jpg",
-        3600,
-      );
+      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith("stock-control/photo.jpg", 3600);
       expect(result.photoUrl).toBe("https://signed.example.com/photo.jpg");
     });
 
@@ -445,10 +442,7 @@ describe("InventoryService", () => {
 
       const result = await service.findByIdWithPhoto(1, 1);
 
-      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
-        "stock-control/photo.jpg",
-        3600,
-      );
+      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith("stock-control/photo.jpg", 3600);
       expect(result.photoUrl).toBe("https://signed.example.com/new-signed.jpg");
     });
 

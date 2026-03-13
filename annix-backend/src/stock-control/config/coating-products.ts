@@ -316,9 +316,7 @@ function buildLookupMap(): Map<string, CoatingProductSpec> {
   return new Map(
     COATING_PRODUCTS.flatMap((product) => [
       [normalizeProductName(product.name), product] as const,
-      ...product.aliases.map(
-        (alias) => [normalizeProductName(alias), product] as const,
-      ),
+      ...product.aliases.map((alias) => [normalizeProductName(alias), product] as const),
     ]),
   );
 }

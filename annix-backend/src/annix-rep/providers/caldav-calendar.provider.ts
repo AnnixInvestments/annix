@@ -268,10 +268,7 @@ export class CaldavCalendarProvider implements ICalendarProvider {
         }
 
         return [
-          this.mapVEventToCalendarEvent(
-            { ...vevent, etag: etagMatch?.[1] ?? null },
-            calendarId,
-          ),
+          this.mapVEventToCalendarEvent({ ...vevent, etag: etagMatch?.[1] ?? null }, calendarId),
         ];
       });
   }
@@ -335,12 +332,12 @@ export class CaldavCalendarProvider implements ICalendarProvider {
     const startTime = this.parseICalDate(vevent.dtstart);
     const endTime = this.parseICalDate(vevent.dtend);
 
-    let status: "confirmed" | "tentative" | "cancelled" = "confirmed";
-    if (vevent.status === "CANCELLED") {
-      status = "cancelled";
-    } else if (vevent.status === "TENTATIVE") {
-      status = "tentative";
-    }
+    const status: "confirmed" | "tentative" | "cancelled" =
+      vevent.status === "CANCELLED"
+        ? "cancelled"
+        : vevent.status === "TENTATIVE"
+          ? "tentative"
+          : "confirmed";
 
     return {
       externalId: vevent.uid,

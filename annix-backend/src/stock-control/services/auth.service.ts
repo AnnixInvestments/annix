@@ -79,54 +79,59 @@ export class StockControlAuthService {
     const verificationToken = uuidv4();
     const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
-    let companyId: number;
-    let role: StockControlRole;
-    let isInvitedUser = false;
+    const { companyId, role, isInvitedUser } = await (async () => {
+      if (invitationToken) {
+        const invitation = await this.invitationRepo.findOne({
+          where: { token: invitationToken, status: StockControlInvitationStatus.PENDING },
+        });
 
-    if (invitationToken) {
-      const invitation = await this.invitationRepo.findOne({
-        where: { token: invitationToken, status: StockControlInvitationStatus.PENDING },
-      });
+        if (!invitation) {
+          throw new BadRequestException("Invalid or expired invitation token");
+        }
 
-      if (!invitation) {
-        throw new BadRequestException("Invalid or expired invitation token");
-      }
+        if (now().toJSDate() > invitation.expiresAt) {
+          invitation.status = StockControlInvitationStatus.EXPIRED;
+          await this.invitationRepo.save(invitation);
+          throw new BadRequestException("Invitation has expired");
+        }
 
-      if (now().toJSDate() > invitation.expiresAt) {
-        invitation.status = StockControlInvitationStatus.EXPIRED;
+        invitation.status = StockControlInvitationStatus.ACCEPTED;
+        invitation.acceptedAt = now().toJSDate();
         await this.invitationRepo.save(invitation);
-        throw new BadRequestException("Invitation has expired");
+
+        return {
+          companyId: invitation.companyId,
+          role: invitation.role as StockControlRole,
+          isInvitedUser: true,
+        };
       }
 
-      companyId = invitation.companyId;
-      role = invitation.role as StockControlRole;
-      isInvitedUser = true;
-
-      invitation.status = StockControlInvitationStatus.ACCEPTED;
-      invitation.acceptedAt = now().toJSDate();
-      await this.invitationRepo.save(invitation);
-    } else {
       const pendingInvitation = await this.invitationRepo.findOne({
         where: { email: normalizedEmail, status: StockControlInvitationStatus.PENDING },
       });
 
       if (pendingInvitation) {
-        companyId = pendingInvitation.companyId;
-        role = pendingInvitation.role as StockControlRole;
-        isInvitedUser = true;
-
         pendingInvitation.status = StockControlInvitationStatus.ACCEPTED;
         pendingInvitation.acceptedAt = now().toJSDate();
         await this.invitationRepo.save(pendingInvitation);
-      } else {
-        const company = this.companyRepo.create({
-          name: companyName || `${name} Company`,
-        });
-        const savedCompany = await this.companyRepo.save(company);
-        companyId = savedCompany.id;
-        role = StockControlRole.ADMIN;
+
+        return {
+          companyId: pendingInvitation.companyId,
+          role: pendingInvitation.role as StockControlRole,
+          isInvitedUser: true,
+        };
       }
-    }
+
+      const company = this.companyRepo.create({
+        name: companyName || `${name} Company`,
+      });
+      const savedCompany = await this.companyRepo.save(company);
+      return {
+        companyId: savedCompany.id,
+        role: StockControlRole.ADMIN as StockControlRole,
+        isInvitedUser: false,
+      };
+    })();
 
     const user = this.userRepo.create({
       email: normalizedEmail,
@@ -442,8 +447,7 @@ export class StockControlAuthService {
     if (dto.phone != null) company.phone = dto.phone;
     if (dto.email != null) company.email = dto.email;
     if (dto.websiteUrl != null) company.websiteUrl = dto.websiteUrl;
-    if (dto.pipingLossFactorPct != null)
-      company.pipingLossFactorPct = dto.pipingLossFactorPct;
+    if (dto.pipingLossFactorPct != null) company.pipingLossFactorPct = dto.pipingLossFactorPct;
     if (dto.flatPlateLossFactorPct != null)
       company.flatPlateLossFactorPct = dto.flatPlateLossFactorPct;
     if (dto.structuralSteelLossFactorPct != null)

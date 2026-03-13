@@ -29,22 +29,23 @@ export class MeetingSchedulerService {
 
     const connections = await this.platformService.activeConnections();
 
-    let totalSynced = 0;
-    let totalRecordings = 0;
+    const totals = await connections
+      .filter((connection) => connection.autoFetchRecordings)
+      .reduce(
+        async (accPromise, connection) => {
+          const acc = await accPromise;
+          const result = await this.platformService.syncConnectionMeetings(connection, 1);
+          return {
+            synced: acc.synced + result.synced,
+            recordings: acc.recordings + result.recordings,
+          };
+        },
+        Promise.resolve({ synced: 0, recordings: 0 }),
+      );
 
-    for (const connection of connections) {
-      if (!connection.autoFetchRecordings) {
-        continue;
-      }
-
-      const result = await this.platformService.syncConnectionMeetings(connection, 1);
-      totalSynced += result.synced;
-      totalRecordings += result.recordings;
-    }
-
-    if (totalSynced > 0) {
+    if (totals.synced > 0) {
       this.logger.log(
-        `Completed meetings sync: ${totalSynced} meetings, ${totalRecordings} recordings found`,
+        `Completed meetings sync: ${totals.synced} meetings, ${totals.recordings} recordings found`,
       );
     }
   }
@@ -66,9 +67,9 @@ export class MeetingSchedulerService {
       );
     }
 
-    for (const fail of failed) {
+    failed.forEach((fail) => {
       this.logger.error(`Failed to download recording ${fail.recordId}: ${fail.error}`);
-    }
+    });
   }
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -79,24 +80,27 @@ export class MeetingSchedulerService {
 
     const connections = await this.platformService.connectionsNeedingTokenRefresh();
 
-    let refreshed = 0;
-    let failed = 0;
-
-    for (const connection of connections) {
-      try {
-        await this.platformService.refreshTokenIfNeeded(connection);
-        refreshed++;
-      } catch (error) {
-        failed++;
-        await this.platformService.markConnectionError(
-          connection.id,
-          error instanceof Error ? error.message : "Token refresh failed",
-        );
-      }
-    }
+    const refreshTotals = await connections.reduce(
+      async (accPromise, connection) => {
+        const acc = await accPromise;
+        try {
+          await this.platformService.refreshTokenIfNeeded(connection);
+          return { refreshed: acc.refreshed + 1, failed: acc.failed };
+        } catch (error) {
+          await this.platformService.markConnectionError(
+            connection.id,
+            error instanceof Error ? error.message : "Token refresh failed",
+          );
+          return { refreshed: acc.refreshed, failed: acc.failed + 1 };
+        }
+      },
+      Promise.resolve({ refreshed: 0, failed: 0 }),
+    );
 
     if (connections.length > 0) {
-      this.logger.log(`Token refresh: ${refreshed} refreshed, ${failed} failed`);
+      this.logger.log(
+        `Token refresh: ${refreshTotals.refreshed} refreshed, ${refreshTotals.failed} failed`,
+      );
     }
   }
 
@@ -113,19 +117,18 @@ export class MeetingSchedulerService {
 
     const connections = await this.platformService.activeConnections();
 
-    for (const connection of connections) {
-      if (!connection.autoFetchRecordings) {
-        continue;
-      }
-
-      try {
-        await this.platformService.syncConnectionMeetings(connection, 30);
-      } catch (error) {
-        this.logger.error(
-          `Weekly sync failed for connection ${connection.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
-        );
-      }
-    }
+    await connections
+      .filter((connection) => connection.autoFetchRecordings)
+      .reduce(async (accPromise, connection) => {
+        await accPromise;
+        try {
+          await this.platformService.syncConnectionMeetings(connection, 30);
+        } catch (error) {
+          this.logger.error(
+            `Weekly sync failed for connection ${connection.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+          );
+        }
+      }, Promise.resolve());
 
     this.logger.log("Weekly full sync completed");
   }

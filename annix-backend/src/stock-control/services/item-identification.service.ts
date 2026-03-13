@@ -101,32 +101,29 @@ If you cannot identify any items or the image is unclear, return an empty items 
 
     const validTerms = uniqueTerms.filter((term) => term && term.length >= 2);
 
-    const matchingItems = await validTerms.reduce(
-      async (accPromise, term) => {
-        const acc = await accPromise;
-        const items = await this.stockItemRepo.find({
-          where: [
-            { companyId, name: ILike(`%${term}%`) },
-            { companyId, category: ILike(`%${term}%`) },
-            { companyId, description: ILike(`%${term}%`) },
-          ],
-          take: 10,
-        });
+    const matchingItems = await validTerms.reduce(async (accPromise, term) => {
+      const acc = await accPromise;
+      const items = await this.stockItemRepo.find({
+        where: [
+          { companyId, name: ILike(`%${term}%`) },
+          { companyId, category: ILike(`%${term}%`) },
+          { companyId, description: ILike(`%${term}%`) },
+        ],
+        take: 10,
+      });
 
-        return items.reduce((innerAcc, item) => {
-          const existing = innerAcc.get(item.id);
-          const termScore = this.calculateSimilarity(term, item.name);
-          if (existing) {
-            return new Map([
-              ...innerAcc,
-              [item.id, { item, score: Math.max(existing.score, termScore) }],
-            ]);
-          }
-          return new Map([...innerAcc, [item.id, { item, score: termScore }]]);
-        }, acc);
-      },
-      Promise.resolve(new Map<number, { item: StockItem; score: number }>()),
-    );
+      return items.reduce((innerAcc, item) => {
+        const existing = innerAcc.get(item.id);
+        const termScore = this.calculateSimilarity(term, item.name);
+        if (existing) {
+          return new Map([
+            ...innerAcc,
+            [item.id, { item, score: Math.max(existing.score, termScore) }],
+          ]);
+        }
+        return new Map([...innerAcc, [item.id, { item, score: termScore }]]);
+      }, acc);
+    }, Promise.resolve(new Map<number, { item: StockItem; score: number }>()));
 
     return Array.from(matchingItems.values())
       .sort((a, b) => b.score - a.score)

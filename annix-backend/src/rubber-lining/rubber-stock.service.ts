@@ -404,7 +404,12 @@ export class RubberStockService {
       Promise.resolve({ created: 0, updated: 0, errors: [] as typeof result.errors }),
     );
 
-    return { totalRows: rows.length, created: totals.created, updated: totals.updated, errors: totals.errors };
+    return {
+      totalRows: rows.length,
+      created: totals.created,
+      updated: totals.updated,
+      errors: totals.errors,
+    };
   }
 
   async manualAdjustment(dto: AdjustCompoundDto): Promise<RubberCompoundMovementDto> {

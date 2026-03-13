@@ -130,28 +130,35 @@ export class OAuthLoginProvider {
     accessToken: string,
     refreshToken: string | null,
   ): OAuthTokenResult {
-    let email: string;
-    let oauthId: string;
-    let firstName = "";
-    let lastName = "";
+    const providerFields = this.extractProviderFields(provider, userData);
+    return { accessToken, refreshToken, ...providerFields };
+  }
 
+  private extractProviderFields(
+    provider: OAuthProvider,
+    userData: Record<string, unknown>,
+  ): { email: string; oauthId: string; firstName: string; lastName: string } {
     if (provider === "google") {
-      email = userData.email as string;
-      oauthId = userData.id as string;
-      firstName = (userData.given_name as string) || "";
-      lastName = (userData.family_name as string) || "";
+      return {
+        email: userData.email as string,
+        oauthId: userData.id as string,
+        firstName: (userData.given_name as string) || "",
+        lastName: (userData.family_name as string) || "",
+      };
     } else if (provider === "microsoft") {
-      email = ((userData.mail ?? userData.userPrincipalName) as string) || "";
-      oauthId = userData.id as string;
-      firstName = (userData.givenName as string) || "";
-      lastName = (userData.surname as string) || "";
+      return {
+        email: ((userData.mail ?? userData.userPrincipalName) as string) || "",
+        oauthId: userData.id as string,
+        firstName: (userData.givenName as string) || "",
+        lastName: (userData.surname as string) || "",
+      };
     } else {
-      email = userData.email as string;
-      oauthId = userData.id as string;
-      firstName = (userData.first_name as string) || "";
-      lastName = (userData.last_name as string) || "";
+      return {
+        email: userData.email as string,
+        oauthId: userData.id as string,
+        firstName: (userData.first_name as string) || "",
+        lastName: (userData.last_name as string) || "",
+      };
     }
-
-    return { accessToken, refreshToken, email, oauthId, firstName, lastName };
   }
 }

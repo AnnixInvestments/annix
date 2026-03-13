@@ -657,20 +657,14 @@ export class CertificateService {
 
     const expiredCals = calCerts.filter((c) => fromISO(c.expiryDate) < now());
     const expiredMsg =
-      expiredCals.length > 0
-        ? `${expiredCals.length} calibration certificate(s) expired`
-        : null;
+      expiredCals.length > 0 ? `${expiredCals.length} calibration certificate(s) expired` : null;
 
     const calCertSection = {
       ...this.sectionFromCount("calibrationCerts", "Calibration Certificates", calCerts.length),
       ...(expiredMsg ? { warnings: [expiredMsg] } : {}),
     };
 
-    const sections: SectionStatus[] = [
-      ...qcResult.sections,
-      supplierCertSection,
-      calCertSection,
-    ];
+    const sections: SectionStatus[] = [...qcResult.sections, supplierCertSection, calCertSection];
 
     const warnings: string[] = [
       ...qcResult.warnings,
@@ -747,17 +741,13 @@ export class CertificateService {
         .filter((p) => !p.signOff?.name)
         .map((p) => `Items Release: ${p.label} sign-off missing`);
       return [
-        ...(failItems.length > 0
-          ? [`Items Release: ${failItems.length} item(s) marked FAIL`]
-          : []),
+        ...(failItems.length > 0 ? [`Items Release: ${failItems.length} item(s) marked FAIL`] : []),
         ...missingSignOff,
       ];
     });
 
     const releaseCertWarnings = qcData.releaseCertificates.flatMap((cert) => [
-      ...(!cert.finalApprovalName
-        ? ["Release Certificate: final approval signature missing"]
-        : []),
+      ...(!cert.finalApprovalName ? ["Release Certificate: final approval signature missing"] : []),
       ...(cert.finalInspection &&
       [
         cert.finalInspection.linedAsPerDrawing,

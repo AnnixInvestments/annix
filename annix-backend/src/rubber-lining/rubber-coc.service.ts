@@ -102,19 +102,20 @@ export class RubberCocService {
     dto: CreateSupplierCocDto,
     createdBy?: string,
   ): Promise<RubberSupplierCocDto> {
-    let supplierCompanyId = dto.supplierCompanyId;
-
-    if (!supplierCompanyId) {
-      const company = await this.resolveOrCreateSupplierForType(dto.cocType);
-      supplierCompanyId = company.id;
-    } else {
-      const company = await this.companyRepository.findOne({
-        where: { id: supplierCompanyId },
-      });
-      if (!company) {
-        throw new BadRequestException("Supplier company not found");
+    const supplierCompanyId = await (async () => {
+      if (!dto.supplierCompanyId) {
+        const company = await this.resolveOrCreateSupplierForType(dto.cocType);
+        return company.id;
+      } else {
+        const company = await this.companyRepository.findOne({
+          where: { id: dto.supplierCompanyId },
+        });
+        if (!company) {
+          throw new BadRequestException("Supplier company not found");
+        }
+        return dto.supplierCompanyId;
       }
-    }
+    })();
 
     const coc = this.supplierCocRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
@@ -625,19 +626,20 @@ export class RubberCocService {
   private async resolveOrCreateSupplierForType(cocType: SupplierCocType): Promise<RubberCompany> {
     const supplierName = DEFAULT_SUPPLIER_NAMES[cocType];
 
-    let company = await this.companyRepository
+    const existing = await this.companyRepository
       .createQueryBuilder("company")
       .where("LOWER(company.name) LIKE LOWER(:name)", { name: `%${supplierName}%` })
       .getOne();
 
-    if (!company) {
-      company = this.companyRepository.create({
-        firebaseUid: `pg_${generateUniqueId()}`,
-        name: supplierName,
-      });
-      await this.companyRepository.save(company);
+    if (existing) {
+      return existing;
     }
 
+    const company = this.companyRepository.create({
+      firebaseUid: `pg_${generateUniqueId()}`,
+      name: supplierName,
+    });
+    await this.companyRepository.save(company);
     return company;
   }
 

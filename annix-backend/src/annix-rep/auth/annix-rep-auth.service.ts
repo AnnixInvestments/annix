@@ -56,13 +56,9 @@ export class AnnixRepAuthService {
       throw new ConflictException("An account with this email already exists");
     }
 
-    let annixRepRole = await this.userRoleRepo.findOne({
-      where: { name: "annixRep" },
-    });
-    if (!annixRepRole) {
-      annixRepRole = this.userRoleRepo.create({ name: "annixRep" });
-      annixRepRole = await this.userRoleRepo.save(annixRepRole);
-    }
+    const annixRepRole =
+      (await this.userRoleRepo.findOne({ where: { name: "annixRep" } })) ??
+      (await this.userRoleRepo.save(this.userRoleRepo.create({ name: "annixRep" })));
 
     const { hash: hashedPassword, salt } = await this.passwordService.hash(dto.password);
 
@@ -346,45 +342,45 @@ export class AnnixRepAuthService {
       throw new UnauthorizedException("OAuth authentication failed");
     }
 
-    let user = await this.userRepo.findOne({
+    const existingOAuthUser = await this.userRepo.findOne({
       where: { email: result.email },
       relations: ["roles"],
     });
 
-    let annixRepRole = await this.userRoleRepo.findOne({
-      where: { name: "annixRep" },
-    });
-    if (!annixRepRole) {
-      annixRepRole = this.userRoleRepo.create({ name: "annixRep" });
-      annixRepRole = await this.userRoleRepo.save(annixRepRole);
-    }
+    const annixRepRole =
+      (await this.userRoleRepo.findOne({ where: { name: "annixRep" } })) ??
+      (await this.userRoleRepo.save(this.userRoleRepo.create({ name: "annixRep" })));
 
-    if (!user) {
-      user = this.userRepo.create({
-        username: result.email,
-        email: result.email,
-        password: "",
-        firstName: result.firstName || result.email.split("@")[0],
-        lastName: result.lastName || "",
-        roles: [annixRepRole],
-        oauthProvider: provider,
-        oauthId: result.oauthId,
-      });
-      user = await this.userRepo.save(user);
-      this.logger.log(`Created new OAuth user: ${result.email} via ${provider}`);
-    } else {
-      const hasAnnixRepRole = user.roles?.some((role) => role.name === "annixRep");
-      if (!hasAnnixRepRole) {
-        user.roles = [...(user.roles || []), annixRepRole];
-        await this.userRepo.save(user);
-      }
+    const user = await (async () => {
+      if (!existingOAuthUser) {
+        const created = this.userRepo.create({
+          username: result.email,
+          email: result.email,
+          password: "",
+          firstName: result.firstName || result.email.split("@")[0],
+          lastName: result.lastName || "",
+          roles: [annixRepRole],
+          oauthProvider: provider,
+          oauthId: result.oauthId,
+        });
+        const saved = await this.userRepo.save(created);
+        this.logger.log(`Created new OAuth user: ${result.email} via ${provider}`);
+        return saved;
+      } else {
+        const hasAnnixRepRole = existingOAuthUser.roles?.some((role) => role.name === "annixRep");
+        if (!hasAnnixRepRole) {
+          existingOAuthUser.roles = [...(existingOAuthUser.roles || []), annixRepRole];
+          await this.userRepo.save(existingOAuthUser);
+        }
 
-      if (!user.oauthProvider) {
-        user.oauthProvider = provider;
-        user.oauthId = result.oauthId;
-        await this.userRepo.save(user);
+        if (!existingOAuthUser.oauthProvider) {
+          existingOAuthUser.oauthProvider = provider;
+          existingOAuthUser.oauthId = result.oauthId;
+          await this.userRepo.save(existingOAuthUser);
+        }
+        return existingOAuthUser;
       }
-    }
+    })();
 
     await this.invalidateAllUserSessions(user.id, SessionInvalidationReason.NEW_LOGIN);
 

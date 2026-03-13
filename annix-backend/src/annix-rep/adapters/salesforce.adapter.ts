@@ -314,12 +314,10 @@ export class SalesforceAdapter implements ICrmAdapter {
       "LastModifiedDate",
     ].join(", ");
 
-    let query = `SELECT ${fields} FROM Lead`;
-    if (since) {
-      const sinceStr = since.toISOString();
-      query += ` WHERE LastModifiedDate > ${sinceStr}`;
-    }
-    query += " ORDER BY LastModifiedDate ASC LIMIT 200";
+    const query =
+      `SELECT ${fields} FROM Lead` +
+      (since ? ` WHERE LastModifiedDate > ${since.toISOString()}` : "") +
+      " ORDER BY LastModifiedDate ASC LIMIT 200";
 
     const response = await fetch(this.apiUrl(`/query?q=${encodeURIComponent(query)}`), {
       headers: this.headers(),
@@ -357,12 +355,10 @@ export class SalesforceAdapter implements ICrmAdapter {
       "LastModifiedDate",
     ].join(", ");
 
-    let query = `SELECT ${fields} FROM Event`;
-    if (since) {
-      const sinceStr = since.toISOString();
-      query += ` WHERE LastModifiedDate > ${sinceStr}`;
-    }
-    query += " ORDER BY LastModifiedDate ASC LIMIT 200";
+    const query =
+      `SELECT ${fields} FROM Event` +
+      (since ? ` WHERE LastModifiedDate > ${since.toISOString()}` : "") +
+      " ORDER BY LastModifiedDate ASC LIMIT 200";
 
     const response = await fetch(this.apiUrl(`/query?q=${encodeURIComponent(query)}`), {
       headers: this.headers(),

@@ -260,8 +260,7 @@ export default function IssueStockPage() {
 
   useEffect(() => {
     if (!showBrowseItems) return;
-    let timeoutId: ReturnType<typeof setTimeout>;
-    timeoutId = setTimeout(() => {
+    const timeoutId: ReturnType<typeof setTimeout> = setTimeout(() => {
       fetchBrowseItems(browseSearch);
     }, 300);
     return () => clearTimeout(timeoutId);

@@ -121,12 +121,13 @@ export class AnnixRepAuthController {
     }
 
     const [provider, redirectBase64] = state.split(":");
-    let redirectPath = "/annix-rep";
-    try {
-      redirectPath = Buffer.from(redirectBase64, "base64").toString("utf-8");
-    } catch {
-      redirectPath = "/annix-rep";
-    }
+    const redirectPath = (() => {
+      try {
+        return Buffer.from(redirectBase64, "base64").toString("utf-8");
+      } catch {
+        return "/annix-rep";
+      }
+    })();
 
     const oauthProvider = provider === "teams" ? "microsoft" : provider;
     const validProviders: OAuthProvider[] = ["google", "microsoft", "zoom"];

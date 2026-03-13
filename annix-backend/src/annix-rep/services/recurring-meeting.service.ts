@@ -71,27 +71,25 @@ export class RecurringMeetingService {
       interval: 1,
     };
 
-    const parts = cleanRule.split(";");
-    for (const part of parts) {
+    return cleanRule.split(";").reduce<RRuleComponents>((acc, part) => {
       const [key, value] = part.split("=");
       const upperKey = key.toUpperCase();
 
       if (upperKey === "FREQ") {
-        components.freq = value;
+        return { ...acc, freq: value };
       } else if (upperKey === "INTERVAL") {
-        components.interval = parseInt(value, 10);
+        return { ...acc, interval: parseInt(value, 10) };
       } else if (upperKey === "BYDAY") {
-        components.byDay = value.split(",");
+        return { ...acc, byDay: value.split(",") };
       } else if (upperKey === "BYMONTHDAY") {
-        components.byMonthDay = parseInt(value, 10);
+        return { ...acc, byMonthDay: parseInt(value, 10) };
       } else if (upperKey === "COUNT") {
-        components.count = parseInt(value, 10);
+        return { ...acc, count: parseInt(value, 10) };
       } else if (upperKey === "UNTIL") {
-        components.until = value;
+        return { ...acc, until: value };
       }
-    }
-
-    return components;
+      return acc;
+    }, components);
   }
 
   generateInstances(
@@ -106,11 +104,8 @@ export class RecurringMeetingService {
 
     const rule = this.parseRRule(parentMeeting.recurrenceRule);
     const exceptions = this.parseExceptionDates(parentMeeting.recurrenceExceptionDates);
-    const instances: Date[] = [];
 
     const meetingStart = fromJSDate(parentMeeting.scheduledStart);
-    let current = meetingStart;
-    let count = 0;
 
     const ruleUntil = rule.until
       ? fromISO(
@@ -119,53 +114,56 @@ export class RecurringMeetingService {
       : null;
     const effectiveEndDate = ruleUntil && ruleUntil < endDate ? ruleUntil : endDate;
 
-    while (current.toJSDate() <= effectiveEndDate && instances.length < maxInstances) {
-      if (rule.count && count >= rule.count) {
-        break;
+    const nextDateTime = (current: ReturnType<typeof fromJSDate>) => {
+      if (rule.freq === "DAILY") {
+        return current.plus({ days: rule.interval });
+      } else if (rule.freq === "WEEKLY") {
+        return rule.byDay && rule.byDay.length > 0
+          ? current.plus({ days: 1 })
+          : current.plus({ weeks: rule.interval });
+      } else if (rule.freq === "MONTHLY") {
+        return current.plus({ months: rule.interval });
+      } else {
+        return current.plus({ years: rule.interval });
       }
+    };
+
+    const isAllowedDay = (current: ReturnType<typeof fromJSDate>) => {
+      if (rule.freq !== "WEEKLY" || !rule.byDay) return true;
+      const dayMap: Record<string, number> = {
+        SU: 0,
+        MO: 1,
+        TU: 2,
+        WE: 3,
+        TH: 4,
+        FR: 5,
+        SA: 6,
+      };
+      const currentDayNum = current.weekday % 7;
+      const allowedDays = rule.byDay.map((d) => dayMap[d.toUpperCase()]);
+      return allowedDays.includes(currentDayNum);
+    };
+
+    const collect = (
+      current: ReturnType<typeof fromJSDate>,
+      count: number,
+      acc: Date[],
+    ): Date[] => {
+      if (current.toJSDate() > effectiveEndDate || acc.length >= maxInstances) return acc;
+      if (rule.count && count >= rule.count) return acc;
 
       const currentDate = current.toJSDate();
       const dateStr = current.toFormat("yyyy-MM-dd");
 
-      if (currentDate >= startDate && !exceptions.has(dateStr)) {
-        if (rule.freq === "WEEKLY" && rule.byDay) {
-          const dayMap: Record<string, number> = {
-            SU: 0,
-            MO: 1,
-            TU: 2,
-            WE: 3,
-            TH: 4,
-            FR: 5,
-            SA: 6,
-          };
-          const currentDayNum = current.weekday % 7;
-          const allowedDays = rule.byDay.map((d) => dayMap[d.toUpperCase()]);
-          if (allowedDays.includes(currentDayNum)) {
-            instances.push(currentDate);
-          }
-        } else {
-          instances.push(currentDate);
-        }
-      }
+      const nextAcc =
+        currentDate >= startDate && !exceptions.has(dateStr) && isAllowedDay(current)
+          ? [...acc, currentDate]
+          : acc;
 
-      count++;
+      return collect(nextDateTime(current), count + 1, nextAcc);
+    };
 
-      if (rule.freq === "DAILY") {
-        current = current.plus({ days: rule.interval });
-      } else if (rule.freq === "WEEKLY") {
-        if (rule.byDay && rule.byDay.length > 0) {
-          current = current.plus({ days: 1 });
-        } else {
-          current = current.plus({ weeks: rule.interval });
-        }
-      } else if (rule.freq === "MONTHLY") {
-        current = current.plus({ months: rule.interval });
-      } else if (rule.freq === "YEARLY") {
-        current = current.plus({ years: rule.interval });
-      }
-    }
-
-    return instances;
+    return collect(meetingStart, 0, []);
   }
 
   private parseExceptionDates(exceptionDatesStr: string | null): Set<string> {

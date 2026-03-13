@@ -29,20 +29,23 @@ export class ReferenceService {
 
     const created = await references
       .filter((ref) => ref.email)
-      .reduce(async (accPromise, ref) => {
-        const acc = await accPromise;
-        const reference = this.referenceRepo.create({
-          candidateId,
-          name: ref.name,
-          email: ref.email,
-          relationship: ref.relationship,
-          feedbackToken: uuidv4(),
-          tokenExpiresAt: now().plus({ days: TOKEN_EXPIRY_DAYS }).toJSDate(),
-          status: ReferenceStatus.PENDING,
-        });
-        const saved = await this.referenceRepo.save(reference);
-        return [...acc, saved];
-      }, Promise.resolve([] as CandidateReference[]));
+      .reduce(
+        async (accPromise, ref) => {
+          const acc = await accPromise;
+          const reference = this.referenceRepo.create({
+            candidateId,
+            name: ref.name,
+            email: ref.email,
+            relationship: ref.relationship,
+            feedbackToken: uuidv4(),
+            tokenExpiresAt: now().plus({ days: TOKEN_EXPIRY_DAYS }).toJSDate(),
+            status: ReferenceStatus.PENDING,
+          });
+          const saved = await this.referenceRepo.save(reference);
+          return [...acc, saved];
+        },
+        Promise.resolve([] as CandidateReference[]),
+      );
 
     return created;
   }

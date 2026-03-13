@@ -360,7 +360,10 @@ export class RubberLiningService {
       ? allSpecs.filter((s) => s.hardnessClassIrhd >= 60)
       : allSpecs;
     const finalReasoning = needsHardAbrasion
-      ? [...reasoning, "High abrasion requires harder rubber - recommending 60+ IRHD hardness class"]
+      ? [
+          ...reasoning,
+          "High abrasion requires harder rubber - recommending 60+ IRHD hardness class",
+        ]
       : reasoning;
 
     return {
