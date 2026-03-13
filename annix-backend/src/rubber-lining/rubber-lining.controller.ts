@@ -2905,10 +2905,7 @@ Formula: totalPrice = totalKg × salePricePerKg
         if (docText.length < 20) {
           throw new BadRequestException("Word document appears to be empty or unreadable");
         }
-        return this.rubberCocExtractionService.extractTaxInvoice(
-          docText,
-          correctionHints,
-        );
+        return this.rubberCocExtractionService.extractTaxInvoice(docText, correctionHints);
       } else if (ext === "xlsx" || ext === "xls") {
         const workbook = XLSX.read(docBuffer, { type: "buffer" });
         const sheetTexts = workbook.SheetNames.map((name: string) => {
@@ -2919,10 +2916,7 @@ Formula: totalPrice = totalKg × salePricePerKg
         if (excelText.length < 20) {
           throw new BadRequestException("Excel document appears to be empty or unreadable");
         }
-        return this.rubberCocExtractionService.extractTaxInvoice(
-          excelText,
-          correctionHints,
-        );
+        return this.rubberCocExtractionService.extractTaxInvoice(excelText, correctionHints);
       } else {
         const pdfText = await (async () => {
           try {
@@ -2934,10 +2928,7 @@ Formula: totalPrice = totalKg × salePricePerKg
         })();
 
         if (pdfText.length >= 50) {
-          return this.rubberCocExtractionService.extractTaxInvoice(
-            pdfText,
-            correctionHints,
-          );
+          return this.rubberCocExtractionService.extractTaxInvoice(pdfText, correctionHints);
         } else {
           return this.rubberCocExtractionService.extractTaxInvoiceFromImages(
             docBuffer,

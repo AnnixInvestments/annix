@@ -1062,7 +1062,8 @@ ${truncatedText}`;
                   widthMm: item.widthMm ?? null,
                   lengthM: item.lengthM ?? null,
                   weightKg: item.actualWeightKg ?? null,
-                  areaSqM: item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
+                  areaSqM:
+                    item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
                   deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
                   deliveryDate: dn.deliveryDate ?? null,
                   customerName: dn.customerName ?? null,
@@ -1273,9 +1274,7 @@ ${truncatedText}`;
         const cocNumber = batchNumbers.length > 0 ? this.formatBatchRange(batchNumbers) : null;
 
         const compoundCode =
-          compoundInfo.compoundCode ||
-          (analyzed.extractedData?.compoundCode as string) ||
-          null;
+          compoundInfo.compoundCode || (analyzed.extractedData?.compoundCode as string) || null;
 
         const subPath = analyzed.companyId
           ? `au-rubber/cocs/${analyzed.companyId}`
@@ -1856,7 +1855,9 @@ ${truncatedText}`;
     });
 
     if (existingCoding) {
-      this.logger.log(`Found existing compound coding: ${existingCoding.code} - ${existingCoding.name}`);
+      this.logger.log(
+        `Found existing compound coding: ${existingCoding.code} - ${existingCoding.name}`,
+      );
       return existingCoding;
     }
 
@@ -1925,9 +1926,8 @@ ${truncatedText}`;
             }
 
             this.logger.log(`Using OCR-based extraction for ${file.originalname}`);
-            const extraction = await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(
-              file.buffer,
-            );
+            const extraction =
+              await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(file.buffer);
             const notes = extraction.deliveryNotes as Array<Record<string, unknown>>;
             this.logger.log(
               `Extracted ${notes.length} customer DN(s) from ${file.originalname} via OCR`,

@@ -761,8 +761,10 @@ export class RubberDeliveryNoteService {
         const rollMatch =
           dnRollNumbers.length > 0 &&
           cocRollParts.length > 0 &&
-          dnRollNumbers.some((dnRoll) =>
-            dnRoll != null && cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
+          dnRollNumbers.some(
+            (dnRoll) =>
+              dnRoll != null &&
+              cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
           );
 
         this.logger.log(
@@ -845,8 +847,10 @@ export class RubberDeliveryNoteService {
           const rollMatch =
             dnRollNumbers.length > 0 &&
             cocRollParts.length > 0 &&
-            dnRollNumbers.some((dnRoll) =>
-              dnRoll != null && cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
+            dnRollNumbers.some(
+              (dnRoll) =>
+                dnRoll != null &&
+                cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
             );
 
           return batchMatch || orderMatch || (poMatch && rollMatch);

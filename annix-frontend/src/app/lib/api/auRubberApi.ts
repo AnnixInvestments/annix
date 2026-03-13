@@ -1747,7 +1747,9 @@ class AuRubberApiClient {
     });
   }
 
-  async compoundOrders(status?: RubberCompoundOrderStatus | null): Promise<RubberCompoundOrderDto[]> {
+  async compoundOrders(
+    status?: RubberCompoundOrderStatus | null,
+  ): Promise<RubberCompoundOrderDto[]> {
     const query = status ? `?status=${status}` : "";
     return this.request(`/rubber-lining/portal/compound-orders${query}`);
   }

@@ -900,7 +900,10 @@ class CvAssistantApiClient {
     return this.request<MarketTrendsResponse>("/cv-assistant/analytics/market-trends");
   }
 
-  async analyticsExportFunnelCsv(dateFrom?: string | null, dateTo?: string | null): Promise<string> {
+  async analyticsExportFunnelCsv(
+    dateFrom?: string | null,
+    dateTo?: string | null,
+  ): Promise<string> {
     const params = new URLSearchParams();
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);

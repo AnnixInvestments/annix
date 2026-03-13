@@ -1030,9 +1030,7 @@ export default function SpecificationsStep(props: {
       : "border border-gray-300 text-gray-900";
 
   // Map Service Life to ISO 12944-5 durability codes
-  const serviceLifeToDurability = (
-    serviceLife: string | null,
-  ): "L" | "M" | "H" | "VH" | null => {
+  const serviceLifeToDurability = (serviceLife: string | null): "L" | "M" | "H" | "VH" | null => {
     switch (serviceLife) {
       case "Short":
         return "L";
@@ -4306,9 +4304,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              externalPrimerMicrons: e.target.value
-                                ? Number(e.target.value)
-                                : null,
+                              externalPrimerMicrons: e.target.value ? Number(e.target.value) : null,
                             })
                           }
                           placeholder="50-75"
@@ -6638,9 +6634,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalPuThickness: e.target.value
-                                ? Number(e.target.value)
-                                : null,
+                              internalPuThickness: e.target.value ? Number(e.target.value) : null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6673,9 +6667,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalPuHardness: e.target.value
-                                ? Number(e.target.value)
-                                : null,
+                              internalPuHardness: e.target.value ? Number(e.target.value) : null,
                             })
                           }
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -6889,9 +6881,7 @@ export default function SpecificationsStep(props: {
                           onChange={(e) =>
                             onUpdateGlobalSpecs({
                               ...globalSpecs,
-                              internalPrimerMicrons: e.target.value
-                                ? Number(e.target.value)
-                                : null,
+                              internalPrimerMicrons: e.target.value ? Number(e.target.value) : null,
                             })
                           }
                           placeholder="50-75"
