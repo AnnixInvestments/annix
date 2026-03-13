@@ -184,8 +184,7 @@ describe("RubberQualityTrackingService", () => {
       historicalValues: (number | null)[],
       threshold: number,
     ) => {
-      const alerts: Partial<RubberQualityAlert>[] = [];
-      (service as any).checkDriftMetric(
+      const result = (service as any).checkDriftMetric(
         "Shore A",
         "shoreAHardness",
         currentValue,
@@ -193,9 +192,8 @@ describe("RubberQualityTrackingService", () => {
         threshold,
         { batchNumber: "B100", id: 1 },
         "TEST-COMPOUND",
-        alerts,
       );
-      return alerts;
+      return result !== null ? [result] : [];
     };
 
     it("should not alert when current value is null", () => {
@@ -259,8 +257,7 @@ describe("RubberQualityTrackingService", () => {
       historicalValues: (number | null)[],
       dropPercentThreshold: number,
     ) => {
-      const alerts: Partial<RubberQualityAlert>[] = [];
-      (service as any).checkDropMetric(
+      const result = (service as any).checkDropMetric(
         "Tensile Strength",
         "tensileStrengthMpa",
         currentValue,
@@ -268,8 +265,8 @@ describe("RubberQualityTrackingService", () => {
         dropPercentThreshold,
         { batchNumber: "B100", id: 1 },
         "TEST-COMPOUND",
-        alerts,
       );
+      const alerts: Partial<RubberQualityAlert>[] = result !== null ? [result] : [];
       return alerts;
     };
 
@@ -315,17 +312,15 @@ describe("RubberQualityTrackingService", () => {
 
   describe("checkCvMetric", () => {
     const checkCv = (values: (number | null)[], threshold: number) => {
-      const alerts: Partial<RubberQualityAlert>[] = [];
-      (service as any).checkCvMetric(
+      const result = (service as any).checkCvMetric(
         "TC90",
         "rheometerTc90",
         values,
         threshold,
         { batchNumber: "B100", id: 1 },
         "TEST-COMPOUND",
-        alerts,
       );
-      return alerts;
+      return result !== null ? [result] : [];
     };
 
     it("should not alert when fewer than 3 valid values", () => {
