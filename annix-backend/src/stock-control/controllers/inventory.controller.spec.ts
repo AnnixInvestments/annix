@@ -135,13 +135,7 @@ describe("InventoryController", () => {
 
       await controller.grouped(mockReq());
 
-      expect(inventoryService.groupedByCategory).toHaveBeenCalledWith(
-        1,
-        undefined,
-        null,
-        1,
-        500,
-      );
+      expect(inventoryService.groupedByCategory).toHaveBeenCalledWith(1, undefined, null, 1, 500);
     });
 
     it("should throw BadRequestException for invalid locationId", async () => {
