@@ -2003,12 +2003,14 @@ class StockControlApiClient {
 
   setCompanyCookie(companyId: number) {
     if (typeof document !== "undefined") {
+      // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API not universally supported
       document.cookie = `sc_company_id=${companyId};path=/stock-control;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
     }
   }
 
   clearCompanyCookie() {
     if (typeof document !== "undefined") {
+      // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store API not universally supported
       document.cookie = "sc_company_id=;path=/stock-control;max-age=0;SameSite=Lax";
     }
   }
