@@ -156,7 +156,7 @@ describe("InvoicesController", () => {
         "Content-Disposition",
         'attachment; filename="sage-export.csv"',
       );
-      expect(res.send).toHaveBeenCalledWith("csv-data");
+      expect(res.send).toHaveBeenCalledWith(Buffer.from("csv-data"));
     });
   });
 
