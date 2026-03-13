@@ -48,11 +48,15 @@ import {
 } from "./dto/rfq-response.dto";
 import { Rfq, RfqStatus } from "./entities/rfq.entity";
 import { RfqService } from "./rfq.service";
+import { RfqDocumentService } from "./services/rfq-document.service";
 
 @ApiTags("RFQ")
 @Controller("rfq")
 export class RfqController {
-  constructor(private readonly rfqService: RfqService) {}
+  constructor(
+    private readonly rfqService: RfqService,
+    private readonly rfqDocumentService: RfqDocumentService,
+  ) {}
 
   @Get("statistics")
   @ApiOperation({
@@ -912,7 +916,7 @@ export class RfqController {
   ): Promise<RfqDocumentResponseDto> {
     const userId = req.customer.userId;
     await this.rfqService.verifyRfqOwnership(id, userId);
-    return this.rfqService.uploadDocument(id, file);
+    return this.rfqDocumentService.uploadDocument(id, file);
   }
 
   @Get(":id/documents")
@@ -942,7 +946,7 @@ export class RfqController {
   ): Promise<RfqDocumentResponseDto[]> {
     const userId = req.customer.userId;
     await this.rfqService.verifyRfqOwnership(id, userId);
-    return this.rfqService.documents(id);
+    return this.rfqDocumentService.documents(id);
   }
 
   @Get("documents/:documentId/download")
@@ -980,7 +984,7 @@ export class RfqController {
   ): Promise<void> {
     const userId = req.customer.userId;
     await this.rfqService.verifyDocumentOwnership(documentId, userId);
-    const { buffer, document } = await this.rfqService.downloadDocument(documentId);
+    const { buffer, document } = await this.rfqDocumentService.downloadDocument(documentId);
 
     res.set({
       "Content-Type": document.mimeType,
@@ -1017,7 +1021,7 @@ export class RfqController {
   ): Promise<{ message: string }> {
     const userId = req.customer.userId;
     await this.rfqService.verifyDocumentOwnership(documentId, userId);
-    await this.rfqService.deleteDocument(documentId);
+    await this.rfqDocumentService.deleteDocument(documentId);
     return { message: "Document deleted successfully" };
   }
 

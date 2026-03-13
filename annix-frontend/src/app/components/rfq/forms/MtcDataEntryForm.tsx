@@ -1082,7 +1082,9 @@ interface ChemistryInputProps {
   step?: number;
 }
 
-function ChemistryInput({ label, value, onChange, step = 0.01 }: ChemistryInputProps) {
+function ChemistryInput(props: ChemistryInputProps) {
+  const { label, value, onChange } = props;
+  const step = props.step ?? 0.01;
   return (
     <div>
       <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>

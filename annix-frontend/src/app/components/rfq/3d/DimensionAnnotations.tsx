@@ -11,7 +11,10 @@ interface SimpleLineProps {
   lineWidth?: number;
 }
 
-const Line = ({ points, color = "#000000", lineWidth = 1 }: SimpleLineProps) => {
+const Line = (props: SimpleLineProps) => {
+  const points = props.points;
+  const color = props.color ?? "#000000";
+  const lineWidth = props.lineWidth ?? 1;
   const tubeGeo = useMemo(() => {
     if (points.length < 2) return null;
     const curve = new THREE.CatmullRomCurve3(
@@ -48,20 +51,19 @@ export interface DimensionLineProps {
   lineWeight?: "thin" | "normal" | "bold";
 }
 
-export const DimensionLine = ({
-  start,
-  end,
-  label,
-  offset = 0.5,
-  offsetDirection = "y",
-  color = "#333333",
-  hideStartExtension = false,
-  hideEndExtension = false,
-  textAbove = true,
-  fontSize = 0.16,
-  arrowStyle = "open",
-  lineWeight = "normal",
-}: DimensionLineProps) => {
+export const DimensionLine = (props: DimensionLineProps) => {
+  const start = props.start;
+  const end = props.end;
+  const label = props.label;
+  const offset = props.offset ?? 0.5;
+  const offsetDirection = props.offsetDirection ?? "y";
+  const color = props.color ?? "#333333";
+  const hideStartExtension = props.hideStartExtension ?? false;
+  const hideEndExtension = props.hideEndExtension ?? false;
+  const textAbove = props.textAbove ?? true;
+  const fontSize = props.fontSize ?? 0.16;
+  const arrowStyle = props.arrowStyle ?? "open";
+  const lineWeight = props.lineWeight ?? "normal";
   const offsetVector = useMemo(() => {
     if (offsetDirection instanceof THREE.Vector3) {
       return offsetDirection.clone().normalize().multiplyScalar(offset);
@@ -296,20 +298,19 @@ export interface AngularDimensionProps {
   textRotation?: [number, number, number];
 }
 
-export const AngularDimension = ({
-  center,
-  radius,
-  startAngle,
-  endAngle,
-  plane = "xz",
-  color = "#cc6600",
-  fontSize = 0.1,
-  showArrows = true,
-  arrowStyle = "open",
-  lineWeight = 2,
-  label,
-  textRotation = [0, 0, 0],
-}: AngularDimensionProps) => {
+export const AngularDimension = (props: AngularDimensionProps) => {
+  const center = props.center;
+  const radius = props.radius;
+  const startAngle = props.startAngle;
+  const endAngle = props.endAngle;
+  const plane = props.plane ?? "xz";
+  const color = props.color ?? "#cc6600";
+  const fontSize = props.fontSize ?? 0.1;
+  const showArrows = props.showArrows ?? true;
+  const arrowStyle = props.arrowStyle ?? "open";
+  const lineWeight = props.lineWeight ?? 2;
+  const label = props.label;
+  const textRotation = props.textRotation ?? [0, 0, 0];
   const arcSegments = 32;
   const angleDiff = endAngle - startAngle;
   const angleDegrees = Math.round(Math.abs(angleDiff) * (180 / Math.PI));
