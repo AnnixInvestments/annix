@@ -9,7 +9,9 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
 } from "class-validator";
 import {
   FollowUpRecurrence,
@@ -227,20 +229,28 @@ export class ProspectResponseDto {
 export class NearbyProspectsQueryDto {
   @ApiProperty({ description: "Center latitude", example: -26.2041 })
   @IsNumber()
+  @Min(-90)
+  @Max(90)
   latitude: number;
 
   @ApiProperty({ description: "Center longitude", example: 28.0473 })
   @IsNumber()
+  @Min(-180)
+  @Max(180)
   longitude: number;
 
   @ApiPropertyOptional({ description: "Radius in kilometers", example: 10, default: 10 })
   @IsNumber()
   @IsOptional()
+  @Min(0.1)
+  @Max(500)
   radiusKm?: number;
 
   @ApiPropertyOptional({ description: "Maximum results to return", example: 20, default: 20 })
   @IsNumber()
   @IsOptional()
+  @Min(1)
+  @Max(100)
   limit?: number;
 }
 

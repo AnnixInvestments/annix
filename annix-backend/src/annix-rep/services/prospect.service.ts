@@ -62,10 +62,11 @@ export class ProspectService {
     return saved;
   }
 
-  async findAll(ownerId: number): Promise<Prospect[]> {
+  async findAll(ownerId: number, limit: number = 500): Promise<Prospect[]> {
     return this.prospectRepo.find({
       where: { ownerId },
       order: { updatedAt: "DESC" },
+      take: limit,
     });
   }
 
@@ -482,16 +483,19 @@ export class ProspectService {
         return { row: index + 1, error: "Company name is required", data: null };
       }
 
-      const status = row.status?.toLowerCase() as ProspectStatus;
-      const priority = row.priority?.toLowerCase() as ProspectPriority;
+      const statusLower = row.status?.toLowerCase();
+      const priorityLower = row.priority?.toLowerCase();
 
-      if (row.status && !validStatuses.includes(status)) {
+      if (statusLower && !validStatuses.includes(statusLower as ProspectStatus)) {
         return { row: index + 1, error: `Invalid status: ${row.status}`, data: null };
       }
 
-      if (row.priority && !validPriorities.includes(priority)) {
+      if (priorityLower && !validPriorities.includes(priorityLower as ProspectPriority)) {
         return { row: index + 1, error: `Invalid priority: ${row.priority}`, data: null };
       }
+
+      const status = (statusLower as ProspectStatus) ?? ProspectStatus.NEW;
+      const priority = (priorityLower as ProspectPriority) ?? ProspectPriority.MEDIUM;
 
       const estimatedValue = row.estimatedValue
         ? parseFloat(row.estimatedValue.replace(/[^0-9.-]/g, ""))

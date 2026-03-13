@@ -71,11 +71,12 @@ export class MeetingService {
     return saved;
   }
 
-  async findAll(salesRepId: number): Promise<Meeting[]> {
+  async findAll(salesRepId: number, limit: number = 500): Promise<Meeting[]> {
     return this.meetingRepo.find({
       where: { salesRepId },
       relations: ["prospect"],
       order: { scheduledStart: "DESC" },
+      take: limit,
     });
   }
 
