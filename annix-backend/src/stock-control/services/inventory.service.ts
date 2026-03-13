@@ -56,8 +56,9 @@ export class InventoryService {
     },
   ): Promise<{ items: StockItem[]; total: number }> {
     const page = Math.max(1, Number(filters?.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(filters?.limit) || 50));
-    const skip = (page - 1) * limit;
+    const rawLimit = Number(filters?.limit) || 0;
+    const limit = rawLimit > 0 ? Math.max(1, rawLimit) : 0;
+    const skip = limit > 0 ? (page - 1) * limit : 0;
 
     if (filters?.search) {
       const result = await this.searchItems(
@@ -82,7 +83,10 @@ export class InventoryService {
       qb.andWhere("item.quantity <= item.min_stock_level");
     }
 
-    qb.orderBy("item.name", "ASC").skip(skip).take(limit);
+    qb.orderBy("item.name", "ASC");
+    if (limit > 0) {
+      qb.skip(skip).take(limit);
+    }
 
     const [items, total] = await qb.getManyAndCount();
 
@@ -108,7 +112,10 @@ export class InventoryService {
       qb.andWhere("item.quantity <= item.min_stock_level");
     }
 
-    qb.orderBy("item.name", "ASC").skip(skip).take(limit);
+    qb.orderBy("item.name", "ASC");
+    if (limit > 0) {
+      qb.skip(skip).take(limit);
+    }
 
     const [items, total] = await qb.getManyAndCount();
 

@@ -254,7 +254,6 @@ export default function IssueStockPage() {
       setBrowseLoading(true);
       const result = await stockControlApiClient.stockItems({
         search: search || undefined,
-        limit: "20",
       });
       setBrowseItems(result.items);
     } catch (err) {
