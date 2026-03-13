@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { DataSource, In, Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { StockItem } from "../entities/stock-item.entity";
 import { RequisitionService } from "./requisition.service";
@@ -16,6 +16,7 @@ export class InventoryService {
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(companyId: number, data: Partial<StockItem>): Promise<StockItem> {
@@ -244,18 +245,40 @@ export class InventoryService {
   }
 
   async adjustQuantity(companyId: number, id: number, delta: number): Promise<StockItem> {
-    const item = await this.findById(companyId, id);
-    item.quantity = Math.max(0, item.quantity + delta);
-    const saved = await this.stockItemRepo.save(item);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (delta < 0 && saved.minStockLevel > 0 && saved.quantity < saved.minStockLevel) {
-      this.requisitionService
-        .createReorderRequisition(companyId, saved.id)
-        .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`));
+    try {
+      const item = await queryRunner.manager.findOne(StockItem, {
+        where: { id, companyId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!item) {
+        throw new NotFoundException("Stock item not found");
+      }
+
+      item.quantity = Math.max(0, item.quantity + delta);
+      const saved = await queryRunner.manager.save(StockItem, item);
+
+      await queryRunner.commitTransaction();
+
+      if (delta < 0 && saved.minStockLevel > 0 && saved.quantity < saved.minStockLevel) {
+        this.requisitionService
+          .createReorderRequisition(companyId, saved.id)
+          .catch((err) =>
+            this.logger.error(`Failed to create reorder requisition: ${err.message}`),
+          );
+      }
+
+      const [refreshed] = await this.refreshPhotoUrls([{ ...saved }]);
+      return refreshed;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
     }
-
-    const [refreshed] = await this.refreshPhotoUrls([{ ...saved }]);
-    return refreshed;
   }
 
   async bulkCreate(companyId: number, items: Partial<StockItem>[]): Promise<StockItem[]> {

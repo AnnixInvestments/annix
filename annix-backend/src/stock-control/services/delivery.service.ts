@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { DataSource, Repository } from "typeorm";
 import { fromISO, now, nowMillis } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
@@ -43,6 +43,7 @@ export class DeliveryService {
     private readonly extractionService: InvoiceExtractionService,
     @Inject(forwardRef(() => CpoService))
     private readonly cpoService: CpoService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(
@@ -64,62 +65,72 @@ export class DeliveryService {
       throw new ConflictException(`Delivery note ${data.deliveryNumber} has already been uploaded`);
     }
 
-    const deliveryNote = this.deliveryNoteRepo.create({
-      deliveryNumber: data.deliveryNumber,
-      supplierName: data.supplierName,
-      receivedDate: data.receivedDate || now().toJSDate(),
-      notes: data.notes || null,
-      photoUrl: data.photoUrl || null,
-      receivedBy: data.receivedBy || null,
-      companyId,
-    });
-    const savedNote = await this.deliveryNoteRepo.save(deliveryNote);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const itemPromises = data.items.map(async (itemData) => {
-      const stockItem = await this.stockItemRepo.findOne({
-        where: { id: itemData.stockItemId, companyId },
+    try {
+      const deliveryNote = queryRunner.manager.create(DeliveryNote, {
+        deliveryNumber: data.deliveryNumber,
+        supplierName: data.supplierName,
+        receivedDate: data.receivedDate || now().toJSDate(),
+        notes: data.notes || null,
+        photoUrl: data.photoUrl || null,
+        receivedBy: data.receivedBy || null,
+        companyId,
       });
-      if (!stockItem) {
-        throw new NotFoundException(`Stock item ${itemData.stockItemId} not found`);
+      const savedNote = await queryRunner.manager.save(DeliveryNote, deliveryNote);
+
+      for (const itemData of data.items) {
+        const stockItem = await queryRunner.manager.findOne(StockItem, {
+          where: { id: itemData.stockItemId, companyId },
+          lock: { mode: "pessimistic_write" },
+        });
+        if (!stockItem) {
+          throw new NotFoundException(`Stock item ${itemData.stockItemId} not found`);
+        }
+
+        const noteItem = queryRunner.manager.create(DeliveryNoteItem, {
+          deliveryNote: savedNote,
+          stockItem,
+          quantityReceived: itemData.quantityReceived,
+          photoUrl: itemData.photoUrl || null,
+          companyId,
+        });
+        await queryRunner.manager.save(DeliveryNoteItem, noteItem);
+
+        stockItem.quantity = stockItem.quantity + itemData.quantityReceived;
+        await queryRunner.manager.save(StockItem, stockItem);
+
+        const movement = queryRunner.manager.create(StockMovement, {
+          stockItem,
+          movementType: MovementType.IN,
+          quantity: itemData.quantityReceived,
+          referenceType: ReferenceType.DELIVERY,
+          referenceId: savedNote.id,
+          notes: `Received via delivery ${data.deliveryNumber}`,
+          createdBy: data.receivedBy || null,
+          companyId,
+        });
+        await queryRunner.manager.save(StockMovement, movement);
       }
 
-      const noteItem = this.deliveryNoteItemRepo.create({
-        deliveryNote: savedNote,
-        stockItem,
-        quantityReceived: itemData.quantityReceived,
-        photoUrl: itemData.photoUrl || null,
-        companyId,
-      });
-      await this.deliveryNoteItemRepo.save(noteItem);
+      await queryRunner.commitTransaction();
 
-      stockItem.quantity = stockItem.quantity + itemData.quantityReceived;
-      await this.stockItemRepo.save(stockItem);
+      this.cpoService
+        .linkDeliveryToCalloffs(companyId, data.supplierName, savedNote.id)
+        .catch((err) => {
+          const msg = err instanceof Error ? err.message : "Unknown error";
+          this.logger.warn(`Failed to link DN ${savedNote.id} to calloffs: ${msg}`);
+        });
 
-      const movement = this.movementRepo.create({
-        stockItem,
-        movementType: MovementType.IN,
-        quantity: itemData.quantityReceived,
-        referenceType: ReferenceType.DELIVERY,
-        referenceId: savedNote.id,
-        notes: `Received via delivery ${data.deliveryNumber}`,
-        createdBy: data.receivedBy || null,
-        companyId,
-      });
-      await this.movementRepo.save(movement);
-
-      return noteItem;
-    });
-
-    await Promise.all(itemPromises);
-
-    this.cpoService
-      .linkDeliveryToCalloffs(companyId, data.supplierName, savedNote.id)
-      .catch((err) => {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        this.logger.warn(`Failed to link DN ${savedNote.id} to calloffs: ${msg}`);
-      });
-
-    return this.findById(companyId, savedNote.id);
+      return this.findById(companyId, savedNote.id);
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async createFromEmail(
@@ -179,30 +190,53 @@ export class DeliveryService {
   async remove(companyId: number, id: number): Promise<void> {
     const note = await this.findById(companyId, id);
 
-    const movements = await this.movementRepo.find({
-      where: {
-        referenceType: ReferenceType.DELIVERY,
-        referenceId: id,
-        companyId,
-      },
-      relations: ["stockItem"],
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    for (const movement of movements) {
-      if (movement.stockItem) {
-        movement.stockItem.quantity = movement.stockItem.quantity - movement.quantity;
-        await this.stockItemRepo.save(movement.stockItem);
-        this.logger.log(`Reversed stock movement: ${movement.stockItem.sku} -${movement.quantity}`);
+    try {
+      const movements = await queryRunner.manager.find(StockMovement, {
+        where: {
+          referenceType: ReferenceType.DELIVERY,
+          referenceId: id,
+          companyId,
+        },
+        relations: ["stockItem"],
+      });
+
+      for (const movement of movements) {
+        if (movement.stockItem) {
+          const stockItem = await queryRunner.manager.findOne(StockItem, {
+            where: { id: movement.stockItem.id, companyId },
+            lock: { mode: "pessimistic_write" },
+          });
+          if (stockItem) {
+            stockItem.quantity = stockItem.quantity - movement.quantity;
+            await queryRunner.manager.save(StockItem, stockItem);
+            this.logger.log(
+              `Reversed stock movement: ${stockItem.sku} -${movement.quantity}`,
+            );
+          }
+        }
+        await queryRunner.manager.remove(StockMovement, movement);
       }
-      await this.movementRepo.remove(movement);
-    }
 
-    if (note.items && note.items.length > 0) {
-      await this.deliveryNoteItemRepo.remove(note.items);
-    }
+      if (note.items && note.items.length > 0) {
+        await queryRunner.manager.remove(DeliveryNoteItem, note.items);
+      }
 
-    await this.deliveryNoteRepo.remove(note);
-    this.logger.log(`Deleted delivery note ${id} and reversed ${movements.length} stock movements`);
+      await queryRunner.manager.remove(DeliveryNote, note);
+      await queryRunner.commitTransaction();
+
+      this.logger.log(
+        `Deleted delivery note ${id} and reversed ${movements.length} stock movements`,
+      );
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async uploadPhoto(

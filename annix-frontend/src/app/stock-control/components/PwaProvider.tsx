@@ -108,6 +108,8 @@ export function PwaProvider(props: { children: React.ReactNode }) {
     setIsIos(isIosDevice);
     setIsStandalone(isInStandaloneMode);
 
+    let updateInterval: ReturnType<typeof setInterval> | null = null;
+
     const registerServiceWorker = async () => {
       try {
         const registration = await navigator.serviceWorker.register("/stock-control-sw.js", {
@@ -137,7 +139,7 @@ export function PwaProvider(props: { children: React.ReactNode }) {
           setShowUpdatePrompt(true);
         }
 
-        setInterval(
+        updateInterval = setInterval(
           () => {
             registration.update();
           },
@@ -155,12 +157,13 @@ export function PwaProvider(props: { children: React.ReactNode }) {
     registerServiceWorker();
 
     let refreshing = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
+    const handleControllerChange = () => {
       if (!refreshing) {
         refreshing = true;
         window.location.reload();
       }
-    });
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
 
     if (!isInStandaloneMode) {
       const dismissed = localStorage.getItem("stock-control-pwa-dismissed");
@@ -168,7 +171,10 @@ export function PwaProvider(props: { children: React.ReactNode }) {
         const dismissedAt = parseInt(dismissed, 10);
         const daysSinceDismissed = (nowMillis() - dismissedAt) / (1000 * 60 * 60 * 24);
         if (daysSinceDismissed < 7) {
-          return;
+          return () => {
+            if (updateInterval) clearInterval(updateInterval);
+            navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+          };
         }
       }
 
@@ -185,9 +191,16 @@ export function PwaProvider(props: { children: React.ReactNode }) {
       }
 
       return () => {
+        if (updateInterval) clearInterval(updateInterval);
+        navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
         window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       };
     }
+
+    return () => {
+      if (updateInterval) clearInterval(updateInterval);
+      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+    };
   }, []);
 
   const handleUpdate = () => {

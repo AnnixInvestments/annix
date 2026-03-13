@@ -264,7 +264,9 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
     (e: React.KeyboardEvent) => {
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((prev) => Math.min(prev + 1, flatResults.length - 1));
+        if (flatResults.length > 0) {
+          setSelectedIndex((prev) => Math.min(prev + 1, flatResults.length - 1));
+        }
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setSelectedIndex((prev) => Math.max(prev - 1, 0));

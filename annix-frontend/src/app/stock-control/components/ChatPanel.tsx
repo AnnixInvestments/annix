@@ -226,11 +226,22 @@ export function ChatPanel() {
 
   const messagingEnabled = profile?.messagingEnabled ?? false;
 
+  const lastMessageIdRef = useRef(lastMessageId);
+  lastMessageIdRef.current = lastMessageId;
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const convLastMessageIdRef = useRef(convLastMessageId);
+  convLastMessageIdRef.current = convLastMessageId;
+  const activeConversationRef = useRef(activeConversation);
+  activeConversationRef.current = activeConversation;
+
   const fetchGeneralMessages = useCallback(async () => {
     if (!messagingEnabled) return;
 
     try {
-      const msgs = await stockControlApiClient.chatMessages(lastMessageId);
+      const msgs = await stockControlApiClient.chatMessages(lastMessageIdRef.current);
       if (msgs.length === 0) return;
 
       setMessages((prev) => {
@@ -243,21 +254,21 @@ export function ChatPanel() {
       const lastNew = msgs[msgs.length - 1];
       setLastMessageId(lastNew.id);
 
-      if (!isOpen || view !== "general") {
+      if (!isOpenRef.current || viewRef.current !== "general") {
         setUnreadCount((prev) => prev + msgs.length);
       }
     } catch (e) {
       console.error("Chat poll failed:", e instanceof Error ? e.message : e);
     }
-  }, [lastMessageId, messagingEnabled, isOpen, view]);
+  }, [messagingEnabled]);
 
   const fetchConvMessages = useCallback(async () => {
-    if (!messagingEnabled || !activeConversation) return;
+    if (!messagingEnabled || !activeConversationRef.current) return;
 
     try {
       const msgs = await stockControlApiClient.chatMessages(
-        convLastMessageId,
-        activeConversation.id,
+        convLastMessageIdRef.current,
+        activeConversationRef.current.id,
       );
       if (msgs.length === 0) return;
 
@@ -273,7 +284,7 @@ export function ChatPanel() {
     } catch (e) {
       console.error("Conversation poll failed:", e instanceof Error ? e.message : e);
     }
-  }, [convLastMessageId, messagingEnabled, activeConversation]);
+  }, [messagingEnabled]);
 
   useEffect(() => {
     if (!messagingEnabled) return;
