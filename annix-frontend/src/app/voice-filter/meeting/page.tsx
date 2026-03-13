@@ -80,7 +80,9 @@ export default function VoiceFilterMeetingPage() {
 
   const handleStartMeeting = () => {
     if (!meetingName.trim()) {
-      setMeetingName(`Meeting ${now().toLocaleString({ year: "numeric", month: "short", day: "numeric" })}`);
+      setMeetingName(
+        `Meeting ${now().toLocaleString({ year: "numeric", month: "short", day: "numeric" })}`,
+      );
     }
     setIsRecording(true);
     setElapsedTime(0);

@@ -485,9 +485,7 @@ export class BoqService {
       }
     }
 
-    const lineNumberCases = dto.itemIds
-      .map((id, i) => `WHEN id = ${id} THEN ${i + 1}`)
-      .join(" ");
+    const lineNumberCases = dto.itemIds.map((id, i) => `WHEN id = ${id} THEN ${i + 1}`).join(" ");
 
     await this.lineItemRepository
       .createQueryBuilder()

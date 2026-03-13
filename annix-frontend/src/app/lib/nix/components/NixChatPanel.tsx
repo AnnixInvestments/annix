@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { fieldById } from "@/app/lib/config/rfq/fieldRegistry";
+import { fromISO, now, nowISO, nowMillis } from "@/app/lib/datetime";
 import { useGuidedMode } from "@/app/lib/hooks/useGuidedMode";
 import {
   type ChatMessage,
@@ -14,7 +15,6 @@ import {
   type ValidationIssue,
 } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
-import { fromISO, now, nowISO, nowMillis } from "@/app/lib/datetime";
 
 const NIX_SESSION_STORAGE_KEY = "nix-chat-session-id";
 

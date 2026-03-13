@@ -5,7 +5,7 @@ import type {
   RbacAppAccessSummary,
   RbacUserWithAccessSummary,
 } from "@/app/lib/api/adminApi";
-import { formatDateZA, isExpired as checkExpired } from "@/app/lib/datetime";
+import { isExpired as checkExpired, formatDateZA } from "@/app/lib/datetime";
 
 interface UserAccessDetailsProps {
   user: RbacUserWithAccessSummary;

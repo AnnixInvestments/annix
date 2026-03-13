@@ -717,9 +717,7 @@ export class BoqDistributionService {
     });
 
     const allBoqIds = [...new Set(validAccessRecords.map((a) => a.boqId))];
-    const allAllowedSections = [
-      ...new Set(validAccessRecords.flatMap((a) => a.allowedSections)),
-    ];
+    const allAllowedSections = [...new Set(validAccessRecords.flatMap((a) => a.allowedSections))];
 
     const allSections =
       allBoqIds.length > 0

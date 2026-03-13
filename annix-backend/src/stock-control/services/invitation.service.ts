@@ -2,8 +2,8 @@ import { ConflictException, Injectable, Logger, NotFoundException } from "@nestj
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
-import { now } from "../../lib/datetime";
 import { EmailService } from "../../email/email.service";
+import { now } from "../../lib/datetime";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import {
   StockControlInvitation,

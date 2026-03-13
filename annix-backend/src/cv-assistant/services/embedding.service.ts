@@ -2,8 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
-import { nowMillis } from "../../lib/datetime";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
+import { nowMillis } from "../../lib/datetime";
 import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 

@@ -3,8 +3,8 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as nodemailer from "nodemailer";
 import { Repository } from "typeorm";
-import { nowMillis } from "../../lib/datetime";
 import { EmailOptions, EmailService } from "../../email/email.service";
+import { nowMillis } from "../../lib/datetime";
 import { decrypt, encrypt } from "../../secure-documents/crypto.util";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 

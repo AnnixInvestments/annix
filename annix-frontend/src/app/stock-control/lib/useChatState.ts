@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { nowISO } from "@/app/lib/datetime";
 import type {
   ChatConversationResponse,
   ChatMessageResponse,
   StockControlTeamMember,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { nowISO } from "@/app/lib/datetime";
 
 type ChatMsg = ChatMessageResponse;
 

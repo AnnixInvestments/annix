@@ -1,7 +1,7 @@
 "use client";
 
 import type { RbacUserAccess } from "@/app/lib/api/adminApi";
-import { formatDateZA, isExpired as checkExpired } from "@/app/lib/datetime";
+import { isExpired as checkExpired, formatDateZA } from "@/app/lib/datetime";
 
 interface UserAccessCardProps {
   access: RbacUserAccess;

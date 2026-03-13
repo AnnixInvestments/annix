@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { fromISO, nowISO, nowMillis } from "@/app/lib/datetime";
 import type {
   BatchIssuanceDto,
   BatchIssuanceResult,
@@ -14,6 +13,7 @@ import type {
   SupplierCertificate,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { fromISO, nowISO, nowMillis } from "@/app/lib/datetime";
 import { QrScanner } from "../../components/QrScanner";
 
 type Step = "issuer" | "recipient" | "stock_items" | "job_card" | "confirm";
