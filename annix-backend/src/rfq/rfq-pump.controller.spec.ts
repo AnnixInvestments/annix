@@ -16,6 +16,7 @@ import {
 import { Rfq, RfqStatus } from "./entities/rfq.entity";
 import { RfqController } from "./rfq.controller";
 import { RfqService } from "./rfq.service";
+import { RfqDocumentService } from "./services/rfq-document.service";
 
 describe("RfqController - Pump Endpoints", () => {
   let controller: RfqController;
@@ -70,7 +71,10 @@ describe("RfqController - Pump Endpoints", () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [RfqController],
-      providers: [{ provide: RfqService, useValue: mockRfqService }],
+      providers: [
+        { provide: RfqService, useValue: mockRfqService },
+        { provide: RfqDocumentService, useValue: {} },
+      ],
     })
       .overrideGuard(CustomerAuthGuard)
       .useValue(mockGuard)
