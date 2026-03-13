@@ -6,6 +6,7 @@ import {
   Get,
   HttpStatus,
   Inject,
+  Logger,
   NotFoundException,
   Param,
   Patch,
@@ -184,6 +185,8 @@ const XLSX = require("xlsx");
 @ApiTags("Rubber Lining")
 @Controller("rubber-lining")
 export class RubberLiningController {
+  private readonly logger = new Logger(RubberLiningController.name);
+
   constructor(
     private readonly rubberLiningService: RubberLiningService,
     private readonly rubberStockService: RubberStockService,
@@ -1522,7 +1525,8 @@ Formula: totalPrice = totalKg × salePricePerKg
     try {
       const pdfData = await pdfParse(pdfBuffer);
       pdfText = pdfData.text || "";
-    } catch {
+    } catch (error) {
+      this.logger.warn(`PDF text extraction failed for CoC ${id}: ${error instanceof Error ? error.message : error}`);
       pdfText = "";
     }
 

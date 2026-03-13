@@ -347,12 +347,13 @@ export class ComplySaNotificationsService {
       where: { id: notificationId },
     });
 
-    if (notification !== null) {
-      notification.readAt = now().toJSDate();
-      return this.notificationRepository.save(notification);
+    if (notification === null) {
+      this.logger.warn(`Notification ${notificationId} not found for markRead`);
+      throw new Error(`Notification ${notificationId} not found`);
     }
 
-    return notification!;
+    notification.readAt = now().toJSDate();
+    return this.notificationRepository.save(notification);
   }
 
   private buildMessage(

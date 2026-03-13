@@ -175,7 +175,9 @@ export default function AuRubberOrdersPage() {
       ids.map((id) => auRubberApiClient.deleteOrder(id)),
     );
     const successCount = results.filter((r) => r.status === "fulfilled").length;
-    const failCount = results.filter((r) => r.status === "rejected").length;
+    const rejected = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    const failCount = rejected.length;
+    rejected.forEach((r) => console.error("Failed to delete order:", r.reason));
     if (successCount > 0) {
       showToast(
         `Deleted ${successCount} order${successCount > 1 ? "s" : ""}${failCount > 0 ? `, ${failCount} failed` : ""}`,
