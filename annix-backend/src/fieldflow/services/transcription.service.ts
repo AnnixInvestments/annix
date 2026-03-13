@@ -58,7 +58,7 @@ export class TranscriptionService {
     });
 
     if (!recording) {
-      throw new NotFoundException("Recording not found");
+      throw new NotFoundException(`Recording ${recordingId} not found`);
     }
 
     const existingTranscript = await this.transcriptRepo.findOne({
@@ -115,7 +115,7 @@ export class TranscriptionService {
       return saved;
     } catch (error) {
       recording.processingStatus = RecordingProcessingStatus.FAILED;
-      recording.processingError = error instanceof Error ? error.message : "Transcription failed";
+      recording.processingError = error instanceof Error ? error.message : `Transcription failed for recording ${recordingId}`;
       await this.recordingRepo.save(recording);
 
       this.logger.error(`Transcription failed for recording ${recordingId}: ${error}`);
@@ -799,11 +799,19 @@ export class TranscriptionService {
     });
 
     if (!transcript) {
-      throw new NotFoundException("Transcript not found");
+      throw new NotFoundException(`Transcript ${transcriptId} not found`);
     }
 
     if (transcript.recording.meeting.salesRepId !== userId) {
-      throw new NotFoundException("Transcript not found");
+      throw new NotFoundException(`Transcript ${transcriptId} not found`);
+    }
+
+    const invalidIndices = dto.segments
+      .filter((u) => u.index < 0 || u.index >= transcript.segments.length)
+      .map((u) => u.index);
+
+    if (invalidIndices.length > 0) {
+      throw new BadRequestException(`Invalid segment indices for transcript ${transcriptId}: ${invalidIndices.join(", ")}`);
     }
 
     const updatedSegments = transcript.segments.map((segment, index) => {
@@ -817,14 +825,6 @@ export class TranscriptionService {
         text: update.text ?? segment.text,
       };
     });
-
-    const invalidIndices = dto.segments
-      .filter((u) => u.index < 0 || u.index >= transcript.segments.length)
-      .map((u) => u.index);
-
-    if (invalidIndices.length > 0) {
-      throw new BadRequestException(`Invalid segment indices: ${invalidIndices.join(", ")}`);
-    }
 
     transcript.segments = updatedSegments;
     transcript.fullText = updatedSegments.map((s) => s.text).join(" ");
