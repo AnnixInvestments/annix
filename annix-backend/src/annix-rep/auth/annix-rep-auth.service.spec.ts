@@ -136,7 +136,7 @@ describe("AnnixRepAuthService", () => {
   describe("register", () => {
     const registerDto = {
       email: "newrep@company.com",
-      password: "SecurePass123!",
+      password: "mock-test-password",
       firstName: "Jane",
       lastName: "Smith",
     };
@@ -190,7 +190,7 @@ describe("AnnixRepAuthService", () => {
   });
 
   describe("login", () => {
-    const loginDto = { email: "rep@company.com", password: "SecurePass123!" };
+    const loginDto = { email: "rep@company.com", password: "mock-test-password" };
 
     it("should login and return auth response with profile status", async () => {
       userRepo.findOne.mockResolvedValue(mockUser);
