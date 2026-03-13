@@ -427,9 +427,6 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.3(@types/react@19.2.8)
-      '@types/terser-webpack-plugin':
-        specifier: ^5.2.0
-        version: 5.2.0(webpack@5.104.1)
       '@types/three':
         specifier: ^0.182.0
         version: 0.182.0
@@ -454,9 +451,6 @@ importers:
       tailwindcss:
         specifier: ^4
         version: 4.1.18
-      terser-webpack-plugin:
-        specifier: ^5.4.0
-        version: 5.4.0(webpack@5.104.1)
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -3460,10 +3454,6 @@ packages:
 
   '@types/swagger-schema-official@2.0.25':
     resolution: {integrity: sha512-T92Xav+Gf/Ik1uPW581nA+JftmjWPgskw/WBf4TJzxRG/SJ+DfNnNE+WuZ4mrXuzflQMqMkm1LSYjzYW7MB1Cg==}
-
-  '@types/terser-webpack-plugin@5.2.0':
-    resolution: {integrity: sha512-iHDR2pRfFjGyDqCALX2tgUgFtGoQf2AJhKpC2XD1IMBQVJF2bny6WChGRDKj9eaZJl4F2RmvBhxJNtVPj7aTRw==}
-    deprecated: This is a stub types definition. terser-webpack-plugin provides its own type definitions, so you do not need this installed.
 
   '@types/three@0.182.0':
     resolution: {integrity: sha512-WByN9V3Sbwbe2OkWuSGyoqQO8Du6yhYaXtXLoA5FkKTUJorZ+yOHBZ35zUUPQXlAKABZmbYp5oAqpA4RBjtJ/Q==}
@@ -7780,22 +7770,6 @@ packages:
       uglify-js:
         optional: true
 
-  terser-webpack-plugin@5.4.0:
-    resolution: {integrity: sha512-Bn5vxm48flOIfkdl5CaD2+1CiUVbonWQ3KQPyP7/EuIl9Gbzq/gQFOzaMFUEgVjB1396tcK0SG8XcNJ/2kDH8g==}
-    engines: {node: '>= 10.13.0'}
-    peerDependencies:
-      '@swc/core': '*'
-      esbuild: '*'
-      uglify-js: '*'
-      webpack: ^5.1.0
-    peerDependenciesMeta:
-      '@swc/core':
-        optional: true
-      esbuild:
-        optional: true
-      uglify-js:
-        optional: true
-
   terser@5.46.0:
     resolution: {integrity: sha512-jTwoImyr/QbOWFFso3YoU3ik0jBBDJ6JTOQiy/J2YxVJdZCc+5u7skhNwiOR3FQIygFqVUPHl7qbbxtjW2K3Qg==}
     engines: {node: '>=10'}
@@ -12060,15 +12034,6 @@ snapshots:
       '@types/superagent': 8.1.9
 
   '@types/swagger-schema-official@2.0.25': {}
-
-  '@types/terser-webpack-plugin@5.2.0(webpack@5.104.1)':
-    dependencies:
-      terser-webpack-plugin: 5.4.0(webpack@5.104.1)
-    transitivePeerDependencies:
-      - '@swc/core'
-      - esbuild
-      - uglify-js
-      - webpack
 
   '@types/three@0.182.0':
     dependencies:
@@ -17358,14 +17323,6 @@ snapshots:
       jest-worker: 27.5.1
       schema-utils: 4.3.3
       serialize-javascript: 6.0.2
-      terser: 5.46.0
-      webpack: 5.104.1
-
-  terser-webpack-plugin@5.4.0(webpack@5.104.1):
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.31
-      jest-worker: 27.5.1
-      schema-utils: 4.3.3
       terser: 5.46.0
       webpack: 5.104.1
 
