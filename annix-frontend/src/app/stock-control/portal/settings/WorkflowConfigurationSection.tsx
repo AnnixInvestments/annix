@@ -699,30 +699,28 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                   <span className="text-xs text-orange-500">No one assigned</span>
                 )}
               </div>
-              {isBackground && (
-                <div
-                  className="flex items-center gap-1.5 mt-1"
-                  onClick={(e) => e.stopPropagation()}
+              <div
+                className="flex items-center gap-1.5 mt-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="text-xs text-gray-400">Follows:</span>
+                <select
+                  value={followsStep}
+                  onChange={(e) => handleUpdateFollows(step.key, e.target.value || null)}
+                  disabled={saving}
+                  className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 focus:ring-teal-500 focus:border-teal-500 bg-white cursor-pointer"
                 >
-                  <span className="text-xs text-gray-400">Follows:</span>
-                  <select
-                    value={followsStep}
-                    onChange={(e) => handleUpdateFollows(step.key, e.target.value || null)}
-                    disabled={saving}
-                    className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 focus:ring-teal-500 focus:border-teal-500 bg-white cursor-pointer"
-                  >
-                    <option value="">None</option>
-                    {allSteps
-                      .filter((s) => s.key !== step.key)
-                      .map((s) => (
-                        <option key={s.key} value={s.key}>
-                          {s.label}
-                          {s.isBackground ? " (bg)" : ""}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              )}
+                  <option value="">None</option>
+                  {allSteps
+                    .filter((s) => s.key !== step.key)
+                    .map((s) => (
+                      <option key={s.key} value={s.key}>
+                        {s.label}
+                        {s.isBackground ? " (bg)" : ""}
+                      </option>
+                    ))}
+                </select>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
