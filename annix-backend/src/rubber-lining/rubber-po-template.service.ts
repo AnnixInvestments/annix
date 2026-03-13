@@ -108,12 +108,9 @@ export class RubberPoTemplateService {
       /length/gi,
     ];
 
-    const foundLabels: string[] = [];
-    labelPatterns.forEach((pattern) => {
+    const foundLabels = labelPatterns.flatMap((pattern) => {
       const matches = text.match(pattern);
-      if (matches) {
-        foundLabels.push(matches[0].toLowerCase().trim());
-      }
+      return matches ? [matches[0].toLowerCase().trim()] : [];
     });
 
     return [...new Set(foundLabels)].sort();
@@ -121,23 +118,23 @@ export class RubberPoTemplateService {
 
   private extractTableHeaders(text: string): string[] {
     const lines = text.split("\n").map((l) => l.trim());
-    const potentialHeaders: string[] = [];
 
-    lines.forEach((line) => {
-      const words = line.split(/\s+/);
-      if (words.length >= 3 && words.length <= 10 && words.every((w) => w.length <= 20)) {
-        const hasCommonHeaders = words.some((w) =>
-          ["item", "qty", "quantity", "description", "price", "amount", "unit"].includes(
-            w.toLowerCase(),
-          ),
+    return lines
+      .filter((line) => {
+        const words = line.split(/\s+/);
+        return (
+          words.length >= 3 &&
+          words.length <= 10 &&
+          words.every((w) => w.length <= 20) &&
+          words.some((w) =>
+            ["item", "qty", "quantity", "description", "price", "amount", "unit"].includes(
+              w.toLowerCase(),
+            ),
+          )
         );
-        if (hasCommonHeaders) {
-          potentialHeaders.push(words.join(" ").toLowerCase());
-        }
-      }
-    });
-
-    return potentialHeaders.slice(0, 5);
+      })
+      .map((line) => line.split(/\s+/).join(" ").toLowerCase())
+      .slice(0, 5);
   }
 
   async findTemplateForDocument(

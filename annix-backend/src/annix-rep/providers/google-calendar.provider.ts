@@ -194,39 +194,38 @@ export class GoogleCalendarProvider implements ICalendarProvider {
     syncToken: string | null,
     fullSync: boolean,
   ): Promise<SyncEventsResult> {
-    const allEvents: CalendarEventData[] = [];
-    const allDeletedIds: string[] = [];
-    let combinedSyncToken: string | null = null;
-
     const syncTokens: Record<string, string> = syncToken ? JSON.parse(syncToken) : {};
-    const newSyncTokens: Record<string, string> = {};
 
-    for (const calendarId of calendarIds) {
-      const result = await this.syncCalendarEvents(
-        config,
-        calendarId,
-        fullSync ? null : (syncTokens[calendarId] ?? null),
-      );
+    const { allEvents, allDeletedIds, newSyncTokens } = await calendarIds.reduce(
+      async (accPromise, calendarId) => {
+        const acc = await accPromise;
+        const result = await this.syncCalendarEvents(
+          config,
+          calendarId,
+          fullSync ? null : (syncTokens[calendarId] ?? null),
+        );
 
-      if (result.requiresFullSync) {
-        const fullResult = await this.syncCalendarEvents(config, calendarId, null);
-        allEvents.push(...fullResult.events);
-        allDeletedIds.push(...fullResult.deletedEventIds);
-        if (fullResult.nextSyncToken) {
-          newSyncTokens[calendarId] = fullResult.nextSyncToken;
-        }
-      } else {
-        allEvents.push(...result.events);
-        allDeletedIds.push(...result.deletedEventIds);
-        if (result.nextSyncToken) {
-          newSyncTokens[calendarId] = result.nextSyncToken;
-        }
-      }
-    }
+        const effectiveResult = result.requiresFullSync
+          ? await this.syncCalendarEvents(config, calendarId, null)
+          : result;
 
-    if (Object.keys(newSyncTokens).length > 0) {
-      combinedSyncToken = JSON.stringify(newSyncTokens);
-    }
+        return {
+          allEvents: [...acc.allEvents, ...effectiveResult.events],
+          allDeletedIds: [...acc.allDeletedIds, ...effectiveResult.deletedEventIds],
+          newSyncTokens: effectiveResult.nextSyncToken
+            ? { ...acc.newSyncTokens, [calendarId]: effectiveResult.nextSyncToken }
+            : acc.newSyncTokens,
+        };
+      },
+      Promise.resolve({
+        allEvents: [] as CalendarEventData[],
+        allDeletedIds: [] as string[],
+        newSyncTokens: {} as Record<string, string>,
+      }),
+    );
+
+    const combinedSyncToken =
+      Object.keys(newSyncTokens).length > 0 ? JSON.stringify(newSyncTokens) : null;
 
     return {
       events: allEvents,
@@ -290,13 +289,10 @@ export class GoogleCalendarProvider implements ICalendarProvider {
       const data: GoogleEventsListResponse = await response.json();
 
       if (data.items) {
-        for (const item of data.items) {
-          if (item.status === "cancelled") {
-            deletedEventIds.push(item.id);
-          } else {
-            events.push(this.mapGoogleEvent(item, calendarId));
-          }
-        }
+        const cancelled = data.items.filter((item) => item.status === "cancelled");
+        const active = data.items.filter((item) => item.status !== "cancelled");
+        deletedEventIds.push(...cancelled.map((item) => item.id));
+        events.push(...active.map((item) => this.mapGoogleEvent(item, calendarId)));
       }
 
       pageToken = data.nextPageToken ?? null;

@@ -181,83 +181,70 @@ export class RubberQualityTrackingService {
       return { compoundCode, alertsCreated: 0, alerts: [] };
     }
 
-    const alertsToCreate: Partial<RubberQualityAlert>[] = [];
-
-    this.checkDriftMetric(
-      "Shore A Hardness",
-      "shoreAHardness",
-      latestBatch.shoreAHardness,
-      historicalBatches.map((b) => b.shoreAHardness),
-      config.shoreADriftThreshold,
-      latestBatch,
-      compoundCode,
-      alertsToCreate,
-    );
-
-    this.checkDriftMetric(
-      "Specific Gravity",
-      "specificGravity",
-      latestBatch.specificGravity,
-      historicalBatches.map((b) => b.specificGravity),
-      config.specificGravityDriftThreshold,
-      latestBatch,
-      compoundCode,
-      alertsToCreate,
-    );
-
-    this.checkDriftMetric(
-      "Rebound Resilience",
-      "reboundPercent",
-      latestBatch.reboundPercent,
-      historicalBatches.map((b) => b.reboundPercent),
-      config.reboundDriftThreshold,
-      latestBatch,
-      compoundCode,
-      alertsToCreate,
-    );
-
-    this.checkDropMetric(
-      "Tear Strength",
-      "tearStrengthKnM",
-      latestBatch.tearStrengthKnM,
-      historicalBatches.map((b) => b.tearStrengthKnM),
-      config.tearStrengthDropPercent,
-      latestBatch,
-      compoundCode,
-      alertsToCreate,
-    );
-
-    this.checkDropMetric(
-      "Tensile Strength",
-      "tensileStrengthMpa",
-      latestBatch.tensileStrengthMpa,
-      historicalBatches.map((b) => b.tensileStrengthMpa),
-      config.tensileStrengthDropPercent,
-      latestBatch,
-      compoundCode,
-      alertsToCreate,
-    );
-
-    this.checkDropMetric(
-      "Elongation",
-      "elongationPercent",
-      latestBatch.elongationPercent,
-      historicalBatches.map((b) => b.elongationPercent),
-      config.elongationDropPercent,
-      latestBatch,
-      compoundCode,
-      alertsToCreate,
-    );
-
-    this.checkCvMetric(
-      "TC90",
-      "rheometerTc90",
-      batches.slice(0, config.windowSize).map((b) => b.rheometerTc90),
-      config.tc90CvThreshold,
-      latestBatch,
-      compoundCode,
-      alertsToCreate,
-    );
+    const alertsToCreate = [
+      this.checkDriftMetric(
+        "Shore A Hardness",
+        "shoreAHardness",
+        latestBatch.shoreAHardness,
+        historicalBatches.map((b) => b.shoreAHardness),
+        config.shoreADriftThreshold,
+        latestBatch,
+        compoundCode,
+      ),
+      this.checkDriftMetric(
+        "Specific Gravity",
+        "specificGravity",
+        latestBatch.specificGravity,
+        historicalBatches.map((b) => b.specificGravity),
+        config.specificGravityDriftThreshold,
+        latestBatch,
+        compoundCode,
+      ),
+      this.checkDriftMetric(
+        "Rebound Resilience",
+        "reboundPercent",
+        latestBatch.reboundPercent,
+        historicalBatches.map((b) => b.reboundPercent),
+        config.reboundDriftThreshold,
+        latestBatch,
+        compoundCode,
+      ),
+      this.checkDropMetric(
+        "Tear Strength",
+        "tearStrengthKnM",
+        latestBatch.tearStrengthKnM,
+        historicalBatches.map((b) => b.tearStrengthKnM),
+        config.tearStrengthDropPercent,
+        latestBatch,
+        compoundCode,
+      ),
+      this.checkDropMetric(
+        "Tensile Strength",
+        "tensileStrengthMpa",
+        latestBatch.tensileStrengthMpa,
+        historicalBatches.map((b) => b.tensileStrengthMpa),
+        config.tensileStrengthDropPercent,
+        latestBatch,
+        compoundCode,
+      ),
+      this.checkDropMetric(
+        "Elongation",
+        "elongationPercent",
+        latestBatch.elongationPercent,
+        historicalBatches.map((b) => b.elongationPercent),
+        config.elongationDropPercent,
+        latestBatch,
+        compoundCode,
+      ),
+      this.checkCvMetric(
+        "TC90",
+        "rheometerTc90",
+        batches.slice(0, config.windowSize).map((b) => b.rheometerTc90),
+        config.tc90CvThreshold,
+        latestBatch,
+        compoundCode,
+      ),
+    ].filter((alert): alert is Partial<RubberQualityAlert> => alert !== null);
 
     if (alertsToCreate.length === 0) {
       return { compoundCode, alertsCreated: 0, alerts: [] };
@@ -592,14 +579,13 @@ export class RubberQualityTrackingService {
     threshold: number,
     batch: RubberCompoundBatch,
     compoundCode: string,
-    alerts: Partial<RubberQualityAlert>[],
-  ): void {
-    if (currentValue === null) return;
+  ): Partial<RubberQualityAlert> | null {
+    if (currentValue === null) return null;
 
     const validHistorical = historicalValues
       .filter((v): v is number => v !== null)
       .map((v) => Number(v));
-    if (validHistorical.length < 2) return;
+    if (validHistorical.length < 2) return null;
 
     const mean = validHistorical.reduce((a, b) => a + b, 0) / validHistorical.length;
     const drift = Math.abs(Number(currentValue) - mean);
@@ -609,7 +595,7 @@ export class RubberQualityTrackingService {
       const severity =
         drift > threshold * 1.5 ? QualityAlertSeverity.CRITICAL : QualityAlertSeverity.WARNING;
 
-      alerts.push({
+      return {
         compoundCode,
         alertType: QualityAlertType.DRIFT,
         severity,
@@ -621,8 +607,10 @@ export class RubberQualityTrackingService {
         meanValue: mean,
         batchNumber: batch.batchNumber,
         batchId: batch.id,
-      });
+      };
     }
+
+    return null;
   }
 
   private checkDropMetric(
@@ -633,14 +621,13 @@ export class RubberQualityTrackingService {
     dropPercentThreshold: number,
     batch: RubberCompoundBatch,
     compoundCode: string,
-    alerts: Partial<RubberQualityAlert>[],
-  ): void {
-    if (currentValue === null) return;
+  ): Partial<RubberQualityAlert> | null {
+    if (currentValue === null) return null;
 
     const validHistorical = historicalValues
       .filter((v): v is number => v !== null)
       .map((v) => Number(v));
-    if (validHistorical.length < 2) return;
+    if (validHistorical.length < 2) return null;
 
     const mean = validHistorical.reduce((a, b) => a + b, 0) / validHistorical.length;
     const dropPercent = ((mean - Number(currentValue)) / mean) * 100;
@@ -651,7 +638,7 @@ export class RubberQualityTrackingService {
           ? QualityAlertSeverity.CRITICAL
           : QualityAlertSeverity.WARNING;
 
-      alerts.push({
+      return {
         compoundCode,
         alertType: QualityAlertType.DROP,
         severity,
@@ -663,8 +650,10 @@ export class RubberQualityTrackingService {
         meanValue: mean,
         batchNumber: batch.batchNumber,
         batchId: batch.id,
-      });
+      };
     }
+
+    return null;
   }
 
   private checkCvMetric(
@@ -674,10 +663,9 @@ export class RubberQualityTrackingService {
     cvThreshold: number,
     batch: RubberCompoundBatch,
     compoundCode: string,
-    alerts: Partial<RubberQualityAlert>[],
-  ): void {
+  ): Partial<RubberQualityAlert> | null {
     const validValues = recentValues.filter((v): v is number => v !== null).map((v) => Number(v));
-    if (validValues.length < 3) return;
+    if (validValues.length < 3) return null;
 
     const mean = validValues.reduce((a, b) => a + b, 0) / validValues.length;
     const variance = validValues.reduce((acc, v) => acc + (v - mean) ** 2, 0) / validValues.length;
@@ -688,7 +676,7 @@ export class RubberQualityTrackingService {
       const severity =
         cv > cvThreshold * 1.5 ? QualityAlertSeverity.CRITICAL : QualityAlertSeverity.WARNING;
 
-      alerts.push({
+      return {
         compoundCode,
         alertType: QualityAlertType.CV_HIGH,
         severity,
@@ -700,8 +688,10 @@ export class RubberQualityTrackingService {
         meanValue: mean,
         batchNumber: batch.batchNumber,
         batchId: batch.id,
-      });
+      };
     }
+
+    return null;
   }
 
   private mapAlertToDto(alert: RubberQualityAlert): QualityAlertDto {

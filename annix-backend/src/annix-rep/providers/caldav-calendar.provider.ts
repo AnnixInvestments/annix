@@ -86,34 +86,40 @@ export class CaldavCalendarProvider implements ICalendarProvider {
   ): Promise<SyncEventsResult> {
     const { username, password } = this.parseCredentials(config);
 
-    const allEvents: CalendarEventData[] = [];
-    const allDeletedIds: string[] = [];
     const ctags: Record<string, string> = syncToken && !fullSync ? JSON.parse(syncToken) : {};
-    const newCtags: Record<string, string> = {};
 
-    await calendarIds.reduce(async (accPromise, calendarUrl) => {
-      await accPromise;
-      const currentCtag = await this.fetchCtag(calendarUrl, username, password);
+    const { allEvents, allDeletedIds, newCtags } = await calendarIds.reduce(
+      async (accPromise, calendarUrl) => {
+        const acc = await accPromise;
+        const currentCtag = await this.fetchCtag(calendarUrl, username, password);
 
-      if (!fullSync && ctags[calendarUrl] === currentCtag) {
-        newCtags[calendarUrl] = currentCtag;
-        return;
-      }
+        if (!fullSync && ctags[calendarUrl] === currentCtag) {
+          return {
+            ...acc,
+            newCtags: { ...acc.newCtags, [calendarUrl]: currentCtag },
+          };
+        }
 
-      const result = await this.fetchCalendarEvents(calendarUrl, username, password);
-      allEvents.push(...result.events);
+        const result = await this.fetchCalendarEvents(calendarUrl, username, password);
 
-      if (ctags[calendarUrl]) {
-        const oldEventIds = new Set<string>();
-        const newEventIds = new Set(result.events.map((e) => e.externalId));
+        const deletedFromOld = ctags[calendarUrl]
+          ? [...new Set<string>()].filter(
+              (id) => !new Set(result.events.map((e) => e.externalId)).has(id),
+            )
+          : [];
 
-        [...oldEventIds]
-          .filter((id) => !newEventIds.has(id))
-          .forEach((id) => allDeletedIds.push(id));
-      }
-
-      newCtags[calendarUrl] = currentCtag;
-    }, Promise.resolve());
+        return {
+          allEvents: [...acc.allEvents, ...result.events],
+          allDeletedIds: [...acc.allDeletedIds, ...deletedFromOld],
+          newCtags: { ...acc.newCtags, [calendarUrl]: currentCtag },
+        };
+      },
+      Promise.resolve({
+        allEvents: [] as CalendarEventData[],
+        allDeletedIds: [] as string[],
+        newCtags: {} as Record<string, string>,
+      }),
+    );
 
     return {
       events: allEvents,
@@ -200,72 +206,74 @@ export class CaldavCalendarProvider implements ICalendarProvider {
   }
 
   private parseCalendarListResponse(xml: string, baseUrl: string): CalendarListItem[] {
-    const calendars: CalendarListItem[] = [];
-
     const responseRegex = /<D:response[^>]*>([\s\S]*?)<\/D:response>/gi;
-    let match;
 
-    while ((match = responseRegex.exec(xml)) !== null) {
-      const responseContent = match[1];
+    return [...xml.matchAll(responseRegex)]
+      .map((m) => m[1])
+      .filter((responseContent) => {
+        const resourceTypeMatch = responseContent.match(
+          /<D:resourcetype[^>]*>([\s\S]*?)<\/D:resourcetype>/i,
+        );
+        return resourceTypeMatch?.[1].includes("calendar");
+      })
+      .reduce((calendars, responseContent) => {
+        const hrefMatch = responseContent.match(/<D:href[^>]*>([^<]+)<\/D:href>/i);
+        const displayNameMatch = responseContent.match(
+          /<D:displayname[^>]*>([^<]*)<\/D:displayname>/i,
+        );
+        const colorMatch = responseContent.match(
+          /<(?:CS:)?calendar-color[^>]*>([^<]*)<\/(?:CS:)?calendar-color>/i,
+        );
 
-      const resourceTypeMatch = responseContent.match(
-        /<D:resourcetype[^>]*>([\s\S]*?)<\/D:resourcetype>/i,
-      );
-      const isCalendar = resourceTypeMatch?.[1].includes("calendar");
+        if (!hrefMatch) {
+          return calendars;
+        }
 
-      if (!isCalendar) continue;
-
-      const hrefMatch = responseContent.match(/<D:href[^>]*>([^<]+)<\/D:href>/i);
-      const displayNameMatch = responseContent.match(
-        /<D:displayname[^>]*>([^<]*)<\/D:displayname>/i,
-      );
-      const colorMatch = responseContent.match(
-        /<(?:CS:)?calendar-color[^>]*>([^<]*)<\/(?:CS:)?calendar-color>/i,
-      );
-
-      if (hrefMatch) {
         const href = hrefMatch[1];
         const calendarUrl = href.startsWith("http") ? href : new URL(href, baseUrl).toString();
 
-        calendars.push({
-          id: calendarUrl,
-          name: displayNameMatch?.[1] ?? "Calendar",
-          isPrimary: calendars.length === 0,
-          color: colorMatch?.[1] ?? null,
-          accessRole: "writer",
-        });
-      }
-    }
-
-    return calendars;
+        return [
+          ...calendars,
+          {
+            id: calendarUrl,
+            name: displayNameMatch?.[1] ?? "Calendar",
+            isPrimary: calendars.length === 0,
+            color: colorMatch?.[1] ?? null,
+            accessRole: "writer",
+          },
+        ];
+      }, [] as CalendarListItem[]);
   }
 
   private parseCalendarEventsResponse(xml: string, calendarId: string): CalendarEventData[] {
-    const events: CalendarEventData[] = [];
-
     const responseRegex = /<D:response[^>]*>([\s\S]*?)<\/D:response>/gi;
-    let match;
 
-    while ((match = responseRegex.exec(xml)) !== null) {
-      const responseContent = match[1];
+    return [...xml.matchAll(responseRegex)]
+      .map((m) => m[1])
+      .flatMap((responseContent) => {
+        const calendarDataMatch = responseContent.match(
+          /<C:calendar-data[^>]*>([\s\S]*?)<\/C:calendar-data>/i,
+        );
+        const etagMatch = responseContent.match(/<D:getetag[^>]*>"?([^"<]+)"?<\/D:getetag>/i);
 
-      const calendarDataMatch = responseContent.match(
-        /<C:calendar-data[^>]*>([\s\S]*?)<\/C:calendar-data>/i,
-      );
-      const etagMatch = responseContent.match(/<D:getetag[^>]*>"?([^"<]+)"?<\/D:getetag>/i);
+        if (!calendarDataMatch) {
+          return [];
+        }
 
-      if (!calendarDataMatch) continue;
+        const icalData = this.decodeXmlEntities(calendarDataMatch[1]);
+        const vevent = this.parseICalVEvent(icalData);
 
-      const icalData = this.decodeXmlEntities(calendarDataMatch[1]);
-      const vevent = this.parseICalVEvent(icalData);
+        if (!vevent) {
+          return [];
+        }
 
-      if (vevent) {
-        vevent.etag = etagMatch?.[1] ?? null;
-        events.push(this.mapVEventToCalendarEvent(vevent, calendarId));
-      }
-    }
-
-    return events;
+        return [
+          this.mapVEventToCalendarEvent(
+            { ...vevent, etag: etagMatch?.[1] ?? null },
+            calendarId,
+          ),
+        ];
+      });
   }
 
   private parseICalVEvent(icalData: string): ParsedVEvent | null {

@@ -551,26 +551,16 @@ export class HubSpotAdapter implements ICrmAdapter {
   }
 
   private buildMeetingDescription(meeting: Meeting): string {
-    const parts: string[] = [];
-
-    if (meeting.description) {
-      parts.push(meeting.description);
-    }
-
-    if (meeting.notes) {
-      parts.push(`\n\nNotes:\n${meeting.notes}`);
-    }
-
-    if (meeting.outcomes) {
-      parts.push(`\n\nOutcomes:\n${meeting.outcomes}`);
-    }
-
-    if (meeting.actionItems && meeting.actionItems.length > 0) {
-      const actionItemsText = meeting.actionItems
-        .map((item) => `- ${item.task}${item.assignee ? ` (${item.assignee})` : ""}`)
-        .join("\n");
-      parts.push(`\n\nAction Items:\n${actionItemsText}`);
-    }
+    const parts: string[] = [
+      ...(meeting.description ? [meeting.description] : []),
+      ...(meeting.notes ? [`\n\nNotes:\n${meeting.notes}`] : []),
+      ...(meeting.outcomes ? [`\n\nOutcomes:\n${meeting.outcomes}`] : []),
+      ...(meeting.actionItems && meeting.actionItems.length > 0
+        ? [
+            `\n\nAction Items:\n${meeting.actionItems.map((item) => `- ${item.task}${item.assignee ? ` (${item.assignee})` : ""}`).join("\n")}`,
+          ]
+        : []),
+    ];
 
     return parts.join("");
   }

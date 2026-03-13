@@ -148,13 +148,9 @@ export class RepProfileService {
       return [];
     }
 
-    const terms: string[] = [];
-
-    if (profile.customSearchTerms && profile.customSearchTerms.length > 0) {
-      terms.push(...profile.customSearchTerms);
-    }
-
-    return terms;
+    return profile.customSearchTerms && profile.customSearchTerms.length > 0
+      ? [...profile.customSearchTerms]
+      : [];
   }
 
   async scheduleSettings(userId: number): Promise<{

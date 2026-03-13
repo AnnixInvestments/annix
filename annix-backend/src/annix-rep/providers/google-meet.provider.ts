@@ -268,13 +268,10 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
 
       const data: GoogleCalendarEventsResponse = await response.json();
 
-      if (data.items) {
-        for (const event of data.items) {
-          if (this.isGoogleMeetEvent(event)) {
-            meetings.push(this.mapGoogleCalendarEvent(event));
-          }
-        }
-      }
+      const meetEvents = (data.items ?? [])
+        .filter((event) => this.isGoogleMeetEvent(event))
+        .map((event) => this.mapGoogleCalendarEvent(event));
+      meetings.push(...meetEvents);
 
       pageToken = data.nextPageToken ?? null;
     } while (pageToken);

@@ -24,12 +24,14 @@ export class RubberProductImportService {
 
   async analyzeFiles(files: Express.Multer.File[]): Promise<AnalyzeProductFilesResult> {
     this.logger.log(`Analyzing ${files.length} files for product data...`);
-    const analyzedFiles: AnalyzedProductData[] = [];
-
-    for (const file of files) {
-      const analysis = await this.analyzeFile(file);
-      analyzedFiles.push(analysis);
-    }
+    const analyzedFiles = await files.reduce(
+      async (accPromise, file) => {
+        const acc = await accPromise;
+        const analysis = await this.analyzeFile(file);
+        return [...acc, analysis];
+      },
+      Promise.resolve([] as AnalyzedProductData[]),
+    );
 
     const totalLines = analyzedFiles.reduce((sum, f) => sum + f.lines.length, 0);
     return { files: analyzedFiles, totalLines };
@@ -86,7 +88,7 @@ export class RubberProductImportService {
       Object.assign(result, extraction);
     } catch (error) {
       this.logger.error(`Failed to analyze PDF ${file.originalname}: ${error.message}`);
-      result.errors.push(`PDF parsing failed: ${error.message}`);
+      result.errors = [...result.errors, `PDF parsing failed: ${error.message}`];
     }
 
     return result;
@@ -114,7 +116,7 @@ export class RubberProductImportService {
       result.confidence = lines.length > 0 ? 0.9 : 0;
     } catch (error) {
       this.logger.error(`Failed to analyze Excel ${file.originalname}: ${error.message}`);
-      result.errors.push(`Excel parsing failed: ${error.message}`);
+      result.errors = [...result.errors, `Excel parsing failed: ${error.message}`];
     }
 
     return result;
@@ -222,29 +224,25 @@ export class RubberProductImportService {
   }
 
   private extractStringField(row: Record<string, unknown>, possibleKeys: string[]): string | null {
-    for (const key of possibleKeys) {
+    const matchedKey = possibleKeys.find((key) => {
       const value = row[key];
-      if (value !== null && value !== undefined && String(value).trim()) {
-        return String(value).trim();
-      }
-    }
-    return null;
+      return value !== null && value !== undefined && String(value).trim();
+    });
+    return matchedKey ? String(row[matchedKey]).trim() : null;
   }
 
   private extractNumericField(row: Record<string, unknown>, possibleKeys: string[]): number | null {
-    for (const key of possibleKeys) {
+    const result = possibleKeys.reduce<number | null>((found, key) => {
+      if (found !== null) return found;
       const value = row[key];
-      if (value !== null && value !== undefined) {
-        const strValue = String(value)
-          .replace(/[R$,\s]/g, "")
-          .trim();
-        const num = parseFloat(strValue);
-        if (!Number.isNaN(num)) {
-          return num;
-        }
-      }
-    }
-    return null;
+      if (value === null || value === undefined) return null;
+      const strValue = String(value)
+        .replace(/[R$,\s]/g, "")
+        .trim();
+      const num = parseFloat(strValue);
+      return Number.isNaN(num) ? null : num;
+    }, null);
+    return result;
   }
 
   private async analyzeWord(file: Express.Multer.File): Promise<AnalyzedProductData> {
@@ -266,7 +264,7 @@ export class RubberProductImportService {
       Object.assign(result, extraction);
     } catch (error) {
       this.logger.error(`Failed to analyze Word ${file.originalname}: ${error.message}`);
-      result.errors.push(`Word parsing failed: ${error.message}`);
+      result.errors = [...result.errors, `Word parsing failed: ${error.message}`];
     }
 
     return result;

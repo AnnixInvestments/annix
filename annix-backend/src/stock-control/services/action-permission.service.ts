@@ -86,20 +86,21 @@ export class ActionPermissionService {
       return defaults;
     }
 
-    const config: Record<string, string[]> = {};
+    const groupedByAction = rows.reduce(
+      (acc, row) => ({
+        ...acc,
+        [row.actionKey]: [...(acc[row.actionKey] ?? []), row.role],
+      }),
+      {} as Record<string, string[]>,
+    );
 
-    rows.forEach((row) => {
-      if (!config[row.actionKey]) {
-        config[row.actionKey] = [];
-      }
-      config[row.actionKey].push(row.role);
-    });
-
-    Object.keys(DEFAULT_ACTION_PERMISSIONS).forEach((key) => {
-      if (!config[key]) {
-        config[key] = [...DEFAULT_ACTION_PERMISSIONS[key]];
-      }
-    });
+    const config = Object.keys(DEFAULT_ACTION_PERMISSIONS).reduce(
+      (acc, key) => ({
+        ...acc,
+        [key]: groupedByAction[key] ?? [...DEFAULT_ACTION_PERMISSIONS[key]],
+      }),
+      { ...groupedByAction },
+    );
 
     this.cache.set(companyId, { data: config, expiresAt: nowMillis() + 60_000 });
     return config;

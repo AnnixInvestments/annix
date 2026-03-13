@@ -59,7 +59,7 @@ export class CsvExportAdapter implements ICrmAdapter {
     const contactData = prospectToCrmContact(prospect);
     const mappedData = this.applyFieldMappings(contactData as unknown as Record<string, unknown>);
     const row = this.objectToRow(mappedData);
-    this.contactRows.push(row);
+    this.contactRows = [...this.contactRows, row];
 
     return {
       success: true,
@@ -81,7 +81,7 @@ export class CsvExportAdapter implements ICrmAdapter {
     };
     const mappedData = this.applyFieldMappings(enrichedData as unknown as Record<string, unknown>);
     const row = this.objectToRow(mappedData);
-    this.meetingRows.push(row);
+    this.meetingRows = [...this.meetingRows, row];
 
     return {
       success: true,

@@ -509,11 +509,10 @@ function AccessControlTab() {
   const permissionsByCategory = permissions.reduce(
     (acc, perm) => {
       const category = perm.category || "Other";
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(perm);
-      return acc;
+      return {
+        ...acc,
+        [category]: [...(acc[category] || []), perm],
+      };
     },
     {} as Record<string, AuRubberPermissionDto[]>,
   );

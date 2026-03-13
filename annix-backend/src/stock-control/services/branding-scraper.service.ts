@@ -627,24 +627,25 @@ export class BrandingScraperService {
         .raw()
         .toBuffer({ resolveWithObject: true });
 
-      const colorCounts = new Map<string, number>();
       const channels = info.channels;
+      const pixelIndices = Array.from(
+        { length: Math.floor(data.length / channels) },
+        (_, i) => i * channels,
+      );
 
-      for (let i = 0; i < data.length; i += channels) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-
-        if (this.isNeutral(r, g, b)) {
-          continue;
-        }
-
-        const quantR = Math.round(r / 16) * 16;
-        const quantG = Math.round(g / 16) * 16;
-        const quantB = Math.round(b / 16) * 16;
-        const key = `${quantR},${quantG},${quantB}`;
-        colorCounts.set(key, (colorCounts.get(key) ?? 0) + 1);
-      }
+      const colorCounts = pixelIndices
+        .map((i) => ({ r: data[i], g: data[i + 1], b: data[i + 2] }))
+        .filter(({ r, g, b }) => !this.isNeutral(r, g, b))
+        .map(({ r, g, b }) => {
+          const quantR = Math.round(r / 16) * 16;
+          const quantG = Math.round(g / 16) * 16;
+          const quantB = Math.round(b / 16) * 16;
+          return `${quantR},${quantG},${quantB}`;
+        })
+        .reduce((acc, key) => {
+          acc.set(key, (acc.get(key) ?? 0) + 1);
+          return acc;
+        }, new Map<string, number>());
 
       if (colorCounts.size === 0) {
         const { dominant } = await sharp(buffer).stats();

@@ -324,30 +324,27 @@ export class RubberRollStockService {
     });
     if (!roll) return null;
 
-    const batches: RubberCompoundBatch[] = [];
-    const supplierCocs: RubberSupplierCoc[] = [];
+    const batches =
+      roll.linkedBatchIds && roll.linkedBatchIds.length > 0
+        ? await this.compoundBatchRepository.find({
+            where: { id: In(roll.linkedBatchIds) },
+            relations: [
+              "supplierCoc",
+              "supplierCoc.supplierCompany",
+              "compoundStock",
+              "compoundStock.compoundCoding",
+            ],
+          })
+        : [];
 
-    if (roll.linkedBatchIds && roll.linkedBatchIds.length > 0) {
-      const batchRecords = await this.compoundBatchRepository.find({
-        where: { id: In(roll.linkedBatchIds) },
-        relations: [
-          "supplierCoc",
-          "supplierCoc.supplierCompany",
-          "compoundStock",
-          "compoundStock.compoundCoding",
-        ],
-      });
-      batches.push(...batchRecords);
-
-      const cocIds = [...new Set(batchRecords.map((b) => b.supplierCocId))];
-      if (cocIds.length > 0) {
-        const cocRecords = await this.supplierCocRepository.find({
-          where: { id: In(cocIds) },
-          relations: ["supplierCompany"],
-        });
-        supplierCocs.push(...cocRecords);
-      }
-    }
+    const cocIds = [...new Set(batches.map((b) => b.supplierCocId))];
+    const supplierCocs =
+      cocIds.length > 0
+        ? await this.supplierCocRepository.find({
+            where: { id: In(cocIds) },
+            relations: ["supplierCompany"],
+          })
+        : [];
 
     let auCoc: RubberAuCocDto | null = null;
     if (roll.auCocId) {

@@ -279,10 +279,9 @@ export class CertificateService {
       .filter((br) => br.supplierCertificate !== null)
       .map((br) => br.supplierCertificate as SupplierCertificate);
 
-    const certMap = new Map<number, SupplierCertificate>();
-    [...directCerts, ...linkedCerts].forEach((cert) => {
-      certMap.set(cert.id, cert);
-    });
+    const certMap = new Map(
+      [...directCerts, ...linkedCerts].map((cert) => [cert.id, cert] as const),
+    );
 
     return Array.from(certMap.values());
   }
@@ -415,7 +414,8 @@ export class CertificateService {
       structuredPages.forEach((page) => mergedPdf.addPage(page));
     }
 
-    for (const cert of certs) {
+    await certs.reduce(async (prev, cert) => {
+      await prev;
       try {
         const certBuffer = await this.storageService.download(cert.filePath);
 
@@ -425,13 +425,10 @@ export class CertificateService {
           certPages.forEach((page) => mergedPdf.addPage(page));
         } else {
           const imagePage = mergedPdf.addPage();
-          let image: Awaited<ReturnType<typeof mergedPdf.embedJpg>>;
-
-          if (cert.mimeType === "image/png") {
-            image = await mergedPdf.embedPng(certBuffer);
-          } else {
-            image = await mergedPdf.embedJpg(certBuffer);
-          }
+          const image =
+            cert.mimeType === "image/png"
+              ? await mergedPdf.embedPng(certBuffer)
+              : await mergedPdf.embedJpg(certBuffer);
 
           const { width, height } = imagePage.getSize();
           const imgDims = image.scaleToFit(width - 100, height - 100);
@@ -447,9 +444,10 @@ export class CertificateService {
           `Failed to include certificate ${cert.id} (${cert.originalFilename}) in data book: ${err}`,
         );
       }
-    }
+    }, Promise.resolve());
 
-    for (const cal of calCerts) {
+    await calCerts.reduce(async (prev, cal) => {
+      await prev;
       try {
         const calBuffer = await this.storageService.download(cal.filePath);
 
@@ -459,13 +457,10 @@ export class CertificateService {
           calPages.forEach((page) => mergedPdf.addPage(page));
         } else {
           const imagePage = mergedPdf.addPage();
-          let image: Awaited<ReturnType<typeof mergedPdf.embedJpg>>;
-
-          if (cal.mimeType === "image/png") {
-            image = await mergedPdf.embedPng(calBuffer);
-          } else {
-            image = await mergedPdf.embedJpg(calBuffer);
-          }
+          const image =
+            cal.mimeType === "image/png"
+              ? await mergedPdf.embedPng(calBuffer)
+              : await mergedPdf.embedJpg(calBuffer);
 
           const { width, height } = imagePage.getSize();
           const imgDims = image.scaleToFit(width - 100, height - 100);
@@ -481,7 +476,7 @@ export class CertificateService {
           `Failed to include calibration cert ${cal.id} (${cal.originalFilename}) in data book: ${err}`,
         );
       }
-    }
+    }, Promise.resolve());
 
     const mergedBuffer = Buffer.from(await mergedPdf.save());
 
@@ -639,80 +634,89 @@ export class CertificateService {
       this.batchRecordsForJobCard(companyId, jobCardId),
     ]);
 
-    const sections: SectionStatus[] = [];
-    const warnings: string[] = [];
-
-    if (qcEnabled) {
-      const [qcData, itemsReleases] = await Promise.all([
-        this.qcMeasurementService.allMeasurementsForJobCard(companyId, jobCardId),
-        this.qcMeasurementService.itemsReleasesForJobCard(companyId, jobCardId),
-      ]);
-
-      this.appendQcSections(sections, warnings, qcData, itemsReleases);
-    }
-
-    sections.push(this.sectionFromCount("supplierCerts", "Supplier Certificates", certs.length));
+    const qcResult = qcEnabled
+      ? await (async () => {
+          const [qcData, itemsReleases] = await Promise.all([
+            this.qcMeasurementService.allMeasurementsForJobCard(companyId, jobCardId),
+            this.qcMeasurementService.itemsReleasesForJobCard(companyId, jobCardId),
+          ]);
+          return this.qcSections(qcData, itemsReleases);
+        })()
+      : { sections: [], warnings: [] };
 
     const unlinkedBatches = batchRecords.filter((r) => !r.supplierCertificate);
-    if (unlinkedBatches.length > 0) {
-      const msg = `${unlinkedBatches.length} batch record(s) without linked certificate`;
-      sections[sections.length - 1].warnings = [msg];
-      warnings.push(msg);
-    }
+    const unlinkedMsg =
+      unlinkedBatches.length > 0
+        ? `${unlinkedBatches.length} batch record(s) without linked certificate`
+        : null;
 
-    sections.push(
-      this.sectionFromCount("calibrationCerts", "Calibration Certificates", calCerts.length),
-    );
+    const supplierCertSection = {
+      ...this.sectionFromCount("supplierCerts", "Supplier Certificates", certs.length),
+      ...(unlinkedMsg ? { warnings: [unlinkedMsg] } : {}),
+    };
 
-    const expiredCals = calCerts.filter((c) => {
-      return fromISO(c.expiryDate) < now();
-    });
-    if (expiredCals.length > 0) {
-      const msg = `${expiredCals.length} calibration certificate(s) expired`;
-      sections[sections.length - 1].warnings = [msg];
-      warnings.push(msg);
-    }
+    const expiredCals = calCerts.filter((c) => fromISO(c.expiryDate) < now());
+    const expiredMsg =
+      expiredCals.length > 0
+        ? `${expiredCals.length} calibration certificate(s) expired`
+        : null;
+
+    const calCertSection = {
+      ...this.sectionFromCount("calibrationCerts", "Calibration Certificates", calCerts.length),
+      ...(expiredMsg ? { warnings: [expiredMsg] } : {}),
+    };
+
+    const sections: SectionStatus[] = [
+      ...qcResult.sections,
+      supplierCertSection,
+      calCertSection,
+    ];
+
+    const warnings: string[] = [
+      ...qcResult.warnings,
+      ...(unlinkedMsg ? [unlinkedMsg] : []),
+      ...(expiredMsg ? [expiredMsg] : []),
+    ];
 
     const completeSections = sections.filter((s) => s.status === "complete").length;
     const overallPercent = Math.round((completeSections / sections.length) * 100);
 
-    const blockingReasons: string[] = [];
     const hasAnyCerts = certs.length > 0 || calCerts.length > 0;
 
-    if (!hasAnyCerts && !qcEnabled) {
-      blockingReasons.push("No certificates found");
-    }
+    const blockingReasons: string[] = [
+      ...(!hasAnyCerts && !qcEnabled ? ["No certificates found"] : []),
+      ...(qcEnabled
+        ? (() => {
+            const qcSectionKeys = [
+              "controlPlans",
+              "itemsRelease",
+              "releaseCertificates",
+              "shoreHardness",
+              "primerDft",
+              "finalDft",
+              "blastProfiles",
+              "dustDebris",
+              "pullTests",
+            ];
+            const hasAnyQcData = sections
+              .filter((s) => qcSectionKeys.includes(s.key))
+              .some((s) => s.count > 0);
 
-    if (qcEnabled) {
-      const qcSectionKeys = [
-        "controlPlans",
-        "itemsRelease",
-        "releaseCertificates",
-        "shoreHardness",
-        "primerDft",
-        "finalDft",
-        "blastProfiles",
-        "dustDebris",
-        "pullTests",
-      ];
-      const hasAnyQcData = sections
-        .filter((s) => qcSectionKeys.includes(s.key))
-        .some((s) => s.count > 0);
+            const releaseCertSection = sections.find((s) => s.key === "releaseCertificates");
+            const itemsReleaseSection = sections.find((s) => s.key === "itemsRelease");
 
-      if (!hasAnyCerts && !hasAnyQcData) {
-        blockingReasons.push("No certificates or QC data found");
-      }
-
-      const releaseCertSection = sections.find((s) => s.key === "releaseCertificates");
-      if (!releaseCertSection || releaseCertSection.count === 0) {
-        blockingReasons.push("No QC Release Certificate created");
-      }
-
-      const itemsReleaseSection = sections.find((s) => s.key === "itemsRelease");
-      if (!itemsReleaseSection || itemsReleaseSection.count === 0) {
-        blockingReasons.push("No Items Release created");
-      }
-    }
+            return [
+              ...(!hasAnyCerts && !hasAnyQcData ? ["No certificates or QC data found"] : []),
+              ...(!releaseCertSection || releaseCertSection.count === 0
+                ? ["No QC Release Certificate created"]
+                : []),
+              ...(!itemsReleaseSection || itemsReleaseSection.count === 0
+                ? ["No Items Release created"]
+                : []),
+            ];
+          })()
+        : []),
+    ];
 
     return {
       overallPercent,
@@ -723,35 +727,18 @@ export class CertificateService {
     };
   }
 
-  private appendQcSections(
-    sections: SectionStatus[],
-    warnings: string[],
+  private qcSections(
     qcData: Awaited<ReturnType<QcMeasurementService["allMeasurementsForJobCard"]>>,
     itemsReleases: Awaited<ReturnType<QcMeasurementService["itemsReleasesForJobCard"]>>,
-  ): void {
-    sections.push(
-      this.sectionFromCount("controlPlans", "Quality Control Plans", qcData.controlPlans.length),
+  ): { sections: SectionStatus[]; warnings: string[] } {
+    const qcpWarnings = qcData.controlPlans.flatMap((plan) =>
+      plan.approvalSignatures
+        .filter((sig) => !sig.name)
+        .map((sig) => `${plan.planType} QCP: ${sig.party} signature missing`),
     );
 
-    const qcpWarnings = qcData.controlPlans.flatMap((plan) => {
-      const unsigned = plan.approvalSignatures
-        .filter((sig) => !sig.name)
-        .map((sig) => `${plan.planType} QCP: ${sig.party} signature missing`);
-      return unsigned;
-    });
-    if (qcpWarnings.length > 0) {
-      sections[sections.length - 1].warnings = qcpWarnings;
-      warnings.push(...qcpWarnings);
-    }
-
-    sections.push(this.sectionFromCount("itemsRelease", "Items Release", itemsReleases.length));
-
     const releaseWarnings = itemsReleases.flatMap((release) => {
-      const result: string[] = [];
       const failItems = release.items.filter((i) => i.result === "fail");
-      if (failItems.length > 0) {
-        result.push(`Items Release: ${failItems.length} item(s) marked FAIL`);
-      }
       const missingSignOff = [
         { label: "PLS", signOff: release.plsSignOff },
         { label: "MPS", signOff: release.mpsSignOff },
@@ -759,48 +746,28 @@ export class CertificateService {
       ]
         .filter((p) => !p.signOff?.name)
         .map((p) => `Items Release: ${p.label} sign-off missing`);
-      result.push(...missingSignOff);
-      return result;
+      return [
+        ...(failItems.length > 0
+          ? [`Items Release: ${failItems.length} item(s) marked FAIL`]
+          : []),
+        ...missingSignOff,
+      ];
     });
-    if (releaseWarnings.length > 0) {
-      sections[sections.length - 1].warnings = releaseWarnings;
-      warnings.push(...releaseWarnings);
-    }
 
-    sections.push(
-      this.sectionFromCount(
-        "releaseCertificates",
-        "QC Release Certificates",
-        qcData.releaseCertificates.length,
-      ),
-    );
-
-    const releaseCertWarnings = qcData.releaseCertificates.flatMap((cert) => {
-      const result: string[] = [];
-      if (!cert.finalApprovalName) {
-        result.push("Release Certificate: final approval signature missing");
-      }
-      if (
-        cert.finalInspection &&
-        [
-          cert.finalInspection.linedAsPerDrawing,
-          cert.finalInspection.visualInspection,
-          cert.finalInspection.testPlate,
-          cert.finalInspection.sparkTest,
-        ].some((r) => r === "fail")
-      ) {
-        result.push("Release Certificate: final inspection has failure(s)");
-      }
-      return result;
-    });
-    if (releaseCertWarnings.length > 0) {
-      sections[sections.length - 1].warnings = releaseCertWarnings;
-      warnings.push(...releaseCertWarnings);
-    }
-
-    sections.push(
-      this.sectionFromCount("shoreHardness", "Shore Hardness Reports", qcData.shoreHardness.length),
-    );
+    const releaseCertWarnings = qcData.releaseCertificates.flatMap((cert) => [
+      ...(!cert.finalApprovalName
+        ? ["Release Certificate: final approval signature missing"]
+        : []),
+      ...(cert.finalInspection &&
+      [
+        cert.finalInspection.linedAsPerDrawing,
+        cert.finalInspection.visualInspection,
+        cert.finalInspection.testPlate,
+        cert.finalInspection.sparkTest,
+      ].some((r) => r === "fail")
+        ? ["Release Certificate: final inspection has failure(s)"]
+        : []),
+    ]);
 
     const shoreWarnings = qcData.shoreHardness
       .filter(
@@ -811,16 +778,9 @@ export class CertificateService {
         (rec) =>
           `Shore Hardness: avg ${rec.averages.overall?.toFixed(1)} vs required ${rec.requiredShore} (out of spec)`,
       );
-    if (shoreWarnings.length > 0) {
-      sections[sections.length - 1].warnings = shoreWarnings;
-      warnings.push(...shoreWarnings);
-    }
 
     const primerDft = qcData.dftReadings.filter((r) => r.coatType === "primer");
     const finalDft = qcData.dftReadings.filter((r) => r.coatType === "final");
-
-    sections.push(this.sectionFromCount("primerDft", "Primer DFT Reports", primerDft.length));
-    sections.push(this.sectionFromCount("finalDft", "Final DFT Reports", finalDft.length));
 
     const dftWarnings = qcData.dftReadings
       .filter(
@@ -831,15 +791,8 @@ export class CertificateService {
       )
       .map(
         (rec) =>
-          `${rec.coatType === "primer" ? "Primer" : "Final"} DFT: avg ${Number(rec.averageMicrons).toFixed(1)} μm outside spec ${rec.specMinMicrons}-${rec.specMaxMicrons} μm`,
+          `${rec.coatType === "primer" ? "Primer" : "Final"} DFT: avg ${Number(rec.averageMicrons).toFixed(1)} \u03BCm outside spec ${rec.specMinMicrons}-${rec.specMaxMicrons} \u03BCm`,
       );
-    if (dftWarnings.length > 0) {
-      warnings.push(...dftWarnings);
-    }
-
-    sections.push(
-      this.sectionFromCount("blastProfiles", "Blast Profile Reports", qcData.blastProfiles.length),
-    );
 
     const blastWarnings = qcData.blastProfiles
       .filter(
@@ -848,20 +801,8 @@ export class CertificateService {
       )
       .map(
         (rec) =>
-          `Blast Profile: avg ${Number(rec.averageMicrons).toFixed(1)} μm below spec ${rec.specMicrons} μm`,
+          `Blast Profile: avg ${Number(rec.averageMicrons).toFixed(1)} \u03BCm below spec ${rec.specMicrons} \u03BCm`,
       );
-    if (blastWarnings.length > 0) {
-      sections[sections.length - 1].warnings = blastWarnings;
-      warnings.push(...blastWarnings);
-    }
-
-    sections.push(
-      this.sectionFromCount(
-        "dustDebris",
-        "Dust & Debris Test Reports",
-        qcData.dustDebrisTests.length,
-      ),
-    );
 
     const dustFailures = qcData.dustDebrisTests
       .filter((rec) => rec.tests.some((t) => t.result === "fail"))
@@ -869,22 +810,78 @@ export class CertificateService {
         const failCount = rec.tests.filter((t) => t.result === "fail").length;
         return `Dust & Debris: ${failCount} test(s) failed`;
       });
-    if (dustFailures.length > 0) {
-      sections[sections.length - 1].warnings = dustFailures;
-      warnings.push(...dustFailures);
-    }
-
-    sections.push(
-      this.sectionFromCount("pullTests", "Pull Test Certificates", qcData.pullTests.length),
-    );
 
     const pullWarnings = qcData.pullTests
       .filter((rec) => rec.areaReadings.some((r) => r.result === "fail"))
       .map(() => "Pull Test: has failed area readings");
-    if (pullWarnings.length > 0) {
-      sections[sections.length - 1].warnings = pullWarnings;
-      warnings.push(...pullWarnings);
-    }
+
+    const sectionWithWarnings = (
+      section: SectionStatus,
+      sectionWarnings: string[],
+    ): SectionStatus =>
+      sectionWarnings.length > 0 ? { ...section, warnings: sectionWarnings } : section;
+
+    const sections: SectionStatus[] = [
+      sectionWithWarnings(
+        this.sectionFromCount("controlPlans", "Quality Control Plans", qcData.controlPlans.length),
+        qcpWarnings,
+      ),
+      sectionWithWarnings(
+        this.sectionFromCount("itemsRelease", "Items Release", itemsReleases.length),
+        releaseWarnings,
+      ),
+      sectionWithWarnings(
+        this.sectionFromCount(
+          "releaseCertificates",
+          "QC Release Certificates",
+          qcData.releaseCertificates.length,
+        ),
+        releaseCertWarnings,
+      ),
+      sectionWithWarnings(
+        this.sectionFromCount(
+          "shoreHardness",
+          "Shore Hardness Reports",
+          qcData.shoreHardness.length,
+        ),
+        shoreWarnings,
+      ),
+      this.sectionFromCount("primerDft", "Primer DFT Reports", primerDft.length),
+      this.sectionFromCount("finalDft", "Final DFT Reports", finalDft.length),
+      sectionWithWarnings(
+        this.sectionFromCount(
+          "blastProfiles",
+          "Blast Profile Reports",
+          qcData.blastProfiles.length,
+        ),
+        blastWarnings,
+      ),
+      sectionWithWarnings(
+        this.sectionFromCount(
+          "dustDebris",
+          "Dust & Debris Test Reports",
+          qcData.dustDebrisTests.length,
+        ),
+        dustFailures,
+      ),
+      sectionWithWarnings(
+        this.sectionFromCount("pullTests", "Pull Test Certificates", qcData.pullTests.length),
+        pullWarnings,
+      ),
+    ];
+
+    const warnings = [
+      ...qcpWarnings,
+      ...releaseWarnings,
+      ...releaseCertWarnings,
+      ...shoreWarnings,
+      ...dftWarnings,
+      ...blastWarnings,
+      ...dustFailures,
+      ...pullWarnings,
+    ];
+
+    return { sections, warnings };
   }
 
   private sectionFromCount(key: string, label: string, count: number): SectionStatus {

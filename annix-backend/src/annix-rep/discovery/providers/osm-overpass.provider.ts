@@ -139,46 +139,22 @@ export class OsmOverpassProvider implements DiscoveryProvider {
   }
 
   private buildStreetAddress(tags: Record<string, string>): string | null {
-    const parts: string[] = [];
-
-    if (tags["addr:housenumber"]) {
-      parts.push(tags["addr:housenumber"]);
-    }
-
-    if (tags["addr:street"]) {
-      parts.push(tags["addr:street"]);
-    }
+    const parts: string[] = [
+      ...(tags["addr:housenumber"] ? [tags["addr:housenumber"]] : []),
+      ...(tags["addr:street"] ? [tags["addr:street"]] : []),
+    ];
 
     return parts.length > 0 ? parts.join(" ") : null;
   }
 
   private extractBusinessTypes(tags: Record<string, string>): string[] {
-    const types: string[] = [];
-
-    if (tags.office) {
-      types.push(`office:${tags.office}`);
-    }
-
-    if (tags.shop) {
-      types.push(`shop:${tags.shop}`);
-    }
-
-    if (tags.industrial) {
-      types.push(`industrial:${tags.industrial}`);
-    }
-
-    if (tags.craft) {
-      types.push(`craft:${tags.craft}`);
-    }
-
-    if (tags.building && tags.building !== "yes") {
-      types.push(`building:${tags.building}`);
-    }
-
-    if (tags.landuse) {
-      types.push(`landuse:${tags.landuse}`);
-    }
-
-    return types;
+    return [
+      ...(tags.office ? [`office:${tags.office}`] : []),
+      ...(tags.shop ? [`shop:${tags.shop}`] : []),
+      ...(tags.industrial ? [`industrial:${tags.industrial}`] : []),
+      ...(tags.craft ? [`craft:${tags.craft}`] : []),
+      ...(tags.building && tags.building !== "yes" ? [`building:${tags.building}`] : []),
+      ...(tags.landuse ? [`landuse:${tags.landuse}`] : []),
+    ];
   }
 }

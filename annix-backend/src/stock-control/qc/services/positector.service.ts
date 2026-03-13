@@ -385,7 +385,6 @@ export class PositectorService {
 
     let serialNumber: string | null = null;
     let probeType: string | null = null;
-    let batchName: string | null = null;
     let units: string | null = null;
 
     lines.forEach((line: string) => {
@@ -423,113 +422,128 @@ export class PositectorService {
       }
     });
 
-    const readings: PositectorReading[] = [];
     const readingPattern = /^(\d{1,4})\s+(\d+(?:[.,]\d+)?)\s+/;
-    let currentDate: string | null = null;
 
-    lines.forEach((line: string) => {
-      const dateOnlyMatch = line.match(/^(\d{4}-\d{2}-\d{2})$/);
-      if (dateOnlyMatch) {
-        currentDate = dateOnlyMatch[1];
-        return;
-      }
-
-      const match = line.match(readingPattern);
-      if (match) {
-        const index = parseInt(match[1], 10);
-        const value = parseFloat(match[2].replace(",", "."));
-        if (!Number.isNaN(value) && index > 0 && index <= 9999) {
-          const timePart = line.match(/(\d{1,2}:\d{2}:\d{2})/);
-          const datePart = line.match(/(\d{4}-\d{2}-\d{2})/);
-          const effectiveDate = datePart?.[1] ?? currentDate;
-          const timestamp =
-            effectiveDate && timePart ? `${effectiveDate} ${timePart[1]}` : (timePart?.[1] ?? null);
-
-          readings.push({
-            index: readings.length + 1,
-            value,
-            units: null,
-            timestamp,
-            raw: {},
-          });
+    const { readings: primaryReadings } = lines.reduce(
+      (acc: { readings: PositectorReading[]; currentDate: string | null }, line: string) => {
+        const dateOnlyMatch = line.match(/^(\d{4}-\d{2}-\d{2})$/);
+        if (dateOnlyMatch) {
+          return { readings: acc.readings, currentDate: dateOnlyMatch[1] };
         }
-      }
-    });
 
-    if (readings.length === 0) {
+        const match = line.match(readingPattern);
+        if (match) {
+          const index = parseInt(match[1], 10);
+          const value = parseFloat(match[2].replace(",", "."));
+          if (!Number.isNaN(value) && index > 0 && index <= 9999) {
+            const timePart = line.match(/(\d{1,2}:\d{2}:\d{2})/);
+            const datePart = line.match(/(\d{4}-\d{2}-\d{2})/);
+            const effectiveDate = datePart?.[1] ?? acc.currentDate;
+            const timestamp =
+              effectiveDate && timePart
+                ? `${effectiveDate} ${timePart[1]}`
+                : (timePart?.[1] ?? null);
+
+            return {
+              readings: [
+                ...acc.readings,
+                {
+                  index: acc.readings.length + 1,
+                  value,
+                  units: null,
+                  timestamp,
+                  raw: {},
+                },
+              ],
+              currentDate: acc.currentDate,
+            };
+          }
+        }
+
+        return acc;
+      },
+      { readings: [] as PositectorReading[], currentDate: null as string | null },
+    );
+
+    const fallbackReadings: PositectorReading[] = (() => {
+      if (primaryReadings.length > 0) return [];
+
       this.logger.debug("Primary pattern matched 0 readings, trying fallback column extraction");
       const readingsIdx = lines.findIndex(
         (l: string) => l.toLowerCase() === "readings" || l.toLowerCase().startsWith("readings"),
       );
       const startIdx = readingsIdx >= 0 ? readingsIdx + 1 : 0;
 
-      const candidateValues: number[] = [];
-      const candidateTimestamps: string[] = [];
+      const candidateValues = lines
+        .slice(startIdx)
+        .filter((line: string) => /^\d{1,4}$/.test(line.trim()))
+        .map((line: string) => parseInt(line.trim(), 10))
+        .filter((val) => val > 0 && val < 10000);
 
-      lines.slice(startIdx).forEach((line: string) => {
-        if (/^\d{1,4}$/.test(line.trim())) {
-          const val = parseInt(line.trim(), 10);
-          if (val > 0 && val < 10000) {
-            candidateValues.push(val);
-          }
-        }
-        const timeMatch = line.match(/^(\d{1,2}:\d{2}:\d{2})$/);
-        if (timeMatch) {
-          candidateTimestamps.push(timeMatch[1]);
-        }
-      });
+      const candidateTimestamps = lines
+        .slice(startIdx)
+        .map((line: string) => line.match(/^(\d{1,2}:\d{2}:\d{2})$/))
+        .filter((m): m is RegExpMatchArray => m !== null)
+        .map((m) => m[1]);
 
-      if (candidateValues.length > 1) {
-        const isSequential = candidateValues.every((v, i) => i === 0 || v === i + 1);
-        const values = isSequential
-          ? candidateValues.slice(candidateValues.length / 2)
-          : candidateValues;
+      if (candidateValues.length <= 1) return [];
 
-        values.forEach((value, i) => {
-          readings.push({
-            index: i + 1,
-            value,
-            units: null,
-            timestamp: candidateTimestamps[i] ?? null,
-            raw: {},
-          });
-        });
-      }
-    }
+      const isSequential = candidateValues.every((v, i) => i === 0 || v === i + 1);
+      const values = isSequential
+        ? candidateValues.slice(candidateValues.length / 2)
+        : candidateValues;
 
-    if (readings.length === 0) {
+      return values.map((value, i) => ({
+        index: i + 1,
+        value,
+        units: null,
+        timestamp: candidateTimestamps[i] ?? null,
+        raw: {},
+      }));
+    })();
+
+    const combinedReadings = [...primaryReadings, ...fallbackReadings];
+
+    const numberLineReadings: PositectorReading[] = (() => {
+      if (combinedReadings.length > 0) return [];
+
       const numberLines = lines.filter((l: string) => /^\d+\s+\d+/.test(l));
-      numberLines.forEach((line: string) => {
+      return numberLines.reduce((acc: PositectorReading[], line: string) => {
         const parts = line.trim().split(/\s+/);
         if (parts.length >= 2) {
           const value = parseFloat(parts[1].replace(",", "."));
           if (!Number.isNaN(value) && value > 0 && value < 10000) {
-            readings.push({
-              index: readings.length + 1,
-              value,
-              units: null,
-              timestamp: parts.length >= 3 ? parts.slice(2).join(" ") : null,
-              raw: {},
-            });
+            return [
+              ...acc,
+              {
+                index: acc.length + 1,
+                value,
+                units: null,
+                timestamp: parts.length >= 3 ? parts.slice(2).join(" ") : null,
+                raw: {},
+              },
+            ];
           }
         }
-      });
-    }
+        return acc;
+      }, []);
+    })();
 
-    batchName = filename?.replace(/\.[^.]+$/, "") ?? null;
+    const allReadings = [...combinedReadings, ...numberLineReadings];
+    const finalBatchName = filename?.replace(/\.[^.]+$/, "") ?? null;
 
     return {
       buid: "upload",
       header: {
         serialNumber,
         probeType,
-        batchName,
+        batchName: finalBatchName,
         model: probeType,
         units: units ?? "µm",
-        readingCount: readings.length,
+        readingCount: allReadings.length,
         raw: {},
       },
-      readings,
+      readings: allReadings,
       statistics: null,
     };
   }

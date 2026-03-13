@@ -40,12 +40,14 @@ export class RubberOrderImportService {
 
   async analyzeFiles(files: Express.Multer.File[]): Promise<AnalyzeOrderFilesResult> {
     this.logger.log(`Analyzing ${files.length} files for order data...`);
-    const analyzedFiles: AnalyzedOrderData[] = [];
-
-    for (const file of files) {
-      const analysis = await this.analyzeFile(file);
-      analyzedFiles.push(analysis);
-    }
+    const analyzedFiles = await files.reduce(
+      async (accPromise, file) => {
+        const acc = await accPromise;
+        const analysis = await this.analyzeFile(file);
+        return [...acc, analysis];
+      },
+      Promise.resolve([] as AnalyzedOrderData[]),
+    );
 
     const totalLines = analyzedFiles.reduce((sum, f) => sum + f.lines.length, 0);
     return { files: analyzedFiles, totalLines };
@@ -225,7 +227,7 @@ export class RubberOrderImportService {
       await this.matchCompanyAndProducts(result);
     } catch (error) {
       this.logger.error(`Failed to analyze PDF ${file.originalname}: ${error.message}`);
-      result.errors.push(`PDF parsing failed: ${error.message}`);
+      result.errors = [...result.errors, `PDF parsing failed: ${error.message}`];
     }
 
     return result;
@@ -329,7 +331,7 @@ Respond ONLY with JSON: { "lines": [...] }`;
       await this.matchCompanyAndProducts(result);
     } catch (error) {
       this.logger.error(`Failed to analyze Excel ${file.originalname}: ${error.message}`);
-      result.errors.push(`Excel parsing failed: ${error.message}`);
+      result.errors = [...result.errors, `Excel parsing failed: ${error.message}`];
     }
 
     return result;
@@ -394,7 +396,7 @@ Respond ONLY with JSON: { "lines": [...] }`;
       await this.matchCompanyAndProducts(result);
     } catch (error) {
       this.logger.error(`Failed to analyze email ${file.originalname}: ${error.message}`);
-      result.errors.push(`Email parsing failed: ${error.message}`);
+      result.errors = [...result.errors, `Email parsing failed: ${error.message}`];
     }
 
     return result;
@@ -775,13 +777,14 @@ Respond ONLY with JSON:
   private extractPoFromFilename(filename: string): string | null {
     const patterns = [/PL[-_]?(\d+)/i, /PO[-_]?(\d+)/i, /[-_](\d{4,})[-_]/];
 
-    for (const pattern of patterns) {
-      const match = filename.match(pattern);
-      if (match) {
-        const poNumber = match[1] || match[0];
-        this.logger.log(`Extracted PO "${poNumber}" from filename "${filename}"`);
-        return poNumber;
-      }
+    const matchResult = patterns
+      .map((pattern) => filename.match(pattern))
+      .find((match) => match !== null);
+
+    if (matchResult) {
+      const poNumber = matchResult[1] || matchResult[0];
+      this.logger.log(`Extracted PO "${poNumber}" from filename "${filename}"`);
+      return poNumber;
     }
 
     return null;

@@ -313,14 +313,14 @@ function normalizeProductName(name: string): string {
 }
 
 function buildLookupMap(): Map<string, CoatingProductSpec> {
-  const map = new Map<string, CoatingProductSpec>();
-  COATING_PRODUCTS.forEach((product) => {
-    map.set(normalizeProductName(product.name), product);
-    product.aliases.forEach((alias) => {
-      map.set(normalizeProductName(alias), product);
-    });
-  });
-  return map;
+  return new Map(
+    COATING_PRODUCTS.flatMap((product) => [
+      [normalizeProductName(product.name), product] as const,
+      ...product.aliases.map(
+        (alias) => [normalizeProductName(alias), product] as const,
+      ),
+    ]),
+  );
 }
 
 const PRODUCT_LOOKUP = buildLookupMap();
@@ -333,13 +333,11 @@ export function lookupCoatingProduct(productName: string): CoatingProductSpec | 
     return exact;
   }
 
-  for (const [key, spec] of PRODUCT_LOOKUP.entries()) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      return spec;
-    }
-  }
+  const partialMatch = Array.from(PRODUCT_LOOKUP.entries()).find(
+    ([key]) => normalized.includes(key) || key.includes(normalized),
+  );
 
-  return null;
+  return partialMatch ? partialMatch[1] : null;
 }
 
 export function allKnownProducts(): CoatingProductSpec[] {

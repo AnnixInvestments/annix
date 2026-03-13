@@ -86,21 +86,22 @@ export class CertificateAnalysisService {
       return { certificates: [], totalPages: 0, processingTimeMs: nowMillis() - startMs };
     }
 
-    const contentParts: (TextContent | ImageContent)[] = images.map(
-      (img, idx): TextContent | ImageContent => ({
-        type: "image",
-        source: {
-          type: "base64",
-          media_type: "image/png",
-          data: img.toString("base64"),
-        },
-      }),
-    );
-
-    contentParts.push({
-      type: "text",
-      text: `You are viewing ${images.length} page(s). Identify all distinct COC/COA certificate documents across these pages. Respond with JSON only.`,
-    });
+    const contentParts: (TextContent | ImageContent)[] = [
+      ...images.map(
+        (img): TextContent | ImageContent => ({
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: "image/png",
+            data: img.toString("base64"),
+          },
+        }),
+      ),
+      {
+        type: "text",
+        text: `You are viewing ${images.length} page(s). Identify all distinct COC/COA certificate documents across these pages. Respond with JSON only.`,
+      },
+    ];
 
     const messages: ChatMessage[] = [{ role: "user", content: contentParts }];
     const { content: response } = await this.aiChatService.chat(

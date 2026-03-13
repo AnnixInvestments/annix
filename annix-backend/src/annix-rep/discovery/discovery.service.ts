@@ -145,29 +145,13 @@ export class DiscoveryService {
   }
 
   private buildSearchTerms(repProfile: RepProfile | null, customTerms?: string[]): string[] {
-    const terms: string[] = [];
-
-    if (customTerms && customTerms.length > 0) {
-      terms.push(...customTerms);
-    }
-
-    if (repProfile) {
-      if (repProfile.customSearchTerms) {
-        terms.push(...repProfile.customSearchTerms);
-      }
-
-      if (repProfile.productCategories) {
-        terms.push(...repProfile.productCategories);
-      }
-
-      if (repProfile.subIndustries) {
-        terms.push(...repProfile.subIndustries);
-      }
-
-      if (repProfile.targetCustomerProfile?.businessTypes) {
-        terms.push(...repProfile.targetCustomerProfile.businessTypes);
-      }
-    }
+    const terms: string[] = [
+      ...(customTerms && customTerms.length > 0 ? customTerms : []),
+      ...(repProfile?.customSearchTerms ?? []),
+      ...(repProfile?.productCategories ?? []),
+      ...(repProfile?.subIndustries ?? []),
+      ...(repProfile?.targetCustomerProfile?.businessTypes ?? []),
+    ];
 
     const uniqueTerms = [...new Set(terms)];
 

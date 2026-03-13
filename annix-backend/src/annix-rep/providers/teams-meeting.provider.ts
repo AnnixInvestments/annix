@@ -289,20 +289,16 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
 
       const data: TeamsOnlineMeetingsResponse = await response.json();
 
-      for (const meeting of data.value) {
-        meetings.push(this.mapTeamsMeeting(meeting));
-      }
+      meetings.push(...data.value.map((meeting) => this.mapTeamsMeeting(meeting)));
 
       url = data["@odata.nextLink"] ?? null;
     }
 
     const calendarMeetings = await this.fetchCalendarTeamsMeetings(config, fromDate, to);
-    for (const cm of calendarMeetings) {
-      const exists = meetings.some((m) => m.joinUrl === cm.joinUrl);
-      if (!exists) {
-        meetings.push(cm);
-      }
-    }
+    const newCalendarMeetings = calendarMeetings.filter(
+      (cm) => !meetings.some((m) => m.joinUrl === cm.joinUrl),
+    );
+    meetings.push(...newCalendarMeetings);
 
     return meetings;
   }
@@ -312,8 +308,6 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
     fromDate: Date,
     toDate: Date,
   ): Promise<PlatformMeetingData[]> {
-    const meetings: PlatformMeetingData[] = [];
-
     const params = new URLSearchParams({
       startDateTime: fromDate.toISOString(),
       endDateTime: toDate.toISOString(),
@@ -331,7 +325,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
 
     if (!response.ok) {
       this.logger.warn(`Calendar view fetch failed: ${response.status}`);
-      return meetings;
+      return [];
     }
 
     interface CalendarEvent {
@@ -346,31 +340,27 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
 
     const data: { value: CalendarEvent[] } = await response.json();
 
-    for (const event of data.value) {
-      if (event.onlineMeeting?.joinUrl?.includes("teams.microsoft.com")) {
-        meetings.push({
-          platformMeetingId: event.id,
-          title: event.subject,
-          topic: event.subject,
-          hostEmail: event.organizer?.emailAddress?.address ?? null,
-          startTime: fromISO(event.start.dateTime).toJSDate(),
-          endTime: fromISO(event.end.dateTime).toJSDate(),
-          durationSeconds: Math.round(
-            fromISO(event.end.dateTime).diff(fromISO(event.start.dateTime), "seconds").seconds,
-          ),
-          joinUrl: event.onlineMeeting.joinUrl,
-          participants: event.attendees?.map((a) => a.emailAddress?.address).filter(Boolean) as
-            | string[]
-            | null,
-          participantCount: event.attendees?.length ?? null,
-          hasRecording: false,
-          timezone: "UTC",
-          rawData: event as unknown as Record<string, unknown>,
-        });
-      }
-    }
-
-    return meetings;
+    return data.value
+      .filter((event) => event.onlineMeeting?.joinUrl?.includes("teams.microsoft.com"))
+      .map((event) => ({
+        platformMeetingId: event.id,
+        title: event.subject,
+        topic: event.subject,
+        hostEmail: event.organizer?.emailAddress?.address ?? null,
+        startTime: fromISO(event.start.dateTime).toJSDate(),
+        endTime: fromISO(event.end.dateTime).toJSDate(),
+        durationSeconds: Math.round(
+          fromISO(event.end.dateTime).diff(fromISO(event.start.dateTime), "seconds").seconds,
+        ),
+        joinUrl: event.onlineMeeting!.joinUrl,
+        participants: event.attendees?.map((a) => a.emailAddress?.address).filter(Boolean) as
+          | string[]
+          | null,
+        participantCount: event.attendees?.length ?? null,
+        hasRecording: false,
+        timezone: "UTC",
+        rawData: event as unknown as Record<string, unknown>,
+      }));
   }
 
   private mapTeamsMeeting(meeting: TeamsOnlineMeeting): PlatformMeetingData {

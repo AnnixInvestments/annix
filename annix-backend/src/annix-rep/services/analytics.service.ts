@@ -239,7 +239,7 @@ export class AnalyticsService {
       (v) => v.startedAt && fromJSDate(v.startedAt).toJSDate() >= thirtyDaysAgo,
     );
 
-    const heatmap: Map<string, number> = new Map(
+    const baseHeatmap: Map<string, number> = new Map(
       Array.from({ length: 7 }, (_, day) =>
         Array.from(
           { length: 14 },
@@ -248,25 +248,25 @@ export class AnalyticsService {
       ).flat(),
     );
 
-    recentVisits.forEach((visit) => {
+    const heatmap = recentVisits.reduce((acc, visit) => {
       if (visit.startedAt) {
         const dt = fromJSDate(visit.startedAt);
         const dayOfWeek = dt.weekday % 7;
         const hour = dt.hour;
         if (hour >= 6 && hour < 20) {
           const key = `${dayOfWeek}-${hour}`;
-          heatmap.set(key, (heatmap.get(key) || 0) + 1);
+          return new Map([...acc, [key, (acc.get(key) || 0) + 1]]);
         }
       }
-    });
+      return acc;
+    }, baseHeatmap);
 
-    const results: ActivityHeatmapCell[] = [];
-    heatmap.forEach((count, key) => {
-      const [day, hour] = key.split("-").map(Number);
-      results.push({ dayOfWeek: day, hour, count });
-    });
-
-    return results.sort((a, b) => a.dayOfWeek * 24 + a.hour - (b.dayOfWeek * 24 + b.hour));
+    return [...heatmap.entries()]
+      .map(([key, count]) => {
+        const [day, hour] = key.split("-").map(Number);
+        return { dayOfWeek: day, hour, count };
+      })
+      .sort((a, b) => a.dayOfWeek * 24 + a.hour - (b.dayOfWeek * 24 + b.hour));
   }
 
   async revenuePipeline(ownerId: number): Promise<RevenuePipeline[]> {

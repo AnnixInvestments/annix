@@ -181,44 +181,55 @@ export class RubberTaxInvoiceService {
       totalAmount: null,
     };
 
-    const corrections: { field: string; original: string; corrected: string }[] = [];
     const supplierName = invoice.company?.name ?? existing.companyName ?? null;
 
-    if (dto.orderNumber !== undefined && dto.orderNumber !== existing.orderNumber) {
-      corrections.push({
-        field: "orderNumber",
-        original: existing.orderNumber ?? "",
-        corrected: dto.orderNumber ?? "",
-      });
-    }
-    if (dto.vatAmount !== undefined && dto.vatAmount !== existing.vatAmount) {
-      corrections.push({
-        field: "vatAmount",
-        original: String(existing.vatAmount ?? ""),
-        corrected: String(dto.vatAmount ?? ""),
-      });
-    }
-    if (dto.totalAmount !== undefined && dto.totalAmount !== (existing.totalAmount ?? null)) {
-      corrections.push({
-        field: "totalAmount",
-        original: String(existing.totalAmount ?? ""),
-        corrected: String(dto.totalAmount ?? ""),
-      });
-    }
-    if (dto.subtotal !== undefined && dto.subtotal !== existing.subtotal) {
-      corrections.push({
-        field: "subtotal",
-        original: String(existing.subtotal ?? ""),
-        corrected: String(dto.subtotal ?? ""),
-      });
-    }
-    if (dto.quantity !== undefined && dto.quantity !== existing.productQuantity) {
-      corrections.push({
-        field: "quantity",
-        original: String(existing.productQuantity ?? ""),
-        corrected: String(dto.quantity ?? ""),
-      });
-    }
+    const corrections = [
+      ...(dto.orderNumber !== undefined && dto.orderNumber !== existing.orderNumber
+        ? [
+            {
+              field: "orderNumber",
+              original: existing.orderNumber ?? "",
+              corrected: dto.orderNumber ?? "",
+            },
+          ]
+        : []),
+      ...(dto.vatAmount !== undefined && dto.vatAmount !== existing.vatAmount
+        ? [
+            {
+              field: "vatAmount",
+              original: String(existing.vatAmount ?? ""),
+              corrected: String(dto.vatAmount ?? ""),
+            },
+          ]
+        : []),
+      ...(dto.totalAmount !== undefined && dto.totalAmount !== (existing.totalAmount ?? null)
+        ? [
+            {
+              field: "totalAmount",
+              original: String(existing.totalAmount ?? ""),
+              corrected: String(dto.totalAmount ?? ""),
+            },
+          ]
+        : []),
+      ...(dto.subtotal !== undefined && dto.subtotal !== existing.subtotal
+        ? [
+            {
+              field: "subtotal",
+              original: String(existing.subtotal ?? ""),
+              corrected: String(dto.subtotal ?? ""),
+            },
+          ]
+        : []),
+      ...(dto.quantity !== undefined && dto.quantity !== existing.productQuantity
+        ? [
+            {
+              field: "quantity",
+              original: String(existing.productQuantity ?? ""),
+              corrected: String(dto.quantity ?? ""),
+            },
+          ]
+        : []),
+    ];
 
     if (dto.invoiceNumber !== undefined) invoice.invoiceNumber = dto.invoiceNumber;
     if (dto.invoiceDate !== undefined) {

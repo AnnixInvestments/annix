@@ -112,8 +112,6 @@ export class MeetingSummaryService {
     transcript: MeetingTranscript,
     analysis: MeetingAnalysis | null,
   ): string {
-    const parts: string[] = [];
-
     const topicSummary = analysis?.topics?.length
       ? `The discussion covered ${this.formatListNatural(analysis.topics.slice(0, 3))}.`
       : "";
@@ -121,35 +119,32 @@ export class MeetingSummaryService {
     const questionCount = analysis?.questions?.length ?? 0;
     const actionCount = analysis?.actionItems?.length ?? 0;
 
-    if (meeting.prospect) {
-      parts.push(
-        `This meeting with ${meeting.prospect.companyName} focused on ${meeting.title.toLowerCase()}.`,
-      );
-    } else {
-      parts.push(`This meeting focused on ${meeting.title.toLowerCase()}.`);
-    }
+    const openingLine = meeting.prospect
+      ? `This meeting with ${meeting.prospect.companyName} focused on ${meeting.title.toLowerCase()}.`
+      : `This meeting focused on ${meeting.title.toLowerCase()}.`;
 
-    if (topicSummary) {
-      parts.push(topicSummary);
-    }
+    const stats: string[] = [
+      ...(questionCount > 0
+        ? [`${questionCount} question${questionCount !== 1 ? "s" : ""} were raised`]
+        : []),
+      ...(actionCount > 0
+        ? [`${actionCount} action item${actionCount !== 1 ? "s" : ""} were identified`]
+        : []),
+    ];
 
-    const stats: string[] = [];
-    if (questionCount > 0) {
-      stats.push(`${questionCount} question${questionCount !== 1 ? "s" : ""} were raised`);
-    }
-    if (actionCount > 0) {
-      stats.push(`${actionCount} action item${actionCount !== 1 ? "s" : ""} were identified`);
-    }
+    const sentimentLine =
+      analysis?.sentiment === "positive"
+        ? "The overall tone of the meeting was positive."
+        : analysis?.sentiment === "negative"
+          ? "Some concerns were raised that may need follow-up."
+          : null;
 
-    if (stats.length > 0) {
-      parts.push(`During the meeting, ${stats.join(" and ")}.`);
-    }
-
-    if (analysis?.sentiment === "positive") {
-      parts.push("The overall tone of the meeting was positive.");
-    } else if (analysis?.sentiment === "negative") {
-      parts.push("Some concerns were raised that may need follow-up.");
-    }
+    const parts: string[] = [
+      openingLine,
+      ...(topicSummary ? [topicSummary] : []),
+      ...(stats.length > 0 ? [`During the meeting, ${stats.join(" and ")}.`] : []),
+      ...(sentimentLine ? [sentimentLine] : []),
+    ];
 
     return parts.join(" ");
   }
@@ -158,23 +153,20 @@ export class MeetingSummaryService {
     analysis: MeetingAnalysis | null,
     segments: TranscriptSegment[],
   ): string[] {
-    const keyPoints: string[] = [];
+    const fromAnalysis = analysis?.keyPoints?.length ? analysis.keyPoints.slice(0, 5) : [];
 
-    if (analysis?.keyPoints?.length) {
-      keyPoints.push(...analysis.keyPoints.slice(0, 5));
-    }
+    const withObjections =
+      fromAnalysis.length < 3 && analysis?.objections?.length
+        ? [...fromAnalysis, `Concern raised: ${analysis.objections[0]}`]
+        : fromAnalysis;
 
-    if (keyPoints.length < 3 && analysis?.objections?.length) {
-      keyPoints.push(`Concern raised: ${analysis.objections[0]}`);
-    }
-
-    if (keyPoints.length === 0) {
-      const longSegments = segments
-        .filter((s) => s.text.length > 100)
-        .slice(0, 3)
-        .map((s) => this.truncateText(s.text, 150));
-      keyPoints.push(...longSegments);
-    }
+    const keyPoints =
+      withObjections.length === 0
+        ? segments
+            .filter((s) => s.text.length > 100)
+            .slice(0, 3)
+            .map((s) => this.truncateText(s.text, 150))
+        : withObjections;
 
     return keyPoints.slice(0, 5);
   }
@@ -194,31 +186,26 @@ export class MeetingSummaryService {
   }
 
   private generateNextSteps(analysis: MeetingAnalysis | null, meeting: Meeting): string[] {
-    const nextSteps: string[] = [];
+    const hasAssignedActions = analysis?.actionItems?.some((item) => item.assignee) ?? false;
 
-    if (analysis?.actionItems?.length) {
-      const assignedItems = analysis.actionItems.filter((item) => item.assignee);
-      if (assignedItems.length > 0) {
-        nextSteps.push("Follow up on assigned action items");
-      }
-    }
+    const conditionalSteps: string[] = [
+      ...(hasAssignedActions ? ["Follow up on assigned action items"] : []),
+      ...(analysis?.questions?.length && analysis.questions.length > 2
+        ? ["Address remaining questions from the meeting"]
+        : []),
+      ...(analysis?.objections?.length
+        ? ["Review and address concerns raised during discussion"]
+        : []),
+      ...(meeting.outcomes ? ["Review documented meeting outcomes"] : []),
+    ];
 
-    if (analysis?.questions?.length && analysis.questions.length > 2) {
-      nextSteps.push("Address remaining questions from the meeting");
-    }
-
-    if (analysis?.objections?.length) {
-      nextSteps.push("Review and address concerns raised during discussion");
-    }
-
-    if (meeting.outcomes) {
-      nextSteps.push("Review documented meeting outcomes");
-    }
-
-    if (nextSteps.length === 0) {
-      nextSteps.push("Schedule follow-up meeting if needed");
-      nextSteps.push("Share meeting summary with relevant stakeholders");
-    }
+    const nextSteps =
+      conditionalSteps.length === 0
+        ? [
+            "Schedule follow-up meeting if needed",
+            "Share meeting summary with relevant stakeholders",
+          ]
+        : conditionalSteps;
 
     return nextSteps.slice(0, 5);
   }

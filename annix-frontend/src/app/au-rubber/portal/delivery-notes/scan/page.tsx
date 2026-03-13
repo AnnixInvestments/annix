@@ -82,16 +82,17 @@ export default function ScanDeliveryNotePage() {
   };
 
   const formatLineItem = (item: AnalyzedDeliveryNoteLineItem) => {
-    const parts: string[] = [];
-    if (item.rollNumber) parts.push(`Roll: ${item.rollNumber}`);
-    if (item.batchNumber) parts.push(`Batch: ${item.batchNumber}`);
-    if (item.compoundCode) parts.push(`Compound: ${item.compoundCode}`);
-    if (item.thicknessMm) parts.push(`${item.thicknessMm}mm`);
-    if (item.widthMm) parts.push(`${item.widthMm}mm W`);
-    if (item.lengthM) parts.push(`${item.lengthM}m L`);
-    if (item.weightKg) parts.push(`${item.weightKg}kg`);
-    if (item.color) parts.push(item.color);
-    if (item.hardnessShoreA) parts.push(`${item.hardnessShoreA} Shore A`);
+    const parts = [
+      ...(item.rollNumber ? [`Roll: ${item.rollNumber}`] : []),
+      ...(item.batchNumber ? [`Batch: ${item.batchNumber}`] : []),
+      ...(item.compoundCode ? [`Compound: ${item.compoundCode}`] : []),
+      ...(item.thicknessMm ? [`${item.thicknessMm}mm`] : []),
+      ...(item.widthMm ? [`${item.widthMm}mm W`] : []),
+      ...(item.lengthM ? [`${item.lengthM}m L`] : []),
+      ...(item.weightKg ? [`${item.weightKg}kg`] : []),
+      ...(item.color ? [item.color] : []),
+      ...(item.hardnessShoreA ? [`${item.hardnessShoreA} Shore A`] : []),
+    ];
     return parts.length > 0 ? parts.join(" | ") : item.description;
   };
 

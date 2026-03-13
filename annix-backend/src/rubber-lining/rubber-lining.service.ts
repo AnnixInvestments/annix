@@ -192,109 +192,181 @@ export class RubberLiningService {
     request: RubberRecommendationRequestDto,
   ): Promise<RubberRecommendationDto> {
     const allTypes = await this.rubberTypeRepository.find();
-    const reasoning: string[] = [];
-    const warnings: string[] = [];
-    let suitableTypeIds: number[] = allTypes.map((t) => t.id);
 
-    if (request.maxTemperatureCelsius !== undefined && request.maxTemperatureCelsius !== null) {
-      const tempFiltered = allTypes.filter(
-        (t) => Number(t.tempMaxCelsius) >= request.maxTemperatureCelsius!,
-      );
-      suitableTypeIds = suitableTypeIds.filter((id) => tempFiltered.some((t) => t.id === id));
-      reasoning.push(`Filtered for max operating temperature ${request.maxTemperatureCelsius}°C`);
-    }
+    const initialState = {
+      suitableTypeIds: allTypes.map((t) => t.id),
+      reasoning: [] as string[],
+      warnings: [] as string[],
+    };
 
-    if (request.minTemperatureCelsius !== undefined && request.minTemperatureCelsius !== null) {
-      const tempFiltered = allTypes.filter(
-        (t) => Number(t.tempMinCelsius) <= request.minTemperatureCelsius!,
-      );
-      suitableTypeIds = suitableTypeIds.filter((id) => tempFiltered.some((t) => t.id === id));
-      reasoning.push(`Filtered for min operating temperature ${request.minTemperatureCelsius}°C`);
-    }
+    const afterMaxTemp =
+      request.maxTemperatureCelsius !== undefined && request.maxTemperatureCelsius !== null
+        ? (() => {
+            const tempFiltered = allTypes.filter(
+              (t) => Number(t.tempMaxCelsius) >= request.maxTemperatureCelsius!,
+            );
+            return {
+              ...initialState,
+              suitableTypeIds: initialState.suitableTypeIds.filter((id) =>
+                tempFiltered.some((t) => t.id === id),
+              ),
+              reasoning: [
+                ...initialState.reasoning,
+                `Filtered for max operating temperature ${request.maxTemperatureCelsius}°C`,
+              ],
+            };
+          })()
+        : initialState;
 
-    if (request.requiresOilResistance) {
-      const oilResistant = allTypes.filter(
-        (t) =>
-          t.oilResistance === "excellent" ||
-          t.oilResistance === "good" ||
-          t.oilResistance === "medium",
-      );
-      suitableTypeIds = suitableTypeIds.filter((id) => oilResistant.some((t) => t.id === id));
-      reasoning.push("Filtered for oil resistance requirement");
+    const afterMinTemp =
+      request.minTemperatureCelsius !== undefined && request.minTemperatureCelsius !== null
+        ? (() => {
+            const tempFiltered = allTypes.filter(
+              (t) => Number(t.tempMinCelsius) <= request.minTemperatureCelsius!,
+            );
+            return {
+              ...afterMaxTemp,
+              suitableTypeIds: afterMaxTemp.suitableTypeIds.filter((id) =>
+                tempFiltered.some((t) => t.id === id),
+              ),
+              reasoning: [
+                ...afterMaxTemp.reasoning,
+                `Filtered for min operating temperature ${request.minTemperatureCelsius}°C`,
+              ],
+            };
+          })()
+        : afterMaxTemp;
 
-      const type1 = allTypes.find((t) => t.typeNumber === 1);
-      if (type1 && suitableTypeIds.includes(type1.id)) {
-        suitableTypeIds = suitableTypeIds.filter((id) => id !== type1.id);
-        warnings.push("Type 1 (Natural/SBR rubber) excluded - not suitable for oil exposure");
-      }
-    }
+    const afterOil = request.requiresOilResistance
+      ? (() => {
+          const oilResistant = allTypes.filter(
+            (t) =>
+              t.oilResistance === "excellent" ||
+              t.oilResistance === "good" ||
+              t.oilResistance === "medium",
+          );
+          const filtered = afterMinTemp.suitableTypeIds.filter((id) =>
+            oilResistant.some((t) => t.id === id),
+          );
+          const type1 = allTypes.find((t) => t.typeNumber === 1);
+          const excludeType1 = type1 && filtered.includes(type1.id);
+          return {
+            ...afterMinTemp,
+            suitableTypeIds: excludeType1 ? filtered.filter((id) => id !== type1!.id) : filtered,
+            reasoning: [...afterMinTemp.reasoning, "Filtered for oil resistance requirement"],
+            warnings: [
+              ...afterMinTemp.warnings,
+              ...(excludeType1
+                ? ["Type 1 (Natural/SBR rubber) excluded - not suitable for oil exposure"]
+                : []),
+            ],
+          };
+        })()
+      : afterMinTemp;
 
-    if (request.requiresOzoneResistance) {
-      const ozoneResistant = allTypes.filter(
-        (t) => t.ozoneResistance === "excellent" || t.ozoneResistance === "good",
-      );
-      suitableTypeIds = suitableTypeIds.filter((id) => ozoneResistant.some((t) => t.id === id));
-      reasoning.push("Filtered for ozone resistance requirement");
+    const afterOzone = request.requiresOzoneResistance
+      ? (() => {
+          const ozoneResistant = allTypes.filter(
+            (t) => t.ozoneResistance === "excellent" || t.ozoneResistance === "good",
+          );
+          const type1 = allTypes.find((t) => t.typeNumber === 1);
+          return {
+            ...afterOil,
+            suitableTypeIds: afterOil.suitableTypeIds.filter((id) =>
+              ozoneResistant.some((t) => t.id === id),
+            ),
+            reasoning: [...afterOil.reasoning, "Filtered for ozone resistance requirement"],
+            warnings: [
+              ...afterOil.warnings,
+              ...(type1 && !ozoneResistant.some((t) => t.id === type1.id)
+                ? ["Type 1 (Natural/SBR rubber) not recommended for ozone exposure"]
+                : []),
+            ],
+          };
+        })()
+      : afterOil;
 
-      const type1 = allTypes.find((t) => t.typeNumber === 1);
-      if (type1 && !ozoneResistant.some((t) => t.id === type1.id)) {
-        warnings.push("Type 1 (Natural/SBR rubber) not recommended for ozone exposure");
-      }
-    }
+    const afterChemical =
+      request.chemicalExposure && request.chemicalExposure.length > 0
+        ? await (async () => {
+            const ratings = await this.applicationRatingRepository.find({
+              where: {
+                chemicalCategory: In(request.chemicalExposure!),
+                resistanceRating: In(["excellent", "good"]),
+              },
+              relations: ["rubberType"],
+            });
+            const chemicalSuitableIds = [...new Set(ratings.map((r) => r.rubberTypeId))];
+            return {
+              ...afterOzone,
+              suitableTypeIds: afterOzone.suitableTypeIds.filter((id) =>
+                chemicalSuitableIds.includes(id),
+              ),
+              reasoning: [
+                ...afterOzone.reasoning,
+                `Filtered for chemical resistance: ${request.chemicalExposure!.join(", ")}`,
+              ],
+            };
+          })()
+        : afterOzone;
 
-    if (request.chemicalExposure && request.chemicalExposure.length > 0) {
-      const ratings = await this.applicationRatingRepository.find({
-        where: {
-          chemicalCategory: In(request.chemicalExposure),
-          resistanceRating: In(["excellent", "good"]),
-        },
-        relations: ["rubberType"],
-      });
+    const afterAbrasionWarnings =
+      request.abrasionLevel === "very_high"
+        ? {
+            ...afterChemical,
+            reasoning: [
+              ...afterChemical.reasoning,
+              "High abrasion environment - consider ceramic-rubber composite or harder rubber grades",
+            ],
+            warnings: [
+              ...afterChemical.warnings,
+              "Very high abrasion may require additional ceramic tile protection over rubber lining",
+            ],
+          }
+        : afterChemical;
 
-      const chemicalSuitableIds = [...new Set(ratings.map((r) => r.rubberTypeId))];
-      suitableTypeIds = suitableTypeIds.filter((id) => chemicalSuitableIds.includes(id));
-      reasoning.push(`Filtered for chemical resistance: ${request.chemicalExposure.join(", ")}`);
-    }
+    const afterCorrosion =
+      request.corrosionLevel === "very_high"
+        ? (() => {
+            const type2 = allTypes.find((t) => t.typeNumber === 2);
+            const type5 = allTypes.find((t) => t.typeNumber === 5);
+            return type2 || type5
+              ? {
+                  ...afterAbrasionWarnings,
+                  reasoning: [
+                    ...afterAbrasionWarnings.reasoning,
+                    "Very high corrosion - Type 2 (Butyl) or Type 5 (CSM) recommended for chemical resistance",
+                  ],
+                }
+              : afterAbrasionWarnings;
+          })()
+        : afterAbrasionWarnings;
 
-    if (request.abrasionLevel === "very_high") {
-      reasoning.push(
-        "High abrasion environment - consider ceramic-rubber composite or harder rubber grades",
-      );
-      warnings.push(
-        "Very high abrasion may require additional ceramic tile protection over rubber lining",
-      );
-    }
-
-    if (request.corrosionLevel === "very_high") {
-      const type2 = allTypes.find((t) => t.typeNumber === 2);
-      const type5 = allTypes.find((t) => t.typeNumber === 5);
-      if (type2 || type5) {
-        reasoning.push(
-          "Very high corrosion - Type 2 (Butyl) or Type 5 (CSM) recommended for chemical resistance",
-        );
-      }
-    }
-
+    const { suitableTypeIds, reasoning, warnings } = afterCorrosion;
     const recommendedTypes = allTypes.filter((t) => suitableTypeIds.includes(t.id));
 
-    let recommendedSpecs: RubberSpecification[] = [];
-    if (suitableTypeIds.length > 0) {
-      recommendedSpecs = await this.rubberSpecRepository.find({
-        where: { rubberTypeId: In(suitableTypeIds) },
-        relations: ["rubberType"],
-        order: { grade: "ASC", hardnessClassIrhd: "ASC" },
-      });
-    }
+    const allSpecs =
+      suitableTypeIds.length > 0
+        ? await this.rubberSpecRepository.find({
+            where: { rubberTypeId: In(suitableTypeIds) },
+            relations: ["rubberType"],
+            order: { grade: "ASC", hardnessClassIrhd: "ASC" },
+          })
+        : [];
 
-    if (request.abrasionLevel === "high" || request.abrasionLevel === "very_high") {
-      recommendedSpecs = recommendedSpecs.filter((s) => s.hardnessClassIrhd >= 60);
-      reasoning.push("High abrasion requires harder rubber - recommending 60+ IRHD hardness class");
-    }
+    const needsHardAbrasion =
+      request.abrasionLevel === "high" || request.abrasionLevel === "very_high";
+    const recommendedSpecs = needsHardAbrasion
+      ? allSpecs.filter((s) => s.hardnessClassIrhd >= 60)
+      : allSpecs;
+    const finalReasoning = needsHardAbrasion
+      ? [...reasoning, "High abrasion requires harder rubber - recommending 60+ IRHD hardness class"]
+      : reasoning;
 
     return {
       recommendedTypes: recommendedTypes.map(this.mapTypeToDto),
       recommendedSpecifications: recommendedSpecs.map(this.mapSpecToDto),
-      reasoning,
+      reasoning: finalReasoning,
       warnings,
       sansCompliance: {
         sans1198: true,
@@ -596,8 +668,6 @@ export class RubberLiningService {
   private async validateProductCodingRelationships(
     dto: CreateRubberProductDto | UpdateRubberProductDto,
   ): Promise<void> {
-    const errors: string[] = [];
-
     const codingValidations: Array<{
       uid: string | undefined;
       field: string;
@@ -637,41 +707,48 @@ export class RubberLiningService {
 
     const codingUidsToValidate = codingValidations.filter((v) => v.uid).map((v) => v.uid!);
 
-    if (codingUidsToValidate.length > 0) {
-      const codings = await this.productCodingRepository.find({
-        where: { firebaseUid: In(codingUidsToValidate) },
-      });
+    const codingErrors =
+      codingUidsToValidate.length > 0
+        ? await (async () => {
+            const codings = await this.productCodingRepository.find({
+              where: { firebaseUid: In(codingUidsToValidate) },
+            });
+            return codingValidations.flatMap((validation) => {
+              if (!validation.uid) return [];
+              const coding = codings.find((c) => c.firebaseUid === validation.uid);
+              if (!coding) {
+                return [
+                  `Invalid ${validation.field}: coding with UID '${validation.uid}' not found`,
+                ];
+              } else if (coding.codingType !== validation.expectedType) {
+                return [
+                  `Invalid ${validation.field}: coding '${validation.uid}' is type '${coding.codingType}', expected '${validation.expectedType}'`,
+                ];
+              }
+              return [];
+            });
+          })()
+        : [];
 
-      codingValidations.forEach((validation) => {
-        if (validation.uid) {
-          const coding = codings.find((c) => c.firebaseUid === validation.uid);
-          if (!coding) {
-            errors.push(
-              `Invalid ${validation.field}: coding with UID '${validation.uid}' not found`,
-            );
-          } else if (coding.codingType !== validation.expectedType) {
-            errors.push(
-              `Invalid ${validation.field}: coding '${validation.uid}' is type '${coding.codingType}', expected '${validation.expectedType}'`,
-            );
+    const companyErrors = dto.compoundOwnerFirebaseUid
+      ? await (async () => {
+          const company = await this.companyRepository.findOne({
+            where: { firebaseUid: dto.compoundOwnerFirebaseUid },
+          });
+          if (!company) {
+            return [
+              `Invalid compoundOwner: company with UID '${dto.compoundOwnerFirebaseUid}' not found`,
+            ];
+          } else if (!company.isCompoundOwner) {
+            return [
+              `Invalid compoundOwner: company '${company.name}' is not marked as a compound owner`,
+            ];
           }
-        }
-      });
-    }
+          return [];
+        })()
+      : [];
 
-    if (dto.compoundOwnerFirebaseUid) {
-      const company = await this.companyRepository.findOne({
-        where: { firebaseUid: dto.compoundOwnerFirebaseUid },
-      });
-      if (!company) {
-        errors.push(
-          `Invalid compoundOwner: company with UID '${dto.compoundOwnerFirebaseUid}' not found`,
-        );
-      } else if (!company.isCompoundOwner) {
-        errors.push(
-          `Invalid compoundOwner: company '${company.name}' is not marked as a compound owner`,
-        );
-      }
-    }
+    const errors = [...codingErrors, ...companyErrors];
 
     if (errors.length > 0) {
       throw new BadRequestException(errors.join("; "));
@@ -766,93 +843,102 @@ export class RubberLiningService {
       return company?.firebaseUid || null;
     };
 
-    const results: ImportProductRowResultDto[] = [];
-    let created = 0;
-    let updated = 0;
-    let failed = 0;
-    let skipped = 0;
+    const importResult = await rows.reduce(
+      async (accPromise, row, i) => {
+        const acc = await accPromise;
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const errors: string[] = [];
+        const typeUid = codingLookup(row.type, ProductCodingType.TYPE);
+        const compoundUid = codingLookup(row.compound, ProductCodingType.COMPOUND);
+        const colourUid = codingLookup(row.colour, ProductCodingType.COLOUR);
+        const hardnessUid = codingLookup(row.hardness, ProductCodingType.HARDNESS);
+        const gradeUid = codingLookup(row.grade, ProductCodingType.GRADE);
+        const curingMethodUid = codingLookup(row.curingMethod, ProductCodingType.CURING_METHOD);
+        const compoundOwnerUid = companyLookup(row.compoundOwner);
 
-      const typeUid = codingLookup(row.type, ProductCodingType.TYPE);
-      const compoundUid = codingLookup(row.compound, ProductCodingType.COMPOUND);
-      const colourUid = codingLookup(row.colour, ProductCodingType.COLOUR);
-      const hardnessUid = codingLookup(row.hardness, ProductCodingType.HARDNESS);
-      const gradeUid = codingLookup(row.grade, ProductCodingType.GRADE);
-      const curingMethodUid = codingLookup(row.curingMethod, ProductCodingType.CURING_METHOD);
-      const compoundOwnerUid = companyLookup(row.compoundOwner);
+        const errors: string[] = [
+          ...(row.type && !typeUid ? [`Type '${row.type}' not found`] : []),
+          ...(row.compound && !compoundUid ? [`Compound '${row.compound}' not found`] : []),
+          ...(row.colour && !colourUid ? [`Colour '${row.colour}' not found`] : []),
+          ...(row.hardness && !hardnessUid ? [`Hardness '${row.hardness}' not found`] : []),
+          ...(row.grade && !gradeUid ? [`Grade '${row.grade}' not found`] : []),
+          ...(row.curingMethod && !curingMethodUid
+            ? [`Curing method '${row.curingMethod}' not found`]
+            : []),
+          ...(row.compoundOwner && !compoundOwnerUid
+            ? [`Compound owner '${row.compoundOwner}' not found or not marked as compound owner`]
+            : []),
+        ];
 
-      if (row.type && !typeUid) errors.push(`Type '${row.type}' not found`);
-      if (row.compound && !compoundUid) errors.push(`Compound '${row.compound}' not found`);
-      if (row.colour && !colourUid) errors.push(`Colour '${row.colour}' not found`);
-      if (row.hardness && !hardnessUid) errors.push(`Hardness '${row.hardness}' not found`);
-      if (row.grade && !gradeUid) errors.push(`Grade '${row.grade}' not found`);
-      if (row.curingMethod && !curingMethodUid)
-        errors.push(`Curing method '${row.curingMethod}' not found`);
-      if (row.compoundOwner && !compoundOwnerUid)
-        errors.push(
-          `Compound owner '${row.compoundOwner}' not found or not marked as compound owner`,
-        );
+        if (errors.length > 0) {
+          return {
+            ...acc,
+            failed: acc.failed + 1,
+            results: [
+              ...acc.results,
+              { rowIndex: i, status: "failed" as const, title: row.title || null, errors },
+            ],
+          };
+        }
 
-      if (errors.length > 0) {
-        failed++;
-        results.push({
-          rowIndex: i,
-          status: "failed",
-          title: row.title || null,
-          errors,
-        });
-        continue;
-      }
+        const existingProduct = row.firebaseUid
+          ? acc.knownProducts.find((p) => p.firebaseUid === row.firebaseUid)
+          : acc.knownProducts.find(
+              (p) => p.title && row.title && p.title.toLowerCase() === row.title.toLowerCase(),
+            );
 
-      const existingProduct = row.firebaseUid
-        ? existingProducts.find((p) => p.firebaseUid === row.firebaseUid)
-        : existingProducts.find(
-            (p) => p.title && row.title && p.title.toLowerCase() === row.title.toLowerCase(),
-          );
+        if (existingProduct && !updateExisting) {
+          return {
+            ...acc,
+            skipped: acc.skipped + 1,
+            results: [
+              ...acc.results,
+              {
+                rowIndex: i,
+                status: "skipped" as const,
+                title: row.title || null,
+                errors: ["Product already exists and updateExisting is false"],
+                productId: existingProduct.id,
+              },
+            ],
+          };
+        }
 
-      if (existingProduct && !updateExisting) {
-        skipped++;
-        results.push({
-          rowIndex: i,
-          status: "skipped",
-          title: row.title || null,
-          errors: ["Product already exists and updateExisting is false"],
-          productId: existingProduct.id,
-        });
-        continue;
-      }
+        try {
+          if (existingProduct) {
+            if (row.title !== undefined) existingProduct.title = row.title || null;
+            if (row.description !== undefined)
+              existingProduct.description = row.description || null;
+            if (row.specificGravity !== undefined)
+              existingProduct.specificGravity = row.specificGravity || null;
+            if (row.costPerKg !== undefined) existingProduct.costPerKg = row.costPerKg || null;
+            if (row.markup !== undefined) existingProduct.markup = row.markup || null;
+            if (typeUid !== undefined) existingProduct.typeFirebaseUid = typeUid;
+            if (compoundUid !== undefined) existingProduct.compoundFirebaseUid = compoundUid;
+            if (colourUid !== undefined) existingProduct.colourFirebaseUid = colourUid;
+            if (hardnessUid !== undefined) existingProduct.hardnessFirebaseUid = hardnessUid;
+            if (gradeUid !== undefined) existingProduct.gradeFirebaseUid = gradeUid;
+            if (curingMethodUid !== undefined)
+              existingProduct.curingMethodFirebaseUid = curingMethodUid;
+            if (compoundOwnerUid !== undefined)
+              existingProduct.compoundOwnerFirebaseUid = compoundOwnerUid;
 
-      try {
-        if (existingProduct) {
-          if (row.title !== undefined) existingProduct.title = row.title || null;
-          if (row.description !== undefined) existingProduct.description = row.description || null;
-          if (row.specificGravity !== undefined)
-            existingProduct.specificGravity = row.specificGravity || null;
-          if (row.costPerKg !== undefined) existingProduct.costPerKg = row.costPerKg || null;
-          if (row.markup !== undefined) existingProduct.markup = row.markup || null;
-          if (typeUid !== undefined) existingProduct.typeFirebaseUid = typeUid;
-          if (compoundUid !== undefined) existingProduct.compoundFirebaseUid = compoundUid;
-          if (colourUid !== undefined) existingProduct.colourFirebaseUid = colourUid;
-          if (hardnessUid !== undefined) existingProduct.hardnessFirebaseUid = hardnessUid;
-          if (gradeUid !== undefined) existingProduct.gradeFirebaseUid = gradeUid;
-          if (curingMethodUid !== undefined)
-            existingProduct.curingMethodFirebaseUid = curingMethodUid;
-          if (compoundOwnerUid !== undefined)
-            existingProduct.compoundOwnerFirebaseUid = compoundOwnerUid;
+            await this.productRepository.save(existingProduct);
+            return {
+              ...acc,
+              updated: acc.updated + 1,
+              results: [
+                ...acc.results,
+                {
+                  rowIndex: i,
+                  status: "updated" as const,
+                  title: row.title || null,
+                  errors: [],
+                  productId: existingProduct.id,
+                },
+              ],
+            };
+          }
 
-          await this.productRepository.save(existingProduct);
-          updated++;
-          results.push({
-            rowIndex: i,
-            status: "updated",
-            title: row.title || null,
-            errors: [],
-            productId: existingProduct.id,
-          });
-        } else {
           const product = this.productRepository.create({
             firebaseUid: `pg_${generateUniqueId()}`,
             title: row.title || null,
@@ -869,34 +955,54 @@ export class RubberLiningService {
             compoundOwnerFirebaseUid: compoundOwnerUid,
           });
           const saved = await this.productRepository.save(product);
-          existingProducts.push(saved);
-          created++;
-          results.push({
-            rowIndex: i,
-            status: "created",
-            title: row.title || null,
-            errors: [],
-            productId: saved.id,
-          });
+          return {
+            ...acc,
+            created: acc.created + 1,
+            knownProducts: [...acc.knownProducts, saved],
+            results: [
+              ...acc.results,
+              {
+                rowIndex: i,
+                status: "created" as const,
+                title: row.title || null,
+                errors: [],
+                productId: saved.id,
+              },
+            ],
+          };
+        } catch (err) {
+          return {
+            ...acc,
+            failed: acc.failed + 1,
+            results: [
+              ...acc.results,
+              {
+                rowIndex: i,
+                status: "failed" as const,
+                title: row.title || null,
+                errors: [err instanceof Error ? err.message : "Unknown error"],
+              },
+            ],
+          };
         }
-      } catch (err) {
-        failed++;
-        results.push({
-          rowIndex: i,
-          status: "failed",
-          title: row.title || null,
-          errors: [err instanceof Error ? err.message : "Unknown error"],
-        });
-      }
-    }
+      },
+      Promise.resolve({
+        created: 0,
+        updated: 0,
+        failed: 0,
+        skipped: 0,
+        results: [] as ImportProductRowResultDto[],
+        knownProducts: [...existingProducts],
+      }),
+    );
 
     return {
       totalRows: rows.length,
-      created,
-      updated,
-      failed,
-      skipped,
-      results,
+      created: importResult.created,
+      updated: importResult.updated,
+      failed: importResult.failed,
+      skipped: importResult.skipped,
+      results: importResult.results,
     };
   }
 

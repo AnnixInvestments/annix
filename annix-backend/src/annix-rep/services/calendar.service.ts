@@ -282,11 +282,13 @@ export class CalendarService {
     const config = await this.configFor(connection);
     const provider = this.providerFor(connection.provider);
 
-    const calendarIds = connection.selectedCalendars ?? [];
-    if (calendarIds.length === 0) {
-      const calendars = await provider.listCalendars(config);
-      calendarIds.push(...calendars.map((c) => c.id));
+    const existingCalendarIds = connection.selectedCalendars ?? [];
+    const calendarIds =
+      existingCalendarIds.length === 0
+        ? (await provider.listCalendars(config)).map((c) => c.id)
+        : existingCalendarIds;
 
+    if (existingCalendarIds.length === 0) {
       connection.selectedCalendars = calendarIds;
       await this.connectionRepo.save(connection);
     }

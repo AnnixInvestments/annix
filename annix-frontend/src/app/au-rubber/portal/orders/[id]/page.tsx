@@ -256,42 +256,43 @@ export default function AuRubberOrderDetailPage() {
   );
 
   const validateItems = () => {
-    const issues: string[] = [];
     const itemsWithoutProduct = editItems.filter((item) => !item.productId);
     const itemsWithoutDimensions = editItems.filter(
       (item) => item.productId && (!item.thickness || !item.width || !item.length),
     );
     const itemsWithoutQuantity = editItems.filter((item) => item.productId && !item.quantity);
 
-    const duplicateKeys = new Set<string>();
-    const seenKeys = new Set<string>();
-    editItems.forEach((item) => {
-      if (item.productId && item.thickness && item.width && item.length) {
-        const key = `${item.productId}-${item.thickness}-${item.width}-${item.length}`;
-        if (seenKeys.has(key)) {
-          duplicateKeys.add(key);
+    const duplicateKeys = editItems.reduce(
+      (acc, item) => {
+        if (item.productId && item.thickness && item.width && item.length) {
+          const key = `${item.productId}-${item.thickness}-${item.width}-${item.length}`;
+          return acc.seen.has(key)
+            ? { seen: acc.seen, duplicates: new Set([...acc.duplicates, key]) }
+            : { seen: new Set([...acc.seen, key]), duplicates: acc.duplicates };
         }
-        seenKeys.add(key);
-      }
-    });
+        return acc;
+      },
+      { seen: new Set<string>(), duplicates: new Set<string>() },
+    ).duplicates;
 
-    if (itemsWithoutProduct.length > 0) {
-      issues.push(
-        `${itemsWithoutProduct.length} item(s) have no product selected and will be removed`,
-      );
-    }
-    if (itemsWithoutDimensions.length > 0) {
-      issues.push(`${itemsWithoutDimensions.length} item(s) are missing dimensions`);
-    }
-    if (itemsWithoutQuantity.length > 0) {
-      issues.push(`${itemsWithoutQuantity.length} item(s) have no quantity`);
-    }
-    if (duplicateKeys.size > 0) {
-      issues.push(
-        `${duplicateKeys.size} product/dimension combination(s) appear multiple times - consider combining quantities`,
-      );
-    }
-    return issues;
+    return [
+      ...(itemsWithoutProduct.length > 0
+        ? [
+            `${itemsWithoutProduct.length} item(s) have no product selected and will be removed`,
+          ]
+        : []),
+      ...(itemsWithoutDimensions.length > 0
+        ? [`${itemsWithoutDimensions.length} item(s) are missing dimensions`]
+        : []),
+      ...(itemsWithoutQuantity.length > 0
+        ? [`${itemsWithoutQuantity.length} item(s) have no quantity`]
+        : []),
+      ...(duplicateKeys.size > 0
+        ? [
+            `${duplicateKeys.size} product/dimension combination(s) appear multiple times - consider combining quantities`,
+          ]
+        : []),
+    ];
   };
 
   const handleSave = async () => {
