@@ -100,28 +100,29 @@ export interface BendFormProps {
   ) => (e: React.MouseEvent) => void;
 }
 
-function BendFormComponent({
-  entry,
-  index,
-  entriesCount,
-  globalSpecs,
-  masterData,
-  onUpdateEntry,
-  onRemoveEntry,
-  onDuplicateEntry,
-  onCopyEntry,
-  copiedItemId,
-  onCalculateBend,
-  generateItemDescription,
-  Bend3DPreview,
-  pressureClassesByStandard,
-  getFilteredPressureClasses,
-  errors = {},
-  isLoadingNominalBores = false,
-  requiredProducts = [],
-  isUnregisteredCustomer: isUnregisteredCustomerProp,
-  onShowRestrictionPopup,
-}: BendFormProps) {
+function BendFormComponent(props: BendFormProps) {
+  const {
+    entry,
+    index,
+    entriesCount,
+    globalSpecs,
+    masterData,
+    onUpdateEntry,
+    onRemoveEntry,
+    onDuplicateEntry,
+    onCopyEntry,
+    copiedItemId,
+    onCalculateBend,
+    generateItemDescription,
+    Bend3DPreview,
+    pressureClassesByStandard,
+    getFilteredPressureClasses,
+    isUnregisteredCustomer: isUnregisteredCustomerProp,
+    onShowRestrictionPopup,
+  } = props;
+  const errors = props.errors ?? {};
+  const isLoadingNominalBores = props.isLoadingNominalBores ?? false;
+  const requiredProducts = props.requiredProducts ?? [];
   log.info(`🔄 BendForm RENDER - entry.id: ${entry.id}, index: ${index}`);
 
   const { data: nbToOdMap = {} } = useNbToOdMap();

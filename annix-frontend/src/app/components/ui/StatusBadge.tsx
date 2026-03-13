@@ -39,7 +39,9 @@ const VARIANT_CLASSES: Record<StatusVariant, string> = {
   info: "bg-blue-100 text-blue-800",
 };
 
-function StatusBadgeComponent({ status, variant, className = "" }: StatusBadgeProps) {
+function StatusBadgeComponent(props: StatusBadgeProps) {
+  const { status, variant } = props;
+  const className = props.className ?? "";
   const badgeClass = useMemo(() => {
     const statusLower = status.toLowerCase();
     const resolvedVariant = variant ?? STATUS_COLORS[statusLower] ?? "neutral";

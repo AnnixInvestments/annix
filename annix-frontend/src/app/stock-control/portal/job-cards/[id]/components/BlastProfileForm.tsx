@@ -46,15 +46,11 @@ const abrasiveBatchRecords = (records: IssuanceBatchRecord[]): IssuanceBatchReco
 const abrasiveBatchDefault = (records: IssuanceBatchRecord[]): string =>
   abrasiveBatchRecords(records)[0]?.batchNumber ?? "";
 
-export default function BlastProfileForm({
-  isOpen,
-  onClose,
-  jobCardId,
-  existing = null,
-  onSaved,
-  coatingAnalysis = null,
-  batchRecords = [],
-}: BlastProfileFormProps) {
+export default function BlastProfileForm(props: BlastProfileFormProps) {
+  const { isOpen, onClose, jobCardId, onSaved } = props;
+  const existing = props.existing ?? null;
+  const coatingAnalysis = props.coatingAnalysis ?? null;
+  const batchRecords = props.batchRecords ?? [];
   const defaultDate = now().toISODate() || "";
 
   const [specMicrons, setSpecMicrons] = useState<string>(
