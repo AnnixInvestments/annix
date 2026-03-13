@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
-import { formatDateLongZA } from "../../lib/datetime";
+import { formatDateLongZA, fromJSDate, fromISO } from "../../lib/datetime";
 import {
   Meeting,
   type MeetingAnalysis,
@@ -22,7 +22,7 @@ export interface MeetingSummary {
   }>;
   nextSteps: string[];
   topics: string[];
-  sentiment?: string;
+  sentiment: string | null;
 }
 
 export interface SendSummaryDto {
@@ -95,7 +95,7 @@ export class MeetingSummaryService {
     const actionItems = this.extractActionItems(analysis);
     const nextSteps = this.generateNextSteps(analysis, meeting);
     const topics = analysis?.topics ?? [];
-    const sentiment = analysis?.sentiment ?? undefined;
+    const sentiment = analysis?.sentiment ?? null;
 
     return {
       overview,
@@ -238,18 +238,18 @@ export class MeetingSummaryService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const transcriptUrl = dto.includeTranscriptLink
       ? `${frontendUrl}/annix-rep/meetings/${meetingId}/transcript`
-      : undefined;
+      : null;
 
     const duration =
       meeting.actualEnd && meeting.actualStart
-        ? this.calculateDuration(new Date(meeting.actualStart), new Date(meeting.actualEnd))
+        ? this.calculateDuration(meeting.actualStart, meeting.actualEnd)
         : meeting.scheduledEnd && meeting.scheduledStart
-          ? this.calculateDuration(new Date(meeting.scheduledStart), new Date(meeting.scheduledEnd))
+          ? this.calculateDuration(meeting.scheduledStart, meeting.scheduledEnd)
           : "Duration not recorded";
 
     const meetingDetails = {
       title: meeting.title,
-      date: formatDateLongZA(new Date(meeting.scheduledStart)),
+      date: formatDateLongZA(meeting.scheduledStart),
       duration,
       attendees: meeting.attendees ?? [],
       companyName: meeting.prospect?.companyName,
@@ -266,8 +266,8 @@ export class MeetingSummaryService {
           email,
           recipientName,
           meetingDetails,
-          summary,
-          transcriptUrl,
+          { ...summary, sentiment: summary.sentiment ?? undefined },
+          transcriptUrl ?? undefined,
         );
 
         if (success) {
@@ -314,16 +314,16 @@ export class MeetingSummaryService {
 
     const duration =
       meeting.actualEnd && meeting.actualStart
-        ? this.calculateDuration(new Date(meeting.actualStart), new Date(meeting.actualEnd))
+        ? this.calculateDuration(meeting.actualStart, meeting.actualEnd)
         : meeting.scheduledEnd && meeting.scheduledStart
-          ? this.calculateDuration(new Date(meeting.scheduledStart), new Date(meeting.scheduledEnd))
+          ? this.calculateDuration(meeting.scheduledStart, meeting.scheduledEnd)
           : "Duration not recorded";
 
     return {
       summary,
       meeting: {
         title: meeting.title,
-        date: formatDateLongZA(new Date(meeting.scheduledStart)),
+        date: formatDateLongZA(meeting.scheduledStart),
         duration,
         attendees: meeting.attendees ?? [],
         companyName: meeting.prospect?.companyName ?? null,
@@ -331,22 +331,20 @@ export class MeetingSummaryService {
     };
   }
 
-  private calculateDuration(start: Date, end: Date): string {
-    const diffMs = end.getTime() - start.getTime();
-    const minutes = Math.round(diffMs / 60000);
+  private calculateDuration(start: Date | string, end: Date | string): string {
+    const startDt = start instanceof Date ? fromJSDate(start) : fromISO(start);
+    const endDt = end instanceof Date ? fromJSDate(end) : fromISO(end);
+    const diff = endDt.diff(startDt, ["hours", "minutes"]);
+    const hours = Math.floor(diff.hours);
+    const minutes = Math.round(diff.minutes);
 
-    if (minutes < 60) {
+    if (hours === 0) {
       return `${minutes} minute${minutes !== 1 ? "s" : ""}`;
-    }
-
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
-
-    if (remainingMinutes === 0) {
+    } else if (minutes === 0) {
       return `${hours} hour${hours !== 1 ? "s" : ""}`;
+    } else {
+      return `${hours} hour${hours !== 1 ? "s" : ""} ${minutes} minute${minutes !== 1 ? "s" : ""}`;
     }
-
-    return `${hours} hour${hours !== 1 ? "s" : ""} ${remainingMinutes} minute${remainingMinutes !== 1 ? "s" : ""}`;
   }
 
   private formatListNatural(items: string[]): string {

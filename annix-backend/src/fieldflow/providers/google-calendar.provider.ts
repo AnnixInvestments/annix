@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { fromISO, now } from "../../lib/datetime";
 import { CalendarProvider } from "../entities";
 import type {
   CalendarEventData,
@@ -254,10 +255,8 @@ export class GoogleCalendarProvider implements ICalendarProvider {
     if (syncToken) {
       params.set("syncToken", syncToken);
     } else {
-      const timeMin = new Date();
-      timeMin.setMonth(timeMin.getMonth() - 1);
-      const timeMax = new Date();
-      timeMax.setMonth(timeMax.getMonth() + 6);
+      const timeMin = now().minus({ months: 1 }).toJSDate();
+      const timeMax = now().plus({ months: 6 }).toJSDate();
       params.set("timeMin", timeMin.toISOString());
       params.set("timeMax", timeMax.toISOString());
     }
@@ -315,11 +314,11 @@ export class GoogleCalendarProvider implements ICalendarProvider {
   private mapGoogleEvent(event: GoogleCalendarEvent, calendarId: string): CalendarEventData {
     const isAllDay = Boolean(event.start.date);
     const startTime = isAllDay
-      ? new Date(`${event.start.date}T00:00:00`)
-      : new Date(event.start.dateTime!);
+      ? fromISO(`${event.start.date}T00:00:00`).toJSDate()
+      : fromISO(event.start.dateTime!).toJSDate();
     const endTime = isAllDay
-      ? new Date(`${event.end.date}T00:00:00`)
-      : new Date(event.end.dateTime!);
+      ? fromISO(`${event.end.date}T00:00:00`).toJSDate()
+      : fromISO(event.end.dateTime!).toJSDate();
 
     let meetingUrl: string | null = event.hangoutLink ?? null;
     if (!meetingUrl && event.conferenceData?.entryPoints) {

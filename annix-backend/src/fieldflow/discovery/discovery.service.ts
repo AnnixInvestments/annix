@@ -2,7 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { now, nowMillis } from "../../lib/datetime";
 import { Prospect, ProspectStatus } from "../entities/prospect.entity";
 import { RepProfile } from "../rep-profile/rep-profile.entity";
 import { DiscoverySearchParams } from "./discovery-source.interface";
@@ -81,7 +81,7 @@ export class DiscoveryService {
 
     this.discoveryCache.set(cacheKey, {
       results: deduplicatedResults,
-      timestamp: Date.now(),
+      timestamp: nowMillis(),
     });
 
     return this.buildSearchResult(deduplicatedResults, sourcesQueried, userId);
@@ -314,7 +314,7 @@ export class DiscoveryService {
       return null;
     }
 
-    if (Date.now() - cached.timestamp > this.cacheTtlMs) {
+    if (nowMillis() - cached.timestamp > this.cacheTtlMs) {
       this.discoveryCache.delete(cacheKey);
       return null;
     }

@@ -1,3 +1,4 @@
+import { fromISO } from "../../lib/datetime";
 import { MonthlySalesReport } from "../dto/report.dto";
 import { formatCurrencyZA, formatDateZA, wrapHtml } from "./base.template";
 
@@ -11,8 +12,8 @@ const statusLabels: Record<string, string> = {
 };
 
 export function monthlySalesTemplate(report: MonthlySalesReport, repName: string): string {
-  const startDate = new Date(report.period.startDate);
-  const monthDisplay = startDate.toLocaleDateString("en-ZA", {
+  const startDate = fromISO(report.period.startDate);
+  const monthDisplay = startDate.toLocaleString({
     month: "long",
     year: "numeric",
   });

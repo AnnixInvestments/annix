@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, In, Not, Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { fromJSDate, now } from "../../lib/datetime";
 import { Meeting, MeetingStatus, Prospect, ProspectStatus, Visit } from "../entities";
 import { RepProfileService } from "../rep-profile/rep-profile.service";
 
@@ -78,11 +78,13 @@ export class RoutePlanningService {
   ): Promise<ScheduleGap[]> {
     const settings = await this.repProfileService.scheduleSettings(userId);
 
-    const dayStart = new Date(date);
-    dayStart.setHours(settings.workingStartHour, settings.workingStartMinute, 0, 0);
+    const dayStart = fromJSDate(date)
+      .set({ hour: settings.workingStartHour, minute: settings.workingStartMinute, second: 0, millisecond: 0 })
+      .toJSDate();
 
-    const dayEnd = new Date(date);
-    dayEnd.setHours(settings.workingEndHour, settings.workingEndMinute, 0, 0);
+    const dayEnd = fromJSDate(date)
+      .set({ hour: settings.workingEndHour, minute: settings.workingEndMinute, second: 0, millisecond: 0 })
+      .toJSDate();
 
     const meetings = await this.meetingRepo.find({
       where: {
@@ -121,7 +123,8 @@ export class RoutePlanningService {
       precedingMeeting: Meeting | null,
       followingMeeting: Meeting | null,
     ): ScheduleGap => {
-      const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+      const durationMinutes = fromJSDate(endTime)
+        .diff(fromJSDate(startTime), "minutes").minutes;
       const travelFromPrevious = calculateTravel(precedingMeeting, followingMeeting);
       const travelToNext = calculateTravel(precedingMeeting, followingMeeting);
 
@@ -150,13 +153,14 @@ export class RoutePlanningService {
     }
 
     const firstMeeting = meetings[0];
-    const firstMeetingStart = new Date(firstMeeting.scheduledStart);
-    const adjustedFirstStart = new Date(
-      firstMeetingStart.getTime() - settings.bufferBeforeMinutes * 60 * 1000,
-    );
+    const firstMeetingStart = fromJSDate(firstMeeting.scheduledStart);
+    const adjustedFirstStart = firstMeetingStart
+      .minus({ minutes: settings.bufferBeforeMinutes })
+      .toJSDate();
 
     if (adjustedFirstStart > dayStart) {
-      const gapMinutes = (adjustedFirstStart.getTime() - dayStart.getTime()) / (1000 * 60);
+      const gapMinutes = fromJSDate(adjustedFirstStart)
+        .diff(fromJSDate(dayStart), "minutes").minutes;
       if (gapMinutes >= minGapMinutes) {
         gaps.push(createGap(dayStart, adjustedFirstStart, null, firstMeeting));
       }
@@ -166,17 +170,16 @@ export class RoutePlanningService {
       const currentMeeting = meetings[i];
       const nextMeeting = meetings[i + 1];
 
-      const currentEnd = new Date(currentMeeting.scheduledEnd);
-      const adjustedCurrentEnd = new Date(
-        currentEnd.getTime() + settings.bufferAfterMinutes * 60 * 1000,
-      );
+      const adjustedCurrentEnd = fromJSDate(currentMeeting.scheduledEnd)
+        .plus({ minutes: settings.bufferAfterMinutes })
+        .toJSDate();
 
-      const nextStart = new Date(nextMeeting.scheduledStart);
-      const adjustedNextStart = new Date(
-        nextStart.getTime() - settings.bufferBeforeMinutes * 60 * 1000,
-      );
+      const adjustedNextStart = fromJSDate(nextMeeting.scheduledStart)
+        .minus({ minutes: settings.bufferBeforeMinutes })
+        .toJSDate();
 
-      const gapMinutes = (adjustedNextStart.getTime() - adjustedCurrentEnd.getTime()) / (1000 * 60);
+      const gapMinutes = fromJSDate(adjustedNextStart)
+        .diff(fromJSDate(adjustedCurrentEnd), "minutes").minutes;
 
       if (gapMinutes >= minGapMinutes) {
         gaps.push(createGap(adjustedCurrentEnd, adjustedNextStart, currentMeeting, nextMeeting));
@@ -184,13 +187,13 @@ export class RoutePlanningService {
     }
 
     const lastMeeting = meetings[meetings.length - 1];
-    const lastMeetingEnd = new Date(lastMeeting.scheduledEnd);
-    const adjustedLastEnd = new Date(
-      lastMeetingEnd.getTime() + settings.bufferAfterMinutes * 60 * 1000,
-    );
+    const adjustedLastEnd = fromJSDate(lastMeeting.scheduledEnd)
+      .plus({ minutes: settings.bufferAfterMinutes })
+      .toJSDate();
 
     if (adjustedLastEnd < dayEnd) {
-      const gapMinutes = (dayEnd.getTime() - adjustedLastEnd.getTime()) / (1000 * 60);
+      const gapMinutes = fromJSDate(dayEnd)
+        .diff(fromJSDate(adjustedLastEnd), "minutes").minutes;
       if (gapMinutes >= minGapMinutes) {
         gaps.push(createGap(adjustedLastEnd, dayEnd, lastMeeting, null));
       }
@@ -265,7 +268,9 @@ export class RoutePlanningService {
 
       for (const { prospect, distance } of nearbyProspects.slice(0, 2)) {
         const travelMinutes = (distance / this.AVERAGE_SPEED_KMH) * 60;
-        const suggestedCallTime = new Date(gap.startTime.getTime() + travelMinutes * 60 * 1000);
+        const suggestedCallTime = fromJSDate(gap.startTime)
+          .plus({ minutes: travelMinutes })
+          .toJSDate();
 
         const reason = this.suggestionReason(prospect, gap);
         const priority = this.suggestionPriority(prospect, distance);
@@ -329,10 +334,8 @@ export class RoutePlanningService {
           relations: ["prospect"],
         });
         if (meeting?.latitude && meeting.longitude) {
-          const durationMinutes =
-            (new Date(meeting.scheduledEnd).getTime() -
-              new Date(meeting.scheduledStart).getTime()) /
-            (1000 * 60);
+          const durationMinutes = fromJSDate(meeting.scheduledEnd)
+            .diff(fromJSDate(meeting.scheduledStart), "minutes").minutes;
 
           stopDetails.push({
             type: "meeting",
@@ -341,8 +344,8 @@ export class RoutePlanningService {
             address: meeting.location,
             latitude: Number(meeting.latitude),
             longitude: Number(meeting.longitude),
-            arrivalTime: new Date(meeting.scheduledStart),
-            departureTime: new Date(meeting.scheduledEnd),
+            arrivalTime: meeting.scheduledStart,
+            departureTime: meeting.scheduledEnd,
             durationMinutes,
           });
         }
@@ -366,11 +369,14 @@ export class RoutePlanningService {
     currentLat?: number,
     currentLng?: number,
   ): Promise<OptimizedRoute> {
-    const dayStart = new Date(date);
-    dayStart.setHours(this.WORKING_START_HOUR, 0, 0, 0);
+    const dateTime = fromJSDate(date);
+    const dayStart = dateTime
+      .set({ hour: this.WORKING_START_HOUR, minute: 0, second: 0, millisecond: 0 })
+      .toJSDate();
 
-    const dayEnd = new Date(date);
-    dayEnd.setHours(this.WORKING_END_HOUR, 0, 0, 0);
+    const dayEnd = dateTime
+      .set({ hour: this.WORKING_END_HOUR, minute: 0, second: 0, millisecond: 0 })
+      .toJSDate();
 
     const meetings = await this.meetingRepo.find({
       where: {
@@ -444,7 +450,7 @@ export class RoutePlanningService {
       const scheduledStops = remaining.filter((s) => s.arrivalTime);
       if (scheduledStops.length > 0) {
         const nextScheduled = scheduledStops.sort(
-          (a, b) => a.arrivalTime!.getTime() - b.arrivalTime!.getTime(),
+          (a, b) => fromJSDate(a.arrivalTime!).toMillis() - fromJSDate(b.arrivalTime!).toMillis(),
         )[0];
         const scheduledIndex = remaining.indexOf(nextScheduled);
 
@@ -524,7 +530,7 @@ export class RoutePlanningService {
   private buildRouteResult(stops: RouteStop[], returnToStart: boolean): OptimizedRoute {
     let totalDistance = 0;
     let totalDuration = 0;
-    let currentTime = now().toJSDate();
+    let currentTime = now();
 
     for (let i = 0; i < stops.length; i++) {
       if (i > 0) {
@@ -539,19 +545,19 @@ export class RoutePlanningService {
         const travelMinutes = (distance / this.AVERAGE_SPEED_KMH) * 60;
         totalDuration += travelMinutes;
 
-        currentTime = new Date(currentTime.getTime() + travelMinutes * 60 * 1000);
+        currentTime = currentTime.plus({ minutes: travelMinutes });
 
         if (!stops[i].arrivalTime) {
-          stops[i].arrivalTime = currentTime;
+          stops[i].arrivalTime = currentTime.toJSDate();
         }
       }
 
       const stopDuration = stops[i].durationMinutes;
       if (stopDuration) {
         totalDuration += stopDuration;
-        currentTime = new Date(currentTime.getTime() + stopDuration * 60 * 1000);
+        currentTime = currentTime.plus({ minutes: stopDuration });
         if (!stops[i].departureTime) {
-          stops[i].departureTime = currentTime;
+          stops[i].departureTime = currentTime.toJSDate();
         }
       }
     }
@@ -612,7 +618,7 @@ export class RoutePlanningService {
       reasons.push("Never contacted");
     } else {
       const daysSinceContact = Math.floor(
-        (now().toJSDate().getTime() - prospect.lastContactedAt.getTime()) / (1000 * 60 * 60 * 24),
+        now().diff(fromJSDate(prospect.lastContactedAt), "days").days,
       );
       if (daysSinceContact > 14) {
         reasons.push(`No contact in ${daysSinceContact} days`);

@@ -20,6 +20,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request } from "express";
+import { fromISO } from "../../lib/datetime";
 import { AnnixRepAuthGuard } from "../auth";
 import {
   CreateMeetingDto,
@@ -148,8 +149,8 @@ export class MeetingController {
   ) {
     return this.meetingService.findByDateRange(
       req.annixRepUser.userId,
-      new Date(startDate),
-      new Date(endDate),
+      fromISO(startDate).toJSDate(),
+      fromISO(endDate).toJSDate(),
     );
   }
 
@@ -269,8 +270,8 @@ export class MeetingController {
   ) {
     return this.recurringMeetingService.expandRecurringMeetings(
       req.annixRepUser.userId,
-      new Date(startDate),
-      new Date(endDate),
+      fromISO(startDate).toJSDate(),
+      fromISO(endDate).toJSDate(),
     );
   }
 

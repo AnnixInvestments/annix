@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
+import { now } from "../../lib/datetime";
 import { MeetingPlatformService } from "./meeting-platform.service";
 import { PlatformRecordingService } from "./platform-recording.service";
 
@@ -103,7 +104,7 @@ export class MeetingSchedulerService {
   async weeklyFullSync(): Promise<void> {
     if (!this.enabled) return;
 
-    const dayOfWeek = new Date().getDay();
+    const dayOfWeek = now().weekday % 7;
     if (dayOfWeek !== 0) {
       return;
     }

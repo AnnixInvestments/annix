@@ -1,5 +1,5 @@
 import { Logger } from "@nestjs/common";
-import { now } from "../../lib/datetime";
+import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import type { Meeting, Prospect } from "../entities";
 import type { CrmOAuthConfig } from "../providers/crm-oauth-provider.interface";
 import type {
@@ -278,7 +278,7 @@ export class PipedriveAdapter implements ICrmAdapter {
       const dueDate = meeting.scheduledStart.toISOString().split("T")[0];
       const dueTime = meeting.scheduledStart.toISOString().split("T")[1].substring(0, 5);
       const durationMinutes = Math.round(
-        (meeting.scheduledEnd.getTime() - meeting.scheduledStart.getTime()) / 60000,
+        fromJSDate(meeting.scheduledEnd).diff(fromJSDate(meeting.scheduledStart), "minutes").minutes,
       );
       const durationHours = Math.floor(durationMinutes / 60);
       const durationMins = durationMinutes % 60;
@@ -494,7 +494,7 @@ export class PipedriveAdapter implements ICrmAdapter {
     const durationParts = activity.duration?.split(":") ?? ["01", "00"];
     const durationMs =
       (parseInt(durationParts[0], 10) * 60 + parseInt(durationParts[1], 10)) * 60000;
-    const endDateTime = new Date(new Date(dueDateTime).getTime() + durationMs).toISOString();
+    const endDateTime = fromISO(dueDateTime).plus({ milliseconds: durationMs }).toISO()!;
 
     return {
       externalId: String(activity.id),

@@ -1,6 +1,7 @@
 import * as crypto from "node:crypto";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { fromISO, fromMillis, now } from "../../lib/datetime";
 import { MeetingPlatform } from "../entities/meeting-platform.enums";
 import type {
   IMeetingPlatformProvider,
@@ -255,7 +256,7 @@ export class ZoomMeetingProvider implements IMeetingPlatformProvider {
     fromDate: Date,
     toDate?: Date,
   ): Promise<PlatformMeetingData[]> {
-    const to = toDate ?? new Date();
+    const to = toDate ?? now().toJSDate();
     const from = fromDate.toISOString().split("T")[0];
     const toStr = to.toISOString().split("T")[0];
 
@@ -281,7 +282,7 @@ export class ZoomMeetingProvider implements IMeetingPlatformProvider {
           title: recording.topic,
           topic: recording.topic,
           hostEmail: recording.host_email,
-          startTime: new Date(recording.start_time),
+          startTime: fromISO(recording.start_time).toJSDate(),
           endTime: null,
           durationSeconds: recording.duration * 60,
           joinUrl: null,
@@ -370,7 +371,7 @@ export class ZoomMeetingProvider implements IMeetingPlatformProvider {
       title: meeting.topic,
       topic: meeting.topic,
       hostEmail: null,
-      startTime: new Date(meeting.start_time),
+      startTime: fromISO(meeting.start_time).toJSDate(),
       endTime: null,
       durationSeconds: meeting.duration * 60,
       joinUrl: meeting.join_url,
@@ -414,10 +415,10 @@ export class ZoomMeetingProvider implements IMeetingPlatformProvider {
       downloadUrl: file.download_url,
       playUrl: file.play_url ?? null,
       password: data.password ?? null,
-      recordingStart: new Date(file.recording_start),
-      recordingEnd: new Date(file.recording_end),
+      recordingStart: fromISO(file.recording_start).toJSDate(),
+      recordingEnd: fromISO(file.recording_end).toJSDate(),
       durationSeconds: Math.round(
-        (new Date(file.recording_end).getTime() - new Date(file.recording_start).getTime()) / 1000,
+        fromISO(file.recording_end).diff(fromISO(file.recording_start), "seconds").seconds,
       ),
       rawData: file as unknown as Record<string, unknown>,
     }));
@@ -426,7 +427,7 @@ export class ZoomMeetingProvider implements IMeetingPlatformProvider {
       platformMeetingId: String(data.id),
       title: data.topic,
       hostEmail: data.host_email,
-      startTime: new Date(data.start_time),
+      startTime: fromISO(data.start_time).toJSDate(),
       durationSeconds: data.duration * 60,
       shareUrl: data.share_url,
       password: data.password ?? null,
@@ -529,7 +530,7 @@ export class ZoomMeetingProvider implements IMeetingPlatformProvider {
       eventType: payload.event,
       meetingId: String(payload.payload.object.id ?? payload.payload.object.uuid),
       accountId: payload.payload.account_id ?? null,
-      timestamp: new Date(payload.event_ts),
+      timestamp: fromMillis(payload.event_ts).toJSDate(),
       rawPayload: payload as unknown as Record<string, unknown>,
     };
   }

@@ -8,7 +8,7 @@ import {
   IsString,
   MaxLength,
 } from "class-validator";
-import { CalendarProvider } from "../entities";
+import { type CalendarColorType, CalendarProvider } from "../entities";
 
 export class ConnectCalendarDto {
   @ApiProperty({
@@ -144,4 +144,27 @@ export class SyncCalendarDto {
   @IsBoolean()
   @IsOptional()
   fullSync?: boolean;
+}
+
+export class SetCalendarColorDto {
+  @ApiProperty({ description: "Hex color value" })
+  @IsString()
+  @IsNotEmpty()
+  colorValue: string;
+}
+
+export class SetCalendarColorsDto {
+  @ApiProperty({ description: "Array of color assignments", type: "array" })
+  @IsArray()
+  colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }>;
+}
+
+export class ResolveConflictDto {
+  @ApiProperty({
+    description: "Conflict resolution strategy",
+    enum: ["keep_local", "keep_remote", "dismissed"],
+  })
+  @IsString()
+  @IsNotEmpty()
+  resolution: "keep_local" | "keep_remote" | "dismissed";
 }

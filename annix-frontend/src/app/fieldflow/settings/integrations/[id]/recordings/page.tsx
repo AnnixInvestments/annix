@@ -78,8 +78,8 @@ function RecordingCard({ record }: { record: PlatformMeetingRecord }) {
             {record.title}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {formatDateLongZA(new Date(record.startTime))}
-            {record.endTime && ` - ${formatDateLongZA(new Date(record.endTime))}`}
+            {formatDateLongZA(record.startTime)}
+            {record.endTime && ` - ${formatDateLongZA(record.endTime)}`}
           </p>
         </div>
         <RecordingStatusBadge status={record.recordingStatus} />

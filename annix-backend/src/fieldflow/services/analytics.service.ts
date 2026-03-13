@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { fromJSDate, now } from "../../lib/datetime";
 import { Meeting, MeetingStatus, Prospect, ProspectStatus, Visit } from "../entities";
 
 export interface MeetingsOverTime {
@@ -104,9 +104,9 @@ export class AnalyticsService {
     const cycleTimes = wonProspects
       .filter((p) => p.createdAt && p.updatedAt)
       .map((p) => {
-        const created = new Date(p.createdAt).getTime();
-        const closed = new Date(p.updatedAt).getTime();
-        return (closed - created) / (1000 * 60 * 60 * 24);
+        const created = fromJSDate(p.createdAt);
+        const closed = fromJSDate(p.updatedAt);
+        return closed.diff(created, "days").days;
       });
     const avgDealCycledays =
       cycleTimes.length > 0 ? cycleTimes.reduce((a, b) => a + b, 0) / cycleTimes.length : null;
@@ -223,7 +223,7 @@ export class AnalyticsService {
     });
 
     const recentVisits = visits.filter(
-      (v) => v.startedAt && new Date(v.startedAt) >= thirtyDaysAgo,
+      (v) => v.startedAt && fromJSDate(v.startedAt).toJSDate() >= thirtyDaysAgo,
     );
 
     const heatmap: Map<string, number> = new Map();
@@ -236,9 +236,9 @@ export class AnalyticsService {
 
     recentVisits.forEach((visit) => {
       if (visit.startedAt) {
-        const date = new Date(visit.startedAt);
-        const dayOfWeek = date.getDay();
-        const hour = date.getHours();
+        const dt = fromJSDate(visit.startedAt);
+        const dayOfWeek = dt.weekday % 7;
+        const hour = dt.hour;
         if (hour >= 6 && hour < 20) {
           const key = `${dayOfWeek}-${hour}`;
           heatmap.set(key, (heatmap.get(key) || 0) + 1);

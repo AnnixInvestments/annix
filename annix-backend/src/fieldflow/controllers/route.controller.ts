@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
+import { fromISO } from "../../lib/datetime";
 import { AnnixRepAuthGuard } from "../auth";
 import {
   ColdCallSuggestionsQueryDto,
@@ -32,7 +33,7 @@ export class RouteController {
     @Req() req: AnnixRepRequest,
     @Query() query: ScheduleGapsQueryDto,
   ): Promise<ScheduleGap[]> {
-    const date = new Date(query.date);
+    const date = fromISO(query.date).toJSDate();
     return this.routePlanningService.scheduleGaps(
       req.annixRepUser.userId,
       date,
@@ -47,7 +48,7 @@ export class RouteController {
     @Req() req: AnnixRepRequest,
     @Query() query: ColdCallSuggestionsQueryDto,
   ): Promise<ColdCallSuggestion[]> {
-    const date = new Date(query.date);
+    const date = fromISO(query.date).toJSDate();
     return this.routePlanningService.coldCallSuggestions(
       req.annixRepUser.userId,
       date,
@@ -76,7 +77,7 @@ export class RouteController {
     @Req() req: AnnixRepRequest,
     @Query() query: PlanDayRouteQueryDto,
   ): Promise<OptimizedRoute> {
-    const date = new Date(query.date);
+    const date = fromISO(query.date).toJSDate();
     return this.routePlanningService.planDayRoute(
       req.annixRepUser.userId,
       date,

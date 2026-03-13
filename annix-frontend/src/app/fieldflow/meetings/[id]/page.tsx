@@ -8,7 +8,7 @@ import type {
   RecordingProcessingStatus,
   TeamsBotSessionStatus,
 } from "@/app/lib/api/annixRepApi";
-import { formatDateTimeZA } from "@/app/lib/datetime";
+import { formatDateTimeZA, fromJSDate } from "@/app/lib/datetime";
 import {
   useCancelMeeting,
   useDeleteRecording,
@@ -222,7 +222,7 @@ export default function MeetingDetailPage() {
               <div className="flex justify-between">
                 <dt className="text-sm text-gray-500 dark:text-gray-400">Scheduled</dt>
                 <dd className="text-sm font-medium text-gray-900 dark:text-white">
-                  {formatDateTimeZA(new Date(meeting.scheduledStart))}
+                  {formatDateTimeZA(meeting.scheduledStart)}
                 </dd>
               </div>
 
@@ -230,8 +230,8 @@ export default function MeetingDetailPage() {
                 <dt className="text-sm text-gray-500 dark:text-gray-400">Duration</dt>
                 <dd className="text-sm font-medium text-gray-900 dark:text-white">
                   {Math.round(
-                    (new Date(meeting.scheduledEnd).getTime() -
-                      new Date(meeting.scheduledStart).getTime()) /
+                    (fromJSDate(meeting.scheduledEnd).toMillis() -
+                      fromJSDate(meeting.scheduledStart).toMillis()) /
                       60000,
                   )}{" "}
                   min
@@ -251,7 +251,7 @@ export default function MeetingDetailPage() {
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-500 dark:text-gray-400">Started</dt>
                   <dd className="text-sm font-medium text-gray-900 dark:text-white">
-                    {formatDateTimeZA(new Date(meeting.actualStart))}
+                    {formatDateTimeZA(meeting.actualStart)}
                   </dd>
                 </div>
               )}
@@ -260,7 +260,7 @@ export default function MeetingDetailPage() {
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-500 dark:text-gray-400">Ended</dt>
                   <dd className="text-sm font-medium text-gray-900 dark:text-white">
-                    {formatDateTimeZA(new Date(meeting.actualEnd))}
+                    {formatDateTimeZA(meeting.actualEnd)}
                   </dd>
                 </div>
               )}

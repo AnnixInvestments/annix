@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, In, LessThan, Not, Repository } from "typeorm";
-import { fromISO, now } from "../../lib/datetime";
+import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import { User } from "../../user/entities/user.entity";
 import { Meeting, MeetingStatus } from "../entities/meeting.entity";
 import { Prospect, ProspectStatus } from "../entities/prospect.entity";
@@ -320,7 +320,8 @@ export class TeamAnalyticsService {
     return prospects.map((prospect) => {
       const followUpDate = prospect.nextFollowUpAt as Date;
       const daysOverdue = Math.floor(
-        (currentTime.getTime() - followUpDate.getTime()) / (1000 * 60 * 60 * 24),
+        fromJSDate(currentTime).diff(fromJSDate(followUpDate), "milliseconds").milliseconds /
+          (1000 * 60 * 60 * 24),
       );
 
       return {

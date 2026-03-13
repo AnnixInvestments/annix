@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { fromISO, now } from "../../lib/datetime";
 import { CheckInDto, CheckOutDto, CreateVisitDto, UpdateVisitDto } from "../dto";
 import { Prospect, Visit, VisitType } from "../entities";
 
@@ -29,7 +29,7 @@ export class VisitService {
       prospectId: dto.prospectId,
       salesRepId,
       visitType: dto.visitType ?? VisitType.SCHEDULED,
-      scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+      scheduledAt: dto.scheduledAt ? fromISO(dto.scheduledAt).toJSDate() : null,
       notes: dto.notes ?? null,
     });
 
@@ -82,16 +82,17 @@ export class VisitService {
 
     if (dto.visitType !== undefined) visit.visitType = dto.visitType;
     if (dto.scheduledAt !== undefined)
-      visit.scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
+      visit.scheduledAt = dto.scheduledAt ? fromISO(dto.scheduledAt).toJSDate() : null;
     if (dto.startedAt !== undefined)
-      visit.startedAt = dto.startedAt ? new Date(dto.startedAt) : null;
-    if (dto.endedAt !== undefined) visit.endedAt = dto.endedAt ? new Date(dto.endedAt) : null;
+      visit.startedAt = dto.startedAt ? fromISO(dto.startedAt).toJSDate() : null;
+    if (dto.endedAt !== undefined)
+      visit.endedAt = dto.endedAt ? fromISO(dto.endedAt).toJSDate() : null;
     if (dto.outcome !== undefined) visit.outcome = dto.outcome;
     if (dto.notes !== undefined) visit.notes = dto.notes ?? null;
     if (dto.contactMet !== undefined) visit.contactMet = dto.contactMet ?? null;
     if (dto.nextSteps !== undefined) visit.nextSteps = dto.nextSteps ?? null;
     if (dto.followUpDate !== undefined)
-      visit.followUpDate = dto.followUpDate ? new Date(dto.followUpDate) : null;
+      visit.followUpDate = dto.followUpDate ? fromISO(dto.followUpDate).toJSDate() : null;
 
     return this.visitRepo.save(visit);
   }

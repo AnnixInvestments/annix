@@ -20,11 +20,13 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request } from "express";
+import { nowMillis } from "../../lib/datetime";
 import { AnnixRepAuthGuard } from "../auth";
 import { MeetingPlatform } from "../entities/meeting-platform.enums";
 import {
   type ConnectPlatformDto,
   MeetingPlatformService,
+  OAuthCallbackBodyDto,
   type PlatformConnectionResponseDto,
   type PlatformMeetingRecordResponseDto,
   type UpdatePlatformConnectionDto,
@@ -68,7 +70,7 @@ export class MeetingPlatformController {
     @Param("platform") platform: MeetingPlatform,
     @Query("redirectUri") redirectUri: string,
   ): OAuthUrlResponse {
-    const state = Buffer.from(JSON.stringify({ platform, timestamp: Date.now() })).toString(
+    const state = Buffer.from(JSON.stringify({ platform, timestamp: nowMillis() })).toString(
       "base64",
     );
 
@@ -87,7 +89,7 @@ export class MeetingPlatformController {
   connect(
     @Req() req: AnnixRepRequest,
     @Param("platform") platform: MeetingPlatform,
-    @Body() dto: { authCode: string; redirectUri: string },
+    @Body() dto: OAuthCallbackBodyDto,
   ): Promise<PlatformConnectionResponseDto> {
     const connectDto: ConnectPlatformDto = {
       platform,

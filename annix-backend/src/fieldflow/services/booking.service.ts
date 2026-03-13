@@ -61,20 +61,20 @@ export class BookingService {
       throw new NotFoundException(`Booking link ${linkId} not found`);
     }
 
-    if (dto.name !== undefined) link.name = dto.name;
-    if (dto.meetingDurationMinutes !== undefined)
+    if (dto.name != null) link.name = dto.name;
+    if (dto.meetingDurationMinutes != null)
       link.meetingDurationMinutes = dto.meetingDurationMinutes;
-    if (dto.bufferBeforeMinutes !== undefined) link.bufferBeforeMinutes = dto.bufferBeforeMinutes;
-    if (dto.bufferAfterMinutes !== undefined) link.bufferAfterMinutes = dto.bufferAfterMinutes;
-    if (dto.availableDays !== undefined) link.availableDays = dto.availableDays;
-    if (dto.availableStartHour !== undefined) link.availableStartHour = dto.availableStartHour;
-    if (dto.availableEndHour !== undefined) link.availableEndHour = dto.availableEndHour;
-    if (dto.maxDaysAhead !== undefined) link.maxDaysAhead = dto.maxDaysAhead;
-    if (dto.isActive !== undefined) link.isActive = dto.isActive;
-    if (dto.customQuestions !== undefined) link.customQuestions = dto.customQuestions ?? null;
-    if (dto.meetingType !== undefined) link.meetingType = dto.meetingType;
-    if (dto.location !== undefined) link.location = dto.location ?? null;
-    if (dto.description !== undefined) link.description = dto.description ?? null;
+    if (dto.bufferBeforeMinutes != null) link.bufferBeforeMinutes = dto.bufferBeforeMinutes;
+    if (dto.bufferAfterMinutes != null) link.bufferAfterMinutes = dto.bufferAfterMinutes;
+    if (dto.availableDays != null) link.availableDays = dto.availableDays;
+    if (dto.availableStartHour != null) link.availableStartHour = dto.availableStartHour;
+    if (dto.availableEndHour != null) link.availableEndHour = dto.availableEndHour;
+    if (dto.maxDaysAhead != null) link.maxDaysAhead = dto.maxDaysAhead;
+    if (dto.isActive != null) link.isActive = dto.isActive;
+    if (dto.customQuestions != null) link.customQuestions = dto.customQuestions ?? null;
+    if (dto.meetingType != null) link.meetingType = dto.meetingType;
+    if (dto.location != null) link.location = dto.location ?? null;
+    if (dto.description != null) link.description = dto.description ?? null;
 
     return this.bookingLinkRepo.save(link);
   }

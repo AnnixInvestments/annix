@@ -394,62 +394,60 @@ function TranscriptSegmentView({
 }
 
 function formatTranscriptAsTxt(transcript: Transcript, meetingTitle: string): string {
-  const lines: string[] = [];
+  const header = [
+    `MEETING TRANSCRIPT: ${meetingTitle}`,
+    `${"=".repeat(50)}`,
+    `Language: ${transcript.language.toUpperCase()}`,
+    `Words: ${transcript.wordCount}`,
+    `Segments: ${transcript.segments.length}`,
+    ...(transcript.analysis?.sentiment ? [`Sentiment: ${transcript.analysis.sentiment}`] : []),
+    "",
+    "TRANSCRIPT",
+    `${"-".repeat(50)}`,
+    "",
+  ];
 
-  lines.push(`MEETING TRANSCRIPT: ${meetingTitle}`);
-  lines.push(`${"=".repeat(50)}`);
-  lines.push(`Language: ${transcript.language.toUpperCase()}`);
-  lines.push(`Words: ${transcript.wordCount}`);
-  lines.push(`Segments: ${transcript.segments.length}`);
-  if (transcript.analysis?.sentiment) {
-    lines.push(`Sentiment: ${transcript.analysis.sentiment}`);
-  }
-  lines.push("");
-  lines.push("TRANSCRIPT");
-  lines.push(`${"-".repeat(50)}`);
-  lines.push("");
-
-  transcript.segments.forEach((segment: TranscriptSegment) => {
+  const segmentLines = transcript.segments.flatMap((segment: TranscriptSegment) => {
     const timeRange = `[${formatTime(segment.startTime)} - ${formatTime(segment.endTime)}]`;
-    lines.push(`${segment.speakerLabel} ${timeRange}`);
-    lines.push(segment.text);
-    lines.push("");
+    return [`${segment.speakerLabel} ${timeRange}`, segment.text, ""];
   });
 
-  if (transcript.analysis) {
-    lines.push("");
-    lines.push("ANALYSIS");
-    lines.push(`${"-".repeat(50)}`);
+  const analysisLines = transcript.analysis
+    ? [
+        "",
+        "ANALYSIS",
+        `${"-".repeat(50)}`,
+        ...(transcript.analysis.topics.length > 0
+          ? ["", "Topics:", ...transcript.analysis.topics.map((topic: string) => `  - ${topic}`)]
+          : []),
+        ...(transcript.analysis.keyPoints.length > 0
+          ? [
+              "",
+              "Key Points:",
+              ...transcript.analysis.keyPoints.map((point: string) => `  - ${point}`),
+            ]
+          : []),
+        ...(transcript.analysis.actionItems.length > 0
+          ? [
+              "",
+              "Action Items:",
+              ...transcript.analysis.actionItems.map((item: ActionItem) => {
+                const assignee = item.assignee ? ` (${item.assignee})` : "";
+                return `  - ${item.task}${assignee}`;
+              }),
+            ]
+          : []),
+        ...(transcript.analysis.questions.length > 0
+          ? [
+              "",
+              "Questions:",
+              ...transcript.analysis.questions.map((q: string) => `  ? ${q}`),
+            ]
+          : []),
+      ]
+    : [];
 
-    if (transcript.analysis.topics.length > 0) {
-      lines.push("");
-      lines.push("Topics:");
-      transcript.analysis.topics.forEach((topic: string) => lines.push(`  - ${topic}`));
-    }
-
-    if (transcript.analysis.keyPoints.length > 0) {
-      lines.push("");
-      lines.push("Key Points:");
-      transcript.analysis.keyPoints.forEach((point: string) => lines.push(`  - ${point}`));
-    }
-
-    if (transcript.analysis.actionItems.length > 0) {
-      lines.push("");
-      lines.push("Action Items:");
-      transcript.analysis.actionItems.forEach((item: ActionItem) => {
-        const assignee = item.assignee ? ` (${item.assignee})` : "";
-        lines.push(`  - ${item.task}${assignee}`);
-      });
-    }
-
-    if (transcript.analysis.questions.length > 0) {
-      lines.push("");
-      lines.push("Questions:");
-      transcript.analysis.questions.forEach((q: string) => lines.push(`  ? ${q}`));
-    }
-  }
-
-  return lines.join("\n");
+  return [...header, ...segmentLines, ...analysisLines].join("\n");
 }
 
 function downloadFile(content: string, filename: string, mimeType: string) {
@@ -781,8 +779,8 @@ export default function TranscriptPage() {
           },
         });
         refetchTranscript();
-      } catch {
-        // Error handled by mutation
+      } catch (error) {
+        console.error(`Failed to update transcript segment ${index}:`, error);
       }
       setEditing(null);
     },

@@ -1,5 +1,5 @@
 import { Logger } from "@nestjs/common";
-import { now } from "../../lib/datetime";
+import { fromJSDate, fromMillis, now } from "../../lib/datetime";
 import type { Meeting, Prospect } from "../entities";
 import type { CrmOAuthConfig } from "../providers/crm-oauth-provider.interface";
 import type {
@@ -233,9 +233,9 @@ export class HubSpotAdapter implements ICrmAdapter {
         hs_meeting_title: meeting.title,
         hs_meeting_body: this.buildMeetingDescription(meeting),
         hs_meeting_location: meeting.location ?? "",
-        hs_meeting_start_time: meeting.scheduledStart.getTime().toString(),
-        hs_meeting_end_time: meeting.scheduledEnd.getTime().toString(),
-        hs_timestamp: meeting.scheduledStart.getTime().toString(),
+        hs_meeting_start_time: fromJSDate(meeting.scheduledStart).toMillis().toString(),
+        hs_meeting_end_time: fromJSDate(meeting.scheduledEnd).toMillis().toString(),
+        hs_timestamp: fromJSDate(meeting.scheduledStart).toMillis().toString(),
       };
 
       if (meeting.outcomes) {
@@ -360,7 +360,7 @@ export class HubSpotAdapter implements ICrmAdapter {
             {
               propertyName: "lastmodifieddate",
               operator: "GTE",
-              value: since.getTime().toString(),
+              value: fromJSDate(since).toMillis().toString(),
             },
           ],
         },
@@ -428,7 +428,7 @@ export class HubSpotAdapter implements ICrmAdapter {
             {
               propertyName: "hs_lastmodifieddate",
               operator: "GTE",
-              value: since.getTime().toString(),
+              value: fromJSDate(since).toMillis().toString(),
             },
           ],
         },
@@ -622,10 +622,10 @@ export class HubSpotAdapter implements ICrmAdapter {
       contactExternalId: undefined,
       title: props.hs_meeting_title ?? "Meeting",
       scheduledAt: props.hs_meeting_start_time
-        ? new Date(parseInt(props.hs_meeting_start_time, 10)).toISOString()
-        : new Date(parseInt(props.hs_timestamp, 10)).toISOString(),
+        ? fromMillis(parseInt(props.hs_meeting_start_time, 10)).toISO()!
+        : fromMillis(parseInt(props.hs_timestamp, 10)).toISO()!,
       endedAt: props.hs_meeting_end_time
-        ? new Date(parseInt(props.hs_meeting_end_time, 10)).toISOString()
+        ? fromMillis(parseInt(props.hs_meeting_end_time, 10)).toISO()!
         : null,
       location: props.hs_meeting_location ?? null,
       notes: props.hs_meeting_body ?? null,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type SpeechSegment, useVoiceRecorder } from "@/app/hooks/useVoiceRecorder";
+import { nowMillis } from "@/app/lib/datetime";
 import {
   useCompleteRecordingUpload,
   useInitiateRecordingUpload,
@@ -252,7 +253,7 @@ export default function RecordMeetingPage() {
 
     const result = await initiateUpload.mutateAsync({
       meetingId,
-      filename: `meeting-${meetingId}-${Date.now()}.webm`,
+      filename: `meeting-${meetingId}-${nowMillis()}.webm`,
       mimeType: "audio/webm;codecs=opus",
       sampleRate: 16000,
       channels: 1,

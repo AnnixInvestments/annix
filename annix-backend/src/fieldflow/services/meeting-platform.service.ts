@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
+import { IsNotEmpty, IsString } from "class-validator";
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { decrypt, encrypt } from "../../secure-documents/crypto.util";
@@ -39,6 +40,16 @@ export interface PlatformConnectionResponseDto {
 export interface ConnectPlatformDto {
   platform: MeetingPlatform;
   authCode: string;
+  redirectUri: string;
+}
+
+export class OAuthCallbackBodyDto {
+  @IsString()
+  @IsNotEmpty()
+  authCode: string;
+
+  @IsString()
+  @IsNotEmpty()
   redirectUri: string;
 }
 

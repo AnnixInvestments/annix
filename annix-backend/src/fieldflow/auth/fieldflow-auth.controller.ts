@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
+import { nowMillis } from "../../lib/datetime";
 import { Public } from "../../auth/public.decorator";
 import {
   AnnixRepAuthResponseDto,
@@ -110,28 +111,28 @@ export class AnnixRepAuthController {
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
     if (error) {
-      res.redirect(`${frontendUrl}/voice-filter/login?error=${encodeURIComponent(error)}`);
+      res.redirect(`${frontendUrl}/annix-rep/login?error=${encodeURIComponent(error)}`);
       return;
     }
 
     if (!code || !state) {
-      res.redirect(`${frontendUrl}/voice-filter/login?error=missing_code`);
+      res.redirect(`${frontendUrl}/annix-rep/login?error=missing_code`);
       return;
     }
 
     const [provider, redirectBase64] = state.split(":");
-    let redirectPath = "/voice-filter";
+    let redirectPath = "/annix-rep";
     try {
       redirectPath = Buffer.from(redirectBase64, "base64").toString("utf-8");
     } catch {
-      redirectPath = "/voice-filter";
+      redirectPath = "/annix-rep";
     }
 
     const oauthProvider = provider === "teams" ? "microsoft" : provider;
     const validProviders: OAuthProvider[] = ["google", "microsoft", "zoom"];
 
     if (!validProviders.includes(oauthProvider as OAuthProvider)) {
-      res.redirect(`${frontendUrl}/voice-filter/login?error=invalid_provider`);
+      res.redirect(`${frontendUrl}/annix-rep/login?error=invalid_provider`);
       return;
     }
 
@@ -156,10 +157,10 @@ export class AnnixRepAuthController {
         redirect: redirectPath,
       });
 
-      res.redirect(`${frontendUrl}/voice-filter/login?${params.toString()}`);
+      res.redirect(`${frontendUrl}/annix-rep/login?${params.toString()}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Authentication failed";
-      res.redirect(`${frontendUrl}/voice-filter/login?error=${encodeURIComponent(message)}`);
+      res.redirect(`${frontendUrl}/annix-rep/login?error=${encodeURIComponent(message)}`);
     }
   }
 
@@ -176,16 +177,16 @@ export class AnnixRepAuthController {
     const oauthProvider = provider === "teams" ? "microsoft" : provider;
 
     if (!validProviders.includes(oauthProvider as OAuthProvider)) {
-      res.redirect(`${frontendUrl}/voice-filter/login?error=invalid_provider`);
+      res.redirect(`${frontendUrl}/annix-rep/login?error=invalid_provider`);
       return;
     }
 
     if (!this.authService.isOAuthProviderConfigured(oauthProvider as OAuthProvider)) {
-      res.redirect(`${frontendUrl}/voice-filter/login?error=provider_not_configured`);
+      res.redirect(`${frontendUrl}/annix-rep/login?error=provider_not_configured`);
       return;
     }
 
-    const state = `${provider}:${Buffer.from(redirect || "/voice-filter").toString("base64")}:${Date.now()}`;
+    const state = `${provider}:${Buffer.from(redirect || "/annix-rep").toString("base64")}:${nowMillis()}`;
     const callbackUrl = `${process.env.API_URL || "http://localhost:4001/api"}/annix-rep/auth/oauth/callback`;
     const authUrl = this.authService.oauthAuthorizationUrl(
       oauthProvider as OAuthProvider,
@@ -194,7 +195,7 @@ export class AnnixRepAuthController {
     );
 
     if (!authUrl) {
-      res.redirect(`${frontendUrl}/voice-filter/login?error=oauth_failed`);
+      res.redirect(`${frontendUrl}/annix-rep/login?error=oauth_failed`);
       return;
     }
 

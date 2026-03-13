@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { CalendarEvent, Meeting, TravelInfo, Visit } from "@/app/lib/api/annixRepApi";
-import { formatDateZA, now, nowISO } from "@/app/lib/datetime";
+import { formatDateZA, fromJSDate, now, nowISO } from "@/app/lib/datetime";
 import {
   useCalendarEvents,
   useScheduleGaps,
@@ -38,9 +38,9 @@ const statusColors: Record<string, { bg: string; text: string }> = {
 };
 
 function MeetingCard({ meeting }: { meeting: Meeting }) {
-  const startTime = new Date(meeting.scheduledStart);
-  const endTime = new Date(meeting.scheduledEnd);
-  const timeString = `${startTime.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} - ${endTime.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}`;
+  const startTime = fromJSDate(meeting.scheduledStart);
+  const endTime = fromJSDate(meeting.scheduledEnd);
+  const timeString = `${startTime.toFormat("HH:mm")} - ${endTime.toFormat("HH:mm")}`;
 
   const colors = statusColors[meeting.status] || statusColors.scheduled;
 
@@ -183,10 +183,7 @@ function VisitCard({ visit }: { visit: Visit }) {
                     d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                {new Date(visit.scheduledAt).toLocaleTimeString("en-ZA", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {fromJSDate(visit.scheduledAt).toFormat("HH:mm")}
               </span>
             )}
             {visit.startedAt && !visit.endedAt && (
@@ -210,11 +207,11 @@ const providerColors: Record<string, { bg: string; icon: string }> = {
 };
 
 function CalendarEventCard({ event }: { event: CalendarEvent }) {
-  const startTime = new Date(event.startTime);
-  const endTime = new Date(event.endTime);
+  const startTime = fromJSDate(event.startTime);
+  const endTime = fromJSDate(event.endTime);
   const timeString = event.isAllDay
     ? "All Day"
-    : `${startTime.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} - ${endTime.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}`;
+    : `${startTime.toFormat("HH:mm")} - ${endTime.toFormat("HH:mm")}`;
 
   const colors = providerColors[event.provider] || providerColors.caldav;
 
@@ -318,7 +315,7 @@ function CalendarEventCard({ event }: { event: CalendarEvent }) {
 
 function MeetingsTimeline({ meetings }: { meetings: Meeting[] }) {
   const sortedMeetings = [...meetings].sort(
-    (a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime(),
+    (a, b) => fromJSDate(a.scheduledStart).toMillis() - fromJSDate(b.scheduledStart).toMillis(),
   );
 
   const calculateTravelTime = (from: Meeting, to: Meeting): TravelInfo | null => {
@@ -376,8 +373,8 @@ export default function SchedulePage() {
   }
 
   const futureMeetings = (upcomingMeetings ?? []).filter((m) => {
-    const meetingDate = new Date(m.scheduledStart);
-    const today = now().startOf("day").toJSDate();
+    const meetingDate = fromJSDate(m.scheduledStart);
+    const today = now().startOf("day");
     return meetingDate > today;
   });
 
@@ -386,7 +383,7 @@ export default function SchedulePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Schedule</h1>
-          <p className="text-gray-500 dark:text-gray-400">{formatDateZA(now().toJSDate())}</p>
+          <p className="text-gray-500 dark:text-gray-400">{formatDateZA(nowISO())}</p>
         </div>
         <div className="flex items-center gap-3">
           <Link
@@ -589,7 +586,7 @@ export default function SchedulePage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {calendarEvents
-                  .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                  .sort((a, b) => fromJSDate(a.startTime).toMillis() - fromJSDate(b.startTime).toMillis())
                   .map((event) => (
                     <CalendarEventCard key={event.id} event={event} />
                   ))}
@@ -679,15 +676,9 @@ export default function SchedulePage() {
                   >
                     <div>
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {new Date(gap.startTime).toLocaleTimeString("en-ZA", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}{" "}
+                        {fromJSDate(gap.startTime).toFormat("HH:mm")}{" "}
                         -{" "}
-                        {new Date(gap.endTime).toLocaleTimeString("en-ZA", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {fromJSDate(gap.endTime).toFormat("HH:mm")}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
                         {gap.durationMinutes} min total
@@ -757,7 +748,7 @@ export default function SchedulePage() {
               {futureMeetings.map((meeting) => (
                 <div key={meeting.id} className="flex gap-4">
                   <div className="w-20 text-sm text-gray-500 dark:text-gray-400 text-right pt-1">
-                    {formatDateZA(new Date(meeting.scheduledStart))}
+                    {formatDateZA(meeting.scheduledStart)}
                   </div>
                   <div className="flex-1">
                     <MeetingCard meeting={meeting} />

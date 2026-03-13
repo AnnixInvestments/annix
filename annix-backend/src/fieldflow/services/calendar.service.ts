@@ -204,11 +204,11 @@ export class CalendarService {
       throw new NotFoundException("Calendar connection not found");
     }
 
-    if (dto.selectedCalendars !== undefined) {
+    if (dto.selectedCalendars != null) {
       connection.selectedCalendars = dto.selectedCalendars;
     }
 
-    if (dto.isPrimary !== undefined && dto.isPrimary) {
+    if (dto.isPrimary != null && dto.isPrimary) {
       await this.connectionRepo.update({ userId }, { isPrimary: false });
       connection.isPrimary = true;
     }

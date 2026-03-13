@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { fromISO, fromJSDate, fromMillis, now, nowMillis } from "../../lib/datetime";
 import { MeetingPlatform } from "../entities/meeting-platform.enums";
 import type {
   IMeetingPlatformProvider,
@@ -236,7 +237,7 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
     toDate?: Date,
   ): Promise<PlatformMeetingData[]> {
     const meetings: PlatformMeetingData[] = [];
-    const to = toDate ?? new Date();
+    const to = toDate ?? now().toJSDate();
 
     let pageToken: string | null = null;
 
@@ -300,13 +301,13 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
   private mapGoogleCalendarEvent(event: GoogleCalendarEvent): PlatformMeetingData {
     const isAllDay = Boolean(event.start.date);
     const startTime = isAllDay
-      ? new Date(`${event.start.date}T00:00:00`)
-      : new Date(event.start.dateTime!);
+      ? fromISO(`${event.start.date}T00:00:00`).toJSDate()
+      : fromISO(event.start.dateTime!).toJSDate();
     const endTime = isAllDay
-      ? new Date(`${event.end.date}T00:00:00`)
-      : new Date(event.end.dateTime!);
+      ? fromISO(`${event.end.date}T00:00:00`).toJSDate()
+      : fromISO(event.end.dateTime!).toJSDate();
 
-    const durationSeconds = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+    const durationSeconds = Math.round(fromJSDate(endTime).diff(fromJSDate(startTime), "seconds").seconds);
 
     let meetUrl: string | null = event.hangoutLink ?? null;
     if (!meetUrl && event.conferenceData?.entryPoints) {
@@ -442,7 +443,7 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
         downloadUrl: file.webContentLink ?? "",
         playUrl: file.webViewLink ?? null,
         password: null,
-        recordingStart: new Date(file.createdTime),
+        recordingStart: fromISO(file.createdTime).toJSDate(),
         recordingEnd: null,
         durationSeconds: durationMs ? Math.round(durationMs / 1000) : null,
         rawData: file as unknown as Record<string, unknown>,
@@ -455,7 +456,7 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
       platformMeetingId: meetingId,
       title: firstFile?.name ?? "Google Meet Recording",
       hostEmail: null,
-      startTime: new Date(firstFile?.createdTime ?? new Date()),
+      startTime: fromISO(firstFile?.createdTime ?? now().toISO()!).toJSDate(),
       durationSeconds: recordingFiles[0]?.durationSeconds ?? null,
       shareUrl: firstFile?.webViewLink ?? null,
       password: null,
@@ -492,7 +493,7 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
     _events: string[],
   ): Promise<WebhookRegistrationResult> {
     const uuid = crypto.randomUUID();
-    const expiration = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const expiration = nowMillis() + 7 * 24 * 60 * 60 * 1000;
 
     const body = {
       id: uuid,
@@ -520,7 +521,7 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
 
     return {
       subscriptionId: data.resourceId,
-      expiresAt: new Date(parseInt(data.expiration, 10)),
+      expiresAt: fromMillis(parseInt(data.expiration, 10)).toJSDate(),
     };
   }
 
@@ -569,7 +570,7 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
       eventType: resourceState,
       meetingId: resourceId ?? channelId,
       accountId: null,
-      timestamp: new Date(),
+      timestamp: now().toJSDate(),
       rawPayload: { headers } as unknown as Record<string, unknown>,
     };
   }

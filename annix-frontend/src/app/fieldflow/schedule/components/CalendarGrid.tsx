@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { useState } from "react";
 import type { Meeting } from "@/app/lib/api/annixRepApi";
-import { now } from "@/app/lib/datetime";
+import { fromISO, fromJSDate, now } from "@/app/lib/datetime";
 import { DraggableMeeting } from "./DraggableMeeting";
 import { TimeSlot } from "./TimeSlot";
 
@@ -44,14 +44,12 @@ export function CalendarGrid(props: CalendarGridProps) {
   );
 
   const totalSlots = ((endHour - startHour) * 60) / slotDurationMinutes;
-  const slots: Date[] = [];
-
-  for (let i = 0; i < totalSlots; i++) {
-    const slotDate = new Date(date);
+  const slots: Date[] = Array.from({ length: totalSlots }, (_, i) => {
     const totalMinutes = startHour * 60 + i * slotDurationMinutes;
-    slotDate.setHours(Math.floor(totalMinutes / 60), totalMinutes % 60, 0, 0);
-    slots.push(slotDate);
-  }
+    return fromJSDate(date)
+      .set({ hour: Math.floor(totalMinutes / 60), minute: totalMinutes % 60, second: 0, millisecond: 0 })
+      .toJSDate();
+  });
 
   const handleDragStart = (event: DragStartEvent) => {
     const meetingId = event.active.id;
@@ -68,33 +66,33 @@ export function CalendarGrid(props: CalendarGridProps) {
     if (!over) return;
 
     const meetingId = Number(active.id);
-    const slotTime = new Date(over.id);
+    const slotDt = fromISO(over.id as string);
 
     const meeting = meetings.find((m) => m.id === meetingId);
     if (!meeting) return;
 
-    const originalStart = new Date(meeting.scheduledStart);
-    const originalEnd = new Date(meeting.scheduledEnd);
-    const durationMs = originalEnd.getTime() - originalStart.getTime();
+    const originalStart = fromJSDate(meeting.scheduledStart);
+    const originalEnd = fromJSDate(meeting.scheduledEnd);
+    const durationMs = originalEnd.toMillis() - originalStart.toMillis();
 
-    const newStart = slotTime;
-    const newEnd = new Date(slotTime.getTime() + durationMs);
+    const newStart = slotDt.toJSDate();
+    const newEnd = slotDt.plus({ milliseconds: durationMs }).toJSDate();
 
-    if (newStart.getTime() !== originalStart.getTime()) {
+    if (slotDt.toMillis() !== originalStart.toMillis()) {
       onReschedule(meetingId, newStart, newEnd);
     }
   };
 
   const meetingPositions = meetings.map((meeting) => {
-    const start = new Date(meeting.scheduledStart);
-    const end = new Date(meeting.scheduledEnd);
+    const start = fromJSDate(meeting.scheduledStart);
+    const end = fromJSDate(meeting.scheduledEnd);
 
-    const startMinutesFromDayStart = start.getHours() * 60 + start.getMinutes();
+    const startMinutesFromDayStart = start.hour * 60 + start.minute;
     const gridStartMinutes = startHour * 60;
 
     const topOffset = ((startMinutesFromDayStart - gridStartMinutes) / slotDurationMinutes) * 60;
 
-    const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+    const durationMinutes = end.diff(start, "minutes").minutes;
     const height = (durationMinutes / slotDurationMinutes) * 60;
 
     return {
@@ -104,8 +102,8 @@ export function CalendarGrid(props: CalendarGridProps) {
     };
   });
 
-  const currentTime = now().toJSDate();
-  const currentTimeMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const currentTimeDt = now();
+  const currentTimeMinutes = currentTimeDt.hour * 60 + currentTimeDt.minute;
   const gridStartMinutes = startHour * 60;
   const gridEndMinutes = endHour * 60;
 
@@ -122,17 +120,14 @@ export function CalendarGrid(props: CalendarGridProps) {
               key={index}
               className="h-[60px] px-2 py-1 text-xs text-gray-500 dark:text-gray-400 text-right border-b border-gray-100 dark:border-slate-700"
             >
-              {slot.toLocaleTimeString("en-ZA", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {fromJSDate(slot).toFormat("HH:mm")}
             </div>
           ))}
         </div>
 
         <div className="flex-1 relative">
           {slots.map((slot, index) => (
-            <TimeSlot key={slot.toISOString()} id={slot.toISOString()} time={slot} />
+            <TimeSlot key={fromJSDate(slot).toISO() ?? ""} id={fromJSDate(slot).toISO() ?? ""} time={slot} />
           ))}
 
           {showCurrentTimeLine && (

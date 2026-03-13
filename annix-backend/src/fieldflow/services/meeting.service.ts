@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { fromISO, now } from "../../lib/datetime";
 import {
   CreateMeetingDto,
   CreateMeetingFromCalendarDto,
@@ -57,8 +57,8 @@ export class MeetingService {
       title: dto.title,
       description: dto.description ?? null,
       meetingType: dto.meetingType,
-      scheduledStart: new Date(dto.scheduledStart),
-      scheduledEnd: new Date(dto.scheduledEnd),
+      scheduledStart: fromISO(dto.scheduledStart).toJSDate(),
+      scheduledEnd: fromISO(dto.scheduledEnd).toJSDate(),
       location: dto.location ?? null,
       latitude: dto.latitude ?? null,
       longitude: dto.longitude ?? null,
@@ -161,8 +161,10 @@ export class MeetingService {
     if (dto.description !== undefined) meeting.description = dto.description ?? null;
     if (dto.meetingType !== undefined) meeting.meetingType = dto.meetingType;
     if (dto.status !== undefined) meeting.status = dto.status;
-    if (dto.scheduledStart !== undefined) meeting.scheduledStart = new Date(dto.scheduledStart);
-    if (dto.scheduledEnd !== undefined) meeting.scheduledEnd = new Date(dto.scheduledEnd);
+    if (dto.scheduledStart !== undefined)
+      meeting.scheduledStart = fromISO(dto.scheduledStart).toJSDate();
+    if (dto.scheduledEnd !== undefined)
+      meeting.scheduledEnd = fromISO(dto.scheduledEnd).toJSDate();
     if (dto.location !== undefined) meeting.location = dto.location ?? null;
     if (dto.latitude !== undefined) meeting.latitude = dto.latitude ?? null;
     if (dto.longitude !== undefined) meeting.longitude = dto.longitude ?? null;
@@ -187,7 +189,7 @@ export class MeetingService {
     }
 
     meeting.status = MeetingStatus.IN_PROGRESS;
-    meeting.actualStart = dto.actualStart ? new Date(dto.actualStart) : now().toJSDate();
+    meeting.actualStart = dto.actualStart ? fromISO(dto.actualStart).toJSDate() : now().toJSDate();
 
     const saved = await this.meetingRepo.save(meeting);
     this.logger.log(`Meeting ${id} started`);
@@ -202,7 +204,7 @@ export class MeetingService {
     }
 
     meeting.status = MeetingStatus.COMPLETED;
-    meeting.actualEnd = dto.actualEnd ? new Date(dto.actualEnd) : now().toJSDate();
+    meeting.actualEnd = dto.actualEnd ? fromISO(dto.actualEnd).toJSDate() : now().toJSDate();
     if (dto.notes) meeting.notes = dto.notes;
     if (dto.outcomes) meeting.outcomes = dto.outcomes;
     if (dto.actionItems) meeting.actionItems = dto.actionItems;
@@ -240,8 +242,8 @@ export class MeetingService {
       throw new BadRequestException("Cannot reschedule a meeting that is in progress");
     }
 
-    const newStart = new Date(dto.scheduledStart);
-    const newEnd = new Date(dto.scheduledEnd);
+    const newStart = fromISO(dto.scheduledStart).toJSDate();
+    const newEnd = fromISO(dto.scheduledEnd).toJSDate();
 
     if (newEnd <= newStart) {
       throw new BadRequestException("End time must be after start time");

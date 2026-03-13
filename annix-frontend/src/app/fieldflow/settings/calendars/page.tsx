@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { CalendarConnection, CalendarProvider } from "@/app/lib/api/annixRepApi";
-import { formatRelative } from "@/app/lib/datetime";
+import { formatRelative, fromJSDate } from "@/app/lib/datetime";
 import {
   useCalendarConnections,
   useCalendarOAuthUrl,
@@ -234,7 +234,7 @@ function ConnectionCard({
 
       <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         {connection.lastSyncAt ? (
-          <span>Last synced {formatRelative(new Date(connection.lastSyncAt).toISOString())}</span>
+          <span>Last synced {formatRelative(fromJSDate(connection.lastSyncAt).toISO())}</span>
         ) : (
           <span>Never synced</span>
         )}

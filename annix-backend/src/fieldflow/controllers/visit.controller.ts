@@ -20,6 +20,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request } from "express";
+import { fromISO } from "../../lib/datetime";
 import { AnnixRepAuthGuard } from "../auth";
 import { CheckInDto, CheckOutDto, CreateVisitDto, UpdateVisitDto, VisitResponseDto } from "../dto";
 import { VisitService } from "../services";
@@ -87,8 +88,8 @@ export class VisitController {
   ) {
     return this.visitService.findByDateRange(
       req.annixRepUser.userId,
-      new Date(startDate),
-      new Date(endDate),
+      fromISO(startDate).toJSDate(),
+      fromISO(endDate).toJSDate(),
     );
   }
 

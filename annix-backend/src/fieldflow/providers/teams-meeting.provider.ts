@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import { MeetingPlatform } from "../entities/meeting-platform.enums";
 import type {
   IMeetingPlatformProvider,
@@ -260,7 +261,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
     toDate?: Date,
   ): Promise<PlatformMeetingData[]> {
     const meetings: PlatformMeetingData[] = [];
-    const to = toDate ?? new Date();
+    const to = toDate ?? now().toJSDate();
 
     const filter = `startDateTime ge ${fromDate.toISOString()} and startDateTime le ${to.toISOString()}`;
     const params = new URLSearchParams({
@@ -352,11 +353,10 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
           title: event.subject,
           topic: event.subject,
           hostEmail: event.organizer?.emailAddress?.address ?? null,
-          startTime: new Date(event.start.dateTime),
-          endTime: new Date(event.end.dateTime),
+          startTime: fromISO(event.start.dateTime).toJSDate(),
+          endTime: fromISO(event.end.dateTime).toJSDate(),
           durationSeconds: Math.round(
-            (new Date(event.end.dateTime).getTime() - new Date(event.start.dateTime).getTime()) /
-              1000,
+            fromISO(event.end.dateTime).diff(fromISO(event.start.dateTime), "seconds").seconds,
           ),
           joinUrl: event.onlineMeeting.joinUrl,
           participants: event.attendees?.map((a) => a.emailAddress?.address).filter(Boolean) as
@@ -374,9 +374,9 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
   }
 
   private mapTeamsMeeting(meeting: TeamsOnlineMeeting): PlatformMeetingData {
-    const startTime = new Date(meeting.startDateTime);
-    const endTime = new Date(meeting.endDateTime);
-    const durationSeconds = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+    const startTime = fromISO(meeting.startDateTime).toJSDate();
+    const endTime = fromISO(meeting.endDateTime).toJSDate();
+    const durationSeconds = Math.round(fromJSDate(endTime).diff(fromJSDate(startTime), "seconds").seconds);
 
     const attendees =
       meeting.participants?.attendees?.map((a) => a.identity?.user?.displayName).filter(Boolean) ??
@@ -433,7 +433,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
       downloadUrl: rec.recordingContentUrl,
       playUrl: null,
       password: null,
-      recordingStart: new Date(rec.createdDateTime),
+      recordingStart: fromISO(rec.createdDateTime).toJSDate(),
       recordingEnd: null,
       durationSeconds: null,
       rawData: rec as unknown as Record<string, unknown>,
@@ -443,7 +443,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
       platformMeetingId: meetingId,
       title: "Teams Meeting",
       hostEmail: null,
-      startTime: new Date(recordings.value[0].createdDateTime),
+      startTime: fromISO(recordings.value[0].createdDateTime).toJSDate(),
       durationSeconds: null,
       shareUrl: null,
       password: null,
@@ -484,7 +484,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
         downloadUrl: item["@microsoft.graph.downloadUrl"] ?? "",
         playUrl: null,
         password: null,
-        recordingStart: new Date(item.createdDateTime),
+        recordingStart: fromISO(item.createdDateTime).toJSDate(),
         recordingEnd: null,
         durationSeconds: null,
         rawData: item as unknown as Record<string, unknown>,
@@ -498,7 +498,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
       platformMeetingId: meetingId,
       title: data.value[0].name,
       hostEmail: null,
-      startTime: new Date(data.value[0].createdDateTime),
+      startTime: fromISO(data.value[0].createdDateTime).toJSDate(),
       durationSeconds: null,
       shareUrl: null,
       password: null,
@@ -525,8 +525,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
     callbackUrl: string,
     events: string[],
   ): Promise<WebhookRegistrationResult> {
-    const expirationDateTime = new Date();
-    expirationDateTime.setDate(expirationDateTime.getDate() + 2);
+    const expirationDateTime = now().plus({ days: 2 }).toJSDate();
 
     const body = {
       changeType: events.join(",") || "created,updated",
@@ -555,7 +554,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
 
     return {
       subscriptionId: data.id,
-      expiresAt: new Date(data.expirationDateTime),
+      expiresAt: fromISO(data.expirationDateTime).toJSDate(),
     };
   }
 
@@ -607,7 +606,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
       eventType: notification.changeType,
       meetingId: notification.resourceData.id,
       accountId: null,
-      timestamp: new Date(),
+      timestamp: now().toJSDate(),
       rawPayload: payload as unknown as Record<string, unknown>,
     };
   }

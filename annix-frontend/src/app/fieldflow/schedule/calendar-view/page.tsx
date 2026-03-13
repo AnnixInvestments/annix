@@ -3,26 +3,21 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Meeting, RescheduleMeetingDto } from "@/app/lib/api/annixRepApi";
-import { formatDateZA, now } from "@/app/lib/datetime";
+import { formatDateZA, fromJSDate, now } from "@/app/lib/datetime";
 import { useMeetings, useRepProfile, useRescheduleMeeting } from "@/app/lib/query/hooks";
 import { CalendarGrid } from "../components/CalendarGrid";
 
 function dateToString(date: Date): string {
-  return date.toISOString().split("T")[0];
+  return fromJSDate(date).toISODate() ?? "";
 }
 
-function addDays(date: Date, days: number): Date {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
+function addDaysHelper(date: Date, days: number): Date {
+  return fromJSDate(date).plus({ days }).toJSDate();
 }
 
 function startOfWeek(date: Date): Date {
-  const result = new Date(date);
-  const day = result.getDay();
-  const diff = result.getDate() - day + (day === 0 ? -6 : 1);
-  result.setDate(diff);
-  return result;
+  const dt = fromJSDate(date);
+  return dt.minus({ days: dt.weekday - 1 }).toJSDate();
 }
 
 export default function CalendarViewPage() {
@@ -45,27 +40,27 @@ export default function CalendarViewPage() {
     if (!meetings) return [];
     const dateStr = dateToString(date);
     return meetings.filter((m) => {
-      const meetingDate = dateToString(new Date(m.scheduledStart));
-      return meetingDate === dateStr;
+      const meetingDate = fromJSDate(m.scheduledStart).toJSDate();
+      return dateToString(meetingDate) === dateStr;
     });
   };
 
   const weekStart = startOfWeek(selectedDate);
-  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const weekDates = Array.from({ length: 7 }, (_, i) => addDaysHelper(weekStart, i));
 
   const handleReschedule = (meetingId: number, newStart: Date, newEnd: Date) => {
     const dto: RescheduleMeetingDto = {
-      scheduledStart: newStart.toISOString(),
-      scheduledEnd: newEnd.toISOString(),
+      scheduledStart: fromJSDate(newStart).toISO() ?? "",
+      scheduledEnd: fromJSDate(newEnd).toISO() ?? "",
     };
 
     rescheduleMutation.mutate({ id: meetingId, dto });
   };
 
-  const goToPreviousDay = () => setSelectedDate(addDays(selectedDate, -1));
-  const goToNextDay = () => setSelectedDate(addDays(selectedDate, 1));
-  const goToPreviousWeek = () => setSelectedDate(addDays(selectedDate, -7));
-  const goToNextWeek = () => setSelectedDate(addDays(selectedDate, 7));
+  const goToPreviousDay = () => setSelectedDate(addDaysHelper(selectedDate, -1));
+  const goToNextDay = () => setSelectedDate(addDaysHelper(selectedDate, 1));
+  const goToPreviousWeek = () => setSelectedDate(addDaysHelper(selectedDate, -7));
+  const goToNextWeek = () => setSelectedDate(addDaysHelper(selectedDate, 7));
   const goToToday = () => setSelectedDate(today);
 
   if (meetingsLoading) {
@@ -153,7 +148,7 @@ export default function CalendarViewPage() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white min-w-[200px] text-center">
             {viewMode === "day"
               ? formatDateZA(selectedDate)
-              : `${formatDateZA(weekStart)} - ${formatDateZA(addDays(weekStart, 6))}`}
+              : `${formatDateZA(weekStart)} - ${formatDateZA(addDaysHelper(weekStart, 6))}`}
           </h2>
           <button
             type="button"
@@ -191,20 +186,20 @@ export default function CalendarViewPage() {
               const isToday = dateToString(date) === dateToString(today);
               return (
                 <div
-                  key={date.toISOString()}
+                  key={fromJSDate(date).toISO()}
                   className={`p-3 text-center border-r border-gray-200 dark:border-slate-700 last:border-r-0 ${
                     isToday ? "bg-blue-50 dark:bg-blue-900/20" : ""
                   }`}
                 >
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {date.toLocaleDateString("en-ZA", { weekday: "short" })}
+                    {fromJSDate(date).toFormat("ccc")}
                   </div>
                   <div
                     className={`text-lg font-semibold ${
                       isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-900 dark:text-white"
                     }`}
                   >
-                    {date.getDate()}
+                    {fromJSDate(date).day}
                   </div>
                 </div>
               );
@@ -215,7 +210,7 @@ export default function CalendarViewPage() {
               const dayMeetings = meetingsForDate(date);
               return (
                 <div
-                  key={date.toISOString()}
+                  key={fromJSDate(date).toISO()}
                   className="min-h-[400px] p-2 border-r border-gray-200 dark:border-slate-700 last:border-r-0"
                 >
                   {dayMeetings.length === 0 ? (
@@ -227,11 +222,11 @@ export default function CalendarViewPage() {
                       {dayMeetings
                         .sort(
                           (a, b) =>
-                            new Date(a.scheduledStart).getTime() -
-                            new Date(b.scheduledStart).getTime(),
+                            fromJSDate(a.scheduledStart).toMillis() -
+                            fromJSDate(b.scheduledStart).toMillis(),
                         )
                         .map((meeting) => {
-                          const startTime = new Date(meeting.scheduledStart);
+                          const startTime = fromJSDate(meeting.scheduledStart);
                           return (
                             <div
                               key={meeting.id}
@@ -241,10 +236,7 @@ export default function CalendarViewPage() {
                                 {meeting.title}
                               </div>
                               <div className="text-gray-500 dark:text-gray-400">
-                                {startTime.toLocaleTimeString("en-ZA", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                {startTime.toFormat("HH:mm")}
                               </div>
                             </div>
                           );

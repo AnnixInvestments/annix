@@ -20,6 +20,9 @@ export {
   CalendarEventResponseDto,
   CalendarListResponseDto,
   ConnectCalendarDto,
+  ResolveConflictDto,
+  SetCalendarColorDto,
+  SetCalendarColorsDto,
   SyncCalendarDto,
   UpdateCalendarConnectionDto,
 } from "./calendar.dto";
@@ -36,6 +39,7 @@ export {
 export {
   CreateCustomFieldDto,
   CustomFieldResponseDto,
+  ReorderCustomFieldsDto,
   UpdateCustomFieldDto,
 } from "./custom-field.dto";
 export type { RecurrenceEndType, RecurrenceFrequency, RecurrenceUpdateScope } from "./meeting.dto";

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, MoreThanOrEqual, Repository } from "typeorm";
-import { fromISO, now } from "../../lib/datetime";
+import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import {
   CreateRecurringMeetingDto,
   RecurrenceOptionsDto,
@@ -108,7 +108,7 @@ export class RecurringMeetingService {
     const exceptions = this.parseExceptionDates(parentMeeting.recurrenceExceptionDates);
     const instances: Date[] = [];
 
-    const meetingStart = fromISO(parentMeeting.scheduledStart.toISOString());
+    const meetingStart = fromJSDate(parentMeeting.scheduledStart);
     let current = meetingStart;
     let count = 0;
 
@@ -138,7 +138,7 @@ export class RecurringMeetingService {
             FR: 5,
             SA: 6,
           };
-          const currentDayNum = currentDate.getDay();
+          const currentDayNum = current.weekday % 7;
           const allowedDays = rule.byDay.map((d) => dayMap[d.toUpperCase()]);
           if (allowedDays.includes(currentDayNum)) {
             instances.push(currentDate);
@@ -191,8 +191,8 @@ export class RecurringMeetingService {
       title: dto.title,
       description: dto.description ?? null,
       meetingType: dto.meetingType ?? MeetingType.IN_PERSON,
-      scheduledStart: new Date(dto.scheduledStart),
-      scheduledEnd: new Date(dto.scheduledEnd),
+      scheduledStart: fromISO(dto.scheduledStart).toJSDate(),
+      scheduledEnd: fromISO(dto.scheduledEnd).toJSDate(),
       location: dto.location ?? null,
       latitude: dto.latitude ?? null,
       longitude: dto.longitude ?? null,
@@ -237,21 +237,24 @@ export class RecurringMeetingService {
 
     for (const parent of recurringParents) {
       const instances = this.generateInstances(parent, startDate, endDate);
-      const duration = parent.scheduledEnd.getTime() - parent.scheduledStart.getTime();
+      const duration = fromJSDate(parent.scheduledEnd)
+        .diff(fromJSDate(parent.scheduledStart), "milliseconds").milliseconds;
 
       for (const instanceDate of instances) {
         const existingChild = childMeetings.find((c) => {
-          const childDate = fromISO(c.scheduledStart.toISOString()).toFormat("yyyy-MM-dd");
-          const instanceDateStr = fromISO(instanceDate.toISOString()).toFormat("yyyy-MM-dd");
+          const childDate = fromJSDate(c.scheduledStart).toFormat("yyyy-MM-dd");
+          const instanceDateStr = fromJSDate(instanceDate).toFormat("yyyy-MM-dd");
           return c.recurringParentId === parent.id && childDate === instanceDateStr;
         });
 
         if (!existingChild) {
-          const instanceEnd = new Date(instanceDate.getTime() + duration);
+          const instanceEnd = fromJSDate(instanceDate)
+            .plus({ milliseconds: duration })
+            .toJSDate();
 
           const virtualMeeting: Meeting = {
             ...parent,
-            id: -parent.id * 1000 - instanceDate.getTime(),
+            id: -parent.id * 1000 - fromJSDate(instanceDate).toMillis(),
             scheduledStart: instanceDate,
             scheduledEnd: instanceEnd,
             isRecurring: false,
@@ -263,7 +266,9 @@ export class RecurringMeetingService {
       }
     }
 
-    return expandedMeetings.sort((a, b) => a.scheduledStart.getTime() - b.scheduledStart.getTime());
+    return expandedMeetings.sort(
+      (a, b) => fromJSDate(a.scheduledStart).toMillis() - fromJSDate(b.scheduledStart).toMillis(),
+    );
   }
 
   async updateSeries(
@@ -313,7 +318,7 @@ export class RecurringMeetingService {
       return this.meetingRepo.save(meeting);
     }
 
-    const instanceDate = fromISO(meeting.scheduledStart.toISOString()).toFormat("yyyy-MM-dd");
+    const instanceDate = fromJSDate(meeting.scheduledStart).toFormat("yyyy-MM-dd");
     const exceptions = this.parseExceptionDates(parent.recurrenceExceptionDates);
     exceptions.add(instanceDate);
     parent.recurrenceExceptionDates = this.formatExceptionDates(exceptions);
@@ -325,8 +330,12 @@ export class RecurringMeetingService {
       title: dto.title ?? meeting.title,
       description: dto.description ?? meeting.description,
       meetingType: dto.meetingType ?? meeting.meetingType,
-      scheduledStart: dto.scheduledStart ? new Date(dto.scheduledStart) : meeting.scheduledStart,
-      scheduledEnd: dto.scheduledEnd ? new Date(dto.scheduledEnd) : meeting.scheduledEnd,
+      scheduledStart: dto.scheduledStart
+        ? fromISO(dto.scheduledStart).toJSDate()
+        : meeting.scheduledStart,
+      scheduledEnd: dto.scheduledEnd
+        ? fromISO(dto.scheduledEnd).toJSDate()
+        : meeting.scheduledEnd,
       location: dto.location ?? meeting.location,
       latitude: dto.latitude ?? meeting.latitude,
       longitude: dto.longitude ?? meeting.longitude,
@@ -352,7 +361,7 @@ export class RecurringMeetingService {
     const cutoffDate = meeting.scheduledStart;
 
     const rule = this.parseRRule(parent.recurrenceRule!);
-    const cutoffStr = `${fromISO(cutoffDate.toISOString()).minus({ days: 1 }).toFormat("yyyyMMdd")}T235959Z`;
+    const cutoffStr = `${fromJSDate(cutoffDate).minus({ days: 1 }).toFormat("yyyyMMdd")}T235959Z`;
     const updatedRuleParts = parent
       .recurrenceRule!.replace("RRULE:", "")
       .split(";")
@@ -439,8 +448,10 @@ export class RecurringMeetingService {
     if (dto.description !== undefined) updates.description = dto.description ?? null;
     if (dto.meetingType !== undefined) updates.meetingType = dto.meetingType;
     if (dto.status !== undefined) updates.status = dto.status;
-    if (dto.scheduledStart !== undefined) updates.scheduledStart = new Date(dto.scheduledStart);
-    if (dto.scheduledEnd !== undefined) updates.scheduledEnd = new Date(dto.scheduledEnd);
+    if (dto.scheduledStart !== undefined)
+      updates.scheduledStart = fromISO(dto.scheduledStart).toJSDate();
+    if (dto.scheduledEnd !== undefined)
+      updates.scheduledEnd = fromISO(dto.scheduledEnd).toJSDate();
     if (dto.location !== undefined) updates.location = dto.location ?? null;
     if (dto.latitude !== undefined) updates.latitude = dto.latitude ?? null;
     if (dto.longitude !== undefined) updates.longitude = dto.longitude ?? null;
@@ -476,7 +487,7 @@ export class RecurringMeetingService {
           where: { id: parentId },
         });
         if (parent) {
-          const instanceDate = fromISO(meeting.scheduledStart.toISOString()).toFormat("yyyy-MM-dd");
+          const instanceDate = fromJSDate(meeting.scheduledStart).toFormat("yyyy-MM-dd");
           const exceptions = this.parseExceptionDates(parent.recurrenceExceptionDates);
           exceptions.add(instanceDate);
           parent.recurrenceExceptionDates = this.formatExceptionDates(exceptions);
@@ -494,7 +505,7 @@ export class RecurringMeetingService {
 
       if (parent?.recurrenceRule) {
         const cutoffStr =
-          fromISO(meeting.scheduledStart.toISOString()).minus({ days: 1 }).toFormat("yyyyMMdd") +
+          fromJSDate(meeting.scheduledStart).minus({ days: 1 }).toFormat("yyyyMMdd") +
           "T235959Z";
         const updatedRuleParts = parent.recurrenceRule
           .replace("RRULE:", "")
@@ -555,18 +566,19 @@ export class RecurringMeetingService {
     });
 
     const instances = this.generateInstances(parent, startDate, endDate, 52);
-    const duration = parent.scheduledEnd.getTime() - parent.scheduledStart.getTime();
+    const duration = fromJSDate(parent.scheduledEnd)
+      .diff(fromJSDate(parent.scheduledStart), "milliseconds").milliseconds;
 
     const allInstances: Meeting[] = [];
     const childDateMap = new Map<string, Meeting>();
 
     for (const child of childMeetings) {
-      const dateStr = fromISO(child.scheduledStart.toISOString()).toFormat("yyyy-MM-dd");
+      const dateStr = fromJSDate(child.scheduledStart).toFormat("yyyy-MM-dd");
       childDateMap.set(dateStr, child);
     }
 
     for (const instanceDate of instances) {
-      const dateStr = fromISO(instanceDate.toISOString()).toFormat("yyyy-MM-dd");
+      const dateStr = fromJSDate(instanceDate).toFormat("yyyy-MM-dd");
       const existingChild = childDateMap.get(dateStr);
 
       if (existingChild) {
@@ -576,7 +588,9 @@ export class RecurringMeetingService {
           ...parent,
           id: 0,
           scheduledStart: instanceDate,
-          scheduledEnd: new Date(instanceDate.getTime() + duration),
+          scheduledEnd: fromJSDate(instanceDate)
+            .plus({ milliseconds: duration })
+            .toJSDate(),
           isRecurring: false,
           recurringParentId: parent.id,
         } as Meeting;
@@ -584,6 +598,8 @@ export class RecurringMeetingService {
       }
     }
 
-    return allInstances.sort((a, b) => a.scheduledStart.getTime() - b.scheduledStart.getTime());
+    return allInstances.sort(
+      (a, b) => fromJSDate(a.scheduledStart).toMillis() - fromJSDate(b.scheduledStart).toMillis(),
+    );
   }
 }

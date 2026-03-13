@@ -257,43 +257,43 @@ export class CrmService {
   ): Promise<CrmConfig> {
     const config = await this.configById(userId, configId);
 
-    if (dto.name !== undefined) {
+    if (dto.name != null) {
       config.name = dto.name;
     }
-    if (dto.crmType !== undefined) {
+    if (dto.crmType != null) {
       config.crmType = dto.crmType;
     }
-    if (dto.webhookConfig !== undefined) {
+    if (dto.webhookConfig != null) {
       config.webhookConfig = dto.webhookConfig ?? null;
     }
-    if (dto.apiKey !== undefined) {
+    if (dto.apiKey != null) {
       config.apiKeyEncrypted = dto.apiKey ? this.encryptValue(dto.apiKey) : null;
     }
-    if (dto.apiSecret !== undefined) {
+    if (dto.apiSecret != null) {
       config.apiSecretEncrypted = dto.apiSecret ? this.encryptValue(dto.apiSecret) : null;
     }
-    if (dto.instanceUrl !== undefined) {
+    if (dto.instanceUrl != null) {
       config.instanceUrl = dto.instanceUrl ?? null;
     }
-    if (dto.prospectFieldMappings !== undefined) {
+    if (dto.prospectFieldMappings != null) {
       config.prospectFieldMappings = dto.prospectFieldMappings ?? null;
     }
-    if (dto.meetingFieldMappings !== undefined) {
+    if (dto.meetingFieldMappings != null) {
       config.meetingFieldMappings = dto.meetingFieldMappings ?? null;
     }
-    if (dto.syncProspects !== undefined) {
+    if (dto.syncProspects != null) {
       config.syncProspects = dto.syncProspects;
     }
-    if (dto.syncMeetings !== undefined) {
+    if (dto.syncMeetings != null) {
       config.syncMeetings = dto.syncMeetings;
     }
-    if (dto.syncOnCreate !== undefined) {
+    if (dto.syncOnCreate != null) {
       config.syncOnCreate = dto.syncOnCreate;
     }
-    if (dto.syncOnUpdate !== undefined) {
+    if (dto.syncOnUpdate != null) {
       config.syncOnUpdate = dto.syncOnUpdate;
     }
-    if (dto.isActive !== undefined) {
+    if (dto.isActive != null) {
       config.isActive = dto.isActive;
     }
 

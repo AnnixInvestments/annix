@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { fromISO, now } from "../../lib/datetime";
 import { CalendarProvider } from "../entities";
 import type {
   CalendarEventData,
@@ -254,10 +255,8 @@ export class OutlookCalendarProvider implements ICalendarProvider {
     if (deltaLink) {
       url = deltaLink;
     } else {
-      const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - 1);
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 6);
+      const startDate = now().minus({ months: 1 }).toJSDate();
+      const endDate = now().plus({ months: 6 }).toJSDate();
 
       const params = new URLSearchParams({
         startDateTime: startDate.toISOString(),
@@ -317,8 +316,8 @@ export class OutlookCalendarProvider implements ICalendarProvider {
   }
 
   private mapMicrosoftEvent(event: MicrosoftCalendarEvent, calendarId: string): CalendarEventData {
-    const startTime = new Date(`${event.start.dateTime}Z`);
-    const endTime = new Date(`${event.end.dateTime}Z`);
+    const startTime = fromISO(`${event.start.dateTime}Z`).toJSDate();
+    const endTime = fromISO(`${event.end.dateTime}Z`).toJSDate();
     const isAllDay = event.isAllDay ?? false;
 
     let status: "confirmed" | "tentative" | "cancelled" = "confirmed";

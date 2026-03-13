@@ -17,7 +17,7 @@ import type {
   FollowUpRecurrence,
   ProspectStatus,
 } from "@/app/lib/api/annixRepApi";
-import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { formatDateTimeZA, formatDateZA, fromJSDate, now } from "@/app/lib/datetime";
 import {
   useCompleteFollowUp,
   useDeleteProspect,
@@ -231,7 +231,7 @@ export default function ProspectDetailPage() {
       estimatedValue: prospect.estimatedValue ?? undefined,
       tags: prospect.tags ?? [],
       nextFollowUpAt: prospect.nextFollowUpAt
-        ? new Date(prospect.nextFollowUpAt).toISOString().slice(0, 16)
+        ? fromJSDate(prospect.nextFollowUpAt).toFormat("yyyy-MM-dd'T'HH:mm")
         : undefined,
     });
     setIsEditing(true);
@@ -294,12 +294,10 @@ export default function ProspectDetailPage() {
   };
 
   const handleScheduleFollowUp = async (days: number) => {
-    const followUpDate = new Date();
-    followUpDate.setDate(followUpDate.getDate() + days);
-    followUpDate.setHours(9, 0, 0, 0);
+    const followUpDate = now().plus({ days }).set({ hour: 9, minute: 0, second: 0, millisecond: 0 });
     await updateProspect.mutateAsync({
       id,
-      dto: { nextFollowUpAt: followUpDate.toISOString() },
+      dto: { nextFollowUpAt: followUpDate.toISO() ?? "" },
     });
   };
 
@@ -696,7 +694,7 @@ export default function ProspectDetailPage() {
                 <div className="space-y-6">
                   {visits
                     .sort(
-                      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+                      (a, b) => fromJSDate(b.createdAt).toMillis() - fromJSDate(a.createdAt).toMillis(),
                     )
                     .map((visit) => (
                       <div key={visit.id} className="relative flex gap-4">

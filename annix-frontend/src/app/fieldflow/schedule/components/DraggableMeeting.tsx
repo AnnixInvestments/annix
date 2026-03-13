@@ -3,6 +3,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { Meeting, MeetingStatus, MeetingType } from "@/app/lib/api/annixRepApi";
+import { fromJSDate } from "@/app/lib/datetime";
 
 const meetingTypeColors: Record<MeetingType, { bg: string; border: string }> = {
   in_person: { bg: "bg-green-100 dark:bg-green-900/30", border: "border-green-500" },
@@ -38,9 +39,9 @@ export function DraggableMeeting(props: DraggableMeetingProps) {
   const colors = meetingTypeColors[meeting.meetingType] || meetingTypeColors.in_person;
   const statusColor = statusIndicators[meeting.status];
 
-  const startTime = new Date(meeting.scheduledStart);
-  const endTime = new Date(meeting.scheduledEnd);
-  const timeStr = `${startTime.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })} - ${endTime.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" })}`;
+  const startTime = fromJSDate(meeting.scheduledStart);
+  const endTime = fromJSDate(meeting.scheduledEnd);
+  const timeStr = `${startTime.toFormat("HH:mm")} - ${endTime.toFormat("HH:mm")}`;
 
   const isCompact = height < 50;
   const isDisabled = meeting.status === "completed" || meeting.status === "in_progress";

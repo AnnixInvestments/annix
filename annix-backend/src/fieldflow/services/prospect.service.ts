@@ -2,7 +2,7 @@ import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nest
 import { InjectRepository } from "@nestjs/typeorm";
 import { isDate, keys, values } from "es-toolkit/compat";
 import { In, Repository } from "typeorm";
-import { fromISO, now, nowMillis } from "../../lib/datetime";
+import { fromISO, fromJSDate, now, nowMillis } from "../../lib/datetime";
 import {
   BulkDeleteResponseDto,
   BulkTagOperationDto,
@@ -633,7 +633,7 @@ export class ProspectService {
 
     if (prospect.lastContactedAt) {
       const contactedAt = isDate(prospect.lastContactedAt)
-        ? prospect.lastContactedAt.getTime()
+        ? fromJSDate(prospect.lastContactedAt).toMillis()
         : fromISO(String(prospect.lastContactedAt)).toMillis();
       const daysSinceContact = Math.floor((nowMillis() - contactedAt) / (1000 * 60 * 60 * 24));
       if (daysSinceContact <= 7) {
@@ -671,7 +671,7 @@ export class ProspectService {
 
     if (prospect.nextFollowUpAt) {
       const followUpMillis = isDate(prospect.nextFollowUpAt)
-        ? prospect.nextFollowUpAt.getTime()
+        ? fromJSDate(prospect.nextFollowUpAt).toMillis()
         : fromISO(String(prospect.nextFollowUpAt)).toMillis();
       const todayMillis = nowMillis();
       if (followUpMillis >= todayMillis) {

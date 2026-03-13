@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { TeamsBotTranscriptEntry } from "@/app/lib/api/annixRepApi";
+import { fromISO } from "@/app/lib/datetime";
 import {
   teamsBotEventsUrl,
   useLeaveTeamsMeeting,
@@ -35,12 +36,7 @@ function speakerTextColor(name: string): string {
 }
 
 function formatTimestamp(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleTimeString("en-ZA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  return fromISO(isoString).toFormat("HH:mm:ss");
 }
 
 interface LiveTranscriptViewerProps {
@@ -69,7 +65,7 @@ export function LiveTranscriptViewer(props: LiveTranscriptViewerProps) {
   }, [initialTranscript]);
 
   useEffect(() => {
-    if (session?.participantCount !== undefined) {
+    if (session?.participantCount != null) {
       setParticipantCount(session.participantCount);
     }
   }, [session]);

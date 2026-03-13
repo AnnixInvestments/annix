@@ -10,7 +10,7 @@ import type {
   MeetingType,
   RecurrenceOptions,
 } from "@/app/lib/api/annixRepApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateZA, fromISO, fromJSDate } from "@/app/lib/datetime";
 import { useCreateMeeting, useCreateRecurringMeeting, useMeetings } from "@/app/lib/query/hooks";
 import { QueryErrorFallback } from "../components/ErrorBoundary";
 import { PullToRefresh } from "../components/PullToRefresh";
@@ -125,7 +125,7 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
                 d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
               />
             </svg>
-            {formatDateZA(new Date(meeting.scheduledStart))}
+            {formatDateZA(meeting.scheduledStart)}
           </span>
           <span className="flex items-center gap-1">
             <svg
@@ -141,10 +141,7 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
                 d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            {new Date(meeting.scheduledStart).toLocaleTimeString("en-ZA", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {fromJSDate(meeting.scheduledStart).toFormat("HH:mm")}
           </span>
         </div>
 
@@ -204,12 +201,12 @@ function CreateMeetingModal({
     if (!formData.title.trim() || !formData.scheduledStart || !formData.scheduledEnd) return;
 
     if (isRecurring) {
-      const startDate = new Date(formData.scheduledStart);
-      const endDate = new Date(formData.scheduledEnd);
+      const startDate = fromISO(formData.scheduledStart);
+      const endDate = fromISO(formData.scheduledEnd);
       onCreateRecurring({
         ...formData,
-        scheduledStart: startDate.toISOString(),
-        scheduledEnd: endDate.toISOString(),
+        scheduledStart: startDate.toISO() ?? formData.scheduledStart,
+        scheduledEnd: endDate.toISO() ?? formData.scheduledEnd,
         recurrence,
       });
     } else {
@@ -406,13 +403,13 @@ export default function MeetingsPage() {
   });
 
   const handleCreate = async (dto: CreateMeetingDto) => {
-    const startDate = new Date(dto.scheduledStart);
-    const endDate = new Date(dto.scheduledEnd);
+    const startDate = fromISO(dto.scheduledStart);
+    const endDate = fromISO(dto.scheduledEnd);
 
     await createMeeting.mutateAsync({
       ...dto,
-      scheduledStart: startDate.toISOString(),
-      scheduledEnd: endDate.toISOString(),
+      scheduledStart: startDate.toISO() ?? dto.scheduledStart,
+      scheduledEnd: endDate.toISO() ?? dto.scheduledEnd,
     });
     setShowCreateModal(false);
   };

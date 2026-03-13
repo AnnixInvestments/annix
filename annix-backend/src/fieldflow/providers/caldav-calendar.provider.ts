@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { DateTime, now, nowMillis } from "../../lib/datetime";
 import { CalendarProvider } from "../entities";
 import type {
   CalendarEventData,
@@ -151,7 +152,7 @@ export class CaldavCalendarProvider implements ICalendarProvider {
 
     const xml = await response.text();
     const ctagMatch = xml.match(/<CS:getctag[^>]*>([^<]+)<\/CS:getctag>/i);
-    return ctagMatch?.[1] ?? Date.now().toString();
+    return ctagMatch?.[1] ?? nowMillis().toString();
   }
 
   private async fetchCalendarEvents(
@@ -159,10 +160,8 @@ export class CaldavCalendarProvider implements ICalendarProvider {
     username: string,
     password: string,
   ): Promise<{ events: CalendarEventData[] }> {
-    const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 1);
-    const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + 6);
+    const startDate = now().minus({ months: 1 }).toJSDate();
+    const endDate = now().plus({ months: 6 }).toJSDate();
 
     const reportBody = `<?xml version="1.0" encoding="utf-8"?>
 <C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
@@ -358,34 +357,34 @@ export class CaldavCalendarProvider implements ICalendarProvider {
   }
 
   private parseICalDate(dateStr: string): Date {
-    if (!dateStr) return new Date();
+    if (!dateStr) return now().toJSDate();
 
     const cleanDate = dateStr.replace(/[^0-9TZ]/g, "");
 
     if (cleanDate.length === 8) {
-      return new Date(
+      return DateTime.local(
         parseInt(cleanDate.slice(0, 4), 10),
-        parseInt(cleanDate.slice(4, 6), 10) - 1,
+        parseInt(cleanDate.slice(4, 6), 10),
         parseInt(cleanDate.slice(6, 8), 10),
-      );
+      ).toJSDate();
     }
 
     if (cleanDate.includes("T")) {
       const [date, time] = cleanDate.split("T");
       const year = parseInt(date.slice(0, 4), 10);
-      const month = parseInt(date.slice(4, 6), 10) - 1;
+      const month = parseInt(date.slice(4, 6), 10);
       const day = parseInt(date.slice(6, 8), 10);
       const hour = parseInt(time.slice(0, 2), 10);
       const minute = parseInt(time.slice(2, 4), 10);
       const second = parseInt(time.slice(4, 6) || "0", 10);
 
       if (cleanDate.endsWith("Z")) {
-        return new Date(Date.UTC(year, month, day, hour, minute, second));
+        return DateTime.utc(year, month, day, hour, minute, second).toJSDate();
       }
-      return new Date(year, month, day, hour, minute, second);
+      return DateTime.local(year, month, day, hour, minute, second).toJSDate();
     }
 
-    return new Date(dateStr);
+    return DateTime.fromISO(dateStr).toJSDate();
   }
 
   private formatCalDavDate(date: Date): string {

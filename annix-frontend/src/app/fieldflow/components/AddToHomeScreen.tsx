@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fromISO, now, nowISO } from "@/app/lib/datetime";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISSED_KEY = "fieldflow-a2hs-dismissed";
+const DISMISSED_KEY = "annixRep-a2hs-dismissed";
 const DISMISS_DURATION_DAYS = 7;
 
 export function AddToHomeScreen() {
@@ -25,8 +26,8 @@ export function AddToHomeScreen() {
 
     const dismissedAt = localStorage.getItem(DISMISSED_KEY);
     if (dismissedAt) {
-      const dismissedDate = new Date(dismissedAt);
-      const daysSinceDismissed = (Date.now() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+      const dismissedDate = fromISO(dismissedAt);
+      const daysSinceDismissed = now().diff(dismissedDate, "days").days;
       if (daysSinceDismissed < DISMISS_DURATION_DAYS) {
         return;
       }
@@ -68,7 +69,7 @@ export function AddToHomeScreen() {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(DISMISSED_KEY, new Date().toISOString());
+    localStorage.setItem(DISMISSED_KEY, nowISO());
     setIsVisible(false);
   };
 
@@ -97,7 +98,7 @@ export function AddToHomeScreen() {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
-              Install FieldFlow
+              Install Annix Rep
             </h3>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
               Add to your home screen for quick access and offline support

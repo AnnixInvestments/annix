@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { fromJSDate, now } from "../../lib/datetime";
 import {
   CalendarConnection,
   CalendarEvent,
@@ -122,10 +122,10 @@ export class CalendarSyncService {
           continue;
         }
 
-        const meetingStart = meeting.scheduledStart.getTime();
-        const meetingEnd = meeting.scheduledEnd.getTime();
-        const eventStart = event.startTime.getTime();
-        const eventEnd = event.endTime.getTime();
+        const meetingStart = fromJSDate(meeting.scheduledStart).toMillis();
+        const meetingEnd = fromJSDate(meeting.scheduledEnd).toMillis();
+        const eventStart = fromJSDate(event.startTime).toMillis();
+        const eventEnd = fromJSDate(event.endTime).toMillis();
 
         const hasOverlap =
           (meetingStart < eventEnd && meetingEnd > eventStart) ||

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { nowMillis } from "../../lib/datetime";
 
 interface AppOnlyTokenResponse {
   access_token: string;
@@ -91,8 +92,8 @@ export class TeamsBotProvider {
   }
 
   private async appOnlyToken(): Promise<string> {
-    const now = Date.now();
-    if (this.cachedToken && this.tokenExpiresAt > now + 60000) {
+    const currentTime = nowMillis();
+    if (this.cachedToken && this.tokenExpiresAt > currentTime + 60000) {
       return this.cachedToken;
     }
 
@@ -120,7 +121,7 @@ export class TeamsBotProvider {
     const data: AppOnlyTokenResponse = await response.json();
 
     this.cachedToken = data.access_token;
-    this.tokenExpiresAt = now + data.expires_in * 1000;
+    this.tokenExpiresAt = currentTime + data.expires_in * 1000;
 
     return data.access_token;
   }

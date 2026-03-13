@@ -21,7 +21,7 @@ import {
 } from "@nestjs/swagger";
 import { Request } from "express";
 import { AnnixRepAuthGuard } from "../auth";
-import { CreateCustomFieldDto, CustomFieldResponseDto, UpdateCustomFieldDto } from "../dto";
+import { CreateCustomFieldDto, CustomFieldResponseDto, ReorderCustomFieldsDto, UpdateCustomFieldDto } from "../dto";
 import { CustomFieldService } from "../services";
 
 interface AnnixRepRequest extends Request {
@@ -98,7 +98,7 @@ export class CustomFieldController {
     description: "Fields reordered",
     type: [CustomFieldResponseDto],
   })
-  reorder(@Req() req: AnnixRepRequest, @Body() dto: { orderedIds: number[] }) {
+  reorder(@Req() req: AnnixRepRequest, @Body() dto: ReorderCustomFieldsDto) {
     return this.customFieldService.reorder(req.annixRepUser.userId, dto.orderedIds);
   }
 }

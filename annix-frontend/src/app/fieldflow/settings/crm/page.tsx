@@ -10,7 +10,7 @@ import type {
   WebhookConfig,
 } from "@/app/lib/api/annixRepApi";
 import { annixRepApi } from "@/app/lib/api/annixRepApi";
-import { formatDateLongZA } from "@/app/lib/datetime";
+import { formatDateLongZA, fromJSDate, isExpired } from "@/app/lib/datetime";
 import {
   useCreateCrmConfig,
   useCrmConfigs,
@@ -93,7 +93,7 @@ function ConnectionStatusBadge({ config }: { config: CrmConfig }) {
     );
   }
 
-  const tokenExpired = config.tokenExpiresAt && new Date(config.tokenExpiresAt) < new Date();
+  const tokenExpired = config.tokenExpiresAt && isExpired(fromJSDate(config.tokenExpiresAt).toISO());
 
   if (tokenExpired) {
     return (
@@ -271,7 +271,7 @@ function CrmConfigCard({
 
       {config.lastSyncAt && (
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Last synced: {formatDateLongZA(new Date(config.lastSyncAt))}
+          Last synced: {formatDateLongZA(config.lastSyncAt)}
           {config.lastSyncError && (
             <span className="text-red-500 ml-2">Error: {config.lastSyncError}</span>
           )}
@@ -280,7 +280,7 @@ function CrmConfigCard({
 
       {isOAuthProvider && config.tokenExpiresAt && (
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Token expires: {formatDateLongZA(new Date(config.tokenExpiresAt))}
+          Token expires: {formatDateLongZA(config.tokenExpiresAt)}
         </p>
       )}
 

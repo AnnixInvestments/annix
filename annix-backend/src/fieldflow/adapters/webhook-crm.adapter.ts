@@ -1,4 +1,5 @@
 import { Logger } from "@nestjs/common";
+import { fromJSDate, now, nowISO } from "../../lib/datetime";
 import type { Meeting, Prospect } from "../entities";
 import {
   type CrmAdapterConfig,
@@ -33,7 +34,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
       return {
         success: false,
         error: "Webhook URL not configured",
-        timestamp: new Date(),
+        timestamp: now().toJSDate(),
       };
     }
 
@@ -51,7 +52,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
           type: "contact",
           action: prospect.crmExternalId ? "update" : "create",
           data: mappedData,
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
         }),
       });
 
@@ -61,7 +62,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
         return {
           success: false,
           error: `HTTP ${response.status}: ${errorText}`,
-          timestamp: new Date(),
+          timestamp: now().toJSDate(),
         };
       }
 
@@ -69,7 +70,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
       return {
         success: true,
         externalId: result.id ?? result.externalId ?? prospect.crmExternalId ?? undefined,
-        timestamp: new Date(),
+        timestamp: now().toJSDate(),
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -77,7 +78,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
       return {
         success: false,
         error: errorMessage,
-        timestamp: new Date(),
+        timestamp: now().toJSDate(),
       };
     }
   }
@@ -91,7 +92,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
       return {
         success: false,
         error: "Webhook URL not configured",
-        timestamp: new Date(),
+        timestamp: now().toJSDate(),
       };
     }
 
@@ -113,7 +114,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
             externalId: prospect.crmExternalId,
             companyName: prospect.companyName,
           },
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
         }),
       });
 
@@ -123,7 +124,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
         return {
           success: false,
           error: `HTTP ${response.status}: ${errorText}`,
-          timestamp: new Date(),
+          timestamp: now().toJSDate(),
         };
       }
 
@@ -131,7 +132,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
       return {
         success: true,
         externalId: result.id ?? result.externalId ?? meeting.crmExternalId ?? undefined,
-        timestamp: new Date(),
+        timestamp: now().toJSDate(),
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -139,7 +140,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
       return {
         success: false,
         error: errorMessage,
-        timestamp: new Date(),
+        timestamp: now().toJSDate(),
       };
     }
   }
@@ -159,7 +160,7 @@ export class WebhookCrmAdapter implements ICrmAdapter {
         body: JSON.stringify({
           type: "test",
           action: "ping",
-          timestamp: new Date().toISOString(),
+          timestamp: nowISO(),
         }),
       });
 
@@ -247,12 +248,12 @@ export class WebhookCrmAdapter implements ICrmAdapter {
         return typeof value === "string" ? value.toLowerCase() : value;
       case "date":
         return value instanceof Date
-          ? value.toISOString().split("T")[0]
+          ? (fromJSDate(value).toISODate() ?? "")
           : typeof value === "string"
             ? value.split("T")[0]
             : value;
       case "datetime":
-        return value instanceof Date ? value.toISOString() : value;
+        return value instanceof Date ? (fromJSDate(value).toISO() ?? "") : value;
       case "boolean":
         return Boolean(value);
       case "number":

@@ -8,6 +8,7 @@ import type {
   TeamMember,
   TeamRole,
 } from "@/app/lib/api/annixRepApi";
+import { fromJSDate } from "@/app/lib/datetime";
 import {
   useCancelTeamInvitation,
   useCreateOrganization,
@@ -394,10 +395,7 @@ function PendingInvitationsSection() {
                 <RoleBadge role={invitation.role} />
                 <span className="text-xs text-gray-500 dark:text-gray-400">
                   Expires{" "}
-                  {new Date(invitation.expiresAt).toLocaleDateString("en-ZA", {
-                    day: "numeric",
-                    month: "short",
-                  })}
+                  {fromJSDate(invitation.expiresAt).toFormat("d MMM")}
                 </span>
               </div>
             </div>

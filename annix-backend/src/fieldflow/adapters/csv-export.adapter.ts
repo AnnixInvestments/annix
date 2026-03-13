@@ -1,4 +1,5 @@
 import { Logger } from "@nestjs/common";
+import { fromJSDate, now } from "../../lib/datetime";
 import type { Meeting, Prospect } from "../entities";
 import {
   type CrmAdapterConfig,
@@ -62,7 +63,7 @@ export class CsvExportAdapter implements ICrmAdapter {
 
     return {
       success: true,
-      timestamp: new Date(),
+      timestamp: now().toJSDate(),
     };
   }
 
@@ -84,7 +85,7 @@ export class CsvExportAdapter implements ICrmAdapter {
 
     return {
       success: true,
-      timestamp: new Date(),
+      timestamp: now().toJSDate(),
     };
   }
 
@@ -216,7 +217,7 @@ export class CsvExportAdapter implements ICrmAdapter {
     }
 
     if (value instanceof Date) {
-      return this.formatDate(value);
+      return this.formatDateValue(value);
     }
 
     if (Array.isArray(value)) {
@@ -230,14 +231,15 @@ export class CsvExportAdapter implements ICrmAdapter {
     return String(value);
   }
 
-  private formatDate(date: Date): string {
+  private formatDateValue(date: Date): string {
+    const dt = fromJSDate(date);
     switch (this.options.dateFormat) {
       case "locale":
-        return date.toLocaleDateString();
+        return dt.toLocaleString({ dateStyle: "short" });
       case "short":
-        return date.toISOString().split("T")[0];
+        return dt.toISODate() ?? "";
       default:
-        return date.toISOString();
+        return dt.toISO() ?? "";
     }
   }
 
@@ -300,12 +302,12 @@ export class CsvExportAdapter implements ICrmAdapter {
         return typeof value === "string" ? value.toLowerCase() : value;
       case "date":
         return value instanceof Date
-          ? value.toISOString().split("T")[0]
+          ? (fromJSDate(value).toISODate() ?? "")
           : typeof value === "string"
             ? value.split("T")[0]
             : value;
       case "datetime":
-        return value instanceof Date ? value.toISOString() : value;
+        return value instanceof Date ? (fromJSDate(value).toISO() ?? "") : value;
       case "boolean":
         return Boolean(value);
       case "number":

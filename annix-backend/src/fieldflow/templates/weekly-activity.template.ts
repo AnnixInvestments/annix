@@ -1,3 +1,4 @@
+import { fromISO } from "../../lib/datetime";
 import { WeeklyActivityReport } from "../dto/report.dto";
 import { formatCurrencyZA, formatDateZA, wrapHtml } from "./base.template";
 
@@ -54,7 +55,7 @@ export function weeklyActivityTemplate(report: WeeklyActivityReport, repName: st
           <div class="bar-item">
             <div class="bar" style="height: ${(day.count / maxMeetings) * 100}%;"></div>
             <div class="bar secondary" style="height: ${(day.completed / maxMeetings) * 100}%; position: absolute; bottom: 0;"></div>
-            <div class="bar-label">${new Date(day.date).toLocaleDateString("en-ZA", { weekday: "short" })}</div>
+            <div class="bar-label">${fromISO(day.date).toLocaleString({ weekday: "short" })}</div>
           </div>
         `,
           )
@@ -81,7 +82,7 @@ export function weeklyActivityTemplate(report: WeeklyActivityReport, repName: st
           <div class="bar-item">
             <div class="bar" style="height: ${(day.count / maxVisits) * 100}%; background: #8B5CF6;"></div>
             <div class="bar secondary" style="height: ${(day.successful / maxVisits) * 100}%; position: absolute; bottom: 0;"></div>
-            <div class="bar-label">${new Date(day.date).toLocaleDateString("en-ZA", { weekday: "short" })}</div>
+            <div class="bar-label">${fromISO(day.date).toLocaleString({ weekday: "short" })}</div>
           </div>
         `,
           )

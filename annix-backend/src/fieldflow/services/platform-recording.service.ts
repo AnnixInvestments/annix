@@ -3,7 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { fromJSDate, now } from "../../lib/datetime";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import {
   Meeting,
@@ -228,8 +228,8 @@ export class PlatformRecordingService {
       }
     }
 
-    const startWindow = new Date(record.startTime.getTime() - 30 * 60 * 1000);
-    const endWindow = new Date(record.startTime.getTime() + 30 * 60 * 1000);
+    const startWindow = fromJSDate(record.startTime).minus({ minutes: 30 }).toJSDate();
+    const endWindow = fromJSDate(record.startTime).plus({ minutes: 30 }).toJSDate();
 
     const meetingByTime = await this.meetingRepo
       .createQueryBuilder("m")
@@ -252,7 +252,7 @@ export class PlatformRecordingService {
     newMeeting.scheduledStart = record.startTime;
     newMeeting.scheduledEnd =
       record.endTime ??
-      new Date(record.startTime.getTime() + (record.durationSeconds ?? 3600) * 1000);
+      fromJSDate(record.startTime).plus({ seconds: record.durationSeconds ?? 3600 }).toJSDate();
     newMeeting.actualStart = record.startTime;
     newMeeting.actualEnd = record.endTime;
     newMeeting.attendees = record.participants;

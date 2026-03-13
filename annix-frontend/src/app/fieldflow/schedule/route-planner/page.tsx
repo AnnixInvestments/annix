@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ColdCallSuggestion, RouteStop, ScheduleGap } from "@/app/lib/api/annixRepApi";
-import { nowISO } from "@/app/lib/datetime";
+import { fromISO, fromJSDate, nowISO } from "@/app/lib/datetime";
 import { useColdCallSuggestions, usePlanDayRoute, useScheduleGaps } from "@/app/lib/query/hooks";
 
 function formatTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" });
+  const d = typeof date === "string" ? fromISO(date) : fromJSDate(date);
+  return d.toFormat("HH:mm");
 }
 
 function formatDuration(minutes: number): string {

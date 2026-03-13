@@ -72,11 +72,11 @@ function SyncLogRow({
       <tr className="border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50">
         <td className="px-4 py-3">
           <div className="text-sm text-gray-900 dark:text-white">
-            {formatDateLongZA(new Date(log.startedAt))}
+            {formatDateLongZA(log.startedAt)}
           </div>
           {log.completedAt && (
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              Completed: {formatDateLongZA(new Date(log.completedAt))}
+              Completed: {formatDateLongZA(log.completedAt)}
             </div>
           )}
         </td>

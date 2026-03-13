@@ -210,7 +210,7 @@ function ConnectionCard({
 
       {connection.lastRecordingSyncAt && (
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Last synced: {formatDateLongZA(new Date(connection.lastRecordingSyncAt))}
+          Last synced: {formatDateLongZA(connection.lastRecordingSyncAt)}
           {connection.lastError && (
             <span className="text-red-500 ml-2">Error: {connection.lastError}</span>
           )}
@@ -655,7 +655,7 @@ export default function IntegrationsSettingsPage() {
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {session.startedAt
-                          ? formatDateTimeZA(new Date(session.startedAt))
+                          ? formatDateTimeZA(session.startedAt)
                           : "Not started"}
                         {" - "}
                         {session.transcriptEntryCount} entries

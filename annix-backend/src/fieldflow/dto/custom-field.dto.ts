@@ -61,6 +61,13 @@ export class CreateCustomFieldDto {
   displayOrder?: number;
 }
 
+export class ReorderCustomFieldsDto {
+  @ApiProperty({ description: "Ordered array of custom field IDs", type: [Number] })
+  @IsArray()
+  @IsNumber({}, { each: true })
+  orderedIds: number[];
+}
+
 export class UpdateCustomFieldDto extends PartialType(CreateCustomFieldDto) {
   @ApiPropertyOptional({ description: "Whether the field is active" })
   @IsBoolean()

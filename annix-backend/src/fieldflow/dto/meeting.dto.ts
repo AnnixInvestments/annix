@@ -333,8 +333,8 @@ export class MeetingSummaryDto {
   @ApiProperty()
   topics: string[];
 
-  @ApiPropertyOptional()
-  sentiment?: string;
+  @ApiPropertyOptional({ type: String, nullable: true })
+  sentiment: string | null;
 }
 
 export class SummaryPreviewDto {

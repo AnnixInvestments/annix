@@ -21,12 +21,16 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request } from "express";
+import { fromISO } from "../../lib/datetime";
 import { AnnixRepAuthGuard } from "../auth";
 import {
   CalendarConnectionResponseDto,
   CalendarEventResponseDto,
   CalendarListResponseDto,
   ConnectCalendarDto,
+  ResolveConflictDto,
+  SetCalendarColorDto,
+  SetCalendarColorsDto,
   SyncCalendarDto,
   UpdateCalendarConnectionDto,
 } from "../dto";
@@ -172,8 +176,8 @@ export class CalendarController {
   ) {
     return this.calendarService.eventsInRange(
       req.annixRepUser.userId,
-      new Date(startDate),
-      new Date(endDate),
+      fromISO(startDate).toJSDate(),
+      fromISO(endDate).toJSDate(),
     );
   }
 
@@ -207,10 +211,7 @@ export class CalendarController {
   @ApiResponse({ status: 200, description: "Colors updated" })
   async setColors(
     @Req() req: AnnixRepRequest,
-    @Body()
-    body: {
-      colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }>;
-    },
+    @Body() body: SetCalendarColorsDto,
   ): Promise<{ success: boolean }> {
     await this.calendarColorService.setColors(req.annixRepUser.userId, body.colors);
     return { success: true };
@@ -226,7 +227,7 @@ export class CalendarController {
     @Req() req: AnnixRepRequest,
     @Param("colorType") colorType: CalendarColorType,
     @Param("colorKey") colorKey: string,
-    @Body() body: { colorValue: string },
+    @Body() body: SetCalendarColorDto,
   ) {
     return this.calendarColorService.setColor(
       req.annixRepUser.userId,
@@ -292,7 +293,7 @@ export class CalendarController {
   resolveConflict(
     @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
-    @Body() body: { resolution: "keep_local" | "keep_remote" | "dismissed" },
+    @Body() body: ResolveConflictDto,
   ): Promise<SyncConflictDto> {
     return this.calendarSyncService.resolveConflict(req.annixRepUser.userId, id, body.resolution);
   }

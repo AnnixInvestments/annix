@@ -20,12 +20,12 @@ function LoginPageContent() {
 
   const [formData, setFormData] = useState<LoginFormData>(() => ({
     email:
-      typeof window !== "undefined" ? localStorage.getItem("fieldflowRememberedEmail") || "" : "",
+      typeof window !== "undefined" ? localStorage.getItem("annixRepRememberedEmail") || "" : "",
     password: "",
   }));
   const [rememberMe, setRememberMe] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("fieldflowRememberMe") === "true";
+      return localStorage.getItem("annixRepRememberMe") === "true";
     }
     return false;
   });
@@ -63,11 +63,11 @@ function LoginPageContent() {
       );
 
       if (rememberMe) {
-        localStorage.setItem("fieldflowRememberedEmail", formData.email);
-        localStorage.setItem("fieldflowRememberMe", "true");
+        localStorage.setItem("annixRepRememberedEmail", formData.email);
+        localStorage.setItem("annixRepRememberMe", "true");
       } else {
-        localStorage.removeItem("fieldflowRememberedEmail");
-        localStorage.removeItem("fieldflowRememberMe");
+        localStorage.removeItem("annixRepRememberedEmail");
+        localStorage.removeItem("annixRepRememberMe");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
