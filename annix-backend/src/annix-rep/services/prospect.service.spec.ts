@@ -3,14 +3,9 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository, SelectQueryBuilder } from "typeorm";
 import { fromISO } from "../../lib/datetime";
-import {
-  FollowUpRecurrence,
-  Prospect,
-  ProspectPriority,
-  ProspectStatus,
-} from "../entities";
-import { ProspectActivityService } from "./prospect-activity.service";
+import { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "../entities";
 import { ProspectService } from "./prospect.service";
+import { ProspectActivityService } from "./prospect-activity.service";
 
 describe("ProspectService", () => {
   let service: ProspectService;
@@ -152,7 +147,10 @@ describe("ProspectService", () => {
         followUpRecurrence: FollowUpRecurrence.WEEKLY,
       };
 
-      const created = mockProspect({ ...dto, nextFollowUpAt: fromISO(dto.nextFollowUpAt).toJSDate() });
+      const created = mockProspect({
+        ...dto,
+        nextFollowUpAt: fromISO(dto.nextFollowUpAt).toJSDate(),
+      });
       (mockRepo.create as jest.Mock).mockReturnValue(created);
       (mockRepo.save as jest.Mock).mockResolvedValue(created);
 
@@ -629,11 +627,7 @@ describe("ProspectService", () => {
     it("should return all ids as notFound when none are owned", async () => {
       (mockRepo.find as jest.Mock).mockResolvedValue([]);
 
-      const result = await service.bulkUpdateStatus(
-        OWNER_ID,
-        [10, 20],
-        ProspectStatus.LOST,
-      );
+      const result = await service.bulkUpdateStatus(OWNER_ID, [10, 20], ProspectStatus.LOST);
 
       expect(result.updated).toBe(0);
       expect(result.updatedIds).toEqual([]);
@@ -782,8 +776,18 @@ describe("ProspectService", () => {
 
     it("should return empty array when no duplicates exist", async () => {
       const prospects = [
-        mockProspect({ id: 1, companyName: "Company A", contactEmail: "a@a.com", contactPhone: "111" }),
-        mockProspect({ id: 2, companyName: "Company B", contactEmail: "b@b.com", contactPhone: "222" }),
+        mockProspect({
+          id: 1,
+          companyName: "Company A",
+          contactEmail: "a@a.com",
+          contactPhone: "111",
+        }),
+        mockProspect({
+          id: 2,
+          companyName: "Company B",
+          contactEmail: "b@b.com",
+          contactPhone: "222",
+        }),
       ];
       (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
 
@@ -808,10 +812,7 @@ describe("ProspectService", () => {
 
   describe("importFromCsv", () => {
     it("should import valid rows and return result", async () => {
-      const rows = [
-        { companyName: "Import Co 1" },
-        { companyName: "Import Co 2" },
-      ];
+      const rows = [{ companyName: "Import Co 1" }, { companyName: "Import Co 2" }];
 
       const saved = [
         mockProspect({ id: 10, companyName: "Import Co 1" }),
@@ -829,10 +830,7 @@ describe("ProspectService", () => {
     });
 
     it("should skip rows without company name", async () => {
-      const rows = [
-        { companyName: "" },
-        { companyName: "Valid Co" },
-      ];
+      const rows = [{ companyName: "" }, { companyName: "Valid Co" }];
 
       const saved = [mockProspect({ id: 10, companyName: "Valid Co" })];
       (mockRepo.create as jest.Mock).mockImplementation((data) => data);
@@ -871,10 +869,7 @@ describe("ProspectService", () => {
     });
 
     it("should abort all when skipInvalid is false and invalid rows exist", async () => {
-      const rows = [
-        { companyName: "" },
-        { companyName: "Valid Co" },
-      ];
+      const rows = [{ companyName: "" }, { companyName: "Valid Co" }];
 
       const result = await service.importFromCsv(OWNER_ID, rows as any, false);
 
@@ -987,8 +982,20 @@ describe("ProspectService", () => {
     });
 
     it("should keep highest estimated value when no override provided", async () => {
-      const primary = mockProspect({ id: 1, estimatedValue: 300000, tags: null, notes: null, customFields: null });
-      const secondary = mockProspect({ id: 2, estimatedValue: 100000, tags: null, notes: null, customFields: null });
+      const primary = mockProspect({
+        id: 1,
+        estimatedValue: 300000,
+        tags: null,
+        notes: null,
+        customFields: null,
+      });
+      const secondary = mockProspect({
+        id: 2,
+        estimatedValue: 100000,
+        tags: null,
+        notes: null,
+        customFields: null,
+      });
 
       (mockRepo.findOne as jest.Mock).mockResolvedValue(primary);
       (mockRepo.find as jest.Mock).mockResolvedValue([secondary]);
@@ -1230,9 +1237,7 @@ describe("ProspectService", () => {
     });
 
     it("should remove tags from prospects", async () => {
-      const prospects = [
-        mockProspect({ id: 1, tags: ["mining", "industrial"] }),
-      ];
+      const prospects = [mockProspect({ id: 1, tags: ["mining", "industrial"] })];
       (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
       (mockRepo.save as jest.Mock).mockImplementation((arr) => Promise.resolve(arr));
 

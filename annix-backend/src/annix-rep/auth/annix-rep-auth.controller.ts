@@ -13,8 +13,9 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
-import { nowMillis } from "../../lib/datetime";
 import { Public } from "../../auth/public.decorator";
+import { nowMillis } from "../../lib/datetime";
+import { AnnixRepAuthService } from "./annix-rep-auth.service";
 import {
   AnnixRepAuthResponseDto,
   AnnixRepLoginDto,
@@ -23,7 +24,6 @@ import {
   AnnixRepRegisterDto,
   CheckEmailResponseDto,
 } from "./dto";
-import { AnnixRepAuthService } from "./annix-rep-auth.service";
 import { AnnixRepAuthGuard } from "./guards";
 import { OAuthProvider } from "./oauth-login.provider";
 

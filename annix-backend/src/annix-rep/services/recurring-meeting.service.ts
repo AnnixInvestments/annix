@@ -237,8 +237,10 @@ export class RecurringMeetingService {
 
     for (const parent of recurringParents) {
       const instances = this.generateInstances(parent, startDate, endDate);
-      const duration = fromJSDate(parent.scheduledEnd)
-        .diff(fromJSDate(parent.scheduledStart), "milliseconds").milliseconds;
+      const duration = fromJSDate(parent.scheduledEnd).diff(
+        fromJSDate(parent.scheduledStart),
+        "milliseconds",
+      ).milliseconds;
 
       for (const instanceDate of instances) {
         const existingChild = childMeetings.find((c) => {
@@ -248,9 +250,7 @@ export class RecurringMeetingService {
         });
 
         if (!existingChild) {
-          const instanceEnd = fromJSDate(instanceDate)
-            .plus({ milliseconds: duration })
-            .toJSDate();
+          const instanceEnd = fromJSDate(instanceDate).plus({ milliseconds: duration }).toJSDate();
 
           const virtualMeeting: Meeting = {
             ...parent,
@@ -333,9 +333,7 @@ export class RecurringMeetingService {
       scheduledStart: dto.scheduledStart
         ? fromISO(dto.scheduledStart).toJSDate()
         : meeting.scheduledStart,
-      scheduledEnd: dto.scheduledEnd
-        ? fromISO(dto.scheduledEnd).toJSDate()
-        : meeting.scheduledEnd,
+      scheduledEnd: dto.scheduledEnd ? fromISO(dto.scheduledEnd).toJSDate() : meeting.scheduledEnd,
       location: dto.location ?? meeting.location,
       latitude: dto.latitude ?? meeting.latitude,
       longitude: dto.longitude ?? meeting.longitude,
@@ -448,10 +446,8 @@ export class RecurringMeetingService {
     if (dto.description != null) updates.description = dto.description ?? null;
     if (dto.meetingType != null) updates.meetingType = dto.meetingType;
     if (dto.status != null) updates.status = dto.status;
-    if (dto.scheduledStart != null)
-      updates.scheduledStart = fromISO(dto.scheduledStart).toJSDate();
-    if (dto.scheduledEnd != null)
-      updates.scheduledEnd = fromISO(dto.scheduledEnd).toJSDate();
+    if (dto.scheduledStart != null) updates.scheduledStart = fromISO(dto.scheduledStart).toJSDate();
+    if (dto.scheduledEnd != null) updates.scheduledEnd = fromISO(dto.scheduledEnd).toJSDate();
     if (dto.location != null) updates.location = dto.location ?? null;
     if (dto.latitude != null) updates.latitude = dto.latitude ?? null;
     if (dto.longitude != null) updates.longitude = dto.longitude ?? null;
@@ -505,8 +501,7 @@ export class RecurringMeetingService {
 
       if (parent?.recurrenceRule) {
         const cutoffStr =
-          fromJSDate(meeting.scheduledStart).minus({ days: 1 }).toFormat("yyyyMMdd") +
-          "T235959Z";
+          fromJSDate(meeting.scheduledStart).minus({ days: 1 }).toFormat("yyyyMMdd") + "T235959Z";
         const updatedRuleParts = parent.recurrenceRule
           .replace("RRULE:", "")
           .split(";")
@@ -566,8 +561,10 @@ export class RecurringMeetingService {
     });
 
     const instances = this.generateInstances(parent, startDate, endDate, 52);
-    const duration = fromJSDate(parent.scheduledEnd)
-      .diff(fromJSDate(parent.scheduledStart), "milliseconds").milliseconds;
+    const duration = fromJSDate(parent.scheduledEnd).diff(
+      fromJSDate(parent.scheduledStart),
+      "milliseconds",
+    ).milliseconds;
 
     const allInstances: Meeting[] = [];
     const childDateMap = new Map<string, Meeting>();
@@ -588,9 +585,7 @@ export class RecurringMeetingService {
           ...parent,
           id: 0,
           scheduledStart: instanceDate,
-          scheduledEnd: fromJSDate(instanceDate)
-            .plus({ milliseconds: duration })
-            .toJSDate(),
+          scheduledEnd: fromJSDate(instanceDate).plus({ milliseconds: duration }).toJSDate(),
           isRecurring: false,
           recurringParentId: parent.id,
         } as Meeting;

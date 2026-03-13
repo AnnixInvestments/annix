@@ -21,7 +21,12 @@ import {
 } from "@nestjs/swagger";
 import { Request } from "express";
 import { AnnixRepAuthGuard } from "../auth";
-import { CreateCustomFieldDto, CustomFieldResponseDto, ReorderCustomFieldsDto, UpdateCustomFieldDto } from "../dto";
+import {
+  CreateCustomFieldDto,
+  CustomFieldResponseDto,
+  ReorderCustomFieldsDto,
+  UpdateCustomFieldDto,
+} from "../dto";
 import { CustomFieldService } from "../services";
 
 interface AnnixRepRequest extends Request {

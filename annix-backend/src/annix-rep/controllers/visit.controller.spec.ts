@@ -219,12 +219,7 @@ describe("VisitController", () => {
       const coldCall = sampleVisit({ visitType: VisitType.COLD_CALL });
       service.startColdCall.mockResolvedValue(coldCall);
 
-      const result = await controller.startColdCall(
-        mockRequest as any,
-        10,
-        "-26.2041",
-        "28.0473",
-      );
+      const result = await controller.startColdCall(mockRequest as any, 10, "-26.2041", "28.0473");
 
       expect(result.visitType).toBe(VisitType.COLD_CALL);
       expect(service.startColdCall).toHaveBeenCalledWith(100, 10, -26.2041, 28.0473);

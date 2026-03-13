@@ -136,7 +136,9 @@ export class RubberRequisitionService {
       status: RequisitionStatus.PENDING,
       supplierCompanyId: data.supplierCompanyId || null,
       externalPoNumber: data.externalPoNumber || null,
-      expectedDeliveryDate: data.expectedDeliveryDate ? fromISO(data.expectedDeliveryDate).toJSDate() : null,
+      expectedDeliveryDate: data.expectedDeliveryDate
+        ? fromISO(data.expectedDeliveryDate).toJSDate()
+        : null,
       notes: data.notes || null,
       createdBy: data.createdBy || null,
       items: data.items.map((item) =>
@@ -182,7 +184,9 @@ export class RubberRequisitionService {
       supplierCompanyId: data.supplierCompanyId || null,
       externalPoNumber: data.externalPoNumber,
       externalPoDocumentPath: data.externalPoDocumentPath || null,
-      expectedDeliveryDate: data.expectedDeliveryDate ? fromISO(data.expectedDeliveryDate).toJSDate() : null,
+      expectedDeliveryDate: data.expectedDeliveryDate
+        ? fromISO(data.expectedDeliveryDate).toJSDate()
+        : null,
       notes: data.notes || null,
       createdBy: data.createdBy || null,
       approvedBy: data.createdBy || "System",
@@ -470,9 +474,7 @@ export class RubberRequisitionService {
       (existingRequisition?.items || []).map((item) => item.compoundStockId),
     );
 
-    const eligibleItems = lowStockItems.filter(
-      (stock) => !existingItemStockIds.has(stock.id),
-    );
+    const eligibleItems = lowStockItems.filter((stock) => !existingItemStockIds.has(stock.id));
 
     const created = await eligibleItems.reduce(
       async (accPromise, stock) => {

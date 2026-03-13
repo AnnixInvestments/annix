@@ -148,9 +148,9 @@ describe("GoalsController", () => {
     it("should throw NotFoundException when goal does not exist", async () => {
       service.deleteGoal.mockResolvedValue(false);
 
-      await expect(
-        controller.deleteGoal(mockRequest as any, GoalPeriod.MONTHLY),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.deleteGoal(mockRequest as any, GoalPeriod.MONTHLY)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

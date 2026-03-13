@@ -91,13 +91,11 @@ describe("PipedriveAdapter", () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () =>
-            Promise.resolve({ success: true, data: { items: [{ item: { id: 10 } }] } }),
+          json: () => Promise.resolve({ success: true, data: { items: [{ item: { id: 10 } }] } }),
         })
         .mockResolvedValueOnce({
           ok: true,
-          json: () =>
-            Promise.resolve({ success: true, data: { id: 42, name: "John Smith" } }),
+          json: () => Promise.resolve({ success: true, data: { id: 42, name: "John Smith" } }),
         });
 
       const result = await adapter.syncContact(mockProspect as Prospect);
@@ -194,10 +192,7 @@ describe("PipedriveAdapter", () => {
         json: () => Promise.resolve({ success: true, data: { id: 99 } }),
       });
 
-      const result = await adapter.syncMeeting(
-        mockMeeting as Meeting,
-        mockProspect as Prospect,
-      );
+      const result = await adapter.syncMeeting(mockMeeting as Meeting, mockProspect as Prospect);
 
       expect(result.success).toBe(true);
       expect(result.externalId).toBe("99");
@@ -238,10 +233,7 @@ describe("PipedriveAdapter", () => {
         json: () => Promise.resolve({ success: true, data: { id: 99 } }),
       });
 
-      const result = await adapter.syncMeeting(
-        meetingWithCrm as Meeting,
-        mockProspect as Prospect,
-      );
+      const result = await adapter.syncMeeting(meetingWithCrm as Meeting, mockProspect as Prospect);
 
       expect(result.success).toBe(true);
       expect(result.externalId).toBe("99");
@@ -257,10 +249,7 @@ describe("PipedriveAdapter", () => {
         json: () => Promise.resolve({ success: false, error: "Permission denied" }),
       });
 
-      const result = await adapter.syncMeeting(
-        mockMeeting as Meeting,
-        mockProspect as Prospect,
-      );
+      const result = await adapter.syncMeeting(mockMeeting as Meeting, mockProspect as Prospect);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("Permission denied");

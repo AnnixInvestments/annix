@@ -133,9 +133,9 @@ describe("CalendarService", () => {
         email: "user@gmail.com",
         name: "Google User",
       }),
-      listCalendars: jest.fn().mockResolvedValue([
-        { id: "primary", name: "Primary", isPrimary: true, color: "#4285F4" },
-      ]),
+      listCalendars: jest
+        .fn()
+        .mockResolvedValue([{ id: "primary", name: "Primary", isPrimary: true, color: "#4285F4" }]),
       syncEvents: jest.fn().mockResolvedValue({
         events: [],
         deletedEventIds: [],
@@ -340,9 +340,9 @@ describe("CalendarService", () => {
     });
 
     it("should throw NotFoundException when connection does not exist", async () => {
-      await expect(
-        service.updateConnection(100, 999, { selectedCalendars: [] }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateConnection(100, 999, { selectedCalendars: [] })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -467,9 +467,9 @@ describe("CalendarService", () => {
         refreshTokenEncrypted: null,
       };
 
-      await expect(
-        service.refreshTokenIfNeeded(connection as CalendarConnection),
-      ).rejects.toThrow("Refresh token not available");
+      await expect(service.refreshTokenIfNeeded(connection as CalendarConnection)).rejects.toThrow(
+        "Refresh token not available",
+      );
     });
   });
 });

@@ -231,8 +231,12 @@ export class PlatformRecordingService {
       }
     }
 
-    const startWindow = fromJSDate(record.startTime).minus({ minutes: MEETING_MATCH_WINDOW_MINUTES }).toJSDate();
-    const endWindow = fromJSDate(record.startTime).plus({ minutes: MEETING_MATCH_WINDOW_MINUTES }).toJSDate();
+    const startWindow = fromJSDate(record.startTime)
+      .minus({ minutes: MEETING_MATCH_WINDOW_MINUTES })
+      .toJSDate();
+    const endWindow = fromJSDate(record.startTime)
+      .plus({ minutes: MEETING_MATCH_WINDOW_MINUTES })
+      .toJSDate();
 
     const meetingByTime = await this.meetingRepo
       .createQueryBuilder("m")
@@ -255,7 +259,9 @@ export class PlatformRecordingService {
     newMeeting.scheduledStart = record.startTime;
     newMeeting.scheduledEnd =
       record.endTime ??
-      fromJSDate(record.startTime).plus({ seconds: record.durationSeconds ?? DEFAULT_MEETING_DURATION_SECONDS }).toJSDate();
+      fromJSDate(record.startTime)
+        .plus({ seconds: record.durationSeconds ?? DEFAULT_MEETING_DURATION_SECONDS })
+        .toJSDate();
     newMeeting.actualStart = record.startTime;
     newMeeting.actualEnd = record.endTime;
     newMeeting.attendees = record.participants;

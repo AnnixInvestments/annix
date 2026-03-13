@@ -33,8 +33,8 @@ import { TankChuteRfq } from "./entities/tank-chute-rfq.entity";
 import { ValveRfq } from "./entities/valve-rfq.entity";
 import { RfqController } from "./rfq.controller";
 import { RfqService } from "./rfq.service";
-import { RfqDocumentService } from "./services/rfq-document.service";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
+import { RfqDocumentService } from "./services/rfq-document.service";
 
 @Module({
   imports: [

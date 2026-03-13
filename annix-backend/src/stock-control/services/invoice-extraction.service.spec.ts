@@ -11,10 +11,7 @@ import {
 import { InvoiceExtractionCorrection } from "../entities/invoice-extraction-correction.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { StockPriceHistory } from "../entities/stock-price-history.entity";
-import {
-  InvoiceExtractionStatus,
-  SupplierInvoice,
-} from "../entities/supplier-invoice.entity";
+import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 import {
   InvoiceItemMatchStatus,
   SupplierInvoiceItem,
@@ -173,9 +170,9 @@ describe("InvoiceExtractionService", () => {
     it("throws when invoice is not found", async () => {
       mockInvoiceRepo.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.extractFromImage(999, "base64data", "image/png"),
-      ).rejects.toThrow("Invoice 999 not found");
+      await expect(service.extractFromImage(999, "base64data", "image/png")).rejects.toThrow(
+        "Invoice 999 not found",
+      );
     });
 
     it("sets status to NEEDS_CLARIFICATION when there are pending clarifications", async () => {
@@ -252,9 +249,9 @@ describe("InvoiceExtractionService", () => {
         tokensUsed: 50,
       });
 
-      await expect(
-        service.extractDeliveryNoteFromImage("base64", "image/png"),
-      ).rejects.toThrow("AI response did not contain valid JSON");
+      await expect(service.extractDeliveryNoteFromImage("base64", "image/png")).rejects.toThrow(
+        "AI response did not contain valid JSON",
+      );
     });
   });
 
@@ -571,11 +568,7 @@ describe("InvoiceExtractionService", () => {
       mockInvoiceRepo.findOne.mockResolvedValue({ id: 1 });
       mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
-      const result = await service.processClarificationResponse(
-        3,
-        { skipPriceUpdate: true },
-        42,
-      );
+      const result = await service.processClarificationResponse(3, { skipPriceUpdate: true }, 42);
 
       expect(result.status).toBe(ClarificationStatus.SKIPPED);
     });
@@ -660,9 +653,7 @@ describe("InvoiceExtractionService", () => {
     it("throws when invoice not found", async () => {
       mockInvoiceRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.applyPriceUpdates(999, 42)).rejects.toThrow(
-        "Invoice 999 not found",
-      );
+      await expect(service.applyPriceUpdates(999, 42)).rejects.toThrow("Invoice 999 not found");
     });
   });
 });

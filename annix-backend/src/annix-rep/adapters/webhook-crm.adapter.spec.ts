@@ -191,10 +191,7 @@ describe("WebhookCrmAdapter", () => {
         json: () => Promise.resolve({ id: "meeting-456" }),
       });
 
-      const result = await adapter.syncMeeting(
-        mockMeeting as Meeting,
-        mockProspect as Prospect,
-      );
+      const result = await adapter.syncMeeting(mockMeeting as Meeting, mockProspect as Prospect);
 
       expect(result.success).toBe(true);
       expect(result.externalId).toBe("meeting-456");
@@ -226,10 +223,7 @@ describe("WebhookCrmAdapter", () => {
         text: () => Promise.resolve("Internal server error"),
       });
 
-      const result = await adapter.syncMeeting(
-        mockMeeting as Meeting,
-        mockProspect as Prospect,
-      );
+      const result = await adapter.syncMeeting(mockMeeting as Meeting, mockProspect as Prospect);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("HTTP 500: Internal server error");
@@ -320,9 +314,7 @@ describe("WebhookCrmAdapter", () => {
     it("should pass unmapped fields through", async () => {
       const mappedConfig: CrmAdapterConfig = {
         ...webhookConfig,
-        fieldMappings: [
-          { sourceField: "companyName", targetField: "org" },
-        ],
+        fieldMappings: [{ sourceField: "companyName", targetField: "org" }],
       };
       adapter.configure(mappedConfig);
 

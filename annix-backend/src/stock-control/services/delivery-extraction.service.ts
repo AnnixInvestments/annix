@@ -155,10 +155,7 @@ export class DeliveryExtractionService {
       await this.movementRepo.save(movement);
     };
 
-    await lineItems.reduce(
-      (chain, item) => chain.then(() => processItem(item)),
-      Promise.resolve(),
-    );
+    await lineItems.reduce((chain, item) => chain.then(() => processItem(item)), Promise.resolve());
   }
 
   calculateItemMetrics(item: ExtractedLineItem): {
@@ -188,11 +185,7 @@ export class DeliveryExtractionService {
     return { quantity, costPerUnit, unitOfMeasure: item.unitOfMeasure || "each" };
   }
 
-  generateSku(item: {
-    itemCode?: string;
-    productCode?: string;
-    description?: string;
-  }): string {
+  generateSku(item: { itemCode?: string; productCode?: string; description?: string }): string {
     if (item.itemCode) {
       return item.itemCode.toUpperCase().replace(/\s+/g, "-");
     }

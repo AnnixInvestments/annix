@@ -3,11 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import {
-  MeetingRecording,
-  MeetingTranscript,
-  RecordingProcessingStatus,
-} from "../entities";
+import { MeetingRecording, MeetingTranscript } from "../entities";
 import { TranscriptionService } from "./transcription.service";
 
 describe("TranscriptionService", () => {
@@ -106,17 +102,17 @@ describe("TranscriptionService", () => {
     it("should throw NotFoundException when transcript does not exist", async () => {
       (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        service.updateSegments(100, 999, { segments: [] }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateSegments(100, 999, { segments: [] })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should throw NotFoundException when user is not the meeting owner", async () => {
       (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue(mockTranscript);
 
-      await expect(
-        service.updateSegments(200, 1, { segments: [] }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateSegments(200, 1, { segments: [] })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should throw BadRequestException for invalid segment indices", async () => {
@@ -189,9 +185,7 @@ describe("TranscriptionService", () => {
 
   describe("alignSpeakerLabels (via transcribeRecording)", () => {
     it("should assign default speaker label when no speaker segments exist", () => {
-      const whisperSegments = [
-        { start_time: 0, end_time: 5, text: "Hello", confidence: 0.9 },
-      ];
+      const whisperSegments = [{ start_time: 0, end_time: 5, text: "Hello", confidence: 0.9 }];
 
       const result = (service as any).alignSpeakerLabels(whisperSegments, [], {});
 
@@ -219,24 +213,16 @@ describe("TranscriptionService", () => {
 
       const labels = { SPEAKER_00: "Alice", SPEAKER_01: "Bob" };
 
-      const result = (service as any).alignSpeakerLabels(
-        whisperSegments,
-        speakerSegments,
-        labels,
-      );
+      const result = (service as any).alignSpeakerLabels(whisperSegments, speakerSegments, labels);
 
       expect(result[0].speakerLabel).toBe("Alice");
       expect(result[1].speakerLabel).toBe("Bob");
     });
 
     it("should use raw label when no display label mapping exists", () => {
-      const whisperSegments = [
-        { start_time: 0, end_time: 5, text: "Hello", confidence: 0.9 },
-      ];
+      const whisperSegments = [{ start_time: 0, end_time: 5, text: "Hello", confidence: 0.9 }];
 
-      const speakerSegments = [
-        { startTime: 0, endTime: 10, speakerLabel: "SPEAKER_00" },
-      ];
+      const speakerSegments = [{ startTime: 0, endTime: 10, speakerLabel: "SPEAKER_00" }];
 
       const result = (service as any).alignSpeakerLabels(whisperSegments, speakerSegments, {});
 
@@ -247,9 +233,27 @@ describe("TranscriptionService", () => {
   describe("analyzeTranscript", () => {
     it("should return analysis with all required fields", () => {
       const segments = [
-        { startTime: 0, endTime: 10, text: "We need to discuss the pricing for next quarter.", speakerLabel: "Alice", confidence: 0.9 },
-        { startTime: 10, endTime: 20, text: "I think we should follow up with the client by Friday.", speakerLabel: "Bob", confidence: 0.8 },
-        { startTime: 20, endTime: 30, text: "The key point is that we agreed on the discount structure.", speakerLabel: "Alice", confidence: 0.9 },
+        {
+          startTime: 0,
+          endTime: 10,
+          text: "We need to discuss the pricing for next quarter.",
+          speakerLabel: "Alice",
+          confidence: 0.9,
+        },
+        {
+          startTime: 10,
+          endTime: 20,
+          text: "I think we should follow up with the client by Friday.",
+          speakerLabel: "Bob",
+          confidence: 0.8,
+        },
+        {
+          startTime: 20,
+          endTime: 30,
+          text: "The key point is that we agreed on the discount structure.",
+          speakerLabel: "Alice",
+          confidence: 0.9,
+        },
       ];
 
       const result = (service as any).analyzeTranscript(segments);

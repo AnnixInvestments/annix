@@ -8,7 +8,9 @@ import { CustomFieldService } from "./custom-field.service";
 describe("CustomFieldService", () => {
   let service: CustomFieldService;
 
-  const mockCustomFieldRepo: Partial<Record<keyof import("typeorm").Repository<CustomFieldDefinition>, jest.Mock>> = {
+  const mockCustomFieldRepo: Partial<
+    Record<keyof import("typeorm").Repository<CustomFieldDefinition>, jest.Mock>
+  > = {
     find: jest.fn(),
     findOne: jest.fn(),
     create: jest.fn(),
@@ -82,9 +84,9 @@ describe("CustomFieldService", () => {
     it("should throw ConflictException when fieldKey already exists", async () => {
       mockCustomFieldRepo.findOne!.mockResolvedValue(sampleField());
 
-      await expect(
-        service.create(100, { name: "Industry", fieldKey: "industry" }),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.create(100, { name: "Industry", fieldKey: "industry" })).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it("should create a select field with options", async () => {
@@ -193,20 +195,18 @@ describe("CustomFieldService", () => {
 
     it("should throw ConflictException when changing fieldKey to existing key", async () => {
       const existing = sampleField();
-      mockCustomFieldRepo.findOne!
-        .mockResolvedValueOnce(existing)
+      mockCustomFieldRepo
+        .findOne!.mockResolvedValueOnce(existing)
         .mockResolvedValueOnce(sampleField({ id: 2, fieldKey: "other_key" }));
 
-      await expect(
-        service.update(100, 1, { fieldKey: "other_key" }),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.update(100, 1, { fieldKey: "other_key" })).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it("should allow keeping the same fieldKey", async () => {
       const existing = sampleField();
-      mockCustomFieldRepo.findOne!
-        .mockResolvedValueOnce(existing)
-        .mockResolvedValueOnce(existing);
+      mockCustomFieldRepo.findOne!.mockResolvedValueOnce(existing).mockResolvedValueOnce(existing);
       mockCustomFieldRepo.save!.mockResolvedValueOnce(existing);
 
       const result = await service.update(100, 1, { fieldKey: "industry" });
@@ -278,9 +278,7 @@ describe("CustomFieldService", () => {
         sampleField({ id: 2, fieldKey: "size", displayOrder: 1 }),
         sampleField({ id: 3, fieldKey: "category", displayOrder: 2 }),
       ];
-      mockCustomFieldRepo.find!
-        .mockResolvedValueOnce(fields)
-        .mockResolvedValueOnce(fields);
+      mockCustomFieldRepo.find!.mockResolvedValueOnce(fields).mockResolvedValueOnce(fields);
       mockCustomFieldRepo.save!.mockResolvedValue(fields);
 
       const result = await service.reorder(100, [3, 1, 2]);
@@ -296,17 +294,13 @@ describe("CustomFieldService", () => {
 
     it("should skip IDs that do not exist in fields", async () => {
       const fields = [sampleField({ id: 1, displayOrder: 0 })];
-      mockCustomFieldRepo.find!
-        .mockResolvedValueOnce(fields)
-        .mockResolvedValueOnce(fields);
+      mockCustomFieldRepo.find!.mockResolvedValueOnce(fields).mockResolvedValueOnce(fields);
       mockCustomFieldRepo.save!.mockResolvedValue([]);
 
       await service.reorder(100, [1, 999]);
 
       expect(mockCustomFieldRepo.save).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ id: 1, displayOrder: 0 }),
-        ]),
+        expect.arrayContaining([expect.objectContaining({ id: 1, displayOrder: 0 })]),
       );
     });
 

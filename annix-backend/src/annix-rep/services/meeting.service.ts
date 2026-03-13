@@ -162,10 +162,8 @@ export class MeetingService {
     if (dto.description != null) meeting.description = dto.description ?? null;
     if (dto.meetingType != null) meeting.meetingType = dto.meetingType;
     if (dto.status != null) meeting.status = dto.status;
-    if (dto.scheduledStart != null)
-      meeting.scheduledStart = fromISO(dto.scheduledStart).toJSDate();
-    if (dto.scheduledEnd != null)
-      meeting.scheduledEnd = fromISO(dto.scheduledEnd).toJSDate();
+    if (dto.scheduledStart != null) meeting.scheduledStart = fromISO(dto.scheduledStart).toJSDate();
+    if (dto.scheduledEnd != null) meeting.scheduledEnd = fromISO(dto.scheduledEnd).toJSDate();
     if (dto.location != null) meeting.location = dto.location ?? null;
     if (dto.latitude != null) meeting.latitude = dto.latitude ?? null;
     if (dto.longitude != null) meeting.longitude = dto.longitude ?? null;

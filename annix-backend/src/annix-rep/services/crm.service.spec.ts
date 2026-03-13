@@ -390,9 +390,9 @@ describe("CrmService", () => {
     });
 
     it("should throw NotFoundException when config does not exist", async () => {
-      await expect(
-        service.updateConfig(100, 999, { name: "Updated" }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateConfig(100, 999, { name: "Updated" })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should only update provided fields", async () => {
@@ -454,12 +454,8 @@ describe("CrmService", () => {
   describe("syncStatus", () => {
     it("should return sync status for config", async () => {
       (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(mockCrmConfig);
-      (mockProspectRepo.count as jest.Mock)
-        .mockResolvedValueOnce(5)
-        .mockResolvedValueOnce(10);
-      (mockMeetingRepo.count as jest.Mock)
-        .mockResolvedValueOnce(3)
-        .mockResolvedValueOnce(8);
+      (mockProspectRepo.count as jest.Mock).mockResolvedValueOnce(5).mockResolvedValueOnce(10);
+      (mockMeetingRepo.count as jest.Mock).mockResolvedValueOnce(3).mockResolvedValueOnce(8);
 
       const result = await service.syncStatus(100, 1);
 

@@ -219,7 +219,11 @@ describe("MeetingController", () => {
     it("should parse ISO date strings and pass to service", () => {
       meetingService.findByDateRange.mockResolvedValue([baseMeeting] as any);
 
-      controller.findByDateRange(mockRequest as any, "2026-01-01T00:00:00Z", "2026-01-31T23:59:59Z");
+      controller.findByDateRange(
+        mockRequest as any,
+        "2026-01-01T00:00:00Z",
+        "2026-01-31T23:59:59Z",
+      );
 
       expect(meetingService.findByDateRange).toHaveBeenCalledWith(
         100,

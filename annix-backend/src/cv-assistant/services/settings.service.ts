@@ -48,7 +48,9 @@ export class SettingsService {
   }
 
   private encryptPassword(password: string): string {
-    this.logger.warn("IMAP password stored without encryption — implement AES-256-GCM or Fly.io secrets");
+    this.logger.warn(
+      "IMAP password stored without encryption — implement AES-256-GCM or Fly.io secrets",
+    );
     return password;
   }
 }

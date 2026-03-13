@@ -1,17 +1,14 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { AuditService } from "../../audit/audit.service";
+import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { InvoiceClarification } from "../entities/invoice-clarification.entity";
-import {
-  InvoiceExtractionStatus,
-  SupplierInvoice,
-} from "../entities/supplier-invoice.entity";
+import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { SupplierInvoiceItem } from "../entities/supplier-invoice-item.entity";
-import { InvoiceExtractionService } from "./invoice-extraction.service";
 import { InvoiceService } from "./invoice.service";
+import { InvoiceExtractionService } from "./invoice-extraction.service";
 
 describe("InvoiceService", () => {
   let service: InvoiceService;
@@ -286,9 +283,7 @@ describe("InvoiceService", () => {
 
       const result = await service.reExtract(1, 1);
 
-      expect(mockStorageService.download).toHaveBeenCalledWith(
-        "stock-control/invoices/scan.pdf",
-      );
+      expect(mockStorageService.download).toHaveBeenCalledWith("stock-control/invoices/scan.pdf");
       expect(mockExtractionService.extractFromImage).toHaveBeenCalledWith(
         1,
         expect.any(String),
@@ -323,9 +318,7 @@ describe("InvoiceService", () => {
 
       await service.reExtract(1, 1);
 
-      expect(mockStorageService.download).toHaveBeenCalledWith(
-        "stock-control/invoices/scan.jpg",
-      );
+      expect(mockStorageService.download).toHaveBeenCalledWith("stock-control/invoices/scan.jpg");
       expect(mockExtractionService.extractFromImage).toHaveBeenCalledWith(
         1,
         expect.any(String),
@@ -370,10 +363,7 @@ describe("InvoiceService", () => {
 
       await service.uploadScan(1, 1, mockFile);
 
-      expect(mockStorageService.upload).toHaveBeenCalledWith(
-        mockFile,
-        "stock-control/invoices",
-      );
+      expect(mockStorageService.upload).toHaveBeenCalledWith(mockFile, "stock-control/invoices");
       expect(mockInvoiceRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
           scanUrl: "stock-control/invoices/invoice.pdf",

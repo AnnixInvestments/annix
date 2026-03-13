@@ -2,12 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { fromISO } from "../../lib/datetime";
 import { AnnixRepAuthGuard } from "../auth";
-import {
-  FollowUpRecurrence,
-  Prospect,
-  ProspectPriority,
-  ProspectStatus,
-} from "../entities";
+import { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "../entities";
 import { ProspectActivityService, ProspectService } from "../services";
 import { ProspectController } from "./prospect.controller";
 
@@ -326,7 +321,12 @@ describe("ProspectController", () => {
     });
 
     it("should pass skipInvalid false when specified", async () => {
-      const importResult = { imported: 0, skipped: 1, errors: [{ row: 1, error: "Missing name" }], createdIds: [] };
+      const importResult = {
+        imported: 0,
+        skipped: 1,
+        errors: [{ row: 1, error: "Missing name" }],
+        createdIds: [],
+      };
       prospectService.importFromCsv.mockResolvedValue(importResult);
 
       const dto = { rows: [{ companyName: "" }], skipInvalid: false };
@@ -480,9 +480,9 @@ describe("ProspectController", () => {
     it("should throw NotFoundException if prospect does not exist", async () => {
       prospectService.findOne.mockRejectedValue(new NotFoundException("Prospect 999 not found"));
 
-      await expect(
-        controller.prospectActivities(mockRequest as any, 999),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.prospectActivities(mockRequest as any, 999)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -516,11 +516,7 @@ describe("ProspectController", () => {
       const updated = mockProspect({ status: ProspectStatus.QUALIFIED });
       prospectService.updateStatus.mockResolvedValue(updated);
 
-      const result = await controller.updateStatus(
-        mockRequest as any,
-        1,
-        ProspectStatus.QUALIFIED,
-      );
+      const result = await controller.updateStatus(mockRequest as any, 1, ProspectStatus.QUALIFIED);
 
       expect(result).toEqual(updated);
       expect(prospectService.updateStatus).toHaveBeenCalledWith(

@@ -2,7 +2,6 @@ import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UseGuards } fro
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { Response } from "express";
-import { ComplySaJwtAuthGuard } from "./guards/jwt-auth.guard";
 import { ComplySaAuthService } from "./auth.service";
 import { ComplySaForgotPasswordDto } from "./dto/forgot-password.dto";
 import { ComplySaLoginDto } from "./dto/login.dto";
@@ -10,6 +9,7 @@ import { ComplySaResendVerificationDto } from "./dto/resend-verification.dto";
 import { ComplySaResetPasswordDto } from "./dto/reset-password.dto";
 import { ComplySaSignupDto } from "./dto/signup.dto";
 import { ComplySaVerifyEmailDto } from "./dto/verify-email.dto";
+import { ComplySaJwtAuthGuard } from "./guards/jwt-auth.guard";
 
 const COOKIE_NAME = "comply_sa_token";
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -32,10 +32,7 @@ export class ComplySaAuthController {
 
   @Post("signup")
   @Throttle({ default: { ttl: 60000, limit: 5 } })
-  async signup(
-    @Body() dto: ComplySaSignupDto,
-    @Res({ passthrough: true }) response: Response,
-  ) {
+  async signup(@Body() dto: ComplySaSignupDto, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.signup(dto);
     this.setTokenCookie(response, result.access_token);
     return { user: result.user };
@@ -43,10 +40,7 @@ export class ComplySaAuthController {
 
   @Post("login")
   @Throttle({ default: { ttl: 60000, limit: 10 } })
-  async login(
-    @Body() dto: ComplySaLoginDto,
-    @Res({ passthrough: true }) response: Response,
-  ) {
+  async login(@Body() dto: ComplySaLoginDto, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.login(dto);
     this.setTokenCookie(response, result.access_token);
     return { user: result.user, emailVerified: result.emailVerified };

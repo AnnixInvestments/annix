@@ -307,7 +307,9 @@ export class GoogleMeetProvider implements IMeetingPlatformProvider {
       ? fromISO(`${event.end.date}T00:00:00`).toJSDate()
       : fromISO(event.end.dateTime!).toJSDate();
 
-    const durationSeconds = Math.round(fromJSDate(endTime).diff(fromJSDate(startTime), "seconds").seconds);
+    const durationSeconds = Math.round(
+      fromJSDate(endTime).diff(fromJSDate(startTime), "seconds").seconds,
+    );
 
     let meetUrl: string | null = event.hangoutLink ?? null;
     if (!meetUrl && event.conferenceData?.entryPoints) {

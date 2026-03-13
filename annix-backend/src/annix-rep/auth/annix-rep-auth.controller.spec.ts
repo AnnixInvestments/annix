@@ -194,9 +194,7 @@ describe("AnnixRepAuthController", () => {
 
       await controller.oauthCallback("", "", "access_denied", "127.0.0.1", "agent", res);
 
-      expect(res.redirect).toHaveBeenCalledWith(
-        expect.stringContaining("error=access_denied"),
-      );
+      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining("error=access_denied"));
     });
 
     it("should redirect with error when code is missing", async () => {
@@ -204,9 +202,7 @@ describe("AnnixRepAuthController", () => {
 
       await controller.oauthCallback("", "state", "", "127.0.0.1", "agent", res);
 
-      expect(res.redirect).toHaveBeenCalledWith(
-        expect.stringContaining("error=missing_code"),
-      );
+      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining("error=missing_code"));
     });
 
     it("should redirect with error when state is missing", async () => {
@@ -214,9 +210,7 @@ describe("AnnixRepAuthController", () => {
 
       await controller.oauthCallback("code", "", "", "127.0.0.1", "agent", res);
 
-      expect(res.redirect).toHaveBeenCalledWith(
-        expect.stringContaining("error=missing_code"),
-      );
+      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining("error=missing_code"));
     });
 
     it("should redirect with error for invalid provider", async () => {
@@ -225,9 +219,7 @@ describe("AnnixRepAuthController", () => {
 
       await controller.oauthCallback("code", state, "", "127.0.0.1", "agent", res);
 
-      expect(res.redirect).toHaveBeenCalledWith(
-        expect.stringContaining("error=invalid_provider"),
-      );
+      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining("error=invalid_provider"));
     });
 
     it("should redirect with success params on successful OAuth login", async () => {
@@ -244,9 +236,7 @@ describe("AnnixRepAuthController", () => {
         "127.0.0.1",
         "agent",
       );
-      expect(res.redirect).toHaveBeenCalledWith(
-        expect.stringContaining("oauth=success"),
-      );
+      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining("oauth=success"));
     });
 
     it("should redirect with error when oauthLogin throws", async () => {
@@ -256,9 +246,7 @@ describe("AnnixRepAuthController", () => {
 
       await controller.oauthCallback("auth-code", state, "", "127.0.0.1", "agent", res);
 
-      expect(res.redirect).toHaveBeenCalledWith(
-        expect.stringContaining("error=OAuth%20failed"),
-      );
+      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining("error=OAuth%20failed"));
     });
 
     it("should treat teams provider as microsoft", async () => {
@@ -287,9 +275,7 @@ describe("AnnixRepAuthController", () => {
 
       await controller.oauthRedirect("invalid", "/annix-rep", res);
 
-      expect(res.redirect).toHaveBeenCalledWith(
-        expect.stringContaining("error=invalid_provider"),
-      );
+      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining("error=invalid_provider"));
     });
 
     it("should redirect with error when provider is not configured", async () => {
@@ -320,9 +306,7 @@ describe("AnnixRepAuthController", () => {
 
       await controller.oauthRedirect("google", "/annix-rep", res);
 
-      expect(res.redirect).toHaveBeenCalledWith(
-        expect.stringContaining("error=oauth_failed"),
-      );
+      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining("error=oauth_failed"));
     });
 
     it("should treat teams provider as microsoft", async () => {

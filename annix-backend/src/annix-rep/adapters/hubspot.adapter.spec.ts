@@ -96,7 +96,8 @@ describe("HubSpotAdapter", () => {
     it("should create a new contact via POST", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ id: "hubspot-123", properties: {}, createdAt: "", updatedAt: "" }),
+        json: () =>
+          Promise.resolve({ id: "hubspot-123", properties: {}, createdAt: "", updatedAt: "" }),
       });
 
       const result = await adapter.syncContact(mockProspect as Prospect);
@@ -127,7 +128,12 @@ describe("HubSpotAdapter", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         json: () =>
-          Promise.resolve({ status: "error", message: "Invalid input", correlationId: "abc", category: "VALIDATION_ERROR" }),
+          Promise.resolve({
+            status: "error",
+            message: "Invalid input",
+            correlationId: "abc",
+            category: "VALIDATION_ERROR",
+          }),
       });
 
       const result = await adapter.syncContact(mockProspect as Prospect);
@@ -188,14 +194,12 @@ describe("HubSpotAdapter", () => {
       mockFetch
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ id: "meeting-789", properties: {}, createdAt: "", updatedAt: "" }),
+          json: () =>
+            Promise.resolve({ id: "meeting-789", properties: {}, createdAt: "", updatedAt: "" }),
         })
         .mockResolvedValueOnce({ ok: true });
 
-      const result = await adapter.syncMeeting(
-        mockMeeting as Meeting,
-        prospectWithCrm as Prospect,
-      );
+      const result = await adapter.syncMeeting(mockMeeting as Meeting, prospectWithCrm as Prospect);
 
       expect(result.success).toBe(true);
       expect(result.externalId).toBe("meeting-789");
@@ -206,10 +210,7 @@ describe("HubSpotAdapter", () => {
       const meetingWithCrm = { ...mockMeeting, crmExternalId: "meeting-789" };
       mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
 
-      const result = await adapter.syncMeeting(
-        meetingWithCrm as Meeting,
-        mockProspect as Prospect,
-      );
+      const result = await adapter.syncMeeting(meetingWithCrm as Meeting, mockProspect as Prospect);
 
       expect(result.success).toBe(true);
       expect(result.externalId).toBe("meeting-789");
@@ -223,13 +224,15 @@ describe("HubSpotAdapter", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         json: () =>
-          Promise.resolve({ status: "error", message: "Rate limit", correlationId: "abc", category: "RATE_LIMITS" }),
+          Promise.resolve({
+            status: "error",
+            message: "Rate limit",
+            correlationId: "abc",
+            category: "RATE_LIMITS",
+          }),
       });
 
-      const result = await adapter.syncMeeting(
-        mockMeeting as Meeting,
-        mockProspect as Prospect,
-      );
+      const result = await adapter.syncMeeting(mockMeeting as Meeting, mockProspect as Prospect);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe("Rate limit");
@@ -304,7 +307,12 @@ describe("HubSpotAdapter", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         json: () =>
-          Promise.resolve({ status: "error", message: "Unauthorized", correlationId: "x", category: "AUTH" }),
+          Promise.resolve({
+            status: "error",
+            message: "Unauthorized",
+            correlationId: "x",
+            category: "AUTH",
+          }),
       });
 
       await expect(adapter.pullContacts(null)).rejects.toThrow("Unauthorized");
@@ -389,7 +397,12 @@ describe("HubSpotAdapter", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         json: () =>
-          Promise.resolve({ status: "error", message: "Invalid token", correlationId: "x", category: "AUTH" }),
+          Promise.resolve({
+            status: "error",
+            message: "Invalid token",
+            correlationId: "x",
+            category: "AUTH",
+          }),
       });
 
       const result = await adapter.testConnection();

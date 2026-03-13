@@ -159,7 +159,9 @@ export class ComplySaNotificationsService {
       const warningStatuses = statusesWithDueDates.filter((status) => {
         const dueDate = fromJSDate(status.nextDueDate!);
         const daysUntil = daysBetween(today, dueDate);
-        return daysUntil <= REMINDER_THRESHOLD_DAYS && daysUntil >= 0 && status.status === "in_progress";
+        return (
+          daysUntil <= REMINDER_THRESHOLD_DAYS && daysUntil >= 0 && status.status === "in_progress"
+        );
       });
 
       if (warningStatuses.length > 0) {

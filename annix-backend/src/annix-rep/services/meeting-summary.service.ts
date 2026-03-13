@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
-import { formatDateLongZA, fromJSDate, fromISO } from "../../lib/datetime";
+import { formatDateLongZA, fromISO, fromJSDate } from "../../lib/datetime";
 import {
   Meeting,
   type MeetingAnalysis,

@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import request from "supertest";
+import { AnnixRepModule } from "../src/annix-rep/annix-rep.module";
 import {
   Meeting,
   MeetingRecording,
@@ -10,7 +11,6 @@ import {
   MeetingType,
   RecordingProcessingStatus,
 } from "../src/annix-rep/entities";
-import { AnnixRepModule } from "../src/annix-rep/annix-rep.module";
 import { User } from "../src/user/entities/user.entity";
 
 describe("RecordingController (e2e)", () => {

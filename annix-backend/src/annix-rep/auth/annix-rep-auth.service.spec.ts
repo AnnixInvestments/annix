@@ -329,9 +329,9 @@ describe("AnnixRepAuthService", () => {
     it("should throw UnauthorizedException for invalid refresh token", async () => {
       tokenService.verifyToken.mockRejectedValue(new Error("Invalid token"));
 
-      await expect(
-        service.refreshSession(refreshDto, "127.0.0.1", "test-agent"),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshSession(refreshDto, "127.0.0.1", "test-agent")).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it("should throw UnauthorizedException when token type is not annixRep", async () => {
@@ -343,9 +343,9 @@ describe("AnnixRepAuthService", () => {
         annixRepUserId: 1,
       });
 
-      await expect(
-        service.refreshSession(refreshDto, "127.0.0.1", "test-agent"),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshSession(refreshDto, "127.0.0.1", "test-agent")).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it("should throw UnauthorizedException when user not found", async () => {
@@ -358,9 +358,9 @@ describe("AnnixRepAuthService", () => {
       });
       userRepo.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.refreshSession(refreshDto, "127.0.0.1", "test-agent"),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshSession(refreshDto, "127.0.0.1", "test-agent")).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -566,13 +566,7 @@ describe("AnnixRepAuthService", () => {
       tokenService.generateTokenPair.mockResolvedValue(mockTokenPair);
       repProfileRepo.findOne.mockResolvedValue(null);
 
-      await service.oauthLogin(
-        "google",
-        "auth-code",
-        "http://callback",
-        "127.0.0.1",
-        "test-agent",
-      );
+      await service.oauthLogin("google", "auth-code", "http://callback", "127.0.0.1", "test-agent");
 
       expect(userRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -8,10 +8,10 @@ import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { CpoService } from "./cpo.service";
+import { DeliveryService } from "./delivery.service";
 import { DeliveryExtractionService } from "./delivery-extraction.service";
 import { DeliveryInvoiceService } from "./delivery-invoice.service";
 import { DeliverySupplierService } from "./delivery-supplier.service";
-import { DeliveryService } from "./delivery.service";
 
 describe("DeliveryService", () => {
   let service: DeliveryService;
@@ -44,7 +44,10 @@ describe("DeliveryService", () => {
     resolveOrCreateSupplier: jest.fn().mockResolvedValue({ id: 1, name: "Supplier" }),
     findMatchingStockItem: jest.fn().mockResolvedValue({ existingItem: null, sameSupplier: false }),
     normalizeForComparison: jest.fn((text: string) =>
-      text.toLowerCase().replace(/[^a-z0-9]/g, "").trim(),
+      text
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+        .trim(),
     ),
   };
 
@@ -53,8 +56,8 @@ describe("DeliveryService", () => {
     linkExtractedItemsToStock: jest.fn().mockResolvedValue(undefined),
     createStockItemsFromExtracted: jest.fn().mockResolvedValue(undefined),
     calculateItemMetrics: jest.fn(),
-    generateSku: jest.fn((item: { itemCode?: string }) =>
-      item.itemCode?.toUpperCase().replace(/\s+/g, "-") || "ITEM",
+    generateSku: jest.fn(
+      (item: { itemCode?: string }) => item.itemCode?.toUpperCase().replace(/\s+/g, "-") || "ITEM",
     ),
     inferMediaTypeFromUrl: jest.fn().mockReturnValue("image/jpeg"),
   };

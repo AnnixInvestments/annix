@@ -7,11 +7,7 @@ import { JobCardImportMapping } from "../entities/job-card-import-mapping.entity
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { CpoService } from "./cpo.service";
 import { DrawingExtractionService } from "./drawing-extraction.service";
-import {
-  JobCardImportRow,
-  JobCardImportService,
-  LineItemImportRow,
-} from "./job-card-import.service";
+import { JobCardImportRow, JobCardImportService } from "./job-card-import.service";
 import { JobCardVersionService } from "./job-card-version.service";
 
 describe("JobCardImportService", () => {
@@ -27,9 +23,11 @@ describe("JobCardImportService", () => {
   const mockLineItemRepo = {
     find: jest.fn().mockResolvedValue([]),
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-    create: jest.fn().mockImplementation((data) =>
-      Array.isArray(data) ? data.map((d) => ({ ...d })) : { ...data },
-    ),
+    create: jest
+      .fn()
+      .mockImplementation((data) =>
+        Array.isArray(data) ? data.map((d) => ({ ...d })) : { ...data },
+      ),
     delete: jest.fn().mockResolvedValue({ affected: 0 }),
   };
 
@@ -113,9 +111,7 @@ describe("JobCardImportService", () => {
           jobNumber: "JOB-001",
           jobName: "Test Job",
           customerName: "Test Customer",
-          lineItems: [
-            { itemCode: "IC-01", itemDescription: "Widget A", quantity: "5" },
-          ],
+          lineItems: [{ itemCode: "IC-01", itemDescription: "Widget A", quantity: "5" }],
         },
       ];
 
@@ -146,9 +142,7 @@ describe("JobCardImportService", () => {
         lineItems: [],
       };
       mockJobCardRepo.findOne.mockResolvedValue(existing);
-      mockJobCardRepo.save.mockImplementation((entity) =>
-        Promise.resolve({ ...entity, id: 5 }),
-      );
+      mockJobCardRepo.save.mockImplementation((entity) => Promise.resolve({ ...entity, id: 5 }));
 
       const rows: JobCardImportRow[] = [
         {
@@ -183,9 +177,7 @@ describe("JobCardImportService", () => {
         parentJobCardId: null,
         lineItems: [],
       };
-      mockJobCardRepo.findOne
-        .mockResolvedValueOnce(existing)
-        .mockResolvedValueOnce(null);
+      mockJobCardRepo.findOne.mockResolvedValueOnce(existing).mockResolvedValueOnce(null);
       mockJobCardRepo.save.mockResolvedValue({
         id: 20,
         jobNumber: "JOB-001",
@@ -207,10 +199,7 @@ describe("JobCardImportService", () => {
     });
 
     it("reports error for rows missing jobNumber or jobName", async () => {
-      const rows: JobCardImportRow[] = [
-        { jobNumber: "", jobName: "" },
-        { jobNumber: "JOB-002" },
-      ];
+      const rows: JobCardImportRow[] = [{ jobNumber: "", jobName: "" }, { jobNumber: "JOB-002" }];
 
       const result = await service.importJobCards(1, rows);
 
@@ -219,17 +208,15 @@ describe("JobCardImportService", () => {
     });
 
     it("handles multiple rows with mixed create and update", async () => {
-      mockJobCardRepo.findOne
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({
-          id: 5,
-          jobNumber: "JOB-002",
-          companyId: 1,
-          jobName: "Old Job",
-          versionNumber: 1,
-          parentJobCardId: null,
-          lineItems: [],
-        });
+      mockJobCardRepo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce({
+        id: 5,
+        jobNumber: "JOB-002",
+        companyId: 1,
+        jobName: "Old Job",
+        versionNumber: 1,
+        parentJobCardId: null,
+        lineItems: [],
+      });
       mockJobCardRepo.save.mockImplementation((entity) =>
         Promise.resolve({ ...entity, id: entity.id || 10 }),
       );
@@ -273,11 +260,7 @@ describe("JobCardImportService", () => {
     });
 
     it("returns empty grid for unsupported mime type", async () => {
-      const result = await service.parseFile(
-        Buffer.from("test"),
-        "text/plain",
-        "test.txt",
-      );
+      const result = await service.parseFile(Buffer.from("test"), "text/plain", "test.txt");
 
       expect(result.grid).toEqual([]);
     });

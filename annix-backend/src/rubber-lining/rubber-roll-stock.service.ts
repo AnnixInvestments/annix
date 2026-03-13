@@ -481,74 +481,71 @@ export class RubberRollStockService {
     });
     const codingByCode = new Map(compoundCodings.map((c) => [c.code.toUpperCase(), c]));
 
-    const finalResult = await rows.reduce(
-      async (accPromise, row, index) => {
-        const acc = await accPromise;
-        const rowNumber = index + 1;
+    const finalResult = await rows.reduce(async (accPromise, row, index) => {
+      const acc = await accPromise;
+      const rowNumber = index + 1;
 
-        const existingRoll = await this.rollStockRepository.findOne({
-          where: { rollNumber: row.rollNumber },
+      const existingRoll = await this.rollStockRepository.findOne({
+        where: { rollNumber: row.rollNumber },
+      });
+      if (existingRoll) {
+        return {
+          ...acc,
+          errors: [
+            ...acc.errors,
+            {
+              row: rowNumber,
+              rollNumber: row.rollNumber,
+              error: `Roll number ${row.rollNumber} already exists`,
+            },
+          ],
+        };
+      }
+
+      const coding = codingByCode.get(row.compoundCode.toUpperCase());
+      if (!coding) {
+        return {
+          ...acc,
+          errors: [
+            ...acc.errors,
+            {
+              row: rowNumber,
+              rollNumber: row.rollNumber,
+              error: `Compound code ${row.compoundCode} not found`,
+            },
+          ],
+        };
+      }
+
+      try {
+        const roll = this.rollStockRepository.create({
+          firebaseUid: `pg_${generateUniqueId()}`,
+          rollNumber: row.rollNumber,
+          compoundCodingId: coding.id,
+          weightKg: row.weightKg,
+          status: RollStockStatus.IN_STOCK,
+          linkedBatchIds: [],
+          costZar: row.costZar ?? null,
+          priceZar: row.priceZar ?? null,
+          location: row.location ?? null,
+          productionDate: row.productionDate ? fromISO(row.productionDate).toJSDate() : null,
         });
-        if (existingRoll) {
-          return {
-            ...acc,
-            errors: [
-              ...acc.errors,
-              {
-                row: rowNumber,
-                rollNumber: row.rollNumber,
-                error: `Roll number ${row.rollNumber} already exists`,
-              },
-            ],
-          };
-        }
-
-        const coding = codingByCode.get(row.compoundCode.toUpperCase());
-        if (!coding) {
-          return {
-            ...acc,
-            errors: [
-              ...acc.errors,
-              {
-                row: rowNumber,
-                rollNumber: row.rollNumber,
-                error: `Compound code ${row.compoundCode} not found`,
-              },
-            ],
-          };
-        }
-
-        try {
-          const roll = this.rollStockRepository.create({
-            firebaseUid: `pg_${generateUniqueId()}`,
-            rollNumber: row.rollNumber,
-            compoundCodingId: coding.id,
-            weightKg: row.weightKg,
-            status: RollStockStatus.IN_STOCK,
-            linkedBatchIds: [],
-            costZar: row.costZar ?? null,
-            priceZar: row.priceZar ?? null,
-            location: row.location ?? null,
-            productionDate: row.productionDate ? fromISO(row.productionDate).toJSDate() : null,
-          });
-          await this.rollStockRepository.save(roll);
-          return { ...acc, created: acc.created + 1 };
-        } catch (err) {
-          return {
-            ...acc,
-            errors: [
-              ...acc.errors,
-              {
-                row: rowNumber,
-                rollNumber: row.rollNumber,
-                error: err instanceof Error ? err.message : "Unknown error",
-              },
-            ],
-          };
-        }
-      },
-      Promise.resolve(result),
-    );
+        await this.rollStockRepository.save(roll);
+        return { ...acc, created: acc.created + 1 };
+      } catch (err) {
+        return {
+          ...acc,
+          errors: [
+            ...acc.errors,
+            {
+              row: rowNumber,
+              rollNumber: row.rollNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          ],
+        };
+      }
+    }, Promise.resolve(result));
 
     return finalResult;
   }

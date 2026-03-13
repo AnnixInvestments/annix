@@ -305,9 +305,7 @@ describe("OrganizationService", () => {
 
   describe("stats", () => {
     it("should return organization statistics", async () => {
-      (mockTeamMemberRepo.count as jest.Mock)
-        .mockResolvedValueOnce(5)
-        .mockResolvedValueOnce(4);
+      (mockTeamMemberRepo.count as jest.Mock).mockResolvedValueOnce(5).mockResolvedValueOnce(4);
 
       const result = await service.stats(1);
 

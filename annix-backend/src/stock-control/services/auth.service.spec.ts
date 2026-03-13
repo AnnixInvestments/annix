@@ -178,10 +178,20 @@ describe("StockControlAuthService", () => {
       mockUserRepo.findOne.mockResolvedValue(null);
       mockInvitationRepo.findOne.mockResolvedValue(null);
       mockCompanyRepo.save.mockResolvedValue({ id: 10 });
-      mockUserRepo.save.mockResolvedValue({ id: 1, email: "new@example.com", name: "New User", role: StockControlRole.ADMIN });
+      mockUserRepo.save.mockResolvedValue({
+        id: 1,
+        email: "new@example.com",
+        name: "New User",
+        role: StockControlRole.ADMIN,
+      });
       (mockedBcrypt.hash as jest.Mock).mockResolvedValue("hashed");
 
-      const result = await service.register("new@example.com", "password", "New User", "My Company");
+      const result = await service.register(
+        "new@example.com",
+        "password",
+        "New User",
+        "My Company",
+      );
 
       expect(mockCompanyRepo.create).toHaveBeenCalledWith({ name: "My Company" });
       expect(mockCompanyRepo.save).toHaveBeenCalled();
@@ -197,7 +207,12 @@ describe("StockControlAuthService", () => {
       mockUserRepo.findOne.mockResolvedValue(null);
       mockInvitationRepo.findOne.mockResolvedValue(null);
       mockCompanyRepo.save.mockResolvedValue({ id: 10 });
-      mockUserRepo.save.mockResolvedValue({ id: 1, email: "new@example.com", name: "New User", role: StockControlRole.ADMIN });
+      mockUserRepo.save.mockResolvedValue({
+        id: 1,
+        email: "new@example.com",
+        name: "New User",
+        role: StockControlRole.ADMIN,
+      });
       (mockedBcrypt.hash as jest.Mock).mockResolvedValue("hashed");
 
       await service.register("new@example.com", "password", "New User");
@@ -216,10 +231,21 @@ describe("StockControlAuthService", () => {
       };
       mockUserRepo.findOne.mockResolvedValue(null);
       mockInvitationRepo.findOne.mockResolvedValue(invitation);
-      mockUserRepo.save.mockResolvedValue({ id: 2, email: "invited@example.com", name: "Invited", role: StockControlRole.STOREMAN });
+      mockUserRepo.save.mockResolvedValue({
+        id: 2,
+        email: "invited@example.com",
+        name: "Invited",
+        role: StockControlRole.STOREMAN,
+      });
       (mockedBcrypt.hash as jest.Mock).mockResolvedValue("hashed");
 
-      const result = await service.register("invited@example.com", "password", "Invited", null, "invite-token");
+      const result = await service.register(
+        "invited@example.com",
+        "password",
+        "Invited",
+        null,
+        "invite-token",
+      );
 
       expect(result.isInvitedUser).toBe(true);
       expect(invitation.status).toBe(StockControlInvitationStatus.ACCEPTED);
@@ -262,7 +288,12 @@ describe("StockControlAuthService", () => {
       };
       mockUserRepo.findOne.mockResolvedValue(null);
       mockInvitationRepo.findOne.mockResolvedValue(pendingInvitation);
-      mockUserRepo.save.mockResolvedValue({ id: 3, email: "invited@example.com", name: "Invited", role: StockControlRole.MANAGER });
+      mockUserRepo.save.mockResolvedValue({
+        id: 3,
+        email: "invited@example.com",
+        name: "Invited",
+        role: StockControlRole.MANAGER,
+      });
       (mockedBcrypt.hash as jest.Mock).mockResolvedValue("hashed");
 
       const result = await service.register("invited@example.com", "password", "Invited");
@@ -275,7 +306,12 @@ describe("StockControlAuthService", () => {
       mockUserRepo.findOne.mockResolvedValue(null);
       mockInvitationRepo.findOne.mockResolvedValue(null);
       mockCompanyRepo.save.mockResolvedValue({ id: 10 });
-      mockUserRepo.save.mockResolvedValue({ id: 1, email: "test@example.com", name: "Test", role: StockControlRole.ADMIN });
+      mockUserRepo.save.mockResolvedValue({
+        id: 1,
+        email: "test@example.com",
+        name: "Test",
+        role: StockControlRole.ADMIN,
+      });
       (mockedBcrypt.hash as jest.Mock).mockResolvedValue("hashed");
 
       await service.register("  TEST@Example.COM  ", "password", "Test");
@@ -290,9 +326,7 @@ describe("StockControlAuthService", () => {
     it("returns tokens and user data on valid credentials", async () => {
       mockUserRepo.findOne.mockResolvedValue({ ...baseUser, emailVerified: true });
       (mockedBcrypt.compare as jest.Mock).mockResolvedValue(true);
-      mockJwtService.sign
-        .mockReturnValueOnce("access-token")
-        .mockReturnValueOnce("refresh-token");
+      mockJwtService.sign.mockReturnValueOnce("access-token").mockReturnValueOnce("refresh-token");
 
       const result = await service.login("test@example.com", "password");
 
@@ -379,11 +413,14 @@ describe("StockControlAuthService", () => {
 
   describe("verifyEmail", () => {
     it("verifies email and returns tokens for admin user", async () => {
-      const user = { ...baseUser, emailVerified: false, emailVerificationToken: "token", role: StockControlRole.ADMIN };
+      const user = {
+        ...baseUser,
+        emailVerified: false,
+        emailVerificationToken: "token",
+        role: StockControlRole.ADMIN,
+      };
       mockUserRepo.findOne.mockResolvedValue(user);
-      mockJwtService.sign
-        .mockReturnValueOnce("access-token")
-        .mockReturnValueOnce("refresh-token");
+      mockJwtService.sign.mockReturnValueOnce("access-token").mockReturnValueOnce("refresh-token");
 
       const result = await service.verifyEmail("token");
 
@@ -396,7 +433,12 @@ describe("StockControlAuthService", () => {
     });
 
     it("verifies email without tokens for invited (non-admin) user", async () => {
-      const user = { ...baseUser, emailVerified: false, emailVerificationToken: "token", role: StockControlRole.STOREMAN };
+      const user = {
+        ...baseUser,
+        emailVerified: false,
+        emailVerificationToken: "token",
+        role: StockControlRole.STOREMAN,
+      };
       mockUserRepo.findOne.mockResolvedValue(user);
 
       const result = await service.verifyEmail("token");
@@ -539,7 +581,11 @@ describe("StockControlAuthService", () => {
     it("resolves S3 presigned URLs for logo and hero image", async () => {
       const userWithBranding = {
         ...baseUser,
-        company: { ...baseUser.company, logoUrl: "stock-control/logo.png", heroImageUrl: "stock-control/hero.png" },
+        company: {
+          ...baseUser.company,
+          logoUrl: "stock-control/logo.png",
+          heroImageUrl: "stock-control/hero.png",
+        },
       };
       mockUserRepo.findOne.mockResolvedValue(userWithBranding);
 
@@ -569,9 +615,7 @@ describe("StockControlAuthService", () => {
     it("throws NotFoundException for non-existent member", async () => {
       mockUserRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.updateMemberRole(10, 999, "manager")).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.updateMemberRole(10, 999, "manager")).rejects.toThrow(NotFoundException);
     });
 
     it("throws BadRequestException for invalid role", async () => {
@@ -595,9 +639,7 @@ describe("StockControlAuthService", () => {
       ]);
       mockUserRepo.count.mockResolvedValue(1);
 
-      await expect(service.updateMemberRole(10, 1, "storeman")).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.updateMemberRole(10, 1, "storeman")).rejects.toThrow(ForbiddenException);
     });
 
     it("allows demoting admin when other admins exist", async () => {
@@ -618,8 +660,20 @@ describe("StockControlAuthService", () => {
   describe("teamMembers", () => {
     it("returns mapped team member list", async () => {
       const users = [
-        { id: 1, name: "Alice", email: "alice@test.com", role: StockControlRole.ADMIN, createdAt: new Date() },
-        { id: 2, name: "Bob", email: "bob@test.com", role: StockControlRole.STOREMAN, createdAt: new Date() },
+        {
+          id: 1,
+          name: "Alice",
+          email: "alice@test.com",
+          role: StockControlRole.ADMIN,
+          createdAt: new Date(),
+        },
+        {
+          id: 2,
+          name: "Bob",
+          email: "bob@test.com",
+          role: StockControlRole.STOREMAN,
+          createdAt: new Date(),
+        },
       ];
       mockUserRepo.find.mockResolvedValue(users);
 
@@ -704,9 +758,7 @@ describe("StockControlAuthService", () => {
     it("throws NotFoundException for non-existent company", async () => {
       mockCompanyRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.setBranding(999, BrandingType.ANNIX)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.setBranding(999, BrandingType.ANNIX)).rejects.toThrow(NotFoundException);
     });
   });
 

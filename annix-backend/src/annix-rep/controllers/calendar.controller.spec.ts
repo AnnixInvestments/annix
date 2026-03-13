@@ -1,4 +1,3 @@
-import { BadRequestException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AnnixRepAuthGuard } from "../auth";
 import { CalendarProvider } from "../entities";
@@ -73,7 +72,9 @@ describe("CalendarController", () => {
 
   describe("oauthUrl", () => {
     it("should return OAuth URL for provider", () => {
-      calendarService.oauthUrl.mockReturnValue("https://accounts.google.com/o/oauth2/v2/auth?foo=bar");
+      calendarService.oauthUrl.mockReturnValue(
+        "https://accounts.google.com/o/oauth2/v2/auth?foo=bar",
+      );
 
       const result = controller.oauthUrl(CalendarProvider.GOOGLE, "http://localhost/callback");
 
@@ -161,9 +162,7 @@ describe("CalendarController", () => {
 
   describe("listAvailableCalendars", () => {
     it("should return available calendars for connection", async () => {
-      const calendars = [
-        { id: "primary", name: "Primary", isPrimary: true, color: "#4285F4" },
-      ];
+      const calendars = [{ id: "primary", name: "Primary", isPrimary: true, color: "#4285F4" }];
       calendarService.listAvailableCalendars.mockResolvedValue(calendars as any);
 
       const result = await controller.listAvailableCalendars(mockRequest, 1);
@@ -241,15 +240,17 @@ describe("CalendarController", () => {
 
   describe("setColor", () => {
     it("should set a single color", async () => {
-      const colorResult = { id: 1, colorType: "meeting_type", colorKey: "visit", colorValue: "#FF0000" };
+      const colorResult = {
+        id: 1,
+        colorType: "meeting_type",
+        colorKey: "visit",
+        colorValue: "#FF0000",
+      };
       calendarColorService.setColor.mockResolvedValue(colorResult as any);
 
-      const result = await controller.setColor(
-        mockRequest,
-        "meeting_type" as any,
-        "visit",
-        { colorValue: "#FF0000" },
-      );
+      const result = await controller.setColor(mockRequest, "meeting_type" as any, "visit", {
+        colorValue: "#FF0000",
+      });
 
       expect(result).toEqual(colorResult);
       expect(calendarColorService.setColor).toHaveBeenCalledWith(
@@ -331,10 +332,7 @@ describe("CalendarController", () => {
 
   describe("detectConflicts", () => {
     it("should trigger conflict detection and return count", async () => {
-      calendarSyncService.detectTimeOverlaps.mockResolvedValue([
-        { id: 1 },
-        { id: 2 },
-      ] as any);
+      calendarSyncService.detectTimeOverlaps.mockResolvedValue([{ id: 1 }, { id: 2 }] as any);
 
       const result = await controller.detectConflicts(mockRequest);
 

@@ -271,7 +271,12 @@ export class ComplySaComplianceService {
   async allRequirements(
     page: number = 1,
     limit: number = 50,
-  ): Promise<{ data: ComplySaComplianceRequirement[]; total: number; page: number; limit: number }> {
+  ): Promise<{
+    data: ComplySaComplianceRequirement[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const [data, total] = await this.requirementRepository.findAndCount({
       skip: (page - 1) * limit,
       take: limit,

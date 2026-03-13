@@ -96,9 +96,9 @@ describe("TerritoryController", () => {
     });
 
     it("should throw ForbiddenException when user has no organization", async () => {
-      await expect(
-        controller.create(mockRequestNoOrg as any, { name: "Test" }),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(controller.create(mockRequestNoOrg as any, { name: "Test" })).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -114,7 +114,12 @@ describe("TerritoryController", () => {
     });
 
     it("should set assignedToName to null when no assignee", async () => {
-      const unassigned = { ...baseTerritory, assignedTo: null, assignedToId: null, prospectCount: 0 };
+      const unassigned = {
+        ...baseTerritory,
+        assignedTo: null,
+        assignedToId: null,
+        prospectCount: 0,
+      };
       service.findAll.mockResolvedValue([unassigned]);
 
       const result = await controller.findAll(mockRequest as any);
@@ -123,9 +128,7 @@ describe("TerritoryController", () => {
     });
 
     it("should throw ForbiddenException when user has no organization", async () => {
-      await expect(controller.findAll(mockRequestNoOrg as any)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(controller.findAll(mockRequestNoOrg as any)).rejects.toThrow(ForbiddenException);
     });
   });
 

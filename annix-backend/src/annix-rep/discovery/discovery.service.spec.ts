@@ -194,10 +194,7 @@ describe("DiscoveryService", () => {
       const result = await service.search(1, dto);
 
       expect(result.discovered).toHaveLength(2);
-      expect(result.sourcesQueried).toEqual([
-        DiscoverySource.GOOGLE_PLACES,
-        DiscoverySource.OSM,
-      ]);
+      expect(result.sourcesQueried).toEqual([DiscoverySource.GOOGLE_PLACES, DiscoverySource.OSM]);
     });
 
     it("should deduplicate businesses across sources", async () => {
@@ -337,8 +334,7 @@ describe("DiscoveryService", () => {
       const mockQueryBuilder = {
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
-        getOne: jest.fn()
-          .mockResolvedValueOnce({ id: 99 }),
+        getOne: jest.fn().mockResolvedValueOnce({ id: 99 }),
       };
       mockProspectRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
 

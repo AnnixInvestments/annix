@@ -564,9 +564,7 @@ export class RubberDeliveryNoteService {
 
         if (index === 0) {
           note.deliveryNoteNumber = dnNumber;
-          note.deliveryDate = deliveryDate
-            ? fromISO(deliveryDate).toJSDate()
-            : note.deliveryDate;
+          note.deliveryDate = deliveryDate ? fromISO(deliveryDate).toJSDate() : note.deliveryDate;
           note.status = DeliveryNoteStatus.EXTRACTED;
           note.extractedData = {
             ...extractedData,
@@ -757,19 +755,14 @@ export class RubberDeliveryNoteService {
           .map((r) => r.rollNumber)
           .filter(Boolean);
 
-        const batchMatch =
-          batchRange && cocBatches.some((b: string) => batchRange.includes(b));
-        const orderMatch =
-          cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber);
-        const poMatch =
-          cocOrderNumber && dnCustomerRef && cocOrderNumber === dnCustomerRef;
+        const batchMatch = batchRange && cocBatches.some((b: string) => batchRange.includes(b));
+        const orderMatch = cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber);
+        const poMatch = cocOrderNumber && dnCustomerRef && cocOrderNumber === dnCustomerRef;
         const rollMatch =
           dnRollNumbers.length > 0 &&
           cocRollParts.length > 0 &&
           dnRollNumbers.some((dnRoll) =>
-            cocRollParts.some(
-              (cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll),
-            ),
+            cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
           );
 
         this.logger.log(
@@ -846,19 +839,14 @@ export class RubberDeliveryNoteService {
             .map((r) => r.rollNumber)
             .filter(Boolean);
 
-          const batchMatch =
-            batchRange && cocBatches.some((b: string) => batchRange.includes(b));
-          const orderMatch =
-            cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber);
-          const poMatch =
-            cocOrderNumber && dnCustomerRef && cocOrderNumber === dnCustomerRef;
+          const batchMatch = batchRange && cocBatches.some((b: string) => batchRange.includes(b));
+          const orderMatch = cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber);
+          const poMatch = cocOrderNumber && dnCustomerRef && cocOrderNumber === dnCustomerRef;
           const rollMatch =
             dnRollNumbers.length > 0 &&
             cocRollParts.length > 0 &&
             dnRollNumbers.some((dnRoll) =>
-              cocRollParts.some(
-                (cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll),
-              ),
+              cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
             );
 
           return batchMatch || orderMatch || (poMatch && rollMatch);

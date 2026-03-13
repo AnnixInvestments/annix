@@ -120,7 +120,10 @@ describe("SalesforceAdapter", () => {
     it("should handle API error on create", async () => {
       mockFetch.mockResolvedValue({
         ok: false,
-        json: () => Promise.resolve([{ message: "Required field missing", errorCode: "REQUIRED_FIELD_MISSING" }]),
+        json: () =>
+          Promise.resolve([
+            { message: "Required field missing", errorCode: "REQUIRED_FIELD_MISSING" },
+          ]),
       });
 
       const result = await adapter.syncContact(mockProspect as Prospect);
@@ -133,7 +136,8 @@ describe("SalesforceAdapter", () => {
       const existing = { ...mockProspect, crmExternalId: "sf-123" };
       mockFetch.mockResolvedValue({
         ok: false,
-        json: () => Promise.resolve([{ message: "Entity deleted", errorCode: "ENTITY_IS_DELETED" }]),
+        json: () =>
+          Promise.resolve([{ message: "Entity deleted", errorCode: "ENTITY_IS_DELETED" }]),
       });
 
       const result = await adapter.syncContact(existing as Prospect);
@@ -194,10 +198,7 @@ describe("SalesforceAdapter", () => {
         json: () => Promise.resolve({ id: "sf-event-456", success: true }),
       });
 
-      const result = await adapter.syncMeeting(
-        mockMeeting as Meeting,
-        mockProspect as Prospect,
-      );
+      const result = await adapter.syncMeeting(mockMeeting as Meeting, mockProspect as Prospect);
 
       expect(result.success).toBe(true);
       expect(result.externalId).toBe("sf-event-456");
@@ -211,10 +212,7 @@ describe("SalesforceAdapter", () => {
       const meetingWithCrm = { ...mockMeeting, crmExternalId: "sf-event-456" };
       mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
 
-      const result = await adapter.syncMeeting(
-        meetingWithCrm as Meeting,
-        mockProspect as Prospect,
-      );
+      const result = await adapter.syncMeeting(meetingWithCrm as Meeting, mockProspect as Prospect);
 
       expect(result.success).toBe(true);
       expect(result.externalId).toBe("sf-event-456");
@@ -226,10 +224,7 @@ describe("SalesforceAdapter", () => {
         json: () => Promise.resolve({ message: "Insufficient access" }),
       });
 
-      const result = await adapter.syncMeeting(
-        mockMeeting as Meeting,
-        mockProspect as Prospect,
-      );
+      const result = await adapter.syncMeeting(mockMeeting as Meeting, mockProspect as Prospect);
 
       expect(result.success).toBe(false);
     });
@@ -297,7 +292,8 @@ describe("SalesforceAdapter", () => {
     it("should handle API error", async () => {
       mockFetch.mockResolvedValue({
         ok: false,
-        json: () => Promise.resolve([{ message: "Session expired", errorCode: "INVALID_SESSION_ID" }]),
+        json: () =>
+          Promise.resolve([{ message: "Session expired", errorCode: "INVALID_SESSION_ID" }]),
       });
 
       await expect(adapter.pullContacts(null)).rejects.toThrow("Session expired");

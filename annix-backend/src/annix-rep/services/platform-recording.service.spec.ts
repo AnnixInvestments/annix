@@ -3,10 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { S3StorageService } from "../../storage/s3-storage.service";
-import {
-  Meeting,
-  MeetingRecording,
-} from "../entities";
+import { Meeting, MeetingRecording } from "../entities";
 import {
   PlatformMeetingRecord,
   PlatformRecordingStatus,

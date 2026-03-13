@@ -1,14 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { fromISO } from "../../lib/datetime";
 import { AnnixRepAuthGuard } from "../auth";
+import { MeetingPlatform, PlatformConnectionStatus } from "../entities/meeting-platform.enums";
 import {
-  MeetingPlatform,
-  PlatformConnectionStatus,
-} from "../entities/meeting-platform.enums";
-import {
+  MeetingPlatformService,
   type PlatformConnectionResponseDto,
   type PlatformMeetingRecordResponseDto,
-  MeetingPlatformService,
 } from "../services/meeting-platform.service";
 import { MeetingSchedulerService } from "../services/meeting-scheduler.service";
 import { MeetingPlatformController } from "./meeting-platform.controller";
@@ -105,11 +102,10 @@ describe("MeetingPlatformController", () => {
     it("should call connectPlatform with correct parameters", async () => {
       platformService.connectPlatform.mockResolvedValue(mockConnectionResponse);
 
-      const result = await controller.connect(
-        mockRequest as any,
-        MeetingPlatform.ZOOM,
-        { authCode: "auth-code-123", redirectUri: "https://redirect.com" },
-      );
+      const result = await controller.connect(mockRequest as any, MeetingPlatform.ZOOM, {
+        authCode: "auth-code-123",
+        redirectUri: "https://redirect.com",
+      });
 
       expect(result).toEqual(mockConnectionResponse);
       expect(platformService.connectPlatform).toHaveBeenCalledWith(100, {

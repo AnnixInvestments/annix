@@ -81,7 +81,13 @@ export class CandidateJobMatchingService {
           if (!candidate) {
             return null;
           } else {
-            return this.scoreAndSaveMatch(candidate, job, row.similarity, candidate.id, externalJobId);
+            return this.scoreAndSaveMatch(
+              candidate,
+              job,
+              row.similarity,
+              candidate.id,
+              externalJobId,
+            );
           }
         }),
       );
@@ -227,7 +233,13 @@ export class CandidateJobMatchingService {
       skillsMissing: skillsResult.missing,
       experienceMatch,
       locationMatch,
-      reasoning: this.buildReasoning(embeddingSimilarity, skillsResult, experienceMatch, locationMatch, job),
+      reasoning: this.buildReasoning(
+        embeddingSimilarity,
+        skillsResult,
+        experienceMatch,
+        locationMatch,
+        job,
+      ),
     };
 
     const existing = await this.matchRepo.findOne({

@@ -151,28 +151,25 @@ export class RubberSageInvoicePostService {
       relations: ["company"],
     });
 
-    const finalResults = await invoices.reduce(
-      async (accPromise, invoice) => {
-        const acc = await accPromise;
-        try {
-          const result = await this.postInvoice(invoice.id, appKey);
-          return { ...acc, successful: [...acc.successful, result] };
-        } catch (err) {
-          return {
-            ...acc,
-            failed: [
-              ...acc.failed,
-              {
-                invoiceId: invoice.id,
-                invoiceNumber: invoice.invoiceNumber,
-                error: err instanceof Error ? err.message : "Unknown error",
-              },
-            ],
-          };
-        }
-      },
-      Promise.resolve(results),
-    );
+    const finalResults = await invoices.reduce(async (accPromise, invoice) => {
+      const acc = await accPromise;
+      try {
+        const result = await this.postInvoice(invoice.id, appKey);
+        return { ...acc, successful: [...acc.successful, result] };
+      } catch (err) {
+        return {
+          ...acc,
+          failed: [
+            ...acc.failed,
+            {
+              invoiceId: invoice.id,
+              invoiceNumber: invoice.invoiceNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          ],
+        };
+      }
+    }, Promise.resolve(results));
 
     this.logger.log(
       `Bulk post: ${finalResults.successful.length} succeeded, ${finalResults.failed.length} failed`,

@@ -86,9 +86,7 @@ describe("TeamController", () => {
     });
 
     it("should throw ForbiddenException when user has no organization", async () => {
-      await expect(controller.members(mockRequestNoOrg as any)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(controller.members(mockRequestNoOrg as any)).rejects.toThrow(ForbiddenException);
     });
 
     it("should handle member with no user relation", async () => {
@@ -175,9 +173,7 @@ describe("TeamController", () => {
     });
 
     it("should throw ForbiddenException when user has no organization", async () => {
-      await expect(controller.myTeam(mockRequestNoOrg as any)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(controller.myTeam(mockRequestNoOrg as any)).rejects.toThrow(ForbiddenException);
     });
   });
 });

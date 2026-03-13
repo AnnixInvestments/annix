@@ -111,12 +111,20 @@ describe("MeetingSummaryService", () => {
         fullText: "This is a test transcript with some content about pricing.",
         wordCount: 10,
         segments: [
-          { startTime: 0, endTime: 30, text: "Hello everyone", speakerLabel: "Alice", confidence: 0.9 },
+          {
+            startTime: 0,
+            endTime: 30,
+            text: "Hello everyone",
+            speakerLabel: "Alice",
+            confidence: 0.9,
+          },
         ],
         analysis: {
           topics: ["pricing", "timeline"],
           sentiment: "positive",
-          actionItems: [{ task: "Follow up with client", assignee: "Bob", dueDate: null, extracted: true }],
+          actionItems: [
+            { task: "Follow up with client", assignee: "Bob", dueDate: null, extracted: true },
+          ],
           keyPoints: ["Agreed on pricing structure"],
           questions: ["When is the deadline?"],
           objections: [],

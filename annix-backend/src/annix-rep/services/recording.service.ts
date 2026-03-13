@@ -457,7 +457,10 @@ export class RecordingService {
       return null;
     }
 
-    const presignedUrl = await this.storageService.getPresignedUrl(recording.storagePath, PRESIGNED_URL_EXPIRY_SECONDS);
+    const presignedUrl = await this.storageService.getPresignedUrl(
+      recording.storagePath,
+      PRESIGNED_URL_EXPIRY_SECONDS,
+    );
 
     return {
       presignedUrl,

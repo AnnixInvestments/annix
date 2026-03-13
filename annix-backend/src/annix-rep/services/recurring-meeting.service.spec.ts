@@ -193,9 +193,7 @@ describe("RecurringMeetingService", () => {
     it("should throw when meeting is not found", async () => {
       (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        service.deleteFromSeries(100, 999, "this"),
-      ).rejects.toThrow();
+      await expect(service.deleteFromSeries(100, 999, "this")).rejects.toThrow();
     });
   });
 });

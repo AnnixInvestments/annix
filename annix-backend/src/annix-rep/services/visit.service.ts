@@ -85,8 +85,7 @@ export class VisitService {
       visit.scheduledAt = dto.scheduledAt ? fromISO(dto.scheduledAt).toJSDate() : null;
     if (dto.startedAt != null)
       visit.startedAt = dto.startedAt ? fromISO(dto.startedAt).toJSDate() : null;
-    if (dto.endedAt != null)
-      visit.endedAt = dto.endedAt ? fromISO(dto.endedAt).toJSDate() : null;
+    if (dto.endedAt != null) visit.endedAt = dto.endedAt ? fromISO(dto.endedAt).toJSDate() : null;
     if (dto.outcome != null) visit.outcome = dto.outcome;
     if (dto.notes != null) visit.notes = dto.notes ?? null;
     if (dto.contactMet != null) visit.contactMet = dto.contactMet ?? null;

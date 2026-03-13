@@ -107,18 +107,36 @@ export class ComplySaIndexesAndConstraints1807000000022 implements MigrationInte
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "comply_sa_regulatory_updates" ALTER COLUMN "effective_date" TYPE VARCHAR(50)`);
-    await queryRunner.query(`ALTER TABLE "comply_sa_documents" DROP CONSTRAINT IF EXISTS "UQ_comply_sa_documents_company_file_path"`);
-    await queryRunner.query(`ALTER TABLE "comply_sa_compliance_checklist_progress" DROP CONSTRAINT IF EXISTS "FK_comply_sa_checklist_requirement"`);
-    await queryRunner.query(`ALTER TABLE "comply_sa_compliance_statuses" DROP CONSTRAINT IF EXISTS "FK_comply_sa_statuses_requirement"`);
-    await queryRunner.query(`ALTER TABLE "comply_sa_api_keys" DROP CONSTRAINT IF EXISTS "UQ_comply_sa_api_keys_company_name"`);
-    await queryRunner.query(`ALTER TABLE "comply_sa_api_keys" DROP CONSTRAINT IF EXISTS "UQ_comply_sa_api_keys_key_hash"`);
+    await queryRunner.query(
+      `ALTER TABLE "comply_sa_regulatory_updates" ALTER COLUMN "effective_date" TYPE VARCHAR(50)`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "comply_sa_documents" DROP CONSTRAINT IF EXISTS "UQ_comply_sa_documents_company_file_path"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "comply_sa_compliance_checklist_progress" DROP CONSTRAINT IF EXISTS "FK_comply_sa_checklist_requirement"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "comply_sa_compliance_statuses" DROP CONSTRAINT IF EXISTS "FK_comply_sa_statuses_requirement"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "comply_sa_api_keys" DROP CONSTRAINT IF EXISTS "UQ_comply_sa_api_keys_company_name"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "comply_sa_api_keys" DROP CONSTRAINT IF EXISTS "UQ_comply_sa_api_keys_key_hash"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_comply_sa_api_keys_active"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_comply_sa_advisor_clients_client_company_id"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_comply_sa_advisor_clients_client_company_id"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_comply_sa_advisor_clients_advisor_user_id"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_comply_sa_compliance_statuses_status"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_comply_sa_compliance_statuses_requirement_id"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_comply_sa_checklist_progress_requirement_id"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_comply_sa_compliance_statuses_requirement_id"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_comply_sa_checklist_progress_requirement_id"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_comply_sa_checklist_progress_company_id"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_comply_sa_documents_expiry_date"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_comply_sa_documents_requirement_id"`);

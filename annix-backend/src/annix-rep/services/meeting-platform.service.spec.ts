@@ -17,7 +17,6 @@ import { GoogleMeetProvider } from "../providers/google-meet.provider";
 import type {
   PlatformMeetingData,
   PlatformOAuthTokenResponse,
-  PlatformProviderConfig,
   PlatformUserInfo,
 } from "../providers/meeting-platform-provider.interface";
 import { TeamsMeetingProvider } from "../providers/teams-meeting.provider";

@@ -1,15 +1,15 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AnnixRepAuthGuard } from "../auth";
+import { ProspectStatus } from "../entities";
 import {
-  type AnalyticsSummary,
   AnalyticsService,
+  type AnalyticsSummary,
   type MeetingsOverTime,
   type ProspectFunnel,
   type RevenuePipeline,
   type TopProspect,
   type WinLossRateTrend,
 } from "../services/analytics.service";
-import { ProspectStatus } from "../entities";
 import { AnalyticsController } from "./analytics.controller";
 
 describe("AnalyticsController", () => {
@@ -74,9 +74,7 @@ describe("AnalyticsController", () => {
 
   describe("meetingsOverTime", () => {
     it("should call service with default period and count", () => {
-      const data: MeetingsOverTime[] = [
-        { period: "W1", count: 3, completed: 2, cancelled: 1 },
-      ];
+      const data: MeetingsOverTime[] = [{ period: "W1", count: 3, completed: 2, cancelled: 1 }];
       service.meetingsOverTime.mockResolvedValue(data);
 
       const result = controller.meetingsOverTime(mockRequest as any);
@@ -110,9 +108,7 @@ describe("AnalyticsController", () => {
 
   describe("winLossRateTrends", () => {
     it("should call service with default months when not provided", () => {
-      const trendData: WinLossRateTrend[] = [
-        { period: "Jan", won: 3, lost: 1, winRate: 75 },
-      ];
+      const trendData: WinLossRateTrend[] = [{ period: "Jan", won: 3, lost: 1, winRate: 75 }];
       service.winLossRateTrends.mockResolvedValue(trendData);
 
       const result = controller.winLossRateTrends(mockRequest as any);

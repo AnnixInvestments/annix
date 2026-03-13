@@ -343,17 +343,17 @@ describe("MeetingService", () => {
       (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(existingMeeting);
       (mockProspectRepo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        service.update(salesRepId, meetingId, { prospectId: 999 }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update(salesRepId, meetingId, { prospectId: 999 })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should throw NotFoundException when meeting does not exist", async () => {
       (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        service.update(salesRepId, 999, { title: "Updated" }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update(salesRepId, 999, { title: "Updated" })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should update scheduledStart and scheduledEnd as Date objects", async () => {
@@ -389,18 +389,14 @@ describe("MeetingService", () => {
       const meeting = { ...baseMeeting, status: MeetingStatus.IN_PROGRESS };
       (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(meeting);
 
-      await expect(service.start(salesRepId, meetingId, {})).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.start(salesRepId, meetingId, {})).rejects.toThrow(BadRequestException);
     });
 
     it("should throw BadRequestException if meeting is completed", async () => {
       const meeting = { ...baseMeeting, status: MeetingStatus.COMPLETED };
       (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(meeting);
 
-      await expect(service.start(salesRepId, meetingId, {})).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.start(salesRepId, meetingId, {})).rejects.toThrow(BadRequestException);
     });
 
     it("should default actualStart to now when not provided", async () => {
@@ -437,9 +433,7 @@ describe("MeetingService", () => {
       const meeting = { ...baseMeeting, status: MeetingStatus.SCHEDULED };
       (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(meeting);
 
-      await expect(service.end(salesRepId, meetingId, {})).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.end(salesRepId, meetingId, {})).rejects.toThrow(BadRequestException);
     });
 
     it("should default actualEnd to now when not provided", async () => {
@@ -516,18 +510,18 @@ describe("MeetingService", () => {
       const meeting = { ...baseMeeting, status: MeetingStatus.COMPLETED };
       (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(meeting);
 
-      await expect(
-        service.reschedule(salesRepId, meetingId, rescheduleDto),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.reschedule(salesRepId, meetingId, rescheduleDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("should throw BadRequestException for in-progress meeting", async () => {
       const meeting = { ...baseMeeting, status: MeetingStatus.IN_PROGRESS };
       (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(meeting);
 
-      await expect(
-        service.reschedule(salesRepId, meetingId, rescheduleDto),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.reschedule(salesRepId, meetingId, rescheduleDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("should throw BadRequestException when end time is before start time", async () => {
@@ -637,10 +631,9 @@ describe("MeetingService", () => {
       const result = await service.meetingsWithRecordings(salesRepId);
 
       expect(result).toHaveLength(1);
-      expect(qb.andWhere).toHaveBeenCalledWith(
-        "meeting.id IN (:...meetingIds)",
-        { meetingIds: [1, 2] },
-      );
+      expect(qb.andWhere).toHaveBeenCalledWith("meeting.id IN (:...meetingIds)", {
+        meetingIds: [1, 2],
+      });
     });
   });
 
@@ -676,10 +669,9 @@ describe("MeetingService", () => {
       const result = await service.meetingsPendingTranscription(salesRepId);
 
       expect(result).toHaveLength(1);
-      expect(qb.andWhere).toHaveBeenCalledWith(
-        "meeting.id IN (:...pendingMeetingIds)",
-        { pendingMeetingIds: [2] },
-      );
+      expect(qb.andWhere).toHaveBeenCalledWith("meeting.id IN (:...pendingMeetingIds)", {
+        pendingMeetingIds: [2],
+      });
     });
   });
 
@@ -725,9 +717,9 @@ describe("MeetingService", () => {
     it("should throw NotFoundException when calendar event does not exist", async () => {
       (mockCalendarEventRepo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        service.createFromCalendarEvent(salesRepId, 999, {}),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.createFromCalendarEvent(salesRepId, 999, {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should throw NotFoundException when connection does not belong to user", async () => {

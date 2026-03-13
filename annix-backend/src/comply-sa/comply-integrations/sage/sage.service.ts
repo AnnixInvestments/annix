@@ -59,7 +59,8 @@ export class SageService {
     const encryptionKeyHex = this.configService.get<string>("SAGE_ENCRYPTION_KEY") ?? null;
     this.encryptionKey = encryptionKeyHex !== null ? Buffer.from(encryptionKeyHex, "hex") : null;
     const previousKeyHex = this.configService.get<string>("SAGE_ENCRYPTION_KEY_PREVIOUS") ?? null;
-    this.previousEncryptionKey = previousKeyHex !== null ? Buffer.from(previousKeyHex, "hex") : null;
+    this.previousEncryptionKey =
+      previousKeyHex !== null ? Buffer.from(previousKeyHex, "hex") : null;
 
     this.enabled =
       this.clientId !== null &&

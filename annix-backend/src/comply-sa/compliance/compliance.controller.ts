@@ -68,10 +68,7 @@ export class ComplySaComplianceController {
   @ApiBearerAuth()
   @UseGuards(ComplySaJwtAuthGuard, ComplySaCompanyScopeGuard)
   @Get("requirements")
-  async requirements(
-    @Query("page") page?: string,
-    @Query("limit") limit?: string,
-  ) {
+  async requirements(@Query("page") page?: string, @Query("limit") limit?: string) {
     const parsedPage = page != null ? parseInt(page, 10) : 1;
     const parsedLimit = limit != null ? parseInt(limit, 10) : 50;
     return this.complianceService.allRequirements(parsedPage, parsedLimit);

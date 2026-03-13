@@ -259,7 +259,11 @@ export class ComplySaTemplatesService {
 
     const upcomingDeadlines = statuses
       .filter((s) => s.nextDueDate !== null && s.status !== "compliant")
-      .sort((a, b) => (a.nextDueDate !== null ? fromJSDate(a.nextDueDate).toMillis() : 0) - (b.nextDueDate !== null ? fromJSDate(b.nextDueDate).toMillis() : 0))
+      .sort(
+        (a, b) =>
+          (a.nextDueDate !== null ? fromJSDate(a.nextDueDate).toMillis() : 0) -
+          (b.nextDueDate !== null ? fromJSDate(b.nextDueDate).toMillis() : 0),
+      )
       .slice(0, 10)
       .map(
         (s) =>

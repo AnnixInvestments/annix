@@ -115,7 +115,10 @@ export class TranscriptionService {
       return saved;
     } catch (error) {
       recording.processingStatus = RecordingProcessingStatus.FAILED;
-      recording.processingError = error instanceof Error ? error.message : `Transcription failed for recording ${recordingId}`;
+      recording.processingError =
+        error instanceof Error
+          ? error.message
+          : `Transcription failed for recording ${recordingId}`;
       await this.recordingRepo.save(recording);
 
       this.logger.error(`Transcription failed for recording ${recordingId}: ${error}`);
@@ -811,7 +814,9 @@ export class TranscriptionService {
       .map((u) => u.index);
 
     if (invalidIndices.length > 0) {
-      throw new BadRequestException(`Invalid segment indices for transcript ${transcriptId}: ${invalidIndices.join(", ")}`);
+      throw new BadRequestException(
+        `Invalid segment indices for transcript ${transcriptId}: ${invalidIndices.join(", ")}`,
+      );
     }
 
     const updatedSegments = transcript.segments.map((segment, index) => {

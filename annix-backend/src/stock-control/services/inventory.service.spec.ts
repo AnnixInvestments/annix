@@ -12,9 +12,15 @@ describe("InventoryService", () => {
 
   const mockStockItemRepo = {
     create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockImplementation((entity) =>
-      Promise.resolve(Array.isArray(entity) ? entity.map((e, i) => ({ id: i + 1, ...e })) : { id: 1, ...entity }),
-    ),
+    save: jest
+      .fn()
+      .mockImplementation((entity) =>
+        Promise.resolve(
+          Array.isArray(entity)
+            ? entity.map((e, i) => ({ id: i + 1, ...e }))
+            : { id: 1, ...entity },
+        ),
+      ),
     findOne: jest.fn(),
     find: jest.fn(),
     remove: jest.fn().mockResolvedValue(null),
@@ -117,7 +123,14 @@ describe("InventoryService", () => {
 
   describe("findByIdWithPhoto", () => {
     it("returns item with refreshed photo URL", async () => {
-      const item = { id: 1, companyId: 1, name: "Gasket", photoUrl: "stock-control/photo.jpg", allocations: [], movements: [] };
+      const item = {
+        id: 1,
+        companyId: 1,
+        name: "Gasket",
+        photoUrl: "stock-control/photo.jpg",
+        allocations: [],
+        movements: [],
+      };
       mockStockItemRepo.findOne.mockResolvedValue(item);
       mockStorageService.getPresignedUrl.mockResolvedValue("https://signed.example.com/photo.jpg");
 
@@ -394,30 +407,60 @@ describe("InventoryService", () => {
 
   describe("photo URL handling", () => {
     it("generates presigned URL for S3 path without protocol", async () => {
-      const item = { id: 1, companyId: 1, name: "Item", photoUrl: "stock-control/photo.jpg", allocations: [], movements: [] };
+      const item = {
+        id: 1,
+        companyId: 1,
+        name: "Item",
+        photoUrl: "stock-control/photo.jpg",
+        allocations: [],
+        movements: [],
+      };
       mockStockItemRepo.findOne.mockResolvedValue(item);
       mockStorageService.getPresignedUrl.mockResolvedValue("https://signed.example.com/photo.jpg");
 
       const result = await service.findByIdWithPhoto(1, 1);
 
-      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith("stock-control/photo.jpg", 3600);
+      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith(
+        "stock-control/photo.jpg",
+        3600,
+      );
       expect(result.photoUrl).toBe("https://signed.example.com/photo.jpg");
     });
 
     it("re-signs expired presigned S3 URL by extracting path", async () => {
-      const expiredUrl = "https://bucket.s3.amazonaws.com/stock-control%2Fphoto.jpg?X-Amz-Signature=abc123&X-Amz-Expires=3600";
-      const item = { id: 1, companyId: 1, name: "Item", photoUrl: expiredUrl, allocations: [], movements: [] };
+      const expiredUrl =
+        "https://bucket.s3.amazonaws.com/stock-control%2Fphoto.jpg?X-Amz-Signature=abc123&X-Amz-Expires=3600";
+      const item = {
+        id: 1,
+        companyId: 1,
+        name: "Item",
+        photoUrl: expiredUrl,
+        allocations: [],
+        movements: [],
+      };
       mockStockItemRepo.findOne.mockResolvedValue(item);
-      mockStorageService.getPresignedUrl.mockResolvedValue("https://signed.example.com/new-signed.jpg");
+      mockStorageService.getPresignedUrl.mockResolvedValue(
+        "https://signed.example.com/new-signed.jpg",
+      );
 
       const result = await service.findByIdWithPhoto(1, 1);
 
-      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith("stock-control/photo.jpg", 3600);
+      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith(
+        "stock-control/photo.jpg",
+        3600,
+      );
       expect(result.photoUrl).toBe("https://signed.example.com/new-signed.jpg");
     });
 
     it("does not modify external https URLs without S3 signatures", async () => {
-      const item = { id: 1, companyId: 1, name: "Item", photoUrl: "https://external.com/image.png", allocations: [], movements: [] };
+      const item = {
+        id: 1,
+        companyId: 1,
+        name: "Item",
+        photoUrl: "https://external.com/image.png",
+        allocations: [],
+        movements: [],
+      };
       mockStockItemRepo.findOne.mockResolvedValue(item);
 
       const result = await service.findByIdWithPhoto(1, 1);
@@ -427,7 +470,14 @@ describe("InventoryService", () => {
     });
 
     it("does not modify null photoUrl", async () => {
-      const item = { id: 1, companyId: 1, name: "Item", photoUrl: null, allocations: [], movements: [] };
+      const item = {
+        id: 1,
+        companyId: 1,
+        name: "Item",
+        photoUrl: null,
+        allocations: [],
+        movements: [],
+      };
       mockStockItemRepo.findOne.mockResolvedValue(item);
 
       const result = await service.findByIdWithPhoto(1, 1);
@@ -439,10 +489,20 @@ describe("InventoryService", () => {
 
   describe("uploadPhoto", () => {
     it("uploads file and updates item photoUrl", async () => {
-      const item = { id: 1, companyId: 1, name: "Item", photoUrl: null, allocations: [], movements: [] };
+      const item = {
+        id: 1,
+        companyId: 1,
+        name: "Item",
+        photoUrl: null,
+        allocations: [],
+        movements: [],
+      };
       mockStockItemRepo.findOne.mockResolvedValue(item);
       mockStorageService.upload.mockResolvedValue({ path: "stock-control/inventory/new.jpg" });
-      mockStockItemRepo.save.mockResolvedValue({ ...item, photoUrl: "stock-control/inventory/new.jpg" });
+      mockStockItemRepo.save.mockResolvedValue({
+        ...item,
+        photoUrl: "stock-control/inventory/new.jpg",
+      });
       mockStorageService.getPresignedUrl.mockResolvedValue("https://signed.example.com/new.jpg");
 
       const file = { originalname: "photo.jpg", buffer: Buffer.from("img") } as Express.Multer.File;
@@ -462,9 +522,7 @@ describe("InventoryService", () => {
 
   describe("lowStockAlerts", () => {
     it("returns items below min stock level", async () => {
-      const items = [
-        { id: 1, name: "Low Item", quantity: 2, minStockLevel: 10, photoUrl: null },
-      ];
+      const items = [{ id: 1, name: "Low Item", quantity: 2, minStockLevel: 10, photoUrl: null }];
       mockQueryBuilder.getMany.mockResolvedValue(items);
 
       const result = await service.lowStockAlerts(1);

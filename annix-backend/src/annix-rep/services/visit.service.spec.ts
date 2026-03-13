@@ -17,9 +17,10 @@ describe("VisitService", () => {
     remove: jest.fn(),
   };
 
-  const mockProspectRepo: Partial<Record<keyof import("typeorm").Repository<Prospect>, jest.Mock>> = {
-    findOne: jest.fn(),
-  };
+  const mockProspectRepo: Partial<Record<keyof import("typeorm").Repository<Prospect>, jest.Mock>> =
+    {
+      findOne: jest.fn(),
+    };
 
   const testDate = fromISO("2026-01-15T10:00:00Z").toJSDate();
 

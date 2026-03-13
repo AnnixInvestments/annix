@@ -180,7 +180,8 @@ export class RubberCocService {
     coc.processingStatus = CocProcessingStatus.EXTRACTED;
 
     if (extractedData.cocNumber) coc.cocNumber = extractedData.cocNumber;
-    if (extractedData.productionDate) coc.productionDate = fromISO(extractedData.productionDate).toJSDate();
+    if (extractedData.productionDate)
+      coc.productionDate = fromISO(extractedData.productionDate).toJSDate();
     if (extractedData.compoundCode) coc.compoundCode = extractedData.compoundCode;
     if (extractedData.orderNumber) coc.orderNumber = extractedData.orderNumber;
     if (extractedData.ticketNumber) coc.ticketNumber = extractedData.ticketNumber;
@@ -267,7 +268,8 @@ export class RubberCocService {
     coc.processingStatus = CocProcessingStatus.EXTRACTED;
 
     if (extractedData.cocNumber) coc.cocNumber = extractedData.cocNumber;
-    if (extractedData.productionDate) coc.productionDate = fromISO(extractedData.productionDate).toJSDate();
+    if (extractedData.productionDate)
+      coc.productionDate = fromISO(extractedData.productionDate).toJSDate();
     if (extractedData.compoundCode) coc.compoundCode = extractedData.compoundCode;
     if (extractedData.orderNumber) coc.orderNumber = extractedData.orderNumber;
     if (extractedData.ticketNumber) coc.ticketNumber = extractedData.ticketNumber;
@@ -481,7 +483,9 @@ export class RubberCocService {
       cocNumber: normalizedCocNumber,
       extractedData,
       processingStatus: CocProcessingStatus.EXTRACTED,
-      productionDate: extractedData.productionDate ? fromISO(extractedData.productionDate).toJSDate() : null,
+      productionDate: extractedData.productionDate
+        ? fromISO(extractedData.productionDate).toJSDate()
+        : null,
       compoundCode: extractedData.compoundCode ?? null,
       orderNumber: extractedData.orderNumber ?? null,
       ticketNumber: extractedData.ticketNumber ?? null,
@@ -736,8 +740,7 @@ export class RubberCocService {
     const matches = compounderCocs.reduce(
       (acc, compCoc) => {
         const compBatches = compCoc.extractedData?.batchNumbers || [];
-        const compBatchesFromData =
-          compCoc.extractedData?.batches?.map((b) => b.batchNumber) || [];
+        const compBatchesFromData = compCoc.extractedData?.batches?.map((b) => b.batchNumber) || [];
         const allCompBatches = [...new Set([...compBatches, ...compBatchesFromData])];
 
         const matchingBatches = batchNumbers.filter((bn) =>

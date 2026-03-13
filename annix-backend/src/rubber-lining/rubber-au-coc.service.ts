@@ -1222,13 +1222,11 @@ export class RubberAuCocService {
     const allTestData: ExtractedCocData["batches"] = matchedCocs.flatMap(
       (coc) => coc.extractedData?.batches || [],
     );
-    const compoundCode =
-      matchedCocs.find((coc) => coc.compoundCode)?.compoundCode ?? "";
+    const compoundCode = matchedCocs.find((coc) => coc.compoundCode)?.compoundCode ?? "";
     const compoundDescription =
       matchedCocs.find((coc) => coc.extractedData?.compoundDescription)?.extractedData
         ?.compoundDescription ?? "";
-    const graphPdfPath =
-      matchedCocs.find((coc) => coc.graphPdfPath)?.graphPdfPath ?? null;
+    const graphPdfPath = matchedCocs.find((coc) => coc.graphPdfPath)?.graphPdfPath ?? null;
 
     const customer = await this.companyRepository.findOne({
       where: { id: customerCompanyId },

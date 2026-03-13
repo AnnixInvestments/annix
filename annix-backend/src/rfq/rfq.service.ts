@@ -29,7 +29,6 @@ import { CreatePumpRfqWithItemDto } from "./dto/create-pump-rfq-with-item.dto";
 import { CreateStraightPipeRfqWithItemDto } from "./dto/create-rfq-item.dto";
 import { CreateUnifiedRfqDto, UnifiedStraightPipeDto } from "./dto/create-unified-rfq.dto";
 import { PumpCalculationResultDto } from "./dto/pump-calculation-result.dto";
-import { RfqDocumentResponseDto } from "./dto/rfq-document.dto";
 import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
 import {
   PaginatedRfqResponseDto,
@@ -262,7 +261,8 @@ export class RfqService {
       // Fallback: Calculate pipe weight per meter using the formula
       // Weight (kg/m) = π × WT × (OD - WT) × Density / 1,000,000
       pipeWeightPerMeter =
-        (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * STEEL_DENSITY_KG_DM3) / 1000;
+        (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * STEEL_DENSITY_KG_DM3) /
+        1000;
     }
 
     // Convert length to meters if needed
@@ -393,7 +393,10 @@ export class RfqService {
     userId: number,
   ): Promise<{ rfq: Rfq; calculation: StraightPipeCalculationResultDto }> {
     // Find user (optional - for when authentication is implemented)
-    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => { this.logger.warn("Failed to find user for RFQ creation", err.message); return null; });
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => {
+      this.logger.warn("Failed to find user for RFQ creation", err.message);
+      return null;
+    });
 
     // Calculate requirements first (outside transaction as it doesn't modify DB)
     const calculation = await this.calculateStraightPipeRequirements(dto.straightPipe);
@@ -469,7 +472,10 @@ export class RfqService {
     dto: CreateUnifiedRfqDto,
     userId: number,
   ): Promise<{ rfq: Rfq; itemsCreated: number }> {
-    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => { this.logger.warn("Failed to find user for RFQ creation", err.message); return null; });
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => {
+      this.logger.warn("Failed to find user for RFQ creation", err.message);
+      return null;
+    });
 
     const rfqNumber = await this.nextRfqNumber();
 
@@ -1497,7 +1503,9 @@ export class RfqService {
       totalFlangeWeldLength: (dto.numberOfTangents * Math.PI * dto.nominalBoreMm) / 1000,
       numberOfButtWelds: dto.numberOfTangents > 0 ? 1 : 0,
       totalButtWeldLength: dto.numberOfTangents > 0 ? (Math.PI * dto.nominalBoreMm) / 1000 : 0,
-      outsideDiameterMm: this.referenceDataCache.nbNpsLookupByNb(dto.nominalBoreMm)?.outside_diameter_mm ?? dto.nominalBoreMm * 1.25,
+      outsideDiameterMm:
+        this.referenceDataCache.nbNpsLookupByNb(dto.nominalBoreMm)?.outside_diameter_mm ??
+        dto.nominalBoreMm * 1.25,
       wallThicknessMm: this.wallThicknessFromSchedule(dto.scheduleNumber),
     };
   }
@@ -1549,7 +1557,10 @@ export class RfqService {
     userId: number,
   ): Promise<{ rfq: Rfq; calculation: BendCalculationResultDto }> {
     // Find user (optional - for when authentication is implemented)
-    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => { this.logger.warn("Failed to find user for RFQ creation", err.message); return null; });
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => {
+      this.logger.warn("Failed to find user for RFQ creation", err.message);
+      return null;
+    });
 
     // Calculate bend requirements first
     const calculation = await this.calculateBendRequirements(dto.bend);
@@ -1753,7 +1764,10 @@ export class RfqService {
     dto: CreatePumpRfqWithItemDto,
     userId: number,
   ): Promise<{ rfq: Rfq; calculation: PumpCalculationResultDto }> {
-    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => { this.logger.warn("Failed to find user for RFQ creation", err.message); return null; });
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch((err) => {
+      this.logger.warn("Failed to find user for RFQ creation", err.message);
+      return null;
+    });
 
     const calculation = await this.calculatePumpRequirements(dto.pump);
 

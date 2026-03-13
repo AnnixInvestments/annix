@@ -341,17 +341,15 @@ describe("JobCardsController", () => {
 
       const result = await controller.acceptCoatingAnalysis(mockReq(), 5);
 
-      expect(coatingAnalysisService.acceptRecommendation).toHaveBeenCalledWith(
-        1,
-        5,
-        "Test User",
-      );
+      expect(coatingAnalysisService.acceptRecommendation).toHaveBeenCalledWith(1, 5, "Test User");
       expect(result).toBe(expected);
     });
 
     it("should fall back to email then uid when name is missing", async () => {
       coatingAnalysisService.acceptRecommendation.mockResolvedValue({} as any);
-      const req = { user: { id: 10, companyId: 1, name: null, email: "test@example.com", uid: "uid-123" } };
+      const req = {
+        user: { id: 10, companyId: 1, name: null, email: "test@example.com", uid: "uid-123" },
+      };
 
       await controller.acceptCoatingAnalysis(req, 5);
 

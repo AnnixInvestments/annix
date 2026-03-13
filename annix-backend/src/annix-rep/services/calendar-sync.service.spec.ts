@@ -145,9 +145,7 @@ describe("CalendarSyncService", () => {
 
   describe("pendingConflicts", () => {
     it("should return unresolved conflicts for user", async () => {
-      const conflicts = [
-        { id: 1, userId: 1, resolution: "pending", resolvedAt: null },
-      ];
+      const conflicts = [{ id: 1, userId: 1, resolution: "pending", resolvedAt: null }];
       (mockConflictRepo.find as jest.Mock).mockResolvedValue(conflicts);
 
       const result = await service.pendingConflicts(1);
@@ -171,9 +169,7 @@ describe("CalendarSyncService", () => {
     it("should throw NotFoundException when conflict does not exist", async () => {
       (mockConflictRepo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        service.resolveConflict(1, 999, "dismissed"),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.resolveConflict(1, 999, "dismissed")).rejects.toThrow(NotFoundException);
     });
   });
 });

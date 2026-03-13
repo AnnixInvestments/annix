@@ -151,9 +151,7 @@ export class RubberCocExtractionService {
 
     const finalRanges = [
       ...acc.ranges,
-      acc.rangeStart === acc.rangeEnd
-        ? `${acc.rangeStart}`
-        : `${acc.rangeStart}-${acc.rangeEnd}`,
+      acc.rangeStart === acc.rangeEnd ? `${acc.rangeStart}` : `${acc.rangeStart}-${acc.rangeEnd}`,
     ];
     return finalRanges.join(", ");
   }

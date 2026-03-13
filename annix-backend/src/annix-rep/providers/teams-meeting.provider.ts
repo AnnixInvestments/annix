@@ -376,7 +376,9 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
   private mapTeamsMeeting(meeting: TeamsOnlineMeeting): PlatformMeetingData {
     const startTime = fromISO(meeting.startDateTime).toJSDate();
     const endTime = fromISO(meeting.endDateTime).toJSDate();
-    const durationSeconds = Math.round(fromJSDate(endTime).diff(fromJSDate(startTime), "seconds").seconds);
+    const durationSeconds = Math.round(
+      fromJSDate(endTime).diff(fromJSDate(startTime), "seconds").seconds,
+    );
 
     const attendees =
       meeting.participants?.attendees?.map((a) => a.identity?.user?.displayName).filter(Boolean) ??

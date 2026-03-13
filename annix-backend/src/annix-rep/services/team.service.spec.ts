@@ -235,9 +235,9 @@ describe("TeamService", () => {
     it("should throw NotFoundException when member not found", async () => {
       (mockTeamMemberRepo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        service.updateMemberStatus(999, TeamMemberStatus.INACTIVE),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateMemberStatus(999, TeamMemberStatus.INACTIVE)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

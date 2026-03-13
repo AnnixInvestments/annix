@@ -48,4 +48,22 @@ export const stockControlKeys = {
     detail: (id: number) => [...stockControlKeys.inboundEmails.all, "detail", id] as const,
     stats: () => [...stockControlKeys.inboundEmails.all, "stats"] as const,
   },
+  notifications: {
+    all: ["stock-control", "notifications"] as const,
+    list: (filter: string) => [...stockControlKeys.notifications.all, "list", filter] as const,
+  },
+  cpos: {
+    all: ["stock-control", "cpos"] as const,
+    list: (status?: string) => [...stockControlKeys.cpos.all, "list", status ?? "all"] as const,
+  },
+  calibration: {
+    all: ["stock-control", "calibration"] as const,
+    list: (filterActive: string) =>
+      [...stockControlKeys.calibration.all, "list", filterActive] as const,
+  },
+  requisitions: {
+    all: ["stock-control", "requisitions"] as const,
+    list: () => [...stockControlKeys.requisitions.all, "list"] as const,
+    detail: (id: number) => [...stockControlKeys.requisitions.all, "detail", id] as const,
+  },
 };

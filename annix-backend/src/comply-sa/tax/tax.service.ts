@@ -93,7 +93,8 @@ export class ComplySaTaxService {
   vatAssessment(annualTurnover: number): VatAssessmentResult {
     return {
       mustRegister: annualTurnover > VAT_REGISTRATION_THRESHOLD,
-      canVoluntaryRegister: annualTurnover >= VAT_VOLUNTARY_THRESHOLD && annualTurnover <= VAT_REGISTRATION_THRESHOLD,
+      canVoluntaryRegister:
+        annualTurnover >= VAT_VOLUNTARY_THRESHOLD && annualTurnover <= VAT_REGISTRATION_THRESHOLD,
       threshold: VAT_REGISTRATION_THRESHOLD,
       voluntaryThreshold: VAT_VOLUNTARY_THRESHOLD,
     };
@@ -108,9 +109,13 @@ export class ComplySaTaxService {
       } else if (annualTurnover <= TURNOVER_TAX_BRACKET_2) {
         return (annualTurnover - TURNOVER_TAX_BRACKET_1) * TURNOVER_TAX_RATE_1;
       } else if (annualTurnover <= TURNOVER_TAX_BRACKET_3) {
-        return TURNOVER_TAX_BASE_2 + (annualTurnover - TURNOVER_TAX_BRACKET_2) * TURNOVER_TAX_RATE_2;
+        return (
+          TURNOVER_TAX_BASE_2 + (annualTurnover - TURNOVER_TAX_BRACKET_2) * TURNOVER_TAX_RATE_2
+        );
       } else if (annualTurnover <= VAT_REGISTRATION_THRESHOLD) {
-        return TURNOVER_TAX_BASE_3 + (annualTurnover - TURNOVER_TAX_BRACKET_3) * TURNOVER_TAX_RATE_3;
+        return (
+          TURNOVER_TAX_BASE_3 + (annualTurnover - TURNOVER_TAX_BRACKET_3) * TURNOVER_TAX_RATE_3
+        );
       } else {
         return 0;
       }

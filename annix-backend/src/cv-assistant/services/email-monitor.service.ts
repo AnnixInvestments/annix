@@ -1,9 +1,9 @@
+import { Readable } from "node:stream";
 import { Inject, Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as Imap from "imap-simple";
-import { Readable } from "node:stream";
 import { simpleParser } from "mailparser";
 import { Repository } from "typeorm";
 import { nowMillis } from "../../lib/datetime";
@@ -126,8 +126,7 @@ export class EmailMonitorService implements OnModuleInit {
         } else {
           const pdfAttachments = (parsed.attachments || []).filter(
             (att) =>
-              att.contentType === "application/pdf" ||
-              att.filename?.toLowerCase().endsWith(".pdf"),
+              att.contentType === "application/pdf" || att.filename?.toLowerCase().endsWith(".pdf"),
           );
 
           if (pdfAttachments.length === 0) {

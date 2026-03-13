@@ -76,9 +76,8 @@ export class ComplySaRegulatoryService {
     sourceUrl?: string | null;
     affectedRequirementCodes?: string[] | null;
   }): Promise<ComplySaRegulatoryUpdate> {
-    const effectiveDate = typeof data.effectiveDate === "string"
-      ? fromISO(data.effectiveDate).toJSDate()
-      : null;
+    const effectiveDate =
+      typeof data.effectiveDate === "string" ? fromISO(data.effectiveDate).toJSDate() : null;
 
     const update = this.regulatoryUpdateRepository.create({
       ...data,
@@ -145,7 +144,8 @@ export class ComplySaRegulatoryService {
         title: update.title,
         summary: update.summary,
         category: update.category,
-        effectiveDate: update.effectiveDate !== null ? fromISO(update.effectiveDate).toJSDate() : null,
+        effectiveDate:
+          update.effectiveDate !== null ? fromISO(update.effectiveDate).toJSDate() : null,
         sourceUrl: update.sourceUrl,
         affectedRequirementCodes:
           update.affectedRequirementCodes.length > 0 ? update.affectedRequirementCodes : null,

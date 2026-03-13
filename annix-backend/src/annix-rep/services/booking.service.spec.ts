@@ -154,9 +154,9 @@ describe("BookingService", () => {
     it("should throw NotFoundException when link does not exist", async () => {
       (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        service.updateLink(100, 999, { name: "Updated" }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateLink(100, 999, { name: "Updated" })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should only update fields that are provided in dto", async () => {

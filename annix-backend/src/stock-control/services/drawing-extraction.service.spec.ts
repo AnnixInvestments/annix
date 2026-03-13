@@ -14,9 +14,11 @@ describe("DrawingExtractionService", () => {
   const mockAttachmentRepo = {
     find: jest.fn(),
     findOne: jest.fn(),
-    save: jest.fn().mockImplementation((entity) =>
-      Promise.resolve(Array.isArray(entity) ? entity : { id: 1, ...entity }),
-    ),
+    save: jest
+      .fn()
+      .mockImplementation((entity) =>
+        Promise.resolve(Array.isArray(entity) ? entity : { id: 1, ...entity }),
+      ),
     create: jest.fn().mockImplementation((data) => ({ ...data })),
     update: jest.fn(),
     remove: jest.fn(),
@@ -29,9 +31,11 @@ describe("DrawingExtractionService", () => {
   const mockLineItemRepo = {
     find: jest.fn(),
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-    create: jest.fn().mockImplementation((data) =>
-      Array.isArray(data) ? data.map((d) => ({ ...d })) : [{ ...data }],
-    ),
+    create: jest
+      .fn()
+      .mockImplementation((data) =>
+        Array.isArray(data) ? data.map((d) => ({ ...d })) : [{ ...data }],
+      ),
   };
 
   const mockStorageService = {
@@ -91,9 +95,9 @@ describe("DrawingExtractionService", () => {
         confidence: 0.85,
       };
 
-      jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([
-        Buffer.from("fake-image"),
-      ]);
+      jest
+        .spyOn(service as any, "convertPdfToImages")
+        .mockResolvedValue([Buffer.from("fake-image")]);
 
       mockAiChatService.chat.mockResolvedValue({
         content: JSON.stringify(aiResponse),
@@ -138,9 +142,9 @@ describe("DrawingExtractionService", () => {
         confidence: 0.9,
       };
 
-      jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([
-        Buffer.from("fake-image"),
-      ]);
+      jest
+        .spyOn(service as any, "convertPdfToImages")
+        .mockResolvedValue([Buffer.from("fake-image")]);
 
       mockAiChatService.chat.mockResolvedValue({
         content: JSON.stringify(aiResponse),
@@ -178,9 +182,9 @@ describe("DrawingExtractionService", () => {
     });
 
     it("handles AI returning no valid JSON gracefully", async () => {
-      jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([
-        Buffer.from("fake-image"),
-      ]);
+      jest
+        .spyOn(service as any, "convertPdfToImages")
+        .mockResolvedValue([Buffer.from("fake-image")]);
 
       mockAiChatService.chat.mockResolvedValue({
         content: "I cannot extract any data from this image",
@@ -212,9 +216,9 @@ describe("DrawingExtractionService", () => {
         confidence: 0.8,
       };
 
-      jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([
-        Buffer.from("fake-image"),
-      ]);
+      jest
+        .spyOn(service as any, "convertPdfToImages")
+        .mockResolvedValue([Buffer.from("fake-image")]);
 
       mockAiChatService.chat.mockResolvedValue({
         content: JSON.stringify(aiResponse),
@@ -246,9 +250,9 @@ describe("DrawingExtractionService", () => {
         confidence: 0.5,
       };
 
-      jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([
-        Buffer.from("fake-image"),
-      ]);
+      jest
+        .spyOn(service as any, "convertPdfToImages")
+        .mockResolvedValue([Buffer.from("fake-image")]);
 
       mockAiChatService.chat.mockResolvedValue({
         content: JSON.stringify(aiResponse),
@@ -277,9 +281,9 @@ describe("DrawingExtractionService", () => {
         confidence: 0.8,
       };
 
-      jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([
-        Buffer.from("fake-image"),
-      ]);
+      jest
+        .spyOn(service as any, "convertPdfToImages")
+        .mockResolvedValue([Buffer.from("fake-image")]);
 
       mockAiChatService.chat.mockResolvedValue({
         content: JSON.stringify(aiResponse),
@@ -290,10 +294,7 @@ describe("DrawingExtractionService", () => {
       ]);
 
       const singleExternal = result.dimensions[0].externalSurfaceM2!;
-      expect(result.totalExternalM2).toBeCloseTo(
-        Math.round(singleExternal * 3 * 100) / 100,
-        2,
-      );
+      expect(result.totalExternalM2).toBeCloseTo(Math.round(singleExternal * 3 * 100) / 100, 2);
     });
   });
 
@@ -308,9 +309,9 @@ describe("DrawingExtractionService", () => {
         buffer: Buffer.from("pdf"),
       } as Express.Multer.File;
 
-      await expect(
-        service.uploadAttachment(10, 999, file, "user1", null),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.uploadAttachment(10, 999, file, "user1", null)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("uploads file and creates attachment record", async () => {
@@ -391,24 +392,21 @@ describe("DrawingExtractionService", () => {
   describe("normalizeStoragePath", () => {
     it("strips domain and query from presigned URLs", () => {
       const normalize = (service as any).normalizeStoragePath.bind(service);
-      const url =
-        "https://bucket.s3.amazonaws.com/stock-control/drawings/test.pdf?X-Amz-Sig=abc";
+      const url = "https://bucket.s3.amazonaws.com/stock-control/drawings/test.pdf?X-Amz-Sig=abc";
       expect(normalize(url)).toBe("stock-control/drawings/test.pdf");
     });
 
     it("returns plain paths unchanged", () => {
       const normalize = (service as any).normalizeStoragePath.bind(service);
-      expect(normalize("stock-control/drawings/test.pdf")).toBe(
-        "stock-control/drawings/test.pdf",
-      );
+      expect(normalize("stock-control/drawings/test.pdf")).toBe("stock-control/drawings/test.pdf");
     });
   });
 
   describe("multi-document extraction", () => {
     it("uses multi-doc prompt when multiple PDFs provided", async () => {
-      jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([
-        Buffer.from("fake-image"),
-      ]);
+      jest
+        .spyOn(service as any, "convertPdfToImages")
+        .mockResolvedValue([Buffer.from("fake-image")]);
 
       mockAiChatService.chat.mockResolvedValue({
         content: JSON.stringify({
@@ -429,9 +427,9 @@ describe("DrawingExtractionService", () => {
     });
 
     it("uses single-doc prompt when one PDF provided", async () => {
-      jest.spyOn(service as any, "convertPdfToImages").mockResolvedValue([
-        Buffer.from("fake-image"),
-      ]);
+      jest
+        .spyOn(service as any, "convertPdfToImages")
+        .mockResolvedValue([Buffer.from("fake-image")]);
 
       mockAiChatService.chat.mockResolvedValue({
         content: JSON.stringify({

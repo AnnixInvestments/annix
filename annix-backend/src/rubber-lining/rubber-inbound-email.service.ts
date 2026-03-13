@@ -874,50 +874,53 @@ ${truncatedText}`;
     const result: { cocIds?: number[]; deliveryNoteIds?: number[]; taxInvoiceIds?: number[] } = {};
 
     if (documentType === "supplier_coc") {
-      result.cocIds = await files.reduce(async (accPromise, file) => {
-        const acc = await accPromise;
-        const pdfText = await this.extractTextFromPdf(file.buffer);
+      result.cocIds = await files.reduce(
+        async (accPromise, file) => {
+          const acc = await accPromise;
+          const pdfText = await this.extractTextFromPdf(file.buffer);
 
-        const graphInfo = this.detectIfGraph(pdfText, file.originalname);
-        if (graphInfo.isGraph) {
-          const linkedCocId = await this.linkGraphToExistingCoc(
-            file,
-            pdfText,
-            graphInfo.batchNumbers,
-          );
-          if (linkedCocId) {
-            this.logger.log(`Linked graph PDF to existing CoC ${linkedCocId}`);
-            return [...acc, linkedCocId];
+          const graphInfo = this.detectIfGraph(pdfText, file.originalname);
+          if (graphInfo.isGraph) {
+            const linkedCocId = await this.linkGraphToExistingCoc(
+              file,
+              pdfText,
+              graphInfo.batchNumbers,
+            );
+            if (linkedCocId) {
+              this.logger.log(`Linked graph PDF to existing CoC ${linkedCocId}`);
+              return [...acc, linkedCocId];
+            }
+            this.logger.warn("Could not find matching COC for graph, creating new COC");
           }
-          this.logger.warn("Could not find matching COC for graph, creating new COC");
-        }
 
-        const supplierInfo = await this.identifySupplierWithAi(pdfText, file.originalname);
+          const supplierInfo = await this.identifySupplierWithAi(pdfText, file.originalname);
 
-        const detectedCocType =
-          supplierInfo?.cocType || metadata.cocType || SupplierCocType.COMPOUNDER;
-        const detectedSupplierId = supplierInfo?.companyId || metadata.supplierCompanyId;
+          const detectedCocType =
+            supplierInfo?.cocType || metadata.cocType || SupplierCocType.COMPOUNDER;
+          const detectedSupplierId = supplierInfo?.companyId || metadata.supplierCompanyId;
 
-        const subPath = detectedSupplierId
-          ? `au-rubber/cocs/${detectedSupplierId}`
-          : `au-rubber/cocs/${detectedCocType.toLowerCase()}`;
+          const subPath = detectedSupplierId
+            ? `au-rubber/cocs/${detectedSupplierId}`
+            : `au-rubber/cocs/${detectedCocType.toLowerCase()}`;
 
-        const storageResult = await this.storageService.upload(file, subPath);
+          const storageResult = await this.storageService.upload(file, subPath);
 
-        const coc = await this.cocService.createSupplierCoc(
-          {
-            cocType: detectedCocType,
-            supplierCompanyId: detectedSupplierId,
-            documentPath: storageResult.path,
-            cocNumber: metadata.cocNumber,
-            compoundCode: metadata.compoundCode,
-          },
-          createdBy,
-        );
+          const coc = await this.cocService.createSupplierCoc(
+            {
+              cocType: detectedCocType,
+              supplierCompanyId: detectedSupplierId,
+              documentPath: storageResult.path,
+              cocNumber: metadata.cocNumber,
+              compoundCode: metadata.compoundCode,
+            },
+            createdBy,
+          );
 
-        this.autoExtractCoc(coc.id, detectedCocType, pdfText);
-        return [...acc, coc.id];
-      }, Promise.resolve([] as number[]));
+          this.autoExtractCoc(coc.id, detectedCocType, pdfText);
+          return [...acc, coc.id];
+        },
+        Promise.resolve([] as number[]),
+      );
     } else if (documentType === "tax_invoice") {
       const companyId = metadata.companyId as number;
       const company = companyId
@@ -925,48 +928,54 @@ ${truncatedText}`;
         : null;
       const subPath = `au-rubber/tax-invoices/${companyId}`;
 
-      result.taxInvoiceIds = await files.reduce(async (accPromise, file) => {
-        const acc = await accPromise;
-        const storageResult = await this.storageService.upload(file, subPath);
+      result.taxInvoiceIds = await files.reduce(
+        async (accPromise, file) => {
+          const acc = await accPromise;
+          const storageResult = await this.storageService.upload(file, subPath);
 
-        const invoiceNumber = metadata.invoiceNumber || file.originalname.replace(/\.\w+$/i, "");
-        const invoice = await this.taxInvoiceService.createTaxInvoice(
-          {
-            invoiceNumber,
-            invoiceDate: metadata.invoiceDate,
-            invoiceType: metadata.invoiceType || TaxInvoiceType.SUPPLIER,
-            companyId,
-            documentPath: storageResult.path,
-          },
-          createdBy,
-        );
+          const invoiceNumber = metadata.invoiceNumber || file.originalname.replace(/\.\w+$/i, "");
+          const invoice = await this.taxInvoiceService.createTaxInvoice(
+            {
+              invoiceNumber,
+              invoiceDate: metadata.invoiceDate,
+              invoiceType: metadata.invoiceType || TaxInvoiceType.SUPPLIER,
+              companyId,
+              documentPath: storageResult.path,
+            },
+            createdBy,
+          );
 
-        this.autoExtractTaxInvoice(invoice.id, file, company?.name ?? null);
-        return [...acc, invoice.id];
-      }, Promise.resolve([] as number[]));
+          this.autoExtractTaxInvoice(invoice.id, file, company?.name ?? null);
+          return [...acc, invoice.id];
+        },
+        Promise.resolve([] as number[]),
+      );
     } else {
       const subPath = `au-rubber/delivery-notes/${metadata.supplierCompanyId || "unknown"}`;
 
-      result.deliveryNoteIds = await files.reduce(async (accPromise, file) => {
-        const acc = await accPromise;
-        const storageResult = await this.storageService.upload(file, subPath);
+      result.deliveryNoteIds = await files.reduce(
+        async (accPromise, file) => {
+          const acc = await accPromise;
+          const storageResult = await this.storageService.upload(file, subPath);
 
-        const dnNumber = metadata.deliveryNoteNumber || `DN-${nowMillis()}`;
-        const dnType = metadata.deliveryNoteType || DeliveryNoteType.COMPOUND;
-        const dn = await this.deliveryNoteService.createDeliveryNote(
-          {
-            deliveryNoteType: dnType,
-            supplierCompanyId: metadata.supplierCompanyId as number,
-            documentPath: storageResult.path,
-            deliveryNoteNumber: dnNumber,
-            deliveryDate: metadata.deliveryDate,
-          },
-          createdBy,
-        );
+          const dnNumber = metadata.deliveryNoteNumber || `DN-${nowMillis()}`;
+          const dnType = metadata.deliveryNoteType || DeliveryNoteType.COMPOUND;
+          const dn = await this.deliveryNoteService.createDeliveryNote(
+            {
+              deliveryNoteType: dnType,
+              supplierCompanyId: metadata.supplierCompanyId as number,
+              documentPath: storageResult.path,
+              deliveryNoteNumber: dnNumber,
+              deliveryDate: metadata.deliveryDate,
+            },
+            createdBy,
+          );
 
-        this.autoExtractAndSplitDeliveryNote(dn.id, file.buffer, dnType);
-        return [...acc, dn.id];
-      }, Promise.resolve([] as number[]));
+          this.autoExtractAndSplitDeliveryNote(dn.id, file.buffer, dnType);
+          return [...acc, dn.id];
+        },
+        Promise.resolve([] as number[]),
+      );
     }
 
     return result;
@@ -1187,9 +1196,7 @@ ${truncatedText}`;
         file.batchNumbers.length > 0
           ? dataPdfs.find((dataIdx) => {
               const dataFile = analyzedFiles[dataIdx];
-              const normalizedDataBatches = dataFile.batchNumbers.map((b) =>
-                b.replace(/^B/i, ""),
-              );
+              const normalizedDataBatches = dataFile.batchNumbers.map((b) => b.replace(/^B/i, ""));
               return normalizedGraphBatches.some((gbn) => normalizedDataBatches.includes(gbn));
             })
           : undefined;
@@ -1343,9 +1350,7 @@ ${truncatedText}`;
           createdBy,
         );
 
-        this.logger.log(
-          `Created standalone CoC ${coc.id} for unlinked graph ${analyzed.filename}`,
-        );
+        this.logger.log(`Created standalone CoC ${coc.id} for unlinked graph ${analyzed.filename}`);
         return [...acc, coc.id];
       },
       Promise.resolve([] as number[]),
@@ -1916,8 +1921,9 @@ ${truncatedText}`;
           }
 
           this.logger.log(`Using OCR-based extraction for ${file.originalname}`);
-          const extraction =
-            await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(file.buffer);
+          const extraction = await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(
+            file.buffer,
+          );
           deliveryNotesFromFile = extraction.deliveryNotes as Array<Record<string, unknown>>;
           this.logger.log(
             `Extracted ${deliveryNotesFromFile.length} customer DN(s) from ${file.originalname} via OCR`,
@@ -1957,28 +1963,28 @@ ${truncatedText}`;
             }
           }
 
-          const lineItems = (
-            (extractedData.lineItems as Array<Record<string, unknown>>) || []
-          ).map((item) => ({
-            lineNumber: (item.lineNumber as number) || null,
-            compoundType:
-              (item.compoundCode as string) ||
-              (item.compoundType as string) ||
-              (item.compoundDescription as string) ||
-              null,
-            thicknessMm: (item.thicknessMm as number) || null,
-            widthMm: (item.widthMm as number) || null,
-            lengthM: (item.lengthM as number) || null,
-            quantity: (item.quantity as number) || null,
-            rollWeightKg:
-              (item.actualWeightKg as number) ||
-              (item.rollWeightKg as number) ||
-              (item.weightPerRollKg as number) ||
-              null,
-            cocBatchNumbers: (item.cocBatchNumbers as string[]) || null,
-            rollNumber: (item.rollNumber as string) || null,
-            specificGravity: (item.specificGravity as number) || null,
-          }));
+          const lineItems = ((extractedData.lineItems as Array<Record<string, unknown>>) || []).map(
+            (item) => ({
+              lineNumber: (item.lineNumber as number) || null,
+              compoundType:
+                (item.compoundCode as string) ||
+                (item.compoundType as string) ||
+                (item.compoundDescription as string) ||
+                null,
+              thicknessMm: (item.thicknessMm as number) || null,
+              widthMm: (item.widthMm as number) || null,
+              lengthM: (item.lengthM as number) || null,
+              quantity: (item.quantity as number) || null,
+              rollWeightKg:
+                (item.actualWeightKg as number) ||
+                (item.rollWeightKg as number) ||
+                (item.weightPerRollKg as number) ||
+                null,
+              cocBatchNumbers: (item.cocBatchNumbers as string[]) || null,
+              rollNumber: (item.rollNumber as string) || null,
+              specificGravity: (item.specificGravity as number) || null,
+            }),
+          );
 
           const pageInfo = extractedData.pageInfo as {
             currentPage?: number;
@@ -2015,10 +2021,7 @@ ${truncatedText}`;
         return {
           analyzedFiles: [...acc.analyzedFiles, ...dnFiles.map((d) => d.file)],
           unmatchedCustomerNames: [
-            ...new Set([
-              ...acc.unmatchedCustomerNames,
-              ...dnFiles.flatMap((d) => d.unmatched),
-            ]),
+            ...new Set([...acc.unmatchedCustomerNames, ...dnFiles.flatMap((d) => d.unmatched)]),
           ],
           extractionErrors: [...acc.extractionErrors, ...newErrors],
         };
@@ -2090,14 +2093,16 @@ ${truncatedText}`;
 
   private groupCustomerDnsByNumber(files: AnalyzedCustomerDnFile[]): CustomerDnGroup[] {
     const groupMap = files.reduce((map, file) => {
-      const dnNumber = file.deliveryNoteNumber || (() => {
-        const filenameMatch = file.filename.match(/DN[-_]?(\d+)/i);
-        if (filenameMatch) {
-          this.logger.log(`Extracted DN number from filename: DN${filenameMatch[1]}`);
-          return `DN${filenameMatch[1]}`;
-        }
-        return file.filename.replace(/\.[^/.]+$/, "");
-      })();
+      const dnNumber =
+        file.deliveryNoteNumber ||
+        (() => {
+          const filenameMatch = file.filename.match(/DN[-_]?(\d+)/i);
+          if (filenameMatch) {
+            this.logger.log(`Extracted DN number from filename: DN${filenameMatch[1]}`);
+            return `DN${filenameMatch[1]}`;
+          }
+          return file.filename.replace(/\.[^/.]+$/, "");
+        })();
 
       const existing = map.get(dnNumber);
       const fileEntry = {
@@ -2125,7 +2130,11 @@ ${truncatedText}`;
         customerReference: existing.customerReference || file.customerReference,
         deliveryDate: existing.deliveryDate || file.deliveryDate,
         customerId: existing.customerId || file.customerId,
-        customerName: existing.customerId ? existing.customerName : (file.customerId ? file.customerName : existing.customerName),
+        customerName: existing.customerId
+          ? existing.customerName
+          : file.customerId
+            ? file.customerName
+            : existing.customerName,
       });
     }, new Map<string, CustomerDnGroup>());
 

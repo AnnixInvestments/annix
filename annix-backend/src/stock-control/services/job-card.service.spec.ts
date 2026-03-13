@@ -191,9 +191,7 @@ describe("JobCardService", () => {
     it("throws NotFoundException when job card missing", async () => {
       mockJobCardRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.update(1, 999, { description: "X" })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.update(1, 999, { description: "X" })).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -256,9 +254,7 @@ describe("JobCardService", () => {
 
     it("throws NotFoundException when job card not found", async () => {
       const stockItem = { id: 10, quantity: 100, companyId: 1 };
-      mockQueryRunner.manager.findOne
-        .mockResolvedValueOnce(stockItem)
-        .mockResolvedValueOnce(null);
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(null);
 
       await expect(service.allocateStock(1, allocationData)).rejects.toThrow(NotFoundException);
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
@@ -331,7 +327,13 @@ describe("JobCardService", () => {
     };
 
     it("flags pending approval when exceeding allowed litres", async () => {
-      const stockItem = { id: 10, name: "Primer Red", quantity: 100, minStockLevel: 0, companyId: 1 };
+      const stockItem = {
+        id: 10,
+        name: "Primer Red",
+        quantity: 100,
+        minStockLevel: 0,
+        companyId: 1,
+      };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
       mockQueryRunner.manager.findOne
         .mockResolvedValueOnce(stockItem)
@@ -354,7 +356,13 @@ describe("JobCardService", () => {
     });
 
     it("does not deduct stock when allocation requires approval", async () => {
-      const stockItem = { id: 10, name: "Primer Red", quantity: 100, minStockLevel: 0, companyId: 1 };
+      const stockItem = {
+        id: 10,
+        name: "Primer Red",
+        quantity: 100,
+        minStockLevel: 0,
+        companyId: 1,
+      };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
       mockQueryRunner.manager.findOne
         .mockResolvedValueOnce(stockItem)
@@ -368,14 +376,17 @@ describe("JobCardService", () => {
 
       await service.allocateStock(1, allocationData);
 
-      expect(mockQueryRunner.manager.save).not.toHaveBeenCalledWith(
-        StockItem,
-        expect.anything(),
-      );
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalledWith(StockItem, expect.anything());
     });
 
     it("accounts for existing allocations when checking over-allocation", async () => {
-      const stockItem = { id: 10, name: "Primer Red", quantity: 100, minStockLevel: 0, companyId: 1 };
+      const stockItem = {
+        id: 10,
+        name: "Primer Red",
+        quantity: 100,
+        minStockLevel: 0,
+        companyId: 1,
+      };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
       mockQueryRunner.manager.findOne
         .mockResolvedValueOnce(stockItem)
@@ -396,7 +407,13 @@ describe("JobCardService", () => {
     });
 
     it("allows allocation within limit even with existing allocations", async () => {
-      const stockItem = { id: 10, name: "Primer Red", quantity: 100, minStockLevel: 0, companyId: 1 };
+      const stockItem = {
+        id: 10,
+        name: "Primer Red",
+        quantity: 100,
+        minStockLevel: 0,
+        companyId: 1,
+      };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
       mockQueryRunner.manager.findOne
         .mockResolvedValueOnce(stockItem)
@@ -434,7 +451,13 @@ describe("JobCardService", () => {
     });
 
     it("skips over-allocation check when no fuzzy match for stock item name", async () => {
-      const stockItem = { id: 10, name: "Completely Different Product", quantity: 100, minStockLevel: 0, companyId: 1 };
+      const stockItem = {
+        id: 10,
+        name: "Completely Different Product",
+        quantity: 100,
+        minStockLevel: 0,
+        companyId: 1,
+      };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
       mockQueryRunner.manager.findOne
         .mockResolvedValueOnce(stockItem)
@@ -512,9 +535,7 @@ describe("JobCardService", () => {
         stockItem: { id: 10 },
         jobCard: { id: 1, jobNumber: "JC-001" },
       };
-      mockQueryRunner.manager.findOne
-        .mockResolvedValueOnce(allocation)
-        .mockResolvedValueOnce(null);
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(allocation).mockResolvedValueOnce(null);
 
       await expect(service.approveOverAllocation(1, 5, 99)).rejects.toThrow(NotFoundException);
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
@@ -762,7 +783,10 @@ describe("JobCardService", () => {
       mockAllocationRepo.findOne.mockResolvedValue(allocation);
       mockStorageService.upload.mockResolvedValue({ url: "https://s3.example.com/photo.jpg" });
 
-      const file = { buffer: Buffer.from("test"), originalname: "photo.jpg" } as Express.Multer.File;
+      const file = {
+        buffer: Buffer.from("test"),
+        originalname: "photo.jpg",
+      } as Express.Multer.File;
       await service.uploadAllocationPhoto(1, 5, file);
 
       expect(mockStorageService.upload).toHaveBeenCalledWith(file, "stock-control/allocations");

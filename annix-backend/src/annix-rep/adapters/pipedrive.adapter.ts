@@ -278,7 +278,8 @@ export class PipedriveAdapter implements ICrmAdapter {
       const dueDate = meeting.scheduledStart.toISOString().split("T")[0];
       const dueTime = meeting.scheduledStart.toISOString().split("T")[1].substring(0, 5);
       const durationMinutes = Math.round(
-        fromJSDate(meeting.scheduledEnd).diff(fromJSDate(meeting.scheduledStart), "minutes").minutes,
+        fromJSDate(meeting.scheduledEnd).diff(fromJSDate(meeting.scheduledStart), "minutes")
+          .minutes,
       );
       const durationHours = Math.floor(durationMinutes / 60);
       const durationMins = durationMinutes % 60;

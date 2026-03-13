@@ -15,7 +15,9 @@ export class AddAnnixRepMissingIndexes1807000000027 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_annix_rep_calendar_connections_sync_status"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_annix_rep_calendar_connections_sync_status"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_annix_rep_prospects_next_follow_up"`);
   }
 }

@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from "@nestjs/common";
+import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
@@ -232,10 +228,7 @@ describe("DispatchService", () => {
       const jobCard = makeJobCard(JobCardWorkflowStatus.READY_FOR_DISPATCH);
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
       mockAllocationRepo.findOne.mockResolvedValue(makeAllocation(10, 10));
-      mockDispatchScanRepo.find.mockResolvedValue([
-        makeScan(10, 3),
-        makeScan(10, 4),
-      ]);
+      mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 3), makeScan(10, 4)]);
 
       await expect(service.scanItem(1, 1, 10, 4, mockUser)).rejects.toThrow(BadRequestException);
 
@@ -265,9 +258,7 @@ describe("DispatchService", () => {
         makeAllocation(10, 5, 1),
         makeAllocation(20, 3, 2),
       ]);
-      mockDispatchScanRepo.find.mockResolvedValue([
-        makeScan(10, 5),
-      ]);
+      mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 5)]);
 
       const progress = await service.dispatchProgress(1, 1);
 
@@ -287,10 +278,7 @@ describe("DispatchService", () => {
         makeAllocation(10, 5, 1),
         makeAllocation(20, 3, 2),
       ]);
-      mockDispatchScanRepo.find.mockResolvedValue([
-        makeScan(10, 5),
-        makeScan(20, 3),
-      ]);
+      mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 5), makeScan(20, 3)]);
 
       const progress = await service.dispatchProgress(1, 1);
 
@@ -445,9 +433,9 @@ describe("DispatchService", () => {
       };
       mockDispatchScanRepo.findOne.mockResolvedValue(scan);
 
-      await expect(
-        service.reverseDispatchScan(1, 5, { id: 1, name: "Test User" }),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.reverseDispatchScan(1, 5, { id: 1, name: "Test User" })).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("logs audit entry after reversal", async () => {
