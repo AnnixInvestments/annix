@@ -1,6 +1,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { DataSource } from "typeorm";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { MovementService } from "./movement.service";
@@ -24,6 +25,25 @@ describe("MovementService", () => {
     createReorderRequisition: jest.fn().mockResolvedValue(null),
   };
 
+  const mockQueryRunner = {
+    connect: jest.fn(),
+    startTransaction: jest.fn(),
+    commitTransaction: jest.fn(),
+    rollbackTransaction: jest.fn(),
+    release: jest.fn(),
+    manager: {
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn(),
+      save: jest.fn().mockImplementation((_entity, data) => Promise.resolve({ id: 1, ...data })),
+      remove: jest.fn(),
+      create: jest.fn().mockImplementation((_entity, data) => ({ ...data })),
+    },
+  };
+
+  const mockDataSource = {
+    createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -31,6 +51,7 @@ describe("MovementService", () => {
         { provide: getRepositoryToken(StockMovement), useValue: mockMovementRepo },
         { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
         { provide: RequisitionService, useValue: mockRequisitionService },
+        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
@@ -44,7 +65,7 @@ describe("MovementService", () => {
 
   describe("createManualAdjustment", () => {
     it("throws NotFoundException when stock item not found", async () => {
-      mockStockItemRepo.findOne.mockResolvedValue(null);
+      mockQueryRunner.manager.findOne.mockResolvedValue(null);
 
       await expect(
         service.createManualAdjustment(1, {
@@ -53,12 +74,12 @@ describe("MovementService", () => {
           quantity: 10,
         }),
       ).rejects.toThrow(NotFoundException);
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
     });
 
     it("IN movement adds to quantity", async () => {
       const stockItem = { id: 1, quantity: 50, minStockLevel: 0 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
 
       await service.createManualAdjustment(1, {
         stockItemId: 1,
@@ -66,15 +87,16 @@ describe("MovementService", () => {
         quantity: 10,
       });
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+        StockItem,
         expect.objectContaining({ quantity: 60 }),
       );
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
     });
 
     it("OUT movement subtracts from quantity", async () => {
       const stockItem = { id: 1, quantity: 50, minStockLevel: 0 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
 
       await service.createManualAdjustment(1, {
         stockItemId: 1,
@@ -82,15 +104,16 @@ describe("MovementService", () => {
         quantity: 10,
       });
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+        StockItem,
         expect.objectContaining({ quantity: 40 }),
       );
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
     });
 
     it("OUT movement clamps to 0 (never negative)", async () => {
       const stockItem = { id: 1, quantity: 5, minStockLevel: 0 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
 
       await service.createManualAdjustment(1, {
         stockItemId: 1,
@@ -98,13 +121,15 @@ describe("MovementService", () => {
         quantity: 20,
       });
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(expect.objectContaining({ quantity: 0 }));
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+        StockItem,
+        expect.objectContaining({ quantity: 0 }),
+      );
     });
 
     it("ADJUSTMENT sets quantity directly", async () => {
       const stockItem = { id: 1, quantity: 50, minStockLevel: 0 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
 
       await service.createManualAdjustment(1, {
         stockItemId: 1,
@@ -112,15 +137,15 @@ describe("MovementService", () => {
         quantity: 25,
       });
 
-      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+        StockItem,
         expect.objectContaining({ quantity: 25 }),
       );
     });
 
     it("creates movement record with MANUAL reference type", async () => {
       const stockItem = { id: 1, quantity: 50, minStockLevel: 0 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
 
       await service.createManualAdjustment(1, {
         stockItemId: 1,
@@ -129,7 +154,8 @@ describe("MovementService", () => {
         notes: "stock take",
       });
 
-      expect(mockMovementRepo.create).toHaveBeenCalledWith(
+      expect(mockQueryRunner.manager.create).toHaveBeenCalledWith(
+        StockMovement,
         expect.objectContaining({
           referenceType: ReferenceType.MANUAL,
           notes: "stock take",
@@ -141,8 +167,7 @@ describe("MovementService", () => {
   describe("reorder trigger", () => {
     it("triggers reorder for OUT when below minStockLevel", async () => {
       const stockItem = { id: 1, quantity: 50, minStockLevel: 45 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
 
       await service.createManualAdjustment(1, {
         stockItemId: 1,
@@ -155,8 +180,7 @@ describe("MovementService", () => {
 
     it("triggers reorder for ADJUSTMENT when below minStockLevel", async () => {
       const stockItem = { id: 1, quantity: 50, minStockLevel: 30 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
 
       await service.createManualAdjustment(1, {
         stockItemId: 1,
@@ -169,8 +193,7 @@ describe("MovementService", () => {
 
     it("does not trigger reorder for IN movement", async () => {
       const stockItem = { id: 1, quantity: 5, minStockLevel: 20 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
 
       await service.createManualAdjustment(1, {
         stockItemId: 1,
@@ -183,8 +206,7 @@ describe("MovementService", () => {
 
     it("does not trigger reorder when minStockLevel is 0", async () => {
       const stockItem = { id: 1, quantity: 0, minStockLevel: 0 };
-      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
-      mockStockItemRepo.save.mockResolvedValue(stockItem);
+      mockQueryRunner.manager.findOne.mockResolvedValue(stockItem);
 
       await service.createManualAdjustment(1, {
         stockItemId: 1,
