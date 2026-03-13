@@ -793,21 +793,98 @@ export class RubberDeliveryNoteService {
   }
 
   async bulkAutoLinkAllUnlinkedDns(): Promise<{ linked: number; details: string[] }> {
-    const allCocs = await this.supplierCocRepository.find();
+    const [allCocs, allUnlinkedNotes] = await Promise.all([
+      this.supplierCocRepository.find(),
+      this.deliveryNoteRepository.find({
+        where: {
+          linkedCocId: IsNull(),
+          status: DeliveryNoteStatus.PENDING,
+        },
+      }),
+    ]);
+
+    const notesBySupplier = allUnlinkedNotes.reduce(
+      (map, note) => {
+        const key = note.supplierCompanyId;
+        return { ...map, [key]: [...(map[key] || []), note] };
+      },
+      {} as Record<number, RubberDeliveryNote[]>,
+    );
+
     const result = await allCocs.reduce(
       async (accPromise, coc) => {
         const acc = await accPromise;
-        const linkedIds = await this.autoLinkUnlinkedDnsToSupplierCoc(coc.id);
-        if (linkedIds.length > 0) {
-          return {
-            linked: acc.linked + linkedIds.length,
-            details: [
-              ...acc.details,
-              `CoC ${coc.id}: linked ${linkedIds.length} DN(s) [${linkedIds.join(", ")}]`,
-            ],
-          };
-        }
-        return acc;
+        const supplierNotes = notesBySupplier[coc.supplierCompanyId] || [];
+        if (supplierNotes.length === 0) return acc;
+
+        const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
+          .trim()
+          .toUpperCase();
+        const cocBatches = [
+          ...(coc.extractedData?.batchNumbers || []),
+          ...(coc.extractedData?.batches || []).map((b: any) => b.batchNumber),
+        ];
+        const cocRollNumbers: string[] = [...(coc.extractedData?.rollNumbers || [])].filter(
+          Boolean,
+        );
+        const cocRollParts = cocRollNumbers.flatMap((rn: string) => {
+          const parts = rn.split("-");
+          return parts.length >= 2 ? [parts[parts.length - 1]] : [rn];
+        });
+
+        const matchedNotes = supplierNotes.filter((note) => {
+          const batchRange = note.extractedData?.batchRange;
+          const dnNumber = note.deliveryNoteNumber;
+          const dnCustomerRef = (
+            note.customerReference ||
+            note.extractedData?.customerReference ||
+            ""
+          )
+            .trim()
+            .toUpperCase();
+          const dnRollNumbers = (note.extractedData?.rolls || [])
+            .map((r) => r.rollNumber)
+            .filter(Boolean);
+
+          const batchMatch =
+            batchRange && cocBatches.some((b: string) => batchRange.includes(b));
+          const orderMatch =
+            cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber);
+          const poMatch =
+            cocOrderNumber && dnCustomerRef && cocOrderNumber === dnCustomerRef;
+          const rollMatch =
+            dnRollNumbers.length > 0 &&
+            cocRollParts.length > 0 &&
+            dnRollNumbers.some((dnRoll) =>
+              cocRollParts.some(
+                (cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll),
+              ),
+            );
+
+          return batchMatch || orderMatch || (poMatch && rollMatch);
+        });
+
+        if (matchedNotes.length === 0) return acc;
+
+        await matchedNotes.reduce(async (linkPromise, note) => {
+          await linkPromise;
+          await this.linkToCoc(note.id, coc.id);
+          this.logger.log(
+            `Auto-linked unlinked DN ${note.id} (${note.deliveryNoteNumber}) to CoC ${coc.id}`,
+          );
+        }, Promise.resolve());
+
+        notesBySupplier[coc.supplierCompanyId] = supplierNotes.filter(
+          (n) => !matchedNotes.some((m) => m.id === n.id),
+        );
+
+        return {
+          linked: acc.linked + matchedNotes.length,
+          details: [
+            ...acc.details,
+            `CoC ${coc.id}: linked ${matchedNotes.length} DN(s) [${matchedNotes.map((n) => n.id).join(", ")}]`,
+          ],
+        };
       },
       Promise.resolve({ linked: 0, details: [] as string[] }),
     );
