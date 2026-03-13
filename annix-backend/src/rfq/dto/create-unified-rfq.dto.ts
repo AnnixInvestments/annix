@@ -9,6 +9,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { NaceRequiresHardnessLimit, Psl2RequiresCvn } from "../../shared/validators";
+import { PlateBomItem } from "../entities/tank-chute-rfq.entity";
 import { CreateRfqDto } from "./create-rfq.dto";
 
 export class UnifiedStraightPipeDto {
@@ -20,18 +21,20 @@ export class UnifiedStraightPipeDto {
   @IsString()
   scheduleType: string;
 
-  @ApiProperty({ description: "Schedule number", example: "WT6" })
+  @ApiProperty({ description: "Schedule number", example: "WT6", required: false })
+  @IsOptional()
   @IsString()
-  scheduleNumber: string;
+  scheduleNumber?: string;
 
   @ApiProperty({ description: "Wall thickness in mm", required: false })
   @IsOptional()
   @IsNumber()
   wallThicknessMm?: number;
 
-  @ApiProperty({ description: "Pipe end configuration", example: "FOE_LF" })
+  @ApiProperty({ description: "Pipe end configuration", example: "FOE_LF", required: false })
+  @IsOptional()
   @IsString()
-  pipeEndConfiguration: string;
+  pipeEndConfiguration?: string;
 
   @ApiProperty({ description: "Individual pipe length", example: 12.192 })
   @IsNumber()
@@ -1375,7 +1378,7 @@ export class UnifiedTankChuteDto {
   @ApiProperty({ description: "Plate BOM as JSON array", required: false })
   @IsOptional()
   @IsArray()
-  plateBom?: Array<Record<string, unknown>>;
+  plateBom?: PlateBomItem[];
 
   @ApiProperty({ description: "BOM total weight in kg", required: false })
   @IsOptional()

@@ -27,7 +27,7 @@ import { CreateBendRfqWithItemDto } from "./dto/create-bend-rfq-with-item.dto";
 import { CreatePumpRfqDto } from "./dto/create-pump-rfq.dto";
 import { CreatePumpRfqWithItemDto } from "./dto/create-pump-rfq-with-item.dto";
 import { CreateStraightPipeRfqWithItemDto } from "./dto/create-rfq-item.dto";
-import { CreateUnifiedRfqDto } from "./dto/create-unified-rfq.dto";
+import { CreateUnifiedRfqDto, UnifiedStraightPipeDto } from "./dto/create-unified-rfq.dto";
 import { PumpCalculationResultDto } from "./dto/pump-calculation-result.dto";
 import { RfqDocumentResponseDto } from "./dto/rfq-document.dto";
 import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
@@ -180,7 +180,7 @@ export class RfqService {
   }
 
   async calculateStraightPipeRequirements(
-    dto: CreateStraightPipeRfqWithItemDto["straightPipe"],
+    dto: UnifiedStraightPipeDto,
   ): Promise<StraightPipeCalculationResultDto> {
     // Find pipe dimensions based on NB and schedule/wall thickness
     let pipeDimension: PipeDimension | null | undefined = null;
@@ -496,7 +496,7 @@ export class RfqService {
       lineNumber++;
 
       if (item.itemType === "straight_pipe" && item.straightPipe) {
-        const calculation = await this.calculateStraightPipeRequirements(item.straightPipe as any);
+        const calculation = await this.calculateStraightPipeRequirements(item.straightPipe);
 
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
@@ -860,7 +860,7 @@ export class RfqService {
           coatingAreaM2: item.tankChute.coatingAreaM2,
           coatingWastagePercent: item.tankChute.coatingWastagePercent,
           surfacePrepStandard: item.tankChute.surfacePrepStandard,
-          plateBom: item.tankChute.plateBom as any,
+          plateBom: item.tankChute.plateBom,
           bomTotalWeightKg: item.tankChute.bomTotalWeightKg,
           bomTotalAreaM2: item.tankChute.bomTotalAreaM2,
           steelPricePerKg: item.tankChute.steelPricePerKg,
@@ -941,7 +941,7 @@ export class RfqService {
       lineNumber++;
 
       if (item.itemType === "straight_pipe" && item.straightPipe) {
-        const calculation = await this.calculateStraightPipeRequirements(item.straightPipe as any);
+        const calculation = await this.calculateStraightPipeRequirements(item.straightPipe);
 
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
@@ -1298,7 +1298,7 @@ export class RfqService {
           coatingAreaM2: item.tankChute.coatingAreaM2,
           coatingWastagePercent: item.tankChute.coatingWastagePercent,
           surfacePrepStandard: item.tankChute.surfacePrepStandard,
-          plateBom: item.tankChute.plateBom as any,
+          plateBom: item.tankChute.plateBom,
           bomTotalWeightKg: item.tankChute.bomTotalWeightKg,
           bomTotalAreaM2: item.tankChute.bomTotalAreaM2,
           steelPricePerKg: item.tankChute.steelPricePerKg,
