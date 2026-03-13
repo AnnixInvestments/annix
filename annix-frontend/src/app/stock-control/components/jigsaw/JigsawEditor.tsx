@@ -32,6 +32,22 @@ import {
 import { PanelTray } from "./PanelTray";
 import { RollCanvas } from "./RollCanvas";
 
+function unplacePanel(panel: PlacedPanel): JigsawPanel {
+  return {
+    panelId: panel.panelId,
+    itemId: panel.itemId,
+    itemNo: panel.itemNo,
+    description: panel.description,
+    widthMm: panel.widthMm,
+    lengthMm: panel.lengthMm,
+    originalWidthMm: panel.originalWidthMm,
+    originalLengthMm: panel.originalLengthMm,
+    rotated: panel.rotated,
+    colorIndex: panel.colorIndex,
+    dimensionContext: panel.dimensionContext,
+  };
+}
+
 export function JigsawEditor(props: {
   parsedItems: ParsedPipeItem[];
   rubberSpec: RubberSpec | null | undefined;
@@ -263,9 +279,7 @@ export function JigsawEditor(props: {
           return !roll || !isWithinBounds(p, roll);
         });
 
-        const ejectedUnplaced: JigsawPanel[] = ejected.map(
-          ({ rollIndex: _ri, xMm: _x, yMm: _y, ...rest }) => rest,
-        );
+        const ejectedUnplaced: JigsawPanel[] = ejected.map((p) => unplacePanel(p));
 
         setPlacedPanels((prev) => [
           ...prev.filter((p) => p.panelId.split("-")[0] !== baseId),
@@ -315,9 +329,7 @@ export function JigsawEditor(props: {
 
   const removeRoll = (rollIndex: number) => {
     const panelsOnRoll = placedPanels.filter((p) => p.rollIndex === rollIndex);
-    const movedBack: JigsawPanel[] = panelsOnRoll.map(
-      ({ rollIndex: _ri, xMm: _x, yMm: _y, ...rest }) => rest,
-    );
+    const movedBack: JigsawPanel[] = panelsOnRoll.map((p) => unplacePanel(p));
 
     setPlacedPanels((prev) =>
       prev
@@ -337,9 +349,7 @@ export function JigsawEditor(props: {
     );
 
     if (outOfBounds.length > 0) {
-      const movedBack: JigsawPanel[] = outOfBounds.map(
-        ({ rollIndex: _ri, xMm: _x, yMm: _y, ...rest }) => rest,
-      );
+      const movedBack: JigsawPanel[] = outOfBounds.map((p) => unplacePanel(p));
       setPlacedPanels((prev) =>
         prev.filter((p) => !(p.rollIndex === rollIndex && !isWithinBounds(p, newRoll))),
       );
