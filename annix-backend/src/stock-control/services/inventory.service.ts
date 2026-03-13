@@ -159,7 +159,7 @@ export class InventoryService {
     if (saved.minStockLevel > 0 && saved.quantity < saved.minStockLevel) {
       this.requisitionService
         .createReorderRequisition(companyId, saved.id)
-        .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`));
+        .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`, err.stack));
     }
 
     const [refreshed] = await this.refreshPhotoUrls([{ ...saved }]);

@@ -142,7 +142,7 @@ export class InvoiceService {
         action: AuditAction.UPDATE,
         newValues: { reExtracted: true },
       })
-      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     return this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
   }
@@ -278,7 +278,7 @@ export class InvoiceService {
         action: AuditAction.APPROVE,
         newValues: { approvedByUserId: userId, extractionStatus: result.extractionStatus },
       })
-      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     return result;
   }
@@ -377,7 +377,7 @@ export class InvoiceService {
         oldValues: { deliveryNoteId: oldDeliveryNoteId },
         newValues: { deliveryNoteId },
       })
-      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     return saved;
   }

@@ -221,7 +221,7 @@ export class DispatchService {
         oldValues: { workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH },
         newValues: { workflowStatus: JobCardWorkflowStatus.DISPATCHED, completedBy: user.name },
       })
-      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     this.logger.log(`Job card ${jobCardId} dispatch completed by ${user.name}`);
 
@@ -269,7 +269,7 @@ export class DispatchService {
         },
         newValues: { reversedBy: user.name },
       })
-      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
   }
 
   async scanByQrToken(

@@ -75,7 +75,11 @@ export class StockAllocation {
   @Column({ name: "allowed_litres", type: "decimal", precision: 10, scale: 2, nullable: true })
   allowedLitres: number | null;
 
-  @Column({ name: "approved_by_manager_id", type: "integer", nullable: true })
+  @ManyToOne(() => StaffMember, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "approved_by_manager_id" })
+  approvedByManager: StaffMember | null;
+
+  @Column({ name: "approved_by_manager_id", nullable: true })
   approvedByManagerId: number | null;
 
   @Column({ name: "approved_at", type: "timestamp", nullable: true })

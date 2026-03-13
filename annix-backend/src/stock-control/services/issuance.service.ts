@@ -382,7 +382,7 @@ export class IssuanceService {
             recipientStaffId: dto.recipientStaffId,
           },
         })
-        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
       this.logger.log(
         `Stock issuance created: ${dto.quantity}x ${stockItem.name} from ${issuer.name} to ${recipient.name}`,
@@ -702,7 +702,7 @@ export class IssuanceService {
           },
           newValues: { undone: true, undoneBy: user.name },
         })
-        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
       this.logger.log(`Issuance #${id} undone by ${user.name}`);
 

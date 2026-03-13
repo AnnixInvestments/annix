@@ -212,7 +212,7 @@ export class JobCardWorkflowService {
         oldValues: { workflowStatus: jobCard.workflowStatus, step: currentStep },
         newValues: { workflowStatus: nextStatus, approvedBy: user.name },
       })
-      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     this.logger.log(
       `Job card ${jobCardId} approved at step ${currentStep} by ${user.name}, moved to ${nextStatus}`,
@@ -307,7 +307,7 @@ export class JobCardWorkflowService {
           reason,
         },
       })
-      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     this.logger.log(`Job card ${jobCardId} rejected at step ${currentStep} by ${user.name}`);
 

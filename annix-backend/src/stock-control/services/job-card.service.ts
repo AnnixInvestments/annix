@@ -223,7 +223,7 @@ export class JobCardService {
             allocatedBy: data.allocatedBy,
           },
         })
-        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
       return saved;
     } catch (err) {
@@ -372,7 +372,7 @@ export class JobCardService {
           oldValues: { pendingApproval: true },
           newValues: { pendingApproval: false, approvedByManagerId: managerId },
         })
-        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
       this.logger.log(`Over-allocation ${allocationId} approved by manager ${managerId}`);
       return saved;
@@ -492,7 +492,7 @@ export class JobCardService {
           oldValues: { stockItemId: allocation.stockItem.id, quantity: allocation.quantityUsed },
           newValues: { undoneBy: user.name },
         })
-        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`));
+        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
       return allocation;
     } catch (err) {
