@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type {
   PositectorBatchDetail,
   PositectorBatchSummary,
@@ -36,11 +36,7 @@ function probeTypeLabel(probeType: string | null): string {
 }
 
 export default function PositectorPage() {
-  const {
-    data: devices = [],
-    isLoading,
-    error: devicesError,
-  } = usePositectorDevices();
+  const { data: devices = [], isLoading, error: devicesError } = usePositectorDevices();
   const invalidateDevices = useInvalidatePositectorDevices();
   const [error, setError] = useState<string | null>(devicesError?.message ?? null);
   const [showAddModal, setShowAddModal] = useState(false);

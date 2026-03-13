@@ -21,24 +21,6 @@ export {
   useWorkflowLaneCounts,
 } from "./useStockControlDashboard";
 export {
-  useCompileDataBook,
-  useInvalidatePositectorDevices,
-  usePositectorDevices,
-  useSearchBatch,
-  useSearchDataBook,
-} from "./useStockControlQuality";
-export {
-  useCompanyRoles,
-  useInvalidateCompanyRoles,
-  useInvalidateSettingsTeamMembers,
-  useSettingsTeamMembers,
-} from "./useStockControlSettings";
-export {
-  useInvalidateStaff,
-  useStaffDepartments,
-  useStaffMembers,
-} from "./useStockControlStaff";
-export {
   useAllocateStock,
   useAnalyzeDeliveryNote,
   useApproveOverAllocation,
@@ -126,3 +108,21 @@ export {
   useUploadStockItemPhoto,
   useWorkflowNotifications,
 } from "./useStockControlData";
+export {
+  useCompileDataBook,
+  useInvalidatePositectorDevices,
+  usePositectorDevices,
+  useSearchBatch,
+  useSearchDataBook,
+} from "./useStockControlQuality";
+export {
+  useCompanyRoles,
+  useInvalidateCompanyRoles,
+  useInvalidateSettingsTeamMembers,
+  useSettingsTeamMembers,
+} from "./useStockControlSettings";
+export {
+  useInvalidateStaff,
+  useStaffDepartments,
+  useStaffMembers,
+} from "./useStockControlStaff";
