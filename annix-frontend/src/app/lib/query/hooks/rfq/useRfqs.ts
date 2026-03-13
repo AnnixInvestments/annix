@@ -16,7 +16,7 @@ interface Rfq {
   updatedAt: string;
 }
 
-async function fetchRfqs(params?: RfqQueryParams): Promise<Rfq[]> {
+async function fetchRfqs(params?: RfqQueryParams, signal?: AbortSignal): Promise<Rfq[]> {
   const searchParams = new URLSearchParams();
   if (params?.status) {
     searchParams.set("status", params.status);
@@ -25,6 +25,7 @@ async function fetchRfqs(params?: RfqQueryParams): Promise<Rfq[]> {
   const url = query ? `${browserBaseUrl()}/rfq?${query}` : `${browserBaseUrl()}/rfq`;
   const response = await fetch(url, {
     headers: getAuthHeaders(),
+    signal,
   });
 
   if (!response.ok) {
@@ -38,7 +39,7 @@ async function fetchRfqs(params?: RfqQueryParams): Promise<Rfq[]> {
 export function useRfqs(params?: RfqQueryParams) {
   return useQuery<Rfq[]>({
     queryKey: rfqKeys.list(params),
-    queryFn: () => fetchRfqs(params),
+    queryFn: ({ signal }) => fetchRfqs(params, signal),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -96,9 +97,10 @@ interface RfqDetail {
   boqs: RfqDetailBoq[];
 }
 
-async function fetchRfqDetail(id: number): Promise<RfqDetail> {
+async function fetchRfqDetail(id: number, signal?: AbortSignal): Promise<RfqDetail> {
   const response = await fetch(`${browserBaseUrl()}/rfq/${id}`, {
     headers: getAuthHeaders(),
+    signal,
   });
 
   if (!response.ok) {
@@ -112,7 +114,7 @@ async function fetchRfqDetail(id: number): Promise<RfqDetail> {
 export function useRfqDetail(id: number) {
   return useQuery<RfqDetail>({
     queryKey: rfqKeys.detail(id),
-    queryFn: () => fetchRfqDetail(id),
+    queryFn: ({ signal }) => fetchRfqDetail(id, signal),
     staleTime: 2 * 60 * 1000,
     enabled: id > 0,
   });
@@ -182,8 +184,8 @@ interface RfqPublicDetail {
   items: RfqPublicItem[];
 }
 
-async function fetchPublicRfqDetail(id: number): Promise<RfqPublicDetail> {
-  const response = await fetch(`${browserBaseUrl()}/rfq/${id}`);
+async function fetchPublicRfqDetail(id: number, signal?: AbortSignal): Promise<RfqPublicDetail> {
+  const response = await fetch(`${browserBaseUrl()}/rfq/${id}`, { signal });
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -196,7 +198,7 @@ async function fetchPublicRfqDetail(id: number): Promise<RfqPublicDetail> {
 export function usePublicRfqDetail(id: number) {
   return useQuery<RfqPublicDetail>({
     queryKey: rfqKeys.publicDetail(id),
-    queryFn: () => fetchPublicRfqDetail(id),
+    queryFn: ({ signal }) => fetchPublicRfqDetail(id, signal),
     staleTime: 2 * 60 * 1000,
     enabled: id > 0,
   });
