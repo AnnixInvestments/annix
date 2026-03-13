@@ -46,11 +46,11 @@ function CandidateThumbnail({
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    let revoked = false;
+    const controller = new AbortController();
     const proxyUrl = auRubberApiClient.proxyImageUrl(candidate.url);
     const headers = auRubberApiClient.authHeaders();
 
-    fetch(proxyUrl, { headers })
+    fetch(proxyUrl, { headers, signal: controller.signal })
       .then((res) => {
         if (!res.ok) {
           throw new Error("proxy failed");
@@ -58,18 +58,18 @@ function CandidateThumbnail({
         return res.blob();
       })
       .then((blob) => {
-        if (!revoked) {
+        if (!controller.signal.aborted) {
           setObjectUrl(URL.createObjectURL(blob));
         }
       })
       .catch(() => {
-        if (!revoked) {
+        if (!controller.signal.aborted) {
           setFailed(true);
         }
       });
 
     return () => {
-      revoked = true;
+      controller.abort();
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
       }

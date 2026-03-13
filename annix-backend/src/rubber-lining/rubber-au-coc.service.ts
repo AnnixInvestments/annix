@@ -300,23 +300,26 @@ export class RubberAuCocService {
           ? await this.preparePdfData(coc, items)
           : await this.preparePdfDataFromExtractedRolls(coc);
       this.logger.debug("PDF data prepared, creating PDF...");
-      let buffer = await this.createPdf(pdfData);
+      const basePdf = await this.createPdf(pdfData);
       const filename = `${coc.cocNumber}.pdf`;
 
-      if (pdfData.graphPdfPath) {
+      const buffer = await (async () => {
+        if (!pdfData.graphPdfPath) return basePdf;
         this.logger.debug(`Merging graph PDF from: ${pdfData.graphPdfPath}`);
         try {
           const graphBuffer = await this.storageService.download(pdfData.graphPdfPath);
           const cleanedGraphBuffer = await this.cleanGraphPdf(graphBuffer);
           const merger = new PDFMerger();
-          await merger.add(buffer);
+          await merger.add(basePdf);
           await merger.add(cleanedGraphBuffer);
-          buffer = await merger.saveAsBuffer();
-          this.logger.debug(`Merged cleaned graph PDF, final size: ${buffer.length} bytes`);
+          const merged = await merger.saveAsBuffer();
+          this.logger.debug(`Merged cleaned graph PDF, final size: ${merged.length} bytes`);
+          return merged;
         } catch (graphError) {
           this.logger.warn(`Failed to merge graph PDF: ${graphError}`);
+          return basePdf;
         }
-      }
+      })();
 
       this.logger.debug(`PDF created (${buffer.length} bytes), updating status...`);
       coc.status = AuCocStatus.GENERATED;
@@ -355,21 +358,23 @@ export class RubberAuCocService {
       items.length > 0
         ? await this.preparePdfData(coc, items)
         : await this.preparePdfDataFromExtractedRolls(coc);
-    let buffer = await this.createPdf(pdfData);
+    const basePdf = await this.createPdf(pdfData);
     const filename = `${coc.cocNumber}.pdf`;
 
-    if (pdfData.graphPdfPath) {
+    const buffer = await (async () => {
+      if (!pdfData.graphPdfPath) return basePdf;
       try {
         const graphBuffer = await this.storageService.download(pdfData.graphPdfPath);
         const cleanedGraphBuffer = await this.cleanGraphPdf(graphBuffer);
         const merger = new PDFMerger();
-        await merger.add(buffer);
+        await merger.add(basePdf);
         await merger.add(cleanedGraphBuffer);
-        buffer = await merger.saveAsBuffer();
+        return merger.saveAsBuffer();
       } catch (graphError) {
         this.logger.warn(`Failed to merge graph PDF: ${graphError}`);
+        return basePdf;
       }
-    }
+    })();
 
     return { buffer, filename };
   }
@@ -517,183 +522,203 @@ export class RubberAuCocService {
     const rollSizesQty = `${rollDimensions} ${extractedRolls.length} roll${extractedRolls.length !== 1 ? "s" : ""}`;
     const rollNumber = firstRoll?.rollNumber || "-";
 
-    let compoundCode = "Per Supplier CoC";
-    let compoundDescription = "Rubber Compound";
-    let productionDate = formatDateZA(now().toJSDate());
-    let batchTestData: BatchTestData[] = [];
-    let qualityConfig: RubberCompoundQualityConfig | null = null;
-    let graphPdfPath: string | null = null;
+    const defaults = {
+      compoundCode: "Per Supplier CoC",
+      compoundDescription: "Rubber Compound",
+      productionDate: formatDateZA(now().toJSDate()),
+      batchTestData: [] as BatchTestData[],
+      qualityConfig: null as RubberCompoundQualityConfig | null,
+      graphPdfPath: null as string | null,
+    };
 
-    if (coc.sourceDeliveryNoteId || extractedRolls.length > 0) {
-      let supplierCoc: RubberSupplierCoc | null = null;
-      let sourceDeliveryNote: RubberDeliveryNote | null = null;
-
-      if (coc.sourceDeliveryNoteId) {
-        sourceDeliveryNote = await this.deliveryNoteRepository.findOne({
-          where: { id: coc.sourceDeliveryNoteId },
-          relations: ["linkedCoc"],
-        });
-        supplierCoc = sourceDeliveryNote?.linkedCoc || null;
-      }
-
-      if (!supplierCoc && sourceDeliveryNote) {
-        const siblingDn = await this.deliveryNoteRepository
-          .createQueryBuilder("dn")
-          .leftJoinAndSelect("dn.linkedCoc", "coc")
-          .where("dn.linked_coc_id IS NOT NULL")
-          .andWhere("dn.id != :id", { id: sourceDeliveryNote.id })
-          .andWhere("dn.supplier_company_id = :supplierId", {
-            supplierId: sourceDeliveryNote.supplierCompanyId,
-          })
-          .andWhere("dn.customer_reference = :custRef", {
-            custRef: sourceDeliveryNote.customerReference,
-          })
-          .orderBy("dn.created_at", "DESC")
-          .getOne();
-
-        if (siblingDn?.linkedCoc) {
-          supplierCoc = siblingDn.linkedCoc;
-          this.logger.log(
-            `Found supplier CoC ${supplierCoc.id} via sibling DN ${siblingDn.id} for AU CoC ${coc.cocNumber}`,
-          );
-        }
-      }
-
-      if (!supplierCoc && extractedRolls.length > 0) {
-        const rollNumbers = extractedRolls.map((r) => r.rollNumber).filter(Boolean) as string[];
-        const orderNumbers = [
-          ...new Set(rollNumbers.map((rn) => rn.split("-")[0]?.trim()).filter(Boolean)),
-        ];
-
-        if (orderNumbers.length > 0) {
-          this.logger.log(
-            `Extracted supplier order numbers ${JSON.stringify(orderNumbers)} from roll numbers ${JSON.stringify(rollNumbers)} for AU CoC ${coc.cocNumber}`,
-          );
-
-          const allSupplierCocs = await this.supplierCocRepository
-            .createQueryBuilder("coc")
-            .where("coc.order_number IS NOT NULL")
-            .orderBy("coc.id", "DESC")
-            .getMany();
-
-          supplierCoc =
-            allSupplierCocs.find((sc) => {
-              const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
-                .trim()
-                .toUpperCase();
-              return (
-                cocOrderNumber.length > 0 &&
-                orderNumbers.some((on) => cocOrderNumber === on.toUpperCase())
-              );
-            }) || null;
-
-          if (supplierCoc) {
-            this.logger.log(
-              `Matched supplier CoC ${supplierCoc.id} (type: ${supplierCoc.cocType}, order: ${supplierCoc.orderNumber}) via roll number prefix for AU CoC ${coc.cocNumber}`,
-            );
-          }
-        }
-      }
-
-      if (!supplierCoc) {
-        const rollNumbers = extractedRolls
-          .map((r) => r.rollNumber)
-          .filter(Boolean)
-          .join(", ");
-        this.logger.warn(
-          `No supplier CoC found for AU CoC ${coc.cocNumber} (DN: ${sourceDeliveryNote?.deliveryNoteNumber || "none"}, rolls: ${rollNumbers || "none"}) — lab data table will be empty`,
-        );
-      }
-
-      if (supplierCoc) {
-        compoundCode = supplierCoc.compoundCode || compoundCode;
-
-        if (supplierCoc.productionDate) {
-          productionDate = formatDateZA(supplierCoc.productionDate);
+    const { compoundCode, compoundDescription, productionDate, batchTestData, qualityConfig, graphPdfPath } =
+      await (async () => {
+        if (!coc.sourceDeliveryNoteId && extractedRolls.length === 0) {
+          return defaults;
         }
 
-        const linkedCompounderIds = supplierCoc.extractedData?.linkedCompounderCocIds || [];
-        let compounderCoc: RubberSupplierCoc | null = null;
+        const sourceDeliveryNote: RubberDeliveryNote | null = coc.sourceDeliveryNoteId
+          ? await this.deliveryNoteRepository.findOne({
+              where: { id: coc.sourceDeliveryNoteId },
+              relations: ["linkedCoc"],
+            })
+          : null;
 
-        if (linkedCompounderIds.length > 0) {
-          compounderCoc = await this.supplierCocRepository.findOne({
-            where: { id: linkedCompounderIds[0] },
-          });
-          if (compounderCoc) {
-            this.logger.log(
-              `Found linked compounder CoC ${compounderCoc.id} for calenderer ${supplierCoc.id}`,
-            );
-          }
-        }
+        const supplierCoc: RubberSupplierCoc | null = await (async () => {
+          const fromDn = sourceDeliveryNote?.linkedCoc || null;
+          if (fromDn) return fromDn;
 
-        if (!compounderCoc && supplierCoc.orderNumber) {
-          compounderCoc = await this.supplierCocRepository.findOne({
-            where: {
-              cocType: SupplierCocType.COMPOUNDER,
-              orderNumber: supplierCoc.orderNumber,
-            },
-            order: { id: "DESC" },
-          });
-          if (compounderCoc) {
-            this.logger.log(
-              `Matched compounder CoC ${compounderCoc.id} (${compounderCoc.compoundCode}) by shared order number ${supplierCoc.orderNumber} for calenderer ${supplierCoc.id}`,
-            );
-          }
-        }
+          if (sourceDeliveryNote) {
+            const siblingDn = await this.deliveryNoteRepository
+              .createQueryBuilder("dn")
+              .leftJoinAndSelect("dn.linkedCoc", "coc")
+              .where("dn.linked_coc_id IS NOT NULL")
+              .andWhere("dn.id != :id", { id: sourceDeliveryNote.id })
+              .andWhere("dn.supplier_company_id = :supplierId", {
+                supplierId: sourceDeliveryNote.supplierCompanyId,
+              })
+              .andWhere("dn.customer_reference = :custRef", {
+                custRef: sourceDeliveryNote.customerReference,
+              })
+              .orderBy("dn.created_at", "DESC")
+              .getOne();
 
-        if (!compounderCoc && compoundCode && compoundCode !== "Per Supplier CoC") {
-          compounderCoc = await this.findCompounderByCompoundCode(compoundCode);
-          if (compounderCoc) {
-            this.logger.log(
-              `Matched compounder CoC ${compounderCoc.id} (${compounderCoc.compoundCode}) by compound code for calenderer ${supplierCoc.id}`,
-            );
-          }
-        }
-
-        graphPdfPath = compounderCoc?.graphPdfPath || supplierCoc.graphPdfPath || null;
-
-        if (compoundCode && compoundCode !== "Per Supplier CoC") {
-          qualityConfig = await this.qualityConfigRepository.findOne({
-            where: { compoundCode },
-          });
-
-          if (!qualityConfig) {
-            const sourceCoc = compounderCoc || supplierCoc;
-            const specs = sourceCoc.extractedData?.specifications;
-            if (specs) {
+            if (siblingDn?.linkedCoc) {
               this.logger.log(
-                `No quality config found for ${compoundCode}, falling back to extractedData specifications`,
+                `Found supplier CoC ${siblingDn.linkedCoc.id} via sibling DN ${siblingDn.id} for AU CoC ${coc.cocNumber}`,
               );
-              qualityConfig = {
-                compoundCode,
-                compoundDescription: sourceCoc.extractedData?.compoundDescription ?? null,
-                shoreANominal: specs.shoreANominal ?? null,
-                shoreAMin: specs.shoreAMin ?? null,
-                shoreAMax: specs.shoreAMax ?? null,
-                densityNominal: specs.specificGravityNominal ?? null,
-                densityMin: specs.specificGravityMin ?? null,
-                densityMax: specs.specificGravityMax ?? null,
-                reboundNominal: specs.reboundNominal ?? null,
-                reboundMin: specs.reboundMin ?? null,
-                reboundMax: specs.reboundMax ?? null,
-                tearStrengthNominal: specs.tearStrengthNominal ?? null,
-                tearStrengthMin: specs.tearStrengthMin ?? null,
-                tearStrengthMax: specs.tearStrengthMax ?? null,
-                tensileNominal: specs.tensileNominal ?? null,
-                tensileMin: specs.tensileMin ?? null,
-                tensileMax: specs.tensileMax ?? null,
-                elongationNominal: specs.elongationNominal ?? null,
-                elongationMin: specs.elongationMin ?? null,
-                elongationMax: specs.elongationMax ?? null,
-              } as RubberCompoundQualityConfig;
+              return siblingDn.linkedCoc;
             }
           }
 
-          compoundDescription =
-            this.descriptionFromCompoundCode(compoundCode) ||
-            qualityConfig?.compoundDescription ||
-            compoundDescription;
+          if (extractedRolls.length > 0) {
+            const rollNums = extractedRolls.map((r) => r.rollNumber).filter(Boolean) as string[];
+            const orderNumbers = [
+              ...new Set(rollNums.map((rn) => rn.split("-")[0]?.trim()).filter(Boolean)),
+            ];
+
+            if (orderNumbers.length > 0) {
+              this.logger.log(
+                `Extracted supplier order numbers ${JSON.stringify(orderNumbers)} from roll numbers ${JSON.stringify(rollNums)} for AU CoC ${coc.cocNumber}`,
+              );
+
+              const allSupplierCocs = await this.supplierCocRepository
+                .createQueryBuilder("coc")
+                .where("coc.order_number IS NOT NULL")
+                .orderBy("coc.id", "DESC")
+                .getMany();
+
+              const matched =
+                allSupplierCocs.find((sc) => {
+                  const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
+                    .trim()
+                    .toUpperCase();
+                  return (
+                    cocOrderNumber.length > 0 &&
+                    orderNumbers.some((on) => cocOrderNumber === on.toUpperCase())
+                  );
+                }) || null;
+
+              if (matched) {
+                this.logger.log(
+                  `Matched supplier CoC ${matched.id} (type: ${matched.cocType}, order: ${matched.orderNumber}) via roll number prefix for AU CoC ${coc.cocNumber}`,
+                );
+                return matched;
+              }
+            }
+          }
+
+          return null;
+        })();
+
+        if (!supplierCoc) {
+          const rollNums = extractedRolls
+            .map((r) => r.rollNumber)
+            .filter(Boolean)
+            .join(", ");
+          this.logger.warn(
+            `No supplier CoC found for AU CoC ${coc.cocNumber} (DN: ${sourceDeliveryNote?.deliveryNoteNumber || "none"}, rolls: ${rollNums || "none"}) — lab data table will be empty`,
+          );
+          return defaults;
         }
+
+        const resolvedCompoundCode = supplierCoc.compoundCode || defaults.compoundCode;
+        const resolvedProductionDate = supplierCoc.productionDate
+          ? formatDateZA(supplierCoc.productionDate)
+          : defaults.productionDate;
+
+        const linkedCompounderIds = supplierCoc.extractedData?.linkedCompounderCocIds || [];
+        const compounderCoc: RubberSupplierCoc | null = await (async () => {
+          if (linkedCompounderIds.length > 0) {
+            const linked = await this.supplierCocRepository.findOne({
+              where: { id: linkedCompounderIds[0] },
+            });
+            if (linked) {
+              this.logger.log(
+                `Found linked compounder CoC ${linked.id} for calenderer ${supplierCoc.id}`,
+              );
+              return linked;
+            }
+          }
+
+          if (supplierCoc.orderNumber) {
+            const byOrder = await this.supplierCocRepository.findOne({
+              where: {
+                cocType: SupplierCocType.COMPOUNDER,
+                orderNumber: supplierCoc.orderNumber,
+              },
+              order: { id: "DESC" },
+            });
+            if (byOrder) {
+              this.logger.log(
+                `Matched compounder CoC ${byOrder.id} (${byOrder.compoundCode}) by shared order number ${supplierCoc.orderNumber} for calenderer ${supplierCoc.id}`,
+              );
+              return byOrder;
+            }
+          }
+
+          if (resolvedCompoundCode && resolvedCompoundCode !== "Per Supplier CoC") {
+            const byCode = await this.findCompounderByCompoundCode(resolvedCompoundCode);
+            if (byCode) {
+              this.logger.log(
+                `Matched compounder CoC ${byCode.id} (${byCode.compoundCode}) by compound code for calenderer ${supplierCoc.id}`,
+              );
+              return byCode;
+            }
+          }
+
+          return null;
+        })();
+
+        const resolvedGraphPdfPath = compounderCoc?.graphPdfPath || supplierCoc.graphPdfPath || null;
+
+        const resolvedQualityConfig: RubberCompoundQualityConfig | null = await (async () => {
+          if (!resolvedCompoundCode || resolvedCompoundCode === "Per Supplier CoC") return null;
+
+          const config = await this.qualityConfigRepository.findOne({
+            where: { compoundCode: resolvedCompoundCode },
+          });
+          if (config) return config;
+
+          const sourceCoc = compounderCoc || supplierCoc;
+          const specs = sourceCoc.extractedData?.specifications;
+          if (specs) {
+            this.logger.log(
+              `No quality config found for ${resolvedCompoundCode}, falling back to extractedData specifications`,
+            );
+            return {
+              compoundCode: resolvedCompoundCode,
+              compoundDescription: sourceCoc.extractedData?.compoundDescription ?? null,
+              shoreANominal: specs.shoreANominal ?? null,
+              shoreAMin: specs.shoreAMin ?? null,
+              shoreAMax: specs.shoreAMax ?? null,
+              densityNominal: specs.specificGravityNominal ?? null,
+              densityMin: specs.specificGravityMin ?? null,
+              densityMax: specs.specificGravityMax ?? null,
+              reboundNominal: specs.reboundNominal ?? null,
+              reboundMin: specs.reboundMin ?? null,
+              reboundMax: specs.reboundMax ?? null,
+              tearStrengthNominal: specs.tearStrengthNominal ?? null,
+              tearStrengthMin: specs.tearStrengthMin ?? null,
+              tearStrengthMax: specs.tearStrengthMax ?? null,
+              tensileNominal: specs.tensileNominal ?? null,
+              tensileMin: specs.tensileMin ?? null,
+              tensileMax: specs.tensileMax ?? null,
+              elongationNominal: specs.elongationNominal ?? null,
+              elongationMin: specs.elongationMin ?? null,
+              elongationMax: specs.elongationMax ?? null,
+            } as RubberCompoundQualityConfig;
+          }
+
+          return null;
+        })();
+
+        const resolvedCompoundDescription =
+          (resolvedCompoundCode && resolvedCompoundCode !== "Per Supplier CoC")
+            ? (this.descriptionFromCompoundCode(resolvedCompoundCode) ||
+               resolvedQualityConfig?.compoundDescription ||
+               defaults.compoundDescription)
+            : defaults.compoundDescription;
 
         const batchSourceCocId = compounderCoc?.id || supplierCoc.id;
         const batches = await this.compoundBatchRepository.find({
@@ -701,24 +726,26 @@ export class RubberAuCocService {
           order: { batchNumber: "ASC" },
         });
 
-        if (batches.length > 0) {
-          batchTestData = batches.map((batch) => ({
-            batchNumber: batch.batchNumber,
-            shoreA: batch.shoreAHardness != null ? Number(batch.shoreAHardness) : null,
-            density: batch.specificGravity != null ? Number(batch.specificGravity) : null,
-            rebound: batch.reboundPercent != null ? Number(batch.reboundPercent) : null,
-            tearStrength: batch.tearStrengthKnM != null ? Number(batch.tearStrengthKnM) : null,
-            tensile: batch.tensileStrengthMpa != null ? Number(batch.tensileStrengthMpa) : null,
-            elongation: batch.elongationPercent != null ? Number(batch.elongationPercent) : null,
-          }));
-        } else {
+        const resolvedBatchTestData: BatchTestData[] = (() => {
+          if (batches.length > 0) {
+            return batches.map((batch) => ({
+              batchNumber: batch.batchNumber,
+              shoreA: batch.shoreAHardness != null ? Number(batch.shoreAHardness) : null,
+              density: batch.specificGravity != null ? Number(batch.specificGravity) : null,
+              rebound: batch.reboundPercent != null ? Number(batch.reboundPercent) : null,
+              tearStrength: batch.tearStrengthKnM != null ? Number(batch.tearStrengthKnM) : null,
+              tensile: batch.tensileStrengthMpa != null ? Number(batch.tensileStrengthMpa) : null,
+              elongation: batch.elongationPercent != null ? Number(batch.elongationPercent) : null,
+            }));
+          }
+
           const sourceCoc = compounderCoc || supplierCoc;
           const extractedBatches = sourceCoc.extractedData?.batches || [];
           if (extractedBatches.length > 0) {
             this.logger.log(
               `No approved batches found for CoC ${batchSourceCocId}, falling back to extractedData (${extractedBatches.length} batches)`,
             );
-            batchTestData = extractedBatches.map((batch) => ({
+            return extractedBatches.map((batch) => ({
               batchNumber: batch.batchNumber,
               shoreA: batch.shoreA ?? null,
               density: batch.specificGravity ?? null,
@@ -728,9 +755,19 @@ export class RubberAuCocService {
               elongation: batch.elongationPercent ?? null,
             }));
           }
-        }
-      }
-    }
+
+          return [];
+        })();
+
+        return {
+          compoundCode: resolvedCompoundCode,
+          compoundDescription: resolvedCompoundDescription,
+          productionDate: resolvedProductionDate,
+          batchTestData: resolvedBatchTestData,
+          qualityConfig: resolvedQualityConfig,
+          graphPdfPath: resolvedGraphPdfPath,
+        };
+      })();
 
     return {
       coc,
@@ -851,7 +888,6 @@ export class RubberAuCocService {
   private drawDetailsSection(doc: PDFKit.PDFDocument, data: CocPdfData): void {
     const leftCol = 40;
     const rightCol = 250;
-    let y = 180;
     const lineHeight = 16;
 
     doc.fontSize(9).font("Helvetica");
@@ -865,14 +901,13 @@ export class RubberAuCocService {
       { label: "ROLL SIZES & QTY", value: data.rollSizesQty },
     ];
 
-    details.forEach((detail) => {
+    const finalY = details.reduce((y, detail) => {
       doc.font("Helvetica").text(detail.label, leftCol, y);
       doc.font("Helvetica-Bold").text(detail.value, rightCol, y);
-      y += lineHeight;
-    });
+      return y + lineHeight;
+    }, 180);
 
-    y += 5;
-    doc.font("Helvetica-Bold").text("LABORATORY ANALYSIS DATA", leftCol, y);
+    doc.font("Helvetica-Bold").text("LABORATORY ANALYSIS DATA", leftCol, finalY + 5);
   }
 
   private drawLabDataTable(doc: PDFKit.PDFDocument, data: CocPdfData): void {

@@ -896,8 +896,6 @@ export class DrawingExtractionService {
     });
 
     const maxSortOrder = existingItems.reduce((max, item) => Math.max(max, item.sortOrder), 0);
-    const newItems: Partial<JobCardLineItem>[] = [];
-    let sortOrder = maxSortOrder;
 
     const assemblyLabel =
       tankData.assemblyType.charAt(0).toUpperCase() + tankData.assemblyType.slice(1);
@@ -909,91 +907,86 @@ export class DrawingExtractionService {
       .filter(Boolean)
       .join(" ");
 
-    if (tankData.sections.length > 0) {
-      tankData.sections.forEach((section) => {
-        const sectionLabel = `Section ${section.mark}${section.description ? ` - ${section.description}` : ""}`;
+    const newItems: Partial<JobCardLineItem>[] = tankData.sections.length > 0
+      ? tankData.sections.reduce(
+          (acc, section) => {
+            const sectionLabel = `Section ${section.mark}${section.description ? ` - ${section.description}` : ""}`;
 
-        if (section.liningAreaM2 && section.liningAreaM2 > 0) {
-          sortOrder += 1;
-          const desc = [`${assemblyLabel} ${sectionLabel} - R/L${drawingRef}`, liningSpec || null]
-            .filter(Boolean)
-            .join(" - ");
+            const liningItem = section.liningAreaM2 && section.liningAreaM2 > 0
+              ? [{
+                  jobCardId,
+                  companyId,
+                  itemDescription: [`${assemblyLabel} ${sectionLabel} - R/L${drawingRef}`, liningSpec || null]
+                    .filter(Boolean)
+                    .join(" - "),
+                  itemCode: `R/L ${section.mark}`,
+                  quantity: 1,
+                  m2: Math.round(section.liningAreaM2 * 100) / 100,
+                  sortOrder: acc.nextOrder,
+                }]
+              : [];
 
-          newItems.push({
-            jobCardId,
-            companyId,
-            itemDescription: desc,
-            itemCode: `R/L ${section.mark}`,
-            quantity: 1,
-            m2: Math.round(section.liningAreaM2 * 100) / 100,
-            sortOrder,
-          });
-        }
+            const coatingItem = section.coatingAreaM2 && section.coatingAreaM2 > 0
+              ? [{
+                  jobCardId,
+                  companyId,
+                  itemDescription: [
+                    `${assemblyLabel} ${sectionLabel} - External Coating${drawingRef}`,
+                    tankData.coatingSystem || null,
+                    tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" - "),
+                  itemCode: `COAT ${section.mark}`,
+                  quantity: 1,
+                  m2: Math.round(section.coatingAreaM2 * 100) / 100,
+                  sortOrder: acc.nextOrder + liningItem.length,
+                }]
+              : [];
 
-        if (section.coatingAreaM2 && section.coatingAreaM2 > 0) {
-          sortOrder += 1;
-          const desc = [
-            `${assemblyLabel} ${sectionLabel} - External Coating${drawingRef}`,
-            tankData.coatingSystem || null,
-            tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
-          ]
-            .filter(Boolean)
-            .join(" - ");
-
-          newItems.push({
-            jobCardId,
-            companyId,
-            itemDescription: desc,
-            itemCode: `COAT ${section.mark}`,
-            quantity: 1,
-            m2: Math.round(section.coatingAreaM2 * 100) / 100,
-            sortOrder,
-          });
-        }
-      });
-    } else {
-      if (tankData.liningAreaM2 && tankData.liningAreaM2 > 0) {
-        sortOrder += 1;
-        const liningDesc = [
-          `${assemblyLabel} Internal Lining${drawingRef}`,
-          tankData.liningType ? `Type: ${tankData.liningType}` : null,
-          tankData.liningThicknessMm ? `${tankData.liningThicknessMm}mm thick` : null,
-        ]
-          .filter(Boolean)
-          .join(" - ");
-
-        newItems.push({
-          jobCardId,
-          companyId,
-          itemDescription: liningDesc,
-          itemCode: tankData.drawingReference || null,
-          quantity: 1,
-          m2: Math.round(tankData.liningAreaM2 * 100) / 100,
-          sortOrder,
-        });
-      }
-
-      if (tankData.coatingAreaM2 && tankData.coatingAreaM2 > 0) {
-        sortOrder += 1;
-        const coatingDesc = [
-          `${assemblyLabel} External Coating${drawingRef}`,
-          tankData.coatingSystem || null,
-          tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
-        ]
-          .filter(Boolean)
-          .join(" - ");
-
-        newItems.push({
-          jobCardId,
-          companyId,
-          itemDescription: coatingDesc,
-          itemCode: tankData.drawingReference || null,
-          quantity: 1,
-          m2: Math.round(tankData.coatingAreaM2 * 100) / 100,
-          sortOrder,
-        });
-      }
-    }
+            return {
+              items: [...acc.items, ...liningItem, ...coatingItem],
+              nextOrder: acc.nextOrder + liningItem.length + coatingItem.length,
+            };
+          },
+          { items: [] as Partial<JobCardLineItem>[], nextOrder: maxSortOrder + 1 },
+        ).items
+      : [
+          ...(tankData.liningAreaM2 && tankData.liningAreaM2 > 0
+            ? [{
+                jobCardId,
+                companyId,
+                itemDescription: [
+                  `${assemblyLabel} Internal Lining${drawingRef}`,
+                  tankData.liningType ? `Type: ${tankData.liningType}` : null,
+                  tankData.liningThicknessMm ? `${tankData.liningThicknessMm}mm thick` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" - "),
+                itemCode: tankData.drawingReference || null,
+                quantity: 1,
+                m2: Math.round(tankData.liningAreaM2 * 100) / 100,
+                sortOrder: maxSortOrder + 1,
+              }]
+            : []),
+          ...(tankData.coatingAreaM2 && tankData.coatingAreaM2 > 0
+            ? [{
+                jobCardId,
+                companyId,
+                itemDescription: [
+                  `${assemblyLabel} External Coating${drawingRef}`,
+                  tankData.coatingSystem || null,
+                  tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" - "),
+                itemCode: tankData.drawingReference || null,
+                quantity: 1,
+                m2: Math.round(tankData.coatingAreaM2 * 100) / 100,
+                sortOrder: maxSortOrder + 1 + (tankData.liningAreaM2 && tankData.liningAreaM2 > 0 ? 1 : 0),
+              }]
+            : []),
+        ];
 
     if (newItems.length > 0) {
       const created = this.lineItemRepo.create(newItems);

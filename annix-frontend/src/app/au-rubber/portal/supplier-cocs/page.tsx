@@ -90,25 +90,25 @@ export default function SupplierCocsPage() {
   const [isBulkApproving, setIsBulkApproving] = useState(false);
 
   useEffect(() => {
-    let revoked = false;
+    const controller = new AbortController();
     if (branding.logoUrl) {
       const proxyUrl = auRubberApiClient.proxyImageUrl(branding.logoUrl);
       const headers = auRubberApiClient.authHeaders();
-      fetch(proxyUrl, { headers })
+      fetch(proxyUrl, { headers, signal: controller.signal })
         .then((res) => (res.ok ? res.blob() : null))
         .then((blob) => {
-          if (!revoked && blob) {
+          if (!controller.signal.aborted && blob) {
             setLogoObjectUrl(URL.createObjectURL(blob));
           }
         })
         .catch(() => {
-          if (!revoked) setLogoObjectUrl(null);
+          if (!controller.signal.aborted) setLogoObjectUrl(null);
         });
     } else {
       setLogoObjectUrl(null);
     }
     return () => {
-      revoked = true;
+      controller.abort();
       if (logoObjectUrl) URL.revokeObjectURL(logoObjectUrl);
     };
   }, [branding.logoUrl]);

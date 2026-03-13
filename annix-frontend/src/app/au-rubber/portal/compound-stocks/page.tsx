@@ -207,25 +207,27 @@ export default function CompoundStocksPage() {
     try {
       setIsSubmittingOpeningStock(true);
 
-      let codingId = openingStockForm.compoundCodingId;
+      const codingId = await (async () => {
+        if (openingStockForm.compoundCodingId) {
+          return openingStockForm.compoundCodingId;
+        }
 
-      if (!codingId) {
         const existingCoding = compounds.find(
           (c) => c.code.toLowerCase() === compoundInput.trim().toLowerCase(),
         );
 
         if (existingCoding) {
-          codingId = existingCoding.id;
-        } else {
-          const newCoding = await auRubberApiClient.createProductCoding({
-            codingType: "COMPOUND",
-            code: compoundInput.trim().toUpperCase(),
-            name: compoundInput.trim(),
-          });
-          codingId = newCoding.id;
-          setCompounds([...compounds, newCoding]);
+          return existingCoding.id;
         }
-      }
+
+        const newCoding = await auRubberApiClient.createProductCoding({
+          codingType: "COMPOUND",
+          code: compoundInput.trim().toUpperCase(),
+          name: compoundInput.trim(),
+        });
+        setCompounds([...compounds, newCoding]);
+        return newCoding.id;
+      })();
 
       await auRubberApiClient.createCompoundOpeningStock({
         ...openingStockForm,

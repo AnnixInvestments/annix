@@ -439,27 +439,24 @@ export class ReportsService {
     items: T[],
     dateExtractor: (item: T) => Date,
   ): Array<{ date: string; items: T[] }> {
-    const result: Array<{ date: string; items: T[] }> = [];
-    let current = DateTime.fromJSDate(start).startOf("day");
+    const startDt = DateTime.fromJSDate(start).startOf("day");
     const endDt = DateTime.fromJSDate(end).endOf("day");
+    const totalDays = Math.ceil(endDt.diff(startDt, "days").days);
+    const days = Array.from({ length: totalDays }, (_, i) => startDt.plus({ days: i }));
 
-    while (current <= endDt) {
-      const dayStart = current.startOf("day");
-      const dayEnd = current.endOf("day");
+    return days.map((day) => {
+      const dayStart = day.startOf("day");
+      const dayEnd = day.endOf("day");
       const dayItems = items.filter((item) => {
         const itemDate = DateTime.fromJSDate(dateExtractor(item));
         return itemDate >= dayStart && itemDate <= dayEnd;
       });
 
-      result.push({
-        date: current.toISODate() ?? "",
+      return {
+        date: day.toISODate() ?? "",
         items: dayItems,
-      });
-
-      current = current.plus({ days: 1 });
-    }
-
-    return result;
+      };
+    });
   }
 
   private groupVisitsByDay(
@@ -467,28 +464,25 @@ export class ReportsService {
     end: Date,
     visits: Visit[],
   ): Array<{ date: string; items: Visit[] }> {
-    const result: Array<{ date: string; items: Visit[] }> = [];
-    let current = DateTime.fromJSDate(start).startOf("day");
+    const startDt = DateTime.fromJSDate(start).startOf("day");
     const endDt = DateTime.fromJSDate(end).endOf("day");
+    const totalDays = Math.ceil(endDt.diff(startDt, "days").days);
+    const days = Array.from({ length: totalDays }, (_, i) => startDt.plus({ days: i }));
 
-    while (current <= endDt) {
-      const dayStart = current.startOf("day");
-      const dayEnd = current.endOf("day");
+    return days.map((day) => {
+      const dayStart = day.startOf("day");
+      const dayEnd = day.endOf("day");
       const dayVisits = visits.filter((v) => {
         if (!v.startedAt) return false;
         const visitDate = DateTime.fromJSDate(v.startedAt);
         return visitDate >= dayStart && visitDate <= dayEnd;
       });
 
-      result.push({
-        date: current.toISODate() ?? "",
+      return {
+        date: day.toISODate() ?? "",
         items: dayVisits,
-      });
-
-      current = current.plus({ days: 1 });
-    }
-
-    return result;
+      };
+    });
   }
 
   private calculateRevenueByWeek(
@@ -498,11 +492,11 @@ export class ReportsService {
     prospects: Prospect[],
     _activities: ProspectActivity[],
   ): Array<{ week: string; revenue: number; deals: number }> {
-    const result: Array<{ week: string; revenue: number; deals: number }> = [];
-    let weekNum = 1;
-    let current = monthStart.startOf("week");
+    const firstWeek = monthStart.startOf("week");
+    const totalWeeks = Math.ceil(monthEnd.diff(firstWeek, "weeks").weeks);
+    const weeks = Array.from({ length: totalWeeks }, (_, i) => firstWeek.plus({ weeks: i }));
 
-    while (current <= monthEnd) {
+    return weeks.map((current, i) => {
       const weekStart = current < monthStart ? monthStart : current;
       const weekEnd = current.endOf("week") > monthEnd ? monthEnd : current.endOf("week");
 
@@ -516,17 +510,12 @@ export class ReportsService {
         return sum + (Number(prospect?.estimatedValue) || 0);
       }, 0);
 
-      result.push({
-        week: `Week ${weekNum}`,
+      return {
+        week: `Week ${i + 1}`,
         revenue: weekRevenue,
         deals: weekDeals.length,
-      });
-
-      weekNum++;
-      current = current.plus({ weeks: 1 });
-    }
-
-    return result;
+      };
+    });
   }
 
   private calculateBounds(

@@ -1709,61 +1709,62 @@ Formula: totalPrice = totalKg × salePricePerKg
 
     const isRollDeliveryNote = note.deliveryNoteType === "ROLL";
 
-    let extractedData;
-    if (isRollDeliveryNote) {
-      const customerResult =
-        await this.rubberCocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
+    const extractedData = await (async () => {
+      if (isRollDeliveryNote) {
+        const customerResult =
+          await this.rubberCocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
 
-      const allRolls = customerResult.deliveryNotes.flatMap((dn, dnIdx) =>
-        (dn.lineItems || [])
-          .filter((item) => item != null && typeof item === "object")
-          .map((item) => ({
-            rollNumber: item.rollNumber ?? null,
-            thicknessMm: item.thicknessMm ?? null,
-            widthMm: item.widthMm ?? null,
-            lengthM: item.lengthM ?? null,
-            weightKg: item.actualWeightKg ?? null,
-            areaSqM: item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
-            deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
-            deliveryDate: dn.deliveryDate ?? null,
-            customerName: dn.customerName ?? null,
-            pageNumber: dnIdx + 1,
-          })),
-      );
+        const allRolls = customerResult.deliveryNotes.flatMap((dn, dnIdx) =>
+          (dn.lineItems || [])
+            .filter((item) => item != null && typeof item === "object")
+            .map((item) => ({
+              rollNumber: item.rollNumber ?? null,
+              thicknessMm: item.thicknessMm ?? null,
+              widthMm: item.widthMm ?? null,
+              lengthM: item.lengthM ?? null,
+              weightKg: item.actualWeightKg ?? null,
+              areaSqM: item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
+              deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
+              deliveryDate: dn.deliveryDate ?? null,
+              customerName: dn.customerName ?? null,
+              pageNumber: dnIdx + 1,
+            })),
+        );
 
-      const currentDnNumber = note.deliveryNoteNumber;
-      const matchingDn = customerResult.deliveryNotes.find(
-        (dn) => dn.deliveryNoteNumber === currentDnNumber,
-      );
-      const dnMetadata = matchingDn || customerResult.deliveryNotes[0];
+        const currentDnNumber = note.deliveryNoteNumber;
+        const matchingDn = customerResult.deliveryNotes.find(
+          (dn) => dn.deliveryNoteNumber === currentDnNumber,
+        );
+        const dnMetadata = matchingDn || customerResult.deliveryNotes[0];
 
-      const filteredRolls = currentDnNumber
-        ? allRolls.filter((roll) => roll.deliveryNoteNumber === currentDnNumber)
-        : allRolls;
+        const filteredRolls = currentDnNumber
+          ? allRolls.filter((roll) => roll.deliveryNoteNumber === currentDnNumber)
+          : allRolls;
 
-      extractedData = {
-        deliveryNoteNumber: dnMetadata?.deliveryNoteNumber,
-        deliveryDate: dnMetadata?.deliveryDate,
-        customerName: dnMetadata?.customerName,
-        customerReference: dnMetadata?.customerReference,
-        rolls: filteredRolls.length > 0 ? filteredRolls : allRolls,
-      };
-    } else {
-      const pdfText = await (async () => {
-        try {
-          const pdfData = await pdfParse(pdfBuffer);
-          return pdfData.text || "";
-        } catch {
-          return "";
-        }
-      })();
+        return {
+          deliveryNoteNumber: dnMetadata?.deliveryNoteNumber,
+          deliveryDate: dnMetadata?.deliveryDate,
+          customerName: dnMetadata?.customerName,
+          customerReference: dnMetadata?.customerReference,
+          rolls: filteredRolls.length > 0 ? filteredRolls : allRolls,
+        };
+      } else {
+        const pdfText = await (async () => {
+          try {
+            const pdfData = await pdfParse(pdfBuffer);
+            return pdfData.text || "";
+          } catch {
+            return "";
+          }
+        })();
 
-      const useOcr = pdfText.length < 50;
-      const extractionResult = useOcr
-        ? await this.rubberCocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
-        : await this.rubberCocExtractionService.extractDeliveryNote(pdfText);
-      extractedData = extractionResult.data;
-    }
+        const useOcr = pdfText.length < 50;
+        const extractionResult = useOcr
+          ? await this.rubberCocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
+          : await this.rubberCocExtractionService.extractDeliveryNote(pdfText);
+        return extractionResult.data;
+      }
+    })();
 
     const updatedNote = await this.rubberDeliveryNoteService.setExtractedData(
       Number(id),
@@ -1968,7 +1969,7 @@ Formula: totalPrice = totalKg × salePricePerKg
       throw new BadRequestException("analyzedData field is required");
     }
 
-    let analyzedData: {
+    const analyzedData: {
       deliveryNoteNumber?: string;
       deliveryDate?: string;
       fromCompany?: { name?: string };
@@ -1980,12 +1981,13 @@ Formula: totalPrice = totalKg × salePricePerKg
         lengthM?: number;
         weightKg?: number;
       }>;
-    };
-    try {
-      analyzedData = JSON.parse(analyzedDataJson);
-    } catch {
-      throw new BadRequestException("Invalid JSON in analyzedData field");
-    }
+    } = (() => {
+      try {
+        return JSON.parse(analyzedDataJson);
+      } catch {
+        throw new BadRequestException("Invalid JSON in analyzedData field");
+      }
+    })();
 
     const supplierCompany = await this.rubberDeliveryNoteService.findOrCreateCompanyByName(
       analyzedData.fromCompany?.name || "Unknown Supplier",
@@ -2892,58 +2894,58 @@ Formula: totalPrice = totalKg × salePricePerKg
       invoice.companyName,
     );
 
-    let extractionResult: {
+    const extractionResult: {
       data: import("./entities/rubber-tax-invoice.entity").ExtractedTaxInvoiceData;
       tokensUsed?: number;
       processingTimeMs: number;
-    };
-
-    if (ext === "docx" || ext === "doc") {
-      const textResult = await mammoth.extractRawText({ buffer: docBuffer });
-      const docText = textResult.value || "";
-      if (docText.length < 20) {
-        throw new BadRequestException("Word document appears to be empty or unreadable");
-      }
-      extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(
-        docText,
-        correctionHints,
-      );
-    } else if (ext === "xlsx" || ext === "xls") {
-      const workbook = XLSX.read(docBuffer, { type: "buffer" });
-      const sheetTexts = workbook.SheetNames.map((name: string) => {
-        const sheet = workbook.Sheets[name];
-        return XLSX.utils.sheet_to_csv(sheet);
-      });
-      const excelText = sheetTexts.join("\n\n");
-      if (excelText.length < 20) {
-        throw new BadRequestException("Excel document appears to be empty or unreadable");
-      }
-      extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(
-        excelText,
-        correctionHints,
-      );
-    } else {
-      const pdfText = await (async () => {
-        try {
-          const pdfData = await pdfParse(docBuffer);
-          return pdfData.text || "";
-        } catch {
-          return "";
+    } = await (async () => {
+      if (ext === "docx" || ext === "doc") {
+        const textResult = await mammoth.extractRawText({ buffer: docBuffer });
+        const docText = textResult.value || "";
+        if (docText.length < 20) {
+          throw new BadRequestException("Word document appears to be empty or unreadable");
         }
-      })();
-
-      if (pdfText.length >= 50) {
-        extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(
-          pdfText,
+        return this.rubberCocExtractionService.extractTaxInvoice(
+          docText,
+          correctionHints,
+        );
+      } else if (ext === "xlsx" || ext === "xls") {
+        const workbook = XLSX.read(docBuffer, { type: "buffer" });
+        const sheetTexts = workbook.SheetNames.map((name: string) => {
+          const sheet = workbook.Sheets[name];
+          return XLSX.utils.sheet_to_csv(sheet);
+        });
+        const excelText = sheetTexts.join("\n\n");
+        if (excelText.length < 20) {
+          throw new BadRequestException("Excel document appears to be empty or unreadable");
+        }
+        return this.rubberCocExtractionService.extractTaxInvoice(
+          excelText,
           correctionHints,
         );
       } else {
-        extractionResult = await this.rubberCocExtractionService.extractTaxInvoiceFromImages(
-          docBuffer,
-          correctionHints,
-        );
+        const pdfText = await (async () => {
+          try {
+            const pdfData = await pdfParse(docBuffer);
+            return pdfData.text || "";
+          } catch {
+            return "";
+          }
+        })();
+
+        if (pdfText.length >= 50) {
+          return this.rubberCocExtractionService.extractTaxInvoice(
+            pdfText,
+            correctionHints,
+          );
+        } else {
+          return this.rubberCocExtractionService.extractTaxInvoiceFromImages(
+            docBuffer,
+            correctionHints,
+          );
+        }
       }
-    }
+    })();
 
     const updated = await this.rubberTaxInvoiceService.setExtractedData(
       Number(id),

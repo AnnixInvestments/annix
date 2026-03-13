@@ -12,25 +12,25 @@ function MainContent({ children }: { children: React.ReactNode }) {
   const [heroObjectUrl, setHeroObjectUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    let revoked = false;
+    const controller = new AbortController();
     if (branding.heroUrl) {
       const proxyUrl = auRubberApiClient.proxyImageUrl(branding.heroUrl);
       const headers = auRubberApiClient.authHeaders();
-      fetch(proxyUrl, { headers })
+      fetch(proxyUrl, { headers, signal: controller.signal })
         .then((res) => (res.ok ? res.blob() : null))
         .then((blob) => {
-          if (!revoked && blob) {
+          if (!controller.signal.aborted && blob) {
             setHeroObjectUrl(URL.createObjectURL(blob));
           }
         })
         .catch(() => {
-          if (!revoked) setHeroObjectUrl(null);
+          if (!controller.signal.aborted) setHeroObjectUrl(null);
         });
     } else {
       setHeroObjectUrl(null);
     }
     return () => {
-      revoked = true;
+      controller.abort();
       if (heroObjectUrl) URL.revokeObjectURL(heroObjectUrl);
     };
   }, [branding.heroUrl]);
