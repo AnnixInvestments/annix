@@ -5,13 +5,13 @@ import { formatISODate, generateUniqueId } from "../lib/datetime";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
-import { RubberTaxInvoiceCorrection } from "./entities/rubber-tax-invoice-correction.entity";
 import {
   ExtractedTaxInvoiceData,
   RubberTaxInvoice,
   TaxInvoiceStatus,
   TaxInvoiceType,
 } from "./entities/rubber-tax-invoice.entity";
+import { RubberTaxInvoiceCorrection } from "./entities/rubber-tax-invoice-correction.entity";
 import { RubberStockService } from "./rubber-stock.service";
 
 const TAX_INVOICE_STATUS_LABELS: Record<TaxInvoiceStatus, string> = {

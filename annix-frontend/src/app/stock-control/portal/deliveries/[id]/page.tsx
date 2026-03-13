@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { DeliveryNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
+import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 
 interface ExtractedLineItem {
   description?: string;
@@ -92,7 +92,8 @@ export default function DeliveryDetailPage() {
   const handleDelete = async () => {
     const confirmed = await confirm({
       title: "Delete Delivery Note",
-      message: "Are you sure you want to delete this delivery note? This will also reverse any stock movements.",
+      message:
+        "Are you sure you want to delete this delivery note? This will also reverse any stock movements.",
       confirmLabel: "Delete",
       variant: "danger",
     });

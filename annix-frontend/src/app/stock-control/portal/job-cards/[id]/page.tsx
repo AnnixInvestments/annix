@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import type {
   JobCard,
   JobCardApproval,
@@ -18,6 +17,7 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
+import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import { AllocationsTab } from "./components/AllocationsTab";
 import { CoatingAnalysisTab } from "./components/CoatingAnalysisTab";
 import { DetailsTab } from "./components/DetailsTab";
