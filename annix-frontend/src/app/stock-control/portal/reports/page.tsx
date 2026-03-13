@@ -14,13 +14,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, now } from "@/app/lib/datetime";
-
-function formatZAR(value: number): string {
-  return new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-  }).format(value);
-}
+import { formatZAR } from "../../lib/currency";
 
 function movementTypeBadge(type: string): string {
   const colors: Record<string, string> = {

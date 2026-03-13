@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { memo } from "react";
 import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControlApi";
 
 type SortField = "name" | "quantity" | "stockLevel" | "updatedAt";
@@ -77,12 +78,7 @@ function stockLevelPct(item: StockItem): number {
   return Math.max(2, pct);
 }
 
-function formatZAR(value: number): string {
-  return new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-  }).format(value);
-}
+import { formatZAR } from "../lib/currency";
 
 function staffInitials(name: string): string {
   return name
@@ -388,7 +384,7 @@ function ItemCard(props: {
   );
 }
 
-export function InventoryCardView(props: InventoryCardViewProps) {
+export const InventoryCardView = memo(function InventoryCardView(props: InventoryCardViewProps) {
   const {
     items,
     locations,
@@ -472,7 +468,7 @@ export function InventoryCardView(props: InventoryCardViewProps) {
       ))}
     </div>
   );
-}
+});
 
 export { stockLevelStatus, stockLevelColor, stockLevelLabel, AMBER_THRESHOLD_PCT };
 export type { SortField, SortDirection, GroupByOption, StockLevelStatus, ThumbnailSize };

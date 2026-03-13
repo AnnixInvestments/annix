@@ -8,13 +8,7 @@ import type { StockControlLocation, StockItem, StockMovement } from "@/app/lib/a
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
-
-function formatZAR(value: number): string {
-  return new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-  }).format(value);
-}
+import { formatZAR } from "@/app/stock-control/lib/currency";
 
 function movementTypeBadge(type: string): string {
   const colors: Record<string, string> = {

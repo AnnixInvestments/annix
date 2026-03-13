@@ -28,13 +28,7 @@ import {
   type SortField,
   type ThumbnailSize,
 } from "../../components/InventoryCardView";
-
-function formatZAR(value: number): string {
-  return new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
-  }).format(value);
-}
+import { formatZAR } from "../../lib/currency";
 
 function isRandColumn(header: string): boolean {
   return /value|price|cost|r\/p|amount|rand|zar/i.test(header);

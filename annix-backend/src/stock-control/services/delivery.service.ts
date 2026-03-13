@@ -703,7 +703,7 @@ export class DeliveryService {
 
     const allItems = await this.stockItemRepo.find({ where: { companyId } });
 
-    for (const item of allItems) {
+    const candidateItems = allItems.filter((item) => {
       const normalizedItemName = this.normalizeForComparison(item.name);
       const normalizedItemSku = item.sku.toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -718,36 +718,52 @@ export class DeliveryService {
         (normalizedNewSku.includes(normalizedItemSku.slice(-5)) ||
           normalizedItemSku.includes(normalizedNewSku.slice(-5)));
 
-      if (nameMatch || skuSimilar) {
-        const supplierHistory = await this.deliveryNoteItemRepo
-          .createQueryBuilder("dni")
-          .innerJoin("dni.deliveryNote", "dn")
-          .where("dni.stock_item_id = :stockItemId", { stockItemId: item.id })
-          .andWhere("dni.company_id = :companyId", { companyId })
-          .select("DISTINCT dn.supplierName", "supplierName")
-          .getRawMany();
+      return nameMatch || skuSimilar;
+    });
 
-        const suppliers = supplierHistory.map((s) => s.supplierName?.toLowerCase() || "");
-        const normalizedCurrentSupplier = supplierName?.toLowerCase() || "";
+    if (candidateItems.length === 0) {
+      return { existingItem: null, sameSupplier: false };
+    }
 
-        const sameSupplier = suppliers.some(
-          (s) =>
-            s === normalizedCurrentSupplier ||
-            s.includes(normalizedCurrentSupplier) ||
-            normalizedCurrentSupplier.includes(s),
-        );
+    const candidateIds = candidateItems.map((item) => item.id);
+    const supplierRows: { stockItemId: number; supplierName: string }[] =
+      await this.deliveryNoteItemRepo
+        .createQueryBuilder("dni")
+        .innerJoin("dni.deliveryNote", "dn")
+        .where("dni.stock_item_id IN (:...candidateIds)", { candidateIds })
+        .andWhere("dni.company_id = :companyId", { companyId })
+        .select("DISTINCT dni.stock_item_id", "stockItemId")
+        .addSelect("dn.supplierName", "supplierName")
+        .getRawMany();
 
-        if (sameSupplier) {
-          this.logger.log(
-            `Found matching item: "${item.name}" (SKU: ${item.sku}) from same supplier: ${supplierName}`,
-          );
-          return { existingItem: item, sameSupplier: true };
-        }
+    const suppliersByItemId = supplierRows.reduce<Record<number, string[]>>((acc, row) => {
+      const id = Number(row.stockItemId);
+      const existing = acc[id] ?? [];
+      return { ...acc, [id]: [...existing, row.supplierName?.toLowerCase() || ""] };
+    }, {});
 
+    const normalizedCurrentSupplier = supplierName?.toLowerCase() || "";
+
+    for (const item of candidateItems) {
+      const suppliers = suppliersByItemId[item.id] ?? [];
+
+      const sameSupplier = suppliers.some(
+        (s) =>
+          s === normalizedCurrentSupplier ||
+          s.includes(normalizedCurrentSupplier) ||
+          normalizedCurrentSupplier.includes(s),
+      );
+
+      if (sameSupplier) {
         this.logger.log(
-          `Found similar item: "${item.name}" but from different supplier(s): ${suppliers.join(", ")} vs current: ${supplierName}`,
+          `Found matching item: "${item.name}" (SKU: ${item.sku}) from same supplier: ${supplierName}`,
         );
+        return { existingItem: item, sameSupplier: true };
       }
+
+      this.logger.log(
+        `Found similar item: "${item.name}" but from different supplier(s): ${suppliers.join(", ")} vs current: ${supplierName}`,
+      );
     }
 
     return { existingItem: null, sameSupplier: false };
