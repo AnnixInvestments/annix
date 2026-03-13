@@ -322,9 +322,7 @@ export default function InventoryPage() {
         search: search || undefined,
         category: categoryFilter || undefined,
       });
-      const itemsNeedingClear = allItems
-        .filter((item) => item.needsQrPrint)
-        .map((item) => item.id);
+      const itemsNeedingClear = allItems.filter((item) => item.needsQrPrint).map((item) => item.id);
       if (itemsNeedingClear.length > 0) {
         await stockControlApiClient.clearQrPrintFlag(itemsNeedingClear);
         invalidateInventory();

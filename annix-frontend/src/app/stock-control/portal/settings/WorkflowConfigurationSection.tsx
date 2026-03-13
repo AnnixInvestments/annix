@@ -133,9 +133,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
       return !parent || !allStepsByKey[parent];
     });
 
-    roots
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .forEach((root) => insertWithFollowers(root));
+    roots.sort((a, b) => a.sortOrder - b.sortOrder).forEach((root) => insertWithFollowers(root));
 
     [...stepConfigs, ...backgroundSteps].forEach((s) => {
       if (!inserted.has(s.key)) {

@@ -101,8 +101,7 @@ export class MovementService {
       await queryRunner.commitTransaction();
 
       if (
-        (data.movementType === MovementType.OUT ||
-          data.movementType === MovementType.ADJUSTMENT) &&
+        (data.movementType === MovementType.OUT || data.movementType === MovementType.ADJUSTMENT) &&
         stockItem.minStockLevel > 0 &&
         stockItem.quantity < stockItem.minStockLevel
       ) {

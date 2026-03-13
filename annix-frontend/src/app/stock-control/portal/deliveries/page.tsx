@@ -139,9 +139,7 @@ export default function DeliveriesPage() {
   const handleBulkAddToStock = async () => {
     setIsBulkAdding(true);
     const ids = Array.from(selectedIds);
-    const results = await Promise.allSettled(
-      ids.map((id) => linkMutation.mutateAsync(id)),
-    );
+    const results = await Promise.allSettled(ids.map((id) => linkMutation.mutateAsync(id)));
     const successCount = results.filter((r) => r.status === "fulfilled").length;
     const failCount = results.filter((r) => r.status === "rejected").length;
 
@@ -640,7 +638,11 @@ export default function DeliveriesPage() {
                 </button>
                 <button
                   onClick={handleCreate}
-                  disabled={createMutation.isPending || !createForm.deliveryNumber || !createForm.supplierName}
+                  disabled={
+                    createMutation.isPending ||
+                    !createForm.deliveryNumber ||
+                    !createForm.supplierName
+                  }
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {createMutation.isPending ? "Creating..." : "Create Delivery Note"}

@@ -213,9 +213,7 @@ export class DeliveryService {
           if (stockItem) {
             stockItem.quantity = stockItem.quantity - movement.quantity;
             await queryRunner.manager.save(StockItem, stockItem);
-            this.logger.log(
-              `Reversed stock movement: ${stockItem.sku} -${movement.quantity}`,
-            );
+            this.logger.log(`Reversed stock movement: ${stockItem.sku} -${movement.quantity}`);
           }
         }
         await queryRunner.manager.remove(StockMovement, movement);

@@ -357,7 +357,10 @@ export class StockControlAuthService {
     return { linkedStaffId };
   }
 
-  async updateTooltipPreference(userId: number, hideTooltips: boolean): Promise<{ hideTooltips: boolean }> {
+  async updateTooltipPreference(
+    userId: number,
+    hideTooltips: boolean,
+  ): Promise<{ hideTooltips: boolean }> {
     await this.userRepo.update(userId, { hideTooltips });
     return { hideTooltips };
   }

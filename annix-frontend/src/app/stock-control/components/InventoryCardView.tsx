@@ -79,7 +79,6 @@ function stockLevelPct(item: StockItem): number {
 }
 
 import { formatZAR } from "../lib/currency";
-import { staffInitials } from "../lib/formatting";
 
 function sortItems(items: StockItem[], field: SortField, direction: SortDirection): StockItem[] {
   return [...items].sort((a, b) => {

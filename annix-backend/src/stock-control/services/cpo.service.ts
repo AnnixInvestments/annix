@@ -15,9 +15,9 @@ import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { Requisition, RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
 import { RequisitionItem } from "../entities/requisition-item.entity";
-import { CoatingAnalysisService } from "./coating-analysis.service";
 import { isValidLineItem } from "../lib/line-item-validation";
-import { JobCardImportRow, LineItemImportRow } from "./job-card-import.service";
+import { CoatingAnalysisService } from "./coating-analysis.service";
+import { JobCardImportRow } from "./job-card-import.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 
 export interface CpoMatchResult {

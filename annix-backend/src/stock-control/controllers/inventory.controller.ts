@@ -76,7 +76,10 @@ export class InventoryController {
     @Query("locationId") locationId?: string,
   ) {
     const parsedLocationId = locationId ? Number(locationId) : null;
-    if (parsedLocationId !== null && (!Number.isInteger(parsedLocationId) || parsedLocationId <= 0)) {
+    if (
+      parsedLocationId !== null &&
+      (!Number.isInteger(parsedLocationId) || parsedLocationId <= 0)
+    ) {
       throw new BadRequestException("locationId must be a positive integer");
     }
     return this.inventoryService.groupedByCategory(

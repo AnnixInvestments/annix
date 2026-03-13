@@ -3,8 +3,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
-import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
+import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
 import {
   FieldMapping,
@@ -359,9 +359,7 @@ export class JobCardImportService {
 
       const grid: string[][] = parsed.map((row: unknown) => {
         if (!Array.isArray(row)) return [];
-        return row.map((cell: unknown) =>
-          cell == null ? "" : String(cell),
-        );
+        return row.map((cell: unknown) => (cell == null ? "" : String(cell)));
       });
 
       const maxCols = grid.reduce((max, row) => Math.max(max, row.length), 0);

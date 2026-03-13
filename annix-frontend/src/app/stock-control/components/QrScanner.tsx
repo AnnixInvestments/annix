@@ -24,7 +24,10 @@ export function QrScanner(props: QrScannerProps) {
           await scannerRef.current.stop();
         }
       } catch (error) {
-        console.debug("Scanner stop error (non-fatal):", error instanceof Error ? error.message : error);
+        console.debug(
+          "Scanner stop error (non-fatal):",
+          error instanceof Error ? error.message : error,
+        );
       }
       scannerRef.current = null;
     }
