@@ -99,11 +99,14 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     })),
   ];
 
+  const triggerKey = (s: WorkflowStepConfig) =>
+    String(s["triggerAfterStep" as keyof WorkflowStepConfig] ?? "");
+
   const backgroundStepsByTrigger = backgroundSteps.reduce<Record<string, WorkflowStepConfig[]>>(
-    (acc, bg) => ({
-      ...acc,
-      [bg.triggerAfterStep ?? ""]: [...(acc[bg.triggerAfterStep ?? ""] ?? []), bg],
-    }),
+    (acc, bg) => {
+      const key = triggerKey(bg);
+      return { ...acc, [key]: [...(acc[key] ?? []), bg] };
+    },
     {},
   );
 
@@ -569,6 +572,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     const assignment = assignmentsByStep[step.key];
     const assignedCount = assignment?.userIds?.length ?? 0;
     const primaryUser = assignment?.users?.find((u) => u.id === assignment.primaryUserId);
+    const followsStep = String(step["triggerAfterStep" as keyof WorkflowStepConfig] ?? "");
 
     return (
       <div
@@ -702,7 +706,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                 >
                   <span className="text-xs text-gray-400">Follows:</span>
                   <select
-                    value={step.triggerAfterStep ?? ""}
+                    value={followsStep}
                     onChange={(e) => handleUpdateFollows(step.key, e.target.value || null)}
                     disabled={saving}
                     className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 focus:ring-teal-500 focus:border-teal-500 bg-white cursor-pointer"
