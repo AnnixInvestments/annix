@@ -606,10 +606,30 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
               ) : (
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-gray-900 truncate">{step.label}</span>
-                  {isBackground && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded flex-shrink-0">
+                  {isBackground ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleBackground(step.key, false);
+                      }}
+                      className="text-xs bg-amber-100 text-amber-700 hover:bg-teal-100 hover:text-teal-700 px-1.5 py-0.5 rounded flex-shrink-0 transition-colors"
+                      title="Click to move to foreground"
+                    >
                       Background
-                    </span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleBackground(step.key, true);
+                      }}
+                      className="text-xs bg-teal-50 text-teal-600 hover:bg-amber-100 hover:text-amber-700 px-1.5 py-0.5 rounded flex-shrink-0 transition-colors"
+                      title="Click to move to background"
+                    >
+                      Foreground
+                    </button>
                   )}
                   {step.isSystem && (
                     <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded flex-shrink-0">
@@ -940,9 +960,10 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                   onChange={(e) => setNewStepTriggerAfter(e.target.value)}
                   className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
                 >
-                  {stepConfigs.map((s) => (
+                  {[...stepConfigs, ...backgroundSteps].map((s) => (
                     <option key={s.key} value={s.key}>
                       {s.label}
+                      {s.isBackground ? " (background)" : ""}
                     </option>
                   ))}
                 </select>
