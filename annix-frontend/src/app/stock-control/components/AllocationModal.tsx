@@ -45,8 +45,25 @@ export function AllocationModal(props: AllocationModalProps) {
     setForm((prev) => ({ ...prev, photo: file }));
   };
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    if (!form.stockItemId) {
+      newErrors.stockItemId = "Please select a stock item";
+    }
+    const qty = Number(form.quantity);
+    if (!form.quantity || qty <= 0) {
+      newErrors.quantity = "Quantity must be greater than 0";
+    } else if (selectedItem && qty > selectedItem.quantity) {
+      newErrors.quantity = `Exceeds available stock (${selectedItem.quantity} ${selectedItem.unitOfMeasure})`;
+    }
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setErrors({});
     onSave(form);
   };
 
@@ -94,8 +111,7 @@ export function AllocationModal(props: AllocationModalProps) {
                   name="stockItemId"
                   value={form.stockItemId ?? ""}
                   onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${errors.stockItemId ? "border-red-500" : "border-gray-300"}`}
                 >
                   <option value="">Select an item...</option>
                   {stockItems.map((item) => (
@@ -104,6 +120,9 @@ export function AllocationModal(props: AllocationModalProps) {
                     </option>
                   ))}
                 </select>
+                {errors.stockItemId && (
+                  <p className="mt-1 text-sm text-red-600">{errors.stockItemId}</p>
+                )}
               </div>
 
               {selectedItem && (
@@ -124,9 +143,11 @@ export function AllocationModal(props: AllocationModalProps) {
                   onChange={handleChange}
                   min="1"
                   max={selectedItem ? selectedItem.quantity : undefined}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${errors.quantity ? "border-red-500" : "border-gray-300"}`}
                 />
+                {errors.quantity && (
+                  <p className="mt-1 text-sm text-red-600">{errors.quantity}</p>
+                )}
               </div>
 
               <div>

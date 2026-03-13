@@ -64,25 +64,33 @@ export function StockItemModal(props: StockItemModalProps) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setValidationError(null);
+    const newErrors: Record<string, string> = {};
 
+    if (!form.sku.trim()) {
+      newErrors.sku = "SKU is required";
+    }
+    if (!form.name.trim()) {
+      newErrors.name = "Name is required";
+    }
     if (!isNonNegativeNumber(form.quantity)) {
-      setValidationError("Quantity must be a non-negative number.");
-      return;
+      newErrors.quantity = "Must be a non-negative number";
     }
     if (!isNonNegativeNumber(form.costPerUnit)) {
-      setValidationError("Cost per unit must be a non-negative number.");
-      return;
+      newErrors.costPerUnit = "Must be a non-negative number";
     }
     if (!isNonNegativeNumber(form.minStockLevel)) {
-      setValidationError("Min stock level must be a non-negative number.");
-      return;
+      newErrors.minStockLevel = "Must be a non-negative number";
     }
 
+    if (Object.keys(newErrors).length > 0) {
+      setFieldErrors(newErrors);
+      return;
+    }
+    setFieldErrors({});
     onSave(form);
   };
 
@@ -119,7 +127,6 @@ export function StockItemModal(props: StockItemModalProps) {
 
           <form onSubmit={handleSubmit}>
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-4">
-              {validationError && <p className="text-sm text-red-600">{validationError}</p>}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
@@ -128,9 +135,11 @@ export function StockItemModal(props: StockItemModalProps) {
                     name="sku"
                     value={form.sku}
                     onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${fieldErrors.sku ? "border-red-500" : "border-gray-300"}`}
                   />
+                  {fieldErrors.sku && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.sku}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -139,9 +148,11 @@ export function StockItemModal(props: StockItemModalProps) {
                     name="name"
                     value={form.name}
                     onChange={handleChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${fieldErrors.name ? "border-red-500" : "border-gray-300"}`}
                   />
+                  {fieldErrors.name && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>
+                  )}
                 </div>
               </div>
 
@@ -199,8 +210,11 @@ export function StockItemModal(props: StockItemModalProps) {
                     onChange={handleChange}
                     step="0.01"
                     min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${fieldErrors.costPerUnit ? "border-red-500" : "border-gray-300"}`}
                   />
+                  {fieldErrors.costPerUnit && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.costPerUnit}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
@@ -210,8 +224,11 @@ export function StockItemModal(props: StockItemModalProps) {
                     value={form.quantity}
                     onChange={handleChange}
                     min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${fieldErrors.quantity ? "border-red-500" : "border-gray-300"}`}
                   />
+                  {fieldErrors.quantity && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.quantity}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -223,8 +240,11 @@ export function StockItemModal(props: StockItemModalProps) {
                     value={form.minStockLevel}
                     onChange={handleChange}
                     min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${fieldErrors.minStockLevel ? "border-red-500" : "border-gray-300"}`}
                   />
+                  {fieldErrors.minStockLevel && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.minStockLevel}</p>
+                  )}
                 </div>
               </div>
 
