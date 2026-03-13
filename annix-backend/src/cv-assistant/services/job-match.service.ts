@@ -56,30 +56,46 @@ export class JobMatchService {
         throw new Error("No JSON found in AI response");
       }
 
-      const analysis = JSON.parse(jsonMatch[0]) as MatchAnalysis;
+      const raw = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
 
-      return {
-        overallScore: Math.min(100, Math.max(0, analysis.overallScore || 0)),
-        skillsMatched: Array.isArray(analysis.skillsMatched) ? analysis.skillsMatched : [],
-        skillsMissing: Array.isArray(analysis.skillsMissing) ? analysis.skillsMissing : [],
-        experienceMatch: Boolean(analysis.experienceMatch),
-        educationMatch: Boolean(analysis.educationMatch),
-        recommendation: this.normalizeRecommendation(analysis.recommendation),
-        reasoning: analysis.reasoning || null,
-      };
-    } catch (error) {
-      this.logger.error(`Failed to analyze job match: ${error.message}`);
+      return this.validateMatchAnalysis(raw);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to analyze job match: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return this.fallbackAnalysis(candidateData, jobPosting);
     }
+  }
+
+  private validateMatchAnalysis(raw: Record<string, unknown>): MatchAnalysis {
+    const asStringArray = (val: unknown): string[] =>
+      Array.isArray(val) ? val.filter((v): v is string => typeof v === "string") : [];
+
+    const score =
+      typeof raw.overallScore === "number" ? Math.min(100, Math.max(0, raw.overallScore)) : 0;
+
+    return {
+      overallScore: score,
+      skillsMatched: asStringArray(raw.skillsMatched),
+      skillsMissing: asStringArray(raw.skillsMissing),
+      experienceMatch: Boolean(raw.experienceMatch),
+      educationMatch: Boolean(raw.educationMatch),
+      recommendation: this.normalizeRecommendation(raw.recommendation as string | undefined),
+      reasoning: typeof raw.reasoning === "string" ? raw.reasoning : null,
+    };
   }
 
   private normalizeRecommendation(
     recommendation: string | undefined,
   ): "reject" | "review" | "shortlist" {
     const normalized = (recommendation || "").toLowerCase();
-    if (normalized === "shortlist") return "shortlist";
-    if (normalized === "reject") return "reject";
-    return "review";
+    if (normalized === "shortlist") {
+      return "shortlist";
+    } else if (normalized === "reject") {
+      return "reject";
+    } else {
+      return "review";
+    }
   }
 
   private fallbackAnalysis(candidateData: ExtractedCvData, jobPosting: JobPosting): MatchAnalysis {

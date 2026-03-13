@@ -37,59 +37,57 @@ export class WorkflowAutomationService {
 
     if (!candidate) {
       this.logger.warn(`Candidate ${candidateId} not found`);
-      return;
-    }
-
-    if (!candidate.cvFilePath) {
+    } else if (!candidate.cvFilePath) {
       this.logger.warn(`Candidate ${candidateId} has no CV file`);
-      return;
-    }
+    } else {
+      try {
+        candidate.status = CandidateStatus.SCREENING;
+        await this.candidateRepo.save(candidate);
 
-    try {
-      candidate.status = CandidateStatus.SCREENING;
-      await this.candidateRepo.save(candidate);
+        const { text, data } = await this.cvExtractionService.processCV(candidate.cvFilePath);
 
-      const { text, data } = await this.cvExtractionService.processCV(candidate.cvFilePath);
+        candidate.rawCvText = text;
+        candidate.extractedData = data;
+        candidate.name = data.candidateName || candidate.name;
+        candidate.email = data.email || candidate.email;
+        await this.candidateRepo.save(candidate);
 
-      candidate.rawCvText = text;
-      candidate.extractedData = data;
-      candidate.name = data.candidateName || candidate.name;
-      candidate.email = data.email || candidate.email;
-      await this.candidateRepo.save(candidate);
+        const matchAnalysis = await this.jobMatchService.analyzeMatch(data, candidate.jobPosting);
 
-      const matchAnalysis = await this.jobMatchService.analyzeMatch(data, candidate.jobPosting);
+        candidate.matchAnalysis = matchAnalysis;
+        candidate.matchScore = matchAnalysis.overallScore;
+        await this.candidateRepo.save(candidate);
 
-      candidate.matchAnalysis = matchAnalysis;
-      candidate.matchScore = matchAnalysis.overallScore;
-      await this.candidateRepo.save(candidate);
+        if (data.references && data.references.length > 0) {
+          await this.referenceService.createReferencesFromExtractedData(candidateId, data);
+        }
 
-      if (data.references && data.references.length > 0) {
-        await this.referenceService.createReferencesFromExtractedData(candidateId, data);
+        this.embeddingService
+          .embedCandidate(candidateId)
+          .then((embedded) => {
+            if (embedded) {
+              return this.candidateJobMatchingService.matchCandidateToJobs(candidateId);
+            }
+            return null;
+          })
+          .catch((err: unknown) => {
+            this.logger.warn(
+              `Failed to generate embedding/matches for candidate ${candidateId}: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          });
+
+        await this.applyAutomationRules(candidate);
+
+        this.logger.log(
+          `Processed CV for candidate ${candidateId}, score: ${matchAnalysis.overallScore}`,
+        );
+      } catch (error: unknown) {
+        this.logger.error(
+          `Failed to process CV for candidate ${candidateId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        candidate.status = CandidateStatus.NEW;
+        await this.candidateRepo.save(candidate);
       }
-
-      this.embeddingService
-        .embedCandidate(candidateId)
-        .then((embedded) => {
-          if (embedded) {
-            return this.candidateJobMatchingService.matchCandidateToJobs(candidateId);
-          }
-          return null;
-        })
-        .catch((err) => {
-          this.logger.warn(
-            `Failed to generate embedding/matches for candidate ${candidateId}: ${err.message}`,
-          );
-        });
-
-      await this.applyAutomationRules(candidate);
-
-      this.logger.log(
-        `Processed CV for candidate ${candidateId}, score: ${matchAnalysis.overallScore}`,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to process CV for candidate ${candidateId}: ${error.message}`);
-      candidate.status = CandidateStatus.NEW;
-      await this.candidateRepo.save(candidate);
     }
   }
 
@@ -98,9 +96,10 @@ export class WorkflowAutomationService {
 
     if (!candidate.matchScore) {
       return;
-    }
-
-    if (jobPosting.autoRejectEnabled && candidate.matchScore < jobPosting.autoRejectThreshold) {
+    } else if (
+      jobPosting.autoRejectEnabled &&
+      candidate.matchScore < jobPosting.autoRejectThreshold
+    ) {
       await this.autoRejectCandidate(candidate);
     } else if (candidate.matchScore >= jobPosting.autoAcceptThreshold) {
       await this.autoShortlistCandidate(candidate);
@@ -157,22 +156,20 @@ export class WorkflowAutomationService {
       relations: ["jobPosting"],
     });
 
-    if (!candidate || candidate.jobPosting.companyId !== companyId) {
-      return;
-    }
+    if (candidate && candidate.jobPosting.companyId === companyId) {
+      candidate.status = CandidateStatus.REJECTED;
+      await this.candidateRepo.save(candidate);
 
-    candidate.status = CandidateStatus.REJECTED;
-    await this.candidateRepo.save(candidate);
+      if (candidate.email && !candidate.rejectionSentAt) {
+        const sent = await this.emailService.sendCvAssistantRejectionEmail(
+          candidate.email,
+          candidate.name || "Applicant",
+          candidate.jobPosting.title,
+        );
 
-    if (candidate.email && !candidate.rejectionSentAt) {
-      const sent = await this.emailService.sendCvAssistantRejectionEmail(
-        candidate.email,
-        candidate.name || "Applicant",
-        candidate.jobPosting.title,
-      );
-
-      if (sent) {
-        await this.candidateService.markRejectionSent(candidate.id);
+        if (sent) {
+          await this.candidateService.markRejectionSent(candidate.id);
+        }
       }
     }
   }
@@ -183,27 +180,25 @@ export class WorkflowAutomationService {
       relations: ["jobPosting", "references"],
     });
 
-    if (!candidate || candidate.jobPosting.companyId !== companyId) {
-      return;
-    }
+    if (candidate && candidate.jobPosting.companyId === companyId) {
+      candidate.status = CandidateStatus.SHORTLISTED;
+      await this.candidateRepo.save(candidate);
 
-    candidate.status = CandidateStatus.SHORTLISTED;
-    await this.candidateRepo.save(candidate);
+      if (candidate.email && !candidate.acceptanceSentAt) {
+        const sent = await this.emailService.sendCvAssistantShortlistEmail(
+          candidate.email,
+          candidate.name || "Applicant",
+          candidate.jobPosting.title,
+        );
 
-    if (candidate.email && !candidate.acceptanceSentAt) {
-      const sent = await this.emailService.sendCvAssistantShortlistEmail(
-        candidate.email,
-        candidate.name || "Applicant",
-        candidate.jobPosting.title,
-      );
-
-      if (sent) {
-        await this.candidateService.markAcceptanceSent(candidate.id);
+        if (sent) {
+          await this.candidateService.markAcceptanceSent(candidate.id);
+        }
       }
-    }
 
-    if (candidate.references && candidate.references.length > 0) {
-      await this.referenceService.sendReferenceRequests(candidate.id);
+      if (candidate.references && candidate.references.length > 0) {
+        await this.referenceService.sendReferenceRequests(candidate.id);
+      }
     }
   }
 
@@ -213,19 +208,17 @@ export class WorkflowAutomationService {
       relations: ["jobPosting"],
     });
 
-    if (!candidate || candidate.jobPosting.companyId !== companyId) {
-      return;
-    }
+    if (candidate && candidate.jobPosting.companyId === companyId) {
+      candidate.status = CandidateStatus.ACCEPTED;
+      await this.candidateRepo.save(candidate);
 
-    candidate.status = CandidateStatus.ACCEPTED;
-    await this.candidateRepo.save(candidate);
-
-    if (candidate.email) {
-      await this.emailService.sendCvAssistantAcceptanceEmail(
-        candidate.email,
-        candidate.name || "Applicant",
-        candidate.jobPosting.title,
-      );
+      if (candidate.email) {
+        await this.emailService.sendCvAssistantAcceptanceEmail(
+          candidate.email,
+          candidate.name || "Applicant",
+          candidate.jobPosting.title,
+        );
+      }
     }
   }
 }

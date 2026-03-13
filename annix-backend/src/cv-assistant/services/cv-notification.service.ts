@@ -99,33 +99,39 @@ export class CvNotificationService {
   async sendPushToUser(userId: number, payload: PushPayload): Promise<void> {
     if (!this.pushEnabled) {
       return;
-    }
+    } else {
+      const subscriptions = await this.pushSubRepo.find({ where: { userId } });
 
-    const subscriptions = await this.pushSubRepo.find({ where: { userId } });
-    const staleIds: number[] = [];
-
-    await Promise.all(
-      subscriptions.map(async (sub) => {
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: sub.endpoint,
-              keys: { p256dh: sub.keyP256dh, auth: sub.keyAuth },
-            },
-            JSON.stringify(payload),
-          );
-        } catch (error: any) {
-          if (error.statusCode === 410 || error.statusCode === 404) {
-            staleIds.push(sub.id);
-          } else {
-            this.logger.warn(`Push failed for CV subscription ${sub.id}: ${error.message}`);
+      const results = await Promise.all(
+        subscriptions.map(async (sub) => {
+          try {
+            await webpush.sendNotification(
+              {
+                endpoint: sub.endpoint,
+                keys: { p256dh: sub.keyP256dh, auth: sub.keyAuth },
+              },
+              JSON.stringify(payload),
+            );
+            return null;
+          } catch (error: unknown) {
+            const statusCode = (error as { statusCode?: number }).statusCode;
+            if (statusCode === 410 || statusCode === 404) {
+              return sub.id;
+            } else {
+              this.logger.warn(
+                `Push failed for CV subscription ${sub.id}: ${error instanceof Error ? error.message : String(error)}`,
+              );
+              return null;
+            }
           }
-        }
-      }),
-    );
+        }),
+      );
 
-    if (staleIds.length > 0) {
-      await this.pushSubRepo.delete(staleIds);
+      const staleIds = results.filter((id): id is number => id !== null);
+
+      if (staleIds.length > 0) {
+        await this.pushSubRepo.delete(staleIds);
+      }
     }
   }
 
@@ -140,49 +146,51 @@ export class CvNotificationService {
 
     if (!candidate) {
       return;
+    } else {
+      const companyId = candidate.jobPosting.companyId;
+      const recruiters = await this.userRepo.find({ where: { companyId } });
+      const highMatches = matches.filter((m) => m.overallScore >= 0.5);
+
+      await Promise.all(
+        recruiters
+          .filter((recruiter) => {
+            const threshold = recruiter.matchAlertThreshold / 100;
+            return highMatches.some((m) => m.overallScore >= threshold);
+          })
+          .map(async (recruiter) => {
+            const threshold = recruiter.matchAlertThreshold / 100;
+            const qualifyingMatches = highMatches.filter((m) => m.overallScore >= threshold);
+
+            const topMatch = qualifyingMatches.reduce((best, m) =>
+              m.overallScore > best.overallScore ? m : best,
+            );
+
+            const job = await this.externalJobRepo.findOne({
+              where: { id: topMatch.externalJobId },
+            });
+            const scorePct = Math.round(topMatch.overallScore * 100);
+
+            if (recruiter.digestEnabled) {
+              await this.emailService.sendCvAssistantMatchAlertEmail(
+                recruiter.email,
+                recruiter.name,
+                candidate.name ?? "Unknown candidate",
+                job?.title ?? "External job",
+                scorePct,
+              );
+            }
+
+            if (recruiter.pushEnabled) {
+              await this.sendPushToUser(recruiter.id, {
+                title: "High-scoring candidate match",
+                body: `${candidate.name ?? "A candidate"} matched ${job?.title ?? "a job"} at ${scorePct}%`,
+                tag: `match-${candidateId}`,
+                data: { url: `/cv-assistant/portal/candidates/${candidateId}` },
+              });
+            }
+          }),
+      );
     }
-
-    const companyId = candidate.jobPosting.companyId;
-    const recruiters = await this.userRepo.find({ where: { companyId } });
-
-    const highMatches = matches.filter((m) => m.overallScore >= 0.5);
-
-    await Promise.all(
-      recruiters.map(async (recruiter) => {
-        const threshold = recruiter.matchAlertThreshold / 100;
-        const qualifyingMatches = highMatches.filter((m) => m.overallScore >= threshold);
-
-        if (qualifyingMatches.length === 0) {
-          return;
-        }
-
-        const topMatch = qualifyingMatches.reduce((best, m) =>
-          m.overallScore > best.overallScore ? m : best,
-        );
-
-        const job = await this.externalJobRepo.findOne({ where: { id: topMatch.externalJobId } });
-        const scorePct = Math.round(topMatch.overallScore * 100);
-
-        if (recruiter.digestEnabled) {
-          await this.emailService.sendCvAssistantMatchAlertEmail(
-            recruiter.email,
-            recruiter.name,
-            candidate.name ?? "Unknown candidate",
-            job?.title ?? "External job",
-            scorePct,
-          );
-        }
-
-        if (recruiter.pushEnabled) {
-          await this.sendPushToUser(recruiter.id, {
-            title: "High-scoring candidate match",
-            body: `${candidate.name ?? "A candidate"} matched ${job?.title ?? "a job"} at ${scorePct}%`,
-            tag: `match-${candidateId}`,
-            data: { url: `/cv-assistant/portal/candidates/${candidateId}` },
-          });
-        }
-      }),
-    );
   }
 
   @Cron(CronExpression.EVERY_WEEK)
@@ -195,60 +203,58 @@ export class CvNotificationService {
       .where("user.digest_enabled = true")
       .getRawMany();
 
-    let totalSent = 0;
+    const companyCounts = await Promise.all(
+      companies.map(async ({ companyId }) => {
+        const jobPostings = await this.jobPostingRepo.find({
+          where: { companyId, status: JobPostingStatus.ACTIVE },
+        });
 
-    for (const { companyId } of companies) {
-      const recruiters = await this.userRepo.find({
-        where: { companyId, digestEnabled: true },
-      });
+        if (jobPostings.length === 0) {
+          return 0;
+        } else {
+          const recruiters = await this.userRepo.find({
+            where: { companyId, digestEnabled: true },
+          });
 
-      const jobPostings = await this.jobPostingRepo.find({
-        where: { companyId, status: JobPostingStatus.ACTIVE },
-      });
+          const jobPostingIds = jobPostings.map((jp) => jp.id);
+          const candidates = await this.candidateRepo.find({
+            where: { jobPostingId: In(jobPostingIds), createdAt: MoreThan(sevenDaysAgo) },
+          });
 
-      if (jobPostings.length === 0) {
-        continue;
-      }
+          const recentMatches = await this.matchRepo
+            .createQueryBuilder("match")
+            .leftJoinAndSelect("match.externalJob", "job")
+            .leftJoinAndSelect("match.candidate", "candidate")
+            .where("match.created_at > :since", { since: sevenDaysAgo })
+            .andWhere(
+              "match.candidate_id IN (SELECT id FROM cv_assistant_candidates WHERE job_posting_id IN (:...ids))",
+              { ids: jobPostingIds },
+            )
+            .andWhere("match.overall_score >= 0.7")
+            .orderBy("match.overall_score", "DESC")
+            .take(10)
+            .getMany();
 
-      const jobPostingIds = jobPostings.map((jp) => jp.id);
-      const candidates = await this.candidateRepo.find({
-        where: { jobPostingId: In(jobPostingIds), createdAt: MoreThan(sevenDaysAgo) },
-      });
+          const results = await Promise.all(
+            recruiters.map((recruiter) =>
+              this.emailService.sendCvAssistantWeeklyDigestEmail(recruiter.email, recruiter.name, {
+                newCandidates: candidates.length,
+                topMatches: recentMatches.map((m) => ({
+                  candidateName: m.candidate?.name ?? "Unknown",
+                  jobTitle: m.externalJob?.title ?? "Unknown job",
+                  score: Math.round(m.overallScore * 100),
+                })),
+                activeJobPostings: jobPostings.length,
+              }),
+            ),
+          );
 
-      const recentMatches = await this.matchRepo
-        .createQueryBuilder("match")
-        .leftJoinAndSelect("match.externalJob", "job")
-        .leftJoinAndSelect("match.candidate", "candidate")
-        .where("match.created_at > :since", { since: sevenDaysAgo })
-        .andWhere(
-          "match.candidate_id IN (SELECT id FROM cv_assistant_candidates WHERE job_posting_id IN (:...ids))",
-          { ids: jobPostingIds },
-        )
-        .andWhere("match.overall_score >= 0.7")
-        .orderBy("match.overall_score", "DESC")
-        .take(10)
-        .getMany();
-
-      for (const recruiter of recruiters) {
-        const sent = await this.emailService.sendCvAssistantWeeklyDigestEmail(
-          recruiter.email,
-          recruiter.name,
-          {
-            newCandidates: candidates.length,
-            topMatches: recentMatches.map((m) => ({
-              candidateName: m.candidate?.name ?? "Unknown",
-              jobTitle: m.externalJob?.title ?? "Unknown job",
-              score: Math.round(m.overallScore * 100),
-            })),
-            activeJobPostings: jobPostings.length,
-          },
-        );
-
-        if (sent) {
-          totalSent += 1;
+          return results.filter(Boolean).length;
         }
-      }
-    }
+      }),
+    );
+
+    const totalSent = companyCounts.reduce((sum, count) => sum + count, 0);
 
     if (totalSent > 0) {
       this.logger.log(`Sent ${totalSent} weekly digest emails`);
@@ -263,42 +269,40 @@ export class CvNotificationService {
       where: { jobAlertsOptIn: true, popiaConsent: true },
     });
 
-    let totalSent = 0;
+    const results = await Promise.all(
+      optedInCandidates
+        .filter((candidate) => candidate.email && candidate.embedding)
+        .map(async (candidate) => {
+          const recentMatches = await this.matchRepo
+            .createQueryBuilder("match")
+            .leftJoinAndSelect("match.externalJob", "job")
+            .where("match.candidate_id = :candidateId", { candidateId: candidate.id })
+            .andWhere("match.created_at > :since", { since: oneDayAgo })
+            .andWhere("match.overall_score >= 0.6")
+            .orderBy("match.overall_score", "DESC")
+            .take(5)
+            .getMany();
 
-    for (const candidate of optedInCandidates) {
-      if (!candidate.email || !candidate.embedding) {
-        continue;
-      }
+          if (recentMatches.length === 0) {
+            return 0;
+          } else {
+            const sent = await this.emailService.sendCvAssistantJobAlertEmail(
+              candidate.email!,
+              candidate.name ?? "Job Seeker",
+              recentMatches.map((m) => ({
+                title: m.externalJob?.title ?? "Job Opportunity",
+                company: m.externalJob?.company ?? null,
+                location: m.externalJob?.locationArea ?? null,
+                score: Math.round(m.overallScore * 100),
+              })),
+            );
 
-      const recentMatches = await this.matchRepo
-        .createQueryBuilder("match")
-        .leftJoinAndSelect("match.externalJob", "job")
-        .where("match.candidate_id = :candidateId", { candidateId: candidate.id })
-        .andWhere("match.created_at > :since", { since: oneDayAgo })
-        .andWhere("match.overall_score >= 0.6")
-        .orderBy("match.overall_score", "DESC")
-        .take(5)
-        .getMany();
+            return sent ? 1 : 0;
+          }
+        }),
+    );
 
-      if (recentMatches.length === 0) {
-        continue;
-      }
-
-      const sent = await this.emailService.sendCvAssistantJobAlertEmail(
-        candidate.email,
-        candidate.name ?? "Job Seeker",
-        recentMatches.map((m) => ({
-          title: m.externalJob?.title ?? "Job Opportunity",
-          company: m.externalJob?.company ?? null,
-          location: m.externalJob?.locationArea ?? null,
-          score: Math.round(m.overallScore * 100),
-        })),
-      );
-
-      if (sent) {
-        totalSent += 1;
-      }
-    }
+    const totalSent = results.reduce((sum, val) => sum + val, 0);
 
     if (totalSent > 0) {
       this.logger.log(`Sent ${totalSent} candidate job alert emails`);

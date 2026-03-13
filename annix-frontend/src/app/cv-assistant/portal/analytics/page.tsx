@@ -1,14 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import {
-  type ConversionFunnelResponse,
-  cvAssistantApiClient,
-  type MarketTrendsResponse,
-  type MatchAccuracyResponse,
-  type TimeToFillResponse,
-} from "@/app/lib/api/cvAssistantApi";
+import { useState } from "react";
+import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
 import { fromISO, now } from "@/app/lib/datetime";
+import {
+  useCvConversionFunnel,
+  useCvMarketTrends,
+  useCvMatchAccuracy,
+  useCvTimeToFill,
+} from "@/app/lib/query/hooks";
 
 type DatePreset = "this_month" | "last_30" | "last_90" | "all_time";
 
@@ -81,68 +81,33 @@ function SkeletonSection() {
 }
 
 export default function AnalyticsPage() {
-  const [funnel, setFunnel] = useState<ConversionFunnelResponse | null>(null);
-  const [matchAccuracy, setMatchAccuracy] = useState<MatchAccuracyResponse | null>(null);
-  const [timeToFill, setTimeToFill] = useState<TimeToFillResponse | null>(null);
-  const [marketTrends, setMarketTrends] = useState<MarketTrendsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFunnelLoading, setIsFunnelLoading] = useState(false);
   const [activePreset, setActivePreset] = useState<DatePreset>("all_time");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [exportingFunnel, setExportingFunnel] = useState(false);
   const [exportingTimeToFill, setExportingTimeToFill] = useState(false);
 
-  const fetchFunnel = useCallback(async (from?: string, to?: string) => {
-    setIsFunnelLoading(true);
-    try {
-      const data = await cvAssistantApiClient.analyticsConversionFunnel(
-        from || undefined,
-        to || undefined,
-      );
-      setFunnel(data);
-    } catch (error) {
-      console.error("Failed to fetch funnel data:", error);
-    } finally {
-      setIsFunnelLoading(false);
-    }
-  }, []);
+  const { data: funnel, isLoading: isFunnelLoading } = useCvConversionFunnel(
+    dateFrom || null,
+    dateTo || null,
+  );
+  const { data: matchAccuracy, isLoading: isMatchAccuracyLoading } = useCvMatchAccuracy();
+  const { data: timeToFill, isLoading: isTimeToFillLoading } = useCvTimeToFill();
+  const { data: marketTrends, isLoading: isMarketTrendsLoading } = useCvMarketTrends();
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      try {
-        const [funnelData, accuracyData, timeData, trendsData] = await Promise.all([
-          cvAssistantApiClient.analyticsConversionFunnel().catch(() => null),
-          cvAssistantApiClient.analyticsMatchAccuracy().catch(() => null),
-          cvAssistantApiClient.analyticsTimeToFill().catch(() => null),
-          cvAssistantApiClient.analyticsMarketTrends().catch(() => null),
-        ]);
-        setFunnel(funnelData);
-        setMatchAccuracy(accuracyData);
-        setTimeToFill(timeData);
-        setMarketTrends(trendsData);
-      } catch (error) {
-        console.error("Failed to fetch analytics data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchAllData();
-  }, []);
+  const isLoading = isMatchAccuracyLoading && isTimeToFillLoading && isMarketTrendsLoading;
 
   const handlePresetClick = (preset: DatePreset) => {
     setActivePreset(preset);
     const dates = presetDates(preset);
     setDateFrom(dates.from || "");
     setDateTo(dates.to || "");
-    fetchFunnel(dates.from || undefined, dates.to || undefined);
   };
 
   const handleDateChange = (from: string, to: string) => {
     setDateFrom(from);
     setDateTo(to);
     setActivePreset("all_time");
-    fetchFunnel(from || undefined, to || undefined);
   };
 
   const handleExportFunnel = async () => {

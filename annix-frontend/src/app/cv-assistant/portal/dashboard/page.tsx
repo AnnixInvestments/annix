@@ -1,39 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import type { Candidate } from "@/app/lib/api/cvAssistantApi";
 import {
-  Candidate,
-  cvAssistantApiClient,
-  DashboardStats,
-  MarketInsights,
-} from "@/app/lib/api/cvAssistantApi";
+  useCvDashboardStats,
+  useCvMarketInsights,
+  useCvTopCandidates,
+} from "@/app/lib/query/hooks";
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [topCandidates, setTopCandidates] = useState<Candidate[]>([]);
-  const [marketInsights, setMarketInsights] = useState<MarketInsights | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: stats, isLoading: statsLoading } = useCvDashboardStats();
+  const { data: topCandidates = [], isLoading: candidatesLoading } = useCvTopCandidates();
+  const { data: marketInsights } = useCvMarketInsights();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsData, candidatesData, insightsData] = await Promise.all([
-          cvAssistantApiClient.dashboardStats(),
-          cvAssistantApiClient.topCandidates(),
-          cvAssistantApiClient.marketInsights().catch(() => null),
-        ]);
-        setStats(statsData);
-        setTopCandidates(candidatesData);
-        setMarketInsights(insightsData);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  const isLoading = statsLoading || candidatesLoading;
 
   if (isLoading) {
     return (
@@ -197,49 +177,11 @@ export default function DashboardPage() {
                 </tr>
               ) : (
                 topCandidates.map((candidate) => (
-                  <tr key={candidate.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {candidate.name || "Unknown"}
-                      </div>
-                      <div className="text-sm text-gray-500">{candidate.email || "-"}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {candidate.jobPosting?.title || "-"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {candidate.matchScore !== null ? (
-                        <div className="flex items-center">
-                          <span className="text-sm font-medium text-gray-900">
-                            {candidate.matchScore}%
-                          </span>
-                          <div className="ml-2 w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${
-                                candidate.matchScore >= 80
-                                  ? "bg-green-500"
-                                  : candidate.matchScore >= 50
-                                    ? "bg-yellow-500"
-                                    : "bg-red-500"
-                              }`}
-                              style={{ width: `${candidate.matchScore}%` }}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(candidate.status)}`}
-                      >
-                        {candidate.status.replace(/_/g, " ")}
-                      </span>
-                    </td>
-                  </tr>
+                  <CandidateRow
+                    key={candidate.id}
+                    candidate={candidate}
+                    statusColor={statusColor}
+                  />
                 ))
               )}
             </tbody>
@@ -372,5 +314,53 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function CandidateRow({
+  candidate,
+  statusColor,
+}: {
+  candidate: Candidate;
+  statusColor: (status: string) => string;
+}) {
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm font-medium text-gray-900">{candidate.name || "Unknown"}</div>
+        <div className="text-sm text-gray-500">{candidate.email || "-"}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm text-gray-900">{candidate.jobPosting?.title || "-"}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {candidate.matchScore !== null ? (
+          <div className="flex items-center">
+            <span className="text-sm font-medium text-gray-900">{candidate.matchScore}%</span>
+            <div className="ml-2 w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${
+                  candidate.matchScore >= 80
+                    ? "bg-green-500"
+                    : candidate.matchScore >= 50
+                      ? "bg-yellow-500"
+                      : "bg-red-500"
+                }`}
+                style={{ width: `${candidate.matchScore}%` }}
+              />
+            </div>
+          </div>
+        ) : (
+          <span className="text-sm text-gray-400">-</span>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <span
+          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(candidate.status)}`}
+        >
+          {candidate.status.replace(/_/g, " ")}
+        </span>
+      </td>
+    </tr>
   );
 }

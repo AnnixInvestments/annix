@@ -1,27 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CandidateReference, cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
+import { useState } from "react";
+import type { CandidateReference } from "@/app/lib/api/cvAssistantApi";
+import { useCvReferences } from "@/app/lib/query/hooks";
 
 export default function ReferencesPage() {
-  const [references, setReferences] = useState<CandidateReference[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
-
-  useEffect(() => {
-    fetchReferences();
-  }, [filter]);
-
-  const fetchReferences = async () => {
-    try {
-      const data = await cvAssistantApiClient.references(filter !== "all" ? filter : undefined);
-      setReferences(data);
-    } catch (error) {
-      console.error("Failed to fetch references:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { data: references = [], isLoading } = useCvReferences(
+    filter !== "all" ? filter : null,
+  );
 
   const statusColor = (status: string) => {
     const colors: Record<string, string> = {

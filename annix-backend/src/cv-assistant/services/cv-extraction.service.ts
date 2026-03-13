@@ -23,9 +23,10 @@ export class CvExtractionService {
       const dataBuffer = await this.storageService.download(storagePath);
       const pdfData = await pdfParse(dataBuffer);
       return pdfData.text;
-    } catch (error) {
-      this.logger.error(`Failed to extract text from PDF: ${error.message}`);
-      throw new Error(`Failed to extract text from PDF: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to extract text from PDF: ${msg}`);
+      throw new Error(`Failed to extract text from PDF: ${msg}`);
     }
   }
 
@@ -50,31 +51,13 @@ export class CvExtractionService {
         throw new Error("No JSON found in AI response");
       }
 
-      const extractedData = JSON.parse(jsonMatch[0]) as ExtractedCvData;
+      const raw = JSON.parse(jsonMatch[0]);
 
-      return {
-        candidateName: extractedData.candidateName || null,
-        email: extractedData.email || null,
-        phone: extractedData.phone || null,
-        experienceYears: extractedData.experienceYears || null,
-        skills: Array.isArray(extractedData.skills) ? extractedData.skills : [],
-        education: Array.isArray(extractedData.education) ? extractedData.education : [],
-        certifications: Array.isArray(extractedData.certifications)
-          ? extractedData.certifications
-          : [],
-        references: Array.isArray(extractedData.references) ? extractedData.references : [],
-        summary: extractedData.summary || null,
-        detectedLanguage: extractedData.detectedLanguage || null,
-        professionalRegistrations: Array.isArray(extractedData.professionalRegistrations)
-          ? extractedData.professionalRegistrations
-          : [],
-        saQualifications: Array.isArray(extractedData.saQualifications)
-          ? extractedData.saQualifications
-          : [],
-        location: extractedData.location || null,
-      };
-    } catch (error) {
-      this.logger.error(`Failed to extract CV data: ${error.message}`);
+      return this.validateExtractedData(raw);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to extract CV data: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return {
         candidateName: null,
         email: null,
@@ -97,5 +80,32 @@ export class CvExtractionService {
     const text = await this.extractTextFromPdf(filePath);
     const data = await this.extractDataFromCv(text);
     return { text, data };
+  }
+
+  private validateExtractedData(raw: Record<string, unknown>): ExtractedCvData {
+    const asString = (val: unknown): string | null =>
+      typeof val === "string" && val.length > 0 ? val : null;
+
+    const asStringArray = (val: unknown): string[] =>
+      Array.isArray(val) ? val.filter((v): v is string => typeof v === "string") : [];
+
+    const asNumber = (val: unknown): number | null =>
+      typeof val === "number" && !Number.isNaN(val) ? val : null;
+
+    return {
+      candidateName: asString(raw.candidateName),
+      email: asString(raw.email),
+      phone: asString(raw.phone),
+      experienceYears: asNumber(raw.experienceYears),
+      skills: asStringArray(raw.skills),
+      education: asStringArray(raw.education),
+      certifications: asStringArray(raw.certifications),
+      references: Array.isArray(raw.references) ? raw.references : [],
+      summary: asString(raw.summary),
+      detectedLanguage: asString(raw.detectedLanguage),
+      professionalRegistrations: asStringArray(raw.professionalRegistrations),
+      saQualifications: asStringArray(raw.saQualifications),
+      location: asString(raw.location),
+    };
   }
 }

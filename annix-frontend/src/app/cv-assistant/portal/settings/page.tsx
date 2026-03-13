@@ -1,19 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { cvAssistantApiClient } from "@/app/lib/api/cvAssistantApi";
 import {
-  CompanySettings,
-  cvAssistantApiClient,
-  NotificationPreferences,
-  PopiaRetentionStats,
-} from "@/app/lib/api/cvAssistantApi";
+  useCvNotificationPreferences,
+  useCvPopiaStats,
+  useCvSettings,
+  useCvUpdateCompanySettings,
+  useCvUpdateImapSettings,
+  useCvUpdateNotificationPreferences,
+} from "@/app/lib/query/hooks";
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<CompanySettings | null>(null);
-  const [popiaStats, setPopiaStats] = useState<PopiaRetentionStats | null>(null);
-  const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const { data: settings, isLoading: settingsLoading } = useCvSettings();
+  const { data: popiaStats } = useCvPopiaStats();
+  const { data: notifPrefs } = useCvNotificationPreferences();
+  const updateCompanyMutation = useCvUpdateCompanySettings();
+  const updateImapMutation = useCvUpdateImapSettings();
+  const updateNotifMutation = useCvUpdateNotificationPreferences();
+
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; error?: string } | null>(null);
   const [notifSaved, setNotifSaved] = useState(false);
@@ -31,67 +36,42 @@ export default function SettingsPage() {
   const [pushEnabled, setPushEnabled] = useState(false);
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    try {
-      const [data, popia, notif] = await Promise.all([
-        cvAssistantApiClient.settings(),
-        cvAssistantApiClient.popiaRetentionStats().catch(() => null),
-        cvAssistantApiClient.notificationPreferences().catch(() => null),
-      ]);
-      setSettings(data);
-      setPopiaStats(popia);
-      setNotifPrefs(notif);
-      setCompanyName(data.name);
-      setImapHost(data.imapHost || "");
-      setImapPort(data.imapPort?.toString() || "993");
-      setImapUser(data.imapUser || "");
-      setMonitoringEnabled(data.monitoringEnabled);
-      setEmailFromAddress(data.emailFromAddress || "");
-      if (notif) {
-        setMatchAlertThreshold(notif.matchAlertThreshold);
-        setDigestEnabled(notif.digestEnabled);
-        setPushEnabled(notif.pushEnabled);
-      }
-    } catch (error) {
-      console.error("Failed to fetch settings:", error);
-    } finally {
-      setIsLoading(false);
+    if (settings) {
+      setCompanyName(settings.name);
+      setImapHost(settings.imapHost || "");
+      setImapPort(settings.imapPort?.toString() || "993");
+      setImapUser(settings.imapUser || "");
+      setMonitoringEnabled(settings.monitoringEnabled);
+      setEmailFromAddress(settings.emailFromAddress || "");
     }
+  }, [settings]);
+
+  useEffect(() => {
+    if (notifPrefs) {
+      setMatchAlertThreshold(notifPrefs.matchAlertThreshold);
+      setDigestEnabled(notifPrefs.digestEnabled);
+      setPushEnabled(notifPrefs.pushEnabled);
+    }
+  }, [notifPrefs]);
+
+  const handleSaveCompany = () => {
+    updateCompanyMutation.mutate({ name: companyName });
   };
 
-  const handleSaveCompany = async () => {
-    setIsSaving(true);
-    try {
-      await cvAssistantApiClient.updateCompanySettings({ name: companyName });
-      fetchSettings();
-    } catch (error) {
-      console.error("Failed to save company settings:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveImap = async () => {
-    setIsSaving(true);
-    try {
-      await cvAssistantApiClient.updateImapSettings({
+  const handleSaveImap = () => {
+    updateImapMutation.mutate(
+      {
         imapHost: imapHost || undefined,
         imapPort: imapPort ? parseInt(imapPort, 10) : undefined,
         imapUser: imapUser || undefined,
         imapPassword: imapPassword || undefined,
         monitoringEnabled,
         emailFromAddress: emailFromAddress || undefined,
-      });
-      setImapPassword("");
-      fetchSettings();
-    } catch (error) {
-      console.error("Failed to save IMAP settings:", error);
-    } finally {
-      setIsSaving(false);
-    }
+      },
+      {
+        onSuccess: () => setImapPassword(""),
+      },
+    );
   };
 
   const handleTestConnection = async () => {
@@ -121,22 +101,21 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveNotifications = async () => {
-    setIsSaving(true);
+  const handleSaveNotifications = () => {
     setNotifSaved(false);
-    try {
-      await cvAssistantApiClient.updateNotificationPreferences({
+    updateNotifMutation.mutate(
+      {
         matchAlertThreshold,
         digestEnabled,
         pushEnabled,
-      });
-      setNotifSaved(true);
-      setTimeout(() => setNotifSaved(false), 3000);
-    } catch (error) {
-      console.error("Failed to save notification settings:", error);
-    } finally {
-      setIsSaving(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          setNotifSaved(true);
+          setTimeout(() => setNotifSaved(false), 3000);
+        },
+      },
+    );
   };
 
   const handleEnablePush = async () => {
@@ -171,7 +150,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (isLoading) {
+  if (settingsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
@@ -200,10 +179,10 @@ export default function SettingsPage() {
           </div>
           <button
             onClick={handleSaveCompany}
-            disabled={isSaving}
+            disabled={updateCompanyMutation.isPending}
             className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50"
           >
-            {isSaving ? "Saving..." : "Save"}
+            {updateCompanyMutation.isPending ? "Saving..." : "Save"}
           </button>
         </div>
       </div>
@@ -313,10 +292,10 @@ export default function SettingsPage() {
             </button>
             <button
               onClick={handleSaveImap}
-              disabled={isSaving}
+              disabled={updateImapMutation.isPending}
               className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50"
             >
-              {isSaving ? "Saving..." : "Save Settings"}
+              {updateImapMutation.isPending ? "Saving..." : "Save Settings"}
             </button>
           </div>
         </div>
@@ -393,10 +372,10 @@ export default function SettingsPage() {
 
           <button
             onClick={handleSaveNotifications}
-            disabled={isSaving}
+            disabled={updateNotifMutation.isPending}
             className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50"
           >
-            {isSaving ? "Saving..." : "Save Notification Settings"}
+            {updateNotifMutation.isPending ? "Saving..." : "Save Notification Settings"}
           </button>
         </div>
       </div>

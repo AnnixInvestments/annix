@@ -228,15 +228,15 @@ export class MarketInsightsService {
       .limit(500)
       .getRawMany();
 
-    const skillCounts = new Map<string, number>();
-
-    jobs.forEach((row) => {
-      const skills: string[] = Array.isArray(row.skills) ? row.skills : [];
-      skills.forEach((skill) => {
-        const normalised = skill.toLowerCase().trim();
-        skillCounts.set(normalised, (skillCounts.get(normalised) ?? 0) + 1);
-      });
-    });
+    const skillCounts = jobs
+      .flatMap((row) => {
+        const skills: string[] = Array.isArray(row.skills) ? row.skills : [];
+        return skills.map((skill) => skill.toLowerCase().trim());
+      })
+      .reduce<Map<string, number>>((acc, normalised) => {
+        const current = acc.get(normalised) ?? 0;
+        return new Map([...acc, [normalised, current + 1]]);
+      }, new Map());
 
     return Array.from(skillCounts.entries())
       .map(([skill, count]) => ({ skill, count }))

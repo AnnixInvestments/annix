@@ -32,143 +32,65 @@ export class CandidateJobMatchingService {
     const candidate = await this.candidateRepo.findOne({ where: { id: candidateId } });
     if (!candidate) {
       return [];
+    } else {
+      const similarJobs = await this.findSimilarJobsByEmbedding(candidateId, TOP_MATCHES_LIMIT);
+
+      const results = await Promise.all(
+        similarJobs.map(async (row) => {
+          const job = await this.externalJobRepo.findOne({ where: { id: row.jobId } });
+          if (!job) {
+            return null;
+          } else {
+            return this.scoreAndSaveMatch(candidate, job, row.similarity, candidateId, job.id);
+          }
+        }),
+      );
+
+      const matches = results.filter((m): m is CandidateJobMatch => m !== null);
+
+      this.logger.log(`Matched candidate ${candidateId} to ${matches.length} jobs`);
+
+      this.notificationService
+        .notifyRecruitersOfHighMatch(
+          candidateId,
+          matches.map((m) => ({ externalJobId: m.externalJobId, overallScore: m.overallScore })),
+        )
+        .catch((err) => {
+          this.logger.warn(
+            `Failed to send match alerts for candidate ${candidateId}: ${err.message}`,
+          );
+        });
+
+      return matches;
     }
-
-    const similarJobs = await this.findSimilarJobsByEmbedding(candidateId, TOP_MATCHES_LIMIT);
-
-    const matches: CandidateJobMatch[] = [];
-
-    for (const row of similarJobs) {
-      const job = await this.externalJobRepo.findOne({ where: { id: row.jobId } });
-      if (!job) {
-        continue;
-      }
-
-      const embeddingSimilarity = row.similarity;
-      const skillsResult = this.calculateSkillsOverlap(candidate, job);
-      const experienceMatch = this.calculateExperienceMatch(candidate, job);
-      const locationMatch = this.calculateLocationMatch(candidate, job);
-
-      const overallScore =
-        embeddingSimilarity * WEIGHT_EMBEDDING +
-        skillsResult.score * WEIGHT_SKILLS +
-        experienceMatch * WEIGHT_EXPERIENCE +
-        locationMatch * WEIGHT_LOCATION;
-
-      const matchDetails: MatchDetails = {
-        embeddingSimilarity,
-        skillsOverlap: skillsResult.score,
-        skillsMatched: skillsResult.matched,
-        skillsMissing: skillsResult.missing,
-        experienceMatch,
-        locationMatch,
-        reasoning: this.buildReasoning(
-          embeddingSimilarity,
-          skillsResult,
-          experienceMatch,
-          locationMatch,
-          job,
-        ),
-      };
-
-      const existing = await this.matchRepo.findOne({
-        where: { candidateId, externalJobId: job.id },
-      });
-
-      const match = existing ?? this.matchRepo.create({ candidateId, externalJobId: job.id });
-      match.similarityScore = embeddingSimilarity;
-      match.structuredScore =
-        skillsResult.score * (WEIGHT_SKILLS / (1 - WEIGHT_EMBEDDING)) +
-        experienceMatch * (WEIGHT_EXPERIENCE / (1 - WEIGHT_EMBEDDING)) +
-        locationMatch * (WEIGHT_LOCATION / (1 - WEIGHT_EMBEDDING));
-      match.overallScore = overallScore;
-      match.matchDetails = matchDetails;
-
-      const saved = await this.matchRepo.save(match);
-      matches.push(saved);
-    }
-
-    this.logger.log(`Matched candidate ${candidateId} to ${matches.length} jobs`);
-
-    this.notificationService
-      .notifyRecruitersOfHighMatch(
-        candidateId,
-        matches.map((m) => ({ externalJobId: m.externalJobId, overallScore: m.overallScore })),
-      )
-      .catch((err) => {
-        this.logger.warn(
-          `Failed to send match alerts for candidate ${candidateId}: ${err.message}`,
-        );
-      });
-
-    return matches;
   }
 
   async matchJobToCandidates(externalJobId: number): Promise<CandidateJobMatch[]> {
     const job = await this.externalJobRepo.findOne({ where: { id: externalJobId } });
     if (!job) {
       return [];
+    } else {
+      const similarCandidates = await this.findSimilarCandidatesByEmbedding(
+        externalJobId,
+        TOP_MATCHES_LIMIT,
+      );
+
+      const results = await Promise.all(
+        similarCandidates.map(async (row) => {
+          const candidate = await this.candidateRepo.findOne({ where: { id: row.candidateId } });
+          if (!candidate) {
+            return null;
+          } else {
+            return this.scoreAndSaveMatch(candidate, job, row.similarity, candidate.id, externalJobId);
+          }
+        }),
+      );
+
+      const matches = results.filter((m): m is CandidateJobMatch => m !== null);
+
+      this.logger.log(`Matched job ${externalJobId} to ${matches.length} candidates`);
+      return matches;
     }
-
-    const similarCandidates = await this.findSimilarCandidatesByEmbedding(
-      externalJobId,
-      TOP_MATCHES_LIMIT,
-    );
-
-    const matches: CandidateJobMatch[] = [];
-
-    for (const row of similarCandidates) {
-      const candidate = await this.candidateRepo.findOne({ where: { id: row.candidateId } });
-      if (!candidate) {
-        continue;
-      }
-
-      const embeddingSimilarity = row.similarity;
-      const skillsResult = this.calculateSkillsOverlap(candidate, job);
-      const experienceMatch = this.calculateExperienceMatch(candidate, job);
-      const locationMatch = this.calculateLocationMatch(candidate, job);
-
-      const overallScore =
-        embeddingSimilarity * WEIGHT_EMBEDDING +
-        skillsResult.score * WEIGHT_SKILLS +
-        experienceMatch * WEIGHT_EXPERIENCE +
-        locationMatch * WEIGHT_LOCATION;
-
-      const matchDetails: MatchDetails = {
-        embeddingSimilarity,
-        skillsOverlap: skillsResult.score,
-        skillsMatched: skillsResult.matched,
-        skillsMissing: skillsResult.missing,
-        experienceMatch,
-        locationMatch,
-        reasoning: this.buildReasoning(
-          embeddingSimilarity,
-          skillsResult,
-          experienceMatch,
-          locationMatch,
-          job,
-        ),
-      };
-
-      const existing = await this.matchRepo.findOne({
-        where: { candidateId: candidate.id, externalJobId },
-      });
-
-      const match = existing ?? this.matchRepo.create({ candidateId: candidate.id, externalJobId });
-      match.similarityScore = embeddingSimilarity;
-      match.structuredScore =
-        skillsResult.score * (WEIGHT_SKILLS / (1 - WEIGHT_EMBEDDING)) +
-        experienceMatch * (WEIGHT_EXPERIENCE / (1 - WEIGHT_EMBEDDING)) +
-        locationMatch * (WEIGHT_LOCATION / (1 - WEIGHT_EMBEDDING));
-      match.overallScore = overallScore;
-      match.matchDetails = matchDetails;
-
-      const saved = await this.matchRepo.save(match);
-      matches.push(saved);
-    }
-
-    this.logger.log(`Matched job ${externalJobId} to ${matches.length} candidates`);
-    return matches;
   }
 
   async recommendedJobsForCandidate(
@@ -265,53 +187,101 @@ export class CandidateJobMatchingService {
 
     if (jobSkills.length === 0) {
       return { score: candidateSkills.length > 0 ? 0.5 : 0, matched: [], missing: [] };
+    } else {
+      const matched = jobSkills.filter((js) =>
+        candidateSkills.some((cs) => cs.includes(js) || js.includes(cs)),
+      );
+      const missing = jobSkills.filter(
+        (js) => !candidateSkills.some((cs) => cs.includes(js) || js.includes(cs)),
+      );
+
+      return {
+        score: matched.length / jobSkills.length,
+        matched,
+        missing,
+      };
     }
+  }
 
-    const matched = jobSkills.filter((js) =>
-      candidateSkills.some((cs) => cs.includes(js) || js.includes(cs)),
-    );
-    const missing = jobSkills.filter(
-      (js) => !candidateSkills.some((cs) => cs.includes(js) || js.includes(cs)),
-    );
+  private async scoreAndSaveMatch(
+    candidate: Candidate,
+    job: ExternalJob,
+    embeddingSimilarity: number,
+    candidateId: number,
+    externalJobId: number,
+  ): Promise<CandidateJobMatch> {
+    const skillsResult = this.calculateSkillsOverlap(candidate, job);
+    const experienceMatch = this.calculateExperienceMatch(candidate, job);
+    const locationMatch = this.calculateLocationMatch(candidate, job);
 
-    return {
-      score: matched.length / jobSkills.length,
-      matched,
-      missing,
+    const overallScore =
+      embeddingSimilarity * WEIGHT_EMBEDDING +
+      skillsResult.score * WEIGHT_SKILLS +
+      experienceMatch * WEIGHT_EXPERIENCE +
+      locationMatch * WEIGHT_LOCATION;
+
+    const matchDetails: MatchDetails = {
+      embeddingSimilarity,
+      skillsOverlap: skillsResult.score,
+      skillsMatched: skillsResult.matched,
+      skillsMissing: skillsResult.missing,
+      experienceMatch,
+      locationMatch,
+      reasoning: this.buildReasoning(embeddingSimilarity, skillsResult, experienceMatch, locationMatch, job),
     };
+
+    const existing = await this.matchRepo.findOne({
+      where: { candidateId, externalJobId },
+    });
+
+    const match = existing ?? this.matchRepo.create({ candidateId, externalJobId });
+    match.similarityScore = embeddingSimilarity;
+    match.structuredScore =
+      skillsResult.score * (WEIGHT_SKILLS / (1 - WEIGHT_EMBEDDING)) +
+      experienceMatch * (WEIGHT_EXPERIENCE / (1 - WEIGHT_EMBEDDING)) +
+      locationMatch * (WEIGHT_LOCATION / (1 - WEIGHT_EMBEDDING));
+    match.overallScore = overallScore;
+    match.matchDetails = matchDetails;
+
+    return this.matchRepo.save(match);
   }
 
   private calculateExperienceMatch(candidate: Candidate, _job: ExternalJob): number {
     const years = candidate.extractedData?.experienceYears;
     if (!years) {
       return 0.3;
+    } else if (years >= 5) {
+      return 1.0;
+    } else if (years >= 3) {
+      return 0.8;
+    } else if (years >= 1) {
+      return 0.5;
+    } else {
+      return 0.2;
     }
-    if (years >= 5) return 1.0;
-    if (years >= 3) return 0.8;
-    if (years >= 1) return 0.5;
-    return 0.2;
   }
 
   private calculateLocationMatch(candidate: Candidate, job: ExternalJob): number {
     if (!job.locationArea) {
       return 0.5;
+    } else {
+      const summary = candidate.extractedData?.summary?.toLowerCase() ?? "";
+      const locationLower = job.locationArea.toLowerCase();
+
+      if (summary.includes(locationLower)) {
+        return 1.0;
+      } else {
+        const saRegions = ["gauteng", "johannesburg", "cape town", "durban", "pretoria"];
+        const jobInSa = saRegions.some((r) => locationLower.includes(r));
+        const candidateInSa = saRegions.some((r) => summary.includes(r));
+
+        if (jobInSa && candidateInSa) {
+          return 0.7;
+        } else {
+          return 0.3;
+        }
+      }
     }
-    const summary = candidate.extractedData?.summary?.toLowerCase() ?? "";
-    const locationLower = job.locationArea.toLowerCase();
-
-    if (summary.includes(locationLower)) {
-      return 1.0;
-    }
-
-    const saRegions = ["gauteng", "johannesburg", "cape town", "durban", "pretoria"];
-    const jobInSa = saRegions.some((r) => locationLower.includes(r));
-    const candidateInSa = saRegions.some((r) => summary.includes(r));
-
-    if (jobInSa && candidateInSa) {
-      return 0.7;
-    }
-
-    return 0.3;
   }
 
   private buildReasoning(
@@ -321,31 +291,31 @@ export class CandidateJobMatchingService {
     locationMatch: number,
     job: ExternalJob,
   ): string {
-    const parts: string[] = [];
-
     const simPct = Math.round(embeddingSimilarity * 100);
-    parts.push(`Profile similarity: ${simPct}%`);
 
-    if (skillsResult.matched.length > 0) {
-      parts.push(`Matching skills: ${skillsResult.matched.join(", ")}`);
-    }
-    if (skillsResult.missing.length > 0) {
-      parts.push(`Missing skills: ${skillsResult.missing.join(", ")}`);
-    }
+    const experienceLevel =
+      experienceMatch >= 0.8
+        ? "strong match"
+        : experienceMatch >= 0.5
+          ? "moderate match"
+          : "limited match";
 
-    if (experienceMatch >= 0.8) {
-      parts.push("Experience level: strong match");
-    } else if (experienceMatch >= 0.5) {
-      parts.push("Experience level: moderate match");
-    } else {
-      parts.push("Experience level: limited match");
-    }
+    const locationPart =
+      locationMatch >= 0.7
+        ? `Location: good match (${job.locationArea ?? "unspecified"})`
+        : `Location: ${job.locationArea ?? "unspecified"}`;
 
-    if (locationMatch >= 0.7) {
-      parts.push(`Location: good match (${job.locationArea ?? "unspecified"})`);
-    } else {
-      parts.push(`Location: ${job.locationArea ?? "unspecified"}`);
-    }
+    const parts = [
+      `Profile similarity: ${simPct}%`,
+      ...(skillsResult.matched.length > 0
+        ? [`Matching skills: ${skillsResult.matched.join(", ")}`]
+        : []),
+      ...(skillsResult.missing.length > 0
+        ? [`Missing skills: ${skillsResult.missing.join(", ")}`]
+        : []),
+      `Experience level: ${experienceLevel}`,
+      locationPart,
+    ];
 
     return parts.join(". ");
   }

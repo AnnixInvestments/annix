@@ -4,6 +4,8 @@ export type { BoqQueryParams } from "./boqKeys";
 export { boqKeys } from "./boqKeys";
 export { calculatorKeys } from "./calculatorKeys";
 export { complySaKeys } from "./complySaKeys";
+export type { CvCandidateQueryParams, CvExternalJobQueryParams } from "./cvAssistantKeys";
+export { cvAssistantKeys } from "./cvAssistantKeys";
 export { customerKeys } from "./customerKeys";
 export type { DrawingQueryParams } from "./drawingKeys";
 export { drawingKeys } from "./drawingKeys";

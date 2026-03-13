@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { UpdateCompanyDto, UpdateImapSettingsDto } from "../dto/settings.dto";
@@ -6,6 +6,8 @@ import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
 
 @Injectable()
 export class SettingsService {
+  private readonly logger = new Logger(SettingsService.name);
+
   constructor(
     @InjectRepository(CvAssistantCompany)
     private readonly companyRepo: Repository<CvAssistantCompany>,
@@ -46,6 +48,7 @@ export class SettingsService {
   }
 
   private encryptPassword(password: string): string {
+    this.logger.warn("IMAP password stored without encryption — implement AES-256-GCM or Fly.io secrets");
     return password;
   }
 }

@@ -1,89 +1,49 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import {
-  type Candidate,
-  type CandidateJobMatch,
-  cvAssistantApiClient,
-  type JobPosting,
-} from "@/app/lib/api/cvAssistantApi";
+  useCvCandidateAction,
+  useCvCandidates,
+  useCvDismissMatch,
+  useCvJobPostings,
+  useCvRecommendedJobs,
+} from "@/app/lib/query/hooks";
+import { UploadCvModal } from "../components/UploadCvModal";
+import { RecommendedJobsPanel } from "../components/RecommendedJobsPanel";
 
 export default function CandidatesPage() {
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [jobs, setJobs] = useState<JobPosting[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [expandedCandidate, setExpandedCandidate] = useState<number | null>(null);
-  const [recommendedJobs, setRecommendedJobs] = useState<CandidateJobMatch[]>([]);
-  const [isLoadingMatches, setIsLoadingMatches] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [selectedJob, selectedStatus]);
+  const { data: candidates = [], isLoading: isLoadingCandidates } = useCvCandidates({
+    status: selectedStatus !== "all" ? selectedStatus : null,
+    jobPostingId: selectedJob !== "all" ? parseInt(selectedJob, 10) : null,
+  });
 
-  const fetchData = async () => {
-    try {
-      const [candidatesData, jobsData] = await Promise.all([
-        cvAssistantApiClient.candidates({
-          status: selectedStatus !== "all" ? selectedStatus : undefined,
-          jobPostingId: selectedJob !== "all" ? parseInt(selectedJob, 10) : undefined,
-        }),
-        cvAssistantApiClient.jobPostings(),
-      ]);
-      setCandidates(candidatesData);
-      setJobs(jobsData);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  const { data: jobs = [] } = useCvJobPostings();
+
+  const { data: recommendedJobs = [], isLoading: isLoadingMatches } =
+    useCvRecommendedJobs(expandedCandidate);
+
+  const candidateAction = useCvCandidateAction();
+  const dismissMatch = useCvDismissMatch();
+
+  const handleAction = (candidateId: number, action: "reject" | "shortlist" | "accept") => {
+    candidateAction.mutate({ id: candidateId, action });
   };
 
-  const handleAction = async (candidateId: number, action: "reject" | "shortlist" | "accept") => {
-    try {
-      if (action === "reject") {
-        await cvAssistantApiClient.rejectCandidate(candidateId);
-      } else if (action === "shortlist") {
-        await cvAssistantApiClient.shortlistCandidate(candidateId);
-      } else {
-        await cvAssistantApiClient.acceptCandidate(candidateId);
-      }
-      fetchData();
-    } catch (error) {
-      console.error("Failed to update candidate:", error);
-    }
-  };
-
-  const handleViewMatches = useCallback(
-    async (candidateId: number) => {
-      if (expandedCandidate === candidateId) {
-        setExpandedCandidate(null);
-        return;
-      }
+  const handleViewMatches = (candidateId: number) => {
+    if (expandedCandidate === candidateId) {
+      setExpandedCandidate(null);
+    } else {
       setExpandedCandidate(candidateId);
-      setIsLoadingMatches(true);
-      try {
-        const matches = await cvAssistantApiClient.recommendedJobsForCandidate(candidateId);
-        setRecommendedJobs(matches);
-      } catch (error) {
-        console.error("Failed to fetch recommended jobs:", error);
-        setRecommendedJobs([]);
-      } finally {
-        setIsLoadingMatches(false);
-      }
-    },
-    [expandedCandidate],
-  );
-
-  const handleDismissMatch = async (matchId: number) => {
-    try {
-      await cvAssistantApiClient.dismissMatch(matchId);
-      setRecommendedJobs((prev) => prev.filter((m) => m.id !== matchId));
-    } catch (error) {
-      console.error("Failed to dismiss match:", error);
     }
+  };
+
+  const handleDismissMatch = (matchId: number) => {
+    dismissMatch.mutate(matchId);
   };
 
   const statusColor = (status: string) => {
@@ -98,7 +58,7 @@ export default function CandidatesPage() {
     return colors[status] || "bg-gray-100 text-gray-800";
   };
 
-  if (isLoading) {
+  if (isLoadingCandidates) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
@@ -326,257 +286,8 @@ export default function CandidatesPage() {
         <UploadCvModal
           jobs={jobs}
           onClose={() => setShowUploadModal(false)}
-          onSuccess={() => {
-            setShowUploadModal(false);
-            fetchData();
-          }}
         />
       )}
-    </div>
-  );
-}
-
-function UploadCvModal({
-  jobs,
-  onClose,
-  onSuccess,
-}: {
-  jobs: JobPosting[];
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [selectedJobId, setSelectedJobId] = useState<string>("");
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file || !selectedJobId) return;
-
-    setIsUploading(true);
-    setError(null);
-
-    try {
-      await cvAssistantApiClient.uploadCv(
-        file,
-        parseInt(selectedJobId, 10),
-        email || undefined,
-        name || undefined,
-      );
-      onSuccess();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Upload CV</h2>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Job Position</label>
-            <select
-              value={selectedJobId}
-              onChange={(e) => setSelectedJobId(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            >
-              <option value="">Select a job...</option>
-              {jobs
-                .filter((j) => j.status === "active")
-                .map((job) => (
-                  <option key={job.id} value={job.id}>
-                    {job.title}
-                  </option>
-                ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Candidate Name <span className="text-gray-400">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Candidate Email <span className="text-gray-400">(optional)</span>
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">CV File (PDF)</label>
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-            />
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isUploading || !file || !selectedJobId}
-              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50"
-            >
-              {isUploading ? "Uploading..." : "Upload & Process"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function RecommendedJobsPanel({
-  matches,
-  isLoading,
-  onDismiss,
-}: {
-  matches: CandidateJobMatch[];
-  isLoading: boolean;
-  onDismiss: (matchId: number) => void;
-}) {
-  if (isLoading) {
-    return (
-      <div className="flex items-center gap-2 py-4">
-        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-violet-600" />
-        <span className="text-sm text-gray-500">Finding matching jobs...</span>
-      </div>
-    );
-  }
-
-  if (matches.length === 0) {
-    return (
-      <p className="text-sm text-gray-500 py-2">
-        No job matches found. Matches are generated when embeddings are available.
-      </p>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      <h4 className="text-sm font-semibold text-violet-800">Recommended Jobs</h4>
-      {matches.map((match) => {
-        const job = match.externalJob;
-        const scorePct = Math.round(match.overallScore * 100);
-        const details = match.matchDetails;
-
-        return (
-          <div
-            key={match.id}
-            className="bg-white rounded-lg border border-violet-200 p-3 flex items-start justify-between gap-3"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-sm font-bold ${
-                    scorePct >= 70
-                      ? "text-green-600"
-                      : scorePct >= 40
-                        ? "text-yellow-600"
-                        : "text-gray-500"
-                  }`}
-                >
-                  {scorePct}%
-                </span>
-                <span className="text-sm font-medium text-gray-900 truncate">
-                  {job?.title ?? "Unknown job"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
-                {job?.company && <span>{job.company}</span>}
-                {job?.locationRaw && (
-                  <>
-                    <span className="text-gray-300">|</span>
-                    <span>{job.locationRaw}</span>
-                  </>
-                )}
-              </div>
-              {details && (
-                <div className="mt-1.5">
-                  <p className="text-xs text-gray-600">{details.reasoning}</p>
-                  {details.skillsMatched.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {details.skillsMatched.map((skill) => (
-                        <span
-                          key={skill}
-                          className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                      {details.skillsMissing.slice(0, 3).map((skill) => (
-                        <span
-                          key={skill}
-                          className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {job?.sourceUrl && (
-                <a
-                  href={job.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-violet-600 hover:underline"
-                >
-                  View
-                </a>
-              )}
-              <button
-                type="button"
-                onClick={() => onDismiss(match.id)}
-                className="text-xs text-gray-400 hover:text-red-500"
-                title="Dismiss"
-              >
-                &times;
-              </button>
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
