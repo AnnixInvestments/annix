@@ -110,7 +110,7 @@ function IntegrationCard({ integration }: { integration: IntegrationItem }) {
 export default function IntegrationsPage() {
   const { data, isLoading } = useIntegrationsList();
 
-  const integrations = (data as IntegrationItem[] | undefined) ?? FALLBACK_INTEGRATIONS;
+  const integrations: IntegrationItem[] = Array.isArray(data) ? data : FALLBACK_INTEGRATIONS;
 
   if (isLoading) {
     return (

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import { COMPLY_SA_VERSION } from "@/app/comply-sa/config/version";
 import { formatDateZA } from "@/app/lib/datetime";
 import type { CompanyProfile, NotificationPreferences } from "@/app/lib/query/hooks";
@@ -63,6 +64,7 @@ function NotificationSection() {
   const updateMutation = useUpdateNotificationPreferences();
   const [localPrefs, setLocalPrefs] = useState<NotificationPreferences | null>(null);
   const [saved, setSaved] = useState(false);
+  const { showToast } = useToast();
 
   const activePrefs = localPrefs ?? prefs ?? null;
 
@@ -74,9 +76,15 @@ function NotificationSection() {
 
   function handleSave() {
     if (!activePrefs) return;
-    updateMutation.mutate(activePrefs as unknown as Record<string, unknown>, {
-      onSuccess: () => setSaved(true),
-      onError: () => setSaved(false),
+    updateMutation.mutate({ ...activePrefs }, {
+      onSuccess: () => {
+        setSaved(true);
+        showToast("Notification preferences saved", "success");
+      },
+      onError: () => {
+        setSaved(false);
+        showToast("Failed to save notification preferences", "error");
+      },
     });
   }
 
@@ -170,6 +178,7 @@ function CompanySection() {
   const updateMutation = useUpdateCompanyProfile();
   const [localCompany, setLocalCompany] = useState<CompanyProfile | null>(null);
   const [saved, setSaved] = useState(false);
+  const { showToast } = useToast();
 
   const activeCompany = localCompany ?? company ?? null;
 
@@ -181,9 +190,15 @@ function CompanySection() {
 
   function handleSave() {
     if (!activeCompany) return;
-    updateMutation.mutate(activeCompany as unknown as Record<string, unknown>, {
-      onSuccess: () => setSaved(true),
-      onError: () => setSaved(false),
+    updateMutation.mutate({ ...activeCompany }, {
+      onSuccess: () => {
+        setSaved(true);
+        showToast("Company profile saved", "success");
+      },
+      onError: () => {
+        setSaved(false);
+        showToast("Failed to save company profile", "error");
+      },
     });
   }
 
@@ -377,10 +392,17 @@ function SubscriptionSection() {
   const { data: sub, isLoading } = useSubscriptionStatus();
   const cancelMutation = useCancelSubscription();
   const [showCancel, setShowCancel] = useState(false);
+  const { showToast } = useToast();
 
   function handleCancel() {
     cancelMutation.mutate(undefined, {
-      onSuccess: () => setShowCancel(false),
+      onSuccess: () => {
+        setShowCancel(false);
+        showToast("Subscription cancelled", "success");
+      },
+      onError: () => {
+        showToast("Failed to cancel subscription", "error");
+      },
     });
   }
 

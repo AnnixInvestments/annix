@@ -97,8 +97,11 @@ function LoadingSkeleton() {
   );
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export default function RegulatoryPage() {
   const [activeCategory, setActiveCategory] = useState("all");
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
   const allUpdates = useRegulatoryUpdates();
   const categoryUpdates = useRegulatoryUpdatesByCategory(
@@ -106,7 +109,7 @@ export default function RegulatoryPage() {
   );
 
   const activeQuery = activeCategory === "all" ? allUpdates : categoryUpdates;
-  const updates = (activeQuery.data ?? []) as RegulatoryUpdate[];
+  const updates: RegulatoryUpdate[] = Array.isArray(activeQuery.data) ? activeQuery.data : [];
   const isLoading = activeQuery.isLoading;
   const error = activeQuery.error;
 
@@ -132,7 +135,10 @@ export default function RegulatoryPage() {
             <button
               key={cat.key}
               type="button"
-              onClick={() => setActiveCategory(cat.key)}
+              onClick={() => {
+                setActiveCategory(cat.key);
+                setVisibleCount(ITEMS_PER_PAGE);
+              }}
               className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                 activeCategory === cat.key
                   ? "border-teal-400 text-teal-400"
@@ -155,9 +161,18 @@ export default function RegulatoryPage() {
         <LoadingSkeleton />
       ) : sortedUpdates.length > 0 ? (
         <div className="space-y-4">
-          {sortedUpdates.map((update) => (
+          {sortedUpdates.slice(0, visibleCount).map((update) => (
             <UpdateCard key={update.id} update={update} />
           ))}
+          {visibleCount < sortedUpdates.length && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((prev) => prev + ITEMS_PER_PAGE)}
+              className="w-full py-3 text-sm text-teal-400 hover:text-teal-300 font-medium transition-colors"
+            >
+              Show more ({sortedUpdates.length - visibleCount} remaining)
+            </button>
+          )}
         </div>
       ) : (
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-12 text-center">

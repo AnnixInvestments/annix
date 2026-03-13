@@ -23,10 +23,9 @@ export class ComplySaCompanyScopeGuard implements CanActivate {
     const jwtPayload = request.user;
 
     if (
-      jwtPayload === null ||
-      jwtPayload === undefined ||
-      jwtPayload.userId === undefined ||
-      jwtPayload.companyId === undefined
+      jwtPayload == null ||
+      jwtPayload.userId == null ||
+      jwtPayload.companyId == null
     ) {
       throw new ForbiddenException("Authentication required");
     }

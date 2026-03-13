@@ -11,6 +11,8 @@ import { daysBetween, formatDateZA, fromJSDate, now } from "../lib/datetime";
 import { ComplySaNotification } from "./entities/notification.entity";
 import { ComplySaNotificationPreferences } from "./entities/notification-preferences.entity";
 
+const REMINDER_THRESHOLD_DAYS = 30;
+
 interface DeliveryChannels {
   inApp: boolean;
   email: boolean;
@@ -67,7 +69,7 @@ export class ComplySaNotificationsService {
             return { status, type: "reminder_3d" as const, daysUntilDue };
           } else if (daysUntilDue <= 14) {
             return { status, type: "reminder_14d" as const, daysUntilDue };
-          } else if (daysUntilDue <= 30) {
+          } else if (daysUntilDue <= REMINDER_THRESHOLD_DAYS) {
             return { status, type: "reminder_30d" as const, daysUntilDue };
           } else {
             return null;
@@ -157,7 +159,7 @@ export class ComplySaNotificationsService {
       const warningStatuses = statusesWithDueDates.filter((status) => {
         const dueDate = fromJSDate(status.nextDueDate!);
         const daysUntil = daysBetween(today, dueDate);
-        return daysUntil <= 30 && daysUntil >= 0 && status.status === "in_progress";
+        return daysUntil <= REMINDER_THRESHOLD_DAYS && daysUntil >= 0 && status.status === "in_progress";
       });
 
       if (warningStatuses.length > 0) {
@@ -179,7 +181,7 @@ export class ComplySaNotificationsService {
   async processDocumentExpiryWarnings(): Promise<void> {
     try {
       const today = now();
-      const thirtyDaysFromNow = today.plus({ days: 30 }).toJSDate();
+      const thirtyDaysFromNow = today.plus({ days: REMINDER_THRESHOLD_DAYS }).toJSDate();
 
       const allDocumentsWithExpiry = await this.documentRepository.find({
         where: { expiryDate: Not(IsNull()) },
@@ -188,7 +190,7 @@ export class ComplySaNotificationsService {
       const documentsInRange = allDocumentsWithExpiry.filter((doc) => {
         const expiryDt = fromJSDate(doc.expiryDate!);
         const daysUntil = daysBetween(today, expiryDt);
-        return daysUntil >= -1 && daysUntil <= 30;
+        return daysUntil >= -1 && daysUntil <= REMINDER_THRESHOLD_DAYS;
       });
 
       await Promise.all(

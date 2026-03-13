@@ -72,7 +72,7 @@ export class ComplySaRuleEngineService {
     return Object.entries(conditions).every(([key, value]) => {
       const evaluator = CONDITION_EVALUATORS.find((e) => e.key === key);
 
-      if (evaluator === undefined) {
+      if (evaluator == null) {
         return true;
       }
 

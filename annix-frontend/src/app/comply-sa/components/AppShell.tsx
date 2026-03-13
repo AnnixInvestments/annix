@@ -157,6 +157,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4">
             <button
               type="button"
+              aria-label="Toggle menu"
               className="lg:hidden text-slate-400 hover:text-white"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
@@ -185,6 +186,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           <button
             type="button"
+            aria-label="Log out"
             onClick={handleLogout}
             className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition-colors"
           >

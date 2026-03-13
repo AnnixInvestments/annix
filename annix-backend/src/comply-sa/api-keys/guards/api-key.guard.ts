@@ -7,9 +7,9 @@ export class ComplySaApiKeyGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const apiKey = request.headers["x-api-key"] as string | undefined;
+    const apiKey = (request.headers["x-api-key"] as string | null) ?? null;
 
-    if (apiKey === null || apiKey === undefined) {
+    if (apiKey === null) {
       throw new UnauthorizedException("Missing X-API-Key header");
     }
 

@@ -5,10 +5,13 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
 } from "typeorm";
 import { ComplySaCompany } from "../../companies/entities/company.entity";
+import { ComplySaComplianceRequirement } from "../../compliance/entities/compliance-requirement.entity";
 
 @Entity("comply_sa_documents")
+@Unique(["companyId", "filePath"])
 export class ComplySaDocument {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -47,4 +50,8 @@ export class ComplySaDocument {
   )
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;
+
+  @ManyToOne(() => ComplySaComplianceRequirement, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "requirement_id" })
+  requirement!: ComplySaComplianceRequirement | null;
 }

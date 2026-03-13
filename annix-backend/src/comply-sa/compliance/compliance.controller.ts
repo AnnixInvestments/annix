@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -67,8 +68,13 @@ export class ComplySaComplianceController {
   @ApiBearerAuth()
   @UseGuards(ComplySaJwtAuthGuard, ComplySaCompanyScopeGuard)
   @Get("requirements")
-  async requirements() {
-    return this.complianceService.allRequirements();
+  async requirements(
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    const parsedPage = page != null ? parseInt(page, 10) : 1;
+    const parsedLimit = limit != null ? parseInt(limit, 10) : 50;
+    return this.complianceService.allRequirements(parsedPage, parsedLimit);
   }
 
   @Get("badge/:companyId")

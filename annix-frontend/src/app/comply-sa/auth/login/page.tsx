@@ -19,8 +19,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await login(email, password);
-      localStorage.setItem("token", result.access_token);
+      await login(email, password);
       router.push("/comply-sa/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

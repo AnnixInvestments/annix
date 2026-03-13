@@ -125,7 +125,7 @@ export class ComplySaSubscriptionsService {
   }
 
   async upgradeTier(companyId: number, tier: string): Promise<ComplySaSubscription> {
-    if (PRICING[tier] === null || PRICING[tier] === undefined) {
+    if (PRICING[tier] == null) {
       throw new ForbiddenException(`Invalid tier: ${tier}`);
     }
 

@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import { formatDateZA } from "@/app/lib/datetime";
 import type { ApiKeyItem } from "@/app/lib/query/hooks";
 import { useApiKeysList, useGenerateApiKey, useRevokeApiKey } from "@/app/lib/query/hooks";
@@ -31,6 +32,7 @@ function GenerateModal({
     if (!name.trim()) return;
     generateMutation.mutate(name.trim(), {
       onSuccess: (result) => onGenerated(result.key),
+      onError: () => onClose(),
     });
   }
 
@@ -41,6 +43,7 @@ function GenerateModal({
           <h3 className="text-lg font-semibold text-white">Generate API Key</h3>
           <button
             type="button"
+            aria-label="Close"
             onClick={onClose}
             className="text-slate-400 hover:text-white transition-colors"
           >
@@ -94,6 +97,7 @@ function KeyRevealModal({ apiKey, onClose }: { apiKey: string; onClose: () => vo
           <h3 className="text-lg font-semibold text-white">Your API Key</h3>
           <button
             type="button"
+            aria-label="Close"
             onClick={onClose}
             className="text-slate-400 hover:text-white transition-colors"
           >
@@ -114,6 +118,7 @@ function KeyRevealModal({ apiKey, onClose }: { apiKey: string; onClose: () => vo
           </code>
           <button
             type="button"
+            aria-label="Copy API key"
             onClick={handleCopy}
             className="shrink-0 p-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
           >
@@ -161,6 +166,7 @@ function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKeyItem; onRevoke: (id: numbe
         {apiKey.status === "active" && (
           <button
             type="button"
+            aria-label="Revoke API key"
             onClick={() => onRevoke(apiKey.id)}
             className="text-slate-400 hover:text-red-400 transition-colors"
           >
@@ -175,6 +181,7 @@ function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKeyItem; onRevoke: (id: numbe
 export default function ApiKeysPage() {
   const { data: keys = [], isLoading, error } = useApiKeysList();
   const revokeMutation = useRevokeApiKey();
+  const { showToast } = useToast();
   const [showGenerate, setShowGenerate] = useState(false);
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
   const [revokeError, setRevokeError] = useState<string | null>(null);
@@ -182,12 +189,17 @@ export default function ApiKeysPage() {
   function handleGenerated(key: string) {
     setShowGenerate(false);
     setRevealedKey(key);
+    showToast("API key generated successfully", "success");
   }
 
   function handleRevoke(id: number) {
     setRevokeError(null);
     revokeMutation.mutate(id, {
-      onError: () => setRevokeError("Failed to revoke API key"),
+      onSuccess: () => showToast("API key revoked", "success"),
+      onError: () => {
+        setRevokeError("Failed to revoke API key");
+        showToast("Failed to revoke API key", "error");
+      },
     });
   }
 

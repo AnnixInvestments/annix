@@ -39,7 +39,11 @@ export class ComplySaNotification {
   @Column({ name: "read_at", type: "timestamp", nullable: true })
   readAt!: Date | null;
 
-  @ManyToOne(() => ComplySaCompany, { onDelete: "CASCADE" })
+  @ManyToOne(
+    () => ComplySaCompany,
+    (company) => company.notifications,
+    { onDelete: "CASCADE" },
+  )
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;
 

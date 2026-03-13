@@ -142,13 +142,11 @@ export class ComplySaAiService {
       sdl: ["SDL_ASSESSMENT"],
     };
 
-    const matchedCodes = new Set<string>();
-
-    Object.entries(keywordMap).forEach(([keyword, codes]) => {
-      if (lowerQuestion.includes(keyword)) {
-        codes.forEach((code) => matchedCodes.add(code));
-      }
-    });
+    const matchedCodes = new Set(
+      Object.entries(keywordMap)
+        .filter(([keyword]) => lowerQuestion.includes(keyword))
+        .flatMap(([, codes]) => codes),
+    );
 
     return statuses
       .filter((s) => matchedCodes.has(s.requirement?.code ?? ""))

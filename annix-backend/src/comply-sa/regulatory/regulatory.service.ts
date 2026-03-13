@@ -3,7 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { now } from "../lib/datetime";
+import { fromISO, now } from "../lib/datetime";
 import { ComplySaRegulatoryUpdate } from "./entities/regulatory-update.entity";
 
 interface ExtractedUpdate {
@@ -68,8 +68,24 @@ export class ComplySaRegulatoryService {
     });
   }
 
-  async createUpdate(data: Partial<ComplySaRegulatoryUpdate>): Promise<ComplySaRegulatoryUpdate> {
-    const update = this.regulatoryUpdateRepository.create(data);
+  async createUpdate(data: {
+    title: string;
+    summary: string;
+    category: string;
+    effectiveDate?: string | null;
+    sourceUrl?: string | null;
+    affectedRequirementCodes?: string[] | null;
+  }): Promise<ComplySaRegulatoryUpdate> {
+    const effectiveDate = typeof data.effectiveDate === "string"
+      ? fromISO(data.effectiveDate).toJSDate()
+      : null;
+
+    const update = this.regulatoryUpdateRepository.create({
+      ...data,
+      effectiveDate,
+      sourceUrl: data.sourceUrl ?? null,
+      affectedRequirementCodes: data.affectedRequirementCodes ?? null,
+    });
     return this.regulatoryUpdateRepository.save(update);
   }
 
@@ -129,7 +145,7 @@ export class ComplySaRegulatoryService {
         title: update.title,
         summary: update.summary,
         category: update.category,
-        effectiveDate: update.effectiveDate,
+        effectiveDate: update.effectiveDate !== null ? fromISO(update.effectiveDate).toJSDate() : null,
         sourceUrl: update.sourceUrl,
         affectedRequirementCodes:
           update.affectedRequirementCodes.length > 0 ? update.affectedRequirementCodes : null,

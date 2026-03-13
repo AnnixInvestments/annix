@@ -91,7 +91,14 @@ export default function AiAssistantPage() {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const mountedRef = useRef(true);
   const chatMutation = useAiChat();
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -112,6 +119,7 @@ export default function AiAssistantPage() {
 
     chatMutation.mutate(text, {
       onSuccess: (response) => {
+        if (!mountedRef.current) return;
         const assistantMessage: Message = {
           role: "assistant",
           content: response.answer,
@@ -121,6 +129,7 @@ export default function AiAssistantPage() {
         inputRef.current?.focus();
       },
       onError: (err) => {
+        if (!mountedRef.current) return;
         const errorMessage: Message = {
           role: "assistant",
           content:

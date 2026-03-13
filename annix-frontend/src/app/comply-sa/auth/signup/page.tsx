@@ -22,14 +22,13 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const result = await signup({
+      await signup({
         name,
         email,
         password,
         companyName,
         registrationNumber: registrationNumber || undefined,
       });
-      localStorage.setItem("token", result.access_token);
       router.push("/comply-sa/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");

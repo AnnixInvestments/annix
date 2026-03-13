@@ -145,8 +145,8 @@ export default function BbeePage() {
   const { data: scorecardElements } = useBbeeScorecardElements();
   const calculateMutation = useBbeeCalculate();
 
-  const elements = (scorecardElements ?? []) as ScorecardElement[];
-  const result = calculateMutation.data as BbeeResult | undefined;
+  const elements: ScorecardElement[] = Array.isArray(scorecardElements) ? scorecardElements : [];
+  const result: BbeeResult | null = calculateMutation.data ?? null;
 
   function handleCalculate() {
     const numericTurnover = Number(turnover.replace(/[^0-9.]/g, ""));

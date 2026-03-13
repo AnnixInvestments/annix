@@ -42,6 +42,11 @@ export class ComplySaIntegrationsController {
     return this.sageService.fullSync(req.user.companyId);
   }
 
+  @Post("sage/rotate-keys")
+  rotateKeys() {
+    return this.sageService.rotateEncryptionKeys();
+  }
+
   @Delete("sage/disconnect")
   sageDisconnect(@Req() req: { user: { companyId: number } }) {
     return this.sageService.disconnect(req.user.companyId);

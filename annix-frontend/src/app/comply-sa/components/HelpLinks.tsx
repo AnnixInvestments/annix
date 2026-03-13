@@ -24,6 +24,7 @@ export default function HelpLinks() {
             <h3 className="text-sm font-semibold text-white">Quick Links</h3>
             <button
               type="button"
+              aria-label="Close quick links"
               onClick={() => setOpen(false)}
               className="text-slate-400 hover:text-white transition-colors"
             >
@@ -48,6 +49,7 @@ export default function HelpLinks() {
       )}
       <button
         type="button"
+        aria-label="Help"
         onClick={() => setOpen(!open)}
         className={`h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-colors ${
           open

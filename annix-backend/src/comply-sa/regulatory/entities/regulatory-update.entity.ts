@@ -14,8 +14,8 @@ export class ComplySaRegulatoryUpdate {
   @Column({ type: "varchar", length: 50 })
   category!: string;
 
-  @Column({ name: "effective_date", type: "varchar", length: 50, nullable: true })
-  effectiveDate!: string | null;
+  @Column({ name: "effective_date", type: "timestamp", nullable: true })
+  effectiveDate!: Date | null;
 
   @Column({ name: "source_url", type: "varchar", length: 500, nullable: true })
   sourceUrl!: string | null;

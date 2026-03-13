@@ -4,6 +4,8 @@ import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { ComplySaDocument } from "./entities/document.entity";
 
+const PRESIGNED_URL_TTL_SECONDS = 3600;
+
 @Injectable()
 export class ComplySaDocumentsService {
   private readonly logger = new Logger(ComplySaDocumentsService.name);
@@ -69,7 +71,7 @@ export class ComplySaDocumentsService {
       throw new NotFoundException("Document not found");
     }
 
-    return this.storageService.getPresignedUrl(document.filePath, 3600);
+    return this.storageService.getPresignedUrl(document.filePath, PRESIGNED_URL_TTL_SECONDS);
   }
 
   async remove(companyId: number, documentId: number): Promise<void> {

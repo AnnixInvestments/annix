@@ -31,7 +31,11 @@ export default function HealthReportPage() {
 
     printWindow.document.write(html);
     printWindow.document.close();
-    printWindow.addEventListener("afterprint", () => printWindow.close());
+    const handleAfterPrint = () => {
+      printWindow.removeEventListener("afterprint", handleAfterPrint);
+      printWindow.close();
+    };
+    printWindow.addEventListener("afterprint", handleAfterPrint);
     printWindow.print();
   }
 

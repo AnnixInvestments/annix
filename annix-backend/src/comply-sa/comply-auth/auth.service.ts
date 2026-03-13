@@ -202,6 +202,30 @@ export class ComplySaAuthService {
     return { reset: true };
   }
 
+  async refreshToken(
+    userId: number,
+  ): Promise<{ access_token: string; user: Partial<ComplySaUser> }> {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      relations: ["company"],
+    });
+
+    if (user === null) {
+      throw new UnauthorizedException("User no longer exists");
+    }
+
+    const token = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+      companyId: user.companyId,
+    });
+
+    return {
+      access_token: token,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, companyId: user.companyId },
+    };
+  }
+
   async validateUser(userId: number): Promise<ComplySaUser | null> {
     const user = await this.usersRepository.findOne({
       where: { id: userId },

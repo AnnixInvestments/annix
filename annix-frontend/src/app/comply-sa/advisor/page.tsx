@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useAddAdvisorClient,
@@ -147,6 +148,7 @@ function ClientCard({
         ) : (
           <button
             type="button"
+            aria-label="Remove client"
             onClick={() => setConfirmRemove(true)}
             className="text-slate-500 hover:text-red-400 transition-colors"
           >
@@ -162,6 +164,7 @@ function AddClientModal({ open, onClose }: { open: boolean; onClose: () => void 
   const [companyId, setCompanyId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const addClient = useAddAdvisorClient();
+  const { showToast } = useToast();
 
   if (!open) return null;
 
@@ -175,10 +178,13 @@ function AddClientModal({ open, onClose }: { open: boolean; onClose: () => void 
     addClient.mutate(id, {
       onSuccess: () => {
         setCompanyId("");
+        showToast("Client added successfully", "success");
         onClose();
       },
       onError: (err) => {
-        setError(err instanceof Error ? err.message : "Failed to add client");
+        const message = err instanceof Error ? err.message : "Failed to add client";
+        setError(message);
+        showToast(message, "error");
       },
     });
   }
@@ -249,11 +255,15 @@ function LoadingSkeleton() {
 export default function AdvisorPage() {
   const { data, isLoading, error } = useAdvisorDashboard();
   const removeClient = useRemoveAdvisorClient();
+  const { showToast } = useToast();
   const [sortKey, setSortKey] = useState<SortKey>("score_desc");
   const [modalOpen, setModalOpen] = useState(false);
 
   function handleRemoveClient(companyId: number) {
-    removeClient.mutate(companyId);
+    removeClient.mutate(companyId, {
+      onSuccess: () => showToast("Client removed successfully", "success"),
+      onError: () => showToast("Failed to remove client", "error"),
+    });
   }
 
   if (isLoading) return <LoadingSkeleton />;

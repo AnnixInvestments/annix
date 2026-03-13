@@ -45,6 +45,7 @@ export class SageService {
   private readonly clientSecret: string | null;
   private readonly redirectUri: string | null;
   private readonly encryptionKey: Buffer | null;
+  private readonly previousEncryptionKey: Buffer | null;
   private readonly enabled: boolean;
 
   constructor(
@@ -57,6 +58,8 @@ export class SageService {
     this.redirectUri = this.configService.get<string>("SAGE_REDIRECT_URI") ?? null;
     const encryptionKeyHex = this.configService.get<string>("SAGE_ENCRYPTION_KEY") ?? null;
     this.encryptionKey = encryptionKeyHex !== null ? Buffer.from(encryptionKeyHex, "hex") : null;
+    const previousKeyHex = this.configService.get<string>("SAGE_ENCRYPTION_KEY_PREVIOUS") ?? null;
+    this.previousEncryptionKey = previousKeyHex !== null ? Buffer.from(previousKeyHex, "hex") : null;
 
     this.enabled =
       this.clientId !== null &&
@@ -318,6 +321,26 @@ export class SageService {
     return response.json();
   }
 
+  async rotateEncryptionKeys(): Promise<{ rotated: number }> {
+    this.assertEnabled();
+    const connections = await this.connectionRepository.find();
+
+    const updated = await Promise.all(
+      connections.map(async (connection) => {
+        const accessToken = this.decrypt(connection.accessTokenEncrypted);
+        const refreshToken = this.decrypt(connection.refreshTokenEncrypted);
+
+        connection.accessTokenEncrypted = this.encrypt(accessToken);
+        connection.refreshTokenEncrypted = this.encrypt(refreshToken);
+
+        return this.connectionRepository.save(connection);
+      }),
+    );
+
+    this.logger.log(`Rotated encryption keys for ${updated.length} Sage connections`);
+    return { rotated: updated.length };
+  }
+
   private encrypt(plainText: string): string {
     const iv = randomBytes(IV_LENGTH);
     const cipher = createCipheriv(ENCRYPTION_ALGORITHM, this.encryptionKey!, iv);
@@ -328,12 +351,23 @@ export class SageService {
   }
 
   private decrypt(encryptedBase64: string): string {
+    try {
+      return this.decryptWithKey(encryptedBase64, this.encryptionKey!);
+    } catch {
+      if (this.previousEncryptionKey !== null) {
+        return this.decryptWithKey(encryptedBase64, this.previousEncryptionKey);
+      }
+      throw new Error("Failed to decrypt Sage token");
+    }
+  }
+
+  private decryptWithKey(encryptedBase64: string, key: Buffer): string {
     const data = Buffer.from(encryptedBase64, "base64");
     const iv = data.subarray(0, IV_LENGTH);
     const authTag = data.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
     const encrypted = data.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
 
-    const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, this.encryptionKey!, iv);
+    const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
 

@@ -47,7 +47,11 @@ export class ComplySaSubscription {
   @UpdateDateColumn({ name: "updated_at" })
   updatedAt!: Date;
 
-  @ManyToOne(() => ComplySaCompany, { onDelete: "CASCADE" })
+  @ManyToOne(
+    () => ComplySaCompany,
+    (company) => company.subscriptions,
+    { onDelete: "CASCADE" },
+  )
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;
 }

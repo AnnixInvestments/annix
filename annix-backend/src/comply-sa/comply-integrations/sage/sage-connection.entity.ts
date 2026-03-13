@@ -36,7 +36,10 @@ export class ComplySaSageConnection {
   @CreateDateColumn({ name: "connected_at" })
   connectedAt!: Date;
 
-  @ManyToOne(() => ComplySaCompany)
+  @ManyToOne(
+    () => ComplySaCompany,
+    (company) => company.sageConnections,
+  )
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;
 }

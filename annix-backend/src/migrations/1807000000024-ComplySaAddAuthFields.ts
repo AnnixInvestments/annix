@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class ComplySaAddAuthFields1807000000007 implements MigrationInterface {
-  name = "ComplySaAddAuthFields1807000000007";
+export class ComplySaAddAuthFields1807000000024 implements MigrationInterface {
+  name = "ComplySaAddAuthFields1807000000024";
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

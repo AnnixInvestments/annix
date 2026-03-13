@@ -79,7 +79,7 @@ export class ComplySaTenderService {
           doc.name.toLowerCase().includes(lowerName) || lowerName.includes(doc.name.toLowerCase()),
       );
 
-      if (matchedDoc !== null && matchedDoc !== undefined) {
+      if (matchedDoc != null) {
         return {
           name: required.name,
           description: required.description,

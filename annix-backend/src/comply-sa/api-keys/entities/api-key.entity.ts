@@ -34,7 +34,10 @@ export class ComplySaApiKey {
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
 
-  @ManyToOne(() => ComplySaCompany)
+  @ManyToOne(
+    () => ComplySaCompany,
+    (company) => company.apiKeys,
+  )
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;
 }

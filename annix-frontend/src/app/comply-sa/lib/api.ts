@@ -3,20 +3,44 @@ const BASE_URL =
     ? "/api/comply-sa"
     : `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3100"}/api/comply-sa`;
 
-function authHeaders(): Record<string, string> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...authHeaders(),
       ...options.headers,
     },
   });
+
+  if (response.status === 401 && !path.includes("/auth/")) {
+    const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (refreshResponse.ok) {
+      const retryResponse = await fetch(`${BASE_URL}${path}`, {
+        ...options,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      });
+
+      if (!retryResponse.ok) {
+        const errorData = await retryResponse.json().catch(() => ({}));
+        throw new Error(errorData.message ?? `Request failed: ${retryResponse.status}`);
+      }
+      return retryResponse.json() as Promise<T>;
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.href = "/comply-sa/auth/login";
+    }
+    throw new Error("Session expired");
+  }
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
@@ -29,7 +53,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export function login(
   email: string,
   password: string,
-): Promise<{ access_token: string; user: Record<string, unknown> }> {
+): Promise<{ user: Record<string, unknown>; emailVerified: boolean }> {
   return request("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
@@ -42,11 +66,16 @@ export function signup(data: {
   password: string;
   companyName: string;
   registrationNumber?: string;
-}): Promise<{ access_token: string; user: Record<string, unknown> }> {
+}): Promise<{ user: Record<string, unknown> }> {
   return request("/auth/signup", {
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+export async function logout(): Promise<void> {
+  await request("/auth/logout", { method: "POST" });
+  localStorage.removeItem("token");
 }
 
 export function dashboard(): Promise<{
@@ -144,7 +173,7 @@ export function uploadDocument(
 
   return fetch(`${BASE_URL}/documents`, {
     method: "POST",
-    headers: authHeaders(),
+    credentials: "include",
     body: formData,
   }).then((res) => {
     if (!res.ok) {

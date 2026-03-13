@@ -13,7 +13,7 @@ export class ComplySaRegulatoryController {
 
   @Get("updates")
   async recentUpdates(@Query("limit") limit?: string) {
-    const parsedLimit = limit !== null && limit !== undefined ? parseInt(limit, 10) : 10;
+    const parsedLimit = limit != null ? parseInt(limit, 10) : 10;
     return this.regulatoryService.recentUpdates(parsedLimit);
   }
 

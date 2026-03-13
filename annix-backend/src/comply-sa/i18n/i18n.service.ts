@@ -27,12 +27,12 @@ export class ComplySaI18nService {
 
   translate(key: string, lang: string): string {
     const langMap = translationMaps[lang];
-    if (langMap && langMap[key] !== undefined) {
+    if (langMap && langMap[key] != null) {
       return langMap[key];
     }
 
     const englishValue = translationMaps["en"][key];
-    if (englishValue !== undefined) {
+    if (englishValue != null) {
       return englishValue;
     }
 

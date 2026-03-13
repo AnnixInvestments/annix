@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import { useUpgradeSubscription } from "@/app/lib/query/hooks";
 
 type BillingCycle = "monthly" | "annual";
@@ -198,13 +199,20 @@ export default function PricingPage() {
   const [upgradedTier, setUpgradedTier] = useState<string | null>(null);
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
   const upgradeMutation = useUpgradeSubscription();
+  const { showToast } = useToast();
 
   function handleUpgrade(tierId: string) {
     setUpgradeError(null);
     upgradeMutation.mutate(tierId, {
-      onSuccess: () => setUpgradedTier(tierId),
-      onError: (err) =>
-        setUpgradeError(err instanceof Error ? err.message : "Failed to upgrade subscription"),
+      onSuccess: () => {
+        setUpgradedTier(tierId);
+        showToast("Subscription upgraded successfully", "success");
+      },
+      onError: (err) => {
+        const message = err instanceof Error ? err.message : "Failed to upgrade subscription";
+        setUpgradeError(message);
+        showToast(message, "error");
+      },
     });
   }
 

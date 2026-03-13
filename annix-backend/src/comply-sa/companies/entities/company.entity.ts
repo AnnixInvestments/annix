@@ -6,8 +6,13 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { ComplySaApiKey } from "../../api-keys/entities/api-key.entity";
+import { ComplySaAuditLog } from "../../compliance/entities/audit-log.entity";
 import { ComplySaComplianceStatus } from "../../compliance/entities/compliance-status.entity";
 import { ComplySaDocument } from "../../comply-documents/entities/document.entity";
+import { ComplySaSageConnection } from "../../comply-integrations/sage/sage-connection.entity";
+import { ComplySaNotification } from "../../comply-notifications/entities/notification.entity";
+import { ComplySaSubscription } from "../../subscriptions/entities/subscription.entity";
 import { ComplySaUser } from "./user.entity";
 
 @Entity("comply_sa_companies")
@@ -92,4 +97,34 @@ export class ComplySaCompany {
     (doc) => doc.company,
   )
   documents!: ComplySaDocument[];
+
+  @OneToMany(
+    () => ComplySaSubscription,
+    (subscription) => subscription.company,
+  )
+  subscriptions!: ComplySaSubscription[];
+
+  @OneToMany(
+    () => ComplySaApiKey,
+    (apiKey) => apiKey.company,
+  )
+  apiKeys!: ComplySaApiKey[];
+
+  @OneToMany(
+    () => ComplySaNotification,
+    (notification) => notification.company,
+  )
+  notifications!: ComplySaNotification[];
+
+  @OneToMany(
+    () => ComplySaAuditLog,
+    (auditLog) => auditLog.company,
+  )
+  auditLogs!: ComplySaAuditLog[];
+
+  @OneToMany(
+    () => ComplySaSageConnection,
+    (sageConnection) => sageConnection.company,
+  )
+  sageConnections!: ComplySaSageConnection[];
 }

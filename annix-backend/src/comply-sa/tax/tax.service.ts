@@ -60,42 +60,57 @@ export interface SetaGrantInfo {
   steps: string[];
 }
 
+const MINIMUM_WAGE_HOURLY = 30.23;
+const VAT_REGISTRATION_THRESHOLD = 2_300_000;
+const VAT_VOLUNTARY_THRESHOLD = 120_000;
+const TURNOVER_TAX_BRACKET_1 = 600_000;
+const TURNOVER_TAX_BRACKET_2 = 1_000_000;
+const TURNOVER_TAX_BRACKET_3 = 1_500_000;
+const TURNOVER_TAX_RATE_1 = 0.01;
+const TURNOVER_TAX_RATE_2 = 0.02;
+const TURNOVER_TAX_RATE_3 = 0.03;
+const TURNOVER_TAX_BASE_2 = 4_000;
+const TURNOVER_TAX_BASE_3 = 14_000;
+const CORPORATE_TAX_RATE = 0.27;
+const SDL_THRESHOLD = 500_000;
+const SDL_RATE = 0.01;
+const UIF_CEILING = 17_712;
+const UIF_RATE = 0.01;
+const OVERTIME_MULTIPLIER = 1.5;
+
 @Injectable()
 export class ComplySaTaxService {
   minimumWageCheck(hourlyRate: number): MinimumWageResult {
-    const minimumWage = 30.23;
-    const compliant = hourlyRate >= minimumWage;
+    const compliant = hourlyRate >= MINIMUM_WAGE_HOURLY;
     return {
       compliant,
-      minimumWage,
-      shortfall: compliant ? null : Math.round((minimumWage - hourlyRate) * 100) / 100,
-      overtimeRate: Math.round(minimumWage * 1.5 * 100) / 100,
+      minimumWage: MINIMUM_WAGE_HOURLY,
+      shortfall: compliant ? null : Math.round((MINIMUM_WAGE_HOURLY - hourlyRate) * 100) / 100,
+      overtimeRate: Math.round(MINIMUM_WAGE_HOURLY * OVERTIME_MULTIPLIER * 100) / 100,
     };
   }
 
   vatAssessment(annualTurnover: number): VatAssessmentResult {
-    const threshold = 2_300_000;
-    const voluntaryThreshold = 120_000;
     return {
-      mustRegister: annualTurnover > threshold,
-      canVoluntaryRegister: annualTurnover >= voluntaryThreshold && annualTurnover <= threshold,
-      threshold,
-      voluntaryThreshold,
+      mustRegister: annualTurnover > VAT_REGISTRATION_THRESHOLD,
+      canVoluntaryRegister: annualTurnover >= VAT_VOLUNTARY_THRESHOLD && annualTurnover <= VAT_REGISTRATION_THRESHOLD,
+      threshold: VAT_REGISTRATION_THRESHOLD,
+      voluntaryThreshold: VAT_VOLUNTARY_THRESHOLD,
     };
   }
 
   turnoverTaxEstimate(annualTurnover: number): TurnoverTaxResult {
-    const eligible = annualTurnover <= 2_300_000;
+    const eligible = annualTurnover <= VAT_REGISTRATION_THRESHOLD;
 
     const estimatedTax = (() => {
-      if (annualTurnover <= 600_000) {
+      if (annualTurnover <= TURNOVER_TAX_BRACKET_1) {
         return 0;
-      } else if (annualTurnover <= 1_000_000) {
-        return (annualTurnover - 600_000) * 0.01;
-      } else if (annualTurnover <= 1_500_000) {
-        return 4_000 + (annualTurnover - 1_000_000) * 0.02;
-      } else if (annualTurnover <= 2_300_000) {
-        return 14_000 + (annualTurnover - 1_500_000) * 0.03;
+      } else if (annualTurnover <= TURNOVER_TAX_BRACKET_2) {
+        return (annualTurnover - TURNOVER_TAX_BRACKET_1) * TURNOVER_TAX_RATE_1;
+      } else if (annualTurnover <= TURNOVER_TAX_BRACKET_3) {
+        return TURNOVER_TAX_BASE_2 + (annualTurnover - TURNOVER_TAX_BRACKET_2) * TURNOVER_TAX_RATE_2;
+      } else if (annualTurnover <= VAT_REGISTRATION_THRESHOLD) {
+        return TURNOVER_TAX_BASE_3 + (annualTurnover - TURNOVER_TAX_BRACKET_3) * TURNOVER_TAX_RATE_3;
       } else {
         return 0;
       }
@@ -113,32 +128,30 @@ export class ComplySaTaxService {
 
   corporateTaxEstimate(taxableIncome: number): CorporateTaxResult {
     return {
-      tax: Math.round(taxableIncome * 0.27 * 100) / 100,
-      rate: 0.27,
+      tax: Math.round(taxableIncome * CORPORATE_TAX_RATE * 100) / 100,
+      rate: CORPORATE_TAX_RATE,
     };
   }
 
   sdlApplicable(annualPayroll: number): SdlResult {
-    const threshold = 500_000;
-    const applicable = annualPayroll > threshold;
+    const applicable = annualPayroll > SDL_THRESHOLD;
     return {
       applicable,
-      amount: applicable ? Math.round(annualPayroll * 0.01 * 100) / 100 : 0,
-      threshold,
+      amount: applicable ? Math.round(annualPayroll * SDL_RATE * 100) / 100 : 0,
+      threshold: SDL_THRESHOLD,
     };
   }
 
   uifCalculation(monthlyRemuneration: number): UifResult {
-    const ceiling = 17_712;
-    const capped = monthlyRemuneration > ceiling;
-    const base = capped ? ceiling : monthlyRemuneration;
-    const employeeContribution = Math.round(base * 0.01 * 100) / 100;
-    const employerContribution = Math.round(base * 0.01 * 100) / 100;
+    const capped = monthlyRemuneration > UIF_CEILING;
+    const base = capped ? UIF_CEILING : monthlyRemuneration;
+    const employeeContribution = Math.round(base * UIF_RATE * 100) / 100;
+    const employerContribution = Math.round(base * UIF_RATE * 100) / 100;
     return {
       employeeContribution,
       employerContribution,
       total: Math.round((employeeContribution + employerContribution) * 100) / 100,
-      ceiling,
+      ceiling: UIF_CEILING,
       capped,
     };
   }

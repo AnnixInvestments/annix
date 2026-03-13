@@ -16,7 +16,11 @@ export class ComplySaAuditLog {
   @Column({ name: "company_id", type: "int" })
   companyId!: number;
 
-  @ManyToOne(() => ComplySaCompany, { onDelete: "CASCADE" })
+  @ManyToOne(
+    () => ComplySaCompany,
+    (company) => company.auditLogs,
+    { onDelete: "CASCADE" },
+  )
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;
 

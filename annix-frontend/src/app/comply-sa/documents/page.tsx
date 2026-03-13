@@ -2,6 +2,7 @@
 
 import { Download, FileText, FolderOpen, Search, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useComplySaDocuments,
@@ -26,20 +27,30 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export default function DocumentsPage() {
   const { data: docs, isLoading: docsLoading, error: docsError } = useComplySaDocuments();
   const { data: reqs, isLoading: reqsLoading } = useComplySaRequirements();
+  const { showToast } = useToast();
   const uploadMutation = useUploadDocument();
   const deleteMutation = useDeleteDocument();
   const [filterReqId, setFilterReqId] = useState<string>("all");
   const [dragOver, setDragOver] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLoading = docsLoading || reqsLoading;
 
   function handleUpload(file: File) {
     const reqId = filterReqId !== "all" ? filterReqId : undefined;
-    uploadMutation.mutate({ file, requirementId: reqId });
+    uploadMutation.mutate(
+      { file, requirementId: reqId },
+      {
+        onSuccess: () => showToast("Document uploaded successfully", "success"),
+        onError: (error) => showToast(error.message || "Failed to upload document", "error"),
+      },
+    );
   }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -55,7 +66,10 @@ export default function DocumentsPage() {
   }
 
   function handleDelete(id: string) {
-    deleteMutation.mutate(id);
+    deleteMutation.mutate(id, {
+      onSuccess: () => showToast("Document deleted", "success"),
+      onError: (error) => showToast(error.message || "Failed to delete document", "error"),
+    });
   }
 
   const docsList = docs ?? [];
@@ -123,7 +137,10 @@ export default function DocumentsPage() {
         <Search className="h-4 w-4 text-slate-400" />
         <select
           value={filterReqId}
-          onChange={(e) => setFilterReqId(e.target.value)}
+          onChange={(e) => {
+            setFilterReqId(e.target.value);
+            setVisibleCount(ITEMS_PER_PAGE);
+          }}
           className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500"
         >
           <option value="all">All requirements</option>
@@ -155,7 +172,7 @@ export default function DocumentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-700">
-                {filteredDocs.map((doc: Document) => (
+                {filteredDocs.slice(0, visibleCount).map((doc: Document) => (
                   <tr key={doc.id} className="hover:bg-slate-700/30 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -195,6 +212,15 @@ export default function DocumentsPage() {
               </tbody>
             </table>
           </div>
+          {visibleCount < filteredDocs.length && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((prev) => prev + ITEMS_PER_PAGE)}
+              className="w-full py-3 text-sm text-teal-400 hover:text-teal-300 font-medium transition-colors"
+            >
+              Show more ({filteredDocs.length - visibleCount} remaining)
+            </button>
+          )}
         </div>
       ) : (
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-12 text-center">

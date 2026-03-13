@@ -158,7 +158,7 @@ export class ComplySaTemplatesService {
   generateTemplate(templateId: string, data: Record<string, string>): GeneratedTemplate {
     const template = TEMPLATE_REGISTRY.find((t) => t.id === templateId);
 
-    if (template === undefined) {
+    if (template == null) {
       throw new NotFoundException(`Template "${templateId}" not found`);
     }
 
@@ -175,7 +175,7 @@ export class ComplySaTemplatesService {
 
     const generator = generators[templateId];
 
-    if (generator === undefined) {
+    if (generator == null) {
       throw new NotFoundException(`Generator for "${templateId}" not found`);
     }
 
@@ -259,7 +259,7 @@ export class ComplySaTemplatesService {
 
     const upcomingDeadlines = statuses
       .filter((s) => s.nextDueDate !== null && s.status !== "compliant")
-      .sort((a, b) => (a.nextDueDate?.getTime() ?? 0) - (b.nextDueDate?.getTime() ?? 0))
+      .sort((a, b) => (a.nextDueDate !== null ? fromJSDate(a.nextDueDate).toMillis() : 0) - (b.nextDueDate !== null ? fromJSDate(b.nextDueDate).toMillis() : 0))
       .slice(0, 10)
       .map(
         (s) =>

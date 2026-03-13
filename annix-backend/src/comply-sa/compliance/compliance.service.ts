@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { ComplySaCompany } from "../companies/entities/company.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
-import { fromISO, now } from "../lib/datetime";
+import { daysBetween, fromISO, fromJSDate, now } from "../lib/datetime";
 import { ComplySaAuditLog } from "./entities/audit-log.entity";
 import { ComplySaChecklistProgress } from "./entities/checklist-progress.entity";
 import { ComplySaComplianceRequirement } from "./entities/compliance-requirement.entity";
@@ -153,17 +153,14 @@ export class ComplySaComplianceService {
         };
       });
 
-    const nowMs = Date.now();
+    const today = now();
     const upcomingDeadlines = statuses
       .filter((s) => s.nextDueDate !== null && s.requirement !== null)
       .map((s) => ({
         id: String(s.id),
         requirementName: s.requirement.name,
         dueDate: s.nextDueDate!.toISOString(),
-        daysRemaining: Math.max(
-          0,
-          Math.ceil((s.nextDueDate!.getTime() - nowMs) / (1000 * 60 * 60 * 24)),
-        ),
+        daysRemaining: Math.max(0, daysBetween(today, fromJSDate(s.nextDueDate!))),
         status: s.status,
       }))
       .sort((a, b) => a.daysRemaining - b.daysRemaining)
@@ -271,8 +268,17 @@ export class ComplySaComplianceService {
     }
   }
 
-  async allRequirements(): Promise<ComplySaComplianceRequirement[]> {
-    return this.requirementRepository.find();
+  async allRequirements(
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<{ data: ComplySaComplianceRequirement[]; total: number; page: number; limit: number }> {
+    const [data, total] = await this.requirementRepository.findAndCount({
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { id: "ASC" },
+    });
+
+    return { data, total, page, limit };
   }
 
   private async autoCompleteStatus(

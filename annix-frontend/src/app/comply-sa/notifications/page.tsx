@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Bell, BellOff, CheckCircle, Clock, Info } from "lucide-react";
+import { useState } from "react";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 import { useComplySaNotifications, useMarkNotificationRead } from "@/app/lib/query/hooks";
 
@@ -37,11 +38,15 @@ function notificationColor(type: string): string {
   return NOTIFICATION_COLORS[type] ?? "text-slate-400";
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export default function NotificationsPage() {
   const { data: items = [], isLoading, error } = useComplySaNotifications();
   const markRead = useMarkNotificationRead();
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
-  const unreadCount = (items as Notification[]).filter((n) => !n.read).length;
+  const notifications: Notification[] = Array.isArray(items) ? items : [];
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   if (isLoading) {
     return (
@@ -71,9 +76,9 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {(items as Notification[]).length > 0 ? (
+      {notifications.length > 0 ? (
         <div className="space-y-2">
-          {(items as Notification[]).map((notification) => {
+          {notifications.slice(0, visibleCount).map((notification) => {
             const Icon = notificationIcon(notification.type);
             const color = notificationColor(notification.type);
 
@@ -121,6 +126,15 @@ export default function NotificationsPage() {
               </button>
             );
           })}
+          {visibleCount < notifications.length && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((prev) => prev + ITEMS_PER_PAGE)}
+              className="w-full py-3 text-sm text-teal-400 hover:text-teal-300 font-medium transition-colors"
+            >
+              Show more ({notifications.length - visibleCount} remaining)
+            </button>
+          )}
         </div>
       ) : (
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-12 text-center">

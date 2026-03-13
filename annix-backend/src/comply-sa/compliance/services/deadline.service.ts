@@ -70,7 +70,7 @@ export class ComplySaDeadlineService {
   ): Date | null {
     const fieldValue = (company as unknown as Record<string, unknown>)[rule.field] as string | null;
 
-    if (fieldValue === null || fieldValue === undefined) {
+    if (fieldValue == null) {
       return null;
     }
 

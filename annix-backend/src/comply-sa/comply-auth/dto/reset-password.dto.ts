@@ -5,6 +5,7 @@ export class ComplySaResetPasswordDto {
   @IsNotEmpty()
   token!: string;
 
+  @IsString()
   @MinLength(8)
   password!: string;
 }
