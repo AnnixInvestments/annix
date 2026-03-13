@@ -37,7 +37,7 @@ export class LocalStorageService implements IStorageService {
 
     return {
       path: relativePath.replace(/\\/g, "/"), // Normalize path separators
-      url: this.getPublicUrl(relativePath),
+      url: this.publicUrl(relativePath),
       size: file.size,
       mimeType: file.mimetype,
       originalFilename: file.originalname,
@@ -73,16 +73,16 @@ export class LocalStorageService implements IStorageService {
     }
   }
 
-  getPublicUrl(relativePath: string): string {
+  publicUrl(relativePath: string): string {
     const normalizedPath = relativePath.replace(/\\/g, "/");
     return `${this.baseUrl}/api/files/${normalizedPath}`;
   }
 
-  async getPresignedUrl(relativePath: string, _expiresIn?: number): Promise<string> {
-    return this.getPublicUrl(relativePath);
+  async presignedUrl(relativePath: string, _expiresIn?: number): Promise<string> {
+    return this.publicUrl(relativePath);
   }
 
-  getFullPath(relativePath: string): string {
+  fullPath(relativePath: string): string {
     return path.join(this.uploadDir, relativePath);
   }
 }

@@ -68,7 +68,7 @@ describe("StockControlAuthService", () => {
   };
 
   const mockS3StorageService = {
-    getPresignedUrl: jest.fn().mockResolvedValue("https://s3.example.com/presigned"),
+    presignedUrl: jest.fn().mockResolvedValue("https://s3.example.com/presigned"),
   };
 
   const mockConfigService = {
@@ -592,7 +592,7 @@ describe("StockControlAuthService", () => {
 
       const result = await service.currentUser(1);
 
-      expect(mockS3StorageService.getPresignedUrl).toHaveBeenCalledTimes(2);
+      expect(mockS3StorageService.presignedUrl).toHaveBeenCalledTimes(2);
       expect(result.logoUrl).toBe("https://s3.example.com/presigned");
       expect(result.heroImageUrl).toBe("https://s3.example.com/presigned");
     });

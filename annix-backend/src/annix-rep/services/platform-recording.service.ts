@@ -119,7 +119,7 @@ export class PlatformRecordingService {
     const result = await this.s3Storage.upload(multerFile, "platform-recordings");
 
     record.s3StoragePath = result.path;
-    record.s3StorageBucket = this.s3Storage.getBucket();
+    record.s3StorageBucket = this.s3Storage.bucket();
     record.recordingStatus = PlatformRecordingStatus.DOWNLOADED;
     record.downloadedAt = now().toJSDate();
 
@@ -186,7 +186,7 @@ export class PlatformRecordingService {
     const meetingRecording = this.meetingRecordingRepo.create({
       meetingId: linkedMeeting.id,
       storagePath: record.s3StoragePath,
-      storageBucket: record.s3StorageBucket ?? this.s3Storage.getBucket(),
+      storageBucket: record.s3StorageBucket ?? this.s3Storage.bucket(),
       originalFilename: record.title,
       mimeType: this.mimeTypeFromExtension(record.recordingFileType ?? "mp4"),
       fileSizeBytes: record.recordingFileSizeBytes ?? 0,

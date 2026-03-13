@@ -20,8 +20,8 @@ import {
 } from "../supplier/entities/supplier-profile.entity";
 import {
   BOQ_SECTION_TO_CAPABILITY,
-  getSectionsForCapabilities,
-  getSectionTitle,
+  sectionsForCapabilities,
+  sectionTitle,
 } from "./config/capability-mapping";
 import { Boq, BoqStatus } from "./entities/boq.entity";
 import { BoqSection } from "./entities/boq-section.entity";
@@ -260,7 +260,7 @@ export class BoqDistributionService {
           boqId,
           sectionType,
           capabilityKey,
-          sectionTitle: getSectionTitle(sectionType),
+          sectionTitle: sectionTitle(sectionType),
           items,
           totalWeightKg,
           itemCount: items.length,
@@ -398,7 +398,7 @@ export class BoqDistributionService {
             return acc;
           }
 
-          const sectionTitles = access.allowedSections.map((s) => getSectionTitle(s));
+          const sectionTitles = access.allowedSections.map((s) => sectionTitle(s));
 
           const success = await this.emailService.sendSupplierBoqNotification(
             supplierProfile.user.email,
@@ -851,7 +851,7 @@ export class BoqDistributionService {
           return acc;
         }
 
-        const sectionTitles = access.allowedSections.map((s) => getSectionTitle(s));
+        const sectionTitles = access.allowedSections.map((s) => sectionTitle(s));
 
         const success = await this.emailService.sendBoqUpdateNotification(
           supplierProfile.user.email,
@@ -883,7 +883,7 @@ export class BoqDistributionService {
     supplierProfileId: number,
     newCapabilities: string[],
   ): Promise<{ updated: number; removed: number }> {
-    const capabilitySections = getSectionsForCapabilities(newCapabilities);
+    const capabilitySections = sectionsForCapabilities(newCapabilities);
 
     const accessRecords = await this.accessRepository.find({
       where: {

@@ -855,7 +855,7 @@ export class CustomerAdminService {
       throw new NotFoundException("Document not found");
     }
 
-    const url = await this.storageService.getPresignedUrl(document.filePath);
+    const url = await this.storageService.presignedUrl(document.filePath);
 
     return {
       url,
@@ -886,7 +886,7 @@ export class CustomerAdminService {
       throw new NotFoundException("Document not found");
     }
 
-    const url = await this.storageService.getPresignedUrl(document.filePath);
+    const url = await this.storageService.presignedUrl(document.filePath);
     const company = document.customer.company;
 
     const expectedData = {
@@ -1006,7 +1006,7 @@ export class CustomerAdminService {
     }
 
     if (document.mimeType !== "application/pdf") {
-      const url = await this.storageService.getPresignedUrl(document.filePath);
+      const url = await this.storageService.presignedUrl(document.filePath);
       return {
         pages: [url],
         totalPages: 1,

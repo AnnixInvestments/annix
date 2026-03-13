@@ -32,7 +32,7 @@ describe("DeliveryService", () => {
       mimeType: "image/jpeg",
       size: 5000,
     }),
-    getPresignedUrl: jest.fn().mockResolvedValue("https://presigned.url/photo.jpg"),
+    presignedUrl: jest.fn().mockResolvedValue("https://presigned.url/photo.jpg"),
     download: jest.fn(),
   };
 
@@ -245,7 +245,7 @@ describe("DeliveryService", () => {
       });
 
       const result = await service.findById(1, 1);
-      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith(
+      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
         "stock-control/photo.jpg",
         3600,
       );

@@ -73,7 +73,7 @@ export class SignatureService {
   async presignedUrl(storedUrl: string): Promise<string> {
     const isPresigned = storedUrl.includes("X-Amz-Signature") || storedUrl.startsWith("http");
     const path = isPresigned ? this.extractS3Key(storedUrl) : storedUrl;
-    return this.storageService.getPresignedUrl(path);
+    return this.storageService.presignedUrl(path);
   }
 
   private extractS3Key(url: string): string {

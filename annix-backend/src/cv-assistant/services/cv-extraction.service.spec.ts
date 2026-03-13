@@ -15,8 +15,8 @@ describe("CvExtractionService", () => {
       download: jest.fn(),
       delete: jest.fn(),
       exists: jest.fn(),
-      getPresignedUrl: jest.fn(),
-      getPublicUrl: jest.fn(),
+      presignedUrl: jest.fn(),
+      publicUrl: jest.fn(),
     };
 
     mockAiChatService = {

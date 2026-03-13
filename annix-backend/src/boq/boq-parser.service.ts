@@ -120,7 +120,7 @@ export class BoqParserService {
     return result;
   }
 
-  private mapHeaders(headers: string[]): Record<string, string | undefined> {
+  private mapHeaders(headers: string[]): Record<string, string | null> {
     return Object.entries(this.columnMappings).reduce(
       (acc, [field, aliases]) => {
         const matchingHeader = headers.find((header) =>
@@ -128,32 +128,32 @@ export class BoqParserService {
         );
         return matchingHeader ? { ...acc, [field]: matchingHeader } : acc;
       },
-      {} as Record<string, string | undefined>,
+      {} as Record<string, string | null>,
     );
   }
 
   private parseRow(
     row: Record<string, any>,
-    headerMap: Record<string, string | undefined>,
+    headerMap: Record<string, string | null>,
     rowNum: number,
     warnings: string[],
   ): ParsedBoqLineItem | null {
     // Get description (required)
-    const description = this.getStringValue(row, headerMap.description);
+    const description = this.stringValue(row, headerMap.description);
     if (!description || description.trim() === "") {
       warnings.push(`Row ${rowNum}: Skipped - empty description`);
       return null;
     }
 
     // Get quantity (required)
-    const quantityRaw = this.getNumericValue(row, headerMap.quantity);
-    if (quantityRaw === undefined || quantityRaw <= 0) {
+    const quantityRaw = this.numericValue(row, headerMap.quantity);
+    if (quantityRaw === null || quantityRaw <= 0) {
       warnings.push(`Row ${rowNum}: Skipped - invalid or zero quantity`);
       return null;
     }
 
     // Get item type with auto-detection
-    let itemType = this.getStringValue(row, headerMap.itemType)?.toLowerCase();
+    let itemType = this.stringValue(row, headerMap.itemType)?.toLowerCase();
     if (!itemType || !this.validItemTypes.includes(itemType)) {
       itemType = this.detectItemType(description);
       if (itemType !== "custom") {
@@ -162,42 +162,42 @@ export class BoqParserService {
     }
 
     // Get unit of measure with default
-    let unitOfMeasure = this.getStringValue(row, headerMap.unitOfMeasure);
+    let unitOfMeasure = this.stringValue(row, headerMap.unitOfMeasure);
     if (!unitOfMeasure) {
       unitOfMeasure = this.detectUnitOfMeasure(description, itemType);
       warnings.push(`Row ${rowNum}: Using default unit of measure "${unitOfMeasure}"`);
     }
 
     const lineItem: ParsedBoqLineItem = {
-      itemCode: this.getStringValue(row, headerMap.itemCode),
+      itemCode: this.stringValue(row, headerMap.itemCode),
       description: description.trim(),
       itemType,
       unitOfMeasure,
       quantity: quantityRaw,
-      unitWeightKg: this.getNumericValue(row, headerMap.unitWeightKg),
-      unitPrice: this.getNumericValue(row, headerMap.unitPrice),
-      notes: this.getStringValue(row, headerMap.notes),
-      drawingReference: this.getStringValue(row, headerMap.drawingReference),
+      unitWeightKg: this.numericValue(row, headerMap.unitWeightKg),
+      unitPrice: this.numericValue(row, headerMap.unitPrice),
+      notes: this.stringValue(row, headerMap.notes),
+      drawingReference: this.stringValue(row, headerMap.drawingReference),
     };
 
     return lineItem;
   }
 
-  private getStringValue(row: Record<string, any>, header?: string): string | undefined {
-    if (!header) return undefined;
+  private stringValue(row: Record<string, any>, header?: string | null): string | null {
+    if (!header) return null;
     const value = row[header];
-    if (value === null || value === undefined || value === "") return undefined;
+    if (value === null || value === undefined || value === "") return null;
     return String(value).trim();
   }
 
-  private getNumericValue(row: Record<string, any>, header?: string): number | undefined {
-    if (!header) return undefined;
+  private numericValue(row: Record<string, any>, header?: string | null): number | null {
+    if (!header) return null;
     const value = row[header];
-    if (value === null || value === undefined || value === "") return undefined;
+    if (value === null || value === undefined || value === "") return null;
 
     const num =
       typeof value === "number" ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ""));
-    return Number.isNaN(num) ? undefined : num;
+    return Number.isNaN(num) ? null : num;
   }
 
   private detectItemType(description: string): string {

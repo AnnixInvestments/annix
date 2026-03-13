@@ -71,7 +71,7 @@ export class ComplySaDocumentsService {
       throw new NotFoundException("Document not found");
     }
 
-    return this.storageService.getPresignedUrl(document.filePath, PRESIGNED_URL_TTL_SECONDS);
+    return this.storageService.presignedUrl(document.filePath, PRESIGNED_URL_TTL_SECONDS);
   }
 
   async remove(companyId: number, documentId: number): Promise<void> {

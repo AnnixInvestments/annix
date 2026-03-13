@@ -94,7 +94,7 @@ export class ChatService {
   async uploadImage(companyId: number, file: Express.Multer.File): Promise<{ imageUrl: string }> {
     const subPath = `${StorageArea.STOCK_CONTROL}/chat/${companyId}`;
     const result = await this.storageService.upload(file, subPath);
-    const presignedUrl = await this.storageService.getPresignedUrl(result.path, 86400);
+    const presignedUrl = await this.storageService.presignedUrl(result.path, 86400);
 
     return { imageUrl: presignedUrl };
   }

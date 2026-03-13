@@ -110,7 +110,7 @@ const result = await this.storageService.upload(file, `${StorageArea.ANNIX_APP}/
 const buffer = await this.storageService.download(filePath);
 
 // Generate presigned URL (1 hour default)
-const url = await this.storageService.getPresignedUrl(filePath, 3600);
+const url = await this.storageService.presignedUrl(filePath, 3600);
 ```
 
 #### Key Files

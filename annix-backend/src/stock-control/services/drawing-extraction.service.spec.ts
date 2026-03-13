@@ -43,8 +43,8 @@ describe("DrawingExtractionService", () => {
     download: jest.fn(),
     delete: jest.fn(),
     exists: jest.fn(),
-    getPresignedUrl: jest.fn().mockResolvedValue("https://signed-url.example.com"),
-    getPublicUrl: jest.fn(),
+    presignedUrl: jest.fn().mockResolvedValue("https://signed-url.example.com"),
+    publicUrl: jest.fn(),
   };
 
   const mockAiChatService = {

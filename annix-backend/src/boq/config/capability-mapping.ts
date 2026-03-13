@@ -147,17 +147,11 @@ export const VALID_CAPABILITIES = [
 
 export type CapabilityKey = (typeof VALID_CAPABILITIES)[number];
 
-/**
- * Get the capability key for a given BOQ section type
- */
-export function getCapabilityForSection(sectionType: string): string | undefined {
+export function capabilityForSection(sectionType: string): string | undefined {
   return BOQ_SECTION_TO_CAPABILITY[sectionType];
 }
 
-/**
- * Get all sections a supplier can access based on their capabilities
- */
-export function getSectionsForCapabilities(capabilities: string[]): string[] {
+export function sectionsForCapabilities(capabilities: string[]): string[] {
   return [
     ...new Set(
       capabilities.flatMap((capability) => CAPABILITY_TO_SECTIONS[capability] ?? []),
@@ -165,16 +159,10 @@ export function getSectionsForCapabilities(capabilities: string[]): string[] {
   ];
 }
 
-/**
- * Get the display title for a section type
- */
-export function getSectionTitle(sectionType: string): string {
+export function sectionTitle(sectionType: string): string {
   return SECTION_TITLES[sectionType] || sectionType;
 }
 
-/**
- * Check if a supplier with given capabilities can access a section
- */
 export function canAccessSection(capabilities: string[], sectionType: string): boolean {
   const sectionCapability = BOQ_SECTION_TO_CAPABILITY[sectionType];
   if (!sectionCapability) return false;

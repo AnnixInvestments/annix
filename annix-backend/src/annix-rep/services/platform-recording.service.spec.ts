@@ -45,7 +45,7 @@ describe("PlatformRecordingService", () => {
 
     mockS3Storage = {
       upload: jest.fn(),
-      getBucket: jest.fn().mockReturnValue("test-bucket"),
+      bucket: jest.fn().mockReturnValue("test-bucket"),
     };
 
     const module: TestingModule = await Test.createTestingModule({

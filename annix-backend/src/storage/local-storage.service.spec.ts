@@ -210,39 +210,39 @@ describe("LocalStorageService", () => {
     });
   });
 
-  describe("getPublicUrl", () => {
+  describe("publicUrl", () => {
     it("should return local URL format", () => {
-      const result = service.getPublicUrl("annix-app/test/file.pdf");
+      const result = service.publicUrl("annix-app/test/file.pdf");
 
       expect(result).toBe("http://localhost:4001/api/api/files/annix-app/test/file.pdf");
     });
 
     it("should normalize backslashes", () => {
-      const result = service.getPublicUrl("path\\with\\backslashes\\file.pdf");
+      const result = service.publicUrl("path\\with\\backslashes\\file.pdf");
 
       expect(result).toBe("http://localhost:4001/api/api/files/path/with/backslashes/file.pdf");
     });
   });
 
-  describe("getPresignedUrl", () => {
-    it("should return same as getPublicUrl for local storage", async () => {
-      const publicUrl = service.getPublicUrl("test/file.pdf");
-      const presignedUrl = await service.getPresignedUrl("test/file.pdf");
+  describe("presignedUrl", () => {
+    it("should return same as publicUrl for local storage", async () => {
+      const publicUrl = service.publicUrl("test/file.pdf");
+      const presignedUrl = await service.presignedUrl("test/file.pdf");
 
       expect(presignedUrl).toBe(publicUrl);
     });
 
     it("should ignore expiresIn parameter", async () => {
-      const url1 = await service.getPresignedUrl("test/file.pdf", 3600);
-      const url2 = await service.getPresignedUrl("test/file.pdf", 7200);
+      const url1 = await service.presignedUrl("test/file.pdf", 3600);
+      const url2 = await service.presignedUrl("test/file.pdf", 7200);
 
       expect(url1).toBe(url2);
     });
   });
 
-  describe("getFullPath", () => {
+  describe("fullPath", () => {
     it("should return full filesystem path", () => {
-      const result = service.getFullPath("annix-app/test/file.pdf");
+      const result = service.fullPath("annix-app/test/file.pdf");
 
       expect(result).toBe(path.join("./test-uploads", "annix-app/test/file.pdf"));
     });

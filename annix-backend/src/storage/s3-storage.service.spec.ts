@@ -269,11 +269,11 @@ describe("S3StorageService", () => {
     });
   });
 
-  describe("getPresignedUrl", () => {
+  describe("presignedUrl", () => {
     it("should generate presigned URL with default expiration", async () => {
       mockGetSignedUrl.mockResolvedValueOnce("https://s3.example.com/presigned-url?signature=abc");
 
-      const result = await service.getPresignedUrl("annix-app/test/file.pdf");
+      const result = await service.presignedUrl("annix-app/test/file.pdf");
 
       expect(result).toBe("https://s3.example.com/presigned-url?signature=abc");
       expect(mockGetSignedUrl).toHaveBeenCalledWith(
@@ -289,7 +289,7 @@ describe("S3StorageService", () => {
     it("should generate presigned URL with custom expiration", async () => {
       mockGetSignedUrl.mockResolvedValueOnce("https://s3.example.com/presigned-url");
 
-      await service.getPresignedUrl("test/file.pdf", 7200);
+      await service.presignedUrl("test/file.pdf", 7200);
 
       expect(mockGetSignedUrl).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
         expiresIn: 7200,
@@ -299,13 +299,13 @@ describe("S3StorageService", () => {
     it("should throw error on presigned URL generation failure", async () => {
       mockGetSignedUrl.mockRejectedValueOnce(new Error("Signing failed"));
 
-      await expect(service.getPresignedUrl("test/file.pdf")).rejects.toThrow("Signing failed");
+      await expect(service.presignedUrl("test/file.pdf")).rejects.toThrow("Signing failed");
     });
   });
 
-  describe("getPublicUrl", () => {
+  describe("publicUrl", () => {
     it("should return S3 public URL format", () => {
-      const result = service.getPublicUrl("annix-app/test/file.pdf");
+      const result = service.publicUrl("annix-app/test/file.pdf");
 
       expect(result).toBe(
         "https://test-bucket.s3.af-south-1.amazonaws.com/annix-app/test/file.pdf",
@@ -313,7 +313,7 @@ describe("S3StorageService", () => {
     });
 
     it("should normalize path separators", () => {
-      const result = service.getPublicUrl("path\\with\\backslashes\\file.pdf");
+      const result = service.publicUrl("path\\with\\backslashes\\file.pdf");
 
       expect(result).toBe(
         "https://test-bucket.s3.af-south-1.amazonaws.com/path/with/backslashes/file.pdf",
@@ -321,21 +321,21 @@ describe("S3StorageService", () => {
     });
 
     it("should strip leading slash", () => {
-      const result = service.getPublicUrl("/leading/slash/file.pdf");
+      const result = service.publicUrl("/leading/slash/file.pdf");
 
       expect(result).toBe("https://test-bucket.s3.af-south-1.amazonaws.com/leading/slash/file.pdf");
     });
   });
 
-  describe("getBucket", () => {
+  describe("bucket", () => {
     it("should return bucket name", () => {
-      expect(service.getBucket()).toBe("test-bucket");
+      expect(service.bucket()).toBe("test-bucket");
     });
   });
 
-  describe("getRegion", () => {
+  describe("region", () => {
     it("should return region", () => {
-      expect(service.getRegion()).toBe("af-south-1");
+      expect(service.region()).toBe("af-south-1");
     });
   });
 

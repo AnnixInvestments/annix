@@ -42,7 +42,7 @@ export class DeliveryService {
     data: {
       deliveryNumber: string;
       supplierName: string;
-      receivedDate?: Date;
+      receivedDate?: Date | null;
       notes?: string;
       photoUrl?: string;
       receivedBy?: string;
@@ -169,7 +169,7 @@ export class DeliveryService {
   private async addPresignedUrl(note: DeliveryNote): Promise<DeliveryNote> {
     if (note.photoUrl) {
       try {
-        note.photoUrl = await this.storageService.getPresignedUrl(note.photoUrl, 3600);
+        note.photoUrl = await this.storageService.presignedUrl(note.photoUrl, 3600);
       } catch (error) {
         this.logger.warn(
           `Failed to generate presigned URL for ${note.photoUrl}: ${error?.message ?? error}`,

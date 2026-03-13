@@ -39,7 +39,7 @@ describe("InvoiceService", () => {
       mimeType: "application/pdf",
       size: 10000,
     }),
-    getPresignedUrl: jest.fn().mockResolvedValue("https://presigned.url/invoice.pdf"),
+    presignedUrl: jest.fn().mockResolvedValue("https://presigned.url/invoice.pdf"),
     download: jest.fn().mockResolvedValue(Buffer.from("fake-file-content")),
   };
 
@@ -205,7 +205,7 @@ describe("InvoiceService", () => {
         skip: 0,
       });
       expect(result).toHaveLength(2);
-      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith(
+      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
         "stock-control/invoices/scan1.pdf",
         3600,
       );
@@ -241,7 +241,7 @@ describe("InvoiceService", () => {
         where: { id: 1, companyId: 1 },
         relations: ["deliveryNote", "items", "items.stockItem", "clarifications"],
       });
-      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith(
+      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
         "stock-control/invoices/scan.pdf",
         3600,
       );
@@ -266,7 +266,7 @@ describe("InvoiceService", () => {
 
       await service.findById(1, 1);
 
-      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith(
+      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
         "stock-control/invoices/scan.pdf",
         3600,
       );

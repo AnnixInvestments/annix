@@ -127,7 +127,7 @@ export class CalibrationCertificateService {
 
   async presignedUrl(companyId: number, id: number): Promise<string> {
     const cert = await this.findById(companyId, id);
-    return this.storageService.getPresignedUrl(cert.filePath, 3600);
+    return this.storageService.presignedUrl(cert.filePath, 3600);
   }
 
   async updateCertificate(

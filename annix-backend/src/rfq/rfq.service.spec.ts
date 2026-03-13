@@ -163,8 +163,8 @@ describe("RfqService", () => {
     download: jest.fn(),
     delete: jest.fn(),
     exists: jest.fn(),
-    getPublicUrl: jest.fn(),
-    getPresignedUrl: jest.fn(),
+    publicUrl: jest.fn(),
+    presignedUrl: jest.fn(),
   };
 
   const mockBoqRepo = {

@@ -28,7 +28,7 @@ describe("InventoryService", () => {
   };
 
   const mockStorageService = {
-    getPresignedUrl: jest.fn().mockResolvedValue("https://signed-url.example.com/photo.jpg"),
+    presignedUrl: jest.fn().mockResolvedValue("https://signed-url.example.com/photo.jpg"),
     upload: jest.fn().mockResolvedValue({ path: "stock-control/inventory/photo.jpg" }),
   };
 
@@ -132,7 +132,7 @@ describe("InventoryService", () => {
         movements: [],
       };
       mockStockItemRepo.findOne.mockResolvedValue(item);
-      mockStorageService.getPresignedUrl.mockResolvedValue("https://signed.example.com/photo.jpg");
+      mockStorageService.presignedUrl.mockResolvedValue("https://signed.example.com/photo.jpg");
 
       const result = await service.findByIdWithPhoto(1, 1);
 
@@ -416,11 +416,11 @@ describe("InventoryService", () => {
         movements: [],
       };
       mockStockItemRepo.findOne.mockResolvedValue(item);
-      mockStorageService.getPresignedUrl.mockResolvedValue("https://signed.example.com/photo.jpg");
+      mockStorageService.presignedUrl.mockResolvedValue("https://signed.example.com/photo.jpg");
 
       const result = await service.findByIdWithPhoto(1, 1);
 
-      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith(
+      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
         "stock-control/photo.jpg",
         3600,
       );
@@ -439,13 +439,13 @@ describe("InventoryService", () => {
         movements: [],
       };
       mockStockItemRepo.findOne.mockResolvedValue(item);
-      mockStorageService.getPresignedUrl.mockResolvedValue(
+      mockStorageService.presignedUrl.mockResolvedValue(
         "https://signed.example.com/new-signed.jpg",
       );
 
       const result = await service.findByIdWithPhoto(1, 1);
 
-      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith(
+      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
         "stock-control/photo.jpg",
         3600,
       );
@@ -465,7 +465,7 @@ describe("InventoryService", () => {
 
       const result = await service.findByIdWithPhoto(1, 1);
 
-      expect(mockStorageService.getPresignedUrl).not.toHaveBeenCalled();
+      expect(mockStorageService.presignedUrl).not.toHaveBeenCalled();
       expect(result.photoUrl).toBe("https://external.com/image.png");
     });
 
@@ -482,7 +482,7 @@ describe("InventoryService", () => {
 
       const result = await service.findByIdWithPhoto(1, 1);
 
-      expect(mockStorageService.getPresignedUrl).not.toHaveBeenCalled();
+      expect(mockStorageService.presignedUrl).not.toHaveBeenCalled();
       expect(result.photoUrl).toBeNull();
     });
   });
@@ -503,7 +503,7 @@ describe("InventoryService", () => {
         ...item,
         photoUrl: "stock-control/inventory/new.jpg",
       });
-      mockStorageService.getPresignedUrl.mockResolvedValue("https://signed.example.com/new.jpg");
+      mockStorageService.presignedUrl.mockResolvedValue("https://signed.example.com/new.jpg");
 
       const file = { originalname: "photo.jpg", buffer: Buffer.from("img") } as Express.Multer.File;
       const result = await service.uploadPhoto(1, 1, file);

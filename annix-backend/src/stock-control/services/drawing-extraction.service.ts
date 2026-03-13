@@ -295,7 +295,7 @@ export class DrawingExtractionService {
     const saved = await this.attachmentRepo.save(attachment);
     this.logger.log(`Uploaded attachment ${saved.id} for job card ${jobCardId}`);
 
-    const signedUrl = await this.storageService.getPresignedUrl(saved.filePath, 3600);
+    const signedUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
     return { ...saved, filePath: signedUrl };
   }
 
@@ -316,7 +316,7 @@ export class DrawingExtractionService {
     const attachmentsWithUrls = await Promise.all(
       attachmentRecords.map(async (attachment) => {
         const normalizedPath = this.normalizeStoragePath(attachment.filePath);
-        const signedUrl = await this.storageService.getPresignedUrl(normalizedPath, 3600);
+        const signedUrl = await this.storageService.presignedUrl(normalizedPath, 3600);
         return { ...attachment, filePath: signedUrl };
       }),
     );
@@ -375,7 +375,7 @@ export class DrawingExtractionService {
 
       await this.updateLineItemsFromExtraction(companyId, jobCardId, result);
 
-      const signedUrl = await this.storageService.getPresignedUrl(saved.filePath, 3600);
+      const signedUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
       return { ...saved, filePath: signedUrl };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";

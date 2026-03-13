@@ -57,7 +57,7 @@ export class StockControlAuthService {
       return path;
     }
     if (this.storageType === "s3") {
-      return await this.s3StorageService.getPresignedUrl(path, 86400);
+      return await this.s3StorageService.presignedUrl(path, 86400);
     }
     return path;
   }
@@ -432,24 +432,24 @@ export class StockControlAuthService {
       throw new NotFoundException("Company not found");
     }
 
-    if (dto.name !== undefined) company.name = dto.name;
-    if (dto.registrationNumber !== undefined) company.registrationNumber = dto.registrationNumber;
-    if (dto.vatNumber !== undefined) company.vatNumber = dto.vatNumber;
-    if (dto.streetAddress !== undefined) company.streetAddress = dto.streetAddress;
-    if (dto.city !== undefined) company.city = dto.city;
-    if (dto.province !== undefined) company.province = dto.province;
-    if (dto.postalCode !== undefined) company.postalCode = dto.postalCode;
-    if (dto.phone !== undefined) company.phone = dto.phone;
-    if (dto.email !== undefined) company.email = dto.email;
-    if (dto.websiteUrl !== undefined) company.websiteUrl = dto.websiteUrl;
-    if (dto.pipingLossFactorPct !== undefined)
+    if (dto.name != null) company.name = dto.name;
+    if (dto.registrationNumber != null) company.registrationNumber = dto.registrationNumber;
+    if (dto.vatNumber != null) company.vatNumber = dto.vatNumber;
+    if (dto.streetAddress != null) company.streetAddress = dto.streetAddress;
+    if (dto.city != null) company.city = dto.city;
+    if (dto.province != null) company.province = dto.province;
+    if (dto.postalCode != null) company.postalCode = dto.postalCode;
+    if (dto.phone != null) company.phone = dto.phone;
+    if (dto.email != null) company.email = dto.email;
+    if (dto.websiteUrl != null) company.websiteUrl = dto.websiteUrl;
+    if (dto.pipingLossFactorPct != null)
       company.pipingLossFactorPct = dto.pipingLossFactorPct;
-    if (dto.flatPlateLossFactorPct !== undefined)
+    if (dto.flatPlateLossFactorPct != null)
       company.flatPlateLossFactorPct = dto.flatPlateLossFactorPct;
-    if (dto.structuralSteelLossFactorPct !== undefined)
+    if (dto.structuralSteelLossFactorPct != null)
       company.structuralSteelLossFactorPct = dto.structuralSteelLossFactorPct;
-    if (dto.qcEnabled !== undefined) company.qcEnabled = dto.qcEnabled;
-    if (dto.messagingEnabled !== undefined) company.messagingEnabled = dto.messagingEnabled;
+    if (dto.qcEnabled != null) company.qcEnabled = dto.qcEnabled;
+    if (dto.messagingEnabled != null) company.messagingEnabled = dto.messagingEnabled;
 
     await this.companyRepo.save(company);
 

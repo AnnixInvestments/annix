@@ -1363,7 +1363,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!path) {
       throw new NotFoundException("Document path is required");
     }
-    const url = await this.storageService.getPresignedUrl(path);
+    const url = await this.storageService.presignedUrl(path);
     return { url };
   }
 

@@ -62,19 +62,17 @@ export class InvoiceService {
   ) {}
 
   async create(companyId: number, dto: CreateInvoiceDto): Promise<SupplierInvoice> {
-    let supplierName = dto.supplierName;
+    const deliveryNote = dto.deliveryNoteId
+      ? await this.deliveryNoteRepo.findOne({
+          where: { id: dto.deliveryNoteId, companyId },
+        })
+      : null;
 
-    if (dto.deliveryNoteId) {
-      const deliveryNote = await this.deliveryNoteRepo.findOne({
-        where: { id: dto.deliveryNoteId, companyId },
-      });
-
-      if (!deliveryNote) {
-        throw new NotFoundException(`Delivery note ${dto.deliveryNoteId} not found`);
-      }
-
-      supplierName = dto.supplierName || deliveryNote.supplierName;
+    if (dto.deliveryNoteId && !deliveryNote) {
+      throw new NotFoundException(`Delivery note ${dto.deliveryNoteId} not found`);
     }
+
+    const supplierName = dto.supplierName || deliveryNote?.supplierName || dto.supplierName;
 
     const invoice = this.invoiceRepo.create({
       companyId,
@@ -178,12 +176,12 @@ export class InvoiceService {
 
   private async resolveScanUrl(invoice: SupplierInvoice): Promise<SupplierInvoice> {
     if (invoice.scanUrl && !invoice.scanUrl.startsWith("http")) {
-      invoice.scanUrl = await this.storageService.getPresignedUrl(invoice.scanUrl, 3600);
+      invoice.scanUrl = await this.storageService.presignedUrl(invoice.scanUrl, 3600);
     } else if (invoice.scanUrl?.includes("X-Amz-Expires")) {
       const pathMatch = invoice.scanUrl.match(/\.com\/(.+?)\?/);
       if (pathMatch) {
         const s3Key = decodeURIComponent(pathMatch[1]);
-        invoice.scanUrl = await this.storageService.getPresignedUrl(s3Key, 3600);
+        invoice.scanUrl = await this.storageService.presignedUrl(s3Key, 3600);
       }
     }
     return invoice;

@@ -132,7 +132,7 @@ export class StaffService {
 
     if (s3Path) {
       try {
-        member.photoUrl = await this.storageService.getPresignedUrl(s3Path, 3600);
+        member.photoUrl = await this.storageService.presignedUrl(s3Path, 3600);
         this.logger.log(`Presigned URL generated for ${member.name}`);
       } catch (error) {
         this.logger.error(

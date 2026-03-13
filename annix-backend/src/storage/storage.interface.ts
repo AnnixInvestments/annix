@@ -21,8 +21,8 @@ export interface IStorageService {
   download(path: string): Promise<Buffer>;
   delete(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
-  getPublicUrl(path: string): string;
-  getPresignedUrl(path: string, expiresIn?: number): Promise<string>;
+  publicUrl(path: string): string;
+  presignedUrl(path: string, expiresIn?: number): Promise<string>;
 }
 
 export const STORAGE_SERVICE = "STORAGE_SERVICE";

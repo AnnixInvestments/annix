@@ -35,8 +35,8 @@ describe("RecordingService", () => {
       download: jest.fn(),
       delete: jest.fn(),
       exists: jest.fn(),
-      getPresignedUrl: jest.fn(),
-      getPublicUrl: jest.fn(),
+      presignedUrl: jest.fn(),
+      publicUrl: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -141,7 +141,7 @@ describe("RecordingService", () => {
 
       (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue(mockRecording);
       (mockStorageService.exists as jest.Mock).mockResolvedValue(true);
-      (mockStorageService.getPresignedUrl as jest.Mock).mockResolvedValue(
+      (mockStorageService.presignedUrl as jest.Mock).mockResolvedValue(
         "https://s3.example.com/presigned-url",
       );
 
@@ -152,7 +152,7 @@ describe("RecordingService", () => {
         mimeType: "audio/webm",
         fileSize: 1024,
       });
-      expect(mockStorageService.getPresignedUrl).toHaveBeenCalledWith(
+      expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
         "fieldflow/recordings/1/test.webm",
         3600,
       );

@@ -294,7 +294,7 @@ describe("Storage Integration Tests", () => {
     it("should generate presigned URL for file access", async () => {
       const path = `${StorageArea.ANNIX_REP}/recordings/1/audio.webm`;
 
-      const url = await storageService.getPresignedUrl(path, 3600);
+      const url = await storageService.presignedUrl(path, 3600);
 
       expect(url).toContain(path.replace(/\\/g, "/"));
     });

@@ -406,7 +406,7 @@ export class SecureDocumentsService {
       throw new NotFoundException(`Document #${id} has no attachment`);
     }
 
-    const url = await this.s3StorageService.getPresignedUrl(document.attachmentPath, 3600);
+    const url = await this.s3StorageService.presignedUrl(document.attachmentPath, 3600);
 
     return {
       url,

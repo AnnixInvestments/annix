@@ -20,18 +20,18 @@ import { IStorageService, StorageResult } from "./storage.interface";
 export class S3StorageService implements IStorageService, OnModuleInit {
   private readonly logger = new Logger(S3StorageService.name);
   private readonly s3Client: S3Client;
-  private readonly bucket: string;
-  private readonly region: string;
+  private readonly bucketName: string;
+  private readonly regionName: string;
   private readonly presignedUrlExpiration: number;
   private initialized = false;
 
   constructor(private configService: ConfigService) {
-    this.region = this.configService.get<string>("AWS_REGION") || "af-south-1";
-    this.bucket = this.configService.get<string>("AWS_S3_BUCKET") || "annix-sync-files";
+    this.regionName = this.configService.get<string>("AWS_REGION") || "af-south-1";
+    this.bucketName = this.configService.get<string>("AWS_S3_BUCKET") || "annix-sync-files";
     this.presignedUrlExpiration = this.configService.get<number>("AWS_S3_URL_EXPIRATION") || 3600; // 1 hour default
 
     this.s3Client = new S3Client({
-      region: this.region,
+      region: this.regionName,
       credentials: {
         accessKeyId: this.configService.get<string>("AWS_ACCESS_KEY_ID") || "",
         secretAccessKey: this.configService.get<string>("AWS_SECRET_ACCESS_KEY") || "",
@@ -39,7 +39,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
     });
 
     this.logger.log(
-      `S3 Storage Service initialized for bucket: ${this.bucket} in region: ${this.region}`,
+      `S3 Storage Service initialized for bucket: ${this.bucketName} in region: ${this.regionName}`,
     );
   }
 
@@ -55,8 +55,8 @@ export class S3StorageService implements IStorageService, OnModuleInit {
     if (this.initialized) return;
 
     try {
-      await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucket }));
-      this.logger.log(`S3 bucket '${this.bucket}' exists and is accessible`);
+      await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucketName }));
+      this.logger.log(`S3 bucket '${this.bucketName}' exists and is accessible`);
       this.initialized = true;
     } catch (error: unknown) {
       const s3Error = this.parseS3Error(error);
@@ -65,7 +65,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
         s3Error.httpStatusCode === 404 ||
         s3Error.name === "NoSuchBucket"
       ) {
-        this.logger.log(`S3 bucket '${this.bucket}' not found, creating...`);
+        this.logger.log(`S3 bucket '${this.bucketName}' not found, creating...`);
         await this.createBucket();
       } else {
         this.logger.warn(
@@ -80,27 +80,27 @@ export class S3StorageService implements IStorageService, OnModuleInit {
     try {
       await this.s3Client.send(
         new CreateBucketCommand({
-          Bucket: this.bucket,
-          ...(this.region !== "us-east-1" && {
+          Bucket: this.bucketName,
+          ...(this.regionName !== "us-east-1" && {
             CreateBucketConfiguration: {
-              LocationConstraint: this.region as BucketLocationConstraint,
+              LocationConstraint: this.regionName as BucketLocationConstraint,
             },
           }),
         }),
       );
-      this.logger.log(`S3 bucket '${this.bucket}' created successfully`);
+      this.logger.log(`S3 bucket '${this.bucketName}' created successfully`);
 
       await this.configureCors();
       this.initialized = true;
     } catch (error: unknown) {
       const s3Error = this.parseS3Error(error);
       if (s3Error.name === "BucketAlreadyOwnedByYou") {
-        this.logger.log(`S3 bucket '${this.bucket}' already exists (owned by you)`);
+        this.logger.log(`S3 bucket '${this.bucketName}' already exists (owned by you)`);
         await this.configureCors();
         this.initialized = true;
       } else if (s3Error.name === "BucketAlreadyExists") {
         this.logger.error(
-          `S3 bucket name '${this.bucket}' is already taken globally. Choose a different name.`,
+          `S3 bucket name '${this.bucketName}' is already taken globally. Choose a different name.`,
         );
         throw error;
       } else {
@@ -114,7 +114,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
     try {
       await this.s3Client.send(
         new PutBucketCorsCommand({
-          Bucket: this.bucket,
+          Bucket: this.bucketName,
           CORSConfiguration: {
             CORSRules: [
               {
@@ -133,7 +133,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
           },
         }),
       );
-      this.logger.log(`CORS configured for bucket '${this.bucket}'`);
+      this.logger.log(`CORS configured for bucket '${this.bucketName}'`);
     } catch (error: unknown) {
       const s3Error = this.parseS3Error(error);
       this.logger.warn(`Could not configure CORS: ${s3Error.message}`);
@@ -165,7 +165,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
 
     try {
       const command = new PutObjectCommand({
-        Bucket: this.bucket,
+        Bucket: this.bucketName,
         Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
@@ -181,7 +181,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
 
       return {
         path: key,
-        url: await this.getPresignedUrl(key),
+        url: await this.presignedUrl(key),
         size: file.size,
         mimeType: file.mimetype,
         originalFilename: file.originalname,
@@ -198,7 +198,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
 
     try {
       const command = new GetObjectCommand({
-        Bucket: this.bucket,
+        Bucket: this.bucketName,
         Key: key,
       });
 
@@ -233,7 +233,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
 
     try {
       const command = new DeleteObjectCommand({
-        Bucket: this.bucket,
+        Bucket: this.bucketName,
         Key: key,
       });
 
@@ -251,7 +251,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
 
     try {
       const command = new HeadObjectCommand({
-        Bucket: this.bucket,
+        Bucket: this.bucketName,
         Key: key,
       });
 
@@ -267,24 +267,17 @@ export class S3StorageService implements IStorageService, OnModuleInit {
     }
   }
 
-  getPublicUrl(path: string): string {
-    // For S3, we return a presigned URL that expires
-    // This is synchronous but returns a placeholder - use getPresignedUrl for actual URLs
+  publicUrl(path: string): string {
     const key = path.replace(/\\/g, "/").replace(/^\//, "");
-    return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
+    return `https://${this.bucketName}.s3.${this.regionName}.amazonaws.com/${key}`;
   }
 
-  /**
-   * Generate a presigned URL for secure, time-limited access to the file
-   * @param path - The S3 key of the file
-   * @param expiresIn - Expiration time in seconds (default: 1 hour)
-   */
-  async getPresignedUrl(path: string, expiresIn?: number): Promise<string> {
+  async presignedUrl(path: string, expiresIn?: number): Promise<string> {
     const key = path.replace(/\\/g, "/").replace(/^\//, "");
 
     try {
       const command = new GetObjectCommand({
-        Bucket: this.bucket,
+        Bucket: this.bucketName,
         Key: key,
       });
 
@@ -300,17 +293,11 @@ export class S3StorageService implements IStorageService, OnModuleInit {
     }
   }
 
-  /**
-   * Get the S3 bucket name
-   */
-  getBucket(): string {
-    return this.bucket;
+  bucket(): string {
+    return this.bucketName;
   }
 
-  /**
-   * Get the AWS region
-   */
-  getRegion(): string {
-    return this.region;
+  region(): string {
+    return this.regionName;
   }
 }

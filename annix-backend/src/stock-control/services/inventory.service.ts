@@ -33,13 +33,13 @@ export class InventoryService {
         if (item.photoUrl.includes("X-Amz-Signature") || item.photoUrl.includes("X-Amz-Expires")) {
           const pathMatch = item.photoUrl.match(/\.com\/(.+?)(\?|$)/);
           if (pathMatch) {
-            item.photoUrl = await this.storageService.getPresignedUrl(
+            item.photoUrl = await this.storageService.presignedUrl(
               decodeURIComponent(pathMatch[1]),
               3600,
             );
           }
         } else if (!item.photoUrl.startsWith("http://") && !item.photoUrl.startsWith("https://")) {
-          item.photoUrl = await this.storageService.getPresignedUrl(item.photoUrl, 3600);
+          item.photoUrl = await this.storageService.presignedUrl(item.photoUrl, 3600);
         }
         return item;
       }),
@@ -199,7 +199,7 @@ export class InventoryService {
   async groupedByCategory(
     companyId: number,
     search?: string,
-    locationId?: number,
+    locationId: number | null = null,
     page = 1,
     limit = 500,
   ): Promise<{
