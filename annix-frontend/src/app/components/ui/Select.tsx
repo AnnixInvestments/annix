@@ -36,8 +36,8 @@ interface SelectProps {
 }
 
 const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
-  (
-    {
+  (props, ref) => {
+    const {
       id,
       value,
       onChange,
@@ -49,14 +49,12 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
       loading,
       open: controlledOpen,
       onOpenChange,
-      "aria-required": ariaRequired,
-      "aria-invalid": ariaInvalid,
-      "aria-describedby": ariaDescribedby,
-      "aria-label": ariaLabel,
-      "data-nix-target": dataNixTarget,
-    },
-    ref,
-  ) => {
+    } = props;
+    const ariaRequired = props["aria-required"];
+    const ariaInvalid = props["aria-invalid"];
+    const ariaDescribedby = props["aria-describedby"];
+    const ariaLabel = props["aria-label"];
+    const dataNixTarget = props["data-nix-target"];
     const [internalOpen, setInternalOpen] = React.useState(false);
     const [searchTerm, setSearchTerm] = React.useState("");
     const [highlightedIndex, setHighlightedIndex] = React.useState(0);
