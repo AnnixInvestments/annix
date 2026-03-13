@@ -28,6 +28,7 @@ import {
   ScanDispatchItemDto,
   ScanQrDto,
   ToggleStepBackgroundDto,
+  UpdateStepFollowsDto,
   UpdateNotificationRecipientsDto,
   UpdateStepAssignmentsDto,
   UpdateStepLabelDto,
@@ -381,6 +382,17 @@ export class WorkflowController {
       dto.isBackground,
       dto.triggerAfterStep,
     );
+  }
+
+  @Put("step-configs/:key/follows")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update which step a step follows" })
+  async updateStepFollows(
+    @Req() req: any,
+    @Param("key") key: string,
+    @Body() dto: UpdateStepFollowsDto,
+  ) {
+    return this.stepConfigService.updateFollows(req.user.companyId, key, dto.triggerAfterStep);
   }
 
   @Delete("step-configs/:key")

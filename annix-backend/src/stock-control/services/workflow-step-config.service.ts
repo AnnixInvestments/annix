@@ -42,7 +42,7 @@ export class WorkflowStepConfigService {
   async backgroundSteps(companyId: number): Promise<WorkflowStepConfig[]> {
     return this.repo.find({
       where: { companyId, isBackground: true },
-      order: { createdAt: "ASC" },
+      order: { sortOrder: "ASC", createdAt: "ASC" },
     });
   }
 
@@ -162,6 +162,21 @@ export class WorkflowStepConfigService {
     step.triggerAfterStep = isBackground ? (triggerAfterStep ?? null) : null;
     step.sortOrder = isBackground ? 0 : await this.nextSortOrder(companyId);
 
+    return this.repo.save(step);
+  }
+
+  async updateFollows(
+    companyId: number,
+    stepKey: string,
+    triggerAfterStep: string | null,
+  ): Promise<WorkflowStepConfig> {
+    const step = await this.repo.findOne({ where: { companyId, key: stepKey } });
+
+    if (!step) {
+      throw new NotFoundException(`Step "${stepKey}" not found for this company`);
+    }
+
+    step.triggerAfterStep = triggerAfterStep;
     return this.repo.save(step);
   }
 

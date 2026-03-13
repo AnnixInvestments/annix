@@ -3552,6 +3552,19 @@ class StockControlApiClient {
     );
   }
 
+  async updateStepFollows(
+    key: string,
+    triggerAfterStep: string | null,
+  ): Promise<WorkflowStepConfig> {
+    return this.request(
+      `/stock-control/workflow/step-configs/${encodeURIComponent(key)}/follows`,
+      {
+        method: "PUT",
+        body: JSON.stringify({ triggerAfterStep }),
+      },
+    );
+  }
+
   async backgroundStepConfigs(): Promise<WorkflowStepConfig[]> {
     return this.request("/stock-control/workflow/step-configs/background");
   }

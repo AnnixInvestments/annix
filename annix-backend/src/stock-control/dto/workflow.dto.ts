@@ -143,6 +143,13 @@ export class ToggleStepBackgroundDto {
   triggerAfterStep?: string;
 }
 
+export class UpdateStepFollowsDto {
+  @ApiProperty({ description: "The step key this step should follow (null for first)" })
+  @IsOptional()
+  @IsString()
+  triggerAfterStep: string | null;
+}
+
 export class ReorderStepConfigsDto {
   @ApiProperty({ description: "Step keys in the desired order", type: [String] })
   @IsArray()
