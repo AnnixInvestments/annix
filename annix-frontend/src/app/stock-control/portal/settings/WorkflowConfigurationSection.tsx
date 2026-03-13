@@ -102,37 +102,44 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   const triggerKey = (s: WorkflowStepConfig) =>
     String(s["triggerAfterStep" as keyof WorkflowStepConfig] ?? "");
 
-  const backgroundStepsByTrigger = backgroundSteps.reduce<Record<string, WorkflowStepConfig[]>>(
-    (acc, bg) => {
-      const key = triggerKey(bg);
-      return { ...acc, [key]: [...(acc[key] ?? []), bg] };
-    },
-    {},
-  );
+  const allStepsByKey = [...stepConfigs, ...backgroundSteps].reduce<
+    Record<string, WorkflowStepConfig>
+  >((acc, s) => ({ ...acc, [s.key]: s }), {});
+
+  const followersByKey = [...stepConfigs, ...backgroundSteps].reduce<
+    Record<string, WorkflowStepConfig[]>
+  >((acc, s) => {
+    const parent = triggerKey(s);
+    if (parent) {
+      return { ...acc, [parent]: [...(acc[parent] ?? []), s] };
+    }
+    return acc;
+  }, {});
 
   const unifiedSteps = (() => {
     const result: WorkflowStepConfig[] = [];
-    const insertedBgKeys = new Set<string>();
+    const inserted = new Set<string>();
 
-    const insertChainedBg = (afterKey: string) => {
-      const bgForStep = backgroundStepsByTrigger[afterKey] ?? [];
-      bgForStep.forEach((bg) => {
-        if (!insertedBgKeys.has(bg.key)) {
-          insertedBgKeys.add(bg.key);
-          result.push(bg);
-          insertChainedBg(bg.key);
-        }
-      });
+    const insertWithFollowers = (step: WorkflowStepConfig) => {
+      if (inserted.has(step.key)) return;
+      inserted.add(step.key);
+      result.push(step);
+      const followers = followersByKey[step.key] ?? [];
+      followers.forEach((f) => insertWithFollowers(f));
     };
 
-    stepConfigs.forEach((fg) => {
-      result.push(fg);
-      insertChainedBg(fg.key);
+    const roots = [...stepConfigs, ...backgroundSteps].filter((s) => {
+      const parent = triggerKey(s);
+      return !parent || !allStepsByKey[parent];
     });
 
-    backgroundSteps.forEach((bg) => {
-      if (!insertedBgKeys.has(bg.key)) {
-        result.push(bg);
+    roots
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .forEach((root) => insertWithFollowers(root));
+
+    [...stepConfigs, ...backgroundSteps].forEach((s) => {
+      if (!inserted.has(s.key)) {
+        insertWithFollowers(s);
       }
     });
 
