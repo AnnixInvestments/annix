@@ -1,7 +1,8 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { ComplySaCompany } from "../companies/entities/company.entity";
+import { ComplySaDocument } from "../comply-documents/entities/document.entity";
 import { fromISO, now } from "../lib/datetime";
 import { ComplySaAuditLog } from "./entities/audit-log.entity";
 import { ComplySaChecklistProgress } from "./entities/checklist-progress.entity";
@@ -31,6 +32,8 @@ export class ComplySaComplianceService {
     private readonly auditLogRepository: Repository<ComplySaAuditLog>,
     @InjectRepository(ComplySaCompany)
     private readonly companyRepository: Repository<ComplySaCompany>,
+    @InjectRepository(ComplySaDocument)
+    private readonly documentRepository: Repository<ComplySaDocument>,
     private readonly ruleEngineService: ComplySaRuleEngineService,
     private readonly deadlineService: ComplySaDeadlineService,
   ) {}
@@ -73,30 +76,112 @@ export class ComplySaComplianceService {
   }
 
   async companyDashboard(companyId: number) {
-    const statuses = await this.statusRepository.find({
-      where: { companyId },
-      relations: ["requirement"],
-    });
+    const [company, statuses] = await Promise.all([
+      this.companyRepository.findOne({ where: { id: companyId } }),
+      this.statusRepository.find({
+        where: { companyId },
+        relations: ["requirement"],
+      }),
+    ]);
 
     const totalCount = statuses.length;
     const compliantCount = statuses.filter((s) => s.status === "compliant").length;
+    const warningCount = statuses.filter((s) => s.status === "warning").length;
+    const overdueCount = statuses.filter((s) => s.status === "overdue").length;
     const overallScore = totalCount > 0 ? Math.round((compliantCount / totalCount) * 100) : 0;
 
-    const groupedByStatus = statuses.reduce(
-      (acc, status) => {
-        const key = status.status;
-        const existing = acc[key] ?? [];
-        return { ...acc, [key]: [...existing, status] };
+    const requirementIds = statuses
+      .filter((s) => s.requirement !== null)
+      .map((s) => s.requirement.id);
+
+    const [checklistProgress, documents] = await Promise.all([
+      requirementIds.length > 0
+        ? this.checklistRepository.find({
+            where: { companyId, requirementId: In(requirementIds) },
+          })
+        : Promise.resolve([]),
+      requirementIds.length > 0
+        ? this.documentRepository.find({
+            where: { companyId, requirementId: In(requirementIds) },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const checklistByReq = checklistProgress.reduce(
+      (acc, cp) => {
+        const existing = acc[cp.requirementId] ?? [];
+        return { ...acc, [cp.requirementId]: [...existing, cp] };
       },
-      {} as Record<string, ComplySaComplianceStatus[]>,
+      {} as Record<number, ComplySaChecklistProgress[]>,
     );
 
+    const docsByReq = documents.reduce(
+      (acc, doc) => {
+        if (doc.requirementId === null) return acc;
+        const existing = acc[doc.requirementId] ?? [];
+        return { ...acc, [doc.requirementId]: [...existing, doc] };
+      },
+      {} as Record<number, ComplySaDocument[]>,
+    );
+
+    const requirements = statuses
+      .filter((s) => s.requirement !== null)
+      .map((s) => {
+        const req = s.requirement;
+        const steps = req.checklistSteps ?? [];
+        const progress = checklistByReq[req.id] ?? [];
+        const reqDocs = docsByReq[req.id] ?? [];
+
+        const checklist = steps.map((step, index) => {
+          const cp = progress.find((p) => p.stepIndex === index);
+          return { step, completed: cp?.completed ?? false };
+        });
+
+        return {
+          id: String(req.id),
+          name: req.name,
+          category: req.category,
+          status: s.status,
+          description: req.description,
+          nextDueDate: s.nextDueDate?.toISOString() ?? null,
+          checklist,
+          documents: reqDocs.map((d) => ({
+            id: String(d.id),
+            name: d.name,
+            uploadedAt: d.createdAt.toISOString(),
+          })),
+        };
+      });
+
+    const nowMs = Date.now();
+    const upcomingDeadlines = statuses
+      .filter((s) => s.nextDueDate !== null && s.requirement !== null)
+      .map((s) => ({
+        id: String(s.id),
+        requirementName: s.requirement.name,
+        dueDate: s.nextDueDate!.toISOString(),
+        daysRemaining: Math.max(
+          0,
+          Math.ceil((s.nextDueDate!.getTime() - nowMs) / (1000 * 60 * 60 * 24)),
+        ),
+        status: s.status,
+      }))
+      .sort((a, b) => a.daysRemaining - b.daysRemaining)
+      .slice(0, 10);
+
     return {
+      companyName: company?.name ?? "My Company",
+      complianceScore: overallScore,
+      summary: {
+        compliant: compliantCount,
+        warning: warningCount,
+        overdue: overdueCount,
+      },
+      upcomingDeadlines,
+      requirements,
       overallScore,
       totalRequirements: totalCount,
       compliantCount,
-      statuses,
-      groupedByStatus,
     };
   }
 
