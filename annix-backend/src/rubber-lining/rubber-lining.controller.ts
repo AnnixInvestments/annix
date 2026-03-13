@@ -2880,6 +2880,10 @@ Formula: totalPrice = totalKg × salePricePerKg
     const docBuffer = await this.storageService.download(invoice.documentPath);
     const ext = invoice.documentPath.split(".").pop()?.toLowerCase() || "";
 
+    const correctionHints = await this.rubberTaxInvoiceService.correctionHintsForSupplier(
+      invoice.companyName,
+    );
+
     let extractionResult: {
       data: import("./entities/rubber-tax-invoice.entity").ExtractedTaxInvoiceData;
       tokensUsed?: number;
@@ -2892,7 +2896,10 @@ Formula: totalPrice = totalKg × salePricePerKg
       if (docText.length < 20) {
         throw new BadRequestException("Word document appears to be empty or unreadable");
       }
-      extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(docText);
+      extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(
+        docText,
+        correctionHints,
+      );
     } else if (ext === "xlsx" || ext === "xls") {
       const workbook = XLSX.read(docBuffer, { type: "buffer" });
       const sheetTexts = workbook.SheetNames.map((name: string) => {
@@ -2903,7 +2910,10 @@ Formula: totalPrice = totalKg × salePricePerKg
       if (excelText.length < 20) {
         throw new BadRequestException("Excel document appears to be empty or unreadable");
       }
-      extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(excelText);
+      extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(
+        excelText,
+        correctionHints,
+      );
     } else {
       let pdfText = "";
       try {
@@ -2914,10 +2924,15 @@ Formula: totalPrice = totalKg × salePricePerKg
       }
 
       if (pdfText.length >= 50) {
-        extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(pdfText);
+        extractionResult = await this.rubberCocExtractionService.extractTaxInvoice(
+          pdfText,
+          correctionHints,
+        );
       } else {
-        extractionResult =
-          await this.rubberCocExtractionService.extractTaxInvoiceFromImages(docBuffer);
+        extractionResult = await this.rubberCocExtractionService.extractTaxInvoiceFromImages(
+          docBuffer,
+          correctionHints,
+        );
       }
     }
 

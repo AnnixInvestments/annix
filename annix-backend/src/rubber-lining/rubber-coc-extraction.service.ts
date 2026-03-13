@@ -384,7 +384,10 @@ export class RubberCocExtractionService {
     };
   }
 
-  async extractTaxInvoice(pdfText: string): Promise<{
+  async extractTaxInvoice(
+    pdfText: string,
+    correctionHints?: string | null,
+  ): Promise<{
     data: ExtractedTaxInvoiceData;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -396,8 +399,12 @@ export class RubberCocExtractionService {
       throw new Error("GEMINI_API_KEY not configured");
     }
 
+    const systemPrompt = correctionHints
+      ? `${TAX_INVOICE_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : TAX_INVOICE_SYSTEM_PROMPT;
+
     const response = await this.callGemini(
-      TAX_INVOICE_SYSTEM_PROMPT,
+      systemPrompt,
       taxInvoiceExtractionPrompt(pdfText),
       "tax-invoice-extraction",
     );
@@ -412,7 +419,10 @@ export class RubberCocExtractionService {
     };
   }
 
-  async extractTaxInvoiceFromImages(pdfBuffer: Buffer): Promise<{
+  async extractTaxInvoiceFromImages(
+    pdfBuffer: Buffer,
+    correctionHints?: string | null,
+  ): Promise<{
     data: ExtractedTaxInvoiceData;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -424,11 +434,15 @@ export class RubberCocExtractionService {
       throw new Error("GEMINI_API_KEY not configured");
     }
 
+    const systemPrompt = correctionHints
+      ? `${TAX_INVOICE_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : TAX_INVOICE_SYSTEM_PROMPT;
+
     const images = await this.convertPdfToImages(pdfBuffer);
     this.logger.log(`Converted tax invoice PDF to ${images.length} image(s) for OCR extraction`);
 
     const response = await this.callGeminiWithImages(
-      TAX_INVOICE_SYSTEM_PROMPT,
+      systemPrompt,
       "Please extract structured data from this tax invoice image. Return ONLY a valid JSON object with the extracted data.",
       images,
       "tax-invoice-ocr-extraction",

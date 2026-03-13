@@ -5,6 +5,7 @@ import { formatISODate, generateUniqueId } from "../lib/datetime";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
+import { RubberTaxInvoiceCorrection } from "./entities/rubber-tax-invoice-correction.entity";
 import {
   ExtractedTaxInvoiceData,
   RubberTaxInvoice,
@@ -74,6 +75,7 @@ export interface UpdateTaxInvoiceDto {
   unit?: string;
   costPerUnit?: number;
   subtotal?: number;
+  correctedBy?: string;
 }
 
 @Injectable()
@@ -87,6 +89,8 @@ export class RubberTaxInvoiceService {
     private companyRepository: Repository<RubberCompany>,
     @InjectRepository(RubberProductCoding)
     private productCodingRepository: Repository<RubberProductCoding>,
+    @InjectRepository(RubberTaxInvoiceCorrection)
+    private correctionRepository: Repository<RubberTaxInvoiceCorrection>,
     private rubberStockService: RubberStockService,
   ) {}
 
@@ -164,6 +168,58 @@ export class RubberTaxInvoiceService {
     });
     if (!invoice) return null;
 
+    const existing = invoice.extractedData ?? {
+      invoiceNumber: invoice.invoiceNumber,
+      invoiceDate: invoice.invoiceDate ? formatISODate(invoice.invoiceDate) : null,
+      companyName: null,
+      productSummary: null,
+      deliveryNoteRef: null,
+      orderNumber: null,
+      lineItems: [],
+      subtotal: null,
+      vatAmount: null,
+      totalAmount: null,
+    };
+
+    const corrections: { field: string; original: string; corrected: string }[] = [];
+    const supplierName = invoice.company?.name ?? existing.companyName ?? null;
+
+    if (dto.orderNumber !== undefined && dto.orderNumber !== existing.orderNumber) {
+      corrections.push({
+        field: "orderNumber",
+        original: existing.orderNumber ?? "",
+        corrected: dto.orderNumber ?? "",
+      });
+    }
+    if (dto.vatAmount !== undefined && dto.vatAmount !== existing.vatAmount) {
+      corrections.push({
+        field: "vatAmount",
+        original: String(existing.vatAmount ?? ""),
+        corrected: String(dto.vatAmount ?? ""),
+      });
+    }
+    if (dto.totalAmount !== undefined && dto.totalAmount !== (existing.totalAmount ?? null)) {
+      corrections.push({
+        field: "totalAmount",
+        original: String(existing.totalAmount ?? ""),
+        corrected: String(dto.totalAmount ?? ""),
+      });
+    }
+    if (dto.subtotal !== undefined && dto.subtotal !== existing.subtotal) {
+      corrections.push({
+        field: "subtotal",
+        original: String(existing.subtotal ?? ""),
+        corrected: String(dto.subtotal ?? ""),
+      });
+    }
+    if (dto.quantity !== undefined && dto.quantity !== existing.productQuantity) {
+      corrections.push({
+        field: "quantity",
+        original: String(existing.productQuantity ?? ""),
+        corrected: String(dto.quantity ?? ""),
+      });
+    }
+
     if (dto.invoiceNumber !== undefined) invoice.invoiceNumber = dto.invoiceNumber;
     if (dto.invoiceDate !== undefined) {
       invoice.invoiceDate = dto.invoiceDate ? new Date(dto.invoiceDate) : null;
@@ -186,19 +242,6 @@ export class RubberTaxInvoiceService {
       dto.subtotal !== undefined;
 
     if (hasExtractedDataUpdate) {
-      const existing = invoice.extractedData ?? {
-        invoiceNumber: invoice.invoiceNumber,
-        invoiceDate: invoice.invoiceDate ? formatISODate(invoice.invoiceDate) : null,
-        companyName: null,
-        productSummary: null,
-        deliveryNoteRef: null,
-        orderNumber: null,
-        lineItems: [],
-        subtotal: null,
-        vatAmount: null,
-        totalAmount: null,
-      };
-
       if (dto.productDescription !== undefined) existing.productSummary = dto.productDescription;
       if (dto.orderNumber !== undefined) existing.orderNumber = dto.orderNumber;
       if (dto.deliveryNoteRef !== undefined) existing.deliveryNoteRef = dto.deliveryNoteRef;
@@ -214,6 +257,20 @@ export class RubberTaxInvoiceService {
     }
 
     await this.taxInvoiceRepository.save(invoice);
+
+    if (corrections.length > 0 && supplierName) {
+      const correctionEntities = corrections.map((c) =>
+        this.correctionRepository.create({
+          taxInvoiceId: id,
+          supplierName,
+          fieldName: c.field,
+          originalValue: c.original,
+          correctedValue: c.corrected,
+          correctedBy: dto.correctedBy ?? null,
+        }),
+      );
+      await this.correctionRepository.save(correctionEntities);
+    }
 
     const result = await this.taxInvoiceRepository.findOne({
       where: { id },
@@ -481,5 +538,24 @@ export class RubberTaxInvoiceService {
       unit: productSummary.unit,
       costPerUnit: productSummary.costPerUnit,
     };
+  }
+
+  async correctionHintsForSupplier(supplierName: string | null): Promise<string | null> {
+    if (!supplierName) return null;
+
+    const recentCorrections = await this.correctionRepository.find({
+      where: { supplierName },
+      order: { createdAt: "DESC" },
+      take: 30,
+    });
+
+    if (recentCorrections.length === 0) return null;
+
+    const hints = recentCorrections.map(
+      (c) =>
+        `- Field "${c.fieldName}" was corrected from "${c.originalValue}" to "${c.correctedValue}"`,
+    );
+
+    return `PREVIOUS CORRECTIONS FOR THIS SUPPLIER (learn from these patterns):\n${hints.join("\n")}\n\nApply these patterns to new invoices from the same supplier. For example, if orderNumber was consistently corrected from a long reference to a short number, extract the short number from the header table.`;
   }
 }

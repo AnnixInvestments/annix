@@ -427,6 +427,9 @@ export class RubberInboundEmailService {
           this.logger.log(`Created Tax Invoice ${invoice.id} from email attachment`);
 
           try {
+            const correctionHints = await this.taxInvoiceService.correctionHintsForSupplier(
+              supplierMapping.company.name,
+            );
             const isPdf =
               attachment.contentType === "application/pdf" ||
               attachment.filename?.toLowerCase().endsWith(".pdf");
@@ -434,7 +437,10 @@ export class RubberInboundEmailService {
             if (isPdf) {
               const pdfText = await this.extractTextFromPdf(attachment.content);
               if (pdfText.length >= 50) {
-                const extractionResult = await this.cocExtractionService.extractTaxInvoice(pdfText);
+                const extractionResult = await this.cocExtractionService.extractTaxInvoice(
+                  pdfText,
+                  correctionHints,
+                );
                 await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
                 this.logger.log(
                   `Auto-extracted Tax Invoice ${invoice.id} in ${extractionResult.processingTimeMs}ms`,
@@ -444,15 +450,20 @@ export class RubberInboundEmailService {
                   `Tax Invoice ${invoice.id} PDF text too short (${pdfText.length} chars), falling back to OCR`,
                 );
                 const extractionResult =
-                  await this.cocExtractionService.extractTaxInvoiceFromImages(attachment.content);
+                  await this.cocExtractionService.extractTaxInvoiceFromImages(
+                    attachment.content,
+                    correctionHints,
+                  );
                 await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
                 this.logger.log(
                   `Auto-extracted Tax Invoice ${invoice.id} via OCR in ${extractionResult.processingTimeMs}ms`,
                 );
               }
             } else {
-              const extractionResult =
-                await this.cocExtractionService.extractTaxInvoice(documentText);
+              const extractionResult = await this.cocExtractionService.extractTaxInvoice(
+                documentText,
+                correctionHints,
+              );
               await this.taxInvoiceService.setExtractedData(invoice.id, extractionResult.data);
               this.logger.log(
                 `Auto-extracted Tax Invoice ${invoice.id} from ${attachment.contentType} in ${extractionResult.processingTimeMs}ms`,
@@ -897,6 +908,9 @@ ${truncatedText}`;
     } else if (documentType === "tax_invoice") {
       result.taxInvoiceIds = [];
       const companyId = metadata.companyId as number;
+      const company = companyId
+        ? await this.companyRepository.findOne({ where: { id: companyId } })
+        : null;
       const subPath = `au-rubber/tax-invoices/${companyId}`;
 
       for (const file of files) {
@@ -916,7 +930,7 @@ ${truncatedText}`;
 
         result.taxInvoiceIds.push(invoice.id);
 
-        this.autoExtractTaxInvoice(invoice.id, file);
+        this.autoExtractTaxInvoice(invoice.id, file, company?.name ?? null);
       }
     } else {
       result.deliveryNoteIds = [];
@@ -944,16 +958,27 @@ ${truncatedText}`;
     return result;
   }
 
-  private autoExtractTaxInvoice(invoiceId: number, file: Express.Multer.File): void {
+  private autoExtractTaxInvoice(
+    invoiceId: number,
+    file: Express.Multer.File,
+    companyName: string | null,
+  ): void {
     const ext = file.originalname.split(".").pop()?.toLowerCase() || "";
     const isPdf = ext === "pdf";
 
     (async () => {
       try {
+        const correctionHints = companyName
+          ? await this.taxInvoiceService.correctionHintsForSupplier(companyName)
+          : null;
+
         if (isPdf) {
           const pdfText = await this.extractTextFromPdf(file.buffer);
           if (pdfText.length >= 50) {
-            const extractionResult = await this.cocExtractionService.extractTaxInvoice(pdfText);
+            const extractionResult = await this.cocExtractionService.extractTaxInvoice(
+              pdfText,
+              correctionHints,
+            );
             await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
             this.logger.log(
               `Auto-extracted Tax Invoice ${invoiceId} in ${extractionResult.processingTimeMs}ms`,
@@ -961,6 +986,7 @@ ${truncatedText}`;
           } else {
             const extractionResult = await this.cocExtractionService.extractTaxInvoiceFromImages(
               file.buffer,
+              correctionHints,
             );
             await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
             this.logger.log(
@@ -972,7 +998,10 @@ ${truncatedText}`;
           const textResult = await mammoth.extractRawText({ buffer: file.buffer });
           const docText = textResult.value || "";
           if (docText.length >= 20) {
-            const extractionResult = await this.cocExtractionService.extractTaxInvoice(docText);
+            const extractionResult = await this.cocExtractionService.extractTaxInvoice(
+              docText,
+              correctionHints,
+            );
             await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
             this.logger.log(
               `Auto-extracted Tax Invoice ${invoiceId} from document in ${extractionResult.processingTimeMs}ms`,

@@ -488,6 +488,13 @@ INVOICE NUMBER:
 - Impilo Industries uses "Document No" as their invoice number field - this IS the invoice number
 - This is distinct from any PO, Order No, or reference number
 
+ORDER NUMBER:
+- Impilo Industries invoices have a document header table with columns: "Document No | Order No. | Date | Delivery Details"
+- The "Order No." value in this table is the order number (e.g., "190") - it is typically a short number
+- CRITICAL: Do NOT confuse the order number with customer PO numbers, account numbers, or long reference numbers found elsewhere on the invoice
+- The order number is specifically from the header table row, NOT from "Order Confirmation" or other fields on the invoice
+- If there is an "Order Confirmation" field (e.g., "SO185359"), that is NOT the order number - ignore it
+
 COMPANY NAME:
 - Extract the supplier/vendor company name from the letterhead or "FROM:" section
 - This is the company ISSUING the invoice, not the customer receiving it
@@ -506,10 +513,14 @@ PRODUCT SUMMARY (CRITICAL for Impilo Industries invoices):
 - Extract this ENTIRE line as "productSummary" - it is MORE IMPORTANT than the line item descriptions for identifying the product
 - Also look for a delivery note reference (e.g., "DN08516") near this summary
 
-TOTALS:
-- subtotal: The sum before VAT (excl VAT)
-- vatAmount: The VAT amount (typically 15% in South Africa)
-- totalAmount: The grand total including VAT
+TOTALS (CRITICAL - must extract all three values):
+- Look for a "TOTALS" row or summary section, often on the last page of the invoice
+- Impilo Industries shows a "TOTALS" row with three columns: subtotal (excl VAT), VAT amount, and total (incl VAT)
+- subtotal: The sum before VAT (excl VAT) - e.g., 1,032.75
+- vatAmount: The VAT amount (typically 15% in South Africa) - e.g., 154.91. This is NEVER null if the invoice shows a VAT amount
+- totalAmount: The grand total including VAT - e.g., 1,187.66
+- CRITICAL: If the document shows a TOTALS row with three numeric values, the middle value is the VAT amount - always extract it
+- Also check line items: if any line item has values in "Excl. Value", "VAT", and "Incl. Value" columns, the VAT column contains the VAT for that line
 
 Return a JSON object with this structure:
 {
@@ -520,7 +531,7 @@ Return a JSON object with this structure:
   "productQuantity": number or null (the total quantity of product - e.g., 2 for "2 rolls", 500 for "500kg"),
   "productUnit": string or null (the unit of measure - "rolls" or "kg". Use "rolls" for roll-based suppliers like Impilo, "kg" for weight-based suppliers like S&N Rubber),
   "deliveryNoteRef": string or null (e.g., "DN08516" - the delivery note reference if present),
-  "orderNumber": string or null (the Order No from the document header),
+  "orderNumber": string or null (the Order No. from the document header table - typically a short number like "190", NOT a long PO/account reference),
   "lineItems": [
     {
       "description": string,
