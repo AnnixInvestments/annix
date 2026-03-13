@@ -260,7 +260,7 @@ export class JobCardImportService {
       const worksheet = workbook.Sheets[sheetName];
       const raw = xlsx.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: "" });
       const grid = raw.map((row) =>
-        (row as unknown[]).map((cell) => (cell === null || cell === undefined ? "" : String(cell))),
+        (row as unknown[]).map((cell) => (cell == null ? "" : String(cell))),
       );
       return { grid };
     } else if (mimetype === "application/pdf") {
@@ -360,7 +360,7 @@ export class JobCardImportService {
       const grid: string[][] = parsed.map((row: unknown) => {
         if (!Array.isArray(row)) return [];
         return row.map((cell: unknown) =>
-          cell === null || cell === undefined ? "" : String(cell),
+          cell == null ? "" : String(cell),
         );
       });
 

@@ -79,15 +79,7 @@ function stockLevelPct(item: StockItem): number {
 }
 
 import { formatZAR } from "../lib/currency";
-
-function staffInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { staffInitials } from "../lib/formatting";
 
 function sortItems(items: StockItem[], field: SortField, direction: SortDirection): StockItem[] {
   return [...items].sort((a, b) => {

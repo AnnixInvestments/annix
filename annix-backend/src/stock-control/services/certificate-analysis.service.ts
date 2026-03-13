@@ -149,7 +149,7 @@ export class CertificateAnalysisService {
     this.logger.log(`Converted PDF to ${pages.length} image(s)`);
 
     const allImages = pages
-      .filter((page) => page.content !== undefined)
+      .filter((page) => page.content != null)
       .map((page) => page.content as Buffer);
 
     const capped =

@@ -31,14 +31,7 @@ function formatTime(iso: string): string {
   });
 }
 
-function senderInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { staffInitials as senderInitials } from "../lib/formatting";
 
 function conversationDisplayName(conv: ChatConversationResponse, currentUserId: number): string {
   if (conv.name) {

@@ -127,14 +127,7 @@ function playSuccessSound(): void {
   }
 }
 
-function staffInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { staffInitials } from "../../lib/formatting";
 
 export default function IssueStockPage() {
   const { profile } = useStockControlAuth();

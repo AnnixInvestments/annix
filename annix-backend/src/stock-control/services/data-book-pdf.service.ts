@@ -926,10 +926,9 @@ export class DataBookPdfService {
 
       const rowCols = columns.map((col) => {
         const val = rec.readings[col]?.[rowIdx];
-        const outOfSpec =
-          val !== null && val !== undefined && Math.abs(val - rec.requiredShore) > 5;
+        const outOfSpec = val != null && Math.abs(val - rec.requiredShore) > 5;
         return {
-          text: val !== null && val !== undefined ? String(val) : "",
+          text: val != null ? String(val) : "",
           x: cols[columns.indexOf(col) + 1].x,
           width: 80,
           align: "center" as const,
