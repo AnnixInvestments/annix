@@ -127,7 +127,7 @@ describe("DeliveriesController", () => {
       expect(result).toBe(created);
     });
 
-    it("should pass undefined receivedDate when not provided", async () => {
+    it("should pass null receivedDate when not provided", async () => {
       const dto = { noteNumber: "DN-002", supplier: "Supplier B", items: [] } as any;
       deliveryService.create.mockResolvedValue({ id: 2 } as any);
 
@@ -135,7 +135,7 @@ describe("DeliveriesController", () => {
 
       expect(deliveryService.create).toHaveBeenCalledWith(1, {
         ...dto,
-        receivedDate: undefined,
+        receivedDate: null,
         receivedBy: "Test User",
       });
     });
