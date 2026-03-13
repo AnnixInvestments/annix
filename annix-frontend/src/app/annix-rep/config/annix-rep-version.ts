@@ -7,4 +7,4 @@
  * - When patch reaches 100, minor increments by 1 and patch resets to 0
  * - When minor increments for any reason, patch resets to 0
  */
-export const ANNIX_REP_VERSION = "1.0.1";
+export const ANNIX_REP_VERSION = "1.0.2";
