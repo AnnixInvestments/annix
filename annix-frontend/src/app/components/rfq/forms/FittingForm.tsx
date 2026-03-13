@@ -60,13 +60,33 @@ import { getGussetSection } from "@/app/lib/utils/sabs719TeeData";
 import { groupSteelSpecifications, isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
+import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
+
+type SteelSpecItem = NonNullable<MasterData["steelSpecs"]>[number];
+type FlangeStandardItem = NonNullable<MasterData["flangeStandards"]>[number];
+type PressureClassItem = NonNullable<MasterData["pressureClasses"]>[number];
+type ScheduleItem = { id: number; scheduleDesignation: string; wallThicknessMm: number; scheduleNumber?: number };
+
+interface StubCalcData {
+  stubNB: number;
+  stubLengthMm: number;
+  stubOdMm: number;
+  stubPipeWeight: number;
+  stubFlangeWeight: number;
+  stubBlankWeight: number;
+  stubHasFlange: boolean;
+  hasBlankFlange: boolean;
+  stubToMainWeldMm: number;
+  stubFlangeWeldMm: number;
+  stubCircMm: number;
+}
 
 export interface FittingFormProps {
   entry: any;
   index: number;
   entriesCount: number;
-  globalSpecs: any;
-  masterData: any;
+  globalSpecs: GlobalSpecs;
+  masterData: MasterData;
   onUpdateEntry: (id: string, updates: any) => void;
   onRemoveEntry: (id: string) => void;
   onDuplicateEntry?: (entry: any, index: number) => void;
@@ -188,7 +208,7 @@ function FittingFormComponent({
         return;
       }
 
-      const flangeType = masterData?.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode);
+      const flangeType = masterData?.flangeTypes?.find((ft) => ft.code === flangeTypeCode);
       const flangeTypeId = flangeType?.id;
       log.debug("FittingForm: fetching with flangeTypeId", flangeTypeId);
 
@@ -483,7 +503,7 @@ function FittingFormComponent({
                         onChange={(value) => {
                           const newSpecId = value ? parseInt(value, 10) : undefined;
                           const newSpecName =
-                            masterData.steelSpecs?.find((s: any) => s.id === newSpecId)
+                            masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === newSpecId)
                               ?.steelSpecName || "";
                           const isSABS719 =
                             newSpecName.includes("SABS 719") || newSpecName.includes("SANS 719");
@@ -527,7 +547,7 @@ function FittingFormComponent({
               steelSpecName={(() => {
                 const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                 return (
-                  masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || ""
+                  masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName || ""
                 );
               })()}
               effectivePressure={specs.workingPressureBar || globalSpecs?.workingPressureBar}
@@ -546,15 +566,15 @@ function FittingFormComponent({
                   );
 
                   const eligibleSchedules = schedules
-                    .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
-                    .sort((a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
+                    .filter((s: ScheduleItem) => (s.wallThicknessMm || 0) >= minWT)
+                    .sort((a: ScheduleItem, b: ScheduleItem) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0));
 
                   if (eligibleSchedules.length > 0) {
                     scheduleNumber = eligibleSchedules[0].scheduleDesignation;
                     wallThicknessMm = eligibleSchedules[0].wallThicknessMm;
                   } else if (schedules.length > 0) {
                     const sorted = [...schedules].sort(
-                      (a: any, b: any) => (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0),
+                      (a: ScheduleItem, b: ScheduleItem) => (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0),
                     );
                     scheduleNumber = sorted[0].scheduleDesignation;
                     wallThicknessMm = sorted[0].wallThicknessMm;
@@ -575,7 +595,7 @@ function FittingFormComponent({
             {(() => {
               const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
               const steelSpecName =
-                masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || "";
+                masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName || "";
               const showPslFields = isApi5LSpec(steelSpecName);
               const pslLevel = specs.pslLevel;
               const showCvnFields = pslLevel === "PSL2";
@@ -1106,11 +1126,11 @@ function FittingFormComponent({
                                     globalSpecs.workingPressureBar,
                                   );
                                   const sorted = [...availableSchedules].sort(
-                                    (a: any, b: any) =>
+                                    (a: ScheduleItem, b: ScheduleItem) =>
                                       (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0),
                                   );
                                   const suitable = sorted.find(
-                                    (s: any) => (s.wallThicknessMm || 0) >= minWT,
+                                    (s: ScheduleItem) => (s.wallThicknessMm || 0) >= minWT,
                                   );
                                   if (suitable) {
                                     matchedSchedule = suitable.scheduleDesignation;
@@ -1138,7 +1158,7 @@ function FittingFormComponent({
                               );
                               const steelSpecId =
                                 specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                              const steelSpecName = masterData?.steelSpecifications?.find(
+                              const steelSpecName = masterData?.steelSpecs?.find(
                                 (s: { id: number }) => s.id === steelSpecId,
                               )?.steelSpecName;
                               const reducerLength = isReducerType
@@ -1275,7 +1295,7 @@ function FittingFormComponent({
                       const mainNB = specs.nominalDiameterMm || 0;
                       const mainSteelSpecId =
                         specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                      const steelSpecName = masterData?.steelSpecifications?.find(
+                      const steelSpecName = masterData?.steelSpecs?.find(
                         (s: { id: number }) => s.id === mainSteelSpecId,
                       )?.steelSpecName;
                       const sizes = validSmallNbForLargeNb(mainNB, mainSteelSpecId, steelSpecName);
@@ -1297,7 +1317,7 @@ function FittingFormComponent({
                             const smallDiameter = Number(value);
                             const steelSpecId =
                               specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                            const steelSpecName = masterData?.steelSpecifications?.find(
+                            const steelSpecName = masterData?.steelSpecs?.find(
                               (s: { id: number }) => s.id === steelSpecId,
                             )?.steelSpecName;
                             const reducerLength = standardReducerLengthForNb(
@@ -1340,7 +1360,7 @@ function FittingFormComponent({
                   const effectiveSpecId =
                     specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                   const steelSpecName =
-                    masterData.steelSpecs?.find((s: any) => s.id === effectiveSpecId)
+                    masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === effectiveSpecId)
                       ?.steelSpecName || "";
                   const nbValue = specs.nominalDiameterMm || 0;
 
@@ -1418,12 +1438,12 @@ function FittingFormComponent({
                       globalSpecs?.workingPressureBar || 0,
                     );
                     const eligibleSchedules = allSchedules
-                      .filter((dim: any) => (dim.wallThicknessMm || 0) >= minWT)
+                      .filter((dim: ScheduleItem) => (dim.wallThicknessMm || 0) >= minWT)
                       .sort(
-                        (a: any, b: any) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0),
+                        (a: ScheduleItem, b: ScheduleItem) => (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0),
                       );
 
-                    const options = eligibleSchedules.map((dim: any, idx: number) => {
+                    const options = eligibleSchedules.map((dim: ScheduleItem, idx: number) => {
                       const scheduleValue =
                         dim.scheduleDesignation || dim.scheduleNumber?.toString() || "Unknown";
                       const wt = dim.wallThicknessMm || 0;
@@ -1454,7 +1474,7 @@ function FittingFormComponent({
                           onChange={(schedule) => {
                             if (!schedule) return;
                             const selectedDim = allSchedules.find(
-                              (dim: any) =>
+                              (dim: ScheduleItem) =>
                                 (dim.scheduleDesignation || dim.scheduleNumber?.toString()) ===
                                 schedule,
                             );
@@ -1487,9 +1507,9 @@ function FittingFormComponent({
 
                   const manualOptions =
                     allSchedules.length > 0
-                      ? allSchedules.map((dim: any) => ({
-                          value: dim.scheduleDesignation || dim.scheduleNumber?.toString(),
-                          label: `${dim.scheduleDesignation || dim.scheduleNumber?.toString()} (${dim.wallThicknessMm}mm)`,
+                      ? allSchedules.map((dim: ScheduleItem) => ({
+                          value: dim.scheduleDesignation || dim.scheduleNumber?.toString() || "",
+                          label: `${dim.scheduleDesignation || dim.scheduleNumber?.toString() || ""} (${dim.wallThicknessMm}mm)`,
                         }))
                       : [
                           { value: "10", label: "Sch 10" },
@@ -1523,7 +1543,7 @@ function FittingFormComponent({
                             steelSpecName,
                           );
                           const matchingSchedule = schedules.find(
-                            (s: any) =>
+                            (s: ScheduleItem) =>
                               (s.scheduleDesignation || s.scheduleNumber?.toString()) ===
                               scheduleNumber,
                           );
@@ -1657,7 +1677,7 @@ function FittingFormComponent({
 
               {(() => {
                 const selectedStandard = masterData.flangeStandards?.find(
-                  (fs: any) => fs.id === (specs.flangeStandardId || globalSpecs?.flangeStandardId),
+                  (fs: FlangeStandardItem) => fs.id === (specs.flangeStandardId || globalSpecs?.flangeStandardId),
                 );
                 const isSabs1123 =
                   selectedStandard?.code?.toUpperCase().includes("SABS") &&
@@ -1672,7 +1692,7 @@ function FittingFormComponent({
                 const normalizedTypeCode = effectiveTypeCode?.replace(/^\//, "") || "";
 
                 const globalClass = masterData.pressureClasses?.find(
-                  (p: any) => p.id === globalSpecs?.flangePressureClassId,
+                  (p: PressureClassItem) => p.id === globalSpecs?.flangePressureClassId,
                 );
                 const globalBasePressure = globalClass?.designation?.replace(/\/\d+$/, "") || "";
                 const targetDesignationForGlobal =
@@ -1681,7 +1701,7 @@ function FittingFormComponent({
                     : null;
                 const matchingClassForGlobal = targetDesignationForGlobal
                   ? masterData.pressureClasses?.find(
-                      (pc: any) => pc.designation === targetDesignationForGlobal,
+                      (pc: PressureClassItem) => pc.designation === targetDesignationForGlobal,
                     )
                   : null;
                 const effectiveClassId =
@@ -1696,7 +1716,7 @@ function FittingFormComponent({
                   globalSpecs?.flangeStandardId &&
                   effectiveStandardId !== globalSpecs?.flangeStandardId;
                 const effectiveClass = masterData.pressureClasses?.find(
-                  (p: any) => p.id === effectiveClassId,
+                  (p: PressureClassItem) => p.id === effectiveClassId,
                 );
                 const effectiveBasePressure =
                   effectiveClass?.designation?.replace(/\/\d+$/, "") || "";
@@ -1714,7 +1734,7 @@ function FittingFormComponent({
                 const workingPressureBar =
                   specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
                 const selectedPressureClass = masterData.pressureClasses?.find(
-                  (pc: any) => pc.id === effectiveClassId,
+                  (pc: PressureClassItem) => pc.id === effectiveClassId,
                 );
                 const pressureClassValidation = validatePressureClass(
                   selectedStandard?.code,
@@ -1801,7 +1821,7 @@ function FittingFormComponent({
                         }
                       >
                         <option value="">Select Standard...</option>
-                        {masterData.flangeStandards?.map((standard: any) => (
+                        {masterData.flangeStandards?.map((standard: FlangeStandardItem) => (
                           <option key={standard.id} value={standard.id}>
                             {standard.code}
                           </option>
@@ -1850,7 +1870,7 @@ function FittingFormComponent({
                               const targetDesignation = normalizedTypeCode
                                 ? `${pcValue}/${normalizedTypeCode}`
                                 : null;
-                              const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
+                              const matchingPc = masterData.pressureClasses?.find((mpc: PressureClassItem) => {
                                 if (targetDesignation && mpc.designation === targetDesignation)
                                   return true;
                                 return (
@@ -1893,7 +1913,7 @@ function FittingFormComponent({
                             const filtered = stdId
                               ? pressureClassesByStandard[stdId] || []
                               : masterData.pressureClasses || [];
-                            return filtered.map((pressureClass: any) => (
+                            return filtered.map((pressureClass: PressureClassItem) => (
                               <option key={pressureClass.id} value={pressureClass.id}>
                                 {pressureClass.designation?.replace(/\/\d+$/, "") ||
                                   pressureClass.designation}
@@ -2004,7 +2024,7 @@ function FittingFormComponent({
                           const flangeStandardIdLocal =
                             specs.flangeStandardId || globalSpecs?.flangeStandardId;
                           const flangeStandardLocal = masterData.flangeStandards?.find(
-                            (s: any) => s.id === flangeStandardIdLocal,
+                            (s: FlangeStandardItem) => s.id === flangeStandardIdLocal,
                           );
                           const flangeCodeLocal = flangeStandardLocal?.code || "";
                           const workingPressureLocal =
@@ -2015,7 +2035,7 @@ function FittingFormComponent({
                           if (availableClasses.length === 0) {
                             availableClasses =
                               masterData.pressureClasses?.filter(
-                                (pc: any) =>
+                                (pc: PressureClassItem) =>
                                   pc.flangeStandardId === flangeStandardIdLocal ||
                                   pc.standardId === flangeStandardIdLocal,
                               ) || [];
@@ -2940,7 +2960,7 @@ function FittingFormComponent({
                         specs.steelSpecificationId ||
                         globalSpecs?.steelSpecificationId;
                       const stubSteelSpec = masterData?.steelSpecs?.find(
-                        (s: any) => s.id === stubSteelSpecId,
+                        (s: SteelSpecItem) => s.id === stubSteelSpecId,
                       );
                       const isSABS719Stub =
                         stubSteelSpec?.steelSpecName?.includes("SABS 719") ||
@@ -3349,7 +3369,7 @@ function FittingFormComponent({
                                 className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
                               >
                                 <option value="">Select...</option>
-                                {masterData.flangeStandards?.map((standard: any) => (
+                                {masterData.flangeStandards?.map((standard: FlangeStandardItem) => (
                                   <option key={standard.id} value={standard.id}>
                                     {standard.code}
                                   </option>
@@ -3388,14 +3408,14 @@ function FittingFormComponent({
                                     : masterData.pressureClasses || [];
                                   const seen = new Set<string>();
                                   return filtered
-                                    .filter((pc: any) => {
+                                    .filter((pc: PressureClassItem) => {
                                       const label =
                                         pc.designation?.replace(/\/\d+$/, "") || pc.designation;
                                       if (seen.has(label)) return false;
                                       seen.add(label);
                                       return true;
                                     })
-                                    .map((pressureClass: any) => (
+                                    .map((pressureClass: PressureClassItem) => (
                                       <option key={pressureClass.id} value={pressureClass.id}>
                                         {pressureClass.designation?.replace(/\/\d+$/, "") ||
                                           pressureClass.designation}
@@ -3411,7 +3431,7 @@ function FittingFormComponent({
                             stub.endConfiguration === "rf") &&
                             (() => {
                               const stubStandard = masterData.flangeStandards?.find(
-                                (fs: any) => fs.id === stub.flangeStandardId,
+                                (fs: FlangeStandardItem) => fs.id === stub.flangeStandardId,
                               );
                               const stubIsSabs1123 =
                                 stubStandard?.code?.toUpperCase().includes("SABS") &&
@@ -3610,7 +3630,7 @@ function FittingFormComponent({
                       const steelSpecId =
                         specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                       const steelSpec = masterData?.steelSpecs?.find(
-                        (s: any) => s.id === steelSpecId,
+                        (s: SteelSpecItem) => s.id === steelSpecId,
                       );
                       const steelSpecName = steelSpec?.steelSpecName || "";
 
@@ -3619,11 +3639,11 @@ function FittingFormComponent({
                       const flangePressureClassId =
                         specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                       const flangeStandard = masterData.flangeStandards?.find(
-                        (s: any) => s.id === flangeStandardId,
+                        (s: FlangeStandardItem) => s.id === flangeStandardId,
                       );
                       const flangeStandardCode = flangeStandard?.code || "";
                       const pressureClass = masterData.pressureClasses?.find(
-                        (p: any) => p.id === flangePressureClassId,
+                        (p: PressureClassItem) => p.id === flangePressureClassId,
                       );
                       const pressureClassDesignation = pressureClass?.designation || "";
                       const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
@@ -3830,7 +3850,7 @@ function FittingFormComponent({
                       const steelSpecId =
                         specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                       const steelSpec = masterData?.steelSpecs?.find(
-                        (s: any) => s.id === steelSpecId,
+                        (s: SteelSpecItem) => s.id === steelSpecId,
                       );
                       const steelSpecName = steelSpec?.steelSpecName || "";
 
@@ -3839,11 +3859,11 @@ function FittingFormComponent({
                       const flangePressureClassId =
                         specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                       const flangeStandard = masterData.flangeStandards?.find(
-                        (s: any) => s.id === flangeStandardId,
+                        (s: FlangeStandardItem) => s.id === flangeStandardId,
                       );
                       const flangeStandardCode = flangeStandard?.code || "";
                       const pressureClass = masterData.pressureClasses?.find(
-                        (p: any) => p.id === flangePressureClassId,
+                        (p: PressureClassItem) => p.id === flangePressureClassId,
                       );
                       const pressureClassDesignation = pressureClass?.designation || "";
                       const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
@@ -4003,7 +4023,7 @@ function FittingFormComponent({
                     const steelSpecId =
                       specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                     const steelSpec = masterData?.steelSpecs?.find(
-                      (s: any) => s.id === steelSpecId,
+                      (s: SteelSpecItem) => s.id === steelSpecId,
                     );
                     const steelSpecName = steelSpec?.steelSpecName || "";
                     const isSABS719 =
@@ -4119,11 +4139,11 @@ function FittingFormComponent({
                     const flangePressureClassId =
                       specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                     const flangeStandard = masterData.flangeStandards?.find(
-                      (s: any) => s.id === flangeStandardId,
+                      (s: FlangeStandardItem) => s.id === flangeStandardId,
                     );
                     const flangeStandardCode = flangeStandard?.code || "";
                     const pressureClass = masterData.pressureClasses?.find(
-                      (p: any) => p.id === flangePressureClassId,
+                      (p: PressureClassItem) => p.id === flangePressureClassId,
                     );
                     const pressureClassDesignation = pressureClass?.designation || "";
                     const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
@@ -4243,27 +4263,27 @@ function FittingFormComponent({
                     });
 
                     const totalStubPipeWeight = stubsData.reduce(
-                      (sum: number, s: any) => sum + s.stubPipeWeight,
+                      (sum: number, s: StubCalcData) => sum + s.stubPipeWeight,
                       0,
                     );
                     const totalStubFlangeWeight = stubsData.reduce(
-                      (sum: number, s: any) => sum + s.stubFlangeWeight,
+                      (sum: number, s: StubCalcData) => sum + s.stubFlangeWeight,
                       0,
                     );
                     const totalStubBlankWeight = stubsData.reduce(
-                      (sum: number, s: any) => sum + s.stubBlankWeight,
+                      (sum: number, s: StubCalcData) => sum + s.stubBlankWeight,
                       0,
                     );
-                    const stubFlangeCount = stubsData.filter((s: any) => s.stubHasFlange).length;
+                    const stubFlangeCount = stubsData.filter((s: StubCalcData) => s.stubHasFlange).length;
                     const stubBlankCount = stubsData.filter(
-                      (s: any) => s.stubHasFlange && s.hasBlankFlange,
+                      (s: StubCalcData) => s.stubHasFlange && s.hasBlankFlange,
                     ).length;
                     const totalStubToMainWeldMm = stubsData.reduce(
-                      (sum: number, s: any) => sum + s.stubToMainWeldMm,
+                      (sum: number, s: StubCalcData) => sum + s.stubToMainWeldMm,
                       0,
                     );
                     const totalStubFlangeWeldMm = stubsData.reduce(
-                      (sum: number, s: any) => sum + s.stubFlangeWeldMm,
+                      (sum: number, s: StubCalcData) => sum + s.stubFlangeWeldMm,
                       0,
                     );
 
@@ -4304,7 +4324,7 @@ function FittingFormComponent({
                             {pipeALength > 0 && <p>Pipe A: {pipeALength}mm</p>}
                             {pipeBLength > 0 && <p>Pipe B: {pipeBLength}mm</p>}
                             {teeHeight > 0 && <p>Height: {teeHeight}mm</p>}
-                            {stubsData.map((stub: any, idx: number) => (
+                            {stubsData.map((stub: StubCalcData, idx: number) => (
                               <p key={idx} className="text-orange-700">
                                 Stub {idx + 1}: {stub.stubLengthMm}mm @ {stub.stubNB}NB
                               </p>
@@ -4401,23 +4421,23 @@ function FittingFormComponent({
                                   </>
                                 )}
                                 {stubsData
-                                  .filter((s: any) => s.stubPipeWeight > 0)
-                                  .map((stub: any, idx: number) => (
+                                  .filter((s: StubCalcData) => s.stubPipeWeight > 0)
+                                  .map((stub: StubCalcData, idx: number) => (
                                     <p key={`stub-pipe-${idx}`} className="text-orange-600">
                                       Stub {stub.stubNB}NB Pipe: {stub.stubPipeWeight.toFixed(2)}kg
                                     </p>
                                   ))}
                                 {stubsData
-                                  .filter((s: any) => s.stubHasFlange)
-                                  .map((stub: any, idx: number) => (
+                                  .filter((s: StubCalcData) => s.stubHasFlange)
+                                  .map((stub: StubCalcData, idx: number) => (
                                     <p key={`stub-flange-${idx}`} className="text-orange-600">
                                       Stub {stub.stubNB}NB Flange:{" "}
                                       {stub.stubFlangeWeight.toFixed(2)}kg
                                     </p>
                                   ))}
                                 {stubsData
-                                  .filter((s: any) => s.stubBlankWeight > 0)
-                                  .map((stub: any, idx: number) => (
+                                  .filter((s: StubCalcData) => s.stubBlankWeight > 0)
+                                  .map((stub: StubCalcData, idx: number) => (
                                     <p key={`stub-blank-${idx}`} className="text-orange-600">
                                       Stub {stub.stubNB}NB Blank: {stub.stubBlankWeight.toFixed(2)}
                                       kg
@@ -4442,8 +4462,8 @@ function FittingFormComponent({
                           if (totalFlangeCountWithStubs === 0) return null;
 
                           const stubFlangesByNB = stubsData
-                            .filter((s: any) => s.stubHasFlange)
-                            .reduce((acc: Record<number, number>, s: any) => {
+                            .filter((s: StubCalcData) => s.stubHasFlange)
+                            .reduce((acc: Record<number, number>, s: StubCalcData) => {
                               acc[s.stubNB] = (acc[s.stubNB] || 0) + 1;
                               return acc;
                             }, {});
@@ -4764,17 +4784,17 @@ function FittingFormComponent({
           const outerDiameter = entry.calculation?.outsideDiameterMm;
 
           const steelSpec = masterData.steelSpecs?.find(
-            (s: any) => s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
+            (s: SteelSpecItem) => s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
           );
 
           const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
           const flangePressureClassId =
             specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
           const flangeStandard = masterData.flangeStandards?.find(
-            (s: any) => s.id === flangeStandardId,
+            (s: FlangeStandardItem) => s.id === flangeStandardId,
           );
           const pressureClass = masterData.pressureClasses?.find(
-            (p: any) => p.id === flangePressureClassId,
+            (p: PressureClassItem) => p.id === flangePressureClassId,
           );
           const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
           const flangeStandardName =

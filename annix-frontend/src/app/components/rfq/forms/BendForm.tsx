@@ -67,13 +67,20 @@ import {
 } from "@/app/lib/utils/sabs62CfData";
 import { groupSteelSpecifications, isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
+import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
+
+type SteelSpecItem = NonNullable<MasterData["steelSpecs"]>[number];
+type FlangeStandardItem = NonNullable<MasterData["flangeStandards"]>[number];
+type PressureClassItem = NonNullable<MasterData["pressureClasses"]>[number];
+type FlangeTypeItem = NonNullable<MasterData["flangeTypes"]>[number];
+type ScheduleItem = { id: number; scheduleDesignation: string; wallThicknessMm: number };
 
 export interface BendFormProps {
   entry: any;
   index: number;
   entriesCount: number;
-  globalSpecs: any;
-  masterData: any;
+  globalSpecs: GlobalSpecs;
+  masterData: MasterData;
   onUpdateEntry: (id: string, updates: any) => void;
   onRemoveEntry: (id: string) => void;
   onDuplicateEntry?: (entry: any, index: number) => void;
@@ -166,7 +173,7 @@ function BendFormComponent({
         return;
       }
 
-      const flangeType = masterData?.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode);
+      const flangeType = masterData?.flangeTypes?.find((ft: FlangeTypeItem) => ft.code === flangeTypeCode);
       const flangeTypeId = flangeType?.id;
       log.debug("BendForm: fetching with flangeTypeId", flangeTypeId);
 
@@ -192,7 +199,7 @@ function BendFormComponent({
   ]);
 
   const steelSpec = masterData?.steelSpecs?.find(
-    (s: any) => s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
+    (s: SteelSpecItem) => s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
   );
   const steelSpecName = steelSpec?.steelSpecName || "";
   const isSABS719 = steelSpecName.includes("SABS 719") || steelSpecName.includes("SANS 719");
@@ -219,14 +226,14 @@ function BendFormComponent({
       const nominalBore = specs.nominalBoreMm;
 
       const newSpec = newSpecId
-        ? masterData.steelSpecs?.find((s: any) => s.id === newSpecId)
+        ? masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === newSpecId)
         : null;
       const newSpecName = newSpec?.steelSpecName || "";
       const isNewSABS719 = newSpecName.includes("SABS 719") || newSpecName.includes("SANS 719");
 
       const oldSpecId = specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
       const oldSpec = oldSpecId
-        ? masterData.steelSpecs?.find((s: any) => s.id === oldSpecId)
+        ? masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === oldSpecId)
         : null;
       const oldSpecName = oldSpec?.steelSpecName || "";
       const wasOldSABS719 = oldSpecName.includes("SABS 719") || oldSpecName.includes("SANS 719");
@@ -606,7 +613,7 @@ function BendFormComponent({
                       const effectiveTemp =
                         specs.workingTemperatureC || globalSpecs?.workingTemperatureC;
                       const selectedSpec = masterData.steelSpecs?.find(
-                        (s: any) => s.id === effectiveSpecId,
+                        (s: SteelSpecItem) => s.id === effectiveSpecId,
                       );
                       const isSteelUnsuitable =
                         effectiveSpecId &&
@@ -663,7 +670,7 @@ function BendFormComponent({
               steelSpecName={(() => {
                 const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                 return (
-                  masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || ""
+                  masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName || ""
                 );
               })()}
               effectivePressure={specs.workingPressureBar || globalSpecs?.workingPressureBar}
@@ -679,7 +686,7 @@ function BendFormComponent({
             {(() => {
               const steelSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
               const steelSpecName =
-                masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || "";
+                masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === steelSpecId)?.steelSpecName || "";
               const showPslFields = isApi5LSpec(steelSpecName);
               const pslLevel = specs.pslLevel;
               const showCvnFields = pslLevel === "PSL2";
@@ -705,13 +712,15 @@ function BendFormComponent({
                             specs: {
                               ...entry.specs,
                               pslLevel: newPslLevel,
+                              ...(newPslLevel !== "PSL2"
+                                ? {
+                                    cvnTestTemperatureC: null,
+                                    cvnAverageJoules: null,
+                                    cvnMinimumJoules: null,
+                                  }
+                                : {}),
                             },
                           };
-                          if (newPslLevel !== "PSL2") {
-                            updates.specs.cvnTestTemperatureC = null;
-                            updates.specs.cvnAverageJoules = null;
-                            updates.specs.cvnMinimumJoules = null;
-                          }
                           onUpdateEntry(entry.id, updates);
                         }}
                       >
@@ -947,7 +956,7 @@ function BendFormComponent({
               const effectiveSteelSpecId =
                 specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
               const steelSpec = masterData.steelSpecs?.find(
-                (s: any) => s.id === effectiveSteelSpecId,
+                (s: SteelSpecItem) => s.id === effectiveSteelSpecId,
               );
               const steelSpecName = steelSpec?.steelSpecName || "";
               const bendRules = steelStandardBendRules(steelSpecName);
@@ -982,7 +991,7 @@ function BendFormComponent({
                 specs.workingPressureBar || globalSpecs?.workingPressureBar;
               const effectiveTemp2 = specs.workingTemperatureC || globalSpecs?.workingTemperatureC;
               const selectedSteelSpec2 = masterData.steelSpecs?.find(
-                (s: any) => s.id === steelEffectiveSpecId,
+                (s: SteelSpecItem) => s.id === steelEffectiveSpecId,
               );
               const isSteelUnsuitable2 =
                 steelEffectiveSpecId &&
@@ -1028,7 +1037,7 @@ function BendFormComponent({
                           const nominalBore = specs.nominalBoreMm;
 
                           const newSpec = newSpecId
-                            ? masterData.steelSpecs?.find((s: any) => s.id === newSpecId)
+                            ? masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === newSpecId)
                             : null;
                           const newSpecName = newSpec?.steelSpecName || "";
                           const isNewSABS719 =
@@ -1037,7 +1046,7 @@ function BendFormComponent({
                           const oldSpecId =
                             specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
                           const oldSpec = oldSpecId
-                            ? masterData.steelSpecs?.find((s: any) => s.id === oldSpecId)
+                            ? masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === oldSpecId)
                             : null;
                           const oldSpecName = oldSpec?.steelSpecName || "";
                           const wasOldSABS719 =
@@ -1077,9 +1086,9 @@ function BendFormComponent({
                                 );
 
                                 const eligibleSchedules = schedules
-                                  .filter((s: any) => (s.wallThicknessMm || 0) >= minWT)
+                                  .filter((s: ScheduleItem) => (s.wallThicknessMm || 0) >= minWT)
                                   .sort(
-                                    (a: any, b: any) =>
+                                    (a: ScheduleItem, b: ScheduleItem) =>
                                       (a.wallThicknessMm || 0) - (b.wallThicknessMm || 0),
                                   );
 
@@ -1088,7 +1097,7 @@ function BendFormComponent({
                                   matchedWT = eligibleSchedules[0].wallThicknessMm;
                                 } else if (schedules.length > 0) {
                                   const sorted = [...schedules].sort(
-                                    (a: any, b: any) =>
+                                    (a: ScheduleItem, b: ScheduleItem) =>
                                       (b.wallThicknessMm || 0) - (a.wallThicknessMm || 0),
                                   );
                                   matchedSchedule = sorted[0].scheduleDesignation;
@@ -1096,7 +1105,7 @@ function BendFormComponent({
                                 }
                               } else if (schedules.length > 0) {
                                 const sch40 = schedules.find(
-                                  (s: any) =>
+                                  (s: ScheduleItem) =>
                                     s.scheduleDesignation === "40" ||
                                     s.scheduleDesignation === "Sch 40",
                                 );
@@ -1168,7 +1177,7 @@ function BendFormComponent({
 
                     const nbOptions = (() => {
                       const steelSpec = masterData.steelSpecs?.find(
-                        (s: any) => s.id === effectiveSteelSpecId,
+                        (s: SteelSpecItem) => s.id === effectiveSteelSpecId,
                       );
                       const steelSpecName = steelSpec?.steelSpecName || "";
                       const isSweepTeeItem = specs.bendItemType === "SWEEP_TEE";
@@ -1368,7 +1377,7 @@ function BendFormComponent({
                       schedEffectiveSpecId,
                       steelSpecName,
                     );
-                    const options = schedules.map((s: any) => ({
+                    const options = schedules.map((s: ScheduleItem) => ({
                       value: s.scheduleDesignation,
                       label: `${s.scheduleDesignation} (${s.wallThicknessMm}mm)`,
                     }));
@@ -1380,7 +1389,7 @@ function BendFormComponent({
                         onChange={(schedule) => {
                           if (!schedule) return;
                           const scheduleData = schedules.find(
-                            (s: any) => s.scheduleDesignation === schedule,
+                            (s: ScheduleItem) => s.scheduleDesignation === schedule,
                           );
                           const updatedEntry: any = {
                             ...entry,
@@ -2149,7 +2158,7 @@ function BendFormComponent({
                 const effectiveFlangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
                 const normalizedFlangeTypeCode = effectiveFlangeTypeCode?.replace(/^\//, "") || "";
                 const selectedStandard = masterData.flangeStandards?.find(
-                  (fs: any) => fs.id === effectiveStandardId,
+                  (fs: FlangeStandardItem) => fs.id === effectiveStandardId,
                 );
                 const standardCode = selectedStandard?.code?.toUpperCase() || "";
                 const isSabs1123 =
@@ -2168,7 +2177,7 @@ function BendFormComponent({
                   : BS_4504_PRESSURE_CLASSES;
 
                 const globalClass = masterData.pressureClasses?.find(
-                  (p: any) => p.id === globalSpecs?.flangePressureClassId,
+                  (p: PressureClassItem) => p.id === globalSpecs?.flangePressureClassId,
                 );
                 const globalBasePressure = globalClass?.designation?.replace(/\/\d+$/, "") || "";
                 const targetDesignationForGlobal =
@@ -2177,7 +2186,7 @@ function BendFormComponent({
                     : null;
                 const matchingClassForGlobal = targetDesignationForGlobal
                   ? masterData.pressureClasses?.find(
-                      (pc: any) => pc.designation === targetDesignationForGlobal,
+                      (pc: PressureClassItem) => pc.designation === targetDesignationForGlobal,
                     )
                   : null;
                 const effectivePressureClassId =
@@ -2203,7 +2212,7 @@ function BendFormComponent({
                   globalSpecs?.flangeStandardId &&
                   effectiveStandardId === globalSpecs?.flangeStandardId;
                 const effectiveClass = masterData.pressureClasses?.find(
-                  (p: any) => p.id === effectivePressureClassId,
+                  (p: PressureClassItem) => p.id === effectivePressureClassId,
                 );
                 const effectiveBasePressure =
                   effectiveClass?.designation?.replace(/\/\d+$/, "") || "";
@@ -2276,7 +2285,7 @@ function BendFormComponent({
                       const workingPressureBar =
                         specs.workingPressureBar || globalSpecs?.workingPressureBar || 0;
                       const selectedPressureClass = masterData.pressureClasses?.find(
-                        (pc: any) => pc.id === effectivePressureClassId,
+                        (pc: PressureClassItem) => pc.id === effectivePressureClassId,
                       );
                       const pressureClassValidation = validatePressureClass(
                         standardCode,
@@ -2351,7 +2360,7 @@ function BendFormComponent({
                               className={standardSelectClass}
                             >
                               <option value="">Select...</option>
-                              {masterData.flangeStandards?.map((standard: any) => (
+                              {masterData.flangeStandards?.map((standard: FlangeStandardItem) => (
                                 <option key={standard.id} value={standard.id}>
                                   {standard.code}
                                 </option>
@@ -2401,7 +2410,7 @@ function BendFormComponent({
                                     ? `${pcValue}/${normalizedFlangeTypeCode}`
                                     : null;
                                   const matchingPc = masterData.pressureClasses?.find(
-                                    (mpc: any) => {
+                                    (mpc: PressureClassItem) => {
                                       if (
                                         targetDesignation &&
                                         mpc.designation === targetDesignation
@@ -2439,7 +2448,7 @@ function BendFormComponent({
                                   pressureClassesByStandard[effectiveStandardId || 0] ||
                                   masterData.pressureClasses ||
                                   []
-                                ).map((pc: any) => (
+                                ).map((pc: PressureClassItem) => (
                                   <option key={pc.id} value={pc.id}>
                                     {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
                                   </option>
@@ -3193,7 +3202,7 @@ function BendFormComponent({
                           specs.steelSpecificationId ||
                           globalSpecs?.steelSpecificationId;
                         const stub1SteelSpec = masterData.steelSpecs?.find(
-                          (s: any) => s.id === stub1EffectiveSpecId,
+                          (s: SteelSpecItem) => s.id === stub1EffectiveSpecId,
                         );
                         const stub1SteelSpecName = stub1SteelSpec?.steelSpecName || "";
                         const stub1FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(
@@ -3247,7 +3256,7 @@ function BendFormComponent({
                           specs.steelSpecificationId ||
                           globalSpecs?.steelSpecificationId;
                         const stub1SteelSpec = masterData.steelSpecs?.find(
-                          (s: any) => s.id === steelSpecId,
+                          (s: SteelSpecItem) => s.id === steelSpecId,
                         );
                         const stub1SpecName = stub1SteelSpec?.steelSpecName || "";
                         const isSABS719 =
@@ -3471,7 +3480,7 @@ function BendFormComponent({
                       const normalizedFlangeTypeCode =
                         effectiveFlangeTypeCode?.replace(/^\//, "") || "";
                       const selectedStandard = masterData.flangeStandards?.find(
-                        (fs: any) => fs.id === effectiveStandardId,
+                        (fs: FlangeStandardItem) => fs.id === effectiveStandardId,
                       );
                       const isSabs1123 =
                         selectedStandard?.code?.toUpperCase().includes("SABS") &&
@@ -3488,7 +3497,7 @@ function BendFormComponent({
                         : BS_4504_PRESSURE_CLASSES;
 
                       const stub1GlobalClass = masterData.pressureClasses?.find(
-                        (p: any) => p.id === globalSpecs?.flangePressureClassId,
+                        (p: PressureClassItem) => p.id === globalSpecs?.flangePressureClassId,
                       );
                       const stub1GlobalBasePressure =
                         stub1GlobalClass?.designation?.replace(/\/\d+$/, "") || "";
@@ -3498,7 +3507,7 @@ function BendFormComponent({
                           : null;
                       const stub1MatchingClass = stub1TargetDesignation
                         ? masterData.pressureClasses?.find(
-                            (pc: any) => pc.designation === stub1TargetDesignation,
+                            (pc: PressureClassItem) => pc.designation === stub1TargetDesignation,
                           )
                         : null;
                       const effectivePressureClassId =
@@ -3512,7 +3521,7 @@ function BendFormComponent({
                       const stub1EffectiveTypeCode =
                         stub0.flangeTypeCode || globalSpecs?.flangeTypeCode;
                       const stub1EffectiveClass = masterData.pressureClasses?.find(
-                        (p: any) => p.id === stub1EffectiveClassId,
+                        (p: PressureClassItem) => p.id === stub1EffectiveClassId,
                       );
                       const stub1EffectiveBasePressure =
                         stub1EffectiveClass?.designation?.replace(/\/\d+$/, "") || "";
@@ -3539,7 +3548,7 @@ function BendFormComponent({
                         stub0.flangeTypeCode !== globalSpecs?.flangeTypeCode;
 
                       const stub1SelectedStandard = masterData.flangeStandards?.find(
-                        (s: any) => s.id === stub1EffectiveStandardId,
+                        (s: FlangeStandardItem) => s.id === stub1EffectiveStandardId,
                       );
                       const stub1StandardCode = stub1SelectedStandard?.code?.toUpperCase() || "";
                       const stub1IsSabs1123 =
@@ -3552,7 +3561,7 @@ function BendFormComponent({
                           (stub1StandardCode.includes("1092") ||
                             stub1StandardCode.includes("10921")));
                       const stub1SelectedClass = masterData.pressureClasses?.find(
-                        (pc: any) => pc.id === stub1EffectiveClassId,
+                        (pc: PressureClassItem) => pc.id === stub1EffectiveClassId,
                       );
                       const stub1PressureClassRatingRaw = stub1SelectedClass?.designation
                         ? parseInt(stub1SelectedClass.designation.replace(/[^\d]/g, ""), 10)
@@ -3622,7 +3631,7 @@ function BendFormComponent({
                               }
                             >
                               <option value="">Select...</option>
-                              {masterData.flangeStandards?.map((s: any) => (
+                              {masterData.flangeStandards?.map((s: FlangeStandardItem) => (
                                 <option key={s.id} value={s.id}>
                                   {s.code}
                                 </option>
@@ -3679,7 +3688,7 @@ function BendFormComponent({
                                     ? `${pcValue}/${normalizedFlangeTypeCode}`
                                     : null;
                                   const matchingPc = masterData.pressureClasses?.find(
-                                    (mpc: any) => {
+                                    (mpc: PressureClassItem) => {
                                       if (
                                         targetDesignation &&
                                         mpc.designation === targetDesignation
@@ -3725,7 +3734,7 @@ function BendFormComponent({
                                   pressureClassesByStandard[effectiveStandardId || 0] ||
                                   masterData.pressureClasses ||
                                   []
-                                ).map((pc: any) => (
+                                ).map((pc: PressureClassItem) => (
                                   <option key={pc.id} value={pc.id}>
                                     {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
                                   </option>
@@ -3871,7 +3880,7 @@ function BendFormComponent({
                             specs.steelSpecificationId ||
                             globalSpecs?.steelSpecificationId;
                           const stub2SteelSpec = masterData.steelSpecs?.find(
-                            (s: any) => s.id === stub2EffectiveSpecId,
+                            (s: SteelSpecItem) => s.id === stub2EffectiveSpecId,
                           );
                           const stub2SteelSpecName = stub2SteelSpec?.steelSpecName || "";
                           const stub2FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(
@@ -3931,7 +3940,7 @@ function BendFormComponent({
                             specs.steelSpecificationId ||
                             globalSpecs?.steelSpecificationId;
                           const stub2SteelSpec = masterData.steelSpecs?.find(
-                            (s: any) => s.id === steelSpecId,
+                            (s: SteelSpecItem) => s.id === steelSpecId,
                           );
                           const stub2SpecName = stub2SteelSpec?.steelSpecName || "";
                           const isSABS719 =
@@ -4159,7 +4168,7 @@ function BendFormComponent({
                         const normalizedFlangeTypeCode =
                           effectiveFlangeTypeCode?.replace(/^\//, "") || "";
                         const selectedStandard = masterData.flangeStandards?.find(
-                          (fs: any) => fs.id === effectiveStandardId,
+                          (fs: FlangeStandardItem) => fs.id === effectiveStandardId,
                         );
                         const isSabs1123 =
                           selectedStandard?.code?.toUpperCase().includes("SABS") &&
@@ -4176,7 +4185,7 @@ function BendFormComponent({
                           : BS_4504_PRESSURE_CLASSES;
 
                         const stub2GlobalClass = masterData.pressureClasses?.find(
-                          (p: any) => p.id === globalSpecs?.flangePressureClassId,
+                          (p: PressureClassItem) => p.id === globalSpecs?.flangePressureClassId,
                         );
                         const stub2GlobalBasePressure =
                           stub2GlobalClass?.designation?.replace(/\/\d+$/, "") || "";
@@ -4186,7 +4195,7 @@ function BendFormComponent({
                             : null;
                         const stub2MatchingClass = stub2TargetDesignation
                           ? masterData.pressureClasses?.find(
-                              (pc: any) => pc.designation === stub2TargetDesignation,
+                              (pc: PressureClassItem) => pc.designation === stub2TargetDesignation,
                             )
                           : null;
                         const effectivePressureClassId =
@@ -4200,7 +4209,7 @@ function BendFormComponent({
                         const stub2EffectiveTypeCode =
                           stub1.flangeTypeCode || globalSpecs?.flangeTypeCode;
                         const stub2EffectiveClass = masterData.pressureClasses?.find(
-                          (p: any) => p.id === stub2EffectiveClassId,
+                          (p: PressureClassItem) => p.id === stub2EffectiveClassId,
                         );
                         const stub2EffectiveBasePressure =
                           stub2EffectiveClass?.designation?.replace(/\/\d+$/, "") || "";
@@ -4227,7 +4236,7 @@ function BendFormComponent({
                           stub1.flangeTypeCode !== globalSpecs?.flangeTypeCode;
 
                         const stub2SelectedStandard = masterData.flangeStandards?.find(
-                          (s: any) => s.id === stub2EffectiveStandardId,
+                          (s: FlangeStandardItem) => s.id === stub2EffectiveStandardId,
                         );
                         const stub2StandardCode = stub2SelectedStandard?.code?.toUpperCase() || "";
                         const stub2IsSabs1123 =
@@ -4241,7 +4250,7 @@ function BendFormComponent({
                             (stub2StandardCode.includes("1092") ||
                               stub2StandardCode.includes("10921")));
                         const stub2SelectedClass = masterData.pressureClasses?.find(
-                          (pc: any) => pc.id === stub2EffectiveClassId,
+                          (pc: PressureClassItem) => pc.id === stub2EffectiveClassId,
                         );
                         const stub2PressureClassRatingRaw = stub2SelectedClass?.designation
                           ? parseInt(stub2SelectedClass.designation.replace(/[^\d]/g, ""), 10)
@@ -4313,7 +4322,7 @@ function BendFormComponent({
                                 }
                               >
                                 <option value="">Select...</option>
-                                {masterData.flangeStandards?.map((s: any) => (
+                                {masterData.flangeStandards?.map((s: FlangeStandardItem) => (
                                   <option key={s.id} value={s.id}>
                                     {s.code}
                                   </option>
@@ -4372,7 +4381,7 @@ function BendFormComponent({
                                       ? `${pcValue}/${normalizedFlangeTypeCode}`
                                       : null;
                                     const matchingPc = masterData.pressureClasses?.find(
-                                      (mpc: any) => {
+                                      (mpc: PressureClassItem) => {
                                         if (
                                           targetDesignation &&
                                           mpc.designation === targetDesignation
@@ -4420,7 +4429,7 @@ function BendFormComponent({
                                     pressureClassesByStandard[effectiveStandardId || 0] ||
                                     masterData.pressureClasses ||
                                     []
-                                  ).map((pc: any) => (
+                                  ).map((pc: PressureClassItem) => (
                                     <option key={pc.id} value={pc.id}>
                                       {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
                                     </option>
@@ -4660,10 +4669,10 @@ function BendFormComponent({
                 const flangePressureClassId =
                   specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                 const flangeStandard = masterData.flangeStandards?.find(
-                  (s: any) => s.id === flangeStandardId,
+                  (s: FlangeStandardItem) => s.id === flangeStandardId,
                 );
                 const pressureClass = masterData.pressureClasses?.find(
-                  (p: any) => p.id === flangePressureClassId,
+                  (p: PressureClassItem) => p.id === flangePressureClassId,
                 );
                 const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
                 const flangeStandardName =
@@ -4674,8 +4683,8 @@ function BendFormComponent({
                       : flangeStandard?.code?.replace(/_/g, " ") || "";
                 const pressureClassDesignation = pressureClass?.designation || "";
                 const steelSpecName =
-                  masterData.steelSpecs.find(
-                    (s: any) =>
+                  masterData.steelSpecs?.find(
+                    (s: SteelSpecItem) =>
                       s.id === (specs.steelSpecificationId || globalSpecs?.steelSpecificationId),
                   )?.steelSpecName || "";
                 const previewIsSABS719 =
@@ -4946,11 +4955,11 @@ function BendFormComponent({
                   const flangePressureClassId =
                     specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
                   const flangeStandard = masterData.flangeStandards?.find(
-                    (s: any) => s.id === flangeStandardId,
+                    (s: FlangeStandardItem) => s.id === flangeStandardId,
                   );
                   const flangeStandardCode = flangeStandard?.code || "";
                   const pressureClass = masterData.pressureClasses?.find(
-                    (p: any) => p.id === flangePressureClassId,
+                    (p: PressureClassItem) => p.id === flangePressureClassId,
                   );
                   const pressureClassDesignation = pressureClass?.designation || "";
                   const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
@@ -5125,13 +5134,13 @@ function BendFormComponent({
                   const stub1SteelSpecId = stubsList[0]?.steelSpecificationId || steelSpecId;
                   const stub2SteelSpecId = stubsList[1]?.steelSpecificationId || steelSpecId;
                   const mainSteelSpec = masterData.steelSpecs?.find(
-                    (s: any) => s.id === steelSpecId,
+                    (s: SteelSpecItem) => s.id === steelSpecId,
                   );
                   const stub1SteelSpec = masterData.steelSpecs?.find(
-                    (s: any) => s.id === stub1SteelSpecId,
+                    (s: SteelSpecItem) => s.id === stub1SteelSpecId,
                   );
                   const stub2SteelSpec = masterData.steelSpecs?.find(
-                    (s: any) => s.id === stub2SteelSpecId,
+                    (s: SteelSpecItem) => s.id === stub2SteelSpecId,
                   );
                   const mainSpecName = mainSteelSpec?.steelSpecName?.split(" ")[0] || "";
                   const stub1SpecName =

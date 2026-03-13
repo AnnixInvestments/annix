@@ -68,9 +68,14 @@ export interface StraightPipeSpecs extends BasePipeSpecs {
 export interface BendSpecs extends BasePipeSpecs {
   bendEndConfiguration?: BendEndConfiguration;
   bendType?: string;
+  bendItemType?: string;
+  bendStyle?: string;
   bendRadiusType?: string;
   bendDegrees?: number;
   numberOfSegments?: number;
+  numberOfTangents?: number;
+  tangentLengths?: number[];
+  numberOfStubs?: number;
   centerToFaceMm?: number;
   bendRadiusMm?: number;
   flangeStandardId?: number;
@@ -79,7 +84,22 @@ export interface BendSpecs extends BasePipeSpecs {
   closureLengthMm?: number;
   blankFlangePositions?: string[];
   addBlankFlange?: boolean;
+  blankFlangeCount?: number;
+  quantityValue?: number;
+  sweepTeePipeALengthMm?: number;
   stubs?: StubSpec[];
+  pslLevel?: string | null;
+  cvnTestTemperatureC?: number | null;
+  cvnAverageJoules?: number | null;
+  cvnMinimumJoules?: number | null;
+  heatNumber?: string | null;
+  mtcReference?: string | null;
+  naceCompliant?: boolean | null;
+  h2sZone?: number | null;
+  maxHardnessHrc?: number | null;
+  sscTested?: boolean | null;
+  savedCameraPosition?: [number, number, number];
+  savedCameraTarget?: [number, number, number];
   duckfootBasePlateXMm?: number;
   duckfootBasePlateYMm?: number;
   duckfootInletCentreHeightMm?: number;
@@ -105,6 +125,16 @@ export interface StubSpec {
   distanceFromCenterMm?: number;
   hasFlange?: boolean;
   hasBlankFlange?: boolean;
+  steelSpecificationId?: number;
+  wallThicknessMm?: number;
+  wallThicknessOverride?: boolean;
+  flangeStandardId?: number;
+  flangePressureClassId?: number;
+  flangeTypeCode?: string;
+  length?: number;
+  lengthMm?: number;
+  locationFromFlange?: number;
+  tangent?: number;
 }
 
 export interface FittingSpecs extends BasePipeSpecs {
@@ -147,6 +177,7 @@ export interface BendCalculation extends BaseCalculation {
   bendWeight?: number;
   totalWeldLengthMm?: number;
   flangeWeight?: number;
+  flangeWeightPerUnit?: number;
   duckfootBasePlateWeight?: number;
   duckfootRibWeight?: number;
   duckfootGussetWeight?: number;
@@ -179,6 +210,10 @@ export interface RfqEntry<TSpecs, TCalculation> {
   minimumWallThickness?: number;
   isScheduleOverridden?: boolean;
   hasFlangeOverride?: boolean;
+  materialType?: string;
+  selectedNotes?: string[];
+  notes?: string;
+  calculationError?: string;
 }
 
 export type StraightPipeEntry = RfqEntry<StraightPipeSpecs, StraightPipeCalculation>;
@@ -192,10 +227,12 @@ export interface GlobalSpecs {
   workingTemperatureCelsius?: number;
   flangeStandardId?: number;
   flangePressureClassId?: number;
+  flangeTypeCode?: string;
+  pressureClassDesignation?: string;
 }
 
 export interface MasterData {
-  steelSpecs?: Array<{ id: number; steelSpecName: string }>;
+  steelSpecs?: Array<{ id: number; steelSpecName: string; maxPressureBar?: number; maxTemperatureC?: number }>;
   flangeStandards?: Array<{ id: number; code: string; name: string }>;
   pressureClasses?: Array<{
     id: number;
