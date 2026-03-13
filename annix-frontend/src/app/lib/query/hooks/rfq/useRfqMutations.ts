@@ -48,12 +48,26 @@ export function useUpdateUnifiedRfq() {
   });
 }
 
+interface DraftMutationContext {
+  previousDrafts: unknown;
+}
+
 export function useSaveDraft() {
   const queryClient = useQueryClient();
 
-  return useMutation<RfqDraftResponse, Error, SaveRfqDraftDto>({
+  return useMutation<RfqDraftResponse, Error, SaveRfqDraftDto, DraftMutationContext>({
     mutationFn: (data) => draftsApi.save(data),
-    onSuccess: () => {
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: rfqKeys.drafts.all });
+      const previousDrafts = queryClient.getQueryData(rfqKeys.drafts.all);
+      return { previousDrafts };
+    },
+    onError: (_err, _newDraft, context) => {
+      if (context?.previousDrafts) {
+        queryClient.setQueryData(rfqKeys.drafts.all, context.previousDrafts);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: rfqKeys.drafts.all });
       queryClient.invalidateQueries({ queryKey: customerKeys.drafts.all });
     },
@@ -63,9 +77,19 @@ export function useSaveDraft() {
 export function useAdminSaveDraft() {
   const queryClient = useQueryClient();
 
-  return useMutation<RfqDraftResponse, Error, SaveRfqDraftDto>({
+  return useMutation<RfqDraftResponse, Error, SaveRfqDraftDto, DraftMutationContext>({
     mutationFn: (data) => adminApiClient.saveDraft(data),
-    onSuccess: () => {
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: rfqKeys.drafts.all });
+      const previousDrafts = queryClient.getQueryData(rfqKeys.drafts.all);
+      return { previousDrafts };
+    },
+    onError: (_err, _newDraft, context) => {
+      if (context?.previousDrafts) {
+        queryClient.setQueryData(rfqKeys.drafts.all, context.previousDrafts);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: rfqKeys.drafts.all });
     },
   });

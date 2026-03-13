@@ -498,7 +498,7 @@ export class RfqService {
       if (item.itemType === "straight_pipe" && item.straightPipe) {
         const calculation = await this.calculateStraightPipeRequirements(item.straightPipe);
 
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.STRAIGHT_PIPE,
@@ -508,8 +508,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const straightPipeRfq = this.straightPipeRfqRepository.create({
           nominalBoreMm: item.straightPipe.nominalBoreMm,
@@ -549,7 +547,7 @@ export class RfqService {
         await this.straightPipeRfqRepository.save(straightPipeRfq);
         this.logger.log(`Created straight pipe item #${lineNumber}: ${item.description}`);
       } else if (item.itemType === "bend" && item.bend) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.BEND,
@@ -558,8 +556,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const bendRfq = this.bendRfqRepository.create({
           nominalBoreMm: item.bend.nominalBoreMm,
@@ -589,7 +585,7 @@ export class RfqService {
         await this.bendRfqRepository.save(bendRfq);
         this.logger.log(`Created bend item #${lineNumber}: ${item.description}`);
       } else if (item.itemType === "fitting" && item.fitting) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.FITTING,
@@ -598,8 +594,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const fittingRfq = this.fittingRfqRepository.create({
           nominalDiameterMm: item.fitting.nominalDiameterMm,
@@ -625,7 +619,7 @@ export class RfqService {
         await this.fittingRfqRepository.save(fittingRfq);
         this.logger.log(`Created fitting item #${lineNumber}: ${item.description}`);
       } else if (item.itemType === "expansion_joint" && item.expansionJoint) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.EXPANSION_JOINT,
@@ -634,8 +628,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const expansionJointRfq = this.expansionJointRfqRepository.create({
           expansionJointType: item.expansionJoint.expansionJointType as ExpansionJointType,
@@ -667,7 +659,7 @@ export class RfqService {
         await this.expansionJointRfqRepository.save(expansionJointRfq);
         this.logger.log(`Created expansion joint item #${lineNumber}: ${item.description}`);
       } else if (item.itemType === "valve" && item.valve) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.VALVE,
@@ -676,8 +668,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const valveRfq = this.valveRfqRepository.create({
           valveType: item.valve.valveType,
@@ -719,7 +709,7 @@ export class RfqService {
         await this.valveRfqRepository.save(valveRfq);
         this.logger.log(`Created valve item #${lineNumber}: ${item.description}`);
       } else if (item.itemType === "instrument" && item.instrument) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.INSTRUMENT,
@@ -728,8 +718,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const instrumentRfq = this.instrumentRfqRepository.create({
           instrumentType: item.instrument.instrumentType,
@@ -764,7 +752,7 @@ export class RfqService {
         await this.instrumentRfqRepository.save(instrumentRfq);
         this.logger.log(`Created instrument item #${lineNumber}: ${item.description}`);
       } else if (item.itemType === "pump" && item.pump) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.PUMP,
@@ -773,8 +761,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const pumpRfq = this.pumpRfqRepository.create({
           serviceType: item.pump.serviceType as PumpServiceType,
@@ -826,7 +812,7 @@ export class RfqService {
         await this.pumpRfqRepository.save(pumpRfq);
         this.logger.log(`Created pump item #${lineNumber}: ${item.description}`);
       } else if (item.itemType === "tank_chute" && item.tankChute) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.TANK_CHUTE,
@@ -835,8 +821,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const tankChuteRfq = this.tankChuteRfqRepository.create({
           assemblyType: item.tankChute.assemblyType as AssemblyType,
@@ -943,7 +927,7 @@ export class RfqService {
       if (item.itemType === "straight_pipe" && item.straightPipe) {
         const calculation = await this.calculateStraightPipeRequirements(item.straightPipe);
 
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.STRAIGHT_PIPE,
@@ -953,8 +937,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const straightPipeRfq = this.straightPipeRfqRepository.create({
           nominalBoreMm: item.straightPipe.nominalBoreMm,
@@ -993,7 +975,7 @@ export class RfqService {
 
         await this.straightPipeRfqRepository.save(straightPipeRfq);
       } else if (item.itemType === "bend" && item.bend) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.BEND,
@@ -1002,8 +984,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const bendRfq = this.bendRfqRepository.create({
           nominalBoreMm: item.bend.nominalBoreMm,
@@ -1032,7 +1012,7 @@ export class RfqService {
 
         await this.bendRfqRepository.save(bendRfq);
       } else if (item.itemType === "fitting" && item.fitting) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.FITTING,
@@ -1041,8 +1021,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const fittingRfq = this.fittingRfqRepository.create({
           nominalDiameterMm: item.fitting.nominalDiameterMm,
@@ -1067,7 +1045,7 @@ export class RfqService {
 
         await this.fittingRfqRepository.save(fittingRfq);
       } else if (item.itemType === "expansion_joint" && item.expansionJoint) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.EXPANSION_JOINT,
@@ -1076,8 +1054,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const expansionJointRfq = this.expansionJointRfqRepository.create({
           expansionJointType: item.expansionJoint.expansionJointType as ExpansionJointType,
@@ -1108,7 +1084,7 @@ export class RfqService {
 
         await this.expansionJointRfqRepository.save(expansionJointRfq);
       } else if (item.itemType === "valve" && item.valve) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.VALVE,
@@ -1117,8 +1093,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const valveRfq = this.valveRfqRepository.create({
           valveType: item.valve.valveType,
@@ -1159,7 +1133,7 @@ export class RfqService {
 
         await this.valveRfqRepository.save(valveRfq);
       } else if (item.itemType === "instrument" && item.instrument) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.INSTRUMENT,
@@ -1168,8 +1142,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const instrumentRfq = this.instrumentRfqRepository.create({
           instrumentType: item.instrument.instrumentType,
@@ -1203,7 +1175,7 @@ export class RfqService {
 
         await this.instrumentRfqRepository.save(instrumentRfq);
       } else if (item.itemType === "pump" && item.pump) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.PUMP,
@@ -1212,8 +1184,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const pumpRfq = this.pumpRfqRepository.create({
           serviceType: item.pump.serviceType as PumpServiceType,
@@ -1264,7 +1234,7 @@ export class RfqService {
 
         await this.pumpRfqRepository.save(pumpRfq);
       } else if (item.itemType === "tank_chute" && item.tankChute) {
-        const rfqItem = this.rfqItemRepository.create({
+        const savedRfqItem = await this.createRfqItem({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.TANK_CHUTE,
@@ -1273,8 +1243,6 @@ export class RfqService {
           notes: item.notes,
           rfq: savedRfq,
         });
-
-        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const tankChuteRfq = this.tankChuteRfqRepository.create({
           assemblyType: item.tankChute.assemblyType as AssemblyType,
@@ -1330,6 +1298,20 @@ export class RfqService {
     });
 
     return { rfq: finalRfq!, itemsUpdated: lineNumber };
+  }
+
+  private async createRfqItem(params: {
+    lineNumber: number;
+    description: string;
+    itemType: RfqItemType;
+    quantity: number;
+    weightPerUnitKg?: number;
+    totalWeightKg?: number;
+    notes?: string;
+    rfq: Rfq;
+  }): Promise<RfqItem> {
+    const rfqItem = this.rfqItemRepository.create(params);
+    return this.rfqItemRepository.save(rfqItem);
   }
 
   async findAllRfqsPaginated(
@@ -1491,19 +1473,26 @@ export class RfqService {
   }
 
   async calculateBendRequirements(dto: CreateBendRfqDto): Promise<BendCalculationResultDto> {
-    // For now, use a comprehensive calculation based on the bend specifications
-    // This would integrate with proper bend tables and pricing in a full implementation
-
-    const approximateWeight = this.calculateBendWeight(dto);
+    const weightBreakdown = this.calculateBendWeight(dto);
     const centerToFace = this.calculateCenterToFace(dto);
+    const numberOfFlanges = dto.numberOfTangents + 1;
+
+    const flangeWeight =
+      dto.flangeStandardId && dto.flangePressureClassId
+        ? (this.referenceDataCache.flangeDimension(
+            dto.nominalBoreMm,
+            dto.flangeStandardId,
+            dto.flangePressureClassId,
+          )?.mass_kg ?? 0) * numberOfFlanges
+        : 0;
 
     return {
-      totalWeight: approximateWeight,
+      totalWeight: weightBreakdown.totalWeight + flangeWeight,
       centerToFaceDimension: centerToFace,
-      bendWeight: approximateWeight * 0.7,
-      tangentWeight: approximateWeight * 0.2,
-      flangeWeight: approximateWeight * 0.1,
-      numberOfFlanges: dto.numberOfTangents + 1,
+      bendWeight: weightBreakdown.bendBodyWeight,
+      tangentWeight: weightBreakdown.tangentWeight,
+      flangeWeight,
+      numberOfFlanges,
       numberOfFlangeWelds: dto.numberOfTangents,
       totalFlangeWeldLength: (dto.numberOfTangents * Math.PI * dto.nominalBoreMm) / 1000,
       numberOfButtWelds: dto.numberOfTangents > 0 ? 1 : 0,
@@ -1513,13 +1502,20 @@ export class RfqService {
     };
   }
 
-  private calculateBendWeight(dto: CreateBendRfqDto): number {
-    // Simplified weight calculation based on nominal bore and bend specifications
-    const baseWeight = (dto.nominalBoreMm / 25) ** 2 * 2; // Base bend weight
+  private calculateBendWeight(dto: CreateBendRfqDto): {
+    bendBodyWeight: number;
+    tangentWeight: number;
+    totalWeight: number;
+  } {
+    const bendBodyWeight = (dto.nominalBoreMm / 25) ** 2 * 2;
     const tangentWeight = dto.tangentLengths.reduce((total, length) => {
       return total + (length / 1000) * (dto.nominalBoreMm / 25) * STEEL_DENSITY_KG_DM3;
     }, 0);
-    return baseWeight + tangentWeight;
+    return {
+      bendBodyWeight,
+      tangentWeight,
+      totalWeight: bendBodyWeight + tangentWeight,
+    };
   }
 
   private calculateCenterToFace(dto: CreateBendRfqDto): number {
