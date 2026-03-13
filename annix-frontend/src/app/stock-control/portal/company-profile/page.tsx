@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import { CandidateImage, stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { STOCK_CONTROL_VERSION } from "../../config/version";
 import { syncStatus } from "../../lib/offline/syncManager";
@@ -1088,6 +1089,7 @@ export default function CompanyProfilePage() {
 }
 
 function AppInfoSection() {
+  const { confirm, ConfirmDialog } = useConfirm();
   const [version, setVersion] = useState<string | null>(null);
   const [swStatus, setSwStatus] = useState<"active" | "waiting" | "none">("none");
   const [lastSync, setLastSync] = useState<string | null>(null);
@@ -1123,7 +1125,13 @@ function AppInfoSection() {
   };
 
   const handleClearCache = async () => {
-    if (confirm("Clear all cached data? You will need to re-download data when online.")) {
+    const confirmed = await confirm({
+      title: "Clear Cache",
+      message: "Clear all cached data? You will need to re-download data when online.",
+      confirmLabel: "Clear",
+      variant: "warning",
+    });
+    if (confirmed) {
       const registration = await navigator.serviceWorker.getRegistration("/stock-control");
       if (registration?.active) {
         registration.active.postMessage({ type: "CLEAR_CACHE" });
@@ -1133,6 +1141,7 @@ function AppInfoSection() {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      {ConfirmDialog}
       <h2 className="text-lg font-semibold text-gray-900 mb-4">App Info</h2>
 
       <div className="space-y-3">

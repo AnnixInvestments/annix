@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import type {
   JobCard,
   JobCardApproval,
@@ -40,6 +41,7 @@ export default function JobCardDetailPage() {
   const authContext = useStockControlAuth();
   const user = authContext.user;
   const profile = authContext.profile;
+  const { confirm, ConfirmDialog } = useConfirm();
   const jobId = Number(params.id);
 
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
@@ -108,7 +110,7 @@ export default function JobCardDetailPage() {
     }
   }, [jobId]);
 
-  const documents = useJobCardDocuments(jobId, fetchData);
+  const documents = useJobCardDocuments(jobId, fetchData, confirm);
   const coating = useJobCardCoating(jobId);
 
   useEffect(() => {
@@ -314,6 +316,7 @@ export default function JobCardDetailPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link

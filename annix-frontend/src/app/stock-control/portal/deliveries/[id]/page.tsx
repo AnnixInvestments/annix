@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -37,6 +38,7 @@ export default function DeliveryDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useStockControlAuth();
+  const { confirm, ConfirmDialog } = useConfirm();
   const deliveryId = Number(params.id);
 
   const [delivery, setDelivery] = useState<DeliveryNote | null>(null);
@@ -88,11 +90,13 @@ export default function DeliveryDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this delivery note? This will also reverse any stock movements.",
-      )
-    ) {
+    const confirmed = await confirm({
+      title: "Delete Delivery Note",
+      message: "Are you sure you want to delete this delivery note? This will also reverse any stock movements.",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!confirmed) {
       return;
     }
     try {
@@ -135,6 +139,7 @@ export default function DeliveryDetailPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link

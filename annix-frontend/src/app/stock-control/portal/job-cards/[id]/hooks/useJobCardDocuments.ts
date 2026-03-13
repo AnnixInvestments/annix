@@ -2,7 +2,19 @@ import { useCallback, useState } from "react";
 import type { JobCardAttachment, JobCardVersion } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
-export function useJobCardDocuments(jobId: number, fetchData: () => Promise<void>) {
+interface ConfirmOptions {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: "danger" | "warning" | "default";
+}
+
+export function useJobCardDocuments(
+  jobId: number,
+  fetchData: () => Promise<void>,
+  confirmFn?: (options: ConfirmOptions) => Promise<boolean>,
+) {
   const [versions, setVersions] = useState<JobCardVersion[]>([]);
   const [attachments, setAttachments] = useState<JobCardAttachment[]>([]);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -89,7 +101,15 @@ export function useJobCardDocuments(jobId: number, fetchData: () => Promise<void
 
   const handleDeleteAttachment = useCallback(
     async (attachmentId: number) => {
-      if (!confirm("Delete this attachment?")) return;
+      if (confirmFn) {
+        const confirmed = await confirmFn({
+          title: "Delete Attachment",
+          message: "Delete this attachment?",
+          confirmLabel: "Delete",
+          variant: "danger",
+        });
+        if (!confirmed) return;
+      }
       try {
         await stockControlApiClient.deleteJobCardAttachment(jobId, attachmentId);
         setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
@@ -97,7 +117,7 @@ export function useJobCardDocuments(jobId: number, fetchData: () => Promise<void
         throw err instanceof Error ? err : new Error("Failed to delete attachment");
       }
     },
-    [jobId],
+    [jobId, confirmFn],
   );
 
   const handleAmendmentDrop = useCallback((e: React.DragEvent) => {

@@ -3,6 +3,7 @@
 import { CheckCircle, Download, FileText, Send, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
@@ -36,6 +37,7 @@ type SortColumn =
 
 export default function SupplierTaxInvoicesPage() {
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
   const [suppliers, setSuppliers] = useState<RubberCompanyDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -104,7 +106,13 @@ export default function SupplierTaxInvoicesPage() {
   };
 
   const handleDelete = async (id: number, invoiceNumber: string) => {
-    if (!window.confirm(`Delete tax invoice ${invoiceNumber}? This cannot be undone.`)) return;
+    const confirmed = await confirm({
+      title: "Delete Tax Invoice",
+      message: `Delete tax invoice ${invoiceNumber}? This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     try {
       setDeletingId(id);
       await auRubberApiClient.deleteTaxInvoice(id);
@@ -354,6 +362,7 @@ export default function SupplierTaxInvoicesPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <Breadcrumb items={[{ label: "Suppliers" }, { label: "Tax Invoices" }]} />
       <div className="flex items-center justify-between">
         <div>

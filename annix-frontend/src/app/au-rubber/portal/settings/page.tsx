@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
@@ -460,6 +461,7 @@ function BrandingTab() {
 
 function AccessControlTab() {
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [users, setUsers] = useState<AuRubberUserAccessDto[]>([]);
   const [roles, setRoles] = useState<AuRubberRoleDto[]>([]);
   const [permissions, setPermissions] = useState<AuRubberPermissionDto[]>([]);
@@ -535,7 +537,13 @@ function AccessControlTab() {
   };
 
   const handleDeleteRole = async (roleId: number) => {
-    if (!confirm("Are you sure you want to delete this role?")) return;
+    const confirmed = await confirm({
+      title: "Delete Role",
+      message: "Are you sure you want to delete this role?",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!confirmed) return;
 
     try {
       await auRubberApiClient.deleteRole(roleId);
@@ -614,7 +622,13 @@ function AccessControlTab() {
   };
 
   const handleRevokeAccess = async (accessId: number) => {
-    if (!confirm("Are you sure you want to revoke this user's access?")) return;
+    const confirmed = await confirm({
+      title: "Revoke Access",
+      message: "Are you sure you want to revoke this user's access?",
+      confirmLabel: "Revoke",
+      variant: "danger",
+    });
+    if (!confirmed) return;
 
     try {
       await auRubberApiClient.revokeUserAccess(accessId);
@@ -635,6 +649,7 @@ function AccessControlTab() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">Users</h2>

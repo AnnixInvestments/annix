@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -14,6 +15,7 @@ import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 export default function NewProductionPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [products, setProducts] = useState<RubberProductDto[]>([]);
   const [stocks, setStocks] = useState<RubberCompoundStockDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,10 +104,13 @@ export default function NewProductionPage() {
     }
 
     if (calculation && selectedStock && calculation.compoundRequiredKg > selectedStock.quantityKg) {
-      const confirm = window.confirm(
-        `Warning: Required compound (${calculation.compoundRequiredKg.toFixed(2)} kg) exceeds available stock (${selectedStock.quantityKg.toFixed(2)} kg). Continue anyway?`,
-      );
-      if (!confirm) return;
+      const confirmed = await confirm({
+        title: "Insufficient Stock",
+        message: `Required compound (${calculation.compoundRequiredKg.toFixed(2)} kg) exceeds available stock (${selectedStock.quantityKg.toFixed(2)} kg). Continue anyway?`,
+        confirmLabel: "Continue",
+        variant: "warning",
+      });
+      if (!confirmed) return;
     }
 
     try {
@@ -141,6 +146,7 @@ export default function NewProductionPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <Breadcrumb
         items={[
           { label: "Production", href: "/au-rubber/portal/productions" },

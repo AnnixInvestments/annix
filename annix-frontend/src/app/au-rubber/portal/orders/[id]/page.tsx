@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type {
@@ -136,6 +137,7 @@ export default function AuRubberOrderDetailPage() {
   const router = useRouter();
   const orderId = Number(params.id);
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const [order, setOrder] = useState<RubberOrderDto | null>(null);
   const [products, setProducts] = useState<RubberProductDto[]>([]);
@@ -236,15 +238,21 @@ export default function AuRubberOrderDetailPage() {
   }, [hasUnsavedChanges]);
 
   const handleBackClick = useCallback(
-    (e: React.MouseEvent) => {
+    async (e: React.MouseEvent) => {
       if (hasUnsavedChanges) {
         e.preventDefault();
-        if (confirm("You have unsaved changes. Are you sure you want to leave?")) {
+        const confirmed = await confirm({
+          title: "Unsaved Changes",
+          message: "You have unsaved changes. Are you sure you want to leave?",
+          confirmLabel: "Leave",
+          variant: "warning",
+        });
+        if (confirmed) {
           router.push("/au-rubber/portal/orders");
         }
       }
     },
-    [hasUnsavedChanges, router],
+    [hasUnsavedChanges, router, confirm],
   );
 
   const validateItems = () => {
@@ -290,7 +298,13 @@ export default function AuRubberOrderDetailPage() {
     const validationIssues = validateItems();
     if (validationIssues.length > 0) {
       const message = `Warning:\n- ${validationIssues.join("\n- ")}\n\nDo you want to continue saving?`;
-      if (!confirm(message)) {
+      const confirmed = await confirm({
+        title: "Validation Issues",
+        message,
+        confirmLabel: "Save Anyway",
+        variant: "warning",
+      });
+      if (!confirmed) {
         return;
       }
     }
@@ -526,6 +540,7 @@ export default function AuRubberOrderDetailPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <Breadcrumb
         items={[
           { label: "Orders", href: "/au-rubber/portal/orders" },

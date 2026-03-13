@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import {
@@ -17,6 +18,7 @@ export default function RbacPage() {
   const router = useRouter();
   const { isAdmin, isLoading: authLoading } = useAuRubberAuth();
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const [users, setUsers] = useState<AuRubberUserAccessDto[]>([]);
   const [roles, setRoles] = useState<AuRubberRoleDto[]>([]);
@@ -102,7 +104,13 @@ export default function RbacPage() {
   };
 
   const handleDeleteRole = async (roleId: number) => {
-    if (!confirm("Are you sure you want to delete this role?")) return;
+    const confirmed = await confirm({
+      title: "Delete Role",
+      message: "Are you sure you want to delete this role?",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!confirmed) return;
 
     try {
       await auRubberApiClient.deleteRole(roleId);
@@ -183,7 +191,13 @@ export default function RbacPage() {
   };
 
   const handleRevokeAccess = async (accessId: number) => {
-    if (!confirm("Are you sure you want to revoke this user's access?")) return;
+    const confirmed = await confirm({
+      title: "Revoke Access",
+      message: "Are you sure you want to revoke this user's access?",
+      confirmLabel: "Revoke",
+      variant: "danger",
+    });
+    if (!confirmed) return;
 
     try {
       await auRubberApiClient.revokeUserAccess(accessId);
@@ -208,6 +222,7 @@ export default function RbacPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <Breadcrumb items={[{ label: "RBAC" }]} />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Role-Based Access Control</h1>
