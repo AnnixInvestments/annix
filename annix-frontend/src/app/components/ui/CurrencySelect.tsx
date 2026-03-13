@@ -21,35 +21,33 @@ const currencyOptions: SearchableSelectOption[] = CURRENCIES.map((currency) => (
   searchTerms: [currency.country, currency.symbol],
 }));
 
-const CurrencySelect = React.forwardRef<HTMLButtonElement, CurrencySelectProps>(
-  (props, ref) => {
-    const {
-      id,
-      value,
-      onChange,
-      placeholder = "Select currency...",
-      className,
-      disabled,
-      open,
-      onOpenChange,
-    } = props;
-    return (
-      <SearchableSelect
-        ref={ref}
-        id={id}
-        value={value}
-        onChange={onChange}
-        options={currencyOptions}
-        placeholder={placeholder}
-        searchPlaceholder="Search by country, code or currency name..."
-        className={className}
-        disabled={disabled}
-        open={open}
-        onOpenChange={onOpenChange}
-      />
-    );
-  },
-);
+const CurrencySelect = React.forwardRef<HTMLButtonElement, CurrencySelectProps>((props, ref) => {
+  const {
+    id,
+    value,
+    onChange,
+    placeholder = "Select currency...",
+    className,
+    disabled,
+    open,
+    onOpenChange,
+  } = props;
+  return (
+    <SearchableSelect
+      ref={ref}
+      id={id}
+      value={value}
+      onChange={onChange}
+      options={currencyOptions}
+      placeholder={placeholder}
+      searchPlaceholder="Search by country, code or currency name..."
+      className={className}
+      disabled={disabled}
+      open={open}
+      onOpenChange={onOpenChange}
+    />
+  );
+});
 
 CurrencySelect.displayName = "CurrencySelect";
 
