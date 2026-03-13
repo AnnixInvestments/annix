@@ -182,17 +182,15 @@ export class CsvExportAdapter implements ICrmAdapter {
   }
 
   private generateCsv(rows: string[][], headers: string[]): string {
-    const lines: string[] = [];
+    const headerLines = this.options.includeHeaders
+      ? [headers.map((h) => this.escapeValue(h)).join(this.options.delimiter)]
+      : [];
 
-    if (this.options.includeHeaders) {
-      lines.push(headers.map((h) => this.escapeValue(h)).join(this.options.delimiter));
-    }
+    const dataLines = rows.map((row) =>
+      row.map((v) => this.escapeValue(v)).join(this.options.delimiter),
+    );
 
-    for (const row of rows) {
-      lines.push(row.map((v) => this.escapeValue(v)).join(this.options.delimiter));
-    }
-
-    return lines.join("\n");
+    return [...headerLines, ...dataLines].join("\n");
   }
 
   private escapeValue(value: string): string {
@@ -250,35 +248,38 @@ export class CsvExportAdapter implements ICrmAdapter {
       return this.flattenObject(data);
     }
 
-    const mapped: Record<string, unknown> = {};
-
-    for (const mapping of mappings) {
-      const sourceValue = this.resolveNestedField(data, mapping.sourceField);
-      if (sourceValue !== undefined) {
-        const transformedValue = this.applyTransform(sourceValue, mapping.transform);
-        mapped[mapping.targetField] = transformedValue;
-      } else {
-        mapped[mapping.targetField] = null;
-      }
-    }
-
-    return mapped;
+    return mappings.reduce(
+      (acc, mapping) => {
+        const sourceValue = this.resolveNestedField(data, mapping.sourceField);
+        const transformedValue =
+          sourceValue !== undefined ? this.applyTransform(sourceValue, mapping.transform) : null;
+        return { ...acc, [mapping.targetField]: transformedValue };
+      },
+      {} as Record<string, unknown>,
+    );
   }
 
   private flattenObject(obj: Record<string, unknown>, prefix = ""): Record<string, unknown> {
-    const result: Record<string, unknown> = {};
+    return Object.entries(obj).reduce(
+      (result, [key, value]) => {
+        const newKey = prefix ? `${prefix}.${key}` : key;
 
-    for (const [key, value] of Object.entries(obj)) {
-      const newKey = prefix ? `${prefix}.${key}` : key;
+        if (
+          value &&
+          typeof value === "object" &&
+          !Array.isArray(value) &&
+          !(value instanceof Date)
+        ) {
+          return {
+            ...result,
+            ...this.flattenObject(value as Record<string, unknown>, newKey),
+          };
+        }
 
-      if (value && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)) {
-        Object.assign(result, this.flattenObject(value as Record<string, unknown>, newKey));
-      } else {
-        result[newKey] = value;
-      }
-    }
-
-    return result;
+        return { ...result, [newKey]: value };
+      },
+      {} as Record<string, unknown>,
+    );
   }
 
   private resolveNestedField(obj: Record<string, unknown>, path: string): unknown {

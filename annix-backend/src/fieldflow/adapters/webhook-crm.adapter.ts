@@ -190,26 +190,28 @@ export class WebhookCrmAdapter implements ICrmAdapter {
       return dataAsRecord;
     }
 
-    const mapped: Record<string, unknown> = {};
-
-    for (const mapping of relevantMappings) {
-      const sourceValue = this.resolveNestedField(dataAsRecord, mapping.sourceField);
-      if (sourceValue !== undefined) {
-        const transformedValue = this.applyTransform(sourceValue, mapping.transform);
-        this.setNestedField(mapped, mapping.targetField, transformedValue);
-      }
-    }
+    const mapped = relevantMappings.reduce(
+      (acc, mapping) => {
+        const sourceValue = this.resolveNestedField(dataAsRecord, mapping.sourceField);
+        if (sourceValue !== undefined) {
+          const transformedValue = this.applyTransform(sourceValue, mapping.transform);
+          this.setNestedField(acc, mapping.targetField, transformedValue);
+        }
+        return acc;
+      },
+      {} as Record<string, unknown>,
+    );
 
     const unmappedFields = Object.keys(dataAsRecord).filter(
       (key) => !relevantMappings.some((m) => m.sourceField === key),
     );
-    for (const field of unmappedFields) {
-      if (!(field in mapped)) {
-        mapped[field] = dataAsRecord[field];
-      }
-    }
 
-    return mapped;
+    return unmappedFields.reduce((acc, field) => {
+      if (!(field in acc)) {
+        return { ...acc, [field]: dataAsRecord[field] };
+      }
+      return acc;
+    }, mapped);
   }
 
   private resolveNestedField(obj: Record<string, unknown>, path: string): unknown {
@@ -223,15 +225,14 @@ export class WebhookCrmAdapter implements ICrmAdapter {
 
   private setNestedField(obj: Record<string, unknown>, path: string, value: unknown): void {
     const parts = path.split(".");
-    let current = obj;
+    const parentParts = parts.slice(0, -1);
 
-    for (let i = 0; i < parts.length - 1; i++) {
-      const part = parts[i];
-      if (!(part in current) || typeof current[part] !== "object") {
-        current[part] = {};
+    const current = parentParts.reduce((acc, part) => {
+      if (!(part in acc) || typeof acc[part] !== "object") {
+        acc[part] = {};
       }
-      current = current[part] as Record<string, unknown>;
-    }
+      return acc[part] as Record<string, unknown>;
+    }, obj);
 
     current[parts[parts.length - 1]] = value;
   }

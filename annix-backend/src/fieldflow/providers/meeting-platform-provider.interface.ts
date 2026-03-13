@@ -11,7 +11,7 @@ export interface PlatformOAuthTokenResponse {
 export interface PlatformProviderConfig {
   accessToken: string;
   refreshToken: string | null;
-  accountId?: string;
+  accountId: string | null;
 }
 
 export interface PlatformUserInfo {

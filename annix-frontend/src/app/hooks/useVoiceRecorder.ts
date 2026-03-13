@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { RECORDING_SAMPLE_RATE } from "@/app/fieldflow/config/recording";
 
 export type RecordingState = "idle" | "requesting" | "recording" | "paused" | "stopped" | "error";
 export type SpeechState = "silence" | "speech";
@@ -140,6 +141,12 @@ export function useVoiceRecorder(
       }
     };
 
+    worker.onerror = (error) => {
+      console.error("VAD worker error:", error);
+      vadWorkerRef.current?.terminate();
+      vadWorkerRef.current = null;
+    };
+
     worker.postMessage({ type: "init" });
     worker.postMessage({
       type: "configure",
@@ -201,18 +208,25 @@ export function useVoiceRecorder(
   const start = useCallback(async () => {
     updateState({ state: "requesting", error: null });
 
-    const stream = await navigator.mediaDevices.getUserMedia({
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
-        sampleRate: 16000,
+        sampleRate: RECORDING_SAMPLE_RATE,
       },
     });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Microphone access denied";
+      updateState({ state: "error", error: message });
+      return;
+    }
 
     mediaStreamRef.current = stream;
 
-    const audioContext = new AudioContext({ sampleRate: 16000 });
+    const audioContext = new AudioContext({ sampleRate: RECORDING_SAMPLE_RATE });
     audioContextRef.current = audioContext;
 
     const source = audioContext.createMediaStreamSource(stream);

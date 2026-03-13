@@ -1,7 +1,7 @@
 import type { Meeting, Prospect } from "../entities";
 
 export interface CrmContactData {
-  externalId?: string;
+  externalId: string | null;
   companyName: string;
   contactName: string | null;
   email: string | null;
@@ -19,8 +19,8 @@ export interface CrmContactData {
 }
 
 export interface CrmMeetingData {
-  externalId?: string;
-  contactExternalId?: string;
+  externalId: string | null;
+  contactExternalId: string | null;
   title: string;
   scheduledAt: string;
   endedAt: string | null;
@@ -80,7 +80,7 @@ export interface ICrmAdapter {
 
 export function prospectToCrmContact(prospect: Prospect): CrmContactData {
   return {
-    externalId: prospect.crmExternalId ?? undefined,
+    externalId: prospect.crmExternalId ?? null,
     companyName: prospect.companyName,
     contactName: prospect.contactName,
     email: prospect.contactEmail,
@@ -103,8 +103,8 @@ export function meetingToCrmMeeting(
   summary: CrmMeetingData["summary"] | null,
 ): CrmMeetingData {
   return {
-    externalId: meeting.crmExternalId ?? undefined,
-    contactExternalId: meeting.prospect?.crmExternalId ?? undefined,
+    externalId: meeting.crmExternalId ?? null,
+    contactExternalId: meeting.prospect?.crmExternalId ?? null,
     title: meeting.title,
     scheduledAt: meeting.scheduledStart.toISOString(),
     endedAt: meeting.actualEnd?.toISOString() ?? null,

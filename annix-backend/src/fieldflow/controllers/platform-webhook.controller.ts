@@ -22,7 +22,7 @@ export class PlatformWebhookController {
     const payload = body as Record<string, unknown>;
 
     if (payload.event === "endpoint.url_validation") {
-      const payloadData = payload.payload as { plainToken?: string } | undefined;
+      const payloadData = payload.payload as { plainToken?: string } | null;
       if (payloadData?.plainToken) {
         const validation = this.webhookService.zoomUrlValidationResponse(payloadData.plainToken);
         res.status(200).json(validation);

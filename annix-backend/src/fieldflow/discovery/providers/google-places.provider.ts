@@ -26,11 +26,11 @@ interface GooglePlacesResponse {
 @Injectable()
 export class GooglePlacesProvider implements DiscoveryProvider {
   private readonly logger = new Logger(GooglePlacesProvider.name);
-  private readonly apiKey: string | undefined;
+  private readonly apiKey: string | null;
   readonly source = DiscoverySource.GOOGLE_PLACES;
 
   constructor(private readonly configService: ConfigService) {
-    this.apiKey = this.configService.get<string>("GOOGLE_PLACES_API_KEY");
+    this.apiKey = this.configService.get<string>("GOOGLE_PLACES_API_KEY") ?? null;
   }
 
   isConfigured(): boolean {
@@ -43,16 +43,18 @@ export class GooglePlacesProvider implements DiscoveryProvider {
       return [];
     }
 
-    const results: DiscoveredBusiness[] = [];
-
     const searchQueries = params.searchTerms.length > 0 ? params.searchTerms : ["business"];
 
     const uniqueQueries = [...new Set(searchQueries.slice(0, 5))];
 
-    for (const query of uniqueQueries) {
-      const businesses = await this.searchWithQuery(params, query);
-      results.push(...businesses);
-    }
+    const results = await uniqueQueries.reduce(
+      async (accPromise, query) => {
+        const acc = await accPromise;
+        const businesses = await this.searchWithQuery(params, query);
+        return [...acc, ...businesses];
+      },
+      Promise.resolve([] as DiscoveredBusiness[]),
+    );
 
     return this.deduplicateResults(results);
   }
@@ -141,13 +143,16 @@ export class GooglePlacesProvider implements DiscoveryProvider {
     components: Array<{ longText: string; types: string[] }>,
     typePreferences: string[],
   ): string | null {
-    for (const typePreference of typePreferences) {
-      const component = components.find((c) => c.types.includes(typePreference));
-      if (component) {
-        return component.longText;
-      }
+    const matchedType = typePreferences.find((typePreference) =>
+      components.some((c) => c.types.includes(typePreference)),
+    );
+
+    if (!matchedType) {
+      return null;
     }
-    return null;
+
+    const component = components.find((c) => c.types.includes(matchedType));
+    return component?.longText ?? null;
   }
 
   private extractStreetAddress(

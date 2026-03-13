@@ -498,7 +498,7 @@ export class PipedriveAdapter implements ICrmAdapter {
 
     return {
       externalId: String(activity.id),
-      contactExternalId: activity.person_id ? String(activity.person_id) : undefined,
+      contactExternalId: activity.person_id ? String(activity.person_id) : null,
       title: activity.subject,
       scheduledAt: dueDateTime,
       endedAt: endDateTime,

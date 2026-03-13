@@ -337,15 +337,15 @@ export class ImportProspectRowDto {
   @IsOptional()
   country?: string;
 
-  @ApiPropertyOptional()
-  @IsString()
+  @ApiPropertyOptional({ enum: ProspectStatus })
+  @IsEnum(ProspectStatus)
   @IsOptional()
-  status?: string;
+  status?: ProspectStatus;
 
-  @ApiPropertyOptional()
-  @IsString()
+  @ApiPropertyOptional({ enum: ProspectPriority })
+  @IsEnum(ProspectPriority)
   @IsOptional()
-  priority?: string;
+  priority?: ProspectPriority;
 
   @ApiPropertyOptional()
   @IsString()

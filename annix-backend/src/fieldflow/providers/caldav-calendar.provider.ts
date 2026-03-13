@@ -91,12 +91,13 @@ export class CaldavCalendarProvider implements ICalendarProvider {
     const ctags: Record<string, string> = syncToken && !fullSync ? JSON.parse(syncToken) : {};
     const newCtags: Record<string, string> = {};
 
-    for (const calendarUrl of calendarIds) {
+    await calendarIds.reduce(async (accPromise, calendarUrl) => {
+      await accPromise;
       const currentCtag = await this.fetchCtag(calendarUrl, username, password);
 
       if (!fullSync && ctags[calendarUrl] === currentCtag) {
         newCtags[calendarUrl] = currentCtag;
-        continue;
+        return;
       }
 
       const result = await this.fetchCalendarEvents(calendarUrl, username, password);
@@ -106,15 +107,13 @@ export class CaldavCalendarProvider implements ICalendarProvider {
         const oldEventIds = new Set<string>();
         const newEventIds = new Set(result.events.map((e) => e.externalId));
 
-        for (const id of oldEventIds) {
-          if (!newEventIds.has(id)) {
-            allDeletedIds.push(id);
-          }
-        }
+        [...oldEventIds]
+          .filter((id) => !newEventIds.has(id))
+          .forEach((id) => allDeletedIds.push(id));
       }
 
       newCtags[calendarUrl] = currentCtag;
-    }
+    }, Promise.resolve());
 
     return {
       events: allEvents,

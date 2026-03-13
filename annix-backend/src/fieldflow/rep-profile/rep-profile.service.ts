@@ -71,58 +71,58 @@ export class RepProfileService {
       });
     }
 
-    if (dto.industry !== undefined) {
+    if (dto.industry != null) {
       profile.industry = dto.industry;
     }
-    if (dto.subIndustries !== undefined) {
+    if (dto.subIndustries != null) {
       profile.subIndustries = dto.subIndustries;
     }
-    if (dto.productCategories !== undefined) {
+    if (dto.productCategories != null) {
       profile.productCategories = dto.productCategories;
     }
-    if (dto.companyName !== undefined) {
+    if (dto.companyName != null) {
       profile.companyName = dto.companyName ?? null;
     }
-    if (dto.jobTitle !== undefined) {
+    if (dto.jobTitle != null) {
       profile.jobTitle = dto.jobTitle ?? null;
     }
-    if (dto.territoryDescription !== undefined) {
+    if (dto.territoryDescription != null) {
       profile.territoryDescription = dto.territoryDescription ?? null;
     }
-    if (dto.defaultSearchLatitude !== undefined) {
+    if (dto.defaultSearchLatitude != null) {
       profile.defaultSearchLatitude = dto.defaultSearchLatitude ?? null;
     }
-    if (dto.defaultSearchLongitude !== undefined) {
+    if (dto.defaultSearchLongitude != null) {
       profile.defaultSearchLongitude = dto.defaultSearchLongitude ?? null;
     }
-    if (dto.defaultSearchRadiusKm !== undefined) {
+    if (dto.defaultSearchRadiusKm != null) {
       profile.defaultSearchRadiusKm = dto.defaultSearchRadiusKm;
     }
-    if (dto.targetCustomerProfile !== undefined) {
+    if (dto.targetCustomerProfile != null) {
       profile.targetCustomerProfile = dto.targetCustomerProfile ?? null;
     }
-    if (dto.customSearchTerms !== undefined) {
+    if (dto.customSearchTerms != null) {
       profile.customSearchTerms = dto.customSearchTerms ?? null;
     }
-    if (dto.setupCompleted !== undefined) {
+    if (dto.setupCompleted != null) {
       profile.setupCompleted = dto.setupCompleted;
       if (dto.setupCompleted && !profile.setupCompletedAt) {
         profile.setupCompletedAt = now().toJSDate();
       }
     }
-    if (dto.defaultBufferBeforeMinutes !== undefined) {
+    if (dto.defaultBufferBeforeMinutes != null) {
       profile.defaultBufferBeforeMinutes = dto.defaultBufferBeforeMinutes;
     }
-    if (dto.defaultBufferAfterMinutes !== undefined) {
+    if (dto.defaultBufferAfterMinutes != null) {
       profile.defaultBufferAfterMinutes = dto.defaultBufferAfterMinutes;
     }
-    if (dto.workingHoursStart !== undefined) {
+    if (dto.workingHoursStart != null) {
       profile.workingHoursStart = dto.workingHoursStart;
     }
-    if (dto.workingHoursEnd !== undefined) {
+    if (dto.workingHoursEnd != null) {
       profile.workingHoursEnd = dto.workingHoursEnd;
     }
-    if (dto.workingDays !== undefined) {
+    if (dto.workingDays != null) {
       profile.workingDays = dto.workingDays;
     }
 

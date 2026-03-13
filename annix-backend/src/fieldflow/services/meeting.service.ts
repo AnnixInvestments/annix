@@ -145,7 +145,7 @@ export class MeetingService {
   async update(salesRepId: number, id: number, dto: UpdateMeetingDto): Promise<Meeting> {
     const meeting = await this.findOne(salesRepId, id);
 
-    if (dto.prospectId !== undefined) {
+    if (dto.prospectId != null) {
       if (dto.prospectId) {
         const prospect = await this.prospectRepo.findOne({
           where: { id: dto.prospectId },
@@ -157,22 +157,22 @@ export class MeetingService {
       meeting.prospectId = dto.prospectId ?? null;
     }
 
-    if (dto.title !== undefined) meeting.title = dto.title;
-    if (dto.description !== undefined) meeting.description = dto.description ?? null;
-    if (dto.meetingType !== undefined) meeting.meetingType = dto.meetingType;
-    if (dto.status !== undefined) meeting.status = dto.status;
-    if (dto.scheduledStart !== undefined)
+    if (dto.title != null) meeting.title = dto.title;
+    if (dto.description != null) meeting.description = dto.description ?? null;
+    if (dto.meetingType != null) meeting.meetingType = dto.meetingType;
+    if (dto.status != null) meeting.status = dto.status;
+    if (dto.scheduledStart != null)
       meeting.scheduledStart = fromISO(dto.scheduledStart).toJSDate();
-    if (dto.scheduledEnd !== undefined)
+    if (dto.scheduledEnd != null)
       meeting.scheduledEnd = fromISO(dto.scheduledEnd).toJSDate();
-    if (dto.location !== undefined) meeting.location = dto.location ?? null;
-    if (dto.latitude !== undefined) meeting.latitude = dto.latitude ?? null;
-    if (dto.longitude !== undefined) meeting.longitude = dto.longitude ?? null;
-    if (dto.attendees !== undefined) meeting.attendees = dto.attendees ?? null;
-    if (dto.agenda !== undefined) meeting.agenda = dto.agenda ?? null;
-    if (dto.notes !== undefined) meeting.notes = dto.notes ?? null;
-    if (dto.outcomes !== undefined) meeting.outcomes = dto.outcomes ?? null;
-    if (dto.actionItems !== undefined) meeting.actionItems = dto.actionItems ?? null;
+    if (dto.location != null) meeting.location = dto.location ?? null;
+    if (dto.latitude != null) meeting.latitude = dto.latitude ?? null;
+    if (dto.longitude != null) meeting.longitude = dto.longitude ?? null;
+    if (dto.attendees != null) meeting.attendees = dto.attendees ?? null;
+    if (dto.agenda != null) meeting.agenda = dto.agenda ?? null;
+    if (dto.notes != null) meeting.notes = dto.notes ?? null;
+    if (dto.outcomes != null) meeting.outcomes = dto.outcomes ?? null;
+    if (dto.actionItems != null) meeting.actionItems = dto.actionItems ?? null;
 
     return this.meetingRepo.save(meeting);
   }

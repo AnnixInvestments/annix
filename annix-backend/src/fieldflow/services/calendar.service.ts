@@ -304,18 +304,20 @@ export class CalendarService {
       return this.syncConnectionInternal(connection, true);
     }
 
-    for (const deletedId of syncResult.deletedEventIds) {
+    result.deleted = await syncResult.deletedEventIds.reduce(async (accPromise, deletedId) => {
+      const acc = await accPromise;
       await this.eventRepo.delete({
         connectionId: connection.id,
         externalId: deletedId,
       });
-      result.deleted++;
-    }
+      return acc + 1;
+    }, Promise.resolve(0));
 
-    for (const eventData of syncResult.events) {
+    result.synced = await syncResult.events.reduce(async (accPromise, eventData) => {
+      const acc = await accPromise;
       await this.upsertEvent(connection, eventData);
-      result.synced++;
-    }
+      return acc + 1;
+    }, Promise.resolve(0));
 
     connection.syncToken = syncResult.nextSyncToken;
     connection.lastSyncAt = now().toJSDate();

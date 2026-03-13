@@ -108,42 +108,42 @@ export class ProspectService {
 
     const updateData: Partial<Prospect> = {};
 
-    if (dto.companyName !== undefined) updateData.companyName = dto.companyName;
-    if (dto.contactName !== undefined) updateData.contactName = dto.contactName ?? null;
-    if (dto.contactEmail !== undefined) updateData.contactEmail = dto.contactEmail ?? null;
-    if (dto.contactPhone !== undefined) updateData.contactPhone = dto.contactPhone ?? null;
-    if (dto.contactTitle !== undefined) updateData.contactTitle = dto.contactTitle ?? null;
-    if (dto.streetAddress !== undefined) updateData.streetAddress = dto.streetAddress ?? null;
-    if (dto.city !== undefined) updateData.city = dto.city ?? null;
-    if (dto.province !== undefined) updateData.province = dto.province ?? null;
-    if (dto.postalCode !== undefined) updateData.postalCode = dto.postalCode ?? null;
-    if (dto.country !== undefined) updateData.country = dto.country ?? "South Africa";
-    if (dto.latitude !== undefined) updateData.latitude = dto.latitude ?? null;
-    if (dto.longitude !== undefined) updateData.longitude = dto.longitude ?? null;
-    if (dto.googlePlaceId !== undefined) updateData.googlePlaceId = dto.googlePlaceId ?? null;
-    if (dto.status !== undefined) updateData.status = dto.status;
-    if (dto.priority !== undefined) updateData.priority = dto.priority;
-    if (dto.notes !== undefined) updateData.notes = dto.notes ?? null;
-    if (dto.tags !== undefined) updateData.tags = dto.tags ?? null;
-    if (dto.estimatedValue !== undefined) updateData.estimatedValue = dto.estimatedValue ?? null;
-    if (dto.nextFollowUpAt !== undefined) {
+    if (dto.companyName != null) updateData.companyName = dto.companyName;
+    if (dto.contactName != null) updateData.contactName = dto.contactName ?? null;
+    if (dto.contactEmail != null) updateData.contactEmail = dto.contactEmail ?? null;
+    if (dto.contactPhone != null) updateData.contactPhone = dto.contactPhone ?? null;
+    if (dto.contactTitle != null) updateData.contactTitle = dto.contactTitle ?? null;
+    if (dto.streetAddress != null) updateData.streetAddress = dto.streetAddress ?? null;
+    if (dto.city != null) updateData.city = dto.city ?? null;
+    if (dto.province != null) updateData.province = dto.province ?? null;
+    if (dto.postalCode != null) updateData.postalCode = dto.postalCode ?? null;
+    if (dto.country != null) updateData.country = dto.country ?? "South Africa";
+    if (dto.latitude != null) updateData.latitude = dto.latitude ?? null;
+    if (dto.longitude != null) updateData.longitude = dto.longitude ?? null;
+    if (dto.googlePlaceId != null) updateData.googlePlaceId = dto.googlePlaceId ?? null;
+    if (dto.status != null) updateData.status = dto.status;
+    if (dto.priority != null) updateData.priority = dto.priority;
+    if (dto.notes != null) updateData.notes = dto.notes ?? null;
+    if (dto.tags != null) updateData.tags = dto.tags ?? null;
+    if (dto.estimatedValue != null) updateData.estimatedValue = dto.estimatedValue ?? null;
+    if (dto.nextFollowUpAt != null) {
       updateData.nextFollowUpAt = dto.nextFollowUpAt
         ? fromISO(dto.nextFollowUpAt).toJSDate()
         : null;
     }
-    if (dto.followUpRecurrence !== undefined) {
+    if (dto.followUpRecurrence != null) {
       updateData.followUpRecurrence = dto.followUpRecurrence;
     }
-    if (dto.customFields !== undefined) updateData.customFields = dto.customFields ?? null;
+    if (dto.customFields != null) updateData.customFields = dto.customFields ?? null;
 
     Object.assign(prospect, updateData);
     const saved = await this.prospectRepo.save(prospect);
 
-    if (dto.status !== undefined && dto.status !== oldStatus) {
+    if (dto.status != null && dto.status !== oldStatus) {
       await this.activityService.logStatusChange(id, ownerId, oldStatus, dto.status);
     }
 
-    if (dto.tags !== undefined) {
+    if (dto.tags != null) {
       await this.activityService.logTagsChanged(id, ownerId, oldTags, dto.tags ?? null);
     }
 
@@ -159,7 +159,7 @@ export class ProspectService {
       estimatedValue: saved.estimatedValue,
     };
 
-    const statusOrTagsChanged = dto.status !== undefined || dto.tags !== undefined;
+    const statusOrTagsChanged = dto.status != null || dto.tags != null;
     if (!statusOrTagsChanged) {
       await this.activityService.logFieldsUpdated(id, ownerId, oldValues, newValues);
     }
@@ -384,8 +384,8 @@ export class ProspectService {
       "Updated At",
     ];
 
-    const escapeField = (value: string | null | undefined): string => {
-      if (value === null || value === undefined) return "";
+    const escapeField = (value: string | null): string => {
+      if (value == null) return "";
       const str = String(value);
       if (str.includes(",") || str.includes('"') || str.includes("\n")) {
         return `"${str.replace(/"/g, '""')}"`;
@@ -411,7 +411,7 @@ export class ProspectService {
         p.status,
         p.priority,
         p.estimatedValue ?? "",
-        escapeField(p.tags?.join("; ")),
+        escapeField(p.tags?.join("; ") ?? null),
         escapeField(p.notes),
         p.lastContactedAt?.toISOString() ?? "",
         p.nextFollowUpAt?.toISOString() ?? "",
@@ -588,7 +588,7 @@ export class ProspectService {
       if (dto.fieldOverrides.province) primary.province = dto.fieldOverrides.province;
       if (dto.fieldOverrides.postalCode) primary.postalCode = dto.fieldOverrides.postalCode;
       if (dto.fieldOverrides.priority) primary.priority = dto.fieldOverrides.priority;
-      if (dto.fieldOverrides.estimatedValue !== undefined) {
+      if (dto.fieldOverrides.estimatedValue != null) {
         primary.estimatedValue = dto.fieldOverrides.estimatedValue ?? null;
       }
     }

@@ -426,12 +426,12 @@ export class RecurringMeetingService {
     });
 
     for (const child of children) {
-      if (dto.title !== undefined) child.title = dto.title;
-      if (dto.description !== undefined) child.description = dto.description ?? null;
-      if (dto.meetingType !== undefined) child.meetingType = dto.meetingType;
-      if (dto.location !== undefined) child.location = dto.location ?? null;
-      if (dto.attendees !== undefined) child.attendees = dto.attendees ?? null;
-      if (dto.agenda !== undefined) child.agenda = dto.agenda ?? null;
+      if (dto.title != null) child.title = dto.title;
+      if (dto.description != null) child.description = dto.description ?? null;
+      if (dto.meetingType != null) child.meetingType = dto.meetingType;
+      if (dto.location != null) child.location = dto.location ?? null;
+      if (dto.attendees != null) child.attendees = dto.attendees ?? null;
+      if (dto.agenda != null) child.agenda = dto.agenda ?? null;
     }
 
     if (children.length > 0) {
@@ -444,22 +444,22 @@ export class RecurringMeetingService {
   private applyDtoToMeeting(meeting: Meeting, dto: UpdateMeetingDto): Partial<Meeting> {
     const updates: Partial<Meeting> = {};
 
-    if (dto.title !== undefined) updates.title = dto.title;
-    if (dto.description !== undefined) updates.description = dto.description ?? null;
-    if (dto.meetingType !== undefined) updates.meetingType = dto.meetingType;
-    if (dto.status !== undefined) updates.status = dto.status;
-    if (dto.scheduledStart !== undefined)
+    if (dto.title != null) updates.title = dto.title;
+    if (dto.description != null) updates.description = dto.description ?? null;
+    if (dto.meetingType != null) updates.meetingType = dto.meetingType;
+    if (dto.status != null) updates.status = dto.status;
+    if (dto.scheduledStart != null)
       updates.scheduledStart = fromISO(dto.scheduledStart).toJSDate();
-    if (dto.scheduledEnd !== undefined)
+    if (dto.scheduledEnd != null)
       updates.scheduledEnd = fromISO(dto.scheduledEnd).toJSDate();
-    if (dto.location !== undefined) updates.location = dto.location ?? null;
-    if (dto.latitude !== undefined) updates.latitude = dto.latitude ?? null;
-    if (dto.longitude !== undefined) updates.longitude = dto.longitude ?? null;
-    if (dto.attendees !== undefined) updates.attendees = dto.attendees ?? null;
-    if (dto.agenda !== undefined) updates.agenda = dto.agenda ?? null;
-    if (dto.notes !== undefined) updates.notes = dto.notes ?? null;
-    if (dto.outcomes !== undefined) updates.outcomes = dto.outcomes ?? null;
-    if (dto.actionItems !== undefined) updates.actionItems = dto.actionItems ?? null;
+    if (dto.location != null) updates.location = dto.location ?? null;
+    if (dto.latitude != null) updates.latitude = dto.latitude ?? null;
+    if (dto.longitude != null) updates.longitude = dto.longitude ?? null;
+    if (dto.attendees != null) updates.attendees = dto.attendees ?? null;
+    if (dto.agenda != null) updates.agenda = dto.agenda ?? null;
+    if (dto.notes != null) updates.notes = dto.notes ?? null;
+    if (dto.outcomes != null) updates.outcomes = dto.outcomes ?? null;
+    if (dto.actionItems != null) updates.actionItems = dto.actionItems ?? null;
 
     return updates;
   }

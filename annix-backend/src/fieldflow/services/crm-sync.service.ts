@@ -81,14 +81,15 @@ export class CrmSyncService {
       [CrmType.SALESFORCE, CrmType.HUBSPOT, CrmType.PIPEDRIVE].includes(config.crmType),
     );
 
-    for (const config of oauthConfigs) {
+    await oauthConfigs.reduce(async (accPromise, config) => {
+      await accPromise;
       try {
         await this.syncIncrementally(config.id);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         this.logger.error(`Scheduled sync failed for config ${config.id}: ${errorMessage}`);
       }
-    }
+    }, Promise.resolve());
   }
 
   async syncIncrementally(configId: number): Promise<CrmSyncLog> {
@@ -335,42 +336,45 @@ export class CrmSyncService {
     contacts: CrmContactData[],
     syncLog: CrmSyncLog,
   ): Promise<void> {
-    const errors: SyncErrorDetail[] = [];
+    const errors = await contacts.reduce(
+      async (accPromise, contact) => {
+        const acc = await accPromise;
+        syncLog.recordsProcessed++;
 
-    for (const contact of contacts) {
-      syncLog.recordsProcessed++;
+        try {
+          const existingProspect = contact.externalId
+            ? await this.prospectRepo.findOne({
+                where: { crmExternalId: contact.externalId, ownerId: config.userId },
+              })
+            : null;
 
-      try {
-        const existingProspect = contact.externalId
-          ? await this.prospectRepo.findOne({
-              where: { crmExternalId: contact.externalId, ownerId: config.userId },
-            })
-          : null;
+          if (existingProspect) {
+            const shouldUpdate = this.shouldUpdateLocal(config, existingProspect, contact);
 
-        if (existingProspect) {
-          const shouldUpdate = this.shouldUpdateLocal(config, existingProspect, contact);
-
-          if (shouldUpdate) {
-            await this.updateProspectFromContact(existingProspect, contact);
-            syncLog.recordsSucceeded++;
+            if (shouldUpdate) {
+              await this.updateProspectFromContact(existingProspect, contact);
+            }
           } else {
-            syncLog.recordsSucceeded++;
+            await this.createProspectFromContact(config.userId, contact);
           }
-        } else {
-          await this.createProspectFromContact(config.userId, contact);
           syncLog.recordsSucceeded++;
+          return acc;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          syncLog.recordsFailed++;
+          return [
+            ...acc,
+            {
+              recordId: contact.externalId ?? "unknown",
+              recordType: "prospect" as const,
+              error: errorMessage,
+              timestamp: now().toISO()!,
+            },
+          ];
         }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        errors.push({
-          recordId: contact.externalId ?? "unknown",
-          recordType: "prospect",
-          error: errorMessage,
-          timestamp: now().toISO()!,
-        });
-        syncLog.recordsFailed++;
-      }
-    }
+      },
+      Promise.resolve([] as SyncErrorDetail[]),
+    );
 
     if (errors.length > 0) {
       syncLog.errorDetails = errors;

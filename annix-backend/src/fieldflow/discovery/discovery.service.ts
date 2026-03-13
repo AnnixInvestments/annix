@@ -68,14 +68,15 @@ export class DiscoveryService {
 
     this.resetDailyQuotaIfNeeded();
 
-    const allResults: DiscoveredBusiness[] = [];
-    const sourcesQueried: string[] = [];
-
-    for (const source of sources) {
-      const results = await this.searchSource(source, searchParams);
-      allResults.push(...results);
-      sourcesQueried.push(source);
-    }
+    const allResults = await sources.reduce(
+      async (accPromise, source) => {
+        const acc = await accPromise;
+        const results = await this.searchSource(source, searchParams);
+        return [...acc, ...results];
+      },
+      Promise.resolve([] as DiscoveredBusiness[]),
+    );
+    const sourcesQueried = [...sources];
 
     const deduplicatedResults = this.deduplicateAcrossSources(allResults);
 
@@ -91,39 +92,39 @@ export class DiscoveryService {
     userId: number,
     businesses: DiscoveredBusiness[],
   ): Promise<DiscoveryImportResult> {
-    const createdIds: number[] = [];
-    let duplicates = 0;
+    const { createdIds, duplicates } = await businesses.reduce(
+      async (accPromise, business) => {
+        const acc = await accPromise;
+        const isDuplicate = await this.checkForDuplicate(userId, business);
 
-    for (const business of businesses) {
-      const isDuplicate = await this.checkForDuplicate(userId, business);
+        if (isDuplicate) {
+          return { ...acc, duplicates: acc.duplicates + 1 };
+        }
 
-      if (isDuplicate) {
-        duplicates++;
-        continue;
-      }
+        const prospect = this.prospectRepository.create({
+          ownerId: userId,
+          companyName: business.companyName,
+          streetAddress: business.streetAddress,
+          city: business.city,
+          province: business.province,
+          latitude: business.latitude,
+          longitude: business.longitude,
+          contactPhone: business.phone,
+          googlePlaceId:
+            business.source === DiscoverySource.GOOGLE_PLACES ? business.externalId : null,
+          status: ProspectStatus.NEW,
+          discoverySource: business.source,
+          discoveredAt: now().toJSDate(),
+          externalId: business.externalId,
+          tags: business.businessTypes.slice(0, 5),
+          notes: business.website ? `Website: ${business.website}` : null,
+        });
 
-      const prospect = this.prospectRepository.create({
-        ownerId: userId,
-        companyName: business.companyName,
-        streetAddress: business.streetAddress,
-        city: business.city,
-        province: business.province,
-        latitude: business.latitude,
-        longitude: business.longitude,
-        contactPhone: business.phone,
-        googlePlaceId:
-          business.source === DiscoverySource.GOOGLE_PLACES ? business.externalId : null,
-        status: ProspectStatus.NEW,
-        discoverySource: business.source,
-        discoveredAt: now().toJSDate(),
-        externalId: business.externalId,
-        tags: business.businessTypes.slice(0, 5),
-        notes: business.website ? `Website: ${business.website}` : null,
-      });
-
-      const saved = await this.prospectRepository.save(prospect);
-      createdIds.push(saved.id);
-    }
+        const saved = await this.prospectRepository.save(prospect);
+        return { ...acc, createdIds: [...acc.createdIds, saved.id] };
+      },
+      Promise.resolve({ createdIds: [] as number[], duplicates: 0 }),
+    );
 
     return {
       created: createdIds.length,
@@ -224,18 +225,13 @@ export class DiscoveryService {
       select: ["googlePlaceId", "externalId"],
     });
 
-    const ids = new Set<string>();
-
-    for (const p of prospects) {
-      if (p.googlePlaceId) {
-        ids.add(p.googlePlaceId);
-      }
-      if (p.externalId) {
-        ids.add(p.externalId);
-      }
-    }
-
-    return ids;
+    return new Set(
+      prospects.flatMap((p) =>
+        [p.googlePlaceId, p.externalId].filter(
+          (id): id is string => id !== null && id !== undefined,
+        ),
+      ),
+    );
   }
 
   private async checkForDuplicate(userId: number, business: DiscoveredBusiness): Promise<boolean> {
@@ -285,21 +281,19 @@ export class DiscoveryService {
   }
 
   private deduplicateAcrossSources(results: DiscoveredBusiness[]): DiscoveredBusiness[] {
-    const seen = new Map<string, DiscoveredBusiness>();
-
-    for (const result of results) {
+    const seen = results.reduce((acc, result) => {
       const key = `${result.companyName.toLowerCase()}-${result.latitude.toFixed(4)}-${result.longitude.toFixed(4)}`;
 
-      const existing = seen.get(key);
-      if (!existing) {
-        seen.set(key, result);
-      } else if (
-        result.source === DiscoverySource.GOOGLE_PLACES &&
-        existing.source !== DiscoverySource.GOOGLE_PLACES
+      const existing = acc.get(key);
+      if (
+        !existing ||
+        (result.source === DiscoverySource.GOOGLE_PLACES &&
+          existing.source !== DiscoverySource.GOOGLE_PLACES)
       ) {
-        seen.set(key, result);
+        acc.set(key, result);
       }
-    }
+      return acc;
+    }, new Map<string, DiscoveredBusiness>());
 
     return [...seen.values()];
   }

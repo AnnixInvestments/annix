@@ -104,19 +104,19 @@ export class OrganizationService {
       throw new NotFoundException("Organization not found");
     }
 
-    if (dto.name !== undefined) {
+    if (dto.name != null) {
       organization.name = dto.name;
     }
-    if (dto.industry !== undefined) {
+    if (dto.industry != null) {
       organization.industry = dto.industry;
     }
-    if (dto.logoUrl !== undefined) {
+    if (dto.logoUrl != null) {
       organization.logoUrl = dto.logoUrl;
     }
-    if (dto.plan !== undefined) {
+    if (dto.plan != null) {
       organization.plan = dto.plan;
     }
-    if (dto.maxMembers !== undefined) {
+    if (dto.maxMembers != null) {
       organization.maxMembers = dto.maxMembers;
     }
 

@@ -400,22 +400,23 @@ export class CrmService {
     });
 
     const adapter = this.adapterForConfig(config);
-    let synced = 0;
-    let failed = 0;
 
-    for (const prospect of prospects) {
-      const result = await adapter.syncContact(prospect);
-      if (result.success) {
-        if (result.externalId) {
-          prospect.crmExternalId = result.externalId;
-          await this.prospectRepo.save(prospect);
+    const { synced, failed } = await prospects.reduce(
+      async (accPromise, prospect) => {
+        const acc = await accPromise;
+        const result = await adapter.syncContact(prospect);
+        if (result.success) {
+          if (result.externalId) {
+            prospect.crmExternalId = result.externalId;
+            await this.prospectRepo.save(prospect);
+          }
+          return { ...acc, synced: acc.synced + 1 };
         }
-        synced++;
-      } else {
-        failed++;
         this.logger.warn(`Failed to sync prospect ${prospect.id}: ${result.error}`);
-      }
-    }
+        return { ...acc, failed: acc.failed + 1 };
+      },
+      Promise.resolve({ synced: 0, failed: 0 }),
+    );
 
     config.lastSyncAt = now().toJSDate();
     config.lastSyncError = failed > 0 ? `${failed} prospects failed to sync` : null;

@@ -22,6 +22,9 @@ import {
   type SpeakerSegment,
 } from "../entities";
 
+const PRESIGNED_URL_EXPIRY_SECONDS = 3600;
+const STALE_SESSION_THRESHOLD_HOURS = 1;
+
 interface ChunkUploadSession {
   recordingId: number;
   storagePath: string;
@@ -382,7 +385,7 @@ export class RecordingService {
   }
 
   async cleanupStaleSessions(): Promise<void> {
-    const staleThreshold = now().minus({ hours: 1 }).toJSDate();
+    const staleThreshold = now().minus({ hours: STALE_SESSION_THRESHOLD_HOURS }).toJSDate();
 
     for (const [recordingId, session] of this.uploadSessions.entries()) {
       if (session.lastChunkAt < staleThreshold) {
@@ -454,7 +457,7 @@ export class RecordingService {
       return null;
     }
 
-    const presignedUrl = await this.storageService.getPresignedUrl(recording.storagePath, 3600);
+    const presignedUrl = await this.storageService.getPresignedUrl(recording.storagePath, PRESIGNED_URL_EXPIRY_SECONDS);
 
     return {
       presignedUrl,

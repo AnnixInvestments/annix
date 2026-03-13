@@ -22,14 +22,16 @@ export class YellowPagesProvider implements DiscoveryProvider {
   }
 
   async search(params: DiscoverySearchParams): Promise<DiscoveredBusiness[]> {
-    const results: DiscoveredBusiness[] = [];
-
     const searchTerms = params.searchTerms.slice(0, 3);
 
-    for (const term of searchTerms) {
-      const businesses = await this.scrapeYellowPages(term, params.latitude, params.longitude);
-      results.push(...businesses);
-    }
+    const results = await searchTerms.reduce(
+      async (accPromise, term) => {
+        const acc = await accPromise;
+        const businesses = await this.scrapeYellowPages(term, params.latitude, params.longitude);
+        return [...acc, ...businesses];
+      },
+      Promise.resolve([] as DiscoveredBusiness[]),
+    );
 
     return this.deduplicateResults(results);
   }
@@ -189,18 +191,15 @@ export class YellowPagesProvider implements DiscoveryProvider {
       { name: "Kimberley", lat: -28.7282, lng: 24.7499 },
     ];
 
-    let closestCity = "Johannesburg";
-    let minDistance = Infinity;
+    const closestCity = cities.reduce(
+      (closest, city) => {
+        const distance = Math.sqrt((lat - city.lat) ** 2 + (lng - city.lng) ** 2);
+        return distance < closest.distance ? { name: city.name, distance } : closest;
+      },
+      { name: "Johannesburg", distance: Infinity },
+    );
 
-    for (const city of cities) {
-      const distance = Math.sqrt((lat - city.lat) ** 2 + (lng - city.lng) ** 2);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestCity = city.name;
-      }
-    }
-
-    return closestCity;
+    return closestCity.name;
   }
 
   private deduplicateResults(results: DiscoveredBusiness[]): DiscoveredBusiness[] {

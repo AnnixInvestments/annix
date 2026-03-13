@@ -66,9 +66,10 @@ export class CalendarSyncService {
 
     this.logger.log(`Starting background sync for ${connections.length} connections`);
 
-    for (const connection of connections) {
+    await connections.reduce(async (accPromise, connection) => {
+      await accPromise;
       await this.syncConnection(connection);
-    }
+    }, Promise.resolve());
 
     this.isSyncing = false;
     this.logger.log("Background sync completed");
@@ -114,75 +115,84 @@ export class CalendarSyncService {
       order: { startTime: "ASC" },
     });
 
-    const newConflicts: SyncConflictDto[] = [];
+    const meetingEventPairs = meetings.flatMap((meeting) =>
+      calendarEvents
+        .filter((event) => meeting.calendarEventId !== event.id)
+        .map((event) => ({ meeting, event })),
+    );
 
-    for (const meeting of meetings) {
-      for (const event of calendarEvents) {
-        if (meeting.calendarEventId === event.id) {
-          continue;
+    const overlappingPairs = meetingEventPairs.filter(({ meeting, event }) => {
+      const meetingStart = fromJSDate(meeting.scheduledStart).toMillis();
+      const meetingEnd = fromJSDate(meeting.scheduledEnd).toMillis();
+      const eventStart = fromJSDate(event.startTime).toMillis();
+      const eventEnd = fromJSDate(event.endTime).toMillis();
+
+      return (
+        (meetingStart < eventEnd && meetingEnd > eventStart) ||
+        (eventStart < meetingEnd && eventEnd > meetingStart)
+      );
+    });
+
+    const newConflicts = await overlappingPairs.reduce(
+      async (accPromise, { meeting, event }) => {
+        const acc = await accPromise;
+
+        const existingConflict = await this.conflictRepo.findOne({
+          where: {
+            userId,
+            meetingId: meeting.id,
+            calendarEventId: event.id,
+            resolution: "pending",
+          },
+        });
+
+        if (existingConflict) {
+          return acc;
         }
 
-        const meetingStart = fromJSDate(meeting.scheduledStart).toMillis();
-        const meetingEnd = fromJSDate(meeting.scheduledEnd).toMillis();
-        const eventStart = fromJSDate(event.startTime).toMillis();
-        const eventEnd = fromJSDate(event.endTime).toMillis();
+        const conflictData = {
+          userId,
+          meetingId: meeting.id,
+          calendarEventId: event.id,
+          conflictType: "time_overlap" as const,
+          localData: {
+            title: meeting.title,
+            startTime: meeting.scheduledStart.toISOString(),
+            endTime: meeting.scheduledEnd.toISOString(),
+            location: meeting.location,
+          },
+          remoteData: {
+            title: event.title,
+            startTime: event.startTime.toISOString(),
+            endTime: event.endTime.toISOString(),
+            location: event.location,
+          },
+          resolution: "pending" as const,
+        };
 
-        const hasOverlap =
-          (meetingStart < eventEnd && meetingEnd > eventStart) ||
-          (eventStart < meetingEnd && eventEnd > meetingStart);
-
-        if (hasOverlap) {
-          const existingConflict = await this.conflictRepo.findOne({
-            where: {
-              userId,
-              meetingId: meeting.id,
-              calendarEventId: event.id,
-              resolution: "pending",
-            },
-          });
-
-          if (!existingConflict) {
-            const conflictData = {
-              userId,
-              meetingId: meeting.id,
-              calendarEventId: event.id,
-              conflictType: "time_overlap" as const,
-              localData: {
-                title: meeting.title,
-                startTime: meeting.scheduledStart.toISOString(),
-                endTime: meeting.scheduledEnd.toISOString(),
-                location: meeting.location,
-              },
-              remoteData: {
-                title: event.title,
-                startTime: event.startTime.toISOString(),
-                endTime: event.endTime.toISOString(),
-                location: event.location,
-              },
-              resolution: "pending" as const,
-            };
-
-            const conflictEntity = this.conflictRepo.create(conflictData as Partial<SyncConflict>);
-            const saved = await this.conflictRepo.save(conflictEntity);
-            const savedSingle = Array.isArray(saved) ? saved[0] : saved;
-            newConflicts.push({
-              id: savedSingle.id,
-              userId: savedSingle.userId,
-              meetingId: savedSingle.meetingId,
-              calendarEventId: savedSingle.calendarEventId,
-              conflictType: savedSingle.conflictType,
-              localData: savedSingle.localData,
-              remoteData: savedSingle.remoteData,
-              resolution: savedSingle.resolution,
-              resolvedAt: savedSingle.resolvedAt,
-              createdAt: savedSingle.createdAt,
-              meeting: null,
-              calendarEvent: null,
-            });
-          }
-        }
-      }
-    }
+        const conflictEntity = this.conflictRepo.create(conflictData as Partial<SyncConflict>);
+        const saved = await this.conflictRepo.save(conflictEntity);
+        const savedSingle = Array.isArray(saved) ? saved[0] : saved;
+        return [
+          ...acc,
+          {
+            id: savedSingle.id,
+            userId: savedSingle.userId,
+            meetingId: savedSingle.meetingId,
+            calendarEventId: savedSingle.calendarEventId,
+            conflictType: savedSingle.conflictType,
+            localData: savedSingle.localData,
+            remoteData: savedSingle.remoteData,
+            resolution: savedSingle.resolution,
+            resolvedAt: savedSingle.resolvedAt,
+            createdAt: savedSingle.createdAt,
+            meeting: null,
+            calendarEvent: null,
+          },
+        ];
+      },
+      Promise.resolve([] as SyncConflictDto[]),
+    );
 
     if (newConflicts.length > 0) {
       this.logger.log(`Detected ${newConflicts.length} new time conflicts for user ${userId}`);

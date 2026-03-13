@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Between, Repository } from "typeorm";
+import { Between, IsNull, Repository } from "typeorm";
 import { fromISO, now } from "../../lib/datetime";
 import { CheckInDto, CheckOutDto, CreateVisitDto, UpdateVisitDto } from "../dto";
 import { Prospect, Visit, VisitType } from "../entities";
@@ -80,18 +80,18 @@ export class VisitService {
   async update(salesRepId: number, id: number, dto: UpdateVisitDto): Promise<Visit> {
     const visit = await this.findOne(salesRepId, id);
 
-    if (dto.visitType !== undefined) visit.visitType = dto.visitType;
-    if (dto.scheduledAt !== undefined)
+    if (dto.visitType != null) visit.visitType = dto.visitType;
+    if (dto.scheduledAt != null)
       visit.scheduledAt = dto.scheduledAt ? fromISO(dto.scheduledAt).toJSDate() : null;
-    if (dto.startedAt !== undefined)
+    if (dto.startedAt != null)
       visit.startedAt = dto.startedAt ? fromISO(dto.startedAt).toJSDate() : null;
-    if (dto.endedAt !== undefined)
+    if (dto.endedAt != null)
       visit.endedAt = dto.endedAt ? fromISO(dto.endedAt).toJSDate() : null;
-    if (dto.outcome !== undefined) visit.outcome = dto.outcome;
-    if (dto.notes !== undefined) visit.notes = dto.notes ?? null;
-    if (dto.contactMet !== undefined) visit.contactMet = dto.contactMet ?? null;
-    if (dto.nextSteps !== undefined) visit.nextSteps = dto.nextSteps ?? null;
-    if (dto.followUpDate !== undefined)
+    if (dto.outcome != null) visit.outcome = dto.outcome;
+    if (dto.notes != null) visit.notes = dto.notes ?? null;
+    if (dto.contactMet != null) visit.contactMet = dto.contactMet ?? null;
+    if (dto.nextSteps != null) visit.nextSteps = dto.nextSteps ?? null;
+    if (dto.followUpDate != null)
       visit.followUpDate = dto.followUpDate ? fromISO(dto.followUpDate).toJSDate() : null;
 
     return this.visitRepo.save(visit);
@@ -190,7 +190,7 @@ export class VisitService {
       where: {
         salesRepId,
         startedAt: Between(now().minus({ hours: 12 }).toJSDate(), now().toJSDate()),
-        endedAt: undefined,
+        endedAt: IsNull(),
       },
       relations: ["prospect"],
     });

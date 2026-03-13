@@ -84,22 +84,22 @@ export class TerritoryService {
       throw new NotFoundException("Territory not found");
     }
 
-    if (dto.name !== undefined) {
+    if (dto.name != null) {
       territory.name = dto.name;
     }
-    if (dto.description !== undefined) {
+    if (dto.description != null) {
       territory.description = dto.description;
     }
-    if (dto.provinces !== undefined) {
+    if (dto.provinces != null) {
       territory.provinces = dto.provinces;
     }
-    if (dto.cities !== undefined) {
+    if (dto.cities != null) {
       territory.cities = dto.cities;
     }
-    if (dto.bounds !== undefined) {
+    if (dto.bounds != null) {
       territory.bounds = dto.bounds;
     }
-    if (dto.isActive !== undefined) {
+    if (dto.isActive != null) {
       territory.isActive = dto.isActive;
     }
 

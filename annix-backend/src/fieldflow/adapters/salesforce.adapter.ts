@@ -445,7 +445,7 @@ export class SalesforceAdapter implements ICrmAdapter {
   private removeNullValues(obj: Record<string, unknown>): Record<string, unknown> {
     return Object.entries(obj).reduce(
       (acc, [key, value]) => {
-        if (value !== null && value !== undefined) {
+        if (value != null) {
           acc[key] = value;
         }
         return acc;
@@ -456,7 +456,7 @@ export class SalesforceAdapter implements ICrmAdapter {
 
   private extractSalesforceError(error: unknown): string {
     if (Array.isArray(error)) {
-      const firstError = error[0] as { message?: string; errorCode?: string } | undefined;
+      const firstError = error[0] as { message?: string; errorCode?: string } | null;
       return firstError?.message ?? firstError?.errorCode ?? "Unknown Salesforce error";
     }
     if (typeof error === "object" && error !== null) {
@@ -534,7 +534,7 @@ export class SalesforceAdapter implements ICrmAdapter {
   private eventToMeetingData(event: SalesforceEvent): CrmMeetingData {
     return {
       externalId: event.Id,
-      contactExternalId: event.WhoId ?? undefined,
+      contactExternalId: event.WhoId ?? null,
       title: event.Subject,
       scheduledAt: event.StartDateTime,
       endedAt: event.EndDateTime,

@@ -121,12 +121,12 @@ export class GoalsService {
     const goal = await this.goalRepo.findOne({ where: { userId, period } });
     if (!goal) return null;
 
-    if (dto.meetingsTarget !== undefined) goal.meetingsTarget = dto.meetingsTarget;
-    if (dto.visitsTarget !== undefined) goal.visitsTarget = dto.visitsTarget;
-    if (dto.newProspectsTarget !== undefined) goal.newProspectsTarget = dto.newProspectsTarget;
-    if (dto.revenueTarget !== undefined) goal.revenueTarget = dto.revenueTarget;
-    if (dto.dealsWonTarget !== undefined) goal.dealsWonTarget = dto.dealsWonTarget;
-    if (dto.isActive !== undefined) goal.isActive = dto.isActive;
+    if (dto.meetingsTarget != null) goal.meetingsTarget = dto.meetingsTarget;
+    if (dto.visitsTarget != null) goal.visitsTarget = dto.visitsTarget;
+    if (dto.newProspectsTarget != null) goal.newProspectsTarget = dto.newProspectsTarget;
+    if (dto.revenueTarget != null) goal.revenueTarget = dto.revenueTarget;
+    if (dto.dealsWonTarget != null) goal.dealsWonTarget = dto.dealsWonTarget;
+    if (dto.isActive != null) goal.isActive = dto.isActive;
 
     return this.goalRepo.save(goal);
   }

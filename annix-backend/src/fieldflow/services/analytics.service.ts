@@ -128,37 +128,44 @@ export class AnalyticsService {
     period: "week" | "month" = "week",
     count = 8,
   ): Promise<MeetingsOverTime[]> {
-    const results: MeetingsOverTime[] = [];
     const current = now();
 
-    for (let i = count - 1; i >= 0; i--) {
-      const periodStart =
-        period === "week"
-          ? current.minus({ weeks: i }).startOf("week")
-          : current.minus({ months: i }).startOf("month");
-      const periodEnd =
-        period === "week"
-          ? current.minus({ weeks: i }).endOf("week")
-          : current.minus({ months: i }).endOf("month");
+    const periods = Array.from({ length: count }, (_, idx) => count - 1 - idx);
 
-      const meetings = await this.meetingRepo.find({
-        where: {
-          salesRepId: ownerId,
-          scheduledStart: Between(periodStart.toJSDate(), periodEnd.toJSDate()),
-        },
-      });
+    return periods.reduce(
+      async (accPromise, i) => {
+        const acc = await accPromise;
+        const periodStart =
+          period === "week"
+            ? current.minus({ weeks: i }).startOf("week")
+            : current.minus({ months: i }).startOf("month");
+        const periodEnd =
+          period === "week"
+            ? current.minus({ weeks: i }).endOf("week")
+            : current.minus({ months: i }).endOf("month");
 
-      const label = period === "week" ? `W${periodStart.weekNumber}` : periodStart.toFormat("MMM");
+        const meetings = await this.meetingRepo.find({
+          where: {
+            salesRepId: ownerId,
+            scheduledStart: Between(periodStart.toJSDate(), periodEnd.toJSDate()),
+          },
+        });
 
-      results.push({
-        period: label,
-        count: meetings.length,
-        completed: meetings.filter((m) => m.status === MeetingStatus.COMPLETED).length,
-        cancelled: meetings.filter((m) => m.status === MeetingStatus.CANCELLED).length,
-      });
-    }
+        const label =
+          period === "week" ? `W${periodStart.weekNumber}` : periodStart.toFormat("MMM");
 
-    return results;
+        return [
+          ...acc,
+          {
+            period: label,
+            count: meetings.length,
+            completed: meetings.filter((m) => m.status === MeetingStatus.COMPLETED).length,
+            cancelled: meetings.filter((m) => m.status === MeetingStatus.CANCELLED).length,
+          },
+        ];
+      },
+      Promise.resolve([] as MeetingsOverTime[]),
+    );
   }
 
   async prospectFunnel(ownerId: number): Promise<ProspectFunnel[]> {
@@ -184,33 +191,39 @@ export class AnalyticsService {
   }
 
   async winLossRateTrends(ownerId: number, months = 6): Promise<WinLossRateTrend[]> {
-    const results: WinLossRateTrend[] = [];
     const current = now();
 
-    for (let i = months - 1; i >= 0; i--) {
-      const monthStart = current.minus({ months: i }).startOf("month");
-      const monthEnd = current.minus({ months: i }).endOf("month");
+    const monthIndices = Array.from({ length: months }, (_, idx) => months - 1 - idx);
 
-      const prospects = await this.prospectRepo.find({
-        where: {
-          ownerId,
-          updatedAt: Between(monthStart.toJSDate(), monthEnd.toJSDate()),
-        },
-      });
+    return monthIndices.reduce(
+      async (accPromise, i) => {
+        const acc = await accPromise;
+        const monthStart = current.minus({ months: i }).startOf("month");
+        const monthEnd = current.minus({ months: i }).endOf("month");
 
-      const won = prospects.filter((p) => p.status === ProspectStatus.WON).length;
-      const lost = prospects.filter((p) => p.status === ProspectStatus.LOST).length;
-      const total = won + lost;
+        const prospects = await this.prospectRepo.find({
+          where: {
+            ownerId,
+            updatedAt: Between(monthStart.toJSDate(), monthEnd.toJSDate()),
+          },
+        });
 
-      results.push({
-        period: monthStart.toFormat("MMM"),
-        won,
-        lost,
-        winRate: total > 0 ? Math.round((won / total) * 100) : 0,
-      });
-    }
+        const won = prospects.filter((p) => p.status === ProspectStatus.WON).length;
+        const lost = prospects.filter((p) => p.status === ProspectStatus.LOST).length;
+        const total = won + lost;
 
-    return results;
+        return [
+          ...acc,
+          {
+            period: monthStart.toFormat("MMM"),
+            won,
+            lost,
+            winRate: total > 0 ? Math.round((won / total) * 100) : 0,
+          },
+        ];
+      },
+      Promise.resolve([] as WinLossRateTrend[]),
+    );
   }
 
   async activityHeatmap(ownerId: number): Promise<ActivityHeatmapCell[]> {
@@ -226,13 +239,14 @@ export class AnalyticsService {
       (v) => v.startedAt && fromJSDate(v.startedAt).toJSDate() >= thirtyDaysAgo,
     );
 
-    const heatmap: Map<string, number> = new Map();
-
-    for (let day = 0; day < 7; day++) {
-      for (let hour = 6; hour < 20; hour++) {
-        heatmap.set(`${day}-${hour}`, 0);
-      }
-    }
+    const heatmap: Map<string, number> = new Map(
+      Array.from({ length: 7 }, (_, day) =>
+        Array.from(
+          { length: 14 },
+          (__, hourIdx) => [`${day}-${hourIdx + 6}`, 0] as [string, number],
+        ),
+      ).flat(),
+    );
 
     recentVisits.forEach((visit) => {
       if (visit.startedAt) {

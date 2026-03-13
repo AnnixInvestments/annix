@@ -16,20 +16,20 @@ interface HubSpotConfig extends CrmAdapterConfig {
 }
 
 interface HubSpotContactProperties {
-  firstname?: string;
-  lastname?: string;
-  email?: string;
-  phone?: string;
-  jobtitle?: string;
-  company?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  country?: string;
-  notes?: string;
-  lifecyclestage?: string;
-  hs_lead_status?: string;
+  firstname: string | null;
+  lastname: string | null;
+  email: string | null;
+  phone: string | null;
+  jobtitle: string | null;
+  company: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  country: string | null;
+  notes: string | null;
+  lifecyclestage: string | null;
+  hs_lead_status: string | null;
 }
 
 interface HubSpotContact {
@@ -136,22 +136,23 @@ export class HubSpotAdapter implements ICrmAdapter {
       const nameParts = this.splitName(prospect.contactName);
 
       const properties: HubSpotContactProperties = {
-        firstname: nameParts.firstName ?? undefined,
+        firstname: nameParts.firstName ?? null,
         lastname: nameParts.lastName,
-        email: prospect.contactEmail ?? undefined,
-        phone: prospect.contactPhone ?? undefined,
-        jobtitle: prospect.contactTitle ?? undefined,
+        email: prospect.contactEmail ?? null,
+        phone: prospect.contactPhone ?? null,
+        jobtitle: prospect.contactTitle ?? null,
         company: prospect.companyName,
-        address: prospect.streetAddress ?? undefined,
-        city: prospect.city ?? undefined,
-        state: prospect.province ?? undefined,
-        zip: prospect.postalCode ?? undefined,
-        country: prospect.country ?? undefined,
+        address: prospect.streetAddress ?? null,
+        city: prospect.city ?? null,
+        state: prospect.province ?? null,
+        zip: prospect.postalCode ?? null,
+        country: prospect.country ?? null,
+        notes: prospect.notes ?? null,
         lifecyclestage: this.mapProspectStatusToHubSpot(prospect.status),
         hs_lead_status: this.mapScoreToLeadStatus(prospect.score),
       };
 
-      const cleanedProperties = this.removeUndefinedValues(
+      const cleanedProperties = this.removeNullValues(
         properties as unknown as Record<string, unknown>,
       );
 
@@ -537,10 +538,10 @@ export class HubSpotAdapter implements ICrmAdapter {
     return "NEW";
   }
 
-  private removeUndefinedValues(obj: Record<string, unknown>): Record<string, unknown> {
+  private removeNullValues(obj: Record<string, unknown>): Record<string, unknown> {
     return Object.entries(obj).reduce(
       (acc, [key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
+        if (value != null && value !== "") {
           acc[key] = value;
         }
         return acc;
@@ -600,7 +601,7 @@ export class HubSpotAdapter implements ICrmAdapter {
     };
   }
 
-  private mapHubSpotStatusToProspect(lifecycleStage: string | undefined): string {
+  private mapHubSpotStatusToProspect(lifecycleStage: string | null): string {
     const statusMap: Record<string, string> = {
       subscriber: "new",
       lead: "contacted",
@@ -619,7 +620,7 @@ export class HubSpotAdapter implements ICrmAdapter {
 
     return {
       externalId: engagement.id,
-      contactExternalId: undefined,
+      contactExternalId: null,
       title: props.hs_meeting_title ?? "Meeting",
       scheduledAt: props.hs_meeting_start_time
         ? fromMillis(parseInt(props.hs_meeting_start_time, 10)).toISO()!

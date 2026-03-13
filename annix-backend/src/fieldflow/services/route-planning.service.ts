@@ -60,6 +60,13 @@ export class RoutePlanningService {
   private readonly COLD_CALL_DURATION_MINUTES = 30;
   private readonly WORKING_START_HOUR = 8;
   private readonly WORKING_END_HOUR = 17;
+  private readonly MIN_AVAILABLE_MINUTES = 15;
+  private readonly OVERDUE_CONTACT_DAYS = 14;
+  private readonly HIGH_PRIORITY_DISTANCE_KM = 2;
+  private readonly MEDIUM_PRIORITY_DISTANCE_KM = 5;
+  private readonly MAX_NEARBY_PROSPECTS_PER_GAP = 2;
+  private readonly TWO_OPT_IMPROVEMENT_THRESHOLD = 0.1;
+  private readonly EARTH_RADIUS_KM = 6371;
 
   constructor(
     @InjectRepository(Meeting)
@@ -235,7 +242,7 @@ export class RoutePlanningService {
 
     for (const gap of gaps) {
       const availableMinutes = gap.durationMinutes - this.COLD_CALL_DURATION_MINUTES;
-      if (availableMinutes < 15) continue;
+      if (availableMinutes < this.MIN_AVAILABLE_MINUTES) continue;
 
       let referencePoint: { lat: number; lng: number } | null = null;
 
@@ -266,7 +273,7 @@ export class RoutePlanningService {
         .filter((p) => p.distance <= maxDistanceKm)
         .sort((a, b) => a.distance - b.distance);
 
-      for (const { prospect, distance } of nearbyProspects.slice(0, 2)) {
+      for (const { prospect, distance } of nearbyProspects.slice(0, this.MAX_NEARBY_PROSPECTS_PER_GAP)) {
         const travelMinutes = (distance / this.AVERAGE_SPEED_KMH) * 60;
         const suggestedCallTime = fromJSDate(gap.startTime)
           .plus({ minutes: travelMinutes })
@@ -515,7 +522,7 @@ export class RoutePlanningService {
               route[j + 1].longitude,
             );
 
-          if (newDistance < currentDistance - 0.1) {
+          if (newDistance < currentDistance - this.TWO_OPT_IMPROVEMENT_THRESHOLD) {
             const reversed = route.slice(i, j + 1).reverse();
             route = [...route.slice(0, i), ...reversed, ...route.slice(j + 1)];
             improved = true;
@@ -586,7 +593,7 @@ export class RoutePlanningService {
   }
 
   private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371;
+    const R = this.EARTH_RADIUS_KM;
     const dLat = this.toRad(lat2 - lat1);
     const dLon = this.toRad(lon2 - lon1);
     const a =
@@ -620,7 +627,7 @@ export class RoutePlanningService {
       const daysSinceContact = Math.floor(
         now().diff(fromJSDate(prospect.lastContactedAt), "days").days,
       );
-      if (daysSinceContact > 14) {
+      if (daysSinceContact > this.OVERDUE_CONTACT_DAYS) {
         reasons.push(`No contact in ${daysSinceContact} days`);
       }
     }
@@ -641,11 +648,11 @@ export class RoutePlanningService {
       return "high";
     }
 
-    if (distanceKm <= 2 && prospect.status === ProspectStatus.NEW) {
+    if (distanceKm <= this.HIGH_PRIORITY_DISTANCE_KM && prospect.status === ProspectStatus.NEW) {
       return "high";
     }
 
-    if (distanceKm <= 5) {
+    if (distanceKm <= this.MEDIUM_PRIORITY_DISTANCE_KM) {
       return "medium";
     }
 

@@ -4,6 +4,12 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type SpeechSegment, useVoiceRecorder } from "@/app/hooks/useVoiceRecorder";
+import {
+  RECORDING_CHANNELS,
+  RECORDING_CHUNK_INTERVAL_MS,
+  RECORDING_MIME_TYPE,
+  RECORDING_SAMPLE_RATE,
+} from "@/app/fieldflow/config/recording";
 import { nowMillis } from "@/app/lib/datetime";
 import {
   useCompleteRecordingUpload,
@@ -242,7 +248,7 @@ export default function RecordMeetingPage() {
 
   const [recorderState, controls] = useVoiceRecorder({
     vadConfig: { threshold: 0.01, smoothingFrames: 5 },
-    chunkIntervalMs: 5000,
+    chunkIntervalMs: RECORDING_CHUNK_INTERVAL_MS,
     onChunk: handleChunk,
   });
 
@@ -254,9 +260,9 @@ export default function RecordMeetingPage() {
     const result = await initiateUpload.mutateAsync({
       meetingId,
       filename: `meeting-${meetingId}-${nowMillis()}.webm`,
-      mimeType: "audio/webm;codecs=opus",
-      sampleRate: 16000,
-      channels: 1,
+      mimeType: RECORDING_MIME_TYPE,
+      sampleRate: RECORDING_SAMPLE_RATE,
+      channels: RECORDING_CHANNELS,
     });
 
     setRecordingId(result.recordingId);

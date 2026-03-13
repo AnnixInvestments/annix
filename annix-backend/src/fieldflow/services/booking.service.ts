@@ -179,12 +179,11 @@ export class BookingService {
       end: fromISO(m.scheduledEnd.toISOString()),
     }));
 
-    const slots: AvailableSlotDto[] = [];
     const slotDuration = link.meetingDurationMinutes;
     const bufferBefore = link.bufferBeforeMinutes;
     const bufferAfter = link.bufferAfterMinutes;
 
-    let currentSlotStart = targetDate.set({
+    const firstSlotStart = targetDate.set({
       hour: link.availableStartHour,
       minute: 0,
       second: 0,
@@ -200,34 +199,33 @@ export class BookingService {
 
     const currentTime = now();
 
-    while (currentSlotStart.plus({ minutes: slotDuration }) <= dayEnd) {
-      const slotEnd = currentSlotStart.plus({ minutes: slotDuration });
+    const totalSlotCount = Math.floor(dayEnd.diff(firstSlotStart, "minutes").minutes / 30);
 
-      const slotWithBuffer = {
-        start: currentSlotStart.minus({ minutes: bufferBefore }),
-        end: slotEnd.plus({ minutes: bufferAfter }),
-      };
+    return Array.from({ length: Math.max(0, totalSlotCount) }, (_, i) =>
+      firstSlotStart.plus({ minutes: i * 30 }),
+    )
+      .filter((slotStart) => slotStart.plus({ minutes: slotDuration }) <= dayEnd)
+      .filter((slotStart) => {
+        const slotEnd = slotStart.plus({ minutes: slotDuration });
+        const slotWithBuffer = {
+          start: slotStart.minus({ minutes: bufferBefore }),
+          end: slotEnd.plus({ minutes: bufferAfter }),
+        };
 
-      const isAvailable =
-        currentSlotStart > currentTime &&
-        !busySlots.some(
-          (busy) =>
-            (slotWithBuffer.start >= busy.start && slotWithBuffer.start < busy.end) ||
-            (slotWithBuffer.end > busy.start && slotWithBuffer.end <= busy.end) ||
-            (slotWithBuffer.start <= busy.start && slotWithBuffer.end >= busy.end),
+        return (
+          slotStart > currentTime &&
+          !busySlots.some(
+            (busy) =>
+              (slotWithBuffer.start >= busy.start && slotWithBuffer.start < busy.end) ||
+              (slotWithBuffer.end > busy.start && slotWithBuffer.end <= busy.end) ||
+              (slotWithBuffer.start <= busy.start && slotWithBuffer.end >= busy.end),
+          )
         );
-
-      if (isAvailable) {
-        slots.push({
-          startTime: currentSlotStart.toISO()!,
-          endTime: slotEnd.toISO()!,
-        });
-      }
-
-      currentSlotStart = currentSlotStart.plus({ minutes: 30 });
-    }
-
-    return slots;
+      })
+      .map((slotStart) => ({
+        startTime: slotStart.toISO()!,
+        endTime: slotStart.plus({ minutes: slotDuration }).toISO()!,
+      }));
   }
 
   async bookSlot(slug: string, dto: BookSlotDto): Promise<BookingConfirmationDto> {

@@ -119,6 +119,7 @@ export class MeetingPlatformService {
     const config: PlatformProviderConfig = {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
+      accountId: null,
     };
 
     const userInfo = await provider.userInfo(config);
@@ -212,15 +213,15 @@ export class MeetingPlatformService {
       throw new NotFoundException("Platform connection not found");
     }
 
-    if (dto.autoFetchRecordings !== undefined) {
+    if (dto.autoFetchRecordings != null) {
       connection.autoFetchRecordings = dto.autoFetchRecordings;
     }
 
-    if (dto.autoTranscribe !== undefined) {
+    if (dto.autoTranscribe != null) {
       connection.autoTranscribe = dto.autoTranscribe;
     }
 
-    if (dto.autoSendSummary !== undefined) {
+    if (dto.autoSendSummary != null) {
       connection.autoSendSummary = dto.autoSendSummary;
     }
 
@@ -288,7 +289,7 @@ export class MeetingPlatformService {
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken ?? refreshToken,
-      accountId: connection.accountId ?? undefined,
+      accountId: connection.accountId ?? null,
     };
   }
 
@@ -462,7 +463,7 @@ export class MeetingPlatformService {
       refreshToken: connection.refreshTokenEncrypted
         ? this.decryptToken(connection.refreshTokenEncrypted)
         : null,
-      accountId: connection.accountId ?? undefined,
+      accountId: connection.accountId ?? null,
     };
   }
 

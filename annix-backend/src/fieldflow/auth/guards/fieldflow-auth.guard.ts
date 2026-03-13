@@ -69,7 +69,7 @@ export class AnnixRepAuthGuard implements CanActivate {
     }
   }
 
-  private extractToken(request: Request): string | undefined {
+  private extractToken(request: Request): string | null {
     const [type, token] = request.headers.authorization?.split(" ") ?? [];
     if (type === "Bearer" && token) {
       return token;
@@ -78,6 +78,6 @@ export class AnnixRepAuthGuard implements CanActivate {
     if (isString(queryToken)) {
       return queryToken;
     }
-    return undefined;
+    return null;
   }
 }

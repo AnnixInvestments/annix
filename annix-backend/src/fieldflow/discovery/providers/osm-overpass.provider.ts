@@ -103,15 +103,13 @@ export class OsmOverpassProvider implements DiscoveryProvider {
     tags.add("office=company");
     tags.add("building=industrial");
 
-    for (const term of searchTerms) {
+    searchTerms.forEach((term) => {
       const lowerTerm = term.toLowerCase();
-
-      for (const [keyword, osmTags] of Object.entries(tagMappings)) {
-        if (lowerTerm.includes(keyword)) {
-          osmTags.forEach((tag) => tags.add(tag));
-        }
-      }
-    }
+      Object.entries(tagMappings)
+        .filter(([keyword]) => lowerTerm.includes(keyword))
+        .flatMap(([, osmTags]) => osmTags)
+        .forEach((tag) => tags.add(tag));
+    });
 
     return [...tags];
   }

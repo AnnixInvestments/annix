@@ -75,13 +75,13 @@ export class CustomFieldService {
       }
     }
 
-    if (dto.name !== undefined) field.name = dto.name;
-    if (dto.fieldKey !== undefined) field.fieldKey = dto.fieldKey;
-    if (dto.fieldType !== undefined) field.fieldType = dto.fieldType;
-    if (dto.isRequired !== undefined) field.isRequired = dto.isRequired;
-    if (dto.options !== undefined) field.options = dto.options ?? null;
-    if (dto.displayOrder !== undefined) field.displayOrder = dto.displayOrder;
-    if (dto.isActive !== undefined) field.isActive = dto.isActive;
+    if (dto.name != null) field.name = dto.name;
+    if (dto.fieldKey != null) field.fieldKey = dto.fieldKey;
+    if (dto.fieldType != null) field.fieldType = dto.fieldType;
+    if (dto.isRequired != null) field.isRequired = dto.isRequired;
+    if (dto.options != null) field.options = dto.options ?? null;
+    if (dto.displayOrder != null) field.displayOrder = dto.displayOrder;
+    if (dto.isActive != null) field.isActive = dto.isActive;
 
     return this.customFieldRepo.save(field);
   }
