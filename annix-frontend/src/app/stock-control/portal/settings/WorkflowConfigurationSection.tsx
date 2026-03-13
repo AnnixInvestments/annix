@@ -699,10 +699,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                   <span className="text-xs text-orange-500">No one assigned</span>
                 )}
               </div>
-              <div
-                className="flex items-center gap-1.5 mt-1"
-                onClick={(e) => e.stopPropagation()}
-              >
+              <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
                 <span className="text-xs text-gray-400">Follows:</span>
                 <select
                   value={followsStep}
