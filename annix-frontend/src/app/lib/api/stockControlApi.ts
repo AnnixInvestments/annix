@@ -2092,6 +2092,61 @@ class StockControlApiClient {
     return JSON.parse(text) as T;
   }
 
+  private async uploadFile<T>(
+    endpoint: string,
+    file: File,
+    extraFields?: Record<string, string>,
+  ): Promise<T> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (extraFields) {
+      Object.entries(extraFields).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+    }
+
+    const url = `${this.baseURL}${endpoint}`;
+    const authHeader = { Authorization: `Bearer ${this.accessToken}` };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: authHeader,
+      body: formData,
+    });
+
+    if (response.status === 401 && this.refreshToken) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        const retryResponse = await fetch(url, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${this.accessToken}` },
+          body: formData,
+        });
+        if (!retryResponse.ok) {
+          const errorText = await retryResponse.text();
+          throw new Error(`Upload failed (${retryResponse.status}): ${errorText}`);
+        }
+        return retryResponse.json();
+      }
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `Upload failed (${response.status}): ${errorText}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch {
+        // Use raw error text if not JSON
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  }
+
   private async refreshAccessToken(): Promise<boolean> {
     if (!this.refreshToken) return false;
 
@@ -2392,24 +2447,7 @@ class StockControlApiClient {
   }
 
   async uploadStockItemPhoto(id: number, file: File): Promise<StockItem> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/inventory/${id}/photo`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile(`/stock-control/inventory/${id}/photo`, file);
   }
 
   async identifyFromPhoto(
@@ -2432,27 +2470,7 @@ class StockControlApiClient {
     }[];
     rawAnalysis: string;
   }> {
-    const formData = new FormData();
-    formData.append("file", file);
-    if (context) {
-      formData.append("context", context);
-    }
-
-    const url = `${this.baseURL}/stock-control/inventory/identify-photo`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Identification failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/inventory/identify-photo", file, context ? { context } : undefined);
   }
 
   async lowStockAlerts(): Promise<StockItem[]> {
@@ -2566,22 +2584,7 @@ class StockControlApiClient {
   }
 
   async uploadCoatingTds(jobCardId: number, file: File): Promise<CoatingAnalysis> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/job-cards/${jobCardId}/coating-analysis/verify-tds`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${this.accessToken}` },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`TDS upload failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile(`/stock-control/job-cards/${jobCardId}/coating-analysis/verify-tds`, file);
   }
 
   async rubberStockOptions(jobCardId: number): Promise<RubberStockOptionsResponse> {
@@ -2636,24 +2639,7 @@ class StockControlApiClient {
     allocationId: number,
     file: File,
   ): Promise<StockAllocation> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/photo`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile(`/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/photo`, file);
   }
 
   async pendingAllocations(): Promise<StockAllocation[]> {
@@ -2708,24 +2694,7 @@ class StockControlApiClient {
   }
 
   async uploadDeliveryPhoto(id: number, file: File): Promise<DeliveryNote> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/deliveries/${id}/photo`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile(`/stock-control/deliveries/${id}/photo`, file);
   }
 
   async linkDeliveryNoteToStock(id: number): Promise<DeliveryNote> {
@@ -2761,24 +2730,7 @@ class StockControlApiClient {
   }
 
   async uploadImportFile(file: File): Promise<ImportUploadResponse> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/import/upload`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Import failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/import/upload", file);
   }
 
   async confirmImport(
@@ -2800,35 +2752,7 @@ class StockControlApiClient {
   }
 
   async uploadJobCardImportFile(file: File): Promise<JobCardImportUploadResponse> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/job-card-import/upload`;
-    const { Authorization } = this.headers();
-    let response = await fetch(url, {
-      method: "POST",
-      headers: { ...(Authorization ? { Authorization } : {}) },
-      body: formData,
-    });
-
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        const { Authorization: newAuth } = this.headers();
-        response = await fetch(url, {
-          method: "POST",
-          headers: { ...(newAuth ? { Authorization: newAuth } : {}) },
-          body: formData,
-        });
-      }
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Import failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/job-card-import/upload", file);
   }
 
   async uploadDrawingFiles(files: File[]): Promise<JobCardImportUploadResponse> {
@@ -2993,24 +2917,7 @@ class StockControlApiClient {
   }
 
   async uploadStaffPhoto(id: number, file: File): Promise<StaffMember> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/staff/${id}/photo`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile(`/stock-control/staff/${id}/photo`, file);
   }
 
   async downloadStaffIdCardPdf(staffId: number): Promise<void> {
@@ -3212,25 +3119,7 @@ class StockControlApiClient {
     file: File,
     documentType: string,
   ): Promise<JobCardDocument> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("documentType", documentType);
-
-    const url = `${this.baseURL}/stock-control/workflow/job-cards/${jobCardId}/documents`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile(`/stock-control/workflow/job-cards/${jobCardId}/documents`, file, { documentType });
   }
 
   async workflowDocuments(jobCardId: number): Promise<JobCardDocument[]> {
@@ -3373,27 +3262,7 @@ class StockControlApiClient {
   }
 
   async uploadJobCardAmendment(jobCardId: number, file: File, notes?: string): Promise<JobCard> {
-    const formData = new FormData();
-    formData.append("file", file);
-    if (notes) {
-      formData.append("notes", notes);
-    }
-
-    const url = `${this.baseURL}/stock-control/job-cards/${jobCardId}/amendment`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Amendment upload failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile(`/stock-control/job-cards/${jobCardId}/amendment`, file, notes ? { notes } : undefined);
   }
 
   async jobCardVersionHistory(jobCardId: number): Promise<JobCardVersion[]> {
@@ -3413,27 +3282,7 @@ class StockControlApiClient {
     file: File,
     notes?: string,
   ): Promise<JobCardAttachment> {
-    const formData = new FormData();
-    formData.append("file", file);
-    if (notes) {
-      formData.append("notes", notes);
-    }
-
-    const url = `${this.baseURL}/stock-control/job-cards/${jobCardId}/attachments`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Attachment upload failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile(`/stock-control/job-cards/${jobCardId}/attachments`, file, notes ? { notes } : undefined);
   }
 
   async triggerDrawingExtraction(
@@ -3658,24 +3507,7 @@ class StockControlApiClient {
   }
 
   async uploadInvoiceScan(id: number, file: File): Promise<SupplierInvoice> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/invoices/${id}/scan`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile(`/stock-control/invoices/${id}/scan`, file);
   }
 
   async reExtractInvoice(invoiceId: number): Promise<SupplierInvoice> {
@@ -3831,91 +3663,26 @@ class StockControlApiClient {
   }
 
   async analyzeDeliveryNotePhoto(file: File): Promise<AnalyzedDeliveryNoteResult> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/deliveries/analyze`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Analysis failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/deliveries/analyze", file);
   }
 
   async acceptAnalyzedDeliveryNote(
     file: File,
     analyzedData: AnalyzedDeliveryNoteData,
   ): Promise<DeliveryNote> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("analyzedData", JSON.stringify(analyzedData));
-
-    const url = `${this.baseURL}/stock-control/deliveries/accept-analyzed`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
+    return this.uploadFile("/stock-control/deliveries/accept-analyzed", file, {
+      analyzedData: JSON.stringify(analyzedData),
     });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error");
-      try {
-        const parsed = JSON.parse(errorText);
-        throw new Error(parsed.message || errorText);
-      } catch (parseErr) {
-        if (parseErr instanceof Error && parseErr.message !== errorText) {
-          throw parseErr;
-        }
-        throw new Error(errorText);
-      }
-    }
-
-    return response.json();
   }
 
   async acceptAnalyzedInvoice(
     file: File,
     analyzedData: AnalyzedDeliveryNoteData,
   ): Promise<SupplierInvoice> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("analyzedData", JSON.stringify(analyzedData));
-    formData.append("documentType", "SUPPLIER_INVOICE");
-
-    const url = `${this.baseURL}/stock-control/deliveries/accept-analyzed`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
+    return this.uploadFile("/stock-control/deliveries/accept-analyzed", file, {
+      analyzedData: JSON.stringify(analyzedData),
+      documentType: "SUPPLIER_INVOICE",
     });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "Unknown error");
-      try {
-        const parsed = JSON.parse(errorText);
-        throw new Error(parsed.message || errorText);
-      } catch (parseErr) {
-        if (parseErr instanceof Error && parseErr.message !== errorText) {
-          throw parseErr;
-        }
-        throw new Error(errorText);
-      }
-    }
-
-    return response.json();
   }
 
   async suppliers(): Promise<StockControlSupplierDto[]> {
@@ -4044,23 +3811,7 @@ class StockControlApiClient {
   }
 
   async uploadCpoImportFile(file: File): Promise<JobCardImportUploadResponse> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/cpos/upload`;
-    const { Authorization } = this.headers();
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { ...(Authorization ? { Authorization } : {}) },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(text || `Upload failed: ${response.status}`);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/cpos/upload", file);
   }
 
   async confirmCpoImport(rows: JobCardImportRow[]): Promise<CpoImportResult> {
@@ -4162,31 +3913,19 @@ class StockControlApiClient {
       pageNumbers?: number[] | null;
     },
   ): Promise<SupplierCertificate> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("supplierId", String(data.supplierId));
-    formData.append("certificateType", data.certificateType);
-    formData.append("batchNumber", data.batchNumber);
-    if (data.stockItemId) formData.append("stockItemId", String(data.stockItemId));
-    if (data.jobCardId) formData.append("jobCardId", String(data.jobCardId));
-    if (data.description) formData.append("description", data.description);
-    if (data.expiryDate) formData.append("expiryDate", data.expiryDate);
+    const extraFields: Record<string, string> = {
+      supplierId: String(data.supplierId),
+      certificateType: data.certificateType,
+      batchNumber: data.batchNumber,
+    };
+    if (data.stockItemId) extraFields.stockItemId = String(data.stockItemId);
+    if (data.jobCardId) extraFields.jobCardId = String(data.jobCardId);
+    if (data.description) extraFields.description = data.description;
+    if (data.expiryDate) extraFields.expiryDate = data.expiryDate;
     if (data.pageNumbers && data.pageNumbers.length > 0)
-      formData.append("pageNumbers", JSON.stringify(data.pageNumbers));
+      extraFields.pageNumbers = JSON.stringify(data.pageNumbers);
 
-    const url = `${this.baseURL}/stock-control/certificates`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${this.accessToken}` },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "Upload failed");
-      throw new Error(errorText);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/certificates", file, extraFields);
   }
 
   async analyzeCertificateDocument(file: File): Promise<{
@@ -4201,24 +3940,7 @@ class StockControlApiClient {
     totalPages: number;
     processingTimeMs: number;
   }> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/certificates/analyze`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "Analysis failed");
-      throw new Error(errorText);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/certificates/analyze", file);
   }
 
   async dataBookStatusBulk(
@@ -4327,27 +4049,15 @@ class StockControlApiClient {
       expiryDate: string;
     },
   ): Promise<CalibrationCertificate> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("equipmentName", data.equipmentName);
-    if (data.equipmentIdentifier) formData.append("equipmentIdentifier", data.equipmentIdentifier);
-    if (data.certificateNumber) formData.append("certificateNumber", data.certificateNumber);
-    if (data.description) formData.append("description", data.description);
-    formData.append("expiryDate", data.expiryDate);
+    const extraFields: Record<string, string> = {
+      equipmentName: data.equipmentName,
+      expiryDate: data.expiryDate,
+    };
+    if (data.equipmentIdentifier) extraFields.equipmentIdentifier = data.equipmentIdentifier;
+    if (data.certificateNumber) extraFields.certificateNumber = data.certificateNumber;
+    if (data.description) extraFields.description = data.description;
 
-    const url = `${this.baseURL}/stock-control/calibration-certificates`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${this.accessToken}` },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "Upload failed");
-      throw new Error(errorText);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/calibration-certificates", file, extraFields);
   }
 
   async calibrationCertificates(filters?: { active?: boolean }): Promise<CalibrationCertificate[]> {
@@ -4715,22 +4425,7 @@ class StockControlApiClient {
       filename: string;
     }
   > {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/positector-devices/upload`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${this.accessToken}` },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => null);
-      throw new Error(errorBody?.message ?? `Upload failed: ${response.status}`);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/positector-devices/upload", file);
   }
 
   async uploadAndImportPositectorFile(
@@ -4751,40 +4446,28 @@ class StockControlApiClient {
       requiredShore?: number;
     },
   ): Promise<PositectorImportResult> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("jobCardId", String(data.jobCardId));
-    formData.append("entityType", data.entityType);
-    if (data.coatType) formData.append("coatType", data.coatType);
-    if (data.paintProduct) formData.append("paintProduct", data.paintProduct);
-    if (data.batchNumber) formData.append("batchNumber", data.batchNumber);
+    const extraFields: Record<string, string> = {
+      jobCardId: String(data.jobCardId),
+      entityType: data.entityType,
+    };
+    if (data.coatType) extraFields.coatType = data.coatType;
+    if (data.paintProduct) extraFields.paintProduct = data.paintProduct;
+    if (data.batchNumber) extraFields.batchNumber = data.batchNumber;
     if (data.specMinMicrons !== undefined)
-      formData.append("specMinMicrons", String(data.specMinMicrons));
+      extraFields.specMinMicrons = String(data.specMinMicrons);
     if (data.specMaxMicrons !== undefined)
-      formData.append("specMaxMicrons", String(data.specMaxMicrons));
-    if (data.specMicrons !== undefined) formData.append("specMicrons", String(data.specMicrons));
+      extraFields.specMaxMicrons = String(data.specMaxMicrons);
+    if (data.specMicrons !== undefined) extraFields.specMicrons = String(data.specMicrons);
     if (data.temperature !== undefined && data.temperature !== null)
-      formData.append("temperature", String(data.temperature));
+      extraFields.temperature = String(data.temperature);
     if (data.humidity !== undefined && data.humidity !== null)
-      formData.append("humidity", String(data.humidity));
-    if (data.rubberSpec) formData.append("rubberSpec", data.rubberSpec);
-    if (data.rubberBatchNumber) formData.append("rubberBatchNumber", data.rubberBatchNumber);
+      extraFields.humidity = String(data.humidity);
+    if (data.rubberSpec) extraFields.rubberSpec = data.rubberSpec;
+    if (data.rubberBatchNumber) extraFields.rubberBatchNumber = data.rubberBatchNumber;
     if (data.requiredShore !== undefined)
-      formData.append("requiredShore", String(data.requiredShore));
+      extraFields.requiredShore = String(data.requiredShore);
 
-    const url = `${this.baseURL}/stock-control/positector-devices/upload/import`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${this.accessToken}` },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => null);
-      throw new Error(errorBody?.message ?? `Import failed: ${response.status}`);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/positector-devices/upload/import", file, extraFields);
   }
 
   // ── PosiTector Live Streaming ─────────────────────────────────────
@@ -4927,24 +4610,7 @@ class StockControlApiClient {
   }
 
   async uploadChatImage(file: File): Promise<{ imageUrl: string }> {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const url = `${this.baseURL}/stock-control/chat/upload`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${errorText}`);
-    }
-
-    return response.json();
+    return this.uploadFile("/stock-control/chat/upload", file);
   }
 
   async chatConversations(): Promise<ChatConversationResponse[]> {
