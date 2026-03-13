@@ -37,7 +37,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
 
   return (
     <main
-      className="flex-1 overflow-y-auto p-6"
+      className="flex-1 overflow-y-auto px-4 py-4 lg:px-6"
       style={
         heroObjectUrl
           ? {
@@ -49,7 +49,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
           : undefined
       }
     >
-      <div className="max-w-7xl mx-auto">{children}</div>
+      <div className="max-w-[1600px] mx-auto">{children}</div>
     </main>
   );
 }

@@ -505,7 +505,7 @@ export default function SupplierTaxInvoicesPage() {
               <thead className="bg-gray-50">
                 <tr>
                   {hasApprovable && (
-                    <th scope="col" className="px-4 py-3 w-10">
+                    <th scope="col" className="px-2 py-3 w-8">
                       <input
                         type="checkbox"
                         checked={
@@ -522,7 +522,7 @@ export default function SupplierTaxInvoicesPage() {
                   )}
                   <th
                     scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("invoiceNumber")}
                   >
                     Invoice #
@@ -530,7 +530,7 @@ export default function SupplierTaxInvoicesPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("companyName")}
                   >
                     Company
@@ -538,7 +538,7 @@ export default function SupplierTaxInvoicesPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("invoiceDate")}
                   >
                     Doc Date
@@ -546,7 +546,7 @@ export default function SupplierTaxInvoicesPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("productDescription")}
                   >
                     Description
@@ -557,7 +557,7 @@ export default function SupplierTaxInvoicesPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("numberOfRolls")}
                   >
                     Qty
@@ -565,13 +565,13 @@ export default function SupplierTaxInvoicesPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
                     Unit
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("costPerUnit")}
                   >
                     Cost/Unit
@@ -579,7 +579,7 @@ export default function SupplierTaxInvoicesPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("totalAmount")}
                   >
                     Total
@@ -587,7 +587,7 @@ export default function SupplierTaxInvoicesPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort("status")}
                   >
                     Status
@@ -595,7 +595,7 @@ export default function SupplierTaxInvoicesPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-12"
+                    className="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-10"
                   />
                 </tr>
               </thead>
@@ -603,7 +603,7 @@ export default function SupplierTaxInvoicesPage() {
                 {paginatedInvoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-gray-50">
                     {hasApprovable && (
-                      <td className="px-4 py-4 w-10">
+                      <td className="px-2 py-3 w-8">
                         {inv.status === "EXTRACTED" && (
                           <input
                             type="checkbox"
@@ -614,50 +614,50 @@ export default function SupplierTaxInvoicesPage() {
                         )}
                       </td>
                     )}
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-3 py-3 whitespace-nowrap">
                       <Link
                         href={`/au-rubber/portal/tax-invoices/${inv.id}`}
-                        className="text-orange-600 font-medium hover:text-orange-800 hover:underline"
+                        className="text-orange-600 text-sm font-medium hover:text-orange-800 hover:underline"
                       >
                         {inv.invoiceNumber}
                       </Link>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
                       {inv.companyName || "-"}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
                       {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 max-w-xs truncate">
+                    <td className="px-3 py-3 text-sm text-gray-900 max-w-xs truncate">
                       {inv.productDescription || "-"}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                       {inv.numberOfRolls != null ? inv.numberOfRolls : "-"}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">
                       {inv.unit || "-"}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
                       {formatCurrency(inv.costPerUnit)}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                       {formatCurrency(inv.totalAmount)}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span className="flex items-center gap-1.5">
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span className="flex items-center gap-1">
                         {statusBadge(inv.status)}
                         {inv.postedToSageAt ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
+                          <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
                             Posted
                           </span>
                         ) : inv.exportedToSageAt ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                          <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
                             Exported
                           </span>
                         ) : null}
                       </span>
                     </td>
-                    <td className="px-3 py-4 whitespace-nowrap text-right">
+                    <td className="px-2 py-3 whitespace-nowrap text-right">
                       <span className="flex items-center justify-end gap-1">
                         {inv.status === "APPROVED" && inv.sageInvoiceId === null && (
                           <button
