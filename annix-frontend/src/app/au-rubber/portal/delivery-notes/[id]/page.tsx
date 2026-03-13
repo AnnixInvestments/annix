@@ -25,6 +25,7 @@ import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 interface EditableRoll extends ExtractedDeliveryNoteRoll {
   isEdited?: boolean;
   customerName?: string;
+  customerReference?: string;
   pageNumber?: number;
 }
 
@@ -145,6 +146,7 @@ export default function DeliveryNoteDetailPage() {
       "deliveryNoteNumber",
       "deliveryDate",
       "customerName",
+      "customerReference",
     ];
     const isStringField = stringFields.includes(field);
     const parsedValue = isStringField ? value : value === "" ? undefined : Number(value);
@@ -840,7 +842,31 @@ export default function DeliveryNoteDetailPage() {
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 font-medium">
-                                {dn.customerReference || note.customerReference || "-"}
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={
+                                      roll.customerReference ||
+                                      dn.customerReference ||
+                                      note.customerReference ||
+                                      ""
+                                    }
+                                    onChange={(e) =>
+                                      handleRollFieldChange(
+                                        dnIdx,
+                                        rollIdx,
+                                        "customerReference",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                                  />
+                                ) : (
+                                  roll.customerReference ||
+                                  dn.customerReference ||
+                                  note.customerReference ||
+                                  "-"
+                                )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm">
                                 {note?.documentPath && roll.pageNumber ? (

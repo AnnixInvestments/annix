@@ -940,9 +940,10 @@ ${truncatedText}`;
         const storageResult = await this.storageService.upload(file, subPath);
 
         const dnNumber = metadata.deliveryNoteNumber || `DN-${nowMillis()}`;
+        const dnType = metadata.deliveryNoteType || DeliveryNoteType.COMPOUND;
         const dn = await this.deliveryNoteService.createDeliveryNote(
           {
-            deliveryNoteType: metadata.deliveryNoteType || DeliveryNoteType.COMPOUND,
+            deliveryNoteType: dnType,
             supplierCompanyId: metadata.supplierCompanyId as number,
             documentPath: storageResult.path,
             deliveryNoteNumber: dnNumber,
@@ -952,6 +953,8 @@ ${truncatedText}`;
         );
 
         result.deliveryNoteIds.push(dn.id);
+
+        this.autoExtractAndSplitDeliveryNote(dn.id, file.buffer, dnType);
       }
     }
 
@@ -1011,6 +1014,73 @@ ${truncatedText}`;
       } catch (error) {
         this.logger.error(
           `Failed to auto-extract Tax Invoice ${invoiceId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    })();
+  }
+
+  private autoExtractAndSplitDeliveryNote(
+    deliveryNoteId: number,
+    pdfBuffer: Buffer,
+    dnType: DeliveryNoteType,
+  ): void {
+    (async () => {
+      try {
+        const isRoll = dnType === DeliveryNoteType.ROLL;
+
+        let extractedData;
+        if (isRoll) {
+          const customerResult =
+            await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
+
+          const allRolls = customerResult.deliveryNotes.flatMap((dn, dnIdx) =>
+            (dn.lineItems || [])
+              .filter((item) => item != null && typeof item === "object")
+              .map((item) => ({
+                rollNumber: item.rollNumber ?? null,
+                thicknessMm: item.thicknessMm ?? null,
+                widthMm: item.widthMm ?? null,
+                lengthM: item.lengthM ?? null,
+                weightKg: item.actualWeightKg ?? null,
+                areaSqM:
+                  item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
+                deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
+                deliveryDate: dn.deliveryDate ?? null,
+                customerName: dn.customerName ?? null,
+                customerReference: dn.customerReference ?? null,
+                pageNumber: dnIdx + 1,
+              })),
+          );
+
+          const dnMetadata = customerResult.deliveryNotes[0];
+          extractedData = {
+            deliveryNoteNumber: dnMetadata?.deliveryNoteNumber,
+            deliveryDate: dnMetadata?.deliveryDate,
+            customerName: dnMetadata?.customerName,
+            customerReference: dnMetadata?.customerReference,
+            rolls: allRolls,
+          };
+        } else {
+          const pdfText = await this.extractTextFromPdf(pdfBuffer);
+          const useOcr = pdfText.length < 50;
+          const extractionResult = useOcr
+            ? await this.cocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
+            : await this.cocExtractionService.extractDeliveryNote(pdfText);
+          extractedData = extractionResult.data;
+        }
+
+        await this.deliveryNoteService.setExtractedData(deliveryNoteId, extractedData);
+        this.logger.log(`Auto-extracted delivery note ${deliveryNoteId}`);
+
+        const splitResult = await this.deliveryNoteService.acceptExtractAndSplit(deliveryNoteId);
+        if (splitResult.deliveryNoteIds.length > 1) {
+          this.logger.log(
+            `Auto-split delivery note ${deliveryNoteId} into ${splitResult.deliveryNoteIds.length} notes: ${splitResult.deliveryNoteIds.join(", ")}`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(
+          `Failed to auto-extract delivery note ${deliveryNoteId}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     })();
