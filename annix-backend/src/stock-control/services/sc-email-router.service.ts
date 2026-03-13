@@ -137,9 +137,7 @@ export class ScEmailRouterService implements IDocumentRouter {
       return emailMatch.name;
     }
 
-    const domainMatch = suppliers.find(
-      (s) => s.email && s.email.toLowerCase().endsWith(`@${domain}`),
-    );
+    const domainMatch = suppliers.find((s) => s.email?.toLowerCase().endsWith(`@${domain}`));
     if (domainMatch) {
       return domainMatch.name;
     }
