@@ -14,6 +14,7 @@ import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { StaffMember } from "../entities/staff-member.entity";
+import { StockControlAdminTransfer } from "../entities/stock-control-admin-transfer.entity";
 import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
 import {
   StockControlInvitation,
@@ -77,6 +78,13 @@ describe("StockControlAuthService", () => {
 
   const mockPublicBrandingService = {
     clearIconCache: jest.fn(),
+  };
+
+  const mockAdminTransferRepo = {
+    findOne: jest.fn(),
+    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    remove: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockCompanyRoleService = {
@@ -147,6 +155,7 @@ describe("StockControlAuthService", () => {
         { provide: getRepositoryToken(StockControlUser), useValue: mockUserRepo },
         { provide: getRepositoryToken(StockControlCompany), useValue: mockCompanyRepo },
         { provide: getRepositoryToken(StockControlInvitation), useValue: mockInvitationRepo },
+        { provide: getRepositoryToken(StockControlAdminTransfer), useValue: mockAdminTransferRepo },
         { provide: getRepositoryToken(StaffMember), useValue: mockStaffRepo },
         { provide: JwtService, useValue: mockJwtService },
         { provide: EmailService, useValue: mockEmailService },
