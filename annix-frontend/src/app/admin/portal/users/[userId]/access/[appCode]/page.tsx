@@ -179,9 +179,12 @@ export default function EditUserAccessPage() {
     return fullName || u.email;
   };
 
+  const categoryPermissions = (category: string) => {
+    return permissionsByCategory[category] ?? [];
+  };
+
   const enabledInCategory = (category: string) => {
-    const perms = permissionsByCategory[category] ?? [];
-    return perms.filter((p) => selectedPermissions.includes(p.code)).length;
+    return categoryPermissions(category).filter((p) => selectedPermissions.includes(p.code)).length;
   };
 
   const isSaving = assignMutation.isPending || updateMutation.isPending;
@@ -311,7 +314,7 @@ export default function EditUserAccessPage() {
               {categories.map((category) => {
                 const isActive = activeTab === category;
                 const enabled = enabledInCategory(category);
-                const total = permissionsByCategory[category]?.length || 0;
+                const total = categoryPermissions(category).length;
 
                 return (
                   <button
@@ -341,7 +344,7 @@ export default function EditUserAccessPage() {
           </div>
 
           <div className="divide-y divide-gray-200 dark:divide-slate-700">
-            {(permissionsByCategory[activeTab] ?? []).map((perm) => {
+            {categoryPermissions(activeTab).map((perm) => {
               const isEnabled = selectedPermissions.includes(perm.code);
               return (
                 <div key={perm.code} className="px-6 py-4 flex items-center justify-between">
