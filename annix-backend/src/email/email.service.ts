@@ -502,6 +502,67 @@ export class EmailService {
     });
   }
 
+  async sendStockControlAdminTransferEmail(
+    email: string,
+    token: string,
+    companyName: string,
+    initiatorName: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const transferLink = `${frontendUrl}/stock-control/login?admin-transfer=${token}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Admin Transfer - ASCA Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #0d9488;">Admin Role Transfer</h1>
+          <p><strong>${initiatorName}</strong> has initiated an admin role transfer for <strong>${companyName}</strong> on ASCA Stock Control.</p>
+          <p>You have been selected as the new administrator. To accept this transfer, please log in using the link below:</p>
+          <p style="margin: 30px 0;">
+            <a href="${transferLink}"
+               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Accept Admin Transfer
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${transferLink}</p>
+          <p style="color: #666; font-size: 14px;">This transfer link will expire in 7 days. The transfer will only be completed once you log in.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not expect this transfer, please ignore this email or contact ${initiatorName}.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Admin Role Transfer - ASCA Stock Control
+
+      ${initiatorName} has initiated an admin role transfer for ${companyName}.
+
+      You have been selected as the new administrator. To accept this transfer, please log in:
+      ${transferLink}
+
+      This transfer link will expire in 7 days.
+
+      If you did not expect this transfer, please ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Admin Transfer from ${companyName} - ASCA Stock Control`,
+      html,
+      text,
+      isTransactional: true,
+    });
+  }
+
   async sendCustomerVerificationEmail(email: string, verificationToken: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verificationLink = `${frontendUrl}/customer/verify-email?token=${verificationToken}`;

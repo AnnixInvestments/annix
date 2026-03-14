@@ -67,6 +67,7 @@ import { StaffMember } from "./entities/staff-member.entity";
 import { StaffSignature } from "./entities/staff-signature.entity";
 import { StockAllocation } from "./entities/stock-allocation.entity";
 import { StockControlActionPermission } from "./entities/stock-control-action-permission.entity";
+import { StockControlAdminTransfer } from "./entities/stock-control-admin-transfer.entity";
 import { StockControlCompany } from "./entities/stock-control-company.entity";
 import { StockControlCompanyRole } from "./entities/stock-control-company-role.entity";
 import { StockControlDepartment } from "./entities/stock-control-department.entity";
@@ -179,6 +180,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       InvoiceClarification,
       StockPriceHistory,
       StockControlCompanyRole,
+      StockControlAdminTransfer,
       StockControlActionPermission,
       StockControlRbacConfig,
       StockControlSupplier,

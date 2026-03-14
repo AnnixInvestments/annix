@@ -2,19 +2,23 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 function StockControlLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
+  const adminTransferToken = searchParams.get("admin-transfer");
   const { login, isAuthenticated, isLoading: authLoading, profile } = useStockControlAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [transferMessage, setTransferMessage] = useState<string | null>(null);
+  const transferProcessedRef = useRef(false);
 
   useEffect(() => {
     const savedEmail = localStorage.getItem("stockControlRememberedEmail");
@@ -30,10 +34,35 @@ function StockControlLoginContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isAuthenticated && !authLoading && profile) {
-      router.push(returnUrl || "/stock-control/portal/dashboard");
+    if (!isAuthenticated || authLoading || !profile) return;
+
+    if (adminTransferToken && !transferProcessedRef.current) {
+      transferProcessedRef.current = true;
+      stockControlApiClient
+        .acceptAdminTransfer(adminTransferToken)
+        .then((result) => {
+          if (result.transferred) {
+            setTransferMessage(
+              "Admin transfer accepted successfully. You are now the administrator.",
+            );
+            setTimeout(() => {
+              router.push("/stock-control/portal/dashboard");
+            }, 2000);
+          } else {
+            setTransferMessage(result.message);
+            setTimeout(() => {
+              router.push("/stock-control/portal/dashboard");
+            }, 2000);
+          }
+        })
+        .catch(() => {
+          router.push("/stock-control/portal/dashboard");
+        });
+      return;
     }
-  }, [isAuthenticated, authLoading, profile, router, returnUrl]);
+
+    router.push(returnUrl || "/stock-control/portal/dashboard");
+  }, [isAuthenticated, authLoading, profile, router, returnUrl, adminTransferToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,6 +216,18 @@ function StockControlLoginContent() {
                 Remember me
               </label>
             </div>
+
+            {adminTransferToken && !transferMessage && (
+              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                <p className="text-sm text-teal-700">Sign in to accept the admin role transfer.</p>
+              </div>
+            )}
+
+            {transferMessage && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-green-700">{transferMessage}</p>
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">

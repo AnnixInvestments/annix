@@ -228,6 +228,19 @@ export interface CompanyRole {
   sortOrder: number;
 }
 
+export interface AdminTransferPending {
+  id: number;
+  targetEmail: string;
+  newRoleForInitiator: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface AdminTransferAcceptResponse {
+  transferred: boolean;
+  message: string;
+}
+
 export interface StockControlDepartment {
   id: number;
   name: string;

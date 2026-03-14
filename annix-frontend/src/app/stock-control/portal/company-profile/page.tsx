@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import type { AdminTransferPending } from "@/app/lib/api/stock-control-api/types";
 import { CandidateImage, stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useCompanyRoles } from "@/app/lib/query/hooks";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import { STOCK_CONTROL_VERSION } from "../../config/version";
 import { syncStatus } from "../../lib/offline/syncManager";
@@ -1083,7 +1085,235 @@ export default function CompanyProfilePage() {
         </button>
       </div>
 
+      <AdminTransferSection />
+
       <AppInfoSection />
+    </div>
+  );
+}
+
+function AdminTransferSection() {
+  const { data: companyRoles = [] } = useCompanyRoles();
+  const { confirm, ConfirmDialog } = useConfirm();
+
+  const [targetEmail, setTargetEmail] = useState("");
+  const [selectedNewRole, setSelectedNewRole] = useState<string | null>(null);
+  const [initiating, setInitiating] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [pendingTransfer, setPendingTransfer] = useState<AdminTransferPending | null>(null);
+  const [loadingPending, setLoadingPending] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+
+  const nonAdminRoles = companyRoles.filter((r) => r.key !== "admin");
+
+  const loadPendingTransfer = useCallback(async () => {
+    try {
+      const result = await stockControlApiClient.pendingAdminTransfer();
+      setPendingTransfer(result);
+    } catch {
+      setPendingTransfer(null);
+    } finally {
+      setLoadingPending(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPendingTransfer();
+  }, [loadPendingTransfer]);
+
+  const handleInitiate = async () => {
+    setError("");
+    setSuccess("");
+
+    if (!targetEmail.trim()) {
+      setError("Please enter the new admin's email address.");
+      return;
+    }
+
+    if (!isValidEmail(targetEmail.trim())) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    if (selectedNewRole === null && selectedNewRole !== null) {
+      setError("Please select your new role.");
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Transfer Admin Role",
+      message: `Are you sure you want to transfer admin to ${targetEmail.trim()}? This will take effect when they next log in.`,
+      variant: "warning",
+    });
+    if (!confirmed) return;
+
+    setInitiating(true);
+    try {
+      const result = await stockControlApiClient.initiateAdminTransfer(
+        targetEmail.trim(),
+        selectedNewRole,
+      );
+      setSuccess(result.message);
+      setTargetEmail("");
+      setSelectedNewRole(null);
+      await loadPendingTransfer();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to initiate transfer");
+    } finally {
+      setInitiating(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!pendingTransfer) return;
+
+    const confirmed = await confirm({
+      title: "Cancel Admin Transfer",
+      message: "Are you sure you want to cancel this admin transfer?",
+    });
+    if (!confirmed) return;
+
+    setCancelling(true);
+    try {
+      await stockControlApiClient.cancelAdminTransfer(pendingTransfer.id);
+      setPendingTransfer(null);
+      setSuccess("Admin transfer cancelled.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to cancel transfer");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      {ConfirmDialog}
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Admin Transfer</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Transfer your admin role to another team member. The transfer will only complete once the
+        new admin logs in.
+      </p>
+
+      {loadingPending ? (
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-teal-500 border-t-transparent" />
+          Loading...
+        </div>
+      ) : pendingTransfer ? (
+        <div className="space-y-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-800">Pending Admin Transfer</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  Waiting for <strong>{pendingTransfer.targetEmail}</strong> to log in and accept
+                  the transfer.
+                </p>
+                {pendingTransfer.newRoleForInitiator ? (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Your role after transfer:{" "}
+                    <strong>
+                      {nonAdminRoles.find((r) => r.key === pendingTransfer.newRoleForInitiator)
+                        ?.label || pendingTransfer.newRoleForInitiator}
+                    </strong>
+                  </p>
+                ) : (
+                  <p className="text-xs text-amber-600 mt-1">
+                    You will be removed from the app after transfer.
+                  </p>
+                )}
+                <p className="text-xs text-amber-500 mt-1">
+                  Expires: {new Date(pendingTransfer.expiresAt).toLocaleDateString("en-ZA")}
+                </p>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={cancelling}
+            className="px-4 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md border border-red-200 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {cancelling ? "Cancelling..." : "Cancel Transfer"}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="transferEmail" className="block text-sm font-medium text-gray-700 mb-1">
+              New Admin Email Address
+            </label>
+            <input
+              id="transferEmail"
+              type="email"
+              value={targetEmail}
+              onChange={(e) => {
+                setTargetEmail(e.target.value);
+                setError("");
+                setSuccess("");
+              }}
+              placeholder="Enter the email of the new admin"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              The new admin must already be a team member of your company.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="newRole" className="block text-sm font-medium text-gray-700 mb-1">
+              Your New Role After Transfer
+            </label>
+            <select
+              id="newRole"
+              value={selectedNewRole || "__leave__"}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedNewRole(val === "__leave__" ? null : val);
+                setError("");
+                setSuccess("");
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 bg-white"
+            >
+              <option value="__leave__">Leave the App</option>
+              {nonAdminRoles.map((role) => (
+                <option key={role.key} value={role.key}>
+                  {role.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              {selectedNewRole === null
+                ? "Your account will be removed. You can be re-invited later by the new admin."
+                : "You will continue to have access with this role."}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleInitiate}
+            disabled={initiating}
+            className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {initiating ? "Sending..." : "Initiate Transfer"}
+          </button>
+        </div>
+      )}
+
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {success && <p className="mt-3 text-sm text-green-600">{success}</p>}
     </div>
   );
 }

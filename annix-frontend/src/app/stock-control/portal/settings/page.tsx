@@ -450,7 +450,7 @@ function MenuVisibilitySection({
                               >
                                 Edit
                               </button>
-                              {!role.isSystem && (
+                              {role.key !== "admin" && (
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteRole(role.id)}

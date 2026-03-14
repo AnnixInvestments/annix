@@ -1,5 +1,7 @@
 import { StockControlApiClient } from "./base";
 import type {
+  AdminTransferAcceptResponse,
+  AdminTransferPending,
   CompanyDetailsUpdate,
   CompanyRole,
   InvitationValidation,
@@ -101,6 +103,13 @@ declare module "./base" {
       config: Record<string, string[]>;
       labels: Record<string, { group: string; label: string }>;
     }>;
+    initiateAdminTransfer(
+      targetEmail: string,
+      newRoleForInitiator: string | null,
+    ): Promise<{ message: string }>;
+    pendingAdminTransfer(): Promise<AdminTransferPending | null>;
+    cancelAdminTransfer(id: number): Promise<{ message: string }>;
+    acceptAdminTransfer(token: string): Promise<AdminTransferAcceptResponse>;
     companyRoles(): Promise<CompanyRole[]>;
     createCompanyRole(key: string, label: string): Promise<CompanyRole>;
     updateCompanyRole(id: number, label: string): Promise<CompanyRole>;
@@ -337,6 +346,28 @@ proto.updateActionPermissions = async function (config) {
   return this.request("/stock-control/auth/action-permissions", {
     method: "PATCH",
     body: JSON.stringify({ config }),
+  });
+};
+
+proto.initiateAdminTransfer = async function (targetEmail, newRoleForInitiator) {
+  return this.request("/stock-control/auth/admin-transfer/initiate", {
+    method: "POST",
+    body: JSON.stringify({ targetEmail, newRoleForInitiator }),
+  });
+};
+
+proto.pendingAdminTransfer = async function () {
+  return this.request("/stock-control/auth/admin-transfer/pending");
+};
+
+proto.cancelAdminTransfer = async function (id) {
+  return this.request(`/stock-control/auth/admin-transfer/${id}`, { method: "DELETE" });
+};
+
+proto.acceptAdminTransfer = async function (token) {
+  return this.request("/stock-control/auth/admin-transfer/accept", {
+    method: "POST",
+    body: JSON.stringify({ token }),
   });
 };
 

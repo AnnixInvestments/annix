@@ -388,6 +388,44 @@ export class StockControlAuthController {
     return { success: true };
   }
 
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Post("admin-transfer/initiate")
+  @ApiOperation({ summary: "Initiate admin role transfer" })
+  async initiateAdminTransfer(
+    @Req() req: any,
+    @Body() body: { targetEmail: string; newRoleForInitiator: string | null },
+  ) {
+    return this.authService.initiateAdminTransfer(
+      req.user.companyId,
+      req.user.id,
+      body.targetEmail,
+      body.newRoleForInitiator,
+    );
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Get("admin-transfer/pending")
+  @ApiOperation({ summary: "Check for pending admin transfer" })
+  async pendingAdminTransfer(@Req() req: any) {
+    return this.authService.pendingAdminTransfer(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Delete("admin-transfer/:id")
+  @ApiOperation({ summary: "Cancel a pending admin transfer" })
+  async cancelAdminTransfer(@Req() req: any, @Param("id") id: string) {
+    return this.authService.cancelAdminTransfer(req.user.companyId, Number(id));
+  }
+
+  @Post("admin-transfer/accept")
+  @ApiOperation({ summary: "Accept admin transfer (called after login)" })
+  async acceptAdminTransfer(@Body() body: { token: string }) {
+    return this.authService.acceptAdminTransfer(body.token);
+  }
+
   @UseGuards(StockControlAuthGuard)
   @Get("action-permissions")
   @ApiOperation({ summary: "Action permissions configuration for company" })

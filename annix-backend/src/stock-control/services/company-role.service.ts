@@ -125,8 +125,8 @@ export class CompanyRoleService {
       throw new BadRequestException("Role not found");
     }
 
-    if (role.isSystem) {
-      throw new BadRequestException("Cannot delete a system role");
+    if (role.key === "admin") {
+      throw new BadRequestException("Cannot delete the admin role");
     }
 
     await this.roleRepo.remove(role);

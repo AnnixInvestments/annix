@@ -17,6 +17,10 @@ import { now } from "../../lib/datetime";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
 import { StaffMember } from "../entities/staff-member.entity";
+import {
+  AdminTransferStatus,
+  StockControlAdminTransfer,
+} from "../entities/stock-control-admin-transfer.entity";
 import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
 import {
   StockControlInvitation,
@@ -39,6 +43,8 @@ export class StockControlAuthService {
     private readonly companyRepo: Repository<StockControlCompany>,
     @InjectRepository(StockControlInvitation)
     private readonly invitationRepo: Repository<StockControlInvitation>,
+    @InjectRepository(StockControlAdminTransfer)
+    private readonly adminTransferRepo: Repository<StockControlAdminTransfer>,
     @InjectRepository(StaffMember)
     private readonly staffRepo: Repository<StaffMember>,
     private readonly jwtService: JwtService,
@@ -516,6 +522,169 @@ export class StockControlAuthService {
     );
 
     return { message: "App link sent successfully." };
+  }
+
+  async initiateAdminTransfer(
+    companyId: number,
+    initiatorId: number,
+    targetEmail: string,
+    newRoleForInitiator: string | null,
+  ): Promise<{ message: string }> {
+    const initiator = await this.userRepo.findOne({
+      where: { id: initiatorId, companyId },
+      relations: ["company"],
+    });
+    if (!initiator || initiator.role !== StockControlRole.ADMIN) {
+      throw new ForbiddenException("Only the admin can initiate a transfer");
+    }
+
+    const normalizedEmail = targetEmail.toLowerCase().trim();
+
+    if (normalizedEmail === initiator.email.toLowerCase()) {
+      throw new BadRequestException("Cannot transfer admin to yourself");
+    }
+
+    const targetUser = await this.userRepo.findOne({
+      where: { email: normalizedEmail, companyId },
+    });
+    if (!targetUser) {
+      throw new BadRequestException(
+        "No team member found with this email address. They must be an existing member of your company.",
+      );
+    }
+
+    if (newRoleForInitiator !== null) {
+      const companyRoles = await this.companyRoleService.rolesForCompany(companyId);
+      const validKeys = companyRoles.filter((r) => r.key !== "admin").map((r) => r.key);
+      if (!validKeys.includes(newRoleForInitiator)) {
+        throw new BadRequestException("Invalid role selected for your new role");
+      }
+    }
+
+    const existingPending = await this.adminTransferRepo.findOne({
+      where: { companyId, status: AdminTransferStatus.PENDING },
+    });
+    if (existingPending) {
+      existingPending.status = AdminTransferStatus.CANCELLED;
+      await this.adminTransferRepo.save(existingPending);
+    }
+
+    const token = uuidv4();
+    const expiresAt = now().plus({ days: 7 }).toJSDate();
+
+    const transfer = this.adminTransferRepo.create({
+      companyId,
+      initiatedById: initiatorId,
+      targetEmail: normalizedEmail,
+      token,
+      newRoleForInitiator,
+      status: AdminTransferStatus.PENDING,
+      expiresAt,
+    });
+    await this.adminTransferRepo.save(transfer);
+
+    await this.emailService.sendStockControlAdminTransferEmail(
+      normalizedEmail,
+      token,
+      initiator.company?.name || "Your company",
+      initiator.name,
+    );
+
+    return { message: "Admin transfer initiated. An email has been sent to the new admin." };
+  }
+
+  async pendingAdminTransfer(companyId: number): Promise<{
+    id: number;
+    targetEmail: string;
+    newRoleForInitiator: string | null;
+    createdAt: Date;
+    expiresAt: Date;
+  } | null> {
+    const transfer = await this.adminTransferRepo.findOne({
+      where: { companyId, status: AdminTransferStatus.PENDING },
+    });
+
+    if (!transfer) {
+      return null;
+    }
+
+    if (now().toJSDate() > transfer.expiresAt) {
+      transfer.status = AdminTransferStatus.EXPIRED;
+      await this.adminTransferRepo.save(transfer);
+      return null;
+    }
+
+    return {
+      id: transfer.id,
+      targetEmail: transfer.targetEmail,
+      newRoleForInitiator: transfer.newRoleForInitiator,
+      createdAt: transfer.createdAt,
+      expiresAt: transfer.expiresAt,
+    };
+  }
+
+  async cancelAdminTransfer(companyId: number, transferId: number): Promise<{ message: string }> {
+    const transfer = await this.adminTransferRepo.findOne({
+      where: { id: transferId, companyId, status: AdminTransferStatus.PENDING },
+    });
+
+    if (!transfer) {
+      throw new NotFoundException("No pending admin transfer found");
+    }
+
+    transfer.status = AdminTransferStatus.CANCELLED;
+    await this.adminTransferRepo.save(transfer);
+
+    return { message: "Admin transfer cancelled." };
+  }
+
+  async acceptAdminTransfer(token: string): Promise<{ transferred: boolean; message: string }> {
+    const transfer = await this.adminTransferRepo.findOne({
+      where: { token, status: AdminTransferStatus.PENDING },
+    });
+
+    if (!transfer) {
+      return { transferred: false, message: "No pending transfer" };
+    }
+
+    if (now().toJSDate() > transfer.expiresAt) {
+      transfer.status = AdminTransferStatus.EXPIRED;
+      await this.adminTransferRepo.save(transfer);
+      return { transferred: false, message: "Transfer has expired" };
+    }
+
+    const targetUser = await this.userRepo.findOne({
+      where: { email: transfer.targetEmail, companyId: transfer.companyId },
+    });
+    if (!targetUser) {
+      return { transferred: false, message: "User not found in company" };
+    }
+
+    if (!targetUser.emailVerified) {
+      return { transferred: false, message: "Target user email is not verified" };
+    }
+
+    const initiator = await this.userRepo.findOne({
+      where: { id: transfer.initiatedById, companyId: transfer.companyId },
+    });
+
+    targetUser.role = StockControlRole.ADMIN;
+    await this.userRepo.save(targetUser);
+
+    if (initiator) {
+      if (transfer.newRoleForInitiator === null) {
+        await this.userRepo.remove(initiator);
+      } else {
+        initiator.role = transfer.newRoleForInitiator;
+        await this.userRepo.save(initiator);
+      }
+    }
+
+    transfer.status = AdminTransferStatus.ACCEPTED;
+    transfer.acceptedAt = now().toJSDate();
+    await this.adminTransferRepo.save(transfer);
+
+    return { transferred: true, message: "Admin transfer completed successfully." };
   }
 
   private generateTokens(user: StockControlUser) {
