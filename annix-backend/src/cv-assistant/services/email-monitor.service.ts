@@ -32,27 +32,48 @@ export class EmailMonitorService implements OnModuleInit {
     private readonly configService: ConfigService,
   ) {}
 
-  onModuleInit() {}
+  private isMonitoringConfigured = false;
+  private isPolling = false;
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  onModuleInit() {
+    const hasImapConfig =
+      !!this.configService.get<string>("CV_EMAIL_HOST") ||
+      !!this.configService.get<string>("CV_IMAP_HOST");
+    this.isMonitoringConfigured = hasImapConfig;
+    if (!hasImapConfig) {
+      this.logger.debug("CV email monitoring not configured, skipping polls");
+    }
+  }
+
+  @Cron(CronExpression.EVERY_10_MINUTES)
   async pollEmails(): Promise<void> {
-    const companies = await this.companyRepo.find({
-      where: { monitoringEnabled: true },
-    });
+    if (!this.isMonitoringConfigured || this.isPolling) {
+      return;
+    }
 
-    await Promise.all(
-      companies
-        .filter((c) => c.imapHost && c.imapUser && c.imapPasswordEncrypted)
-        .map(async (company) => {
-          try {
-            await this.processCompanyEmails(company);
-          } catch (error: unknown) {
-            this.logger.error(
-              `Failed to process emails for company ${company.id}: ${error instanceof Error ? error.message : String(error)}`,
-            );
-          }
-        }),
-    );
+    this.isPolling = true;
+
+    try {
+      const companies = await this.companyRepo.find({
+        where: { monitoringEnabled: true },
+      });
+
+      await Promise.all(
+        companies
+          .filter((c) => c.imapHost && c.imapUser && c.imapPasswordEncrypted)
+          .map(async (company) => {
+            try {
+              await this.processCompanyEmails(company);
+            } catch (error: unknown) {
+              this.logger.error(
+                `Failed to process emails for company ${company.id}: ${error instanceof Error ? error.message : String(error)}`,
+              );
+            }
+          }),
+      );
+    } finally {
+      this.isPolling = false;
+    }
   }
 
   private async processCompanyEmails(company: CvAssistantCompany): Promise<void> {

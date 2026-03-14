@@ -33,6 +33,8 @@ import { AdminReferenceDataController } from "./admin-reference-data.controller"
 import { AdminReferenceDataService } from "./admin-reference-data.service";
 import { AdminRfqController } from "./admin-rfq.controller";
 import { AdminRfqService } from "./admin-rfq.service";
+import { AdminScheduledJobsController } from "./admin-scheduled-jobs.controller";
+import { AdminScheduledJobsService } from "./admin-scheduled-jobs.service";
 import { AdminSession } from "./entities/admin-session.entity";
 import { AdminAuthGuard } from "./guards/admin-auth.guard";
 
@@ -76,6 +78,7 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
     AdminDashboardService,
     AdminReferenceDataService,
     AdminRfqService,
+    AdminScheduledJobsService,
   ],
   controllers: [
     AdminAiUsageController,
@@ -85,6 +88,7 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
     AdminReferenceDataController,
     AdminRfqController,
     AdminMessagingController,
+    AdminScheduledJobsController,
   ],
   exports: [AdminAuthService, AdminAuthGuard, JwtModule],
 })

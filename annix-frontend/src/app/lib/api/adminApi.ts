@@ -1296,6 +1296,39 @@ class AdminApiClient {
     });
   }
 
+  async scheduledJobs(): Promise<ScheduledJobDto[]> {
+    return this.request<ScheduledJobDto[]>("/admin/scheduled-jobs");
+  }
+
+  async pauseScheduledJob(name: string): Promise<ScheduledJobDto> {
+    return this.request<ScheduledJobDto>(
+      `/admin/scheduled-jobs/${encodeURIComponent(name)}/pause`,
+      {
+        method: "POST",
+      },
+    );
+  }
+
+  async resumeScheduledJob(name: string): Promise<ScheduledJobDto> {
+    return this.request<ScheduledJobDto>(
+      `/admin/scheduled-jobs/${encodeURIComponent(name)}/resume`,
+      { method: "POST" },
+    );
+  }
+
+  async updateScheduledJobFrequency(
+    name: string,
+    cronExpression: string,
+  ): Promise<ScheduledJobDto> {
+    return this.request<ScheduledJobDto>(
+      `/admin/scheduled-jobs/${encodeURIComponent(name)}/frequency`,
+      {
+        method: "POST",
+        body: JSON.stringify({ cronExpression }),
+      },
+    );
+  }
+
   async aiUsageLogs(params?: AiUsageQueryParams): Promise<AiUsageListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.app) searchParams.append("app", params.app);
@@ -1748,6 +1781,14 @@ export interface RbacDeleteRoleResponse {
 export interface RbacRoleProductsResponse {
   roleId: number;
   productKeys: string[];
+}
+
+export interface ScheduledJobDto {
+  name: string;
+  active: boolean;
+  cronTime: string;
+  lastExecution: string | null;
+  nextExecution: string | null;
 }
 
 export const adminApiClient = new AdminApiClient();

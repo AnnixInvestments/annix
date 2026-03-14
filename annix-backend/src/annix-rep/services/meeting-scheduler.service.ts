@@ -21,7 +21,7 @@ export class MeetingSchedulerService {
     }
   }
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async syncCompletedMeetings(): Promise<void> {
     if (!this.enabled) return;
 
@@ -45,7 +45,7 @@ export class MeetingSchedulerService {
     }
   }
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async downloadPendingRecordings(): Promise<void> {
     if (!this.enabled) return;
 

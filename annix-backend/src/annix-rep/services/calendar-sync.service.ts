@@ -46,7 +46,7 @@ export class CalendarSyncService {
     private readonly calendarService: CalendarService,
   ) {}
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async syncActiveConnections(): Promise<void> {
     if (this.isSyncing) {
       this.logger.debug("Sync already in progress, skipping");

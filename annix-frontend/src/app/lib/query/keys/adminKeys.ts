@@ -51,4 +51,8 @@ export const adminKeys = {
     list: (params?: AiUsageQueryParams) =>
       [...adminKeys.aiUsage.all, "list", params ?? {}] as const,
   },
+  scheduledJobs: {
+    all: ["admin", "scheduledJobs"] as const,
+    list: () => [...adminKeys.scheduledJobs.all, "list"] as const,
+  },
 } as const;

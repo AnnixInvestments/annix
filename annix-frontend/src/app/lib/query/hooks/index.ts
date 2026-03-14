@@ -71,6 +71,12 @@ export {
   useUpdateRubberProduct,
 } from "./admin/useRubberPortal";
 export {
+  usePauseJob,
+  useResumeJob,
+  useScheduledJobs,
+  useUpdateJobFrequency,
+} from "./admin/useScheduledJobs";
+export {
   useCreateSecureDocument,
   useDeleteSecureDocument,
   useLocalDocumentsList,
