@@ -5,6 +5,8 @@
 .env.test.local
 .env.production.local
 .env.backup
+.env.prod-db
+annix-backend/configs/
 
 # Build artifacts
 annix-frontend-latest.tar.gz
@@ -52,6 +54,7 @@ annix-backend/uploads/
 *.js
 !*.config.js
 !*.config.mjs
+!scripts/*.js
 
 # Deployment docs with secrets - DO NOT COMMIT
 FLY_DEPLOYMENT_TECHNICAL_DOCS.md

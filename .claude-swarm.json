@@ -17,5 +17,28 @@
       "readyPattern": "Ready in",
       "port": 3000
     }
-  ]
+  ],
+  "profiles": {
+    "prod-db": {
+      "description": "Local app with production config (CAUTION: live data!)",
+      "apps": [
+        {
+          "name": "backend",
+          "start": "pnpm dev:backend:prod-db",
+          "stop": "npx ts-node scripts/kill-port.ts 4001",
+          "kill": "npx ts-node scripts/kill-port.ts 4001",
+          "readyPattern": "Nest application successfully started",
+          "port": 4001
+        },
+        {
+          "name": "frontend",
+          "start": "pnpm dev:frontend",
+          "stop": "npx ts-node scripts/kill-port.ts 3000",
+          "kill": "npx ts-node scripts/kill-port.ts 3000",
+          "readyPattern": "Ready in",
+          "port": 3000
+        }
+      ]
+    }
+  }
 }

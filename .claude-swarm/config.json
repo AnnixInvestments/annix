@@ -13,5 +13,24 @@
       "readyPattern": "Ready in",
       "port": 3000
     }
-  ]
+  ],
+  "profiles": {
+    "prod-db": {
+      "description": "Local app with production database (CAUTION: live data!)",
+      "apps": [
+        {
+          "name": "backend",
+          "start": { "mac": "./run-backend-prod-db.sh", "windows": ".\\run-backend-prod-db.ps1" },
+          "readyPattern": "Nest application successfully started",
+          "port": 4001
+        },
+        {
+          "name": "frontend",
+          "start": { "mac": "./run-frontend.sh", "windows": ".\\run-frontend.ps1" },
+          "readyPattern": "Ready in",
+          "port": 3000
+        }
+      ]
+    }
+  }
 }
