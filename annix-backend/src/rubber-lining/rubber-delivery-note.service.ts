@@ -287,11 +287,11 @@ export class RubberDeliveryNoteService {
   }
 
   private triggerDownstreamAuCocGeneration(supplierDn: RubberDeliveryNote): void {
-    this.findMatchingCustomerDeliveryNotes(supplierDn)
+    this.findAndLinkMatchingCustomerDeliveryNotes(supplierDn)
       .then((customerDnIds) => {
         if (customerDnIds.length > 0) {
           this.logger.log(
-            `SDN ${supplierDn.deliveryNoteNumber} linked to CoC — found ${customerDnIds.length} matching CDN(s): ${customerDnIds.join(", ")}`,
+            `SDN ${supplierDn.deliveryNoteNumber} linked to CoC — found and linked ${customerDnIds.length} matching CDN(s): ${customerDnIds.join(", ")}`,
           );
         }
         return Promise.all(
@@ -307,7 +307,7 @@ export class RubberDeliveryNoteService {
       });
   }
 
-  private async findMatchingCustomerDeliveryNotes(
+  private async findAndLinkMatchingCustomerDeliveryNotes(
     supplierDn: RubberDeliveryNote,
   ): Promise<number[]> {
     const sdnRollNumbers = (supplierDn.extractedData?.rolls || [])
@@ -340,22 +340,35 @@ export class RubberDeliveryNoteService {
       }),
     );
 
-    return customerDns
-      .filter((cdn) => {
-        const cdnRolls = (cdn.extractedData?.rolls || [])
-          .map((r) => r.rollNumber)
-          .filter(Boolean) as string[];
+    const matchingCdns = customerDns.filter((cdn) => {
+      const cdnRolls = (cdn.extractedData?.rolls || [])
+        .map((r) => r.rollNumber)
+        .filter(Boolean) as string[];
 
-        return cdnRolls.some((cdnRoll) => {
-          const trimmed = cdnRoll.trim();
-          if (sdnRollSet.has(trimmed)) return true;
+      return cdnRolls.some((cdnRoll) => {
+        const trimmed = cdnRoll.trim();
+        if (sdnRollSet.has(trimmed)) return true;
 
-          const parts = trimmed.split("-");
-          const suffix = parts.length >= 2 ? parts[parts.length - 1] : trimmed;
-          return sdnRollSuffixes.has(suffix);
-        });
-      })
-      .map((cdn) => cdn.id);
+        const parts = trimmed.split("-");
+        const suffix = parts.length >= 2 ? parts[parts.length - 1] : trimmed;
+        return sdnRollSuffixes.has(suffix);
+      });
+    });
+
+    const cocId = supplierDn.linkedCocId;
+    if (cocId) {
+      const unlinkedCdns = matchingCdns.filter((cdn) => !cdn.linkedCocId);
+      await Promise.all(
+        unlinkedCdns.map((cdn) => {
+          this.logger.log(
+            `Auto-linking CDN ${cdn.deliveryNoteNumber} (id=${cdn.id}) to CoC ${cocId}`,
+          );
+          return this.linkToCoc(cdn.id, cocId);
+        }),
+      );
+    }
+
+    return matchingCdns.map((cdn) => cdn.id);
   }
 
   async finalizeDeliveryNote(id: number): Promise<RubberDeliveryNoteDto | null> {
