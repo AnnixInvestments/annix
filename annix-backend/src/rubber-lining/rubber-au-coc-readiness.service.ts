@@ -295,6 +295,56 @@ export class RubberAuCocReadinessService {
     }
   }
 
+  async bulkAutoGenerateAllDraftAuCocs(): Promise<{
+    checked: number;
+    generated: number;
+    details: string[];
+  }> {
+    const draftCocs = await this.auCocRepository.find({
+      where: { status: "DRAFT" as never },
+    });
+
+    if (draftCocs.length === 0) {
+      return { checked: 0, generated: 0, details: ["No draft AU CoCs found"] };
+    }
+
+    const results = await draftCocs.reduce(
+      async (accPromise, auCoc) => {
+        const acc = await accPromise;
+        const readiness = await this.checkReadiness(auCoc.id);
+
+        if (!readiness.ready) {
+          return {
+            ...acc,
+            details: [
+              ...acc.details,
+              `${auCoc.cocNumber}: not ready (${readiness.missingDocuments.join(", ")})`,
+            ],
+          };
+        }
+
+        const result = await this.autoGenerateAuCoc(auCoc.id);
+        if (result.generated) {
+          return {
+            ...acc,
+            generated: acc.generated + 1,
+            details: [...acc.details, `${auCoc.cocNumber}: generated successfully`],
+          };
+        }
+        return {
+          ...acc,
+          details: [...acc.details, `${auCoc.cocNumber}: ${result.reason}`],
+        };
+      },
+      Promise.resolve({ checked: draftCocs.length, generated: 0, details: [] as string[] }),
+    );
+
+    this.logger.log(
+      `Bulk AU CoC generation: checked ${results.checked}, generated ${results.generated}`,
+    );
+    return results;
+  }
+
   async findPendingAuCocsByOrderNumber(orderNumber: string): Promise<RubberAuCoc[]> {
     const allDraftCocs = await this.auCocRepository.find({
       where: { status: "DRAFT" as never },

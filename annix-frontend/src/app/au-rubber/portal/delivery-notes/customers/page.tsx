@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Loader2, X } from "lucide-react";
+import { FileText, Link2, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -65,6 +65,24 @@ export default function CustomerDeliveryNotesPage() {
   const [analysisResult, setAnalysisResult] = useState<AnalyzeCustomerDnsResult | null>(null);
   const [analysisFiles, setAnalysisFiles] = useState<File[]>([]);
   const [reanalyzingId, setReanalyzingId] = useState<number | null>(null);
+  const [isAutoLinking, setIsAutoLinking] = useState(false);
+
+  const handleBulkAutoLinkCdns = async () => {
+    try {
+      setIsAutoLinking(true);
+      const result = await auRubberApiClient.bulkLinkCustomerDns();
+      if (result.linked > 0) {
+        showToast(`Auto-linked ${result.linked} customer DN(s) to supplier CoCs`, "success");
+        await notesQuery.refetch();
+      } else {
+        showToast("No matching customer DNs found to link", "info");
+      }
+    } catch (err) {
+      showToast("Failed to auto-link customer delivery notes", "error");
+    } finally {
+      setIsAutoLinking(false);
+    }
+  };
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -323,6 +341,18 @@ export default function CustomerDeliveryNotesPage() {
           <p className="mt-1 text-sm text-gray-600">Track deliveries to customers</p>
         </div>
         <div className="flex space-x-3">
+          <button
+            onClick={handleBulkAutoLinkCdns}
+            disabled={isAutoLinking}
+            className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 disabled:opacity-50"
+          >
+            {isAutoLinking ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Link2 className="w-4 h-4 mr-2" />
+            )}
+            {isAutoLinking ? "Linking..." : "Auto-Link All"}
+          </button>
           <Link
             href="/au-rubber/portal/delivery-notes/scan"
             className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50"

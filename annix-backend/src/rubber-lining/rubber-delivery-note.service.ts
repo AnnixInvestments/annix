@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
+import { IsNull, Not, Repository } from "typeorm";
 import { formatISODate, fromISO, generateUniqueId } from "../lib/datetime";
 import {
   CreateDeliveryNoteDto,
@@ -1027,5 +1027,50 @@ export class RubberDeliveryNoteService {
       `Bulk auto-link complete: ${result.linked} DN(s) linked across ${allCocs.length} CoC(s)`,
     );
     return result;
+  }
+
+  async bulkLinkCustomerDnsFromLinkedSupplierDns(): Promise<{
+    linked: number;
+    details: string[];
+  }> {
+    const linkedSupplierDns = await this.deliveryNoteRepository.find({
+      where: {
+        status: DeliveryNoteStatus.LINKED,
+        linkedCocId: Not(IsNull()),
+      },
+    });
+
+    const supplierCompanies = await this.companyRepository.find({
+      where: { companyType: CompanyType.SUPPLIER },
+    });
+    const supplierIds = new Set(supplierCompanies.map((c) => c.id));
+
+    const sdns = linkedSupplierDns.filter((dn) => supplierIds.has(dn.supplierCompanyId));
+
+    if (sdns.length === 0) {
+      return { linked: 0, details: ["No linked SDNs found to cascade from"] };
+    }
+
+    const results = await sdns.reduce(
+      async (accPromise, sdn) => {
+        const acc = await accPromise;
+        const cdnIds = await this.findAndLinkMatchingCustomerDeliveryNotes(sdn);
+        if (cdnIds.length === 0) return acc;
+
+        return {
+          linked: acc.linked + cdnIds.length,
+          details: [
+            ...acc.details,
+            `SDN ${sdn.deliveryNoteNumber} (CoC ${sdn.linkedCocId}): linked ${cdnIds.length} CDN(s) [${cdnIds.join(", ")}]`,
+          ],
+        };
+      },
+      Promise.resolve({ linked: 0, details: [] as string[] }),
+    );
+
+    this.logger.log(
+      `Bulk CDN link complete: ${results.linked} CDN(s) linked from ${sdns.length} SDN(s)`,
+    );
+    return results;
   }
 }

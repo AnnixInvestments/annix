@@ -2149,6 +2149,22 @@ class AuRubberApiClient {
     });
   }
 
+  async bulkLinkCustomerDns(): Promise<{ linked: number; details: string[] }> {
+    return this.request("/rubber-lining/portal/delivery-notes/bulk-link-customer-dns", {
+      method: "POST",
+    });
+  }
+
+  async bulkAutoGenerateAuCocs(): Promise<{
+    checked: number;
+    generated: number;
+    details: string[];
+  }> {
+    return this.request("/rubber-lining/portal/au-cocs/bulk-auto-generate", {
+      method: "POST",
+    });
+  }
+
   async extractDeliveryNote(id: number): Promise<RubberDeliveryNoteDto> {
     return this.request(`/rubber-lining/portal/delivery-notes/${id}/extract`, {
       method: "POST",

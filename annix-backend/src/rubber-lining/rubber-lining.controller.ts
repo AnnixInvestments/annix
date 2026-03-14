@@ -1610,6 +1610,14 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/delivery-notes/bulk-link-customer-dns")
+  @ApiOperation({ summary: "Bulk link customer DNs to CoCs from already-linked supplier DNs" })
+  async bulkLinkCustomerDns(): Promise<{ linked: number; details: string[] }> {
+    return this.rubberDeliveryNoteService.bulkLinkCustomerDnsFromLinkedSupplierDns();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Get("portal/delivery-notes")
   @ApiOperation({ summary: "List delivery notes" })
   @ApiQuery({ name: "deliveryNoteType", required: false, enum: DeliveryNoteType })
@@ -2378,6 +2386,14 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiParam({ name: "id", description: "AU CoC ID" })
   async autoGenerateAuCoc(@Param("id") id: string) {
     return this.rubberAuCocReadinessService.autoGenerateAuCoc(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/au-cocs/bulk-auto-generate")
+  @ApiOperation({ summary: "Bulk auto-generate all draft AU CoCs that are ready" })
+  async bulkAutoGenerateAuCocs() {
+    return this.rubberAuCocReadinessService.bulkAutoGenerateAllDraftAuCocs();
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

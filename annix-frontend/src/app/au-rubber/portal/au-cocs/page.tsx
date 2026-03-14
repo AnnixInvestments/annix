@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2, Zap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
@@ -46,6 +47,27 @@ export default function AuCocsPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+
+  const handleBulkAutoGenerate = async () => {
+    try {
+      setIsAutoGenerating(true);
+      const result = await auRubberApiClient.bulkAutoGenerateAuCocs();
+      if (result.generated > 0) {
+        showToast(
+          `Auto-generated ${result.generated} of ${result.checked} draft AU CoC(s)`,
+          "success",
+        );
+        await cocsQuery.refetch();
+      } else {
+        showToast(`Checked ${result.checked} draft AU CoC(s) — none ready for generation`, "info");
+      }
+    } catch (err) {
+      showToast("Failed to auto-generate AU CoCs", "error");
+    } finally {
+      setIsAutoGenerating(false);
+    }
+  };
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -238,15 +260,34 @@ export default function AuCocsPage() {
             Generate and manage certificates for customers
           </p>
         </div>
-        <Link
-          href="/au-rubber/portal/au-cocs/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Certificate
-        </Link>
+        <div className="flex space-x-3">
+          <button
+            onClick={handleBulkAutoGenerate}
+            disabled={isAutoGenerating}
+            className="inline-flex items-center px-4 py-2 border border-yellow-600 rounded-md shadow-sm text-sm font-medium text-yellow-600 bg-white hover:bg-yellow-50 disabled:opacity-50"
+          >
+            {isAutoGenerating ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4 mr-2" />
+            )}
+            {isAutoGenerating ? "Generating..." : "Auto-Generate All"}
+          </button>
+          <Link
+            href="/au-rubber/portal/au-cocs/new"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            New Certificate
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
