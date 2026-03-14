@@ -62,8 +62,8 @@ interface UploadResult {
 
 async function fetchBoqs(params?: BoqQueryParams): Promise<PaginatedBoqResult> {
   const searchParams = new URLSearchParams();
-  searchParams.set("page", (params?.page ?? 1).toString());
-  searchParams.set("limit", (params?.limit ?? 20).toString());
+  searchParams.set("page", (params?.page || 1).toString());
+  searchParams.set("limit", (params?.limit || 20).toString());
   if (params?.status && params.status !== "all") {
     searchParams.set("status", params.status);
   }

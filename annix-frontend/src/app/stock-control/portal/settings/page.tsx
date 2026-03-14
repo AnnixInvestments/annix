@@ -673,12 +673,12 @@ function UserLocationAssignmentsSection({
 
   const isLocationAssigned = (userId: number, locationId: number): boolean => {
     const userLoc = userLocations.find((ul) => ul.userId === userId);
-    return userLoc?.locationIds?.includes(locationId) ?? false;
+    return userLoc?.locationIds?.includes(locationId) || false;
   };
 
   const handleToggleLocation = async (userId: number, locationId: number) => {
     const userLoc = userLocations.find((ul) => ul.userId === userId);
-    const currentIds = userLoc?.locationIds ?? [];
+    const currentIds = userLoc?.locationIds || [];
     const newIds = currentIds.includes(locationId)
       ? currentIds.filter((id) => id !== locationId)
       : [...currentIds, locationId];
@@ -752,7 +752,7 @@ function UserLocationAssignmentsSection({
                 <tbody className="divide-y divide-gray-100">
                   {eligibleMembers.map((member) => {
                     const userLoc = userLocations.find((ul) => ul.userId === member.id);
-                    const hasAny = (userLoc?.locationIds?.length ?? 0) > 0;
+                    const hasAny = (userLoc?.locationIds?.length || 0) > 0;
 
                     return (
                       <tr key={member.id} className="hover:bg-gray-50 transition-colors">
@@ -854,7 +854,7 @@ function ActionPermissionsSection({
 
   const actionKeys = Object.keys(labels);
   const groups = actionKeys.reduce<Record<string, string[]>>((acc, key) => {
-    const group = labels[key]?.group ?? "Other";
+    const group = labels[key]?.group || "Other";
     if (!acc[group]) {
       acc[group] = [];
     }
@@ -1051,7 +1051,7 @@ function GroupRows({
           return (
             <tr key={actionKey} className="border-b border-gray-50 hover:bg-gray-50">
               <td className="py-1.5 pr-4 pl-6 text-xs text-gray-600">
-                {labels[actionKey]?.label ?? actionKey}
+                {labels[actionKey]?.label || actionKey}
               </td>
               {roles.map((role) => {
                 const isAdmin = role.key === "admin";

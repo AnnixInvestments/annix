@@ -140,7 +140,7 @@ export function ProductForm(props: ProductFormProps) {
     const typeCode = COMPOUND_TO_TYPE_CODE[compound.code];
     if (!typeCode) return "";
     const typeCoding = codings.find((c) => c.codingType === "TYPE" && c.code === typeCode);
-    return typeCoding?.firebaseUid ?? "";
+    return typeCoding?.firebaseUid || "";
   };
 
   const autoGradeResult = useMemo(() => {
@@ -194,7 +194,7 @@ export function ProductForm(props: ProductFormProps) {
         (c) => c.codingType === "GRADE" && c.code === matchedSpec.grade,
       );
       return {
-        gradeFirebaseUid: gradeCoding?.firebaseUid ?? null,
+        gradeFirebaseUid: gradeCoding?.firebaseUid || null,
         gradeName: matchedSpec.grade,
         belowMinimum: false,
       };

@@ -259,7 +259,7 @@ export default function RubberCodingsPage() {
           currentPage={currentPage}
           totalItems={codings.length}
           itemsPerPage={ITEMS_PER_PAGE}
-          itemName={currentTypeInfo?.label.toLowerCase() ?? "codings"}
+          itemName={currentTypeInfo?.label.toLowerCase() || "codings"}
           onPageChange={setCurrentPage}
         />
       </div>

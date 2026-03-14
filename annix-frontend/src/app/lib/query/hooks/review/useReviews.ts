@@ -54,8 +54,8 @@ async function fetchReviews(
   params?: ReviewQueryParams,
 ): Promise<PaginatedReviewResult> {
   const searchParams = new URLSearchParams();
-  searchParams.set("page", (params?.page ?? 1).toString());
-  searchParams.set("limit", (params?.limit ?? 20).toString());
+  searchParams.set("page", (params?.page || 1).toString());
+  searchParams.set("limit", (params?.limit || 20).toString());
   if (params?.entityType && params.entityType !== "all") {
     searchParams.set("entityType", params.entityType);
   }

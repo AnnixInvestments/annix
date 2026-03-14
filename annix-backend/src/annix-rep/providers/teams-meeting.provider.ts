@@ -308,6 +308,8 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
     fromDate: Date,
     toDate: Date,
   ): Promise<PlatformMeetingData[]> {
+    const meetings: PlatformMeetingData[] = [];
+
     const params = new URLSearchParams({
       startDateTime: fromDate.toISOString(),
       endDateTime: toDate.toISOString(),
@@ -325,7 +327,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
 
     if (!response.ok) {
       this.logger.warn(`Calendar view fetch failed: ${response.status}`);
-      return [];
+      return meetings;
     }
 
     interface CalendarEvent {
@@ -340,7 +342,7 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
 
     const data: { value: CalendarEvent[] } = await response.json();
 
-    return data.value
+    const teamsMeetings = data.value
       .filter((event) => event.onlineMeeting?.joinUrl?.includes("teams.microsoft.com"))
       .map((event) => ({
         platformMeetingId: event.id,
@@ -361,6 +363,9 @@ export class TeamsMeetingProvider implements IMeetingPlatformProvider {
         timezone: "UTC",
         rawData: event as unknown as Record<string, unknown>,
       }));
+    meetings.push(...teamsMeetings);
+
+    return meetings;
   }
 
   private mapTeamsMeeting(meeting: TeamsOnlineMeeting): PlatformMeetingData {

@@ -43,8 +43,8 @@ function CustomerMessagesContent() {
   const archiveMutation = useArchiveCustomerConversation();
   const markBroadcastReadMutation = useMarkCustomerBroadcastRead();
 
-  const conversations = conversationsQuery.data?.conversations ?? [];
-  const broadcasts = broadcastsQuery.data?.broadcasts ?? [];
+  const conversations = conversationsQuery.data?.conversations || [];
+  const broadcasts = broadcastsQuery.data?.broadcasts || [];
 
   const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number>(0);

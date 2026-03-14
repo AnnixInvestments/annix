@@ -242,13 +242,10 @@ export class MeetingSummaryService {
       companyName: meeting.prospect?.companyName,
     };
 
-    const sent: string[] = [];
-    const failed: string[] = [];
+    const results = await Promise.allSettled(
+      dto.recipientEmails.map(async (email) => {
+        const recipientName = dto.recipientNames?.[email] ?? email.split("@")[0];
 
-    for (const email of dto.recipientEmails) {
-      const recipientName = dto.recipientNames?.[email] ?? email.split("@")[0];
-
-      try {
         const success = await this.emailService.sendMeetingSummaryEmail(
           email,
           recipientName,
@@ -258,17 +255,29 @@ export class MeetingSummaryService {
         );
 
         if (success) {
-          sent.push(email);
           this.logger.log(`Meeting summary sent to ${email} for meeting ${meetingId}`);
+          return { email, success: true };
         } else {
-          failed.push(email);
           this.logger.warn(`Failed to send meeting summary to ${email}`);
+          return { email, success: false };
         }
-      } catch (error) {
-        failed.push(email);
-        this.logger.error(`Error sending meeting summary to ${email}: ${error}`);
-      }
-    }
+      }),
+    );
+
+    const { sent, failed } = results.reduce(
+      (acc, result, index) => {
+        const email = dto.recipientEmails[index];
+        if (result.status === "rejected") {
+          this.logger.error(`Error sending meeting summary to ${email}: ${result.reason}`);
+          return { sent: acc.sent, failed: [...acc.failed, email] };
+        } else if (result.value.success) {
+          return { sent: [...acc.sent, email], failed: acc.failed };
+        } else {
+          return { sent: acc.sent, failed: [...acc.failed, email] };
+        }
+      },
+      { sent: [] as string[], failed: [] as string[] },
+    );
 
     if (sent.length > 0) {
       meeting.summarySent = true;

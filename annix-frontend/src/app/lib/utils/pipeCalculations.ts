@@ -2128,9 +2128,9 @@ export function calculateButtWeldVolume(params: {
   config?: WeldVolumeConfig;
 }): { volumeMm3: number; volumeCm3: number; weldLengthMm: number } {
   const { outsideDiameterMm, wallThicknessMm, numberOfButtWelds, config } = params;
-  const rootGapMm = config?.rootGapMm ?? DEFAULT_WELD_CONFIG.rootGapMm;
-  const grooveAngleDeg = config?.grooveAngleDeg ?? DEFAULT_WELD_CONFIG.grooveAngleDeg;
-  const reinforcementMm = config?.reinforcementMm ?? DEFAULT_WELD_CONFIG.reinforcementMm;
+  const rootGapMm = config?.rootGapMm || DEFAULT_WELD_CONFIG.rootGapMm;
+  const grooveAngleDeg = config?.grooveAngleDeg || DEFAULT_WELD_CONFIG.grooveAngleDeg;
+  const reinforcementMm = config?.reinforcementMm || DEFAULT_WELD_CONFIG.reinforcementMm;
 
   const circumferenceMm = Math.PI * outsideDiameterMm;
   const crossSectionMm2 = buttWeldCrossSectionMm2(

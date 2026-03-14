@@ -2810,7 +2810,7 @@ export default function ProjectDetailsStep() {
                       <AutoFilledInput
                         type="number"
                         step="0.1"
-                        value={globalSpecs?.tempMin ?? ""}
+                        value={globalSpecs?.tempMin || ""}
                         onChange={(value) => updateEnvironmentalField("tempMin", value)}
                         onOverride={() => markAsOverridden("tempMin")}
                         isAutoFilled={wasAutoFilled("tempMin")}
@@ -2823,7 +2823,7 @@ export default function ProjectDetailsStep() {
                       <AutoFilledInput
                         type="number"
                         step="0.1"
-                        value={globalSpecs?.tempMean ?? ""}
+                        value={globalSpecs?.tempMean || ""}
                         onChange={(value) => updateEnvironmentalField("tempMean", value)}
                         onOverride={() => markAsOverridden("tempMean")}
                         isAutoFilled={wasAutoFilled("tempMean")}
@@ -2836,7 +2836,7 @@ export default function ProjectDetailsStep() {
                       <AutoFilledInput
                         type="number"
                         step="0.1"
-                        value={globalSpecs?.tempMax ?? ""}
+                        value={globalSpecs?.tempMax || ""}
                         onChange={(value) => updateEnvironmentalField("tempMax", value)}
                         onOverride={() => markAsOverridden("tempMax")}
                         isAutoFilled={wasAutoFilled("tempMax")}
@@ -2848,7 +2848,7 @@ export default function ProjectDetailsStep() {
                       <label className="block text-xs text-gray-600">Humidity %</label>
                       <AutoFilledInput
                         type="number"
-                        value={globalSpecs?.humidityMean ?? ""}
+                        value={globalSpecs?.humidityMean || ""}
                         onChange={(value) =>
                           onUpdateGlobalSpecs({ ...globalSpecs, humidityMean: value })
                         }

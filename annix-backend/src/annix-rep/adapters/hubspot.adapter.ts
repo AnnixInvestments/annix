@@ -557,7 +557,9 @@ export class HubSpotAdapter implements ICrmAdapter {
       ...(meeting.outcomes ? [`\n\nOutcomes:\n${meeting.outcomes}`] : []),
       ...(meeting.actionItems && meeting.actionItems.length > 0
         ? [
-            `\n\nAction Items:\n${meeting.actionItems.map((item) => `- ${item.task}${item.assignee ? ` (${item.assignee})` : ""}`).join("\n")}`,
+            `\n\nAction Items:\n${meeting.actionItems
+              .map((item) => `- ${item.task}${item.assignee ? ` (${item.assignee})` : ""}`)
+              .join("\n")}`,
           ]
         : []),
     ];

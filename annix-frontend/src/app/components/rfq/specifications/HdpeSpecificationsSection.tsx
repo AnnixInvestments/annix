@@ -156,13 +156,13 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
   const innerDiameter = wallThickness ? sampleOd - 2 * wallThickness : null;
 
   const selectedMaterial = HDPE_MATERIALS.find((m) => m.id === selectedGrade);
-  const density = selectedMaterial?.densityKgM3 ?? 950;
+  const density = selectedMaterial?.densityKgM3 || 950;
   const weightPerMeter =
     wallThickness && innerDiameter
       ? ((Math.PI * (sampleOd ** 2 - innerDiameter ** 2)) / 4) * (density / 1e6)
       : null;
 
-  const maxTempForGrade = selectedMaterial?.maxTemperatureC ?? 60;
+  const maxTempForGrade = selectedMaterial?.maxTemperatureC || 60;
   const temperatureOptions = HDPE_TEMPERATURE_DERATING.filter(
     (point) => point.temperatureC <= maxTempForGrade,
   );
@@ -716,19 +716,19 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
           <div>
             <span className="text-gray-500">Density:</span>
             <span className="ml-1 text-gray-900">
-              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.densityKgM3 ?? "-"} kg/m³
+              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.densityKgM3 || "-"} kg/m³
             </span>
           </div>
           <div>
             <span className="text-gray-500">Max Temp:</span>
             <span className="ml-1 text-gray-900">
-              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.maxTemperatureC ?? "-"}°C
+              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.maxTemperatureC || "-"}°C
             </span>
           </div>
           <div>
             <span className="text-gray-500">Min Design Stress:</span>
             <span className="ml-1 text-gray-900">
-              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.minDesignStress ?? "-"}{" "}
+              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.minDesignStress || "-"}{" "}
               MPa
             </span>
           </div>
@@ -760,19 +760,19 @@ export function HdpeSpecificationsSection(props: HdpeSpecificationsSectionProps)
               <div>
                 <span className="text-gray-500">Wall Thickness:</span>
                 <span className="ml-1 font-medium text-gray-900">
-                  {wallThickness?.toFixed(1) ?? "-"} mm
+                  {wallThickness?.toFixed(1) || "-"} mm
                 </span>
               </div>
               <div>
                 <span className="text-gray-500">Inside Diameter:</span>
                 <span className="ml-1 font-medium text-gray-900">
-                  {innerDiameter?.toFixed(1) ?? "-"} mm
+                  {innerDiameter?.toFixed(1) || "-"} mm
                 </span>
               </div>
               <div>
                 <span className="text-gray-500">Weight:</span>
                 <span className="ml-1 font-medium text-gray-900">
-                  {weightPerMeter?.toFixed(2) ?? "-"} kg/m
+                  {weightPerMeter?.toFixed(2) || "-"} kg/m
                 </span>
               </div>
             </div>

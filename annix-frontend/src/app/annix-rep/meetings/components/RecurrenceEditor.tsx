@@ -91,7 +91,7 @@ export function RecurrenceEditor(props: RecurrenceEditorProps) {
           <span className="text-sm text-gray-600 dark:text-gray-400">Repeat on</span>
           <div className="flex gap-1">
             {WEEKDAYS.map((day) => {
-              const isSelected = value.byWeekDay?.includes(day.value) ?? false;
+              const isSelected = value.byWeekDay?.includes(day.value) || false;
               return (
                 <button
                   key={day.value}

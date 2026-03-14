@@ -297,7 +297,7 @@ export class SpeakerDiarizationService {
   private mergeAdjacentSegments(segments: SpeakerSegment[], maxGap: number): SpeakerSegment[] {
     if (segments.length <= 1) return segments;
 
-    return segments.slice(1).reduce(
+    const result = segments.slice(1).reduce(
       (acc, next) => {
         const current = acc[acc.length - 1];
         if (
@@ -310,5 +310,7 @@ export class SpeakerDiarizationService {
       },
       [{ ...segments[0] }] as SpeakerSegment[],
     );
+
+    return result;
   }
 }

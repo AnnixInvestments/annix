@@ -164,7 +164,7 @@ export default function PositectorLiveStreamingPage() {
     }
   };
 
-  const specLimits = session?.specLimits ?? { min: null, max: null };
+  const specLimits = session?.specLimits || { min: null, max: null };
   const average =
     readings.length > 0 ? readings.reduce((sum, r) => sum + r.value, 0) / readings.length : null;
   const outOfSpecCount = readings.filter(
@@ -625,7 +625,7 @@ function StartSessionForm({
           setSpecMin(String(coat.minDftUm));
           setSpecMax(String(coat.maxDftUm));
           const isPrimer =
-            coat.genericType?.toLowerCase().includes("primer") ??
+            coat.genericType?.toLowerCase().includes("primer") ||
             coat.product.toLowerCase().includes("primer");
           setCoatType(isPrimer ? "primer" : "final");
         }
@@ -678,7 +678,7 @@ function StartSessionForm({
     }
   };
 
-  const availableCoats = coatingAnalysis?.coats ?? [];
+  const availableCoats = coatingAnalysis?.coats || [];
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6">

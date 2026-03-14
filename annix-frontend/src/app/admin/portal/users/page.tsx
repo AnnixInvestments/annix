@@ -32,7 +32,7 @@ function userDisplayName(user: RbacUserWithAccessSummary): string {
 }
 
 function userInitial(user: RbacUserWithAccessSummary): string {
-  return (user.firstName?.[0] ?? user.email[0]).toUpperCase();
+  return (user.firstName?.[0] || user.email[0]).toUpperCase();
 }
 
 export default function AdminUsersPage() {
@@ -86,7 +86,7 @@ export default function AdminUsersPage() {
     );
   }, [selectedUser]);
 
-  const enabledAppCount = selectedUser?.appAccess.length ?? 0;
+  const enabledAppCount = selectedUser?.appAccess.length || 0;
   const isLoading = appsLoading || usersLoading;
 
   if (!isAdmin) {
@@ -188,7 +188,7 @@ export default function AdminUsersPage() {
         </div>
         <button
           onClick={() => {
-            setInviteAppCode(apps[0]?.code ?? null);
+            setInviteAppCode(apps[0]?.code || null);
             setShowInviteModal(true);
           }}
           disabled={apps.length === 0}
@@ -269,9 +269,9 @@ export default function AdminUsersPage() {
                       </h2>
                       <span
                         className={`px-2 py-0.5 text-xs font-medium rounded ${
-                          STATUS_COLORS[selectedUser.status]?.bg ?? "bg-gray-100 dark:bg-gray-700"
+                          STATUS_COLORS[selectedUser.status]?.bg || "bg-gray-100 dark:bg-gray-700"
                         } ${
-                          STATUS_COLORS[selectedUser.status]?.text ??
+                          STATUS_COLORS[selectedUser.status]?.text ||
                           "text-gray-700 dark:text-gray-300"
                         }`}
                       >

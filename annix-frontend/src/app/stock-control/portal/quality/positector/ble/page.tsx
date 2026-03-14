@@ -317,7 +317,7 @@ export default function PositectorBlePage() {
     }
   };
 
-  const specLimits = session?.specLimits ?? { min: null, max: null };
+  const specLimits = session?.specLimits || { min: null, max: null };
   const average =
     readings.length > 0 ? readings.reduce((sum, r) => sum + r.value, 0) / readings.length : null;
 
@@ -676,7 +676,7 @@ export default function PositectorBlePage() {
             setSaveResult(null);
           }}
           onCancel={() => setShowSessionForm(false)}
-          deviceName={bleDevice?.device.name ?? null}
+          deviceName={bleDevice?.device.name || null}
         />
       )}
     </div>

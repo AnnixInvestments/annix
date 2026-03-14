@@ -44,7 +44,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
-    throw new Error(errorBody?.message ?? `Request failed with status ${response.status}`);
+    throw new Error(errorBody?.message || `Request failed with status ${response.status}`);
   }
 
   return response.json();

@@ -858,7 +858,7 @@ export default function RubberOrderDetailPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-center text-sm text-gray-900">
-                          {product?.specificGravity ?? "-"}
+                          {product?.specificGravity || "-"}
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select

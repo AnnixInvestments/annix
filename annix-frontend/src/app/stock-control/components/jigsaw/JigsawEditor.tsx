@@ -68,7 +68,7 @@ export function JigsawEditor(props: {
       {
         widthMm: 1200,
         lengthMm: 12500,
-        thicknessMm: rubberSpec?.thicknessMm ?? 5,
+        thicknessMm: rubberSpec?.thicknessMm || 5,
       },
     ];
   });
@@ -322,7 +322,7 @@ export function JigsawEditor(props: {
       {
         widthMm: 1200,
         lengthMm: 12500,
-        thicknessMm: rubberSpec?.thicknessMm ?? 5,
+        thicknessMm: rubberSpec?.thicknessMm || 5,
       },
     ]);
   };
@@ -389,7 +389,7 @@ export function JigsawEditor(props: {
   };
 
   const activePanel = activeDragId ? findPanel(activeDragId) : null;
-  const activePanelData = activePanel?.panel ?? null;
+  const activePanelData = activePanel?.panel || null;
 
   return (
     <div>

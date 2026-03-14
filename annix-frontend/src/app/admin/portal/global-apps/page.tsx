@@ -265,7 +265,7 @@ export default function GlobalAppsPage() {
   return (
     <div className="space-y-8">
       <div className="bg-gradient-to-r from-[#323288] to-[#4a4da3] rounded-xl p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">Welcome back, {admin?.firstName ?? "Admin"}</h1>
+        <h1 className="text-2xl font-bold mb-2">Welcome back, {admin?.firstName || "Admin"}</h1>
         <p className="text-blue-100">
           Access all Annix platform applications from this central hub. Your admin session grants
           you access to all apps without re-authenticating.

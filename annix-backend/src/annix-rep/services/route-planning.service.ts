@@ -144,11 +144,12 @@ export class RoutePlanningService {
       const travelFromPrevious = calculateTravel(precedingMeeting, followingMeeting);
       const travelToNext = calculateTravel(precedingMeeting, followingMeeting);
 
-      const effectiveAvailableMinutes =
-        durationMinutes -
-        settings.bufferAfterMinutes -
-        settings.bufferBeforeMinutes -
-        (travelFromPrevious ? travelFromPrevious.estimatedMinutes : 0);
+      let effectiveAvailableMinutes = durationMinutes;
+      effectiveAvailableMinutes -= settings.bufferAfterMinutes;
+      effectiveAvailableMinutes -= settings.bufferBeforeMinutes;
+      if (travelFromPrevious) {
+        effectiveAvailableMinutes -= travelFromPrevious.estimatedMinutes;
+      }
 
       return {
         startTime,
@@ -439,31 +440,35 @@ export class RoutePlanningService {
   private nearestNeighborOptimization(stops: RouteStop[]): RouteStop[] {
     if (stops.length <= 2) return stops;
 
-    const pickNext = (
-      ordered: RouteStop[],
-      remaining: RouteStop[],
-    ): { ordered: RouteStop[]; remaining: RouteStop[] } => {
-      if (remaining.length === 0) return { ordered, remaining };
+    const result: RouteStop[] = [stops[0]];
+    const remaining = stops.slice(1);
 
-      const current = ordered[ordered.length - 1];
+    while (remaining.length > 0) {
+      const current = result[result.length - 1];
+      let nearestIndex = 0;
+      let nearestDistance = Infinity;
 
-      const nearest = remaining.reduce(
-        (best, stop, idx) => {
-          if (stop.arrivalTime) return best;
-          const distance = this.haversineDistance(
-            current.latitude,
-            current.longitude,
-            stop.latitude,
-            stop.longitude,
-          );
-          return distance < best.distance ? { index: idx, distance } : best;
-        },
-        { index: 0, distance: Infinity },
-      );
+      for (let i = 0; i < remaining.length; i++) {
+        const distance = this.haversineDistance(
+          current.latitude,
+          current.longitude,
+          remaining[i].latitude,
+          remaining[i].longitude,
+        );
+
+        if (remaining[i].arrivalTime) {
+          continue;
+        }
+
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = i;
+        }
+      }
 
       const scheduledStops = remaining.filter((s) => s.arrivalTime);
       if (scheduledStops.length > 0) {
-        const nextScheduled = [...scheduledStops].sort(
+        const nextScheduled = scheduledStops.sort(
           (a, b) => fromJSDate(a.arrivalTime!).toMillis() - fromJSDate(b.arrivalTime!).toMillis(),
         )[0];
         const scheduledIndex = remaining.indexOf(nextScheduled);
@@ -473,21 +478,15 @@ export class RoutePlanningService {
         );
 
         if (unscheduledBefore.length === 0) {
-          return pickNext(
-            [...ordered, remaining[scheduledIndex]],
-            [...remaining.slice(0, scheduledIndex), ...remaining.slice(scheduledIndex + 1)],
-          );
+          result.push(remaining.splice(scheduledIndex, 1)[0]);
+          continue;
         }
       }
 
-      return pickNext(
-        [...ordered, remaining[nearest.index]],
-        [...remaining.slice(0, nearest.index), ...remaining.slice(nearest.index + 1)],
-      );
-    };
+      result.push(remaining.splice(nearestIndex, 1)[0]);
+    }
 
-    const { ordered } = pickNext([stops[0]], stops.slice(1));
-    return ordered;
+    return result;
   }
 
   private twoOptOptimization(stops: RouteStop[]): RouteStop[] {
@@ -495,141 +494,110 @@ export class RoutePlanningService {
 
     const fixedIndices = stops.map((s, i) => (s.arrivalTime ? i : -1)).filter((i) => i !== -1);
 
-    const tryImprove = (route: RouteStop[]): RouteStop[] => {
-      const indices = Array.from({ length: route.length - 3 }, (_, k) => k + 1);
-      const swapResult = indices.reduce<{ route: RouteStop[]; improved: boolean }>(
-        (outerAcc, i) => {
-          if (fixedIndices.includes(i)) return outerAcc;
+    let improved = true;
+    let route = [...stops];
 
-          const jIndices = Array.from(
-            { length: outerAcc.route.length - 1 - (i + 1) },
-            (_, k) => k + i + 1,
-          );
+    while (improved) {
+      improved = false;
 
-          return jIndices.reduce((innerAcc, j) => {
-            if (fixedIndices.includes(j)) return innerAcc;
+      for (let i = 1; i < route.length - 2; i++) {
+        if (fixedIndices.includes(i)) continue;
 
-            const currentDistance =
-              this.haversineDistance(
-                innerAcc.route[i - 1].latitude,
-                innerAcc.route[i - 1].longitude,
-                innerAcc.route[i].latitude,
-                innerAcc.route[i].longitude,
-              ) +
-              this.haversineDistance(
-                innerAcc.route[j].latitude,
-                innerAcc.route[j].longitude,
-                innerAcc.route[j + 1].latitude,
-                innerAcc.route[j + 1].longitude,
-              );
+        for (let j = i + 1; j < route.length - 1; j++) {
+          if (fixedIndices.includes(j)) continue;
 
-            const newDistance =
-              this.haversineDistance(
-                innerAcc.route[i - 1].latitude,
-                innerAcc.route[i - 1].longitude,
-                innerAcc.route[j].latitude,
-                innerAcc.route[j].longitude,
-              ) +
-              this.haversineDistance(
-                innerAcc.route[i].latitude,
-                innerAcc.route[i].longitude,
-                innerAcc.route[j + 1].latitude,
-                innerAcc.route[j + 1].longitude,
-              );
+          const currentDistance =
+            this.haversineDistance(
+              route[i - 1].latitude,
+              route[i - 1].longitude,
+              route[i].latitude,
+              route[i].longitude,
+            ) +
+            this.haversineDistance(
+              route[j].latitude,
+              route[j].longitude,
+              route[j + 1].latitude,
+              route[j + 1].longitude,
+            );
 
-            if (newDistance < currentDistance - this.TWO_OPT_IMPROVEMENT_THRESHOLD) {
-              const reversed = innerAcc.route.slice(i, j + 1).reverse();
-              return {
-                route: [...innerAcc.route.slice(0, i), ...reversed, ...innerAcc.route.slice(j + 1)],
-                improved: true,
-              };
-            }
+          const newDistance =
+            this.haversineDistance(
+              route[i - 1].latitude,
+              route[i - 1].longitude,
+              route[j].latitude,
+              route[j].longitude,
+            ) +
+            this.haversineDistance(
+              route[i].latitude,
+              route[i].longitude,
+              route[j + 1].latitude,
+              route[j + 1].longitude,
+            );
 
-            return innerAcc;
-          }, outerAcc);
-        },
-        { route, improved: false },
-      );
+          if (newDistance < currentDistance - this.TWO_OPT_IMPROVEMENT_THRESHOLD) {
+            const reversed = route.slice(i, j + 1).reverse();
+            route = [...route.slice(0, i), ...reversed, ...route.slice(j + 1)];
+            improved = true;
+          }
+        }
+      }
+    }
 
-      return swapResult.improved ? tryImprove(swapResult.route) : swapResult.route;
-    };
-
-    return tryImprove([...stops]);
+    return route;
   }
 
   private buildRouteResult(stops: RouteStop[], returnToStart: boolean): OptimizedRoute {
-    const { totalDistance, totalDuration } = stops.reduce(
-      (acc, stop, i) => {
-        if (i > 0) {
-          const distance = this.haversineDistance(
-            stops[i - 1].latitude,
-            stops[i - 1].longitude,
-            stop.latitude,
-            stop.longitude,
-          );
-          const travelMinutes = (distance / this.AVERAGE_SPEED_KMH) * 60;
-          const timeAfterTravel = acc.currentTime.plus({ minutes: travelMinutes });
+    let totalDistance = 0;
+    let totalDuration = 0;
+    let currentTime = now();
 
-          if (!stop.arrivalTime) {
-            stop.arrivalTime = timeAfterTravel.toJSDate();
-          }
+    for (let i = 0; i < stops.length; i++) {
+      if (i > 0) {
+        const distance = this.haversineDistance(
+          stops[i - 1].latitude,
+          stops[i - 1].longitude,
+          stops[i].latitude,
+          stops[i].longitude,
+        );
+        totalDistance += distance;
 
-          const stopDuration = stop.durationMinutes ?? 0;
-          const timeAfterStop = stopDuration
-            ? timeAfterTravel.plus({ minutes: stopDuration })
-            : timeAfterTravel;
+        const travelMinutes = (distance / this.AVERAGE_SPEED_KMH) * 60;
+        totalDuration += travelMinutes;
 
-          if (stopDuration && !stop.departureTime) {
-            stop.departureTime = timeAfterStop.toJSDate();
-          }
+        currentTime = currentTime.plus({ minutes: travelMinutes });
 
-          return {
-            totalDistance: acc.totalDistance + distance,
-            totalDuration: acc.totalDuration + travelMinutes + stopDuration,
-            currentTime: timeAfterStop,
-          };
+        if (!stops[i].arrivalTime) {
+          stops[i].arrivalTime = currentTime.toJSDate();
         }
+      }
 
-        const stopDuration = stop.durationMinutes ?? 0;
-        const timeAfterStop = stopDuration
-          ? acc.currentTime.plus({ minutes: stopDuration })
-          : acc.currentTime;
-
-        if (stopDuration && !stop.departureTime) {
-          stop.departureTime = timeAfterStop.toJSDate();
+      const stopDuration = stops[i].durationMinutes;
+      if (stopDuration) {
+        totalDuration += stopDuration;
+        currentTime = currentTime.plus({ minutes: stopDuration });
+        if (!stops[i].departureTime) {
+          stops[i].departureTime = currentTime.toJSDate();
         }
+      }
+    }
 
-        return {
-          totalDistance: acc.totalDistance,
-          totalDuration: acc.totalDuration + stopDuration,
-          currentTime: timeAfterStop,
-        };
-      },
-      { totalDistance: 0, totalDuration: 0, currentTime: now() },
-    );
-
-    const returnAdjustment =
-      returnToStart && stops.length > 1
-        ? (() => {
-            const returnDistance = this.haversineDistance(
-              stops[stops.length - 1].latitude,
-              stops[stops.length - 1].longitude,
-              stops[0].latitude,
-              stops[0].longitude,
-            );
-            return {
-              distance: returnDistance,
-              duration: (returnDistance / this.AVERAGE_SPEED_KMH) * 60,
-            };
-          })()
-        : { distance: 0, duration: 0 };
+    if (returnToStart && stops.length > 1) {
+      const returnDistance = this.haversineDistance(
+        stops[stops.length - 1].latitude,
+        stops[stops.length - 1].longitude,
+        stops[0].latitude,
+        stops[0].longitude,
+      );
+      totalDistance += returnDistance;
+      totalDuration += (returnDistance / this.AVERAGE_SPEED_KMH) * 60;
+    }
 
     const wazeUrl = this.generateWazeUrl(stops);
     const googleMapsUrl = this.generateGoogleMapsUrl(stops);
 
     return {
-      totalDistanceKm: Math.round((totalDistance + returnAdjustment.distance) * 10) / 10,
-      totalDurationMinutes: Math.round(totalDuration + returnAdjustment.duration),
+      totalDistanceKm: Math.round(totalDistance * 10) / 10,
+      totalDurationMinutes: Math.round(totalDuration),
       stops,
       wazeUrl,
       googleMapsUrl,
@@ -720,11 +688,12 @@ export class RoutePlanningService {
     const destination = stops[stops.length - 1];
     const waypoints = stops.slice(1, -1);
 
-    const baseUrl = `https://waze.com/ul?ll=${destination.latitude},${destination.longitude}&navigate=yes`;
-    const url =
-      waypoints.length > 0
-        ? `${baseUrl}&via=${waypoints.map((w) => `${w.latitude},${w.longitude}`).join("|")}`
-        : baseUrl;
+    let url = `https://waze.com/ul?ll=${destination.latitude},${destination.longitude}&navigate=yes`;
+
+    if (waypoints.length > 0) {
+      const waypointCoords = waypoints.map((w) => `${w.latitude},${w.longitude}`).join("|");
+      url += `&via=${waypointCoords}`;
+    }
 
     return url;
   }
@@ -736,17 +705,16 @@ export class RoutePlanningService {
     const destination = stops[stops.length - 1];
     const waypoints = stops.slice(1, -1);
 
-    const waypointSegment =
-      waypoints.length > 0
-        ? `&waypoints=${waypoints.map((w) => `${w.latitude},${w.longitude}`).join("|")}`
-        : "";
+    let url = "https://www.google.com/maps/dir/?api=1";
+    url += `&origin=${origin.latitude},${origin.longitude}`;
+    url += `&destination=${destination.latitude},${destination.longitude}`;
 
-    const url =
-      "https://www.google.com/maps/dir/?api=1" +
-      `&origin=${origin.latitude},${origin.longitude}` +
-      `&destination=${destination.latitude},${destination.longitude}` +
-      waypointSegment +
-      "&travelmode=driving";
+    if (waypoints.length > 0) {
+      const waypointCoords = waypoints.map((w) => `${w.latitude},${w.longitude}`).join("|");
+      url += `&waypoints=${waypointCoords}`;
+    }
+
+    url += "&travelmode=driving";
 
     return url;
   }

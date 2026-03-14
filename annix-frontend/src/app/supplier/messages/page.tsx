@@ -32,8 +32,8 @@ export default function SupplierMessagesPage() {
   const archiveMutation = useArchiveSupplierConversation();
   const markBroadcastReadMutation = useMarkSupplierBroadcastRead();
 
-  const conversations = conversationsQuery.data?.conversations ?? [];
-  const broadcasts = broadcastsQuery.data?.broadcasts ?? [];
+  const conversations = conversationsQuery.data?.conversations || [];
+  const broadcasts = broadcastsQuery.data?.broadcasts || [];
 
   const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number>(0);

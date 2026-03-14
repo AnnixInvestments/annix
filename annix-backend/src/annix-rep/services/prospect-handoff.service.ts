@@ -93,13 +93,8 @@ export class ProspectHandoffService {
       throw new NotFoundException("No prospects found");
     }
 
-    return prospects.reduce(
-      async (accPromise, prospect) => {
-        const acc = await accPromise;
-        const handed = await this.handoff(prospect.id, fromUserId, toUserId, reason);
-        return [...acc, handed];
-      },
-      Promise.resolve([] as Prospect[]),
+    return Promise.all(
+      prospects.map((prospect) => this.handoff(prospect.id, fromUserId, toUserId, reason)),
     );
   }
 

@@ -57,11 +57,11 @@ export function PumpCurveChart(props: PumpCurveChartProps) {
   const scales = useMemo(() => {
     const allFlows = [
       ...pumpCurve.points.map((p) => p.flowM3h),
-      ...(systemCurve?.map((p) => p.flowM3h) ?? []),
+      ...(systemCurve?.map((p) => p.flowM3h) || []),
     ];
     const allHeads = [
       ...pumpCurve.points.map((p) => p.headM),
-      ...(systemCurve?.map((p) => p.headM) ?? []),
+      ...(systemCurve?.map((p) => p.headM) || []),
     ];
 
     const maxFlow = Math.max(...allFlows) * 1.1;

@@ -68,8 +68,8 @@ export default function CustomFieldsSettingsPage() {
   const [formData, setFormData] = useState<FieldFormData>(initialFormData);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
-  const activeFields = customFields?.filter((f) => f.isActive) ?? [];
-  const inactiveFields = customFields?.filter((f) => !f.isActive) ?? [];
+  const activeFields = customFields?.filter((f) => f.isActive) || [];
+  const inactiveFields = customFields?.filter((f) => !f.isActive) || [];
 
   const handleNameChange = (name: string) => {
     setFormData({
@@ -94,7 +94,7 @@ export default function CustomFieldsSettingsPage() {
         fieldKey: field.fieldKey,
         fieldType: field.fieldType,
         isRequired: field.isRequired,
-        options: field.options?.join(", ") ?? "",
+        options: field.options?.join(", ") || "",
       });
       setShowModal(true);
     }

@@ -66,30 +66,31 @@ export class RecurringMeetingService {
 
   parseRRule(rule: string): RRuleComponents {
     const cleanRule = rule.replace("RRULE:", "");
-    const components: RRuleComponents = {
+    const defaultComponents: RRuleComponents = {
       freq: "WEEKLY",
       interval: 1,
     };
 
-    return cleanRule.split(";").reduce<RRuleComponents>((acc, part) => {
+    return cleanRule.split(";").reduce((components, part) => {
       const [key, value] = part.split("=");
       const upperKey = key.toUpperCase();
 
       if (upperKey === "FREQ") {
-        return { ...acc, freq: value };
+        return { ...components, freq: value };
       } else if (upperKey === "INTERVAL") {
-        return { ...acc, interval: parseInt(value, 10) };
+        return { ...components, interval: parseInt(value, 10) };
       } else if (upperKey === "BYDAY") {
-        return { ...acc, byDay: value.split(",") };
+        return { ...components, byDay: value.split(",") };
       } else if (upperKey === "BYMONTHDAY") {
-        return { ...acc, byMonthDay: parseInt(value, 10) };
+        return { ...components, byMonthDay: parseInt(value, 10) };
       } else if (upperKey === "COUNT") {
-        return { ...acc, count: parseInt(value, 10) };
+        return { ...components, count: parseInt(value, 10) };
       } else if (upperKey === "UNTIL") {
-        return { ...acc, until: value };
+        return { ...components, until: value };
+      } else {
+        return components;
       }
-      return acc;
-    }, components);
+    }, defaultComponents);
   }
 
   generateInstances(
@@ -104,8 +105,11 @@ export class RecurringMeetingService {
 
     const rule = this.parseRRule(parentMeeting.recurrenceRule);
     const exceptions = this.parseExceptionDates(parentMeeting.recurrenceExceptionDates);
+    const instances: Date[] = [];
 
     const meetingStart = fromJSDate(parentMeeting.scheduledStart);
+    let current = meetingStart;
+    let count = 0;
 
     const ruleUntil = rule.until
       ? fromISO(
@@ -114,56 +118,53 @@ export class RecurringMeetingService {
       : null;
     const effectiveEndDate = ruleUntil && ruleUntil < endDate ? ruleUntil : endDate;
 
-    const nextDateTime = (current: ReturnType<typeof fromJSDate>) => {
-      if (rule.freq === "DAILY") {
-        return current.plus({ days: rule.interval });
-      } else if (rule.freq === "WEEKLY") {
-        return rule.byDay && rule.byDay.length > 0
-          ? current.plus({ days: 1 })
-          : current.plus({ weeks: rule.interval });
-      } else if (rule.freq === "MONTHLY") {
-        return current.plus({ months: rule.interval });
-      } else {
-        return current.plus({ years: rule.interval });
+    while (current.toJSDate() <= effectiveEndDate && instances.length < maxInstances) {
+      if (rule.count && count >= rule.count) {
+        break;
       }
-    };
-
-    const isAllowedDay = (current: ReturnType<typeof fromJSDate>) => {
-      if (rule.freq !== "WEEKLY" || !rule.byDay) return true;
-      const dayMap: Record<string, number> = {
-        SU: 0,
-        MO: 1,
-        TU: 2,
-        WE: 3,
-        TH: 4,
-        FR: 5,
-        SA: 6,
-      };
-      const currentDayNum = current.weekday % 7;
-      const allowedDays = rule.byDay.map((d) => dayMap[d.toUpperCase()]);
-      return allowedDays.includes(currentDayNum);
-    };
-
-    const collect = (
-      current: ReturnType<typeof fromJSDate>,
-      count: number,
-      acc: Date[],
-    ): Date[] => {
-      if (current.toJSDate() > effectiveEndDate || acc.length >= maxInstances) return acc;
-      if (rule.count && count >= rule.count) return acc;
 
       const currentDate = current.toJSDate();
       const dateStr = current.toFormat("yyyy-MM-dd");
 
-      const nextAcc =
-        currentDate >= startDate && !exceptions.has(dateStr) && isAllowedDay(current)
-          ? [...acc, currentDate]
-          : acc;
+      if (currentDate >= startDate && !exceptions.has(dateStr)) {
+        if (rule.freq === "WEEKLY" && rule.byDay) {
+          const dayMap: Record<string, number> = {
+            SU: 0,
+            MO: 1,
+            TU: 2,
+            WE: 3,
+            TH: 4,
+            FR: 5,
+            SA: 6,
+          };
+          const currentDayNum = current.weekday % 7;
+          const allowedDays = rule.byDay.map((d) => dayMap[d.toUpperCase()]);
+          if (allowedDays.includes(currentDayNum)) {
+            instances.push(currentDate);
+          }
+        } else {
+          instances.push(currentDate);
+        }
+      }
 
-      return collect(nextDateTime(current), count + 1, nextAcc);
-    };
+      count++;
 
-    return collect(meetingStart, 0, []);
+      if (rule.freq === "DAILY") {
+        current = current.plus({ days: rule.interval });
+      } else if (rule.freq === "WEEKLY") {
+        if (rule.byDay && rule.byDay.length > 0) {
+          current = current.plus({ days: 1 });
+        } else {
+          current = current.plus({ weeks: rule.interval });
+        }
+      } else if (rule.freq === "MONTHLY") {
+        current = current.plus({ months: rule.interval });
+      } else if (rule.freq === "YEARLY") {
+        current = current.plus({ years: rule.interval });
+      }
+    }
+
+    return instances;
   }
 
   private parseExceptionDates(exceptionDatesStr: string | null): Set<string> {
@@ -231,26 +232,25 @@ export class RecurringMeetingService {
       relations: ["prospect"],
     });
 
-    const expandedMeetings: Meeting[] = [...childMeetings];
-
-    for (const parent of recurringParents) {
+    const virtualMeetings = recurringParents.flatMap((parent) => {
       const instances = this.generateInstances(parent, startDate, endDate);
       const duration = fromJSDate(parent.scheduledEnd).diff(
         fromJSDate(parent.scheduledStart),
         "milliseconds",
       ).milliseconds;
 
-      for (const instanceDate of instances) {
-        const existingChild = childMeetings.find((c) => {
-          const childDate = fromJSDate(c.scheduledStart).toFormat("yyyy-MM-dd");
+      return instances
+        .filter((instanceDate) => {
           const instanceDateStr = fromJSDate(instanceDate).toFormat("yyyy-MM-dd");
-          return c.recurringParentId === parent.id && childDate === instanceDateStr;
-        });
-
-        if (!existingChild) {
+          return !childMeetings.find((c) => {
+            const childDate = fromJSDate(c.scheduledStart).toFormat("yyyy-MM-dd");
+            return c.recurringParentId === parent.id && childDate === instanceDateStr;
+          });
+        })
+        .map((instanceDate) => {
           const instanceEnd = fromJSDate(instanceDate).plus({ milliseconds: duration }).toJSDate();
 
-          const virtualMeeting: Meeting = {
+          return {
             ...parent,
             id: -parent.id * 1000 - fromJSDate(instanceDate).toMillis(),
             scheduledStart: instanceDate,
@@ -258,11 +258,10 @@ export class RecurringMeetingService {
             isRecurring: false,
             recurringParentId: parent.id,
           } as Meeting;
+        });
+    });
 
-          expandedMeetings.push(virtualMeeting);
-        }
-      }
-    }
+    const expandedMeetings: Meeting[] = [...childMeetings, ...virtualMeetings];
 
     return expandedMeetings.sort(
       (a, b) => fromJSDate(a.scheduledStart).toMillis() - fromJSDate(b.scheduledStart).toMillis(),
@@ -421,17 +420,18 @@ export class RecurringMeetingService {
       },
     });
 
-    for (const child of children) {
-      if (dto.title != null) child.title = dto.title;
-      if (dto.description != null) child.description = dto.description ?? null;
-      if (dto.meetingType != null) child.meetingType = dto.meetingType;
-      if (dto.location != null) child.location = dto.location ?? null;
-      if (dto.attendees != null) child.attendees = dto.attendees ?? null;
-      if (dto.agenda != null) child.agenda = dto.agenda ?? null;
-    }
+    const updatedChildren = children.map((child) => ({
+      ...child,
+      ...(dto.title != null ? { title: dto.title } : {}),
+      ...(dto.description != null ? { description: dto.description ?? null } : {}),
+      ...(dto.meetingType != null ? { meetingType: dto.meetingType } : {}),
+      ...(dto.location != null ? { location: dto.location ?? null } : {}),
+      ...(dto.attendees != null ? { attendees: dto.attendees ?? null } : {}),
+      ...(dto.agenda != null ? { agenda: dto.agenda ?? null } : {}),
+    }));
 
-    if (children.length > 0) {
-      await this.meetingRepo.save(children);
+    if (updatedChildren.length > 0) {
+      await this.meetingRepo.save(updatedChildren);
     }
 
     return savedParent;
@@ -563,22 +563,21 @@ export class RecurringMeetingService {
       "milliseconds",
     ).milliseconds;
 
-    const allInstances: Meeting[] = [];
-    const childDateMap = new Map<string, Meeting>();
+    const childDateMap = new Map(
+      childMeetings.map((child) => [
+        fromJSDate(child.scheduledStart).toFormat("yyyy-MM-dd"),
+        child,
+      ]),
+    );
 
-    for (const child of childMeetings) {
-      const dateStr = fromJSDate(child.scheduledStart).toFormat("yyyy-MM-dd");
-      childDateMap.set(dateStr, child);
-    }
-
-    for (const instanceDate of instances) {
+    const allInstances = instances.map((instanceDate) => {
       const dateStr = fromJSDate(instanceDate).toFormat("yyyy-MM-dd");
       const existingChild = childDateMap.get(dateStr);
 
       if (existingChild) {
-        allInstances.push(existingChild);
+        return existingChild;
       } else {
-        const virtualMeeting: Meeting = {
+        return {
           ...parent,
           id: 0,
           scheduledStart: instanceDate,
@@ -586,9 +585,8 @@ export class RecurringMeetingService {
           isRecurring: false,
           recurringParentId: parent.id,
         } as Meeting;
-        allInstances.push(virtualMeeting);
       }
-    }
+    });
 
     return allInstances.sort(
       (a, b) => fromJSDate(a.scheduledStart).toMillis() - fromJSDate(b.scheduledStart).toMillis(),

@@ -405,65 +405,65 @@ export type ReducerEndOption = (typeof REDUCER_END_OPTIONS)[number];
 
 export const weldCountPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find((opt) => opt.value === bendEndConfig);
-  return config?.weldCount ?? 0;
+  return config?.weldCount || 0;
 };
 
 export const flangeWeldCountPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find((opt) => opt.value === bendEndConfig);
-  return config?.flangeWeldCount ?? 0;
+  return config?.flangeWeldCount || 0;
 };
 
 export const flangeCountPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find((opt) => opt.value === bendEndConfig);
-  return config?.flangeCount ?? 0;
+  return config?.flangeCount || 0;
 };
 
 export const tackWeldEndsPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find((opt) => opt.value === bendEndConfig);
-  return config?.tackWeldEnds ?? 0;
+  return config?.tackWeldEnds || 0;
 };
 
 export const weldCountPerFitting = (fittingEndConfig: string): number => {
   const config =
     FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
     REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
-  return config?.weldCount ?? 0;
+  return config?.weldCount || 0;
 };
 
 export const flangeWeldCountPerFitting = (fittingEndConfig: string): number => {
   const config =
     FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
     REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
-  return config?.flangeWeldCount ?? 0;
+  return config?.flangeWeldCount || 0;
 };
 
 export const flangeCountPerFitting = (fittingEndConfig: string): number => {
   const config =
     FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
     REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
-  return config?.flangeCount ?? 0;
+  return config?.flangeCount || 0;
 };
 
 export const tackWeldEndsPerFitting = (fittingEndConfig: string): number => {
   const config =
     FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
     REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
-  return config?.tackWeldEnds ?? 0;
+  return config?.tackWeldEnds || 0;
 };
 
 export const flangeWeldCountPerPipe = (pipeEndConfig: string): number => {
   const config = PIPE_END_OPTIONS.find((opt) => opt.value === pipeEndConfig);
-  return config?.flangeWeldCount ?? 0;
+  return config?.flangeWeldCount || 0;
 };
 
 export const flangeCountPerPipe = (pipeEndConfig: string): number => {
   const config = PIPE_END_OPTIONS.find((opt) => opt.value === pipeEndConfig);
-  return config?.flangeCount ?? 0;
+  return config?.flangeCount || 0;
 };
 
 export const tackWeldEndsPerPipe = (pipeEndConfig: string): number => {
   const config = PIPE_END_OPTIONS.find((opt) => opt.value === pipeEndConfig);
-  return config?.tackWeldEnds ?? 0;
+  return config?.tackWeldEnds || 0;
 };
 
 export const fittingFlangeConfig = (
@@ -491,12 +491,12 @@ export const fittingFlangeConfig = (
   }
 
   return {
-    hasInlet: config?.hasInlet ?? false,
-    hasOutlet: config?.hasOutlet ?? false,
-    hasBranch: config?.hasBranch ?? false,
-    inletType: (config?.inletType as FlangeType) ?? null,
-    outletType: (config?.outletType as FlangeType) ?? null,
-    branchType: (config?.branchType as FlangeType) ?? null,
+    hasInlet: config?.hasInlet || false,
+    hasOutlet: config?.hasOutlet || false,
+    hasBranch: config?.hasBranch || false,
+    inletType: (config?.inletType as FlangeType) || null,
+    outletType: (config?.outletType as FlangeType) || null,
+    branchType: (config?.branchType as FlangeType) || null,
   };
 };
 
@@ -508,8 +508,8 @@ export const reducerFlangeConfig = (
 } => {
   const config = REDUCER_END_OPTIONS.find((opt) => opt.value === reducerEndConfig);
   return {
-    hasLargeEnd: config?.hasLargeEnd ?? false,
-    hasSmallEnd: config?.hasSmallEnd ?? false,
+    hasLargeEnd: config?.hasLargeEnd || false,
+    hasSmallEnd: config?.hasSmallEnd || false,
   };
 };
 
@@ -559,7 +559,7 @@ export const fixedFlangeCount = (
 
 export const weldCountPerPipe = (pipeEndConfig: string): number => {
   const config = PIPE_END_OPTIONS.find((opt) => opt.value === pipeEndConfig);
-  return config?.weldCount ?? 0;
+  return config?.weldCount || 0;
 };
 
 /**

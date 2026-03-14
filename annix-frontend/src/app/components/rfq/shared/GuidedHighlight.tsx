@@ -216,7 +216,7 @@ export function GuidedHighlight(props: GuidedHighlightProps) {
                   <span className="text-white text-xs font-bold">N</span>
                 </div>
                 <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                  {currentFieldDef?.label ?? "Field Guidance"}
+                  {currentFieldDef?.label || "Field Guidance"}
                 </h4>
               </div>
               <button
@@ -229,7 +229,7 @@ export function GuidedHighlight(props: GuidedHighlightProps) {
             </div>
 
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-              {tooltipMessage ?? currentFieldDef?.helpText}
+              {tooltipMessage || currentFieldDef?.helpText}
             </p>
 
             <div className="flex items-center justify-between">

@@ -12,8 +12,8 @@ import { annixRepKeys } from "../../keys/annixRepKeys";
 export function useDiscoverySearch(dto: DiscoverProspectsDto | null, enabled = true) {
   return useQuery<DiscoverySearchResult>({
     queryKey: annixRepKeys.discovery.search(
-      dto?.latitude ?? 0,
-      dto?.longitude ?? 0,
+      dto?.latitude || 0,
+      dto?.longitude || 0,
       dto?.radiusKm,
       dto?.sources,
     ),

@@ -29,23 +29,18 @@ export class MeetingSchedulerService {
 
     const connections = await this.platformService.activeConnections();
 
-    const totals = await connections
-      .filter((connection) => connection.autoFetchRecordings)
-      .reduce(
-        async (accPromise, connection) => {
-          const acc = await accPromise;
-          const result = await this.platformService.syncConnectionMeetings(connection, 1);
-          return {
-            synced: acc.synced + result.synced,
-            recordings: acc.recordings + result.recordings,
-          };
-        },
-        Promise.resolve({ synced: 0, recordings: 0 }),
-      );
+    const syncResults = await Promise.all(
+      connections
+        .filter((connection) => connection.autoFetchRecordings)
+        .map((connection) => this.platformService.syncConnectionMeetings(connection, 1)),
+    );
 
-    if (totals.synced > 0) {
+    const totalSynced = syncResults.reduce((sum, r) => sum + r.synced, 0);
+    const totalRecordings = syncResults.reduce((sum, r) => sum + r.recordings, 0);
+
+    if (totalSynced > 0) {
       this.logger.log(
-        `Completed meetings sync: ${totals.synced} meetings, ${totals.recordings} recordings found`,
+        `Completed meetings sync: ${totalSynced} meetings, ${totalRecordings} recordings found`,
       );
     }
   }
@@ -80,27 +75,25 @@ export class MeetingSchedulerService {
 
     const connections = await this.platformService.connectionsNeedingTokenRefresh();
 
-    const refreshTotals = await connections.reduce(
-      async (accPromise, connection) => {
-        const acc = await accPromise;
+    const refreshResults = await Promise.allSettled(
+      connections.map(async (connection) => {
         try {
           await this.platformService.refreshTokenIfNeeded(connection);
-          return { refreshed: acc.refreshed + 1, failed: acc.failed };
         } catch (error) {
           await this.platformService.markConnectionError(
             connection.id,
             error instanceof Error ? error.message : "Token refresh failed",
           );
-          return { refreshed: acc.refreshed, failed: acc.failed + 1 };
+          throw error;
         }
-      },
-      Promise.resolve({ refreshed: 0, failed: 0 }),
+      }),
     );
 
+    const refreshed = refreshResults.filter((r) => r.status === "fulfilled").length;
+    const failedCount = refreshResults.filter((r) => r.status === "rejected").length;
+
     if (connections.length > 0) {
-      this.logger.log(
-        `Token refresh: ${refreshTotals.refreshed} refreshed, ${refreshTotals.failed} failed`,
-      );
+      this.logger.log(`Token refresh: ${refreshed} refreshed, ${failedCount} failed`);
     }
   }
 
@@ -117,18 +110,19 @@ export class MeetingSchedulerService {
 
     const connections = await this.platformService.activeConnections();
 
-    await connections
-      .filter((connection) => connection.autoFetchRecordings)
-      .reduce(async (accPromise, connection) => {
-        await accPromise;
-        try {
-          await this.platformService.syncConnectionMeetings(connection, 30);
-        } catch (error) {
-          this.logger.error(
-            `Weekly sync failed for connection ${connection.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
-          );
-        }
-      }, Promise.resolve());
+    await Promise.allSettled(
+      connections
+        .filter((connection) => connection.autoFetchRecordings)
+        .map(async (connection) => {
+          try {
+            await this.platformService.syncConnectionMeetings(connection, 30);
+          } catch (error) {
+            this.logger.error(
+              `Weekly sync failed for connection ${connection.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+            );
+          }
+        }),
+    );
 
     this.logger.log("Weekly full sync completed");
   }

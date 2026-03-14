@@ -819,7 +819,7 @@ export const selectRequiredClass = (
 
   const alternatives = B16_PRESSURE_CLASSES.map((pc) => {
     const interpolation = interpolatePTRating(pc, materialGroup, temperatureC);
-    const ratingBar = interpolation?.pressureBar ?? 0;
+    const ratingBar = interpolation?.pressureBar || 0;
     return {
       pressureClass: pc,
       ratingBar,

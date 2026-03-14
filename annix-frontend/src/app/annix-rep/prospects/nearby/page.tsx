@@ -74,7 +74,7 @@ export default function NearbyProspectsPage() {
     data: prospects,
     isLoading,
     refetch,
-  } = useNearbyProspects(userLocation?.lat ?? 0, userLocation?.lng ?? 0, radiusKm, 50);
+  } = useNearbyProspects(userLocation?.lat || 0, userLocation?.lng || 0, radiusKm, 50);
 
   const { data: quota } = useDiscoveryQuota();
   const discoveryMutation = useDiscoverySearchMutation();

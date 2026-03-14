@@ -9,7 +9,7 @@ function ConnectionStatus() {
 
   const isLoading = calendarsLoading || crmsLoading;
   const hasCalendars = calendars && calendars.length > 0;
-  const activeCrms = crms?.filter((c) => c.isActive) ?? [];
+  const activeCrms = crms?.filter((c) => c.isActive) || [];
   const hasActiveCrms = activeCrms.length > 0;
 
   if (isLoading) {

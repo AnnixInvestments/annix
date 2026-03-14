@@ -33,7 +33,7 @@ export function useCvExternalJobs(params?: CvExternalJobQueryParams) {
       cvAssistantApiClient.externalJobs({
         country: params?.country,
         category: params?.category,
-        search: params?.search ?? undefined,
+        search: params?.search || undefined,
         page: params?.page,
         limit: params?.limit,
       }),

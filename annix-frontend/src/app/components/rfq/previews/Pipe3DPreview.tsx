@@ -2032,8 +2032,8 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           hasFlanges && props.nominalBoreMm
             ? getFlangeSpecs(props.nominalBoreMm, props.flangeSpecs)
             : null;
-        const flangeSpecs = flangeResult?.specs ?? null;
-        const isFromApi = flangeResult?.isFromApi ?? false;
+        const flangeSpecs = flangeResult?.specs || null;
+        const isFromApi = flangeResult?.isFromApi || false;
 
         // Check if using fallback data with non-SABS standard
         const standardName = props.flangeStandardName || "SABS 1123";
@@ -2180,7 +2180,7 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                   spigotHasFlanges && props.spigotNominalBoreMm
                     ? getFlangeSpecs(props.spigotNominalBoreMm, null)
                     : null;
-                const spigotFlangeSpecs = spigotFlangeResult?.specs ?? null;
+                const spigotFlangeSpecs = spigotFlangeResult?.specs || null;
 
                 return (
                   <>

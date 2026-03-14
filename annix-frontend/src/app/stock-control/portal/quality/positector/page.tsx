@@ -38,7 +38,7 @@ function probeTypeLabel(probeType: string | null): string {
 export default function PositectorPage() {
   const { data: devices = [], isLoading, error: devicesError } = usePositectorDevices();
   const invalidateDevices = useInvalidatePositectorDevices();
-  const [error, setError] = useState<string | null>(devicesError?.message ?? null);
+  const [error, setError] = useState<string | null>(devicesError?.message || null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [connectionStatuses, setConnectionStatuses] = useState<
     Record<number, PositectorConnectionStatus>
@@ -186,10 +186,10 @@ export default function PositectorPage() {
                       {device.ipAddress}:{device.port}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
-                      {probeTypeLabel(status?.probeType ?? device.probeType)}
+                      {probeTypeLabel(status?.probeType || device.probeType)}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
-                      {status?.serialNumber ?? device.serialNumber ?? "-"}
+                      {status?.serialNumber || device.serialNumber || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       {status ? (

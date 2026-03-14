@@ -425,7 +425,7 @@ export function NixChatPanel(props: NixChatPanelProps) {
     (action: NixAction) => {
       if (action.action === "focus_field") {
         const fieldDef = fieldById(action.fieldId);
-        focusField(action.fieldId, action.message ?? fieldDef?.helpText);
+        focusField(action.fieldId, action.message || fieldDef?.helpText);
       } else if (action.action === "advance_field") {
         advanceToNextField();
       } else if (action.action === "end_guidance") {

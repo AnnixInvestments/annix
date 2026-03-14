@@ -57,11 +57,11 @@ export default function StockControlDashboard() {
       .catch(() => setNotifications([]));
   }, []);
 
-  const hiddenWidgets = preferences?.hiddenWidgets ?? [];
+  const hiddenWidgets = preferences?.hiddenWidgets || [];
 
   const handleWidgetToggle = useCallback(
     (widgetKey: string) => {
-      const current = preferences?.hiddenWidgets ?? [];
+      const current = preferences?.hiddenWidgets || [];
       const updated = current.includes(widgetKey)
         ? current.filter((k) => k !== widgetKey)
         : [...current, widgetKey];
@@ -89,7 +89,7 @@ export default function StockControlDashboard() {
   return (
     <div className="space-y-6">
       <HeroBanner
-        userName={user?.name ?? null}
+        userName={user?.name || null}
         heroImageUrl={heroImageUrl ?? null}
         backgroundColor={colors.background}
       />

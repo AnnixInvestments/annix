@@ -334,8 +334,8 @@ function CustomerPumpsContent() {
                   <p className="text-sm text-blue-700">
                     {requirements.api610
                       ? `API 610 Category: ${requirements.api610.categoryRecommendation}`
-                      : (requirements.recommendedTypes?.[0]?.type?.label ??
-                        "Based on your application requirements")}
+                      : requirements.recommendedTypes?.[0]?.type?.label ||
+                        "Based on your application requirements"}
                   </p>
                 </div>
               )}

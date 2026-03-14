@@ -24,7 +24,7 @@ export function ViewAsProvider(props: { children: React.ReactNode }) {
   const { user } = useStockControlAuth();
   const [viewAsRole, setViewAsRoleState] = useState<string | null>(null);
 
-  const actualRole = user?.role ?? "viewer";
+  const actualRole = user?.role || "viewer";
   const isAdmin = actualRole === "admin";
 
   const setViewAsRole = useCallback(

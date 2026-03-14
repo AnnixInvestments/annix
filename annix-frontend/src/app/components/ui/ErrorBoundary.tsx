@@ -57,7 +57,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </svg>
             <h3 className="mt-2 text-sm font-medium text-red-800">Something went wrong</h3>
             <p className="mt-1 text-sm text-red-600">
-              {this.state.error?.message ?? "An unexpected error occurred"}
+              {this.state.error?.message || "An unexpected error occurred"}
             </p>
             <button
               onClick={() => this.setState({ hasError: false, error: null })}

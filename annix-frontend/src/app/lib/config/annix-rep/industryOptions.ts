@@ -2372,7 +2372,7 @@ export const subIndustryByValue = (
   subIndustryValue: string,
 ): SubIndustry | null => {
   const industry = industryByValue(industryValue);
-  return industry?.subIndustries.find((s) => s.value === subIndustryValue) ?? null;
+  return industry?.subIndustries.find((s) => s.value === subIndustryValue) || null;
 };
 
 export const productCategoryByValue = (
@@ -2381,7 +2381,7 @@ export const productCategoryByValue = (
   productCategoryValue: string,
 ): ProductCategory | null => {
   const subIndustry = subIndustryByValue(industryValue, subIndustryValue);
-  return subIndustry?.productCategories.find((p) => p.value === productCategoryValue) ?? null;
+  return subIndustry?.productCategories.find((p) => p.value === productCategoryValue) || null;
 };
 
 export const searchTermsForSelection = (
@@ -2409,7 +2409,7 @@ export const subIndustryLabelsForIndustry = (
   industryValue: string,
 ): Array<{ value: string; label: string }> => {
   const industry = industryByValue(industryValue);
-  return industry?.subIndustries.map((s) => ({ value: s.value, label: s.label })) ?? [];
+  return industry?.subIndustries.map((s) => ({ value: s.value, label: s.label })) || [];
 };
 
 export const productCategoryLabelsForSubIndustry = (
@@ -2417,7 +2417,7 @@ export const productCategoryLabelsForSubIndustry = (
   subIndustryValue: string,
 ): Array<{ value: string; label: string }> => {
   const subIndustry = subIndustryByValue(industryValue, subIndustryValue);
-  return subIndustry?.productCategories.map((p) => ({ value: p.value, label: p.label })) ?? [];
+  return subIndustry?.productCategories.map((p) => ({ value: p.value, label: p.label })) || [];
 };
 
 export const productCategoryLabelsForSubIndustries = (

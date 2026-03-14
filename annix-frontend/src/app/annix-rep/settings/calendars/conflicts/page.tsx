@@ -151,7 +151,7 @@ export default function ConflictsPage() {
     await detectConflicts.mutateAsync();
   };
 
-  const pendingConflicts = conflicts?.filter((c) => c.resolution === "pending") ?? [];
+  const pendingConflicts = conflicts?.filter((c) => c.resolution === "pending") || [];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">

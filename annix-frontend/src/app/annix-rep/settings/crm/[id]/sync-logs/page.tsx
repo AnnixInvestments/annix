@@ -166,8 +166,8 @@ export default function CrmSyncLogsPage() {
   const { data: logsData, isLoading: logsLoading } = useCrmSyncLogs(configId, limit, offset);
 
   const isLoading = configLoading || logsLoading;
-  const logs = logsData?.logs ?? [];
-  const total = logsData?.total ?? 0;
+  const logs = logsData?.logs || [];
+  const total = logsData?.total || 0;
   const totalPages = Math.ceil(total / limit);
   const currentPage = Math.floor(offset / limit) + 1;
 

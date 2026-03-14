@@ -27,7 +27,7 @@ function needsStockLink(delivery: DeliveryNote): boolean {
   const linkedCount = delivery.items ? delivery.items.length : 0;
   if (linkedCount > 0) return false;
   const extractedData = delivery.extractedData as { lineItems?: unknown[] } | null;
-  return (extractedData?.lineItems?.length ?? 0) > 0;
+  return (extractedData?.lineItems?.length || 0) > 0;
 }
 
 interface DeliveryFormItem {

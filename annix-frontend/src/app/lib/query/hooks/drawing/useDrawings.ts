@@ -33,8 +33,8 @@ interface PaginatedDrawingResult {
 
 async function fetchDrawings(params?: DrawingQueryParams): Promise<PaginatedDrawingResult> {
   const searchParams = new URLSearchParams();
-  searchParams.set("page", (params?.page ?? 1).toString());
-  searchParams.set("limit", (params?.limit ?? 20).toString());
+  searchParams.set("page", (params?.page || 1).toString());
+  searchParams.set("limit", (params?.limit || 20).toString());
   if (params?.status && params.status !== "all") {
     searchParams.set("status", params.status);
   }

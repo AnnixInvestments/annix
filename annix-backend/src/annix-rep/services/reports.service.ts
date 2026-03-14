@@ -398,13 +398,12 @@ export class ReportsService {
     });
 
     const detailedMeetings = meetings.map((m) => {
-      const duration: number | null =
-        m.actualStart && m.actualEnd
-          ? Math.round(
-              DateTime.fromJSDate(m.actualEnd).diff(DateTime.fromJSDate(m.actualStart), "minutes")
-                .minutes,
-            )
-          : null;
+      let duration: number | null = null;
+      if (m.actualStart && m.actualEnd) {
+        const startTime = DateTime.fromJSDate(m.actualStart);
+        const endTime = DateTime.fromJSDate(m.actualEnd);
+        duration = Math.round(endTime.diff(startTime, "minutes").minutes);
+      }
 
       return {
         id: m.id,
@@ -433,6 +432,11 @@ export class ReportsService {
     };
   }
 
+  private generateDateRange(start: DateTime, end: DateTime): DateTime[] {
+    const dayCount = Math.ceil(end.diff(start, "days").days);
+    return Array.from({ length: Math.max(0, dayCount) + 1 }, (_, i) => start.plus({ days: i }));
+  }
+
   private groupByDay<T>(
     start: Date,
     end: Date,
@@ -441,19 +445,17 @@ export class ReportsService {
   ): Array<{ date: string; items: T[] }> {
     const startDt = DateTime.fromJSDate(start).startOf("day");
     const endDt = DateTime.fromJSDate(end).endOf("day");
-    const totalDays = Math.ceil(endDt.diff(startDt, "days").days);
-    const days = Array.from({ length: totalDays }, (_, i) => startDt.plus({ days: i }));
 
-    return days.map((day) => {
-      const dayStart = day.startOf("day");
-      const dayEnd = day.endOf("day");
+    return this.generateDateRange(startDt, endDt).map((current) => {
+      const dayStart = current.startOf("day");
+      const dayEnd = current.endOf("day");
       const dayItems = items.filter((item) => {
         const itemDate = DateTime.fromJSDate(dateExtractor(item));
         return itemDate >= dayStart && itemDate <= dayEnd;
       });
 
       return {
-        date: day.toISODate() ?? "",
+        date: current.toISODate() ?? "",
         items: dayItems,
       };
     });
@@ -466,12 +468,10 @@ export class ReportsService {
   ): Array<{ date: string; items: Visit[] }> {
     const startDt = DateTime.fromJSDate(start).startOf("day");
     const endDt = DateTime.fromJSDate(end).endOf("day");
-    const totalDays = Math.ceil(endDt.diff(startDt, "days").days);
-    const days = Array.from({ length: totalDays }, (_, i) => startDt.plus({ days: i }));
 
-    return days.map((day) => {
-      const dayStart = day.startOf("day");
-      const dayEnd = day.endOf("day");
+    return this.generateDateRange(startDt, endDt).map((current) => {
+      const dayStart = current.startOf("day");
+      const dayEnd = current.endOf("day");
       const dayVisits = visits.filter((v) => {
         if (!v.startedAt) return false;
         const visitDate = DateTime.fromJSDate(v.startedAt);
@@ -479,10 +479,17 @@ export class ReportsService {
       });
 
       return {
-        date: day.toISODate() ?? "",
+        date: current.toISODate() ?? "",
         items: dayVisits,
       };
     });
+  }
+
+  private generateWeekRange(start: DateTime, end: DateTime): DateTime[] {
+    const weekCount = Math.ceil(end.diff(start, "weeks").weeks);
+    return Array.from({ length: Math.max(0, weekCount) + 1 }, (_, i) =>
+      start.plus({ weeks: i }),
+    ).filter((w) => w <= end);
   }
 
   private calculateRevenueByWeek(
@@ -492,11 +499,9 @@ export class ReportsService {
     prospects: Prospect[],
     _activities: ProspectActivity[],
   ): Array<{ week: string; revenue: number; deals: number }> {
-    const firstWeek = monthStart.startOf("week");
-    const totalWeeks = Math.ceil(monthEnd.diff(firstWeek, "weeks").weeks);
-    const weeks = Array.from({ length: totalWeeks }, (_, i) => firstWeek.plus({ weeks: i }));
+    const weekStarts = this.generateWeekRange(monthStart.startOf("week"), monthEnd);
 
-    return weeks.map((current, i) => {
+    return weekStarts.map((current, index) => {
       const weekStart = current < monthStart ? monthStart : current;
       const weekEnd = current.endOf("week") > monthEnd ? monthEnd : current.endOf("week");
 
@@ -511,7 +516,7 @@ export class ReportsService {
       }, 0);
 
       return {
-        week: `Week ${i + 1}`,
+        week: `Week ${index + 1}`,
         revenue: weekRevenue,
         deals: weekDeals.length,
       };

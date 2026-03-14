@@ -279,9 +279,10 @@ export class CertificateService {
       .filter((br) => br.supplierCertificate !== null)
       .map((br) => br.supplierCertificate as SupplierCertificate);
 
-    const certMap = new Map(
-      [...directCerts, ...linkedCerts].map((cert) => [cert.id, cert] as const),
-    );
+    const certMap = new Map<number, SupplierCertificate>();
+    [...directCerts, ...linkedCerts].forEach((cert) => {
+      certMap.set(cert.id, cert);
+    });
 
     return Array.from(certMap.values());
   }
@@ -414,8 +415,7 @@ export class CertificateService {
       structuredPages.forEach((page) => mergedPdf.addPage(page));
     }
 
-    await certs.reduce(async (prev, cert) => {
-      await prev;
+    for (const cert of certs) {
       try {
         const certBuffer = await this.storageService.download(cert.filePath);
 
@@ -425,10 +425,13 @@ export class CertificateService {
           certPages.forEach((page) => mergedPdf.addPage(page));
         } else {
           const imagePage = mergedPdf.addPage();
-          const image =
-            cert.mimeType === "image/png"
-              ? await mergedPdf.embedPng(certBuffer)
-              : await mergedPdf.embedJpg(certBuffer);
+          let image: Awaited<ReturnType<typeof mergedPdf.embedJpg>>;
+
+          if (cert.mimeType === "image/png") {
+            image = await mergedPdf.embedPng(certBuffer);
+          } else {
+            image = await mergedPdf.embedJpg(certBuffer);
+          }
 
           const { width, height } = imagePage.getSize();
           const imgDims = image.scaleToFit(width - 100, height - 100);
@@ -444,10 +447,9 @@ export class CertificateService {
           `Failed to include certificate ${cert.id} (${cert.originalFilename}) in data book: ${err}`,
         );
       }
-    }, Promise.resolve());
+    }
 
-    await calCerts.reduce(async (prev, cal) => {
-      await prev;
+    for (const cal of calCerts) {
       try {
         const calBuffer = await this.storageService.download(cal.filePath);
 
@@ -457,10 +459,13 @@ export class CertificateService {
           calPages.forEach((page) => mergedPdf.addPage(page));
         } else {
           const imagePage = mergedPdf.addPage();
-          const image =
-            cal.mimeType === "image/png"
-              ? await mergedPdf.embedPng(calBuffer)
-              : await mergedPdf.embedJpg(calBuffer);
+          let image: Awaited<ReturnType<typeof mergedPdf.embedJpg>>;
+
+          if (cal.mimeType === "image/png") {
+            image = await mergedPdf.embedPng(calBuffer);
+          } else {
+            image = await mergedPdf.embedJpg(calBuffer);
+          }
 
           const { width, height } = imagePage.getSize();
           const imgDims = image.scaleToFit(width - 100, height - 100);
@@ -476,7 +481,7 @@ export class CertificateService {
           `Failed to include calibration cert ${cal.id} (${cal.originalFilename}) in data book: ${err}`,
         );
       }
-    }, Promise.resolve());
+    }
 
     const mergedBuffer = Buffer.from(await mergedPdf.save());
 
@@ -781,7 +786,7 @@ export class CertificateService {
       )
       .map(
         (rec) =>
-          `${rec.coatType === "primer" ? "Primer" : "Final"} DFT: avg ${Number(rec.averageMicrons).toFixed(1)} \u03BCm outside spec ${rec.specMinMicrons}-${rec.specMaxMicrons} \u03BCm`,
+          `${rec.coatType === "primer" ? "Primer" : "Final"} DFT: avg ${Number(rec.averageMicrons).toFixed(1)} μm outside spec ${rec.specMinMicrons}-${rec.specMaxMicrons} μm`,
       );
 
     const blastWarnings = qcData.blastProfiles
@@ -791,7 +796,7 @@ export class CertificateService {
       )
       .map(
         (rec) =>
-          `Blast Profile: avg ${Number(rec.averageMicrons).toFixed(1)} \u03BCm below spec ${rec.specMicrons} \u03BCm`,
+          `Blast Profile: avg ${Number(rec.averageMicrons).toFixed(1)} μm below spec ${rec.specMicrons} μm`,
       );
 
     const dustFailures = qcData.dustDebrisTests

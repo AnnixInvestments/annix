@@ -537,7 +537,7 @@ export default function IssueStockPage() {
           itemSummary,
           itemCount: items.length,
           totalQty: items.reduce((sum, item) => sum + item.quantity, 0),
-          jobNumber: jobCard?.jobNumber ?? null,
+          jobNumber: jobCard?.jobNumber || null,
           timestamp: nowISO(),
           canUndo: true,
         };

@@ -190,7 +190,7 @@ function FittingFormComponent({
   const pipeEndConfiguration = specs.pipeEndConfiguration || "PE";
   const hasFlanges = pipeEndConfiguration !== "PE";
 
-  const flangeTypesLength = masterData?.flangeTypes?.length ?? 0;
+  const flangeTypesLength = masterData?.flangeTypes?.length || 0;
 
   const groupedSteelOptions = useMemo(
     () => (masterData?.steelSpecs ? groupSteelSpecifications(masterData.steelSpecs) : []),
@@ -253,7 +253,7 @@ function FittingFormComponent({
   const isLateral = ["LATERAL", "REDUCING_LATERAL"].includes(fittingType || "");
   const isReducer = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(fittingType || "");
   const isOffsetBend = fittingType === "OFFSET_BEND";
-  const isSABS719ForDims = (specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+  const isSABS719ForDims = (specs.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
   const effectiveStandardForDims =
     specs.fittingStandard || (isSABS719ForDims ? "SABS719" : "SABS62");
 
@@ -489,7 +489,7 @@ function FittingFormComponent({
                   {(() => {
                     const selectId = `fitting-steel-spec-wc-${entry.id}`;
                     const effectiveSpecId =
-                      specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                      specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                     const isOverride = !!specs.steelSpecificationId;
                     const isFromGlobal =
                       !specs.steelSpecificationId && !!globalSpecs?.steelSpecificationId;
@@ -885,7 +885,7 @@ function FittingFormComponent({
                   {(() => {
                     const selectId = `fitting-type-${entry.id}`;
                     const isSABS719 =
-                      (specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+                      (specs.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
                     const effectiveStandard =
                       specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
                     const sabs62Options = [
@@ -1094,7 +1094,7 @@ function FittingFormComponent({
                       {(() => {
                         const selectId = `fitting-nb-${entry.id}`;
                         const isSABS719 =
-                          (specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+                          (specs.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
                         const effectiveStandard =
                           specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
                         const sizes =
@@ -1126,7 +1126,7 @@ function FittingFormComponent({
                                 globalSpecs?.workingPressureBar
                               ) {
                                 const effectiveSpecId2 =
-                                  specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                                  specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                                 const availableSchedules = scheduleListForSpec(
                                   nominalDiameter,
                                   effectiveSpecId2,
@@ -1273,7 +1273,7 @@ function FittingFormComponent({
                       })()}
                       {(() => {
                         const isSABS719 =
-                          (specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+                          (specs.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
                         const effectiveStandard =
                           specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
                         const sizes =
@@ -1369,7 +1369,7 @@ function FittingFormComponent({
                 {/* Schedule/Wall Thickness */}
                 {(() => {
                   const effectiveSpecId =
-                    specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                    specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                   const steelSpecName =
                     masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === effectiveSpecId)
                       ?.steelSpecName || "";
@@ -2257,7 +2257,7 @@ function FittingFormComponent({
                           onChange={async (e) => {
                             const angleRange = e.target.value;
                             const isSABS719 =
-                              (specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId) ===
+                              (specs.steelSpecificationId || globalSpecs?.steelSpecificationId) ===
                               8;
                             const effectiveStandard =
                               specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");

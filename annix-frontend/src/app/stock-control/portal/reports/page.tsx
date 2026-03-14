@@ -1114,7 +1114,7 @@ export default function ReportsPage() {
             <div className="p-6 pt-4 text-center">
               <svg
                 className="mx-auto h-10 w-10 mb-3"
-                style={{ color: profile?.primaryColor ?? "#0d9488" }}
+                style={{ color: profile?.primaryColor || "#0d9488" }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1135,7 +1135,7 @@ export default function ReportsPage() {
                 type="button"
                 onClick={() => setShowNoMovementsPopup(false)}
                 className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors"
-                style={{ backgroundColor: profile?.primaryColor ?? "#0d9488" }}
+                style={{ backgroundColor: profile?.primaryColor || "#0d9488" }}
               >
                 Select Another Date
               </button>

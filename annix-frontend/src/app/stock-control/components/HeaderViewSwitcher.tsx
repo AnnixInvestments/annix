@@ -29,7 +29,7 @@ export function HeaderViewSwitcher() {
     return undefined;
   }, [isOpen, handleClickOutside]);
 
-  const activeLabel = ROLE_OPTIONS.find((r) => r.key === viewAsRole)?.label ?? null;
+  const activeLabel = ROLE_OPTIONS.find((r) => r.key === viewAsRole)?.label || null;
 
   return (
     <div className="relative" ref={containerRef}>

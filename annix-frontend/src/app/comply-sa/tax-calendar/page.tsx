@@ -157,7 +157,7 @@ export default function TaxCalendarPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { data: profile } = useCompanyProfile();
-  const resolvedYearEndMonth = profile?.financialYearEndMonth ?? yearEndMonth;
+  const resolvedYearEndMonth = profile?.financialYearEndMonth || yearEndMonth;
   const { data: deadlines = [], isLoading: loading } = useTaxCalendar(resolvedYearEndMonth);
 
   const deadlinesByMonth = MONTHS.reduce(

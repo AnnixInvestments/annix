@@ -145,18 +145,19 @@ export class PlatformRecordingService {
       order: { startTime: "DESC" },
     });
 
-    const results: DownloadResult[] = [];
+    return pendingRecords.reduce(
+      async (accPromise, record) => {
+        const acc = await accPromise;
+        const result = await this.fetchAndStoreRecording(record);
 
-    for (const record of pendingRecords) {
-      const result = await this.fetchAndStoreRecording(record);
-      results.push(result);
+        if (result.success && result.s3Path) {
+          await this.createMeetingRecording(record);
+        }
 
-      if (result.success && result.s3Path) {
-        await this.createMeetingRecording(record);
-      }
-    }
-
-    return results;
+        return [...acc, result];
+      },
+      Promise.resolve([] as DownloadResult[]),
+    );
   }
 
   async createMeetingRecording(record: PlatformMeetingRecord): Promise<MeetingRecording | null> {

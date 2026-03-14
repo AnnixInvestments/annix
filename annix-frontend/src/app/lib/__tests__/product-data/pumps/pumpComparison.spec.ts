@@ -446,7 +446,7 @@ describe("Lifecycle Cost Calculator", () => {
       const inefficientResult = results.find((r) => r.quote.supplierId === 2);
 
       expect(efficientResult?.lifecycleCost.totalLifecycleCost).toBeLessThan(
-        inefficientResult?.lifecycleCost.totalLifecycleCost ?? 0,
+        inefficientResult?.lifecycleCost.totalLifecycleCost || 0,
       );
     });
 

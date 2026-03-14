@@ -911,7 +911,7 @@ function supplierLeadTime(supplierName: string): number {
 }
 
 function hasLocalStock(supplierName: string): boolean {
-  return SUPPLIER_INFO[supplierName]?.localStock ?? false;
+  return SUPPLIER_INFO[supplierName]?.localStock || false;
 }
 
 export function filterByBudgetTier<T extends { supplier: string }>(

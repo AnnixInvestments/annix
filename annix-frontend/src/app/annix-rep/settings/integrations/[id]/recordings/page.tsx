@@ -203,7 +203,7 @@ export default function PlatformRecordingsPage() {
               : "Platform Recordings"}
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
-            {connection?.accountEmail ?? "View all synced recordings from this platform"}
+            {connection?.accountEmail || "View all synced recordings from this platform"}
           </p>
         </div>
       </div>

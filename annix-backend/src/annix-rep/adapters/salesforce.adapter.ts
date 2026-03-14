@@ -314,10 +314,12 @@ export class SalesforceAdapter implements ICrmAdapter {
       "LastModifiedDate",
     ].join(", ");
 
-    const query =
-      `SELECT ${fields} FROM Lead` +
-      (since ? ` WHERE LastModifiedDate > ${since.toISOString()}` : "") +
-      " ORDER BY LastModifiedDate ASC LIMIT 200";
+    let query = `SELECT ${fields} FROM Lead`;
+    if (since) {
+      const sinceStr = since.toISOString();
+      query += ` WHERE LastModifiedDate > ${sinceStr}`;
+    }
+    query += " ORDER BY LastModifiedDate ASC LIMIT 200";
 
     const response = await fetch(this.apiUrl(`/query?q=${encodeURIComponent(query)}`), {
       headers: this.headers(),
@@ -355,10 +357,12 @@ export class SalesforceAdapter implements ICrmAdapter {
       "LastModifiedDate",
     ].join(", ");
 
-    const query =
-      `SELECT ${fields} FROM Event` +
-      (since ? ` WHERE LastModifiedDate > ${since.toISOString()}` : "") +
-      " ORDER BY LastModifiedDate ASC LIMIT 200";
+    let query = `SELECT ${fields} FROM Event`;
+    if (since) {
+      const sinceStr = since.toISOString();
+      query += ` WHERE LastModifiedDate > ${sinceStr}`;
+    }
+    query += " ORDER BY LastModifiedDate ASC LIMIT 200";
 
     const response = await fetch(this.apiUrl(`/query?q=${encodeURIComponent(query)}`), {
       headers: this.headers(),
@@ -474,7 +478,9 @@ export class SalesforceAdapter implements ICrmAdapter {
       ...(meeting.outcomes ? [`\n\nOutcomes:\n${meeting.outcomes}`] : []),
       ...(meeting.actionItems && meeting.actionItems.length > 0
         ? [
-            `\n\nAction Items:\n${meeting.actionItems.map((item) => `- ${item.task}${item.assignee ? ` (${item.assignee})` : ""}`).join("\n")}`,
+            `\n\nAction Items:\n${meeting.actionItems
+              .map((item) => `- ${item.task}${item.assignee ? ` (${item.assignee})` : ""}`)
+              .join("\n")}`,
           ]
         : []),
     ];

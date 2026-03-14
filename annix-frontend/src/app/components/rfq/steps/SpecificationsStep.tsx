@@ -7154,13 +7154,13 @@ export default function SpecificationsStep(props: {
                     </svg>
                     <div className="text-sm">
                       <span className="font-semibold text-gray-900">
-                        {globalSpecs?.hdpeGrade ?? "PE100"}
+                        {globalSpecs?.hdpeGrade || "PE100"}
                       </span>
                       <span className="text-gray-600 mx-2">|</span>
-                      <span className="text-gray-700">SDR {globalSpecs?.hdpeSdr ?? "-"}</span>
+                      <span className="text-gray-700">SDR {globalSpecs?.hdpeSdr || "-"}</span>
                       <span className="text-gray-600 mx-2">|</span>
                       <span className="text-gray-700">
-                        {globalSpecs?.hdpeJoiningMethod?.replace(/_/g, " ") ?? "-"}
+                        {globalSpecs?.hdpeJoiningMethod?.replace(/_/g, " ") || "-"}
                       </span>
                     </div>
                   </div>
@@ -7242,15 +7242,15 @@ export default function SpecificationsStep(props: {
                     </svg>
                     <div className="text-sm">
                       <span className="font-semibold text-gray-900">
-                        {globalSpecs?.pvcType ?? "uPVC"}
+                        {globalSpecs?.pvcType || "uPVC"}
                       </span>
                       <span className="text-gray-600 mx-2">|</span>
                       <span className="text-gray-700">
-                        Class {globalSpecs?.pvcPressureClass ?? "-"}
+                        Class {globalSpecs?.pvcPressureClass || "-"}
                       </span>
                       <span className="text-gray-600 mx-2">|</span>
                       <span className="text-gray-700">
-                        {globalSpecs?.pvcJoiningMethod?.replace(/_/g, " ") ?? "-"}
+                        {globalSpecs?.pvcJoiningMethod?.replace(/_/g, " ") || "-"}
                       </span>
                     </div>
                   </div>

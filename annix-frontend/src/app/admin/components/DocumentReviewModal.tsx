@@ -843,9 +843,7 @@ export function DocumentReviewModal(props: DocumentReviewModalProps) {
             <NixTrainingModal
               isOpen={showTrainingModal}
               documentId={data.documentId}
-              entityId={
-                entityType === "supplier" ? (data.supplier?.id ?? 0) : (data.customer?.id ?? 0)
-              }
+              entityId={entityType === "supplier" ? data.supplier?.id || 0 : data.customer?.id || 0}
               entityType={entityType}
               documentType={data.documentType}
               fieldComparison={data.fieldComparison}

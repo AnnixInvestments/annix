@@ -89,7 +89,7 @@ export default function EditUserAccessPage() {
       setExpiresAt(existingAccess.expiresAt ?? "");
     } else if (appDetails) {
       setUseCustomPermissions(false);
-      setSelectedRoleCode(appDetails.roles.find((r) => r.isDefault)?.code ?? null);
+      setSelectedRoleCode(appDetails.roles.find((r) => r.isDefault)?.code || null);
       setSelectedPermissions([]);
       setExpiresAt("");
     }
@@ -311,7 +311,7 @@ export default function EditUserAccessPage() {
               {categories.map((category) => {
                 const isActive = activeTab === category;
                 const enabled = enabledInCategory(category);
-                const total = permissionsByCategory[category]?.length ?? 0;
+                const total = permissionsByCategory[category]?.length || 0;
 
                 return (
                   <button

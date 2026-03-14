@@ -209,7 +209,7 @@ export class CaldavCalendarProvider implements ICalendarProvider {
     const responseRegex = /<D:response[^>]*>([\s\S]*?)<\/D:response>/gi;
 
     return [...xml.matchAll(responseRegex)]
-      .map((m) => m[1])
+      .map((match) => match[1])
       .filter((responseContent) => {
         const resourceTypeMatch = responseContent.match(
           /<D:resourcetype[^>]*>([\s\S]*?)<\/D:resourcetype>/i,
@@ -249,7 +249,7 @@ export class CaldavCalendarProvider implements ICalendarProvider {
     const responseRegex = /<D:response[^>]*>([\s\S]*?)<\/D:response>/gi;
 
     return [...xml.matchAll(responseRegex)]
-      .map((m) => m[1])
+      .map((match) => match[1])
       .flatMap((responseContent) => {
         const calendarDataMatch = responseContent.match(
           /<C:calendar-data[^>]*>([\s\S]*?)<\/C:calendar-data>/i,
@@ -332,12 +332,12 @@ export class CaldavCalendarProvider implements ICalendarProvider {
     const startTime = this.parseICalDate(vevent.dtstart);
     const endTime = this.parseICalDate(vevent.dtend);
 
-    const status: "confirmed" | "tentative" | "cancelled" =
-      vevent.status === "CANCELLED"
-        ? "cancelled"
-        : vevent.status === "TENTATIVE"
-          ? "tentative"
-          : "confirmed";
+    let status: "confirmed" | "tentative" | "cancelled" = "confirmed";
+    if (vevent.status === "CANCELLED") {
+      status = "cancelled";
+    } else if (vevent.status === "TENTATIVE") {
+      status = "tentative";
+    }
 
     return {
       externalId: vevent.uid,

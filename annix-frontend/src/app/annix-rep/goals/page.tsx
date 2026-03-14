@@ -43,11 +43,11 @@ function GoalEditForm({
   isSaving: boolean;
 }) {
   const [formData, setFormData] = useState<GoalFormData>({
-    meetingsTarget: existingGoal?.meetingsTarget?.toString() ?? "",
-    visitsTarget: existingGoal?.visitsTarget?.toString() ?? "",
-    newProspectsTarget: existingGoal?.newProspectsTarget?.toString() ?? "",
-    revenueTarget: existingGoal?.revenueTarget?.toString() ?? "",
-    dealsWonTarget: existingGoal?.dealsWonTarget?.toString() ?? "",
+    meetingsTarget: existingGoal?.meetingsTarget?.toString() || "",
+    visitsTarget: existingGoal?.visitsTarget?.toString() || "",
+    newProspectsTarget: existingGoal?.newProspectsTarget?.toString() || "",
+    revenueTarget: existingGoal?.revenueTarget?.toString() || "",
+    dealsWonTarget: existingGoal?.dealsWonTarget?.toString() || "",
   });
 
   function handleSubmit(e: React.FormEvent) {
@@ -368,7 +368,7 @@ export default function GoalsPage() {
   const deleteGoal = useDeleteGoal();
 
   function goalForPeriod(period: GoalPeriod): SalesGoal | null {
-    return goals?.find((g) => g.period === period) ?? null;
+    return goals?.find((g) => g.period === period) || null;
   }
 
   function progressForPeriod(period: GoalPeriod): GoalProgress | undefined {

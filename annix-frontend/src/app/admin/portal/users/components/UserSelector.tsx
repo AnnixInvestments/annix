@@ -24,7 +24,7 @@ function userDisplayName(user: RbacUserWithAccessSummary): string {
 }
 
 function userInitial(user: RbacUserWithAccessSummary): string {
-  return (user.firstName?.[0] ?? user.email[0]).toUpperCase();
+  return (user.firstName?.[0] || user.email[0]).toUpperCase();
 }
 
 export function UserSelector(props: UserSelectorProps) {
@@ -44,8 +44,10 @@ export function UserSelector(props: UserSelectorProps) {
     return users.filter(
       (user) =>
         user.email.toLowerCase().includes(term) ||
-        (user.firstName?.toLowerCase().includes(term) ?? false) ||
-        (user.lastName?.toLowerCase().includes(term) ?? false),
+        user.firstName?.toLowerCase().includes(term) ||
+        false ||
+        user.lastName?.toLowerCase().includes(term) ||
+        false,
     );
   }, [users, searchTerm]);
 

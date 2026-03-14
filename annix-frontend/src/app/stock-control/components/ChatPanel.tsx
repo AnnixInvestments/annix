@@ -250,7 +250,7 @@ export function ChatPanel() {
             {state.view === "conversations" && "Messages"}
             {state.view === "conversation" &&
               state.activeConversation &&
-              conversationDisplayName(state.activeConversation, user?.id ?? 0)}
+              conversationDisplayName(state.activeConversation, user?.id || 0)}
             {state.view === "new-conversation" && "New Message"}
           </span>
         </div>
@@ -360,7 +360,7 @@ export function ChatPanel() {
               <p className="text-sm text-gray-400 text-center py-8">No conversations yet</p>
             )}
             {state.conversations.map((conv) => {
-              const displayName = conversationDisplayName(conv, user?.id ?? 0);
+              const displayName = conversationDisplayName(conv, user?.id || 0);
               const unread = state.convUnreadCounts[String(conv.id)] ?? 0;
               return (
                 <button

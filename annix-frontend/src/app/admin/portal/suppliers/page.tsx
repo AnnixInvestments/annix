@@ -41,8 +41,8 @@ export default function AdminSuppliersPage() {
 
   const inviteMutation = useInviteSupplier();
 
-  const supplierList = suppliersQuery.data?.items ?? suppliersQuery.data?.suppliers ?? [];
-  const total = suppliersQuery.data?.total ?? 0;
+  const supplierList = suppliersQuery.data?.items || suppliersQuery.data?.suppliers || [];
+  const total = suppliersQuery.data?.total || 0;
 
   const stats = {
     total,

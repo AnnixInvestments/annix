@@ -160,11 +160,11 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
   }
 
   const totalQcRecords =
-    (qcData?.shoreHardness.length ?? 0) +
-    (qcData?.dftReadings.length ?? 0) +
-    (qcData?.blastProfiles.length ?? 0) +
-    (qcData?.dustDebrisTests.length ?? 0) +
-    (qcData?.pullTests.length ?? 0);
+    (qcData?.shoreHardness.length || 0) +
+    (qcData?.dftReadings.length || 0) +
+    (qcData?.blastProfiles.length || 0) +
+    (qcData?.dustDebrisTests.length || 0) +
+    (qcData?.pullTests.length || 0);
 
   return (
     <div className="space-y-6">
@@ -237,7 +237,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {(qcData?.shoreHardness ?? []).map((rec) => (
+            {(qcData?.shoreHardness || []).map((rec) => (
               <div
                 key={`sh-${rec.id}`}
                 className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
@@ -248,7 +248,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                   </span>
                   <span className="text-sm font-medium text-gray-900">{rec.rubberSpec}</span>
                   <span className="text-sm text-gray-500">
-                    Avg: {rec.averages.overall?.toFixed(1) ?? "-"} / Required: {rec.requiredShore}
+                    Avg: {rec.averages.overall?.toFixed(1) || "-"} / Required: {rec.requiredShore}
                   </span>
                   {rec.averages.overall !== null &&
                     Math.abs(rec.averages.overall - rec.requiredShore) > 5 && (
@@ -278,7 +278,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
               </div>
             ))}
 
-            {(qcData?.dftReadings ?? []).map((rec) => (
+            {(qcData?.dftReadings || []).map((rec) => (
               <div
                 key={`dft-${rec.id}`}
                 className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
@@ -295,7 +295,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                   </span>
                   <span className="text-sm font-medium text-gray-900">{rec.paintProduct}</span>
                   <span className="text-sm text-gray-500">
-                    Avg: {rec.averageMicrons?.toFixed(1) ?? "-"} μm ({rec.specMinMicrons}-
+                    Avg: {rec.averageMicrons?.toFixed(1) || "-"} μm ({rec.specMinMicrons}-
                     {rec.specMaxMicrons})
                   </span>
                   {rec.averageMicrons !== null &&
@@ -327,7 +327,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
               </div>
             ))}
 
-            {(qcData?.blastProfiles ?? []).map((rec) => (
+            {(qcData?.blastProfiles || []).map((rec) => (
               <div
                 key={`bp-${rec.id}`}
                 className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
@@ -337,7 +337,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                     Blast
                   </span>
                   <span className="text-sm text-gray-500">
-                    Avg: {rec.averageMicrons?.toFixed(1) ?? "-"} μm / Spec: {rec.specMicrons} μm
+                    Avg: {rec.averageMicrons?.toFixed(1) || "-"} μm / Spec: {rec.specMicrons} μm
                   </span>
                   {rec.abrasiveBatchNumber && (
                     <span className="text-xs text-gray-500">Batch: {rec.abrasiveBatchNumber}</span>
@@ -370,7 +370,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
               </div>
             ))}
 
-            {(qcData?.dustDebrisTests ?? []).map((rec) => {
+            {(qcData?.dustDebrisTests || []).map((rec) => {
               const passCount = rec.tests.filter((t) => t.result === "pass").length;
               const failCount = rec.tests.filter((t) => t.result === "fail").length;
               return (
@@ -414,7 +414,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
               );
             })}
 
-            {(qcData?.pullTests ?? []).map((rec) => (
+            {(qcData?.pullTests || []).map((rec) => (
               <div
                 key={`pt-${rec.id}`}
                 className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
@@ -498,7 +498,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                       {record.batchNumber}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
-                      {record.stockItem?.name ?? "-"}
+                      {record.stockItem?.name || "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                       {record.quantity}
@@ -550,7 +550,7 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
                     {cert.certificateType}
                   </span>
                   <span className="text-sm font-medium text-gray-900">{cert.batchNumber}</span>
-                  <span className="text-sm text-gray-500">{cert.supplier?.name ?? ""}</span>
+                  <span className="text-sm text-gray-500">{cert.supplier?.name || ""}</span>
                   <span className="text-xs text-gray-400">{cert.originalFilename}</span>
                 </div>
                 <button

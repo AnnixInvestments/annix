@@ -116,7 +116,7 @@ function ConnectionCard({
   const handleDisconnect = async () => {
     if (
       confirm(
-        `Are you sure you want to disconnect "${platformInfo?.name ?? connection.platform}"? This will revoke access.`,
+        `Are you sure you want to disconnect "${platformInfo?.name || connection.platform}"? This will revoke access.`,
       )
     ) {
       await disconnectPlatform.mutateAsync(connection.id);
@@ -151,7 +151,7 @@ function ConnectionCard({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {platformInfo?.name ?? connection.platform}
+                {platformInfo?.name || connection.platform}
               </h3>
               <ConnectionStatusBadge connection={connection} />
             </div>

@@ -1197,7 +1197,7 @@ export const annixRepApi = {
       todaysMeetings: meetings.map((m) => ({
         id: m.id,
         title: m.title,
-        prospectCompany: m.prospect?.companyName ?? null,
+        prospectCompany: m.prospect?.companyName || null,
         time: new Date(m.scheduledStart).toLocaleTimeString("en-ZA", {
           hour: "2-digit",
           minute: "2-digit",

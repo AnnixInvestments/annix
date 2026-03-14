@@ -204,14 +204,14 @@ export class RecordingService {
 
     const writeStream = fs.createWriteStream(assembledPath);
 
-    for (const chunkIndex of sortedChunks) {
+    sortedChunks.forEach((chunkIndex) => {
       const chunkPath = path.join(session.storagePath, `chunk-${chunkIndex}`);
       if (fs.existsSync(chunkPath)) {
         const chunkData = fs.readFileSync(chunkPath);
         writeStream.write(chunkData);
         fs.unlinkSync(chunkPath);
       }
-    }
+    });
 
     writeStream.end();
 
@@ -387,8 +387,12 @@ export class RecordingService {
   async cleanupStaleSessions(): Promise<void> {
     const staleThreshold = now().minus({ hours: STALE_SESSION_THRESHOLD_HOURS }).toJSDate();
 
-    for (const [recordingId, session] of this.uploadSessions.entries()) {
-      if (session.lastChunkAt < staleThreshold) {
+    const staleEntries = Array.from(this.uploadSessions.entries()).filter(
+      ([, session]) => session.lastChunkAt < staleThreshold,
+    );
+
+    await Promise.all(
+      staleEntries.map(async ([recordingId, session]) => {
         if (fs.existsSync(session.storagePath)) {
           fs.rmSync(session.storagePath, { recursive: true, force: true });
         }
@@ -406,8 +410,8 @@ export class RecordingService {
         }
 
         this.logger.warn(`Cleaned up stale upload session: ${recordingId}`);
-      }
-    }
+      }),
+    );
   }
 
   private toRecordingResponse(recording: MeetingRecording): RecordingResponseDto {

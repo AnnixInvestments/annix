@@ -53,9 +53,9 @@ export default function DataBooksPage() {
     }
   };
 
-  const status = searchMutation.data?.status ?? null;
-  const certs = searchMutation.data?.certs ?? [];
-  const batchRecords = searchMutation.data?.batchRecords ?? [];
+  const status = searchMutation.data?.status || null;
+  const certs = searchMutation.data?.certs || [];
+  const batchRecords = searchMutation.data?.batchRecords || [];
 
   return (
     <div className="space-y-6">
@@ -164,7 +164,7 @@ export default function DataBooksPage() {
                             {record.batchNumber}
                           </td>
                           <td className="px-3 py-2 text-sm text-gray-600">
-                            {record.stockItem?.name ?? "-"}
+                            {record.stockItem?.name || "-"}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-600">
                             {record.quantity}
@@ -213,7 +213,7 @@ export default function DataBooksPage() {
                         <span className="text-sm font-medium text-gray-900">
                           {cert.batchNumber}
                         </span>
-                        <span className="text-sm text-gray-500">{cert.supplier?.name ?? ""}</span>
+                        <span className="text-sm text-gray-500">{cert.supplier?.name || ""}</span>
                       </div>
                       <span className="text-xs text-gray-400">{cert.originalFilename}</span>
                     </div>

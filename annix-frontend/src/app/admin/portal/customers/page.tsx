@@ -41,14 +41,14 @@ export default function AdminCustomersPage() {
     status: statusFilter || undefined,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
-    sortBy: sorting[0]?.id ?? "createdAt",
+    sortBy: sorting[0]?.id || "createdAt",
     sortOrder: sorting[0] ? (sorting[0].desc ? "DESC" : "ASC") : "DESC",
   });
 
   const inviteMutation = useInviteCustomer();
 
-  const customers = customersQuery.data?.items ?? [];
-  const total = customersQuery.data?.total ?? 0;
+  const customers = customersQuery.data?.items || [];
+  const total = customersQuery.data?.total || 0;
 
   const stats = {
     active: customers.filter((c) => c.accountStatus === "active").length,

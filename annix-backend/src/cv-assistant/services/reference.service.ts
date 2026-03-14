@@ -26,28 +26,25 @@ export class ReferenceService {
     extractedData: ExtractedCvData,
   ): Promise<CandidateReference[]> {
     const references = extractedData.references || [];
+    const refsWithEmail = references.filter((ref) => ref.email);
 
-    const created = await references
-      .filter((ref) => ref.email)
-      .reduce(
-        async (accPromise, ref) => {
-          const acc = await accPromise;
-          const reference = this.referenceRepo.create({
-            candidateId,
-            name: ref.name,
-            email: ref.email,
-            relationship: ref.relationship,
-            feedbackToken: uuidv4(),
-            tokenExpiresAt: now().plus({ days: TOKEN_EXPIRY_DAYS }).toJSDate(),
-            status: ReferenceStatus.PENDING,
-          });
-          const saved = await this.referenceRepo.save(reference);
-          return [...acc, saved];
-        },
-        Promise.resolve([] as CandidateReference[]),
-      );
-
-    return created;
+    return refsWithEmail.reduce(
+      async (accPromise, ref) => {
+        const acc = await accPromise;
+        const reference = this.referenceRepo.create({
+          candidateId,
+          name: ref.name,
+          email: ref.email,
+          relationship: ref.relationship,
+          feedbackToken: uuidv4(),
+          tokenExpiresAt: now().plus({ days: TOKEN_EXPIRY_DAYS }).toJSDate(),
+          status: ReferenceStatus.PENDING,
+        });
+        const saved = await this.referenceRepo.save(reference);
+        return [...acc, saved];
+      },
+      Promise.resolve([] as CandidateReference[]),
+    );
   }
 
   async sendReferenceRequests(candidateId: number): Promise<number> {
@@ -60,29 +57,26 @@ export class ReferenceService {
       throw new NotFoundException("Candidate not found");
     }
 
-    const sentCount = await candidate.references.reduce(async (accPromise, reference) => {
-      const acc = await accPromise;
-      if (reference.status !== ReferenceStatus.PENDING) {
-        return acc;
-      }
+    const sentCount = await candidate.references
+      .filter((reference) => reference.status === ReferenceStatus.PENDING)
+      .reduce(async (countPromise, reference) => {
+        const count = await countPromise;
+        const sent = await this.emailService.sendCvAssistantReferenceRequestEmail(
+          reference.email,
+          reference.name,
+          candidate.name || "the candidate",
+          candidate.jobPosting.title,
+          reference.feedbackToken,
+        );
 
-      const sent = await this.emailService.sendCvAssistantReferenceRequestEmail(
-        reference.email,
-        reference.name,
-        candidate.name || "the candidate",
-        candidate.jobPosting.title,
-        reference.feedbackToken,
-      );
-
-      if (sent) {
-        reference.status = ReferenceStatus.REQUESTED;
-        reference.requestSentAt = now().toJSDate();
-        await this.referenceRepo.save(reference);
-        return acc + 1;
-      }
-
-      return acc;
-    }, Promise.resolve(0));
+        if (sent) {
+          reference.status = ReferenceStatus.REQUESTED;
+          reference.requestSentAt = now().toJSDate();
+          await this.referenceRepo.save(reference);
+          return count + 1;
+        }
+        return count;
+      }, Promise.resolve(0));
 
     if (sentCount > 0 && candidate.status === CandidateStatus.SHORTLISTED) {
       candidate.status = CandidateStatus.REFERENCE_CHECK;
@@ -171,35 +165,32 @@ export class ReferenceService {
       relations: ["candidate", "candidate.jobPosting"],
     });
 
-    const sentCount = await pendingRefs.reduce(async (accPromise, reference) => {
-      const acc = await accPromise;
-      if (fromJSDate(reference.tokenExpiresAt) <= now()) {
-        return acc;
-      }
+    const sentCount = await pendingRefs
+      .filter((reference) => fromJSDate(reference.tokenExpiresAt) > now())
+      .reduce(async (countPromise, reference) => {
+        const count = await countPromise;
+        const sent = await this.emailService.sendCvAssistantReferenceReminderEmail(
+          reference.email,
+          reference.name,
+          reference.candidate.name || "the candidate",
+          reference.candidate.jobPosting.title,
+          reference.feedbackToken,
+        );
 
-      const sent = await this.emailService.sendCvAssistantReferenceReminderEmail(
-        reference.email,
-        reference.name,
-        reference.candidate.name || "the candidate",
-        reference.candidate.jobPosting.title,
-        reference.feedbackToken,
-      );
-
-      if (sent) {
-        reference.reminderSentAt = now().toJSDate();
-        await this.referenceRepo.save(reference);
-        return acc + 1;
-      }
-
-      return acc;
-    }, Promise.resolve(0));
+        if (sent) {
+          reference.reminderSentAt = now().toJSDate();
+          await this.referenceRepo.save(reference);
+          return count + 1;
+        }
+        return count;
+      }, Promise.resolve(0));
 
     return sentCount;
   }
 
   async referencesForCompany(
     companyId: number,
-    status?: ReferenceStatus | null,
+    status?: ReferenceStatus,
   ): Promise<CandidateReference[]> {
     const queryBuilder = this.referenceRepo
       .createQueryBuilder("reference")

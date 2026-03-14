@@ -24,13 +24,13 @@ function InboundLane({ lanes }: { lanes: WorkflowLaneCounts | undefined }) {
           Deliveries
         </p>
         <CountBadge
-          count={lanes?.inbound.deliveriesPending ?? 0}
+          count={lanes?.inbound.deliveriesPending || 0}
           label="Pending extraction"
           href="/stock-control/portal/deliveries"
           variant="warning"
         />
         <CountBadge
-          count={lanes?.inbound.deliveriesProcessed ?? 0}
+          count={lanes?.inbound.deliveriesProcessed || 0}
           label="Processed"
           href="/stock-control/portal/deliveries"
           variant="success"
@@ -40,19 +40,19 @@ function InboundLane({ lanes }: { lanes: WorkflowLaneCounts | undefined }) {
           Invoices
         </p>
         <CountBadge
-          count={lanes?.inbound.invoicesPending ?? 0}
+          count={lanes?.inbound.invoicesPending || 0}
           label="Pending extraction"
           href="/stock-control/portal/invoices?status=pending"
           variant="warning"
         />
         <CountBadge
-          count={lanes?.inbound.invoicesNeedClarification ?? 0}
+          count={lanes?.inbound.invoicesNeedClarification || 0}
           label="Need clarification"
           href="/stock-control/portal/invoices?status=needs_clarification"
           variant="danger"
         />
         <CountBadge
-          count={lanes?.inbound.invoicesAwaitingApproval ?? 0}
+          count={lanes?.inbound.invoicesAwaitingApproval || 0}
           label="Awaiting approval"
           href="/stock-control/portal/invoices?status=awaiting_approval"
           variant="info"
@@ -74,56 +74,56 @@ function WorkshopLane({ lanes }: { lanes: WorkflowLaneCounts | undefined }) {
           Job Cards
         </p>
         <CountBadge
-          count={lanes?.workshop.jobCardsDraft ?? 0}
+          count={lanes?.workshop.jobCardsDraft || 0}
           label="Draft"
           href="/stock-control/portal/job-cards?status=draft"
           variant="default"
         />
         <CountBadge
-          count={lanes?.workshop.jobCardsPendingAdmin ?? 0}
+          count={lanes?.workshop.jobCardsPendingAdmin || 0}
           label="Pending admin approval"
           href="/stock-control/portal/job-cards?status=document_uploaded"
           variant="warning"
         />
         <CountBadge
-          count={lanes?.workshop.jobCardsPendingManager ?? 0}
+          count={lanes?.workshop.jobCardsPendingManager || 0}
           label="Pending manager approval"
           href="/stock-control/portal/job-cards?status=admin_approved"
           variant="warning"
         />
         <CountBadge
-          count={lanes?.workshop.jobCardsRequisitionSent ?? 0}
+          count={lanes?.workshop.jobCardsRequisitionSent || 0}
           label="Requisition sent"
           href="/stock-control/portal/job-cards?status=requisition_sent"
           variant="info"
         />
         <CountBadge
-          count={lanes?.workshop.jobCardsPendingAllocation ?? 0}
+          count={lanes?.workshop.jobCardsPendingAllocation || 0}
           label="Pending allocation"
           href="/stock-control/portal/job-cards?status=manager_approved"
           variant="warning"
         />
         <CountBadge
-          count={lanes?.workshop.jobCardsPendingFinal ?? 0}
+          count={lanes?.workshop.jobCardsPendingFinal || 0}
           label="Pending final approval"
           href="/stock-control/portal/job-cards?status=stock_allocated"
           variant="info"
         />
-        {((lanes?.workshop.coatingPending ?? 0) > 0 ||
-          (lanes?.workshop.coatingAnalysed ?? 0) > 0) && (
+        {((lanes?.workshop.coatingPending || 0) > 0 ||
+          (lanes?.workshop.coatingAnalysed || 0) > 0) && (
           <>
             <div className="border-t border-gray-100 my-2" />
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 pt-1">
               Coating Analysis
             </p>
             <CountBadge
-              count={lanes?.workshop.coatingPending ?? 0}
+              count={lanes?.workshop.coatingPending || 0}
               label="Pending analysis"
               href="/stock-control/portal/job-cards"
               variant="warning"
             />
             <CountBadge
-              count={lanes?.workshop.coatingAnalysed ?? 0}
+              count={lanes?.workshop.coatingAnalysed || 0}
               label="Awaiting acceptance"
               href="/stock-control/portal/job-cards"
               variant="info"
@@ -135,19 +135,19 @@ function WorkshopLane({ lanes }: { lanes: WorkflowLaneCounts | undefined }) {
           Requisitions
         </p>
         <CountBadge
-          count={lanes?.workshop.requisitionsPending ?? 0}
+          count={lanes?.workshop.requisitionsPending || 0}
           label="Pending"
           href="/stock-control/portal/requisitions?status=pending"
           variant="warning"
         />
         <CountBadge
-          count={lanes?.workshop.requisitionsApproved ?? 0}
+          count={lanes?.workshop.requisitionsApproved || 0}
           label="Approved"
           href="/stock-control/portal/requisitions?status=approved"
           variant="success"
         />
         <CountBadge
-          count={lanes?.workshop.requisitionsOrdered ?? 0}
+          count={lanes?.workshop.requisitionsOrdered || 0}
           label="Ordered"
           href="/stock-control/portal/requisitions?status=ordered"
           variant="info"
@@ -175,13 +175,13 @@ function OutboundLane({
           Dispatch
         </p>
         <CountBadge
-          count={lanes?.outbound.jobCardsReadyForDispatch ?? 0}
+          count={lanes?.outbound.jobCardsReadyForDispatch || 0}
           label="Ready for dispatch"
           href="/stock-control/portal/job-cards?status=ready_for_dispatch"
           variant="warning"
         />
         <CountBadge
-          count={lanes?.outbound.jobCardsDispatched ?? 0}
+          count={lanes?.outbound.jobCardsDispatched || 0}
           label="Dispatched"
           href="/stock-control/portal/job-cards?status=dispatched"
           variant="success"
@@ -191,7 +191,7 @@ function OutboundLane({
           Stock Alerts
         </p>
         <CountBadge
-          count={lanes?.outbound.lowStockAlerts ?? 0}
+          count={lanes?.outbound.lowStockAlerts || 0}
           label="Low stock items"
           href="/stock-control/portal/inventory?filter=low-stock"
           variant="danger"

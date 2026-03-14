@@ -498,7 +498,7 @@ export default function SchedulePage() {
         <div className="space-y-6">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Meetings ({todaysMeetings?.length ?? 0})
+              Meetings ({todaysMeetings?.length || 0})
             </h2>
             {!todaysMeetings || todaysMeetings.length === 0 ? (
               <div className="text-center py-8 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
@@ -531,7 +531,7 @@ export default function SchedulePage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Calendar Events ({calendarEvents?.length ?? 0})
+                Calendar Events ({calendarEvents?.length || 0})
               </h2>
               <Link
                 href="/annix-rep/settings/calendars"
@@ -599,7 +599,7 @@ export default function SchedulePage() {
 
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Visits ({todaysVisits?.length ?? 0})
+              Visits ({todaysVisits?.length || 0})
             </h2>
             {!todaysVisits || todaysVisits.length === 0 ? (
               <div className="text-center py-8 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">

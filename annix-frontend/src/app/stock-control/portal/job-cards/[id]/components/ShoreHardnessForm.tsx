@@ -56,7 +56,7 @@ const rubberBatchDefaults = (
   );
   if (rubberRecord) {
     return {
-      spec: rubberRecord.stockItem?.name ?? "",
+      spec: rubberRecord.stockItem?.name || "",
       batchNumber: rubberRecord.batchNumber,
     };
   }
@@ -72,12 +72,12 @@ export function ShoreHardnessForm({
   batchRecords = [],
 }: ShoreHardnessFormProps) {
   const defaults = existing ? null : rubberBatchDefaults(batchRecords);
-  const [rubberSpec, setRubberSpec] = useState(existing?.rubberSpec ?? defaults?.spec ?? "");
+  const [rubberSpec, setRubberSpec] = useState(existing?.rubberSpec || defaults?.spec || "");
   const [rubberBatchNumber, setRubberBatchNumber] = useState(
-    existing?.rubberBatchNumber ?? defaults?.batchNumber ?? "",
+    existing?.rubberBatchNumber || defaults?.batchNumber || "",
   );
   const [requiredShore, setRequiredShore] = useState<number | null>(
-    existing?.requiredShore ?? null,
+    existing?.requiredShore || null,
   );
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString(),
@@ -87,7 +87,7 @@ export function ShoreHardnessForm({
   );
   const [itemLabels, setItemLabels] = useState<string[]>(
     existing?.readings.itemLabels
-      ? ROW_INDICES.map((i) => existing.readings.itemLabels?.[i] ?? "")
+      ? ROW_INDICES.map((i) => existing.readings.itemLabels?.[i] || "")
       : emptyItemLabels(),
   );
   const [isSaving, setIsSaving] = useState(false);

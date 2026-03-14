@@ -80,10 +80,10 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
           const currentTime = nowISO();
 
           const draftToSave: RfqDraftData = {
-            rfqData: data.rfqData ?? existingDraft?.rfqData ?? {},
-            globalSpecs: data.globalSpecs ?? existingDraft?.globalSpecs ?? {},
-            currentStep: data.currentStep ?? existingDraft?.currentStep ?? 0,
-            entries: data.entries ?? existingDraft?.entries ?? [],
+            rfqData: data.rfqData || existingDraft?.rfqData || {},
+            globalSpecs: data.globalSpecs || existingDraft?.globalSpecs || {},
+            currentStep: data.currentStep || existingDraft?.currentStep || 0,
+            entries: data.entries || existingDraft?.entries || [],
             lastSaved: currentTime,
             customerEmail:
               data.rfqData?.customerEmail || data.customerEmail || existingDraft?.customerEmail,

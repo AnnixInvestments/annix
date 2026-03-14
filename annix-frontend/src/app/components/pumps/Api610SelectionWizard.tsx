@@ -62,16 +62,16 @@ export function Api610SelectionWizard(props: Api610SelectionWizardProps) {
   const { onComplete, initialCriteria } = props;
   const [currentStep, setCurrentStep] = useState<WizardStep>("operating-conditions");
   const [criteria, setCriteria] = useState<Api610SelectionCriteria>({
-    flowRateM3h: initialCriteria?.flowRateM3h ?? 100,
-    headM: initialCriteria?.headM ?? 50,
-    temperatureC: initialCriteria?.temperatureC ?? 20,
-    pressureBar: initialCriteria?.pressureBar ?? 10,
-    powerKw: initialCriteria?.powerKw ?? 50,
+    flowRateM3h: initialCriteria?.flowRateM3h || 100,
+    headM: initialCriteria?.headM || 50,
+    temperatureC: initialCriteria?.temperatureC || 20,
+    pressureBar: initialCriteria?.pressureBar || 10,
+    powerKw: initialCriteria?.powerKw || 50,
     category: initialCriteria?.category,
     fluidType: initialCriteria?.fluidType,
-    installationType: initialCriteria?.installationType ?? "horizontal",
-    spaceConstrained: initialCriteria?.spaceConstrained ?? false,
-    maintenanceAccess: initialCriteria?.maintenanceAccess ?? "moderate",
+    installationType: initialCriteria?.installationType || "horizontal",
+    spaceConstrained: initialCriteria?.spaceConstrained || false,
+    maintenanceAccess: initialCriteria?.maintenanceAccess || "moderate",
   });
 
   const [expandedType, setExpandedType] = useState<string | null>(null);

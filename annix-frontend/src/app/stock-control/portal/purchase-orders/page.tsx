@@ -307,7 +307,7 @@ export default function PurchaseOrdersPage() {
       <ConfirmDialog
         open={confirmDelete !== null}
         title="Delete Purchase Order"
-        message={`Delete CPO ${confirmDelete?.cpoNumber ?? ""}? This cannot be undone.`}
+        message={`Delete CPO ${confirmDelete?.cpoNumber || ""}? This cannot be undone.`}
         confirmLabel="Delete"
         variant="danger"
         loading={deleteCpo.isPending}

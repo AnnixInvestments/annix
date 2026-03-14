@@ -42,7 +42,7 @@ export default function CpoReportsPage() {
         : overdueQuery;
 
   const isLoading = activeQuery.isLoading;
-  const error = activeQuery.error?.message ?? exportError;
+  const error = activeQuery.error?.message || exportError;
 
   const handleExportCsv = async () => {
     try {

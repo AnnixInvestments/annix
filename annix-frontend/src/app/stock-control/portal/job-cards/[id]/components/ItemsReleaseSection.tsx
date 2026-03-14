@@ -222,17 +222,17 @@ interface ItemsReleaseFormProps {
 }
 
 function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsReleaseFormProps) {
-  const [items, setItems] = useState<ReleaseLineItem[]>(existing?.items ?? []);
-  const [checkedByName, setCheckedByName] = useState(existing?.checkedByName ?? "");
-  const [comments, setComments] = useState(existing?.comments ?? "");
+  const [items, setItems] = useState<ReleaseLineItem[]>(existing?.items || []);
+  const [checkedByName, setCheckedByName] = useState(existing?.checkedByName || "");
+  const [comments, setComments] = useState(existing?.comments || "");
   const [plsSignOff, setPlsSignOff] = useState<ReleasePartySignOff>(
-    existing?.plsSignOff ?? emptySignOff(),
+    existing?.plsSignOff || emptySignOff(),
   );
   const [mpsSignOff, setMpsSignOff] = useState<ReleasePartySignOff>(
-    existing?.mpsSignOff ?? emptySignOff(),
+    existing?.mpsSignOff || emptySignOff(),
   );
   const [clientSignOff, setClientSignOff] = useState<ReleasePartySignOff>(
-    existing?.clientSignOff ?? emptySignOff(),
+    existing?.clientSignOff || emptySignOff(),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);

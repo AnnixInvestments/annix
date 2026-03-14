@@ -144,11 +144,11 @@ export function PvcSpecificationsSection(props: PvcSpecificationsSectionProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
             <span className="text-gray-500">Density:</span>
-            <span className="ml-1 text-gray-900">{selectedMaterial?.densityKgM3 ?? "-"} kg/m³</span>
+            <span className="ml-1 text-gray-900">{selectedMaterial?.densityKgM3 || "-"} kg/m³</span>
           </div>
           <div>
             <span className="text-gray-500">Max Temp:</span>
-            <span className="ml-1 text-gray-900">{selectedMaterial?.maxTemperatureC ?? "-"}°C</span>
+            <span className="ml-1 text-gray-900">{selectedMaterial?.maxTemperatureC || "-"}°C</span>
           </div>
           <div>
             <span className="text-gray-500">Pressure Rating:</span>
@@ -159,7 +159,7 @@ export function PvcSpecificationsSection(props: PvcSpecificationsSectionProps) {
           <div>
             <span className="text-gray-500">Applications:</span>
             <span className="ml-1 text-gray-900">
-              {selectedMaterial?.applications.slice(0, 2).join(", ") ?? "-"}
+              {selectedMaterial?.applications.slice(0, 2).join(", ") || "-"}
             </span>
           </div>
         </div>

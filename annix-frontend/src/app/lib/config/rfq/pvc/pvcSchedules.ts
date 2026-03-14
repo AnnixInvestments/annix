@@ -175,7 +175,7 @@ export const pvcWallThickness = (
   pressureClass: PvcPressureClass,
 ): number | null => {
   const sizeData = PVC_WALL_THICKNESS_DATA.find((d) => d.outsideDiameterMm === outsideDiameterMm);
-  return sizeData?.wallThicknessByClass[pressureClass] ?? null;
+  return sizeData?.wallThicknessByClass[pressureClass] || null;
 };
 
 export const availablePressureClassesForSize = (outsideDiameterMm: number): PvcPressureClass[] => {
@@ -187,7 +187,7 @@ export const availablePressureClassesForSize = (outsideDiameterMm: number): PvcP
 export const recommendedPressureClassForPressure = (pressureBar: number): PvcPressureClass => {
   const sortedClasses = [...PVC_PRESSURE_OPTIONS].sort((a, b) => a.value - b.value);
   const suitable = sortedClasses.find((c) => c.value >= pressureBar);
-  return suitable?.value ?? 16;
+  return suitable?.value || 16;
 };
 
 export const PVC_NOMINAL_SIZES = PVC_WALL_THICKNESS_DATA.map((d) => d.nominalBoreMm);

@@ -325,7 +325,7 @@ export default function CalendarsSettingsPage() {
     setDisconnectingId(null);
   };
 
-  const connectedProviders = new Set(connections?.map((c) => c.provider) ?? []);
+  const connectedProviders = new Set(connections?.map((c) => c.provider) || []);
 
   return (
     <div className="space-y-6">
@@ -487,14 +487,14 @@ export default function CalendarsSettingsPage() {
               <div className="flex items-center gap-4">
                 <div
                   className={`p-3 rounded-lg ${
-                    (conflictCountData?.count ?? 0) > 0
+                    (conflictCountData?.count || 0) > 0
                       ? "bg-amber-50 dark:bg-amber-900/20"
                       : "bg-green-50 dark:bg-green-900/20"
                   }`}
                 >
                   <svg
                     className={`w-6 h-6 ${
-                      (conflictCountData?.count ?? 0) > 0
+                      (conflictCountData?.count || 0) > 0
                         ? "text-amber-600 dark:text-amber-400"
                         : "text-green-600 dark:text-green-400"
                     }`}
@@ -503,7 +503,7 @@ export default function CalendarsSettingsPage() {
                     strokeWidth={1.5}
                     stroke="currentColor"
                   >
-                    {(conflictCountData?.count ?? 0) > 0 ? (
+                    {(conflictCountData?.count || 0) > 0 ? (
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -523,7 +523,7 @@ export default function CalendarsSettingsPage() {
                     Sync Conflicts
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {(conflictCountData?.count ?? 0) > 0
+                    {(conflictCountData?.count || 0) > 0
                       ? `${conflictCountData?.count} conflict${conflictCountData?.count === 1 ? "" : "s"} need attention`
                       : "No conflicts detected"}
                   </p>

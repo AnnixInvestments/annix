@@ -275,7 +275,7 @@ export function PumpProductBrowser(props: PumpProductBrowserProps) {
               <p className="text-sm text-green-700 mt-1">
                 {selectionRequirements.api610
                   ? `API 610 Category: ${selectionRequirements.api610.categoryRecommendation}`
-                  : `Recommended: ${selectionRequirements.recommendedTypes?.[0]?.type.label ?? "Based on your requirements"}`}
+                  : `Recommended: ${selectionRequirements.recommendedTypes?.[0]?.type.label || "Based on your requirements"}`}
               </p>
             </div>
             <button

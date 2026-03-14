@@ -575,7 +575,7 @@ export const isSabs719Spec = (steelSpecName?: string, steelSpecId?: number): boo
 
 // Helper to detect if SABS62 is Heavy grade
 export const isSabs62Heavy = (steelSpecName?: string): boolean => {
-  return steelSpecName?.includes("Heavy") ?? false;
+  return steelSpecName?.includes("Heavy") || false;
 };
 
 // Helper function to get appropriate schedule list based on steel spec (MODULE SCOPE)

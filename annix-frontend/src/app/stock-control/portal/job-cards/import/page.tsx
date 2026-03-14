@@ -1984,7 +1984,7 @@ export default function JobCardImportPage() {
                     <tbody className="divide-y divide-gray-200">
                       {dm.matches.map((match) => {
                         const isSelected =
-                          deliverySelections[dm.jobCardId]?.[match.deliveryItemId] ?? false;
+                          deliverySelections[dm.jobCardId]?.[match.deliveryItemId] || false;
                         return (
                           <tr
                             key={match.deliveryItemId}

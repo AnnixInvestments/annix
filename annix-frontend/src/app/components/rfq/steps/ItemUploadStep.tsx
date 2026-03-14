@@ -534,7 +534,7 @@ export default function ItemUploadStep(props: {
           if (entry.itemType === "fitting") {
             autoFocusedEntriesRef.current.add(entry.id);
             const isSABS719 =
-              (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+              (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
             const effectiveStandard =
               entry.specs?.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
             if (!entry.specs?.fittingType) {
@@ -547,7 +547,7 @@ export default function ItemUploadStep(props: {
           } else if (entry.itemType === "bend" && hasSteelSpec) {
             autoFocusedEntriesRef.current.add(entry.id);
             const isSABS719 =
-              (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
+              (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
             if (isSABS719 && !entry.specs?.bendRadiusType) {
               focusAndOpenSelect(`bend-radius-type-${entry.id}`);
             } else if (!isSABS719 && !entry.specs?.bendType) {
@@ -676,7 +676,7 @@ export default function ItemUploadStep(props: {
   // Remove duplicates using Set and sort
   // Handle both snake_case (from API) and camelCase (from fallback data) property names
   const allNominalBores = (
-    (masterData.nominalBores?.length ?? 0) > 0
+    (masterData.nominalBores?.length || 0) > 0
       ? Array.from(
           new Set(
             masterData.nominalBores!.map(

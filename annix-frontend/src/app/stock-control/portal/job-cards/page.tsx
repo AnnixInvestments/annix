@@ -494,7 +494,7 @@ export default function JobCardsPage() {
       <ConfirmDialog
         open={confirmDelete !== null}
         title="Delete Job Card"
-        message={`Delete job card ${confirmDelete?.jobNumber ?? ""}? This cannot be undone.`}
+        message={`Delete job card ${confirmDelete?.jobNumber || ""}? This cannot be undone.`}
         confirmLabel="Delete"
         variant="danger"
         loading={deletingId !== null}

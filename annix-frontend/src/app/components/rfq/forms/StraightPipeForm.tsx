@@ -244,7 +244,7 @@ function StraightPipeFormComponent({
     [masterData?.steelSpecs],
   );
 
-  const flangeTypesLength = masterData?.flangeTypes?.length ?? 0;
+  const flangeTypesLength = masterData?.flangeTypes?.length || 0;
 
   const handleWorkingPressureChange = useCallback(
     (value: number | undefined) => {
@@ -315,7 +315,7 @@ function StraightPipeFormComponent({
       const temperature = globalSpecs?.workingTemperatureC || 20;
 
       const nbEffectiveSpecId =
-        entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+        entry?.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
       const schedules = scheduleListForSpec(nominalBore, nbEffectiveSpecId, steelSpecName);
 
       if (schedules.length > 0) {
@@ -399,7 +399,7 @@ function StraightPipeFormComponent({
   const handleScheduleChange = useCallback(
     (newSchedule: string) => {
       const fallbackEffectiveSpecId =
-        specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+        specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
       const fallbackSpecName =
         masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === fallbackEffectiveSpecId)
           ?.steelSpecName || "";
@@ -1298,7 +1298,7 @@ function StraightPipeFormComponent({
                         <option value="">Select schedule...</option>
                         {(() => {
                           const fallbackEffectiveSpecId =
-                            specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                            specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                           const fallbackSpecName =
                             masterData.steelSpecs?.find(
                               (s: SteelSpecItem) => s.id === fallbackEffectiveSpecId,
@@ -1389,7 +1389,7 @@ function StraightPipeFormComponent({
 
                     const shortfall = minimumWT - selectedWT;
                     const fallbackEffectiveSpecId =
-                      specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                      specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                     const fallbackSpecName =
                       masterData.steelSpecs?.find(
                         (s: SteelSpecItem) => s.id === fallbackEffectiveSpecId,

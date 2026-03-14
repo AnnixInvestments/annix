@@ -321,9 +321,10 @@ export class MeetingPlatformService {
 
     const meetings = await provider.listRecentMeetings(config, fromDate, toDate);
 
-    const { synced, recordings } = await meetings.reduce(
+    const syncCounts = await meetings.reduce(
       async (accPromise, meeting) => {
         const acc = await accPromise;
+
         const existing = await this.recordRepo.findOne({
           where: {
             connectionId: connection.id,
@@ -343,45 +344,47 @@ export class MeetingPlatformService {
           existing.rawMeetingData = meeting.rawData;
           existing.fetchedAt = now().toJSDate();
 
-          const hasNewRecording =
-            meeting.hasRecording && existing.recordingStatus === PlatformRecordingStatus.PENDING;
+          const newRecordings =
+            meeting.hasRecording && existing.recordingStatus === PlatformRecordingStatus.PENDING
+              ? 1
+              : 0;
 
           await this.recordRepo.save(existing);
 
+          return { synced: acc.synced + 1, recordings: acc.recordings + newRecordings };
+        } else {
+          const record = this.recordRepo.create({
+            connectionId: connection.id,
+            platformMeetingId: meeting.platformMeetingId,
+            title: meeting.title,
+            topic: meeting.topic,
+            hostEmail: meeting.hostEmail,
+            startTime: meeting.startTime,
+            endTime: meeting.endTime,
+            durationSeconds: meeting.durationSeconds,
+            participants: meeting.participants,
+            participantCount: meeting.participantCount,
+            joinUrl: meeting.joinUrl,
+            recordingStatus: meeting.hasRecording
+              ? PlatformRecordingStatus.PENDING
+              : PlatformRecordingStatus.NO_RECORDING,
+            rawMeetingData: meeting.rawData,
+            fetchedAt: now().toJSDate(),
+          });
+
+          await this.recordRepo.save(record);
+
           return {
             synced: acc.synced + 1,
-            recordings: acc.recordings + (hasNewRecording ? 1 : 0),
+            recordings: acc.recordings + (meeting.hasRecording ? 1 : 0),
           };
         }
-
-        const record = this.recordRepo.create({
-          connectionId: connection.id,
-          platformMeetingId: meeting.platformMeetingId,
-          title: meeting.title,
-          topic: meeting.topic,
-          hostEmail: meeting.hostEmail,
-          startTime: meeting.startTime,
-          endTime: meeting.endTime,
-          durationSeconds: meeting.durationSeconds,
-          participants: meeting.participants,
-          participantCount: meeting.participantCount,
-          joinUrl: meeting.joinUrl,
-          recordingStatus: meeting.hasRecording
-            ? PlatformRecordingStatus.PENDING
-            : PlatformRecordingStatus.NO_RECORDING,
-          rawMeetingData: meeting.rawData,
-          fetchedAt: now().toJSDate(),
-        });
-
-        await this.recordRepo.save(record);
-
-        return {
-          synced: acc.synced + 1,
-          recordings: acc.recordings + (meeting.hasRecording ? 1 : 0),
-        };
       },
       Promise.resolve({ synced: 0, recordings: 0 }),
     );
+
+    const synced = syncCounts.synced;
+    const recordings = syncCounts.recordings;
 
     connection.lastRecordingSyncAt = now().toJSDate();
     await this.connectionRepo.save(connection);

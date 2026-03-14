@@ -22,11 +22,11 @@ export default function BoqListPage() {
 
   const uploadMutation = useUploadBoq();
 
-  const boqs = boqQuery.data?.data ?? [];
+  const boqs = boqQuery.data?.data || [];
   const pagination = {
-    page: boqQuery.data?.page ?? 1,
-    totalPages: boqQuery.data?.totalPages ?? 1,
-    total: boqQuery.data?.total ?? 0,
+    page: boqQuery.data?.page || 1,
+    totalPages: boqQuery.data?.totalPages || 1,
+    total: boqQuery.data?.total || 0,
   };
 
   const [showUploadModal, setShowUploadModal] = useState(false);

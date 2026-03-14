@@ -57,7 +57,7 @@ export class JobIngestionService {
     }
 
     const countryCategories = source.countryCodes.flatMap((country) => {
-      const categories = source.categories.length > 0 ? source.categories : [null as string | null];
+      const categories = source.categories.length > 0 ? source.categories : [undefined];
       return categories.map((category) => ({ country, category }));
     });
 
@@ -118,11 +118,11 @@ export class JobIngestionService {
   async externalJobsForCompany(
     companyId: number,
     options: {
-      country?: string | null;
-      category?: string | null;
-      search?: string | null;
-      page?: number | null;
-      limit?: number | null;
+      country?: string;
+      category?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
     } = {},
   ): Promise<{ jobs: ExternalJob[]; total: number }> {
     const page = options.page ?? 1;

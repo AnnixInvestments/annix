@@ -2212,7 +2212,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
           // Get wall thickness from fallback schedules - use correct schedule list based on steel spec
           const bendEffectiveSpecId =
-            bendEntry.specs?.steelSpecificationId ??
+            bendEntry.specs?.steelSpecificationId ||
             rfqDataRef.current.globalSpecs?.steelSpecificationId;
           const schedules = scheduleListForSpec(nominalBoreMm, bendEffectiveSpecId);
           const scheduleData = schedules.find((s: any) => s.scheduleDesignation === scheduleNumber);
@@ -2364,7 +2364,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         // Get effective fitting standard (use item-level override first, then global spec)
         // Item-level steelSpecificationId takes precedence over global
         const effectiveSteelSpecId =
-          fittingEntry.specs?.steelSpecificationId ??
+          fittingEntry.specs?.steelSpecificationId ||
           rfqDataRef.current.globalSpecs?.steelSpecificationId;
         const isSABS719 = effectiveSteelSpecId === 8;
         const effectiveFittingStandard =
@@ -3889,13 +3889,13 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                     // Skip auto-filled fields (customer name/email from profile, auto-generated project name)
                     const hasChanges =
                       // Items/entries added
-                      (rfqData.items?.length ?? 0) > 0 ||
-                      (rfqData.straightPipeEntries?.length ?? 0) > 0 ||
+                      (rfqData.items?.length || 0) > 0 ||
+                      (rfqData.straightPipeEntries?.length || 0) > 0 ||
                       // User-selected fields on step 1
                       (rfqData.projectType && rfqData.projectType !== "standard") ||
-                      (rfqData.description?.trim().length ?? 0) > 0 ||
-                      (rfqData.notes?.trim().length ?? 0) > 0 ||
-                      (rfqData.siteAddress?.trim().length ?? 0) > 0 ||
+                      (rfqData.description?.trim().length || 0) > 0 ||
+                      (rfqData.notes?.trim().length || 0) > 0 ||
+                      (rfqData.siteAddress?.trim().length || 0) > 0 ||
                       (rfqData.mineId !== undefined && rfqData.mineId !== null) ||
                       rfqData.skipDocuments === true ||
                       // User progressed to step 2+ (selected products, location, specs)

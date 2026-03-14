@@ -174,7 +174,7 @@ export default function OnboardingPage() {
       await updateCompanyProfile({
         industry,
         employeeCount: parseInt(employeeCount, 10),
-        annualTurnover: selectedTurnover?.value ?? null,
+        annualTurnover: selectedTurnover?.value || null,
         vatRegistered,
         vatNumber: vatRegistered ? vatNumber : null,
         financialYearEnd,

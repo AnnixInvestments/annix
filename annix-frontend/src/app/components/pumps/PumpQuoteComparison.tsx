@@ -41,9 +41,9 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
     } else if (sortBy === "score") {
       sorted.sort((a, b) => {
         const scoreA =
-          comparison.overallScores.find((s) => s.supplierId === a.supplierId)?.score ?? 0;
+          comparison.overallScores.find((s) => s.supplierId === a.supplierId)?.score || 0;
         const scoreB =
-          comparison.overallScores.find((s) => s.supplierId === b.supplierId)?.score ?? 0;
+          comparison.overallScores.find((s) => s.supplierId === b.supplierId)?.score || 0;
         return scoreB - scoreA;
       });
     } else if (sortBy === "date") {
@@ -226,10 +226,10 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
                         <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-blue-500 rounded-full"
-                            style={{ width: `${scoreInfo?.score ?? 0}%` }}
+                            style={{ width: `${scoreInfo?.score || 0}%` }}
                           />
                         </div>
-                        <span className="ml-2 text-sm text-gray-600">{scoreInfo?.score ?? 0}</span>
+                        <span className="ml-2 text-sm text-gray-600">{scoreInfo?.score || 0}</span>
                       </div>
                     </td>
                     {comparison.specificationComparison.map((metric) => {

@@ -38,7 +38,7 @@ export default function CustomerDetailPage() {
   const loginHistory = loginHistoryQuery.data ?? [];
   const documents = documentsQuery.data ?? [];
   const customerRfqs = rfqsQuery.data ?? [];
-  const customFields = customFieldsQuery.data?.fields ?? [];
+  const customFields = customFieldsQuery.data?.fields || [];
 
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);

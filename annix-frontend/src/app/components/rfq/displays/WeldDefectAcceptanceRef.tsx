@@ -158,10 +158,10 @@ function CompactDefectRef({ code }: CompactDefectRefProps) {
       <span className="font-medium text-gray-700">{code.replace(/_/g, " ")}</span>
       <span className="text-gray-400">|</span>
       <span className="text-red-600">
-        Cracks: {crackCriteria?.cumulativeLimit ?? "Zero tolerance"}
+        Cracks: {crackCriteria?.cumulativeLimit || "Zero tolerance"}
       </span>
       <span className="text-gray-400">|</span>
-      <span className="text-gray-600">Undercut: ≤{undercutCriteria?.maxDimensionMm ?? 0.8}mm</span>
+      <span className="text-gray-600">Undercut: ≤{undercutCriteria?.maxDimensionMm || 0.8}mm</span>
     </div>
   );
 }

@@ -50,7 +50,7 @@ export default function BookingConfirmPage() {
                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span>{bookingLink?.meetingDurationMinutes ?? 30} minutes</span>
+                <span>{bookingLink?.meetingDurationMinutes || 30} minutes</span>
               </div>
               {bookingLink?.meetingType && (
                 <p className="text-sm text-gray-500 mt-2">
@@ -122,7 +122,7 @@ export default function BookingConfirmPage() {
         </div>
 
         <p className="mt-8 text-center text-sm text-gray-500">
-          Need to reschedule? Contact {bookingLink?.hostName ?? "the host"} directly.
+          Need to reschedule? Contact {bookingLink?.hostName || "the host"} directly.
         </p>
       </div>
     </div>

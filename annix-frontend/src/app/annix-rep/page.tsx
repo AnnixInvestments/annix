@@ -37,16 +37,16 @@ function QuickStats() {
   const { data: calendarConnections } = useCalendarConnections();
   const { data: crmConfigs } = useCrmConfigs();
 
-  const meetingsToday = todaysMeetings?.length ?? 0;
-  const calendarsConnected = calendarConnections?.length ?? 0;
-  const crmsConnected = crmConfigs?.filter((c) => c.isActive)?.length ?? 0;
+  const meetingsToday = todaysMeetings?.length || 0;
+  const calendarsConnected = calendarConnections?.length || 0;
+  const crmsConnected = crmConfigs?.filter((c) => c.isActive)?.length || 0;
   const totalIntegrations = calendarsConnected + crmsConnected;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
       <StatCard
         label="Pipeline"
-        value={`R${(summary?.totalPipelineValue ?? 0).toLocaleString()}`}
+        value={`R${(summary?.totalPipelineValue || 0).toLocaleString()}`}
         color="bg-green-50 dark:bg-green-900/20"
         icon={
           <svg
@@ -86,7 +86,7 @@ function QuickStats() {
       />
       <StatCard
         label="Win Rate"
-        value={`${summary?.winRate ?? 0}%`}
+        value={`${summary?.winRate || 0}%`}
         color="bg-purple-50 dark:bg-purple-900/20"
         icon={
           <svg

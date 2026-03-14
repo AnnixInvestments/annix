@@ -44,7 +44,7 @@ const abrasiveBatchRecords = (records: IssuanceBatchRecord[]): IssuanceBatchReco
   );
 
 const abrasiveBatchDefault = (records: IssuanceBatchRecord[]): string =>
-  abrasiveBatchRecords(records)[0]?.batchNumber ?? "";
+  abrasiveBatchRecords(records)[0]?.batchNumber || "";
 
 export default function BlastProfileForm(props: BlastProfileFormProps) {
   const { isOpen, onClose, jobCardId, onSaved } = props;
@@ -54,13 +54,13 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
   const defaultDate = now().toISODate() || "";
 
   const [specMicrons, setSpecMicrons] = useState<string>(
-    existing?.specMicrons?.toString() ?? blastSpecDefault(coatingAnalysis),
+    existing?.specMicrons?.toString() || blastSpecDefault(coatingAnalysis),
   );
   const [abrasiveBatchNumber, setAbrasiveBatchNumber] = useState<string>(
-    existing?.abrasiveBatchNumber ?? (existing ? "" : abrasiveBatchDefault(batchRecords)),
+    existing?.abrasiveBatchNumber || (existing ? "" : abrasiveBatchDefault(batchRecords)),
   );
-  const [temperature, setTemperature] = useState<string>(existing?.temperature?.toString() ?? "");
-  const [humidity, setHumidity] = useState<string>(existing?.humidity?.toString() ?? "");
+  const [temperature, setTemperature] = useState<string>(existing?.temperature?.toString() || "");
+  const [humidity, setHumidity] = useState<string>(existing?.humidity?.toString() || "");
   const [readingDate, setReadingDate] = useState<string>(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : defaultDate,
   );
@@ -180,7 +180,7 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
               <datalist id="blast-batch-options">
                 {abrasiveBatchRecords(batchRecords).map((r) => (
                   <option key={r.id} value={r.batchNumber}>
-                    {r.stockItem?.name ?? r.batchNumber}
+                    {r.stockItem?.name || r.batchNumber}
                   </option>
                 ))}
               </datalist>

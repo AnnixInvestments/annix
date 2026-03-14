@@ -123,9 +123,10 @@ export class PipedriveAdapter implements ICrmAdapter {
     try {
       const isUpdate = Boolean(prospect.crmExternalId);
 
-      const orgId: number | null = prospect.companyName
-        ? await this.findOrCreateOrganization(prospect)
-        : null;
+      let orgId: number | null = null;
+      if (prospect.companyName) {
+        orgId = await this.findOrCreateOrganization(prospect);
+      }
 
       const personData: Record<string, unknown> = {
         name: prospect.contactName ?? prospect.companyName,
@@ -359,9 +360,10 @@ export class PipedriveAdapter implements ICrmAdapter {
       throw new Error("Pipedrive not configured");
     }
 
-    const url =
-      this.apiUrl("/persons?limit=100&sort=update_time ASC") +
-      (since ? `&since=${since.toISOString()}` : "");
+    let url = this.apiUrl("/persons?limit=100&sort=update_time ASC");
+    if (since) {
+      url += `&since=${since.toISOString()}`;
+    }
 
     const response = await fetch(url, { headers: this.headers() });
     const result: PipedriveResponse<PipedrivePerson[] | null> = await response.json();
@@ -383,9 +385,10 @@ export class PipedriveAdapter implements ICrmAdapter {
       throw new Error("Pipedrive not configured");
     }
 
-    const url =
-      this.apiUrl("/activities?limit=100&sort=update_time ASC") +
-      (since ? `&since=${since.toISOString()}` : "");
+    let url = this.apiUrl("/activities?limit=100&sort=update_time ASC");
+    if (since) {
+      url += `&since=${since.toISOString()}`;
+    }
 
     const response = await fetch(url, { headers: this.headers() });
     const result: PipedriveResponse<PipedriveActivity[] | null> = await response.json();
@@ -444,7 +447,9 @@ export class PipedriveAdapter implements ICrmAdapter {
       ...(meeting.outcomes ? [`\n\nOutcomes:\n${meeting.outcomes}`] : []),
       ...(meeting.actionItems && meeting.actionItems.length > 0
         ? [
-            `\n\nAction Items:\n${meeting.actionItems.map((item) => `- ${item.task}${item.assignee ? ` (${item.assignee})` : ""}`).join("\n")}`,
+            `\n\nAction Items:\n${meeting.actionItems
+              .map((item) => `- ${item.task}${item.assignee ? ` (${item.assignee})` : ""}`)
+              .join("\n")}`,
           ]
         : []),
     ];

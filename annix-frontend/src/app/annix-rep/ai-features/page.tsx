@@ -8,8 +8,8 @@ function RecentAIActivity() {
   const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary();
   const { data: meetings, isLoading: meetingsLoading } = useMeetings();
 
-  const completedMeetings = meetings?.filter((m) => m.status === "completed")?.slice(0, 3) ?? [];
-  const completedCount = summary?.completedMeetings ?? 0;
+  const completedMeetings = meetings?.filter((m) => m.status === "completed")?.slice(0, 3) || [];
+  const completedCount = summary?.completedMeetings || 0;
 
   if (summaryLoading || meetingsLoading) {
     return (

@@ -114,8 +114,8 @@ function MatchRow({ match }: { match: CandidateJobMatch }) {
           {scorePct}%
         </span>
         <div>
-          <p className="text-sm font-medium text-gray-900">{candidate?.name ?? "Unknown"}</p>
-          <p className="text-xs text-gray-500">{candidate?.email ?? ""}</p>
+          <p className="text-sm font-medium text-gray-900">{candidate?.name || "Unknown"}</p>
+          <p className="text-xs text-gray-500">{candidate?.email || ""}</p>
         </div>
       </div>
       {match.matchDetails && (

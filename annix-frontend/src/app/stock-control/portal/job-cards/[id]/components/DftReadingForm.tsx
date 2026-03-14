@@ -71,7 +71,7 @@ const matchBatchByProduct = (records: IssuanceBatchRecord[], product: string): s
   const productWords = significantWords(product);
   if (productWords.length > 0) {
     const byWordMatch = paintRecords.find((r) => {
-      const itemName = r.stockItem?.name?.toLowerCase() ?? "";
+      const itemName = r.stockItem?.name?.toLowerCase() || "";
       return productWords.some((word) => itemName.includes(word));
     });
     if (byWordMatch) {
@@ -79,7 +79,7 @@ const matchBatchByProduct = (records: IssuanceBatchRecord[], product: string): s
     }
   }
 
-  return paintRecords[0]?.batchNumber ?? "";
+  return paintRecords[0]?.batchNumber || "";
 };
 
 const coatDefaults = (
@@ -117,19 +117,19 @@ export default function DftReadingForm({
   coatingAnalysis = null,
   batchRecords = [],
 }: DftReadingFormProps) {
-  const [coatType, setCoatType] = useState<"primer" | "final">(existing?.coatType ?? "primer");
+  const [coatType, setCoatType] = useState<"primer" | "final">(existing?.coatType || "primer");
   const defaults = existing ? null : coatDefaults(coatingAnalysis, coatType, batchRecords);
   const [paintProduct, setPaintProduct] = useState(
-    existing?.paintProduct ?? defaults?.product ?? "",
+    existing?.paintProduct || defaults?.product || "",
   );
   const [batchNumber, setBatchNumber] = useState(
-    existing?.batchNumber ?? defaults?.batchNumber ?? "",
+    existing?.batchNumber || defaults?.batchNumber || "",
   );
   const [specMinMicrons, setSpecMinMicrons] = useState(
-    existing?.specMinMicrons != null ? String(existing.specMinMicrons) : (defaults?.minUm ?? ""),
+    existing?.specMinMicrons != null ? String(existing.specMinMicrons) : defaults?.minUm || "",
   );
   const [specMaxMicrons, setSpecMaxMicrons] = useState(
-    existing?.specMaxMicrons != null ? String(existing.specMaxMicrons) : (defaults?.maxUm ?? ""),
+    existing?.specMaxMicrons != null ? String(existing.specMaxMicrons) : defaults?.maxUm || "",
   );
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayDateString(),
@@ -288,7 +288,7 @@ export default function DftReadingForm({
               <datalist id="dft-batch-options">
                 {paintBatchRecords(batchRecords).map((r) => (
                   <option key={r.id} value={r.batchNumber}>
-                    {r.stockItem?.name ?? r.batchNumber}
+                    {r.stockItem?.name || r.batchNumber}
                   </option>
                 ))}
               </datalist>

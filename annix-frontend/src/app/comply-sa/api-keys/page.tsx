@@ -211,7 +211,7 @@ export default function ApiKeysPage() {
     );
   }
 
-  const displayError = error?.message ?? revokeError;
+  const displayError = error?.message || revokeError;
 
   return (
     <div className="space-y-6">

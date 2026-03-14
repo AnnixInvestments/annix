@@ -27,7 +27,7 @@ export function InviteUserModal(props: InviteUserModalProps) {
       setFirstName("");
       setLastName("");
       setUseCustomPermissions(false);
-      setSelectedRoleCode(appDetails.roles.find((r) => r.isDefault)?.code ?? null);
+      setSelectedRoleCode(appDetails.roles.find((r) => r.isDefault)?.code || null);
       setSelectedPermissions([]);
       setExpiresAt("");
     }

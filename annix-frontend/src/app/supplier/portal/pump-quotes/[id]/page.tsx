@@ -52,7 +52,7 @@ export default function SupplierPumpQuoteDetailPage() {
   }) => {
     const firstItem = quote.lineItems[0];
     const quoteData = {
-      unitPrice: firstItem?.unitPrice ?? 0,
+      unitPrice: firstItem?.unitPrice || 0,
       totalPrice: quote.totalAmount,
       leadTimeDays: firstItem?.leadTimeDays,
       notes: quote.generalNotes,
@@ -145,15 +145,15 @@ export default function SupplierPumpQuoteDetailPage() {
         <SupplierQuoteForm
           rfqItems={[
             {
-              id: String(item?.id ?? rfq.id),
+              id: String(item?.id || rfq.id),
               serviceType:
-                (pump?.serviceType as "new_pump" | "spare_parts" | "repair_service" | "rental") ??
+                (pump?.serviceType as "new_pump" | "spare_parts" | "repair_service" | "rental") ||
                 "new_pump",
-              pumpType: pump?.pumpType ?? "Unknown",
-              flowRate: pump?.flowRate ?? 0,
-              totalHead: pump?.totalHead ?? 0,
-              quantity: pump?.quantity ?? item?.quantity ?? 1,
-              description: item?.description ?? rfq.description ?? pump?.pumpType ?? "",
+              pumpType: pump?.pumpType || "Unknown",
+              flowRate: pump?.flowRate || 0,
+              totalHead: pump?.totalHead || 0,
+              quantity: pump?.quantity || item?.quantity || 1,
+              description: item?.description || rfq.description || pump?.pumpType || "",
             },
           ]}
           rfqNumber={rfq.rfqNumber}
@@ -451,7 +451,7 @@ export default function SupplierPumpQuoteDetailPage() {
           <div className="p-6 border-t border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Additional Notes</h3>
             <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-4">
-              {rfq.notes ?? item?.notes}
+              {rfq.notes || item?.notes}
             </p>
           </div>
         )}

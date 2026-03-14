@@ -28,7 +28,7 @@ const DOCUMENT_TYPES = [
 ];
 
 function documentTypeLabel(type: string): string {
-  return DOCUMENT_TYPES.find((dt) => dt.value === type)?.label ?? type;
+  return DOCUMENT_TYPES.find((dt) => dt.value === type)?.label || type;
 }
 
 function confidenceDisplay(confidence: number | null): string {
@@ -60,8 +60,8 @@ export default function InboundEmailsPage() {
     [reclassify],
   );
 
-  const emails = emailsData?.items ?? [];
-  const total = emailsData?.total ?? 0;
+  const emails = emailsData?.items || [];
+  const total = emailsData?.total || 0;
   const totalPages = Math.ceil(total / 25);
 
   return (

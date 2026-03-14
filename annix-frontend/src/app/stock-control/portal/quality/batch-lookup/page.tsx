@@ -33,8 +33,8 @@ export default function BatchLookupPage() {
     }
   };
 
-  const certificates = searchMutation.data?.certificates ?? [];
-  const batchRecords = searchMutation.data?.batchRecords ?? [];
+  const certificates = searchMutation.data?.certificates || [];
+  const batchRecords = searchMutation.data?.batchRecords || [];
 
   return (
     <div className="space-y-6">
@@ -111,10 +111,10 @@ export default function BatchLookupPage() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                        {cert.supplier?.name ?? "-"}
+                        {cert.supplier?.name || "-"}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {cert.stockItem?.name ?? "-"}
+                        {cert.stockItem?.name || "-"}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{cert.originalFilename}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
@@ -164,7 +164,7 @@ export default function BatchLookupPage() {
                   {batchRecords.map((record) => (
                     <tr key={record.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-900">
-                        {record.stockItem?.name ?? "-"}
+                        {record.stockItem?.name || "-"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                         {record.quantity}

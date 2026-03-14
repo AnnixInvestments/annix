@@ -154,7 +154,7 @@ export const calculatePipeWeight = (
     return 0;
   }
 
-  const density = HDPE_GRADES[gradeCode]?.densityKgM3 ?? HDPE_DEFAULT_DENSITY;
+  const density = HDPE_GRADES[gradeCode]?.densityKgM3 || HDPE_DEFAULT_DENSITY;
   const wallMm = odMm / sdr;
   const idMm = odMm - 2 * wallMm;
 

@@ -148,8 +148,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
 
   const handleToggleAssignment = async (userId: number, step: string) => {
     const assignment = assignmentsByStep[step];
-    const currentIds = assignment?.userIds ?? [];
-    const currentPrimary = assignment?.primaryUserId ?? null;
+    const currentIds = assignment?.userIds || [];
+    const currentPrimary = assignment?.primaryUserId || null;
 
     const isCurrentlyAssigned = currentIds.includes(userId);
     const newIds = isCurrentlyAssigned
@@ -174,7 +174,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
 
   const handleSetPrimary = async (userId: number, step: string) => {
     const assignment = assignmentsByStep[step];
-    const currentIds = assignment?.userIds ?? [];
+    const currentIds = assignment?.userIds || [];
     const newIds = currentIds.includes(userId) ? currentIds : [...currentIds, userId];
 
     setSaving(true);
@@ -324,7 +324,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
 
   const handleEditNotify = (step: string) => {
     const existing = recipientsByStep[step];
-    setEditEmails(existing?.emails ?? []);
+    setEditEmails(existing?.emails || []);
     setSelectedEmail("");
     setEditingNotifyStep(step);
     setError("");
@@ -380,8 +380,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
 
   const renderUserChips = (stepKey: string) => {
     const assignment = assignmentsByStep[stepKey];
-    const assignedUsers = assignment?.users ?? [];
-    const primaryId = assignment?.primaryUserId ?? null;
+    const assignedUsers = assignment?.users || [];
+    const primaryId = assignment?.primaryUserId || null;
 
     return (
       <div className="flex flex-wrap gap-1.5 mt-2">
@@ -448,7 +448,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   const renderNotificationSection = (stepKey: string) => {
     const recipient = recipientsByStep[stepKey];
     const isEditing = editingNotifyStep === stepKey;
-    const emailCount = recipient?.emails?.length ?? 0;
+    const emailCount = recipient?.emails?.length || 0;
 
     if (isEditing) {
       return (
@@ -575,7 +575,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   const renderStepCard = (step: WorkflowStepConfig, index: number, isBackground: boolean) => {
     const isExpanded = expandedStep === step.key;
     const assignment = assignmentsByStep[step.key];
-    const assignedCount = assignment?.userIds?.length ?? 0;
+    const assignedCount = assignment?.userIds?.length || 0;
     const primaryUser = assignment?.users?.find((u) => u.id === assignment.primaryUserId);
     const followsStep = String(step["triggerAfterStep" as keyof WorkflowStepConfig] ?? "");
 

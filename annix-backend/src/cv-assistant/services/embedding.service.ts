@@ -77,33 +77,41 @@ export class EmbeddingService {
   }
 
   candidateEmbeddingText(candidate: Candidate): string {
-    const parts: string[] = [];
+    const extractedParts = candidate.extractedData
+      ? [
+          ...(candidate.extractedData.summary ? [candidate.extractedData.summary] : []),
+          ...(candidate.extractedData.skills.length > 0
+            ? [`Skills: ${candidate.extractedData.skills.join(", ")}`]
+            : []),
+          ...(candidate.extractedData.education.length > 0
+            ? [`Education: ${candidate.extractedData.education.join(", ")}`]
+            : []),
+          ...(candidate.extractedData.certifications.length > 0
+            ? [`Certifications: ${candidate.extractedData.certifications.join(", ")}`]
+            : []),
+          ...(candidate.extractedData.experienceYears
+            ? [`Experience: ${candidate.extractedData.experienceYears} years`]
+            : []),
+        ]
+      : [];
 
-    if (candidate.extractedData) {
-      const ed = candidate.extractedData;
-      if (ed.summary) parts.push(ed.summary);
-      if (ed.skills.length > 0) parts.push(`Skills: ${ed.skills.join(", ")}`);
-      if (ed.education.length > 0) parts.push(`Education: ${ed.education.join(", ")}`);
-      if (ed.certifications.length > 0)
-        parts.push(`Certifications: ${ed.certifications.join(", ")}`);
-      if (ed.experienceYears) parts.push(`Experience: ${ed.experienceYears} years`);
-    }
-
-    if (parts.length === 0 && candidate.rawCvText) {
-      parts.push(candidate.rawCvText.slice(0, 4000));
-    }
+    const parts =
+      extractedParts.length === 0 && candidate.rawCvText
+        ? [candidate.rawCvText.slice(0, 4000)]
+        : extractedParts;
 
     return parts.join("\n");
   }
 
   jobEmbeddingText(job: ExternalJob): string {
-    const parts: string[] = [];
-    parts.push(job.title);
-    if (job.company) parts.push(`Company: ${job.company}`);
-    if (job.locationRaw) parts.push(`Location: ${job.locationRaw}`);
-    if (job.category) parts.push(`Category: ${job.category}`);
-    if (job.description) parts.push(job.description.slice(0, 4000));
-    if (job.extractedSkills.length > 0) parts.push(`Skills: ${job.extractedSkills.join(", ")}`);
+    const parts = [
+      job.title,
+      ...(job.company ? [`Company: ${job.company}`] : []),
+      ...(job.locationRaw ? [`Location: ${job.locationRaw}`] : []),
+      ...(job.category ? [`Category: ${job.category}`] : []),
+      ...(job.description ? [job.description.slice(0, 4000)] : []),
+      ...(job.extractedSkills.length > 0 ? [`Skills: ${job.extractedSkills.join(", ")}`] : []),
+    ];
     return parts.join("\n");
   }
 
@@ -172,8 +180,8 @@ export class EmbeddingService {
         const acc = await accPromise;
         const success = await this.embedCandidate(candidate.id);
         return success
-          ? { ...acc, processed: acc.processed + 1 }
-          : { ...acc, failed: acc.failed + 1 };
+          ? { processed: acc.processed + 1, failed: acc.failed }
+          : { processed: acc.processed, failed: acc.failed + 1 };
       },
       Promise.resolve({ processed: 0, failed: 0 }),
     );
@@ -195,8 +203,8 @@ export class EmbeddingService {
         const acc = await accPromise;
         const success = await this.embedExternalJob(job.id);
         return success
-          ? { ...acc, processed: acc.processed + 1 }
-          : { ...acc, failed: acc.failed + 1 };
+          ? { processed: acc.processed + 1, failed: acc.failed }
+          : { processed: acc.processed, failed: acc.failed + 1 };
       },
       Promise.resolve({ processed: 0, failed: 0 }),
     );

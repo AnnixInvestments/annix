@@ -36,8 +36,8 @@ function ComplianceBadge({
   compliant: boolean;
   labels?: { yes: string; no: string };
 }) {
-  const yesLabel = labels?.yes ?? "Compliant";
-  const noLabel = labels?.no ?? "Non-Compliant";
+  const yesLabel = labels?.yes || "Compliant";
+  const noLabel = labels?.no || "Non-Compliant";
 
   return compliant ? (
     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-green-500/10 border border-green-500/30 text-green-400">

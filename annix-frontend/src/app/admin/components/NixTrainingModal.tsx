@@ -555,7 +555,7 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
           extractedText,
           confidence: extractionConfidence,
           saved: true,
-          expectedValue: fieldData?.expected ?? null,
+          expectedValue: fieldData?.expected || null,
         },
       ]);
 

@@ -494,18 +494,18 @@ function CreateConfigModal({
     syncOnUpdate: boolean;
     isActive: boolean;
   }>({
-    name: editConfig?.name ?? "",
-    crmType: editConfig?.crmType ?? "webhook",
-    webhookUrl: editConfig?.webhookConfig?.url ?? "",
-    webhookMethod: editConfig?.webhookConfig?.method ?? "POST",
+    name: editConfig?.name || "",
+    crmType: editConfig?.crmType || "webhook",
+    webhookUrl: editConfig?.webhookConfig?.url || "",
+    webhookMethod: editConfig?.webhookConfig?.method || "POST",
     webhookHeaders: editConfig?.webhookConfig?.headers
       ? JSON.stringify(editConfig.webhookConfig.headers, null, 2)
       : "{}",
-    syncProspects: editConfig?.syncProspects ?? true,
-    syncMeetings: editConfig?.syncMeetings ?? true,
-    syncOnCreate: editConfig?.syncOnCreate ?? true,
-    syncOnUpdate: editConfig?.syncOnUpdate ?? true,
-    isActive: editConfig?.isActive ?? true,
+    syncProspects: editConfig?.syncProspects || true,
+    syncMeetings: editConfig?.syncMeetings || true,
+    syncOnCreate: editConfig?.syncOnCreate || true,
+    syncOnUpdate: editConfig?.syncOnUpdate || true,
+    isActive: editConfig?.isActive || true,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {

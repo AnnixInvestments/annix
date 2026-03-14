@@ -331,8 +331,8 @@ export function MaterialCompatibilityChecker(props: MaterialCompatibilityChecker
     }
 
     const recommendedMaterial =
-      ratings.find((r) => r.rating === "excellent")?.material ??
-      ratings.find((r) => r.rating === "good")?.material ??
+      ratings.find((r) => r.rating === "excellent")?.material ||
+      ratings.find((r) => r.rating === "good")?.material ||
       ratings[0].material;
 
     const compatResult: CompatibilityResult = {

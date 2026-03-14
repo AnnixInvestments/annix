@@ -212,8 +212,8 @@ export function useInventoryPageState() {
   const isLoading = isGroupedView ? groupedQuery.isLoading : listQuery.isLoading;
   const queryError = isGroupedView ? groupedQuery.error : listQuery.error;
   const error = state.actionError || queryError;
-  const items = isGroupedView ? [] : (listQuery.data?.items ?? []);
-  const total = isGroupedView ? 0 : (listQuery.data?.total ?? 0);
+  const items = isGroupedView ? [] : listQuery.data?.items || [];
+  const total = isGroupedView ? 0 : listQuery.data?.total || 0;
   const totalPages = state.pageSize > 0 ? Math.ceil(total / state.pageSize) : 1;
 
   const groupedData: LocationGroup[] = useMemo(() => {

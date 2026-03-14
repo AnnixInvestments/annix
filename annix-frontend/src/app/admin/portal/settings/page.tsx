@@ -285,7 +285,7 @@ export default function SettingsPage() {
   const toggleMutation = useToggleFeatureFlag();
   const [activeTab, setActiveTab] = useState<string>("customer");
 
-  const flags = flagsQuery.data?.flags ?? [];
+  const flags = flagsQuery.data?.flags || [];
 
   const groupedFlags = useMemo(() => {
     const groups: Record<string, typeof flags> = {};

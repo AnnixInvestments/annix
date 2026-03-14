@@ -44,7 +44,7 @@ export function ReferenceDataFormModal(props: ReferenceDataFormModalProps) {
   relations.forEach((rel) => {
     if (isEditing && initialData) {
       const relValue = initialData[rel.propertyName];
-      defaultValues[`__rel_${rel.propertyName}`] = relValue?.id ?? "";
+      defaultValues[`__rel_${rel.propertyName}`] = relValue?.id || "";
     } else {
       defaultValues[`__rel_${rel.propertyName}`] = "";
     }

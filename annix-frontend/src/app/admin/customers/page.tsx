@@ -26,9 +26,9 @@ export default function AdminCustomersPage() {
     limit,
   });
 
-  const customers = customersQuery.data?.items ?? [];
-  const totalPages = customersQuery.data?.totalPages ?? 1;
-  const total = customersQuery.data?.total ?? 0;
+  const customers = customersQuery.data?.items || [];
+  const totalPages = customersQuery.data?.totalPages || 1;
+  const total = customersQuery.data?.total || 0;
   const isLoading = customersQuery.isLoading;
   const error = customersQuery.error
     ? customersQuery.error instanceof Error

@@ -104,7 +104,7 @@ export default function InventoryPage() {
       <InventoryImportOverlay
         isDragging={state.isDragging}
         importStep={state.importStep}
-        importFileName={state.importFile?.name ?? null}
+        importFileName={state.importFile?.name || null}
         importFormat={state.importFormat}
         importHeaders={state.importHeaders}
         importRawRows={state.importRawRows}

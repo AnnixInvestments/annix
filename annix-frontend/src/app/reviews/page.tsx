@@ -26,11 +26,11 @@ export default function ReviewDashboardPage() {
     isLoading: loading,
     error: queryError,
   } = useReviews(activeTab, reviewParams);
-  const reviews = reviewData?.data ?? [];
+  const reviews = reviewData?.data || [];
   const pagination = {
-    page: reviewData?.page ?? 1,
-    totalPages: reviewData?.totalPages ?? 1,
-    total: reviewData?.total ?? 0,
+    page: reviewData?.page || 1,
+    totalPages: reviewData?.totalPages || 1,
+    total: reviewData?.total || 0,
   };
 
   const reviewAction = useReviewAction();

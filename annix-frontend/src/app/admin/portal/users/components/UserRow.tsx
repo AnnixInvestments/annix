@@ -39,7 +39,7 @@ export function UserRow(props: UserRowProps) {
           <div className="flex items-center gap-3">
             <div className="flex-shrink-0">
               <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
-                {(user.firstName?.[0] ?? user.email[0]).toUpperCase()}
+                {(user.firstName?.[0] || user.email[0]).toUpperCase()}
               </div>
             </div>
             <div className="flex-1 min-w-0">

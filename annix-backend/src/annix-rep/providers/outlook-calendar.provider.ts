@@ -198,38 +198,35 @@ export class OutlookCalendarProvider implements ICalendarProvider {
     syncToken: string | null,
     fullSync: boolean,
   ): Promise<SyncEventsResult> {
+    const allEvents: CalendarEventData[] = [];
+    const allDeletedIds: string[] = [];
+    let combinedSyncToken: string | null = null;
+
     const deltaLinks: Record<string, string> = syncToken ? JSON.parse(syncToken) : {};
+    const newDeltaLinks: Record<string, string> = {};
 
-    const { allEvents, allDeletedIds, newDeltaLinks } = await calendarIds.reduce(
-      async (accPromise, calendarId) => {
-        const acc = await accPromise;
-        const result = await this.syncCalendarEvents(
-          config,
-          calendarId,
-          fullSync ? null : (deltaLinks[calendarId] ?? null),
-        );
+    await calendarIds.reduce(async (accPromise, calendarId) => {
+      await accPromise;
+      const result = await this.syncCalendarEvents(
+        config,
+        calendarId,
+        fullSync ? null : (deltaLinks[calendarId] ?? null),
+      );
 
-        const effectiveResult = result.requiresFullSync
-          ? await this.syncCalendarEvents(config, calendarId, null)
-          : result;
+      const effectiveResult = result.requiresFullSync
+        ? await this.syncCalendarEvents(config, calendarId, null)
+        : result;
 
-        return {
-          allEvents: [...acc.allEvents, ...effectiveResult.events],
-          allDeletedIds: [...acc.allDeletedIds, ...effectiveResult.deletedEventIds],
-          newDeltaLinks: effectiveResult.nextSyncToken
-            ? { ...acc.newDeltaLinks, [calendarId]: effectiveResult.nextSyncToken }
-            : acc.newDeltaLinks,
-        };
-      },
-      Promise.resolve({
-        allEvents: [] as CalendarEventData[],
-        allDeletedIds: [] as string[],
-        newDeltaLinks: {} as Record<string, string>,
-      }),
-    );
+      allEvents.push(...effectiveResult.events);
+      allDeletedIds.push(...effectiveResult.deletedEventIds);
+      if (effectiveResult.nextSyncToken) {
+        newDeltaLinks[calendarId] = effectiveResult.nextSyncToken;
+      }
+    }, Promise.resolve());
 
-    const combinedSyncToken =
-      Object.keys(newDeltaLinks).length > 0 ? JSON.stringify(newDeltaLinks) : null;
+    if (Object.keys(newDeltaLinks).length > 0) {
+      combinedSyncToken = JSON.stringify(newDeltaLinks);
+    }
 
     return {
       events: allEvents,
@@ -289,10 +286,12 @@ export class OutlookCalendarProvider implements ICalendarProvider {
       const data: MicrosoftEventsResponse = await response.json();
 
       if (data.value) {
-        const isDeleted = (item: MicrosoftCalendarEvent) =>
-          item.isCancelled || (item.showAs && item.showAs === "free" && !item.subject);
-        const deleted = data.value.filter(isDeleted);
-        const active = data.value.filter((item) => !isDeleted(item));
+        const deleted = data.value.filter(
+          (item) => item.isCancelled || (item.showAs && item.showAs === "free" && !item.subject),
+        );
+        const active = data.value.filter(
+          (item) => !(item.isCancelled || (item.showAs && item.showAs === "free" && !item.subject)),
+        );
         deletedEventIds.push(...deleted.map((item) => item.id));
         events.push(...active.map((item) => this.mapMicrosoftEvent(item, calendarId)));
       }

@@ -192,184 +192,109 @@ export class RubberLiningService {
     request: RubberRecommendationRequestDto,
   ): Promise<RubberRecommendationDto> {
     const allTypes = await this.rubberTypeRepository.find();
+    const reasoning: string[] = [];
+    const warnings: string[] = [];
+    let suitableTypeIds: number[] = allTypes.map((t) => t.id);
 
-    const initialState = {
-      suitableTypeIds: allTypes.map((t) => t.id),
-      reasoning: [] as string[],
-      warnings: [] as string[],
-    };
+    if (request.maxTemperatureCelsius !== undefined && request.maxTemperatureCelsius !== null) {
+      const tempFiltered = allTypes.filter(
+        (t) => Number(t.tempMaxCelsius) >= request.maxTemperatureCelsius!,
+      );
+      suitableTypeIds = suitableTypeIds.filter((id) => tempFiltered.some((t) => t.id === id));
+      reasoning.push(`Filtered for max operating temperature ${request.maxTemperatureCelsius}°C`);
+    }
 
-    const afterMaxTemp =
-      request.maxTemperatureCelsius !== undefined && request.maxTemperatureCelsius !== null
-        ? (() => {
-            const tempFiltered = allTypes.filter(
-              (t) => Number(t.tempMaxCelsius) >= request.maxTemperatureCelsius!,
-            );
-            return {
-              ...initialState,
-              suitableTypeIds: initialState.suitableTypeIds.filter((id) =>
-                tempFiltered.some((t) => t.id === id),
-              ),
-              reasoning: [
-                ...initialState.reasoning,
-                `Filtered for max operating temperature ${request.maxTemperatureCelsius}°C`,
-              ],
-            };
-          })()
-        : initialState;
+    if (request.minTemperatureCelsius !== undefined && request.minTemperatureCelsius !== null) {
+      const tempFiltered = allTypes.filter(
+        (t) => Number(t.tempMinCelsius) <= request.minTemperatureCelsius!,
+      );
+      suitableTypeIds = suitableTypeIds.filter((id) => tempFiltered.some((t) => t.id === id));
+      reasoning.push(`Filtered for min operating temperature ${request.minTemperatureCelsius}°C`);
+    }
 
-    const afterMinTemp =
-      request.minTemperatureCelsius !== undefined && request.minTemperatureCelsius !== null
-        ? (() => {
-            const tempFiltered = allTypes.filter(
-              (t) => Number(t.tempMinCelsius) <= request.minTemperatureCelsius!,
-            );
-            return {
-              ...afterMaxTemp,
-              suitableTypeIds: afterMaxTemp.suitableTypeIds.filter((id) =>
-                tempFiltered.some((t) => t.id === id),
-              ),
-              reasoning: [
-                ...afterMaxTemp.reasoning,
-                `Filtered for min operating temperature ${request.minTemperatureCelsius}°C`,
-              ],
-            };
-          })()
-        : afterMaxTemp;
+    if (request.requiresOilResistance) {
+      const oilResistant = allTypes.filter(
+        (t) =>
+          t.oilResistance === "excellent" ||
+          t.oilResistance === "good" ||
+          t.oilResistance === "medium",
+      );
+      suitableTypeIds = suitableTypeIds.filter((id) => oilResistant.some((t) => t.id === id));
+      reasoning.push("Filtered for oil resistance requirement");
 
-    const afterOil = request.requiresOilResistance
-      ? (() => {
-          const oilResistant = allTypes.filter(
-            (t) =>
-              t.oilResistance === "excellent" ||
-              t.oilResistance === "good" ||
-              t.oilResistance === "medium",
-          );
-          const filtered = afterMinTemp.suitableTypeIds.filter((id) =>
-            oilResistant.some((t) => t.id === id),
-          );
-          const type1 = allTypes.find((t) => t.typeNumber === 1);
-          const excludeType1 = type1 && filtered.includes(type1.id);
-          return {
-            ...afterMinTemp,
-            suitableTypeIds: excludeType1 ? filtered.filter((id) => id !== type1!.id) : filtered,
-            reasoning: [...afterMinTemp.reasoning, "Filtered for oil resistance requirement"],
-            warnings: [
-              ...afterMinTemp.warnings,
-              ...(excludeType1
-                ? ["Type 1 (Natural/SBR rubber) excluded - not suitable for oil exposure"]
-                : []),
-            ],
-          };
-        })()
-      : afterMinTemp;
+      const type1 = allTypes.find((t) => t.typeNumber === 1);
+      if (type1 && suitableTypeIds.includes(type1.id)) {
+        suitableTypeIds = suitableTypeIds.filter((id) => id !== type1.id);
+        warnings.push("Type 1 (Natural/SBR rubber) excluded - not suitable for oil exposure");
+      }
+    }
 
-    const afterOzone = request.requiresOzoneResistance
-      ? (() => {
-          const ozoneResistant = allTypes.filter(
-            (t) => t.ozoneResistance === "excellent" || t.ozoneResistance === "good",
-          );
-          const type1 = allTypes.find((t) => t.typeNumber === 1);
-          return {
-            ...afterOil,
-            suitableTypeIds: afterOil.suitableTypeIds.filter((id) =>
-              ozoneResistant.some((t) => t.id === id),
-            ),
-            reasoning: [...afterOil.reasoning, "Filtered for ozone resistance requirement"],
-            warnings: [
-              ...afterOil.warnings,
-              ...(type1 && !ozoneResistant.some((t) => t.id === type1.id)
-                ? ["Type 1 (Natural/SBR rubber) not recommended for ozone exposure"]
-                : []),
-            ],
-          };
-        })()
-      : afterOil;
+    if (request.requiresOzoneResistance) {
+      const ozoneResistant = allTypes.filter(
+        (t) => t.ozoneResistance === "excellent" || t.ozoneResistance === "good",
+      );
+      suitableTypeIds = suitableTypeIds.filter((id) => ozoneResistant.some((t) => t.id === id));
+      reasoning.push("Filtered for ozone resistance requirement");
 
-    const afterChemical =
-      request.chemicalExposure && request.chemicalExposure.length > 0
-        ? await (async () => {
-            const ratings = await this.applicationRatingRepository.find({
-              where: {
-                chemicalCategory: In(request.chemicalExposure!),
-                resistanceRating: In(["excellent", "good"]),
-              },
-              relations: ["rubberType"],
-            });
-            const chemicalSuitableIds = [...new Set(ratings.map((r) => r.rubberTypeId))];
-            return {
-              ...afterOzone,
-              suitableTypeIds: afterOzone.suitableTypeIds.filter((id) =>
-                chemicalSuitableIds.includes(id),
-              ),
-              reasoning: [
-                ...afterOzone.reasoning,
-                `Filtered for chemical resistance: ${request.chemicalExposure!.join(", ")}`,
-              ],
-            };
-          })()
-        : afterOzone;
+      const type1 = allTypes.find((t) => t.typeNumber === 1);
+      if (type1 && !ozoneResistant.some((t) => t.id === type1.id)) {
+        warnings.push("Type 1 (Natural/SBR rubber) not recommended for ozone exposure");
+      }
+    }
 
-    const afterAbrasionWarnings =
-      request.abrasionLevel === "very_high"
-        ? {
-            ...afterChemical,
-            reasoning: [
-              ...afterChemical.reasoning,
-              "High abrasion environment - consider ceramic-rubber composite or harder rubber grades",
-            ],
-            warnings: [
-              ...afterChemical.warnings,
-              "Very high abrasion may require additional ceramic tile protection over rubber lining",
-            ],
-          }
-        : afterChemical;
+    if (request.chemicalExposure && request.chemicalExposure.length > 0) {
+      const ratings = await this.applicationRatingRepository.find({
+        where: {
+          chemicalCategory: In(request.chemicalExposure),
+          resistanceRating: In(["excellent", "good"]),
+        },
+        relations: ["rubberType"],
+      });
 
-    const afterCorrosion =
-      request.corrosionLevel === "very_high"
-        ? (() => {
-            const type2 = allTypes.find((t) => t.typeNumber === 2);
-            const type5 = allTypes.find((t) => t.typeNumber === 5);
-            return type2 || type5
-              ? {
-                  ...afterAbrasionWarnings,
-                  reasoning: [
-                    ...afterAbrasionWarnings.reasoning,
-                    "Very high corrosion - Type 2 (Butyl) or Type 5 (CSM) recommended for chemical resistance",
-                  ],
-                }
-              : afterAbrasionWarnings;
-          })()
-        : afterAbrasionWarnings;
+      const chemicalSuitableIds = [...new Set(ratings.map((r) => r.rubberTypeId))];
+      suitableTypeIds = suitableTypeIds.filter((id) => chemicalSuitableIds.includes(id));
+      reasoning.push(`Filtered for chemical resistance: ${request.chemicalExposure.join(", ")}`);
+    }
 
-    const { suitableTypeIds, reasoning, warnings } = afterCorrosion;
+    if (request.abrasionLevel === "very_high") {
+      reasoning.push(
+        "High abrasion environment - consider ceramic-rubber composite or harder rubber grades",
+      );
+      warnings.push(
+        "Very high abrasion may require additional ceramic tile protection over rubber lining",
+      );
+    }
+
+    if (request.corrosionLevel === "very_high") {
+      const type2 = allTypes.find((t) => t.typeNumber === 2);
+      const type5 = allTypes.find((t) => t.typeNumber === 5);
+      if (type2 || type5) {
+        reasoning.push(
+          "Very high corrosion - Type 2 (Butyl) or Type 5 (CSM) recommended for chemical resistance",
+        );
+      }
+    }
+
     const recommendedTypes = allTypes.filter((t) => suitableTypeIds.includes(t.id));
 
-    const allSpecs =
-      suitableTypeIds.length > 0
-        ? await this.rubberSpecRepository.find({
-            where: { rubberTypeId: In(suitableTypeIds) },
-            relations: ["rubberType"],
-            order: { grade: "ASC", hardnessClassIrhd: "ASC" },
-          })
-        : [];
+    let recommendedSpecs: RubberSpecification[] = [];
+    if (suitableTypeIds.length > 0) {
+      recommendedSpecs = await this.rubberSpecRepository.find({
+        where: { rubberTypeId: In(suitableTypeIds) },
+        relations: ["rubberType"],
+        order: { grade: "ASC", hardnessClassIrhd: "ASC" },
+      });
+    }
 
-    const needsHardAbrasion =
-      request.abrasionLevel === "high" || request.abrasionLevel === "very_high";
-    const recommendedSpecs = needsHardAbrasion
-      ? allSpecs.filter((s) => s.hardnessClassIrhd >= 60)
-      : allSpecs;
-    const finalReasoning = needsHardAbrasion
-      ? [
-          ...reasoning,
-          "High abrasion requires harder rubber - recommending 60+ IRHD hardness class",
-        ]
-      : reasoning;
+    if (request.abrasionLevel === "high" || request.abrasionLevel === "very_high") {
+      recommendedSpecs = recommendedSpecs.filter((s) => s.hardnessClassIrhd >= 60);
+      reasoning.push("High abrasion requires harder rubber - recommending 60+ IRHD hardness class");
+    }
 
     return {
       recommendedTypes: recommendedTypes.map(this.mapTypeToDto),
       recommendedSpecifications: recommendedSpecs.map(this.mapSpecToDto),
-      reasoning: finalReasoning,
+      reasoning,
       warnings,
       sansCompliance: {
         sans1198: true,
@@ -671,6 +596,8 @@ export class RubberLiningService {
   private async validateProductCodingRelationships(
     dto: CreateRubberProductDto | UpdateRubberProductDto,
   ): Promise<void> {
+    const errors: string[] = [];
+
     const codingValidations: Array<{
       uid: string | undefined;
       field: string;
@@ -710,48 +637,41 @@ export class RubberLiningService {
 
     const codingUidsToValidate = codingValidations.filter((v) => v.uid).map((v) => v.uid!);
 
-    const codingErrors =
-      codingUidsToValidate.length > 0
-        ? await (async () => {
-            const codings = await this.productCodingRepository.find({
-              where: { firebaseUid: In(codingUidsToValidate) },
-            });
-            return codingValidations.flatMap((validation) => {
-              if (!validation.uid) return [];
-              const coding = codings.find((c) => c.firebaseUid === validation.uid);
-              if (!coding) {
-                return [
-                  `Invalid ${validation.field}: coding with UID '${validation.uid}' not found`,
-                ];
-              } else if (coding.codingType !== validation.expectedType) {
-                return [
-                  `Invalid ${validation.field}: coding '${validation.uid}' is type '${coding.codingType}', expected '${validation.expectedType}'`,
-                ];
-              }
-              return [];
-            });
-          })()
-        : [];
+    if (codingUidsToValidate.length > 0) {
+      const codings = await this.productCodingRepository.find({
+        where: { firebaseUid: In(codingUidsToValidate) },
+      });
 
-    const companyErrors = dto.compoundOwnerFirebaseUid
-      ? await (async () => {
-          const company = await this.companyRepository.findOne({
-            where: { firebaseUid: dto.compoundOwnerFirebaseUid },
-          });
-          if (!company) {
-            return [
-              `Invalid compoundOwner: company with UID '${dto.compoundOwnerFirebaseUid}' not found`,
-            ];
-          } else if (!company.isCompoundOwner) {
-            return [
-              `Invalid compoundOwner: company '${company.name}' is not marked as a compound owner`,
-            ];
+      codingValidations.forEach((validation) => {
+        if (validation.uid) {
+          const coding = codings.find((c) => c.firebaseUid === validation.uid);
+          if (!coding) {
+            errors.push(
+              `Invalid ${validation.field}: coding with UID '${validation.uid}' not found`,
+            );
+          } else if (coding.codingType !== validation.expectedType) {
+            errors.push(
+              `Invalid ${validation.field}: coding '${validation.uid}' is type '${coding.codingType}', expected '${validation.expectedType}'`,
+            );
           }
-          return [];
-        })()
-      : [];
+        }
+      });
+    }
 
-    const errors = [...codingErrors, ...companyErrors];
+    if (dto.compoundOwnerFirebaseUid) {
+      const company = await this.companyRepository.findOne({
+        where: { firebaseUid: dto.compoundOwnerFirebaseUid },
+      });
+      if (!company) {
+        errors.push(
+          `Invalid compoundOwner: company with UID '${dto.compoundOwnerFirebaseUid}' not found`,
+        );
+      } else if (!company.isCompoundOwner) {
+        errors.push(
+          `Invalid compoundOwner: company '${company.name}' is not marked as a compound owner`,
+        );
+      }
+    }
 
     if (errors.length > 0) {
       throw new BadRequestException(errors.join("; "));
@@ -884,8 +804,8 @@ export class RubberLiningService {
         }
 
         const existingProduct = row.firebaseUid
-          ? acc.knownProducts.find((p) => p.firebaseUid === row.firebaseUid)
-          : acc.knownProducts.find(
+          ? existingProducts.find((p) => p.firebaseUid === row.firebaseUid)
+          : existingProducts.find(
               (p) => p.title && row.title && p.title.toLowerCase() === row.title.toLowerCase(),
             );
 
@@ -958,10 +878,10 @@ export class RubberLiningService {
             compoundOwnerFirebaseUid: compoundOwnerUid,
           });
           const saved = await this.productRepository.save(product);
+          existingProducts.push(saved);
           return {
             ...acc,
             created: acc.created + 1,
-            knownProducts: [...acc.knownProducts, saved],
             results: [
               ...acc.results,
               {
@@ -995,7 +915,6 @@ export class RubberLiningService {
         failed: 0,
         skipped: 0,
         results: [] as ImportProductRowResultDto[],
-        knownProducts: [...existingProducts],
       }),
     );
 

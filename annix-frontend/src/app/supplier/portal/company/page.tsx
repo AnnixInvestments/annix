@@ -6,7 +6,7 @@ import { useSupplierProfile } from "@/app/lib/query/hooks";
 
 export default function SupplierCompanyPage() {
   const profileQuery = useSupplierProfile();
-  const company = (profileQuery.data?.company as SupplierCompanyDto) ?? null;
+  const company = (profileQuery.data?.company as SupplierCompanyDto) || null;
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);

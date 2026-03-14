@@ -111,7 +111,7 @@ function SupplierDocumentsContent() {
 
   const documents = docsQuery.data ?? [];
   const onboardingStatus = onboardingQuery.data ?? null;
-  const companyDetails = (profileQuery.data?.company as SupplierCompanyDto) ?? null;
+  const companyDetails = (profileQuery.data?.company as SupplierCompanyDto) || null;
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

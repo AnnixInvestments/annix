@@ -143,15 +143,15 @@ function templateForType(type: QcpPlanType): QcpActivity[] {
 export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormProps) {
   const isEditing = existingPlan !== null;
 
-  const [planType, setPlanType] = useState<QcpPlanType>(existingPlan?.planType ?? "paint_external");
-  const [qcpNumber, setQcpNumber] = useState(existingPlan?.qcpNumber ?? "");
-  const [documentRef, setDocumentRef] = useState(existingPlan?.documentRef ?? "");
-  const [revision, setRevision] = useState(existingPlan?.revision ?? "01");
-  const [customerName, setCustomerName] = useState(existingPlan?.customerName ?? "");
-  const [orderNumber, setOrderNumber] = useState(existingPlan?.orderNumber ?? "");
-  const [jobName, setJobName] = useState(existingPlan?.jobName ?? "");
-  const [specification, setSpecification] = useState(existingPlan?.specification ?? "");
-  const [itemDescription, setItemDescription] = useState(existingPlan?.itemDescription ?? "");
+  const [planType, setPlanType] = useState<QcpPlanType>(existingPlan?.planType || "paint_external");
+  const [qcpNumber, setQcpNumber] = useState(existingPlan?.qcpNumber || "");
+  const [documentRef, setDocumentRef] = useState(existingPlan?.documentRef || "");
+  const [revision, setRevision] = useState(existingPlan?.revision || "01");
+  const [customerName, setCustomerName] = useState(existingPlan?.customerName || "");
+  const [orderNumber, setOrderNumber] = useState(existingPlan?.orderNumber || "");
+  const [jobName, setJobName] = useState(existingPlan?.jobName || "");
+  const [specification, setSpecification] = useState(existingPlan?.specification || "");
+  const [itemDescription, setItemDescription] = useState(existingPlan?.itemDescription || "");
   const [activities, setActivities] = useState<QcpActivity[]>(
     existingPlan?.activities?.length ? existingPlan.activities : templateForType("paint_external"),
   );

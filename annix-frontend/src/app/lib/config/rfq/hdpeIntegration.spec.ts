@@ -214,7 +214,7 @@ describe("HDPE Integration Tests", () => {
 
         expect(params).not.toBeNull();
         expect(params?.heatingTimeSec.min).toBeGreaterThan(100);
-        expect(params?.heatingTimeSec.max).toBeGreaterThan(params?.heatingTimeSec.min ?? 0);
+        expect(params?.heatingTimeSec.max).toBeGreaterThan(params?.heatingTimeSec.min || 0);
         expect(params?.changeoverTimeSec).toBeGreaterThan(0);
         expect(params?.coolingTimeMin).toBeGreaterThan(15);
         expect(params?.heatPlateTemperatureC.min).toBeGreaterThanOrEqual(200);
@@ -243,8 +243,8 @@ describe("HDPE Integration Tests", () => {
         const params220 = buttFusionParametersForDn(220);
 
         expect(params220).not.toBeNull();
-        expect(params220?.coolingTimeMin).toBeGreaterThanOrEqual(params200?.coolingTimeMin ?? 0);
-        expect(params220?.coolingTimeMin).toBeLessThanOrEqual(params250?.coolingTimeMin ?? 100);
+        expect(params220?.coolingTimeMin).toBeGreaterThanOrEqual(params200?.coolingTimeMin || 0);
+        expect(params220?.coolingTimeMin).toBeLessThanOrEqual(params250?.coolingTimeMin || 100);
       });
     });
 

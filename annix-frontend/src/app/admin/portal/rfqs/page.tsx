@@ -26,12 +26,12 @@ export default function AdminRfqsPage() {
     dateTo: dateTo || undefined,
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
-    sortBy: sorting[0]?.id ?? "createdAt",
+    sortBy: sorting[0]?.id || "createdAt",
     sortOrder: sorting[0] ? (sorting[0].desc ? "DESC" : "ASC") : "DESC",
   });
 
-  const rfqs = rfqQuery.data?.items ?? [];
-  const total = rfqQuery.data?.total ?? 0;
+  const rfqs = rfqQuery.data?.items || [];
+  const total = rfqQuery.data?.total || 0;
 
   const pendingCount = rfqs.filter((r) => r.status.toLowerCase() === "pending").length;
   const quotedCount = rfqs.filter((r) => r.status.toLowerCase() === "quoted").length;

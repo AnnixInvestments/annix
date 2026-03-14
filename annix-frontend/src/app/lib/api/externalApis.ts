@@ -1393,8 +1393,8 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
       avgClouds = clouds.reduce((a, b) => a + b, 0) / clouds.length;
 
       // Sum up rainfall from hourly
-      totalRain = todayHourly.reduce((sum, h) => sum + (h.rain?.["1h"] ?? 0), 0);
-      totalSnow = todayHourly.reduce((sum, h) => sum + (h.snow?.["1h"] ?? 0), 0);
+      totalRain = todayHourly.reduce((sum, h) => sum + (h.rain?.["1h"] || 0), 0);
+      totalSnow = todayHourly.reduce((sum, h) => sum + (h.snow?.["1h"] || 0), 0);
     }
 
     const tempMin = Math.round(today.temp.min * 10) / 10;
@@ -1438,8 +1438,8 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
     const windDeg = data.current.wind_deg ?? 0;
     const uvi = data.current.uvi ?? 0;
     const clouds = data.current.clouds ?? 0;
-    const rain = data.current.rain?.["1h"] ?? 0;
-    const snow = data.current.snow?.["1h"] ?? 0;
+    const rain = data.current.rain?.["1h"] || 0;
+    const snow = data.current.snow?.["1h"] || 0;
 
     return {
       temperature: {

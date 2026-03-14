@@ -93,13 +93,13 @@ export function QcReleaseCertificateForm({
   const isEditing = existingCertificate !== null;
 
   const [certificateNumber, setCertificateNumber] = useState(
-    existingCertificate?.certificateNumber ?? "",
+    existingCertificate?.certificateNumber || "",
   );
   const [certificateDate, setCertificateDate] = useState(
-    existingCertificate?.certificateDate ?? nowISO().slice(0, 10),
+    existingCertificate?.certificateDate || nowISO().slice(0, 10),
   );
   const [blastingCheck, setBlastingCheck] = useState<QcBlastingCheck>(
-    existingCertificate?.blastingCheck ?? { ...emptyBlastingCheck },
+    existingCertificate?.blastingCheck || { ...emptyBlastingCheck },
   );
   const [solutionsUsed, setSolutionsUsed] = useState<QcSolutionUsed[]>(
     existingCertificate?.solutionsUsed?.length
@@ -107,7 +107,7 @@ export function QcReleaseCertificateForm({
       : [{ productName: "", typeBatch: null, result: "pass", inspectorName: null }],
   );
   const [liningCheck, setLiningCheck] = useState<QcLiningCheck>(
-    existingCertificate?.liningCheck ?? { ...emptyLiningCheck },
+    existingCertificate?.liningCheck || { ...emptyLiningCheck },
   );
   const [cureCycles, setCureCycles] = useState<QcCureCycleRecord[]>(
     existingCertificate?.cureCycles?.length
@@ -120,17 +120,17 @@ export function QcReleaseCertificateForm({
       : [...defaultPaintingChecks],
   );
   const [finalInspection, setFinalInspection] = useState<QcFinalInspection>(
-    existingCertificate?.finalInspection ?? { ...emptyFinalInspection },
+    existingCertificate?.finalInspection || { ...emptyFinalInspection },
   );
-  const [comments, setComments] = useState(existingCertificate?.comments ?? "");
+  const [comments, setComments] = useState(existingCertificate?.comments || "");
   const [finalApprovalName, setFinalApprovalName] = useState(
-    existingCertificate?.finalApprovalName ?? "",
+    existingCertificate?.finalApprovalName || "",
   );
   const [finalApprovalDate, setFinalApprovalDate] = useState(
-    existingCertificate?.finalApprovalDate ?? nowISO().slice(0, 10),
+    existingCertificate?.finalApprovalDate || nowISO().slice(0, 10),
   );
   const [signatureUrl, setSignatureUrl] = useState<string | null>(
-    existingCertificate?.finalApprovalSignatureUrl ?? null,
+    existingCertificate?.finalApprovalSignatureUrl || null,
   );
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

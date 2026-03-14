@@ -237,7 +237,7 @@ function CertificatesTab() {
   );
 
   const handleSaveCertificate = async (cert: IdentifiedCertificate, index: number) => {
-    const sourceFile = analysisFiles?.[cert.sourceFileIndex] ?? null;
+    const sourceFile = analysisFiles?.[cert.sourceFileIndex] || null;
     if (!sourceFile) return;
 
     const matchedSupplier = suppliers.find(
@@ -284,8 +284,8 @@ function CertificatesTab() {
         const q = searchQuery.toLowerCase();
         return (
           (cert.batchNumber ?? "").toLowerCase().includes(q) ||
-          (cert.supplier?.name ?? "").toLowerCase().includes(q) ||
-          (cert.stockItem?.name ?? "").toLowerCase().includes(q) ||
+          (cert.supplier?.name || "").toLowerCase().includes(q) ||
+          (cert.stockItem?.name || "").toLowerCase().includes(q) ||
           (cert.originalFilename ?? "").toLowerCase().includes(q) ||
           (cert.certificateType ?? "").toLowerCase().includes(q)
         );
@@ -410,7 +410,7 @@ function CertificatesTab() {
               </div>
               <button
                 onClick={() => {
-                  setDroppedFile(analysisFiles?.[0] ?? null);
+                  setDroppedFile(analysisFiles?.[0] || null);
                   setShowUploadModal(true);
                 }}
                 className="rounded-md border border-green-600 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100"
@@ -632,10 +632,10 @@ function CertificatesTab() {
                         {cert.batchNumber}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                        {cert.supplier?.name ?? "-"}
+                        {cert.supplier?.name || "-"}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {cert.stockItem?.name ?? "-"}
+                        {cert.stockItem?.name || "-"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                         {cert.jobCard ? cert.jobCard.jobNumber : "-"}
@@ -1204,10 +1204,10 @@ function BatchLookupTab() {
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                          {cert.supplier?.name ?? "-"}
+                          {cert.supplier?.name || "-"}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {cert.stockItem?.name ?? "-"}
+                          {cert.stockItem?.name || "-"}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
                           <span
@@ -1267,7 +1267,7 @@ function BatchLookupTab() {
                     {batchRecords.map((record) => (
                       <tr key={record.id} className="hover:bg-gray-50">
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                          {record.stockItem?.name ?? "-"}
+                          {record.stockItem?.name || "-"}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                           {record.quantity}
@@ -1285,7 +1285,7 @@ function BatchLookupTab() {
                                 {record.supplierCertificate.certificateType}
                               </span>
                               <span className="text-xs text-gray-500">
-                                {record.supplierCertificate.supplier?.name ?? ""}
+                                {record.supplierCertificate.supplier?.name || ""}
                               </span>
                             </span>
                           ) : (
@@ -1485,7 +1485,7 @@ function UploadCertificateModal({
             <input
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
             />
           </div>

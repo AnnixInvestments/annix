@@ -85,7 +85,7 @@ const solutionsFromBatchRecords = (records: IssuanceBatchRecord[]): SolutionRow[
     return [emptySolution()];
   }
   return adhesiveRecords.map((r) => ({
-    product: r.stockItem?.name ?? "",
+    product: r.stockItem?.name || "",
     batchNumber: r.batchNumber,
     result: "pass" as const,
   }));
@@ -121,8 +121,8 @@ export function PullTestForm({
   onSaved,
   batchRecords = [],
 }: PullTestFormProps) {
-  const [itemDescription, setItemDescription] = useState(existing?.itemDescription ?? "");
-  const [quantity, setQuantity] = useState<number | null>(existing?.quantity ?? null);
+  const [itemDescription, setItemDescription] = useState(existing?.itemDescription || "");
+  const [quantity, setQuantity] = useState<number | null>(existing?.quantity || null);
   const [minForceMpa, setMinForceMpa] = useState<string>(String(DEFAULT_MIN_FORCE_MPA));
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString(),
@@ -132,7 +132,7 @@ export function PullTestForm({
   );
   const [forceGauge, setForceGauge] = useState<ForceGaugeState>(initialForceGauge(existing));
   const [areaReadings, setAreaReadings] = useState<AreaReadingRow[]>(initialAreaReadings(existing));
-  const [comments, setComments] = useState(existing?.comments ?? "");
+  const [comments, setComments] = useState(existing?.comments || "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -113,7 +113,7 @@ export default function AiUsagePage() {
 
   const { data, isLoading } = useAiUsageLogs(filters);
 
-  const groups = useMemo(() => groupLogs(data?.data ?? []), [data?.data]);
+  const groups = useMemo(() => groupLogs(data?.data || []), [data?.data]);
 
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => {
@@ -370,14 +370,14 @@ export default function AiUsagePage() {
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => updateFilter("page", (data?.page ?? 1) - 1)}
+                onClick={() => updateFilter("page", (data?.page || 1) - 1)}
                 disabled={!data || data.page <= 1}
                 className="rounded-md border border-gray-300 px-3 py-1 text-sm disabled:opacity-50 dark:border-slate-600 dark:text-gray-300"
               >
                 Previous
               </button>
               <button
-                onClick={() => updateFilter("page", (data?.page ?? 1) + 1)}
+                onClick={() => updateFilter("page", (data?.page || 1) + 1)}
                 disabled={!data || data.page >= totalPages}
                 className="rounded-md border border-gray-300 px-3 py-1 text-sm disabled:opacity-50 dark:border-slate-600 dark:text-gray-300"
               >

@@ -112,7 +112,7 @@ export function ParsedItemsConfirmation(props: ParsedItemsConfirmationProps) {
               key={index}
               item={item}
               index={index}
-              isConfirmed={confirmation?.confirmed ?? false}
+              isConfirmed={confirmation?.confirmed || false}
               onToggle={() => toggleItem(index)}
               onUpdateSpecs={(specs) => updateSpecs(index, specs)}
               modifiedSpecs={confirmation?.modifiedSpecs}

@@ -242,7 +242,7 @@ export default function InvoiceDetailPage() {
     setEditValues({
       quantity: String(item.quantity),
       unitPrice: item.unitPrice !== null ? String(item.unitPrice) : "",
-      unitType: uType ?? sItem?.unitOfMeasure ?? "each",
+      unitType: uType || sItem?.unitOfMeasure || "each",
     });
   };
 
@@ -524,7 +524,7 @@ export default function InvoiceDetailPage() {
                             </select>
                           ) : (
                             <span className="text-gray-400 text-xs">
-                              {itemUnitType ?? itemStockItem?.unitOfMeasure ?? "-"}
+                              {itemUnitType || itemStockItem?.unitOfMeasure || "-"}
                             </span>
                           )}
                         </td>

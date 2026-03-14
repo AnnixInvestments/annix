@@ -48,7 +48,7 @@ export function RecommendedJobsPanel({
                   {scorePct}%
                 </span>
                 <span className="text-sm font-medium text-gray-900 truncate">
-                  {job?.title ?? "Unknown job"}
+                  {job?.title || "Unknown job"}
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500">

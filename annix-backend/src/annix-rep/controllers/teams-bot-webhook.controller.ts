@@ -78,34 +78,36 @@ export class TeamsBotWebhookController {
       return;
     }
 
-    for (const notification of payload.value) {
-      const callId = notification.resourceData.id;
-      const state = notification.resourceData.state;
+    await Promise.all(
+      payload.value.map(async (notification) => {
+        const callId = notification.resourceData.id;
+        const state = notification.resourceData.state;
 
-      this.logger.debug(`Call state notification: callId=${callId}, state=${state}`);
+        this.logger.debug(`Call state notification: callId=${callId}, state=${state}`);
 
-      const session = await this.teamsBotService.sessionByCallId(callId);
-      if (!session) {
-        this.logger.warn(`No session found for callId: ${callId}`);
-        continue;
-      }
+        const session = await this.teamsBotService.sessionByCallId(callId);
+        if (!session) {
+          this.logger.warn(`No session found for callId: ${callId}`);
+          return;
+        }
 
-      const mappedStatus = this.mapCallStateToSessionStatus(state);
-      if (mappedStatus) {
-        await this.teamsBotService.updateSessionStatus(callId, mappedStatus);
+        const mappedStatus = this.mapCallStateToSessionStatus(state);
+        if (mappedStatus) {
+          await this.teamsBotService.updateSessionStatus(callId, mappedStatus);
 
-        this.gateway.emitStatusUpdate({
-          sessionId: session.sessionId,
-          callId,
-          status: mappedStatus,
-        });
-      }
+          this.gateway.emitStatusUpdate({
+            sessionId: session.sessionId,
+            callId,
+            status: mappedStatus,
+          });
+        }
 
-      if (state === "terminated" || state === "disconnected") {
-        await this.audioService.flushAudioBuffer(callId);
-        this.audioService.clearSession(callId);
-      }
-    }
+        if (state === "terminated" || state === "disconnected") {
+          await this.audioService.flushAudioBuffer(callId);
+          this.audioService.clearSession(callId);
+        }
+      }),
+    );
 
     res.status(200).json({ status: "processed" });
   }
@@ -122,52 +124,56 @@ export class TeamsBotWebhookController {
       return;
     }
 
-    for (const notification of payload.value) {
-      const resourceParts = notification.resource.split("/");
-      const callIdIndex = resourceParts.indexOf("calls") + 1;
-      const callId = resourceParts[callIdIndex];
+    await Promise.all(
+      payload.value
+        .filter((notification) => {
+          const resourceParts = notification.resource.split("/");
+          const callIdIndex = resourceParts.indexOf("calls") + 1;
+          return !!resourceParts[callIdIndex];
+        })
+        .map(async (notification) => {
+          const resourceParts = notification.resource.split("/");
+          const callIdIndex = resourceParts.indexOf("calls") + 1;
+          const callId = resourceParts[callIdIndex];
 
-      if (!callId) {
-        continue;
-      }
+          const participantData = notification.resourceData;
+          const identity = participantData.info?.identity;
+          const user = identity?.user;
+          const app = identity?.application;
 
-      const participantData = notification.resourceData;
-      const identity = participantData.info?.identity;
-      const user = identity?.user;
-      const app = identity?.application;
+          const participantId = user?.id ?? app?.id ?? participantData.id;
+          const displayName = user?.displayName ?? app?.displayName ?? "Unknown";
 
-      const participantId = user?.id ?? app?.id ?? participantData.id;
-      const displayName = user?.displayName ?? app?.displayName ?? "Unknown";
+          if (notification.changeType === "created") {
+            const session = await this.teamsBotService.addParticipant(callId, {
+              id: participantId,
+              displayName,
+              joinedAt: nowISO(),
+              leftAt: null,
+            });
 
-      if (notification.changeType === "created") {
-        const session = await this.teamsBotService.addParticipant(callId, {
-          id: participantId,
-          displayName,
-          joinedAt: nowISO(),
-          leftAt: null,
-        });
+            if (session) {
+              this.gateway.emitParticipantUpdate({
+                sessionId: session.sessionId,
+                callId,
+                type: "joined",
+                participant: { id: participantId, displayName },
+              });
+            }
+          } else if (notification.changeType === "deleted") {
+            const session = await this.teamsBotService.removeParticipant(callId, participantId);
 
-        if (session) {
-          this.gateway.emitParticipantUpdate({
-            sessionId: session.sessionId,
-            callId,
-            type: "joined",
-            participant: { id: participantId, displayName },
-          });
-        }
-      } else if (notification.changeType === "deleted") {
-        const session = await this.teamsBotService.removeParticipant(callId, participantId);
-
-        if (session) {
-          this.gateway.emitParticipantUpdate({
-            sessionId: session.sessionId,
-            callId,
-            type: "left",
-            participant: { id: participantId, displayName },
-          });
-        }
-      }
-    }
+            if (session) {
+              this.gateway.emitParticipantUpdate({
+                sessionId: session.sessionId,
+                callId,
+                type: "left",
+                participant: { id: participantId, displayName },
+              });
+            }
+          }
+        }),
+    );
 
     res.status(200).json({ status: "processed" });
   }

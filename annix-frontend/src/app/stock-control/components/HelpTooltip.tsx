@@ -9,7 +9,8 @@ interface HelpTooltipProps {
 }
 
 export function HelpTooltip(props: HelpTooltipProps) {
-  const { term, inline = true } = props;
+  const { term } = props;
+  const inline = props.inline ?? true;
   const { termsByAbbreviation, hideTooltips } = useGlossary();
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState<"above" | "below">("below");

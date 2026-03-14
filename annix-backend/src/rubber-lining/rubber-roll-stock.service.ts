@@ -324,7 +324,7 @@ export class RubberRollStockService {
     });
     if (!roll) return null;
 
-    const batches =
+    const batchRecords =
       roll.linkedBatchIds && roll.linkedBatchIds.length > 0
         ? await this.compoundBatchRepository.find({
             where: { id: In(roll.linkedBatchIds) },
@@ -337,7 +337,7 @@ export class RubberRollStockService {
           })
         : [];
 
-    const cocIds = [...new Set(batches.map((b) => b.supplierCocId))];
+    const cocIds = [...new Set(batchRecords.map((b) => b.supplierCocId))];
     const supplierCocs =
       cocIds.length > 0
         ? await this.supplierCocRepository.find({
@@ -382,7 +382,7 @@ export class RubberRollStockService {
 
     return {
       roll: this.mapRollStockToDto(roll),
-      batches: batches.map((b) => this.mapBatchToDto(b)),
+      batches: batchRecords.map((b) => this.mapBatchToDto(b)),
       supplierCocs: supplierCocs.map((c) => this.mapSupplierCocToDto(c)),
       auCoc,
     };

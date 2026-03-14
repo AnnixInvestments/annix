@@ -476,64 +476,40 @@ export function parsePipeItem(
   const isExternalLining = itemType === "pulley" || itemType === "drum" || itemType === "roller";
   const isOdBased = isExternalLining || (nbMm === null && directOd !== null);
 
-  const dims = ((): {
-    odMm: number | null;
-    idMm: number | null;
-    rubberWidthMm: number;
-    rubberLengthMm: number;
-    stripsPerPiece: number;
-  } => {
-    const defaults = {
-      odMm: null,
-      idMm: null,
-      rubberWidthMm: 0,
-      rubberLengthMm: 0,
-      stripsPerPiece: 1,
-    };
+  let odMm: number | null = null;
+  let idMm: number | null = null;
+  let rubberWidthMm = 0;
+  let rubberLengthMm = 0;
+  let stripsPerPiece = 1;
 
-    if (!hasDimensions) return defaults;
-
+  if (hasDimensions) {
     if (isOdBased) {
-      const od = directOd || (nbMm ? nbToOd(nbMm) : null);
-      if (!od) return { ...defaults, odMm: od };
-
-      const circumference = Math.PI * od;
-      return {
-        odMm: od,
-        idMm: null,
-        rubberWidthMm: roundUpToNearest(
+      odMm = directOd || (nbMm ? nbToOd(nbMm) : null);
+      if (odMm) {
+        const circumference = Math.PI * odMm;
+        rubberWidthMm = roundUpToNearest(
           circumference + BEVEL_ALLOWANCE_MM,
           ROLL_WIDTH_INCREMENT_MM,
-        ),
-        rubberLengthMm: lengthMm + BEVEL_ALLOWANCE_MM,
-        stripsPerPiece: 1,
-      };
+        );
+        rubberLengthMm = lengthMm + BEVEL_ALLOWANCE_MM;
+      }
     } else if (nbMm) {
-      const od = nbToOd(nbMm);
+      odMm = nbToOd(nbMm);
       const wt = wallThickness(nbMm, schedule);
-      const id = od - 2 * wt;
-      const circumference = Math.PI * id;
+      idMm = odMm - 2 * wt;
+
+      const circumference = Math.PI * idMm;
       const singleStripWidth = circumference + BEVEL_ALLOWANCE_MM;
-      const strips =
-        singleStripWidth <= ROLL_WIDTH_MAX_MM ? 1 : Math.ceil(circumference / ROLL_WIDTH_MAX_MM);
-      const width =
-        singleStripWidth <= ROLL_WIDTH_MAX_MM
-          ? roundUpToNearest(singleStripWidth, ROLL_WIDTH_INCREMENT_MM)
-          : roundUpToNearest(circumference / strips, ROLL_WIDTH_INCREMENT_MM);
-
-      return {
-        odMm: od,
-        idMm: id,
-        rubberWidthMm: width,
-        rubberLengthMm: lengthMm + 2 * OPEN_END_ALLOWANCE_MM + BEVEL_ALLOWANCE_MM,
-        stripsPerPiece: strips,
-      };
+      if (singleStripWidth <= ROLL_WIDTH_MAX_MM) {
+        rubberWidthMm = roundUpToNearest(singleStripWidth, ROLL_WIDTH_INCREMENT_MM);
+        stripsPerPiece = 1;
+      } else {
+        stripsPerPiece = Math.ceil(circumference / ROLL_WIDTH_MAX_MM);
+        rubberWidthMm = roundUpToNearest(circumference / stripsPerPiece, ROLL_WIDTH_INCREMENT_MM);
+      }
+      rubberLengthMm = lengthMm + 2 * OPEN_END_ALLOWANCE_MM + BEVEL_ALLOWANCE_MM;
     }
-
-    return defaults;
-  })();
-
-  const { odMm, idMm, rubberWidthMm, rubberLengthMm, stripsPerPiece } = dims;
+  }
 
   return {
     id,
@@ -756,17 +732,14 @@ function buildRollsForItems(parsedItems: ParsedPipeItem[]): RollAllocation[] {
 
   const rollLengthMm = ROLL_LENGTH_MAX_M * 1000;
 
-  const { rolls, remaining, currentHeight } = sortedBands.reduce(
+  const { rolls, remaining } = sortedBands.reduce(
     (acc, band) => {
       if (acc.currentHeight + band.heightMm > rollLengthMm && acc.remaining.length > 0) {
-        const newRoll = finalizeRoll(
-          acc.rolls.length + 1,
-          acc.remaining,
-          acc.currentHeight,
-          rollWidthMm,
-        );
         return {
-          rolls: [...acc.rolls, newRoll],
+          rolls: [
+            ...acc.rolls,
+            finalizeRoll(acc.rolls.length + 1, acc.remaining, acc.currentHeight, rollWidthMm),
+          ],
           remaining: [{ band, startMm: 0 }],
           currentHeight: band.heightMm,
         };
@@ -785,7 +758,15 @@ function buildRollsForItems(parsedItems: ParsedPipeItem[]): RollAllocation[] {
   );
 
   return remaining.length > 0
-    ? [...rolls, finalizeRoll(rolls.length + 1, remaining, currentHeight, rollWidthMm)]
+    ? [
+        ...rolls,
+        finalizeRoll(
+          rolls.length + 1,
+          remaining,
+          remaining.reduce((h, b) => h + b.band.heightMm, 0),
+          rollWidthMm,
+        ),
+      ]
     : rolls;
 }
 
@@ -834,14 +815,15 @@ function scorePlyCombination(
   const totalRolls = plies.reduce((sum, ply) => sum + ply.totalRollsNeeded, 0);
   const totalWaste = plies.reduce((sum, ply) => sum + rollStats(ply.rolls).totalWasteSqM, 0);
 
-  const stockScore = stockQuery
-    ? combo.reduce((score, thickness) => {
-        const available = stockQuery.rolls.filter((r) => r.thicknessMm === thickness);
-        const totalAvailable = available.reduce((s, r) => s + r.quantityAvailable, 0);
-        const needed = plies.find((p) => p.thicknessMm === thickness)?.totalRollsNeeded || 0;
-        return score + (totalAvailable >= needed ? 1000 : totalAvailable > 0 ? 500 : 0);
-      }, 0)
-    : 0;
+  let stockScore = 0;
+  if (stockQuery) {
+    stockScore = combo.reduce((score, thickness) => {
+      const available = stockQuery.rolls.filter((r) => r.thicknessMm === thickness);
+      const totalAvailable = available.reduce((s, r) => s + r.quantityAvailable, 0);
+      const needed = plies.find((p) => p.thicknessMm === thickness)?.totalRollsNeeded || 0;
+      return score + (totalAvailable >= needed ? 1000 : totalAvailable > 0 ? 500 : 0);
+    }, 0);
+  }
 
   const score = stockScore - totalRolls * 10 - totalWaste;
   return { plies, score };
@@ -929,38 +911,39 @@ export function calculateCuttingPlan(
   const stats = rollStats(allRolls);
 
   const hasMultiPlyEligibleItems = parsedItems.some(isMultiPlyEligible);
+  let plies: PlyLayer[] = [];
+  let isMultiPly = false;
 
-  const resolvedPlies = ((): PlyLayer[] => {
-    if (selectedPlyCombination && selectedPlyCombination.length > 0) {
-      return scorePlyCombination(selectedPlyCombination, parsedItems, stockQuery || null).plies;
-    } else if (rubberSpec && hasMultiPlyEligibleItems && stockQuery) {
-      const combos = suggestPlyCombinations(rubberSpec.thicknessMm);
-      const viableCombos = combos.filter((combo) =>
-        combo.every((t) => stockQuery.availableThicknesses.includes(t)),
-      );
+  if (selectedPlyCombination && selectedPlyCombination.length > 0) {
+    const scored = scorePlyCombination(selectedPlyCombination, parsedItems, stockQuery || null);
+    plies = scored.plies;
+    isMultiPly = plies.length > 1;
+  } else if (rubberSpec && hasMultiPlyEligibleItems && stockQuery) {
+    const combos = suggestPlyCombinations(rubberSpec.thicknessMm);
+    const viableCombos = combos.filter((combo) =>
+      combo.every((t) => stockQuery.availableThicknesses.includes(t)),
+    );
 
-      const candidates = (viableCombos.length > 0 ? viableCombos : combos).map((combo) =>
-        scorePlyCombination(combo, parsedItems, stockQuery),
-      );
+    const candidates = (viableCombos.length > 0 ? viableCombos : combos).map((combo) =>
+      scorePlyCombination(combo, parsedItems, stockQuery),
+    );
 
-      const best = candidates.sort((a, b) => b.score - a.score)[0];
-      return best ? best.plies : [];
+    const best = candidates.sort((a, b) => b.score - a.score)[0];
+    if (best) {
+      plies = best.plies;
+      isMultiPly = plies.length > 1;
     }
-    return [];
-  })();
+  }
 
-  const plies: PlyLayer[] =
-    resolvedPlies.length > 0
-      ? resolvedPlies
-      : [
-          {
-            thicknessMm: rubberSpec?.thicknessMm || 0,
-            rolls: allRolls,
-            totalRollsNeeded: allRolls.length,
-          },
-        ];
-
-  const isMultiPly = resolvedPlies.length > 1;
+  if (plies.length === 0) {
+    plies = [
+      {
+        thicknessMm: rubberSpec?.thicknessMm || 0,
+        rolls: allRolls,
+        totalRollsNeeded: allRolls.length,
+      },
+    ];
+  }
 
   const allOffcuts = allRolls.flatMap((roll) => roll.offcuts);
 

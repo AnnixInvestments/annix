@@ -104,8 +104,8 @@ export default function TaxInvoiceDetailPage() {
     if (!invoice) return;
     setEditForm({
       productDescription: invoice.productDescription ?? "",
-      deliveryNoteRef: invoice.extractedData?.deliveryNoteRef ?? "",
-      orderNumber: invoice.extractedData?.orderNumber ?? "",
+      deliveryNoteRef: invoice.extractedData?.deliveryNoteRef || "",
+      orderNumber: invoice.extractedData?.orderNumber || "",
       quantity: invoice.numberOfRolls != null ? String(invoice.numberOfRolls) : "",
       unit: invoice.unit ?? "",
       costPerUnit: invoice.costPerUnit != null ? String(invoice.costPerUnit) : "",

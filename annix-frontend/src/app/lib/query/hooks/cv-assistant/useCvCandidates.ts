@@ -11,8 +11,8 @@ export function useCvCandidates(params?: CvCandidateQueryParams) {
     queryKey: cvAssistantKeys.candidates.list(params),
     queryFn: () =>
       cvAssistantApiClient.candidates({
-        status: params?.status ?? undefined,
-        jobPostingId: params?.jobPostingId ?? undefined,
+        status: params?.status || undefined,
+        jobPostingId: params?.jobPostingId || undefined,
       }),
     staleTime: 2 * 60 * 1000,
   });

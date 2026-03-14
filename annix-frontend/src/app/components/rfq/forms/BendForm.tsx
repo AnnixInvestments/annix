@@ -156,7 +156,7 @@ function BendFormComponent(props: BendFormProps) {
     [masterData?.steelSpecs],
   );
 
-  const flangeTypesLength = masterData?.flangeTypes?.length ?? 0;
+  const flangeTypesLength = masterData?.flangeTypes?.length || 0;
 
   useEffect(() => {
     log.info(`🔥 BendForm useEffect[flangeSpecs] FIRED - entry.id: ${entry.id}`);
@@ -235,7 +235,7 @@ function BendFormComponent(props: BendFormProps) {
       const newSpecName = newSpec?.steelSpecName || "";
       const isNewSABS719 = newSpecName.includes("SABS 719") || newSpecName.includes("SANS 719");
 
-      const oldSpecId = specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+      const oldSpecId = specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
       const oldSpec = oldSpecId
         ? masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === oldSpecId)
         : null;
@@ -505,8 +505,8 @@ function BendFormComponent(props: BendFormProps) {
     onUpdateEntry,
   ]);
 
-  const stub0 = specs.stubs?.[0] ?? {};
-  const stub1 = specs.stubs?.[1] ?? {};
+  const stub0 = specs.stubs?.[0] || {};
+  const stub1 = specs.stubs?.[1] || {};
 
   return (
     <>
@@ -1050,7 +1050,7 @@ function BendFormComponent(props: BendFormProps) {
                             newSpecName.includes("SABS 719") || newSpecName.includes("SANS 719");
 
                           const oldSpecId =
-                            specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                            specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                           const oldSpec = oldSpecId
                             ? masterData.steelSpecs?.find((s: SteelSpecItem) => s.id === oldSpecId)
                             : null;
@@ -1227,7 +1227,7 @@ function BendFormComponent(props: BendFormProps) {
 
                             const pressure = globalSpecs?.workingPressureBar || 0;
                             const nbEffectiveSpecId =
-                              entry?.specs?.steelSpecificationId ??
+                              entry?.specs?.steelSpecificationId ||
                               globalSpecs?.steelSpecificationId;
                             const schedules = scheduleListForSpec(
                               nominalBore,
@@ -1377,7 +1377,7 @@ function BendFormComponent(props: BendFormProps) {
                   {(() => {
                     const selectId = `bend-schedule-${entry.id}`;
                     const schedEffectiveSpecId =
-                      specs.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                      specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                     const schedules = scheduleListForSpec(
                       specs.nominalBoreMm || 0,
                       schedEffectiveSpecId,

@@ -60,7 +60,7 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
   );
 
   const { data: roleProductsData } = useRbacRoleProducts(selectedRoleId ?? 0);
-  const enabledProducts = roleProductsData?.productKeys ?? [];
+  const enabledProducts = roleProductsData?.productKeys || [];
 
   useEffect(() => {
     if (isOpen && appDetails.roles.length > 0 && !selectedRoleId) {
@@ -131,7 +131,7 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
             "success",
           );
           if (selectedRoleId === role.id) {
-            setSelectedRoleId(appDetails.roles.find((r) => r.id !== role.id)?.id ?? null);
+            setSelectedRoleId(appDetails.roles.find((r) => r.id !== role.id)?.id || null);
           }
         },
         onError: (err) => {

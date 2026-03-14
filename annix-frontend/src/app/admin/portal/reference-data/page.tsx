@@ -43,7 +43,7 @@ function toKebab(value: string): string {
 }
 
 function fromKebab(kebab: string, modules: ReferenceDataModuleInfo[]): string | null {
-  return modules.find((m) => toKebab(m.entityName) === kebab)?.entityName ?? null;
+  return modules.find((m) => toKebab(m.entityName) === kebab)?.entityName || null;
 }
 
 interface InlineEditContext {
@@ -393,7 +393,7 @@ export default function ReferenceDataPage() {
   const recordsQuery = useReferenceDataRecords(selectedEntity, {
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
-    sortBy: sorting[0]?.id ?? undefined,
+    sortBy: sorting[0]?.id || undefined,
     sortOrder: sorting[0] ? (sorting[0].desc ? "DESC" : "ASC") : undefined,
     search: activeSearch || undefined,
   });
@@ -404,13 +404,13 @@ export default function ReferenceDataPage() {
 
   const modules = useMemo(() => modulesQuery.data ?? [], [modulesQuery.data]);
   const selectedModule = modules.find((m) => m.entityName === selectedEntity);
-  const schemaColumns = useMemo(() => schemaQuery.data?.columns ?? [], [schemaQuery.data?.columns]);
+  const schemaColumns = useMemo(() => schemaQuery.data?.columns || [], [schemaQuery.data?.columns]);
   const schemaRelations = useMemo(
-    () => schemaQuery.data?.relations ?? [],
+    () => schemaQuery.data?.relations || [],
     [schemaQuery.data?.relations],
   );
-  const records = recordsQuery.data?.items ?? [];
-  const totalRows = recordsQuery.data?.total ?? 0;
+  const records = recordsQuery.data?.items || [];
+  const totalRows = recordsQuery.data?.total || 0;
 
   useEffect(() => {
     if (initializedFromUrl || modules.length === 0) return;
@@ -880,7 +880,7 @@ export default function ReferenceDataPage() {
 
       {formModal.open && schemaQuery.data && (
         <ReferenceDataFormModal
-          entityDisplayName={selectedModule?.displayName ?? ""}
+          entityDisplayName={selectedModule?.displayName || ""}
           columns={schemaQuery.data.columns}
           relations={schemaQuery.data.relations}
           initialData={formModal.editRecord}
@@ -892,7 +892,7 @@ export default function ReferenceDataPage() {
 
       {deleteModal.open && deleteModal.record && (
         <DeleteConfirmationModal
-          entityName={selectedModule?.displayName ?? ""}
+          entityName={selectedModule?.displayName || ""}
           recordId={deleteModal.record.id}
           recordSummary={recordSummary(deleteModal.record)}
           isDeleting={deleteMutation.isPending}

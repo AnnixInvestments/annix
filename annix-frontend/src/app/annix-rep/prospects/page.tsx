@@ -891,8 +891,10 @@ export default function ProspectsPage() {
       const query = searchQuery.toLowerCase();
       return (
         p.companyName.toLowerCase().includes(query) ||
-        (p.contactName?.toLowerCase().includes(query) ?? false) ||
-        (p.city?.toLowerCase().includes(query) ?? false) ||
+        p.contactName?.toLowerCase().includes(query) ||
+        false ||
+        p.city?.toLowerCase().includes(query) ||
+        false ||
         (p.tags ?? []).some((t) => t.toLowerCase().includes(query))
       );
     }

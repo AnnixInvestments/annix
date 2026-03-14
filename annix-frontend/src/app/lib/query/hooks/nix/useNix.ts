@@ -259,7 +259,7 @@ export function useSendNixMessage() {
       metadata?: unknown;
     }> => {
       const effectivePortalContext =
-        portalContext ?? (context?.pageContext?.portalContext as PortalContext) ?? undefined;
+        portalContext || (context?.pageContext?.portalContext as PortalContext) || undefined;
       const response = await retryableFetch(
         `${browserBaseUrl()}/nix/chat/session/${sessionId}/message`,
         {

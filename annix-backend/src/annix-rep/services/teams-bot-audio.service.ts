@@ -65,22 +65,24 @@ export class TeamsBotAudioService {
       key.startsWith(`${callId}-`),
     );
 
-    for (const key of keysToFlush) {
-      const buffers = this.audioBuffers.get(key);
-      if (buffers && buffers.length > 0) {
-        const combinedBuffer = Buffer.concat(buffers);
-        const parts = key.split("-");
-        const speakerId = parts.slice(1).join("-");
+    await Promise.all(
+      keysToFlush.map(async (key) => {
+        const buffers = this.audioBuffers.get(key);
+        if (buffers && buffers.length > 0) {
+          const combinedBuffer = Buffer.concat(buffers);
+          const parts = key.split("-");
+          const speakerId = parts.slice(1).join("-");
 
-        await this.transcribeAndEmit(
-          callId,
-          combinedBuffer,
-          speakerId === "unknown" ? null : speakerId,
-          "Unknown Speaker",
-        );
-      }
-      this.audioBuffers.delete(key);
-    }
+          await this.transcribeAndEmit(
+            callId,
+            combinedBuffer,
+            speakerId === "unknown" ? null : speakerId,
+            "Unknown Speaker",
+          );
+        }
+        this.audioBuffers.delete(key);
+      }),
+    );
   }
 
   private async transcribeAndEmit(
@@ -196,9 +198,7 @@ export class TeamsBotAudioService {
       key.startsWith(`${callId}-`),
     );
 
-    for (const key of keysToDelete) {
-      this.audioBuffers.delete(key);
-    }
+    keysToDelete.forEach((key) => this.audioBuffers.delete(key));
 
     this.activeSegments.delete(callId);
   }

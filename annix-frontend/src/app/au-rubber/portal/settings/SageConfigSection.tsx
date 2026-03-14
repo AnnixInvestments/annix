@@ -89,7 +89,7 @@ export function SageConfigSection() {
         sageUsername: username,
         sagePassword: password,
         sageCompanyId: selectedCompanyId,
-        sageCompanyName: selected?.Name ?? null,
+        sageCompanyName: selected?.Name || null,
       });
       setSuccess("Sage connection saved successfully.");
       setPassword("");

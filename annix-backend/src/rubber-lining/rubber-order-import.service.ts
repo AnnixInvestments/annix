@@ -237,13 +237,11 @@ export class RubberOrderImportService {
     const companies = await this.companyRepository.find();
     const textLower = text.toLowerCase();
 
-    const matchedCompany = companies.find((company) =>
-      textLower.includes(company.name.toLowerCase()),
-    );
+    const match = companies.find((company) => textLower.includes(company.name.toLowerCase()));
 
-    if (matchedCompany) {
-      this.logger.log(`Detected company "${matchedCompany.name}" from document text`);
-      return matchedCompany.id;
+    if (match) {
+      this.logger.log(`Detected company "${match.name}" from document text`);
+      return match.id;
     }
 
     return null;
@@ -610,13 +608,13 @@ ${truncatedText}`;
       return partialMatch;
     }
 
-    const addressObj = details?.address ? { street: details.address } : null;
+    const addressObj = details?.address ? { street: details.address } : undefined;
 
     const created = await this.rubberLiningService.createCompany({
       name: companyName,
       companyType: CompanyType.CUSTOMER,
-      vatNumber: details?.vatNumber || null,
-      registrationNumber: details?.registrationNumber || null,
+      vatNumber: details?.vatNumber || undefined,
+      registrationNumber: details?.registrationNumber || undefined,
       address: addressObj,
     });
 
@@ -627,8 +625,8 @@ ${truncatedText}`;
   async createOrderFromAnalysis(dto: CreateOrderFromAnalysisDto): Promise<{ orderId: number }> {
     const { analysis, overrides } = dto;
 
-    let companyId = overrides?.companyId ?? analysis.companyId ?? null;
-    const poNumber = overrides?.poNumber ?? analysis.poNumber ?? null;
+    let companyId = overrides?.companyId ?? analysis.companyId ?? undefined;
+    const poNumber = overrides?.poNumber ?? analysis.poNumber ?? undefined;
 
     if (!companyId && overrides?.newCompany) {
       const company = await this.resolveOrCreateCompany(
@@ -641,11 +639,11 @@ ${truncatedText}`;
     const items = (overrides?.lines || analysis.lines).map((line, idx) => {
       const analysisLine = analysis.lines[idx] || {};
       return {
-        productId: ("productId" in line ? line.productId : analysisLine.productId) || null,
-        thickness: ("thickness" in line ? line.thickness : analysisLine.thickness) || null,
-        width: ("width" in line ? line.width : analysisLine.width) || null,
-        length: ("length" in line ? line.length : analysisLine.length) || null,
-        quantity: ("quantity" in line ? line.quantity : analysisLine.quantity) || null,
+        productId: ("productId" in line ? line.productId : analysisLine.productId) || undefined,
+        thickness: ("thickness" in line ? line.thickness : analysisLine.thickness) || undefined,
+        width: ("width" in line ? line.width : analysisLine.width) || undefined,
+        length: ("length" in line ? line.length : analysisLine.length) || undefined,
+        quantity: ("quantity" in line ? line.quantity : analysisLine.quantity) || undefined,
       };
     });
 
@@ -662,11 +660,11 @@ ${truncatedText}`;
   private async extractLinesWithVision(
     buffer: Buffer,
     filename: string,
-  ): Promise<{ lines: AnalyzedOrderLine[]; poNumber: string | null }> {
+  ): Promise<{ lines: AnalyzedOrderLine[]; poNumber?: string }> {
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
       this.logger.warn("Gemini API key not available for vision extraction");
-      return { lines: [], poNumber: null };
+      return { lines: [] };
     }
 
     try {
@@ -675,7 +673,7 @@ ${truncatedText}`;
       const pagesResult = await this.documentAnnotationService.convertPdfToImages(buffer, 2.0);
       if (pagesResult.pages.length === 0) {
         this.logger.warn("No pages extracted from PDF for vision analysis");
-        return { lines: [], poNumber: null };
+        return { lines: [] };
       }
 
       const firstPage = pagesResult.pages[0];
@@ -741,7 +739,7 @@ Respond ONLY with JSON:
       if (!response.ok) {
         const errorText = await response.text();
         this.logger.error(`Gemini Vision API error: ${response.status} - ${errorText}`);
-        return { lines: [], poNumber: null };
+        return { lines: [] };
       }
 
       const data = await response.json();
@@ -766,26 +764,25 @@ Respond ONLY with JSON:
         if (parsed.poNumber) {
           this.logger.log(`Vision extracted PO Number: ${parsed.poNumber}`);
         }
-        return { lines, poNumber: parsed.poNumber || null };
+        return { lines, poNumber: parsed.poNumber || undefined };
       }
     } catch (error) {
       this.logger.error(`Vision extraction failed: ${error.message}`);
     }
 
-    return { lines: [], poNumber: null };
+    return { lines: [] };
   }
 
   private extractPoFromFilename(filename: string): string | null {
     const patterns = [/PL[-_]?(\d+)/i, /PO[-_]?(\d+)/i, /[-_](\d{4,})[-_]/];
 
-    const matchResult = patterns
-      .map((pattern) => filename.match(pattern))
-      .find((match) => match !== null);
-
-    if (matchResult) {
-      const poNumber = matchResult[1] || matchResult[0];
-      this.logger.log(`Extracted PO "${poNumber}" from filename "${filename}"`);
-      return poNumber;
+    for (const pattern of patterns) {
+      const match = filename.match(pattern);
+      if (match) {
+        const poNumber = match[1] || match[0];
+        this.logger.log(`Extracted PO "${poNumber}" from filename "${filename}"`);
+        return poNumber;
+      }
     }
 
     return null;
