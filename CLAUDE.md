@@ -25,6 +25,18 @@
     - ✅ `isEmpty()`, `isArray()`, `isObject()` etc.
     - ❌ Direct `===` for object comparisons
 
+### SWC-Safe Patterns (Frontend Only)
+- **Never combine `?.` with `??`**: SWC miscompiles `obj?.prop ?? fallback` into undeclared `_ref` variables in production builds, causing `ReferenceError: _ref is not defined`. Always use `||` instead of `??` when the expression also contains `?.`
+    - ✅ `user?.name || "Anonymous"`
+    - ✅ `items?.length || 0`
+    - ✅ `config?.theme || "default"`
+    - ❌ `user?.name ?? "Anonymous"`
+    - ❌ `items?.length ?? 0`
+- **No destructuring defaults in function parameters**: SWC miscompiles `({ prop = value }) =>` into broken `_ref` references. Destructure from `props` in the function body and use `??` for defaults
+    - ✅ `function Foo(props: FooProps) { const size = props.size ?? "md"; }`
+    - ❌ `function Foo({ size = "md" }: FooProps) {}`
+- **Standalone `??` (without `?.`) is fine**: `const x = props.value ?? fallback` compiles correctly
+
 ### Date/Time Handling
 - **Always use Luxon via the datetime module**: Never use native `Date`, `Date.now()`, or `Date.parse()`
 - **Frontend**: Import from `@/app/lib/datetime`
