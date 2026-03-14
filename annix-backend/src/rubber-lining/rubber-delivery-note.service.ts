@@ -781,8 +781,16 @@ export class RubberDeliveryNoteService {
 
     const unlinkedNotes = await this.deliveryNoteRepository.find({
       where: [
-        { supplierCompanyId: coc.supplierCompanyId, linkedCocId: IsNull(), status: DeliveryNoteStatus.PENDING },
-        { supplierCompanyId: coc.supplierCompanyId, linkedCocId: IsNull(), status: DeliveryNoteStatus.EXTRACTED },
+        {
+          supplierCompanyId: coc.supplierCompanyId,
+          linkedCocId: IsNull(),
+          status: DeliveryNoteStatus.PENDING,
+        },
+        {
+          supplierCompanyId: coc.supplierCompanyId,
+          linkedCocId: IsNull(),
+          status: DeliveryNoteStatus.EXTRACTED,
+        },
       ],
     });
 
