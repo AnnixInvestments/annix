@@ -414,6 +414,14 @@ export class StockControlAuthController {
 
   @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
   @StockControlRoles("admin")
+  @Post("admin-transfer/resend")
+  @ApiOperation({ summary: "Resend admin transfer email" })
+  async resendAdminTransfer(@Req() req: any) {
+    return this.authService.resendAdminTransfer(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
   @Delete("admin-transfer/:id")
   @ApiOperation({ summary: "Cancel a pending admin transfer" })
   async cancelAdminTransfer(@Req() req: any, @Param("id") id: string) {

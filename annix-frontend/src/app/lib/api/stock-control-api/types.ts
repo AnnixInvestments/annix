@@ -232,6 +232,7 @@ export interface AdminTransferPending {
   id: number;
   targetEmail: string;
   newRoleForInitiator: string | null;
+  token: string;
   createdAt: string;
   expiresAt: string;
 }

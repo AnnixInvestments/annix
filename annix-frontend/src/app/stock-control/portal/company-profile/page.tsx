@@ -1104,6 +1104,8 @@ function AdminTransferSection() {
   const [pendingTransfer, setPendingTransfer] = useState<AdminTransferPending | null>(null);
   const [loadingPending, setLoadingPending] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const nonAdminRoles = companyRoles.filter((r) => r.key !== "admin");
 
@@ -1162,6 +1164,33 @@ function AdminTransferSection() {
       setError(e instanceof Error ? e.message : "Failed to initiate transfer");
     } finally {
       setInitiating(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setError("");
+    setSuccess("");
+    setResending(true);
+    try {
+      const result = await stockControlApiClient.resendAdminTransfer();
+      setSuccess(result.message);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to resend email");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!pendingTransfer) return;
+    const frontendUrl = window.location.origin;
+    const link = `${frontendUrl}/stock-control/login?admin-transfer=${pendingTransfer.token}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Failed to copy link to clipboard");
     }
   };
 
@@ -1240,14 +1269,31 @@ function AdminTransferSection() {
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={cancelling}
-            className="px-4 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md border border-red-200 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {cancelling ? "Cancelling..." : "Cancel Transfer"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending}
+              className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {resending ? "Sending..." : "Resend Email"}
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              {copied ? "Copied!" : "Copy Link"}
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="px-4 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-md border border-red-200 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {cancelling ? "Cancelling..." : "Cancel Transfer"}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

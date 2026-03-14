@@ -597,6 +597,7 @@ export class StockControlAuthService {
     id: number;
     targetEmail: string;
     newRoleForInitiator: string | null;
+    token: string;
     createdAt: Date;
     expiresAt: Date;
   } | null> {
@@ -618,9 +619,41 @@ export class StockControlAuthService {
       id: transfer.id,
       targetEmail: transfer.targetEmail,
       newRoleForInitiator: transfer.newRoleForInitiator,
+      token: transfer.token,
       createdAt: transfer.createdAt,
       expiresAt: transfer.expiresAt,
     };
+  }
+
+  async resendAdminTransfer(companyId: number): Promise<{ message: string }> {
+    const transfer = await this.adminTransferRepo.findOne({
+      where: { companyId, status: AdminTransferStatus.PENDING },
+      relations: ["initiatedBy", "initiatedBy.company"],
+    });
+
+    if (!transfer) {
+      throw new NotFoundException("No pending admin transfer found");
+    }
+
+    if (now().toJSDate() > transfer.expiresAt) {
+      transfer.status = AdminTransferStatus.EXPIRED;
+      await this.adminTransferRepo.save(transfer);
+      throw new BadRequestException("Admin transfer has expired. Please initiate a new one.");
+    }
+
+    const initiator = await this.userRepo.findOne({
+      where: { id: transfer.initiatedById },
+      relations: ["company"],
+    });
+
+    await this.emailService.sendStockControlAdminTransferEmail(
+      transfer.targetEmail,
+      transfer.token,
+      initiator?.company?.name || "Your company",
+      initiator?.name || "Admin",
+    );
+
+    return { message: "Admin transfer email resent successfully." };
   }
 
   async cancelAdminTransfer(companyId: number, transferId: number): Promise<{ message: string }> {

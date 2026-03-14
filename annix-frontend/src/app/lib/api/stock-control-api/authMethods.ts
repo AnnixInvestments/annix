@@ -109,6 +109,7 @@ declare module "./base" {
     ): Promise<{ message: string }>;
     pendingAdminTransfer(): Promise<AdminTransferPending | null>;
     cancelAdminTransfer(id: number): Promise<{ message: string }>;
+    resendAdminTransfer(): Promise<{ message: string }>;
     acceptAdminTransfer(token: string): Promise<AdminTransferAcceptResponse>;
     companyRoles(): Promise<CompanyRole[]>;
     createCompanyRole(key: string, label: string): Promise<CompanyRole>;
@@ -362,6 +363,10 @@ proto.pendingAdminTransfer = async function () {
 
 proto.cancelAdminTransfer = async function (id) {
   return this.request(`/stock-control/auth/admin-transfer/${id}`, { method: "DELETE" });
+};
+
+proto.resendAdminTransfer = async function () {
+  return this.request("/stock-control/auth/admin-transfer/resend", { method: "POST" });
 };
 
 proto.acceptAdminTransfer = async function (token) {
