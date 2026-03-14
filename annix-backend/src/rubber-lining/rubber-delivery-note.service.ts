@@ -37,6 +37,18 @@ const DELIVERY_NOTE_STATUS_LABELS: Record<DeliveryNoteStatus, string> = {
   [DeliveryNoteStatus.STOCK_CREATED]: "Stock Created",
 };
 
+const parseCocNumberRolls = (cocNumber: string | null): string[] => {
+  if (!cocNumber) return [];
+  const dashIdx = cocNumber.indexOf("-");
+  if (dashIdx < 0) return [];
+  const rollPart = cocNumber.substring(dashIdx + 1).trim();
+  if (!rollPart) return [];
+  return rollPart
+    .split(/[,\s]+/)
+    .map((r) => r.trim())
+    .filter((r) => r.length > 0 && /^\d+$/.test(r));
+};
+
 @Injectable()
 export class RubberDeliveryNoteService {
   private readonly logger = new Logger(RubberDeliveryNoteService.name);
@@ -742,6 +754,12 @@ export class RubberDeliveryNoteService {
 
     const batchRange = note.extractedData?.batchRange;
     const dnNumber = note.deliveryNoteNumber;
+    const dnCustomerRef = (note.customerReference || note.extractedData?.customerReference || "")
+      .trim()
+      .toUpperCase();
+    const dnRollNumbers = (note.extractedData?.rolls || [])
+      .map((r) => r.rollNumber)
+      .filter(Boolean) as string[];
 
     const matched = supplierCocs.find((coc) => {
       const cocOrderNumber = (coc.orderNumber || coc.extractedData?.orderNumber || "")
@@ -751,12 +769,34 @@ export class RubberDeliveryNoteService {
         ...(coc.extractedData?.batchNumbers || []),
         ...(coc.extractedData?.batches || []).map((b) => b.batchNumber),
       ];
+      const cocRollNumbers: string[] = [...(coc.extractedData?.rollNumbers || [])].filter(Boolean);
+      const cocRollParts =
+        cocRollNumbers.length > 0
+          ? cocRollNumbers.flatMap((rn: string) => {
+              const parts = rn.split("-");
+              return parts.length >= 2 ? [parts[parts.length - 1]] : [rn];
+            })
+          : parseCocNumberRolls(coc.cocNumber);
 
       if (batchRange && cocBatches.some((b) => batchRange.includes(b))) {
         return true;
       }
 
       if (cocOrderNumber && dnNumber.toUpperCase().includes(cocOrderNumber)) {
+        return true;
+      }
+
+      const poMatch = cocOrderNumber && dnCustomerRef && cocOrderNumber === dnCustomerRef;
+      const rollMatch =
+        dnRollNumbers.length > 0 &&
+        cocRollParts.length > 0 &&
+        dnRollNumbers.some(
+          (dnRoll) =>
+            dnRoll != null &&
+            cocRollParts.some((cocRoll) => dnRoll === cocRoll || dnRoll.endsWith(cocRoll)),
+        );
+
+      if (poMatch && rollMatch) {
         return true;
       }
 
@@ -813,10 +853,13 @@ export class RubberDeliveryNoteService {
       ...(coc.extractedData?.batches || []).map((b: any) => b.batchNumber),
     ];
     const cocRollNumbers: string[] = [...(coc.extractedData?.rollNumbers || [])].filter(Boolean);
-    const cocRollParts = cocRollNumbers.flatMap((rn: string) => {
-      const parts = rn.split("-");
-      return parts.length >= 2 ? [parts[parts.length - 1]] : [rn];
-    });
+    const cocRollParts =
+      cocRollNumbers.length > 0
+        ? cocRollNumbers.flatMap((rn: string) => {
+            const parts = rn.split("-");
+            return parts.length >= 2 ? [parts[parts.length - 1]] : [rn];
+          })
+        : parseCocNumberRolls(coc.cocNumber);
 
     this.logger.log(
       `CoC ${supplierCocId}: cocOrderNumber="${cocOrderNumber}", cocBatches=${JSON.stringify(cocBatches)}, cocRollParts=${JSON.stringify(cocRollParts)}, unlinkedNotes=${unlinkedNotes.length}`,
@@ -905,10 +948,13 @@ export class RubberDeliveryNoteService {
         const cocRollNumbers: string[] = [...(coc.extractedData?.rollNumbers || [])].filter(
           Boolean,
         );
-        const cocRollParts = cocRollNumbers.flatMap((rn: string) => {
-          const parts = rn.split("-");
-          return parts.length >= 2 ? [parts[parts.length - 1]] : [rn];
-        });
+        const cocRollParts =
+          cocRollNumbers.length > 0
+            ? cocRollNumbers.flatMap((rn: string) => {
+                const parts = rn.split("-");
+                return parts.length >= 2 ? [parts[parts.length - 1]] : [rn];
+              })
+            : parseCocNumberRolls(coc.cocNumber);
 
         const matchedNotes = supplierNotes.filter((note) => {
           const batchRange = note.extractedData?.batchRange;
