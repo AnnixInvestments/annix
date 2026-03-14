@@ -21,6 +21,7 @@ import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.ent
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberStockService } from "./rubber-stock.service";
 
 const DELIVERY_NOTE_TYPE_LABELS: Record<DeliveryNoteType, string> = {
@@ -54,6 +55,7 @@ export class RubberDeliveryNoteService {
     @InjectRepository(RubberProductCoding)
     private productCodingRepository: Repository<RubberProductCoding>,
     private rubberStockService: RubberStockService,
+    private auCocReadinessService: RubberAuCocReadinessService,
   ) {}
 
   async allDeliveryNotes(filters?: {
@@ -227,6 +229,8 @@ export class RubberDeliveryNoteService {
 
     await this.updateSupplierAvailableProducts(note.supplierCompanyId, coc.compoundCode);
 
+    this.triggerDownstreamAuCocGeneration(note);
+
     const result = await this.deliveryNoteRepository.findOne({
       where: { id: deliveryNoteId },
       relations: ["supplierCompany", "linkedCoc"],
@@ -268,6 +272,78 @@ export class RubberDeliveryNoteService {
       supplier.availableProducts = [...supplier.availableProducts, ...newProductUids];
       await this.companyRepository.save(supplier);
     }
+  }
+
+  private triggerDownstreamAuCocGeneration(supplierDn: RubberDeliveryNote): void {
+    this.findMatchingCustomerDeliveryNotes(supplierDn)
+      .then((customerDnIds) => {
+        if (customerDnIds.length > 0) {
+          this.logger.log(
+            `SDN ${supplierDn.deliveryNoteNumber} linked to CoC — found ${customerDnIds.length} matching CDN(s): ${customerDnIds.join(", ")}`,
+          );
+        }
+        return Promise.all(
+          customerDnIds.map((cdnId) =>
+            this.auCocReadinessService.checkAndAutoGenerateForDeliveryNote(cdnId),
+          ),
+        );
+      })
+      .catch((error) => {
+        this.logger.error(
+          `Downstream AU CoC generation for SDN ${supplierDn.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
+  }
+
+  private async findMatchingCustomerDeliveryNotes(
+    supplierDn: RubberDeliveryNote,
+  ): Promise<number[]> {
+    const sdnRollNumbers = (supplierDn.extractedData?.rolls || [])
+      .map((r) => r.rollNumber)
+      .filter(Boolean) as string[];
+
+    if (sdnRollNumbers.length === 0) return [];
+
+    const customers = await this.companyRepository.find({
+      where: { companyType: CompanyType.CUSTOMER },
+    });
+
+    if (customers.length === 0) return [];
+
+    const customerIds = customers.map((c) => c.id);
+
+    const customerDns = await this.deliveryNoteRepository
+      .createQueryBuilder("dn")
+      .where("dn.supplier_company_id IN (:...customerIds)", { customerIds })
+      .andWhere("dn.delivery_note_type = :type", { type: DeliveryNoteType.ROLL })
+      .getMany();
+
+    if (customerDns.length === 0) return [];
+
+    const sdnRollSet = new Set(sdnRollNumbers.map((rn) => rn.trim()));
+    const sdnRollSuffixes = new Set(
+      sdnRollNumbers.map((rn) => {
+        const parts = rn.split("-");
+        return parts.length >= 2 ? parts[parts.length - 1] : rn;
+      }),
+    );
+
+    return customerDns
+      .filter((cdn) => {
+        const cdnRolls = (cdn.extractedData?.rolls || [])
+          .map((r) => r.rollNumber)
+          .filter(Boolean) as string[];
+
+        return cdnRolls.some((cdnRoll) => {
+          const trimmed = cdnRoll.trim();
+          if (sdnRollSet.has(trimmed)) return true;
+
+          const parts = trimmed.split("-");
+          const suffix = parts.length >= 2 ? parts[parts.length - 1] : trimmed;
+          return sdnRollSuffixes.has(suffix);
+        });
+      })
+      .map((cdn) => cdn.id);
   }
 
   async finalizeDeliveryNote(id: number): Promise<RubberDeliveryNoteDto | null> {
@@ -704,11 +780,10 @@ export class RubberDeliveryNoteService {
     if (!coc) return [];
 
     const unlinkedNotes = await this.deliveryNoteRepository.find({
-      where: {
-        supplierCompanyId: coc.supplierCompanyId,
-        linkedCocId: IsNull(),
-        status: DeliveryNoteStatus.PENDING,
-      },
+      where: [
+        { supplierCompanyId: coc.supplierCompanyId, linkedCocId: IsNull(), status: DeliveryNoteStatus.PENDING },
+        { supplierCompanyId: coc.supplierCompanyId, linkedCocId: IsNull(), status: DeliveryNoteStatus.EXTRACTED },
+      ],
     });
 
     this.logger.log(
@@ -791,10 +866,10 @@ export class RubberDeliveryNoteService {
     const [allCocs, allUnlinkedNotes] = await Promise.all([
       this.supplierCocRepository.find(),
       this.deliveryNoteRepository.find({
-        where: {
-          linkedCocId: IsNull(),
-          status: DeliveryNoteStatus.PENDING,
-        },
+        where: [
+          { linkedCocId: IsNull(), status: DeliveryNoteStatus.PENDING },
+          { linkedCocId: IsNull(), status: DeliveryNoteStatus.EXTRACTED },
+        ],
       }),
     ]);
 

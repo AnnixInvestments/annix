@@ -66,7 +66,7 @@ export default function DeliveryNoteDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<EditableExtractedData[] | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [isAccepting, setIsAccepting] = useState(false);
+
   const [showPodModal, setShowPodModal] = useState(false);
   const [podPageNumber, setPodPageNumber] = useState<number | null>(null);
   const [podPageUrl, setPodPageUrl] = useState<string | null>(null);
@@ -238,21 +238,6 @@ export default function DeliveryNoteDetailPage() {
     }
   };
 
-  const handleAcceptExtract = async () => {
-    try {
-      setIsAccepting(true);
-      const result = await auRubberApiClient.acceptDeliveryNoteExtract(noteId);
-      const count = result.deliveryNoteIds.length;
-      showToast(
-        count > 1 ? `Extract accepted - ${count} delivery notes created` : "Extract accepted",
-        "success",
-      );
-      router.back();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to accept extract", "error");
-      setIsAccepting(false);
-    }
-  };
 
   const handleViewPod = async (pageNumber: number) => {
     if (!note?.documentPath) return;
@@ -444,7 +429,7 @@ export default function DeliveryNoteDetailPage() {
           </div>
         </div>
         <div className="flex space-x-3">
-          {note.status === "PENDING" && (
+          {(note.status === "PENDING" || note.status === "EXTRACTED") && (
             <button
               onClick={handleExtract}
               disabled={isExtracting}
@@ -457,21 +442,12 @@ export default function DeliveryNoteDetailPage() {
                   : "Extract Data"}
             </button>
           )}
-          {note.status === "PENDING" && !note.linkedCocId && unlinkedCocs.length > 0 && (
+          {(note.status === "PENDING" || note.status === "EXTRACTED") && !note.linkedCocId && unlinkedCocs.length > 0 && (
             <button
               onClick={() => setShowLinkModal(true)}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               Link to CoC
-            </button>
-          )}
-          {note.status === "PENDING" && hasExtractedData && (
-            <button
-              onClick={handleAcceptExtract}
-              disabled={isAccepting}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
-            >
-              {isAccepting ? "Accepting..." : "Accept Extract"}
             </button>
           )}
           {note.status === "LINKED" && (

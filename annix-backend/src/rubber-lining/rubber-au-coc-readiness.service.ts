@@ -1,6 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { EmailService } from "../email/email.service";
 import { nowISO } from "../lib/datetime";
 import {
   AuCocReadinessStatus,
@@ -38,6 +40,8 @@ export class RubberAuCocReadinessService {
     @InjectRepository(RubberDeliveryNote)
     private deliveryNoteRepository: Repository<RubberDeliveryNote>,
     private auCocService: RubberAuCocService,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {}
 
   async checkReadiness(auCocId: number): Promise<ReadinessResult> {
@@ -230,6 +234,7 @@ export class RubberAuCocReadinessService {
   ): Promise<{ generated: boolean; auCocId: number; reason: string }> {
     const auCoc = await this.auCocRepository.findOne({
       where: { id: auCocId },
+      relations: ["customerCompany"],
     });
 
     if (!auCoc) {
@@ -267,6 +272,8 @@ export class RubberAuCocReadinessService {
           `compounder=${readiness.details.compounderCocId}, ` +
           `graph=${readiness.details.graphPdfPath}`,
       );
+
+      this.notifyAdminForVerification(auCoc);
 
       return { generated: true, auCocId, reason: "Auto-generated successfully" };
     } catch (error) {
@@ -406,6 +413,67 @@ export class RubberAuCocReadinessService {
         lastCheckedAt: nowISO(),
       },
     };
+  }
+
+  private notifyAdminForVerification(auCoc: RubberAuCoc): void {
+    const adminEmail = this.configService.get<string>("SUPPORT_EMAIL") || "info@annix.co.za";
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const cocLink = `${frontendUrl}/au-rubber/portal/au-cocs/${auCoc.id}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"><title>AU CoC Auto-Generated</title></head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 15px; margin-bottom: 20px;">
+            <h2 style="color: #065f46; margin: 0 0 8px 0; font-size: 18px;">
+              AU CoC Auto-Generated — Verification Required
+            </h2>
+            <p style="margin: 0; color: #065f46;">
+              ${auCoc.cocNumber} has been automatically generated and requires your review.
+            </p>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; width: 140px;">CoC Number:</td>
+              <td style="padding: 8px 0;">${auCoc.cocNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Customer:</td>
+              <td style="padding: 8px 0;">${auCoc.customerCompany?.name || "—"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">PO / Ref:</td>
+              <td style="padding: 8px 0;">${auCoc.poNumber || "—"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Delivery Note:</td>
+              <td style="padding: 8px 0;">${auCoc.deliveryNoteRef || "—"}</td>
+            </tr>
+          </table>
+          <a href="${cocLink}" style="display: inline-block; padding: 10px 20px; background-color: #f97316; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
+            Review AU CoC
+          </a>
+        </div>
+      </body>
+      </html>
+    `;
+
+    this.emailService
+      .sendEmail({
+        to: adminEmail,
+        subject: `AU CoC Auto-Generated — ${auCoc.cocNumber} — Verification Required`,
+        html,
+      })
+      .then(() => {
+        this.logger.log(`Verification notification sent to ${adminEmail} for ${auCoc.cocNumber}`);
+      })
+      .catch((error) => {
+        this.logger.error(
+          `Failed to send verification notification for ${auCoc.cocNumber}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
   }
 
   private notReadyWith(

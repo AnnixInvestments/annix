@@ -1766,13 +1766,25 @@ Formula: totalPrice = totalKg × salePricePerKg
       }
     })();
 
-    const updatedNote = await this.rubberDeliveryNoteService.setExtractedData(
+    await this.rubberDeliveryNoteService.setExtractedData(
       Number(id),
       extractedData,
     );
-    if (!updatedNote) throw new NotFoundException("Failed to update delivery note");
 
-    return updatedNote;
+    const splitResult = await this.rubberDeliveryNoteService.acceptExtractAndSplit(Number(id));
+
+    await Promise.all(
+      splitResult.deliveryNoteIds.map((dnId) =>
+        this.rubberDeliveryNoteService.autoLinkToSupplierCoc(dnId),
+      ),
+    );
+
+    const finalNote = await this.rubberDeliveryNoteService.deliveryNoteById(
+      splitResult.deliveryNoteIds[0],
+    );
+    if (!finalNote) throw new NotFoundException("Failed to update delivery note");
+
+    return finalNote;
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
