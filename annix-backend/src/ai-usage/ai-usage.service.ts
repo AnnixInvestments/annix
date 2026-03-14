@@ -122,7 +122,10 @@ export class AiUsageService {
 
     const countQb = baseQb.clone();
     const countResult = await countQb
-      .select("COUNT(DISTINCT (log.created_at::date || log.app || log.action_type || log.provider))", "cnt")
+      .select(
+        "COUNT(DISTINCT (log.created_at::date || log.app || log.action_type || log.provider))",
+        "cnt",
+      )
       .getRawOne();
     const total = Number(countResult?.cnt ?? 0);
 
