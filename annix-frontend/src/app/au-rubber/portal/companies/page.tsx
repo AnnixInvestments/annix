@@ -333,7 +333,7 @@ export default function AuRubberCompaniesPage() {
       const payload = {
         ...formData,
         companyType: formData.companyType,
-        pricingTierId: formData.pricingTierId ?? undefined,
+        pricingTierId: formData.pricingTierId || undefined,
         address: cleanedAddress,
       };
       if (editingCompany) {
@@ -509,7 +509,7 @@ export default function AuRubberCompaniesPage() {
                         Pricing Tier
                       </label>
                       <select
-                        value={formData.pricingTierId ?? ""}
+                        value={formData.pricingTierId || ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
