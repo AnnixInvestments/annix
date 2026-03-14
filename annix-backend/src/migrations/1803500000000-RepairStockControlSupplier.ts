@@ -52,6 +52,10 @@ export class RepairStockControlSupplier1803500000000 implements MigrationInterfa
       EXCEPTION WHEN duplicate_object THEN NULL;
       END $$
     `);
+
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_supplier_invoices_supplier_id" ON "supplier_invoices" ("supplier_id")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

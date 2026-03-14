@@ -1,9 +1,8 @@
 "use client";
 
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
-import type { AiUsageLog, AiUsageQueryParams } from "@/app/lib/api/adminApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { useState } from "react";
+import type { AiUsageQueryParams } from "@/app/lib/api/adminApi";
+import { formatDateZA, fromISO } from "@/app/lib/datetime";
 import { useAiUsageLogs } from "@/app/lib/query/hooks";
 
 const APP_OPTIONS = [
@@ -50,58 +49,12 @@ function providerBadgeColor(provider: string): string {
   return "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300";
 }
 
-interface UsageGroup {
-  key: string;
-  date: string;
-  app: string;
-  actionType: string;
-  provider: string;
-  model: string;
-  totalCalls: number;
-  totalTokens: number;
-  totalPages: number;
-  totalTimeMs: number;
-  logs: AiUsageLog[];
-}
-
-function groupLogs(logs: AiUsageLog[]): UsageGroup[] {
-  return logs.reduce<UsageGroup[]>((groups, log) => {
-    const date = formatDateZA(log.createdAt);
-    const key = `${date}|${log.app}|${log.actionType}`;
-    const existing = groups.find((g) => g.key === key);
-
-    if (existing) {
-      return groups.map((g) =>
-        g.key === key
-          ? {
-              ...g,
-              totalCalls: g.totalCalls + 1,
-              totalTokens: g.totalTokens + (log.tokensUsed ?? 0),
-              totalPages: g.totalPages + (log.pageCount ?? 0),
-              totalTimeMs: g.totalTimeMs + (log.processingTimeMs ?? 0),
-              logs: [...g.logs, log],
-            }
-          : g,
-      );
-    }
-
-    return [
-      ...groups,
-      {
-        key,
-        date,
-        app: log.app,
-        actionType: log.actionType,
-        provider: log.provider,
-        model: log.model ?? "-",
-        totalCalls: 1,
-        totalTokens: log.tokensUsed ?? 0,
-        totalPages: log.pageCount ?? 0,
-        totalTimeMs: log.processingTimeMs ?? 0,
-        logs: [log],
-      },
-    ];
-  }, []);
+function formatGroupDate(dateStr: string): string {
+  const dt = fromISO(dateStr);
+  if (dt.isValid) {
+    return formatDateZA(dateStr);
+  }
+  return dateStr;
 }
 
 export default function AiUsagePage() {
@@ -109,23 +62,10 @@ export default function AiUsagePage() {
     page: 1,
     limit: 50,
   });
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useAiUsageLogs(filters);
 
-  const groups = useMemo(() => groupLogs(data?.data || []), [data?.data]);
-
-  const toggleGroup = (key: string) => {
-    setExpandedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  };
+  const groups = data?.data ?? [];
 
   const updateFilter = (key: keyof AiUsageQueryParams, value: string | number) => {
     setFilters((prev) => ({
@@ -133,7 +73,6 @@ export default function AiUsagePage() {
       [key]: value || undefined,
       page: key === "page" ? (value as number) : 1,
     }));
-    setExpandedGroups(new Set());
   };
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0;
@@ -215,7 +154,6 @@ export default function AiUsagePage() {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
             <thead className="bg-gray-50 dark:bg-slate-700/50">
               <tr>
-                <th className="w-8 px-2 py-3" />
                 {[
                   "Date",
                   "App",
@@ -240,7 +178,7 @@ export default function AiUsagePage() {
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={9}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     Loading...
@@ -249,115 +187,55 @@ export default function AiUsagePage() {
               ) : groups.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={9}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     No usage logs found
                   </td>
                 </tr>
               ) : (
-                groups.flatMap((group) => {
-                  const isExpanded = expandedGroups.has(group.key);
-                  const isSingleEntry = group.logs.length === 1;
-
-                  return [
-                    <tr
-                      key={group.key}
-                      onClick={() => !isSingleEntry && toggleGroup(group.key)}
-                      className={`${isSingleEntry ? "" : "cursor-pointer"} hover:bg-gray-50 dark:hover:bg-slate-700/30 ${isExpanded ? "bg-gray-50 dark:bg-slate-700/20" : ""}`}
-                    >
-                      <td className="px-2 py-3 text-center text-gray-400">
-                        {isSingleEntry ? (
-                          <span className="inline-block w-4" />
-                        ) : isExpanded ? (
-                          <ChevronDown className="inline h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="inline h-4 w-4" />
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-200">
-                        {group.date}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${appBadgeColor(group.app)}`}
-                        >
-                          {group.app}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                        {group.actionType}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${providerBadgeColor(group.provider)}`}
-                        >
-                          {group.provider}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                        {group.model}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-200">
-                        {group.totalCalls}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                        {group.totalPages || "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm font-mono font-medium text-gray-900 dark:text-gray-200">
-                        {formatTokens(group.totalTokens || null)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                        {formatMs(group.totalTimeMs || null)}
-                      </td>
-                    </tr>,
-                    ...(isExpanded
-                      ? group.logs.map((log) => (
-                          <tr
-                            key={`detail-${log.id}`}
-                            className="bg-gray-50/50 dark:bg-slate-700/10"
-                          >
-                            <td className="px-2 py-2" />
-                            <td className="whitespace-nowrap px-4 py-2 text-xs text-gray-500 dark:text-gray-400 pl-8">
-                              {formatDateZA(log.createdAt)}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-2 text-xs">
-                              <span
-                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${appBadgeColor(log.app)}`}
-                              >
-                                {log.app}
-                              </span>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
-                              {log.actionType}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-2 text-xs">
-                              <span
-                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${providerBadgeColor(log.provider)}`}
-                              >
-                                {log.provider}
-                              </span>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
-                              {log.model ?? "-"}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
-                              1
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
-                              {log.pageCount ?? "-"}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-2 text-xs font-mono text-gray-500 dark:text-gray-400">
-                              {formatTokens(log.tokensUsed)}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
-                              {formatMs(log.processingTimeMs)}
-                            </td>
-                          </tr>
-                        ))
-                      : []),
-                  ];
-                })
+                groups.map((group) => (
+                  <tr
+                    key={`${group.date}|${group.app}|${group.actionType}|${group.provider}`}
+                    className="hover:bg-gray-50 dark:hover:bg-slate-700/30"
+                  >
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-200">
+                      {formatGroupDate(group.date)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${appBadgeColor(group.app)}`}
+                      >
+                        {group.app}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                      {group.actionType}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${providerBadgeColor(group.provider)}`}
+                      >
+                        {group.provider}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                      {group.model ?? "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-200">
+                      {group.totalCalls}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                      {group.totalPages || "-"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-mono font-medium text-gray-900 dark:text-gray-200">
+                      {formatTokens(group.totalTokens || null)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                      {formatMs(group.totalTimeMs || null)}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

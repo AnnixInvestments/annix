@@ -23,8 +23,20 @@ export interface AiUsageQueryDto {
   limit?: number;
 }
 
+export interface AiUsageGroupRow {
+  date: string;
+  app: string;
+  actionType: string;
+  provider: string;
+  model: string | null;
+  totalCalls: number;
+  totalTokens: number;
+  totalPages: number;
+  totalTimeMs: number;
+}
+
 export interface AiUsageListResponse {
-  data: AiUsageLog[];
+  data: AiUsageGroupRow[];
   total: number;
   page: number;
   limit: number;
@@ -63,36 +75,59 @@ export class AiUsageService {
   async usageLogs(query: AiUsageQueryDto): Promise<AiUsageListResponse> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
-    const qb = this.repo.createQueryBuilder("log");
+    const baseQb = this.repo.createQueryBuilder("log");
 
     if (query.app) {
-      qb.andWhere("log.app = :app", { app: query.app });
+      baseQb.andWhere("log.app = :app", { app: query.app });
     }
     if (query.provider) {
-      qb.andWhere("log.provider = :provider", { provider: query.provider });
+      baseQb.andWhere("log.provider = :provider", { provider: query.provider });
     }
     if (query.from) {
-      qb.andWhere("log.createdAt >= :from", { from: query.from });
+      baseQb.andWhere("log.createdAt >= :from", { from: query.from });
     }
     if (query.to) {
-      qb.andWhere("log.createdAt <= :to", { to: query.to });
+      baseQb.andWhere("log.createdAt <= :to", { to: query.to });
     }
 
-    const summaryQb = qb.clone();
-
-    qb.orderBy("log.createdAt", "DESC").skip(skip).take(limit);
-
-    const [data, total] = await qb.getManyAndCount();
+    const summaryQb = baseQb.clone();
 
     const summaryResult = await summaryQb
       .select("COALESCE(SUM(log.tokensUsed), 0)", "totalTokens")
       .addSelect("COUNT(*)", "totalCalls")
       .getRawOne();
 
+    const groupQb = baseQb.clone();
+    groupQb
+      .select("log.created_at::date", "date")
+      .addSelect("log.app", "app")
+      .addSelect("log.action_type", "actionType")
+      .addSelect("log.provider", "provider")
+      .addSelect("MAX(log.model)", "model")
+      .addSelect("COUNT(*)::int", "totalCalls")
+      .addSelect("COALESCE(SUM(log.tokens_used), 0)::int", "totalTokens")
+      .addSelect("COALESCE(SUM(log.page_count), 0)::int", "totalPages")
+      .addSelect("COALESCE(SUM(log.processing_time_ms), 0)::int", "totalTimeMs")
+      .groupBy("log.created_at::date")
+      .addGroupBy("log.app")
+      .addGroupBy("log.action_type")
+      .addGroupBy("log.provider")
+      .orderBy("log.created_at::date", "DESC")
+      .offset(offset)
+      .limit(limit);
+
+    const rows: AiUsageGroupRow[] = await groupQb.getRawMany();
+
+    const countQb = baseQb.clone();
+    const countResult = await countQb
+      .select("COUNT(DISTINCT (log.created_at::date || log.app || log.action_type || log.provider))", "cnt")
+      .getRawOne();
+    const total = Number(countResult?.cnt ?? 0);
+
     return {
-      data,
+      data: rows,
       total,
       page,
       limit,

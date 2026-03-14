@@ -11,20 +11,21 @@ function StockControlLoginContent() {
   const returnUrl = searchParams.get("returnUrl");
   const { login, isAuthenticated, isLoading: authLoading, profile } = useStockControlAuth();
 
-  const [email, setEmail] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("stockControlRememberedEmail") || "";
-    }
-    return "";
-  });
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("stockControlRememberMe") === "true";
+  const [rememberMe, setRememberMe] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("stockControlRememberedEmail");
+    const savedRemember = localStorage.getItem("stockControlRememberMe") === "true";
+    if (savedEmail) {
+      setEmail(savedEmail);
     }
-    return false;
-  });
+    if (savedRemember) {
+      setRememberMe(true);
+    }
+  }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

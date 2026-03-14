@@ -2,6 +2,19 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddEmbeddingColumns1803300000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    const result = await queryRunner.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_available_extensions WHERE name = 'vector'
+      ) AS "available"
+    `);
+
+    if (!result[0]?.available) {
+      console.log(
+        "pgvector extension not available — skipping embedding columns. Install pgvector for full functionality.",
+      );
+      return;
+    }
+
     await queryRunner.query("CREATE EXTENSION IF NOT EXISTS vector");
 
     await queryRunner.query(`

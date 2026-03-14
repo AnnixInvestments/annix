@@ -1321,21 +1321,20 @@ export interface AiUsageQueryParams {
   limit?: number;
 }
 
-export interface AiUsageLog {
-  id: number;
+export interface AiUsageGroup {
+  date: string;
   app: string;
   actionType: string;
   provider: string;
   model: string | null;
-  tokensUsed: number | null;
-  pageCount: number | null;
-  processingTimeMs: number | null;
-  contextInfo: Record<string, unknown> | null;
-  createdAt: string;
+  totalCalls: number;
+  totalTokens: number;
+  totalPages: number;
+  totalTimeMs: number;
 }
 
 export interface AiUsageListResponse {
-  data: AiUsageLog[];
+  data: AiUsageGroup[];
   total: number;
   page: number;
   limit: number;
