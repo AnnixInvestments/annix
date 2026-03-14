@@ -288,7 +288,7 @@ export default function OnboardingPage() {
                       className={selectClass}
                     >
                       <option value="">Select municipality</option>
-                      {(MUNICIPALITIES[province] ?? []).map((muni) => (
+                      {(MUNICIPALITIES[province] || []).map((muni) => (
                         <option key={muni} value={muni}>
                           {muni}
                         </option>

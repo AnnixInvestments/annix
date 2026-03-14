@@ -57,7 +57,7 @@ const STATUS_CONFIG: Record<
 
 function statusConfig(status: string) {
   return (
-    STATUS_CONFIG[status] ?? {
+    STATUS_CONFIG[status] || {
       color: "text-slate-500 dark:text-slate-400",
       bg: "bg-slate-500/10 border-slate-500/30",
       icon: CheckCircle,
@@ -417,7 +417,7 @@ export default function DashboardPage() {
           {categories.map((category) => (
             <div key={category}>
               <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-                {CATEGORY_LABELS[category] ?? category}
+                {CATEGORY_LABELS[category] || category}
               </h3>
               <div className="space-y-2">
                 {groupedRequirements[category].map((req) => (

@@ -238,7 +238,7 @@ export default function SetupWizard() {
   }
 
   function fileForKey(key: string): File | null {
-    return documentFiles.find((d) => d.key === key)?.file ?? null;
+    return documentFiles.find((d) => d.key === key)?.file || null;
   }
 
   async function handleProcess() {
@@ -472,7 +472,7 @@ export default function SetupWizard() {
                       className={selectClass}
                     >
                       <option value="">Select municipality</option>
-                      {(MUNICIPALITIES[province] ?? []).map((muni) => (
+                      {(MUNICIPALITIES[province] || []).map((muni) => (
                         <option key={muni} value={muni}>
                           {muni}
                         </option>
