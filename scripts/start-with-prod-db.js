@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
-const { execSync, spawn } = require("child_process");
-const fs = require("fs");
-const path = require("path");
+const { execSync, spawn } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const backendDir = path.resolve(__dirname, "..", "annix-backend");
 const prodDbEnv = path.join(backendDir, ".env.prod-db");
 
 if (!fs.existsSync(prodDbEnv)) {
   console.error(
-    "\x1b[31m.env.prod-db not found. Run setup-prod-db.ps1 or setup-prod-db.sh first.\x1b[0m"
+    "\x1b[31m.env.prod-db not found. Run setup-prod-db.ps1 or setup-prod-db.sh first.\x1b[0m",
   );
   process.exit(1);
 }

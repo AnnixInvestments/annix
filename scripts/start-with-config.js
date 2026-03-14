@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-const { spawn } = require("child_process");
-const fs = require("fs");
-const path = require("path");
+const { spawn } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const configsDir = path.resolve(__dirname, "..", "annix-backend", "configs");
 const configName = process.argv[2];
@@ -17,7 +17,7 @@ if (!configName) {
       .filter((f) => f.endsWith(".env"))
       .map((f) => f.replace(".env", ""));
     if (existing.length > 0) {
-      console.error("Available configs: " + existing.join(", "));
+      console.error(`Available configs: ${existing.join(", ")}`);
     } else {
       console.error("No configs found. Run: node scripts/setup-config.js <name>");
     }
@@ -31,7 +31,7 @@ const configFile = path.join(configsDir, `${configName}.env`);
 
 if (!fs.existsSync(configFile)) {
   console.error(`\x1b[31mConfig '${configName}' not found at ${configFile}\x1b[0m`);
-  console.error("Run: node scripts/setup-config.js " + configName);
+  console.error(`Run: node scripts/setup-config.js ${configName}`);
   process.exit(1);
 }
 
