@@ -210,6 +210,8 @@ export class RubberDeliveryNoteDto {
   statusLabel: string;
   linkedCocId: number | null;
   linkedCocNumber: string | null;
+  auCocId: number | null;
+  auCocNumber: string | null;
   extractedData: ExtractedDeliveryNoteData | null;
   createdBy: string | null;
   createdAt: string;

@@ -560,7 +560,7 @@ export default function CustomerDeliveryNotesPage() {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Linked CoC
+                  AU CoC
                 </th>
                 <th scope="col" className="relative px-6 py-3">
                   <span className="sr-only">Actions</span>
@@ -595,13 +595,15 @@ export default function CustomerDeliveryNotesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{statusBadge(note.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {note.linkedCocId ? (
+                    {note.auCocId ? (
                       <Link
-                        href={`/au-rubber/portal/supplier-cocs/${note.linkedCocId}`}
-                        className="text-blue-600 hover:text-blue-800"
+                        href={`/au-rubber/portal/au-cocs/${note.auCocId}`}
+                        className="text-yellow-600 hover:text-yellow-800"
                       >
-                        View CoC
+                        {note.auCocNumber || "View AU CoC"}
                       </Link>
+                    ) : note.linkedCocId ? (
+                      <span className="text-teal-600">Linked</span>
                     ) : (
                       <span className="text-gray-400">Not linked</span>
                     )}

@@ -9,6 +9,7 @@ import {
   RubberDeliveryNoteDto,
   UpdateDeliveryNoteDto,
 } from "./dto/rubber-coc.dto";
+import { RubberAuCoc } from "./entities/rubber-au-coc.entity";
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
 import {
@@ -66,6 +67,8 @@ export class RubberDeliveryNoteService {
     private productRepository: Repository<RubberProduct>,
     @InjectRepository(RubberProductCoding)
     private productCodingRepository: Repository<RubberProductCoding>,
+    @InjectRepository(RubberAuCoc)
+    private auCocRepository: Repository<RubberAuCoc>,
     private rubberStockService: RubberStockService,
     private auCocReadinessService: RubberAuCocReadinessService,
   ) {}
@@ -94,7 +97,9 @@ export class RubberDeliveryNoteService {
     }
 
     const notes = await query.getMany();
-    return notes.map((dn) => this.mapDeliveryNoteToDto(dn));
+    const noteIds = notes.map((n) => n.id);
+    const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
+    return notes.map((dn) => this.mapDeliveryNoteToDto(dn, auCocMap.get(dn.id) ?? null));
   }
 
   async deliveryNoteById(id: number): Promise<RubberDeliveryNoteDto | null> {
@@ -703,7 +708,27 @@ export class RubberDeliveryNoteService {
     return { deliveryNoteIds };
   }
 
-  private mapDeliveryNoteToDto(note: RubberDeliveryNote): RubberDeliveryNoteDto {
+  private async auCocMapByDeliveryNoteIds(
+    dnIds: number[],
+  ): Promise<Map<number, { id: number; cocNumber: string }>> {
+    const auCocs = await this.auCocRepository
+      .createQueryBuilder("ac")
+      .select(["ac.id", "ac.cocNumber", "ac.sourceDeliveryNoteId"])
+      .where("ac.source_delivery_note_id IN (:...dnIds)", { dnIds })
+      .getMany();
+
+    return auCocs.reduce((map, ac) => {
+      if (ac.sourceDeliveryNoteId) {
+        map.set(ac.sourceDeliveryNoteId, { id: ac.id, cocNumber: ac.cocNumber });
+      }
+      return map;
+    }, new Map<number, { id: number; cocNumber: string }>());
+  }
+
+  private mapDeliveryNoteToDto(
+    note: RubberDeliveryNote,
+    auCoc?: { id: number; cocNumber: string } | null,
+  ): RubberDeliveryNoteDto {
     return {
       id: note.id,
       firebaseUid: note.firebaseUid,
@@ -719,6 +744,8 @@ export class RubberDeliveryNoteService {
       statusLabel: DELIVERY_NOTE_STATUS_LABELS[note.status],
       linkedCocId: note.linkedCocId,
       linkedCocNumber: note.linkedCoc?.cocNumber ?? null,
+      auCocId: auCoc?.id ?? null,
+      auCocNumber: auCoc?.cocNumber ?? null,
       extractedData: note.extractedData,
       createdBy: note.createdBy,
       createdAt: note.createdAt.toISOString(),

@@ -506,6 +506,8 @@ export interface RubberDeliveryNoteDto {
   statusLabel: string;
   extractedData: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null;
   linkedCocId: number | null;
+  auCocId: number | null;
+  auCocNumber: string | null;
   createdAt: string;
   updatedAt: string;
 }
