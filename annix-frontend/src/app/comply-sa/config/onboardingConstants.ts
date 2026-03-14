@@ -1,0 +1,136 @@
+export const PROVINCES = [
+  "Eastern Cape",
+  "Free State",
+  "Gauteng",
+  "KwaZulu-Natal",
+  "Limpopo",
+  "Mpumalanga",
+  "North West",
+  "Northern Cape",
+  "Western Cape",
+];
+
+export const INDUSTRIES = [
+  "Construction",
+  "Manufacturing",
+  "Retail",
+  "Professional Services",
+  "IT & Technology",
+  "Healthcare",
+  "Hospitality & Tourism",
+  "Agriculture",
+  "Mining",
+  "Transport & Logistics",
+  "Financial Services",
+  "Education",
+  "Other",
+];
+
+export const TURNOVER_OPTIONS = [
+  { label: "Under R1 million", value: 500000 },
+  { label: "R1m - R2.3m", value: 1500000 },
+  { label: "R2.3m - R10m", value: 5000000 },
+  { label: "R10m - R50m", value: 25000000 },
+  { label: "Over R50m", value: 75000000 },
+];
+
+export const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+export const MUNICIPALITIES: Record<string, string[]> = {
+  "Eastern Cape": [
+    "Buffalo City",
+    "Nelson Mandela Bay",
+    "Alfred Nzo",
+    "Amathole",
+    "Chris Hani",
+    "Joe Gqabi",
+    "O.R. Tambo",
+    "Sarah Baartman",
+  ],
+  "Free State": ["Mangaung", "Fezile Dabi", "Lejweleputswa", "Thabo Mofutsanyana", "Xhariep"],
+  Gauteng: ["City of Johannesburg", "City of Tshwane", "Ekurhuleni", "Sedibeng", "West Rand"],
+  "KwaZulu-Natal": [
+    "eThekwini",
+    "Amajuba",
+    "Harry Gwala",
+    "iLembe",
+    "King Cetshwayo",
+    "Ugu",
+    "uMgungundlovu",
+    "uMkhanyakude",
+    "uMzinyathi",
+    "uThukela",
+    "Zululand",
+  ],
+  Limpopo: ["Capricorn", "Mopani", "Sekhukhune", "Vhembe", "Waterberg"],
+  Mpumalanga: ["Ehlanzeni", "Gert Sibande", "Nkangala"],
+  "North West": [
+    "Bojanala Platinum",
+    "Dr Kenneth Kaunda",
+    "Dr Ruth Segomotsi Mompati",
+    "Ngaka Modiri Molema",
+  ],
+  "Northern Cape": [
+    "Frances Baard",
+    "John Taolo Gaetsewe",
+    "Namakwa",
+    "Pixley ka Seme",
+    "Z.F. Mgcawu",
+  ],
+  "Western Cape": [
+    "City of Cape Town",
+    "Cape Winelands",
+    "Central Karoo",
+    "Garden Route",
+    "Overberg",
+    "West Coast",
+  ],
+};
+
+export const WIZARD_DOCUMENTS = [
+  {
+    key: "cipc",
+    label: "CIPC Registration Certificate",
+    description:
+      "Certificate of incorporation from the Companies and Intellectual Property Commission",
+  },
+  {
+    key: "tax-clearance",
+    label: "Tax Clearance Certificate",
+    description: "Valid tax compliance status from SARS",
+  },
+  {
+    key: "bbee",
+    label: "B-BBEE Certificate",
+    description: "Broad-Based Black Economic Empowerment certificate or affidavit",
+  },
+  {
+    key: "coida",
+    label: "COIDA Letter of Good Standing",
+    description: "Compensation for Occupational Injuries and Diseases Act compliance letter",
+  },
+  {
+    key: "equity",
+    label: "Employment Equity Plan",
+    description: "Required for employers with 50+ employees or above turnover thresholds",
+    optional: true,
+  },
+  {
+    key: "popia",
+    label: "POPIA Privacy Policy",
+    description: "Privacy policy compliant with the Protection of Personal Information Act",
+  },
+];

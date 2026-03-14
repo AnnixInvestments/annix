@@ -3,109 +3,14 @@
 import { ArrowLeft, ArrowRight, Check, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import {
+  INDUSTRIES,
+  MONTHS,
+  MUNICIPALITIES,
+  PROVINCES,
+  TURNOVER_OPTIONS,
+} from "@/app/comply-sa/config/onboardingConstants";
 import { assessCompany, updateCompanyProfile } from "@/app/comply-sa/lib/api";
-
-const PROVINCES = [
-  "Eastern Cape",
-  "Free State",
-  "Gauteng",
-  "KwaZulu-Natal",
-  "Limpopo",
-  "Mpumalanga",
-  "North West",
-  "Northern Cape",
-  "Western Cape",
-];
-
-const INDUSTRIES = [
-  "Construction",
-  "Manufacturing",
-  "Retail",
-  "Professional Services",
-  "IT & Technology",
-  "Healthcare",
-  "Hospitality & Tourism",
-  "Agriculture",
-  "Mining",
-  "Transport & Logistics",
-  "Financial Services",
-  "Education",
-  "Other",
-];
-
-const TURNOVER_OPTIONS = [
-  { label: "Under R1 million", value: 500000 },
-  { label: "R1m - R2.3m", value: 1500000 },
-  { label: "R2.3m - R10m", value: 5000000 },
-  { label: "R10m - R50m", value: 25000000 },
-  { label: "Over R50m", value: 75000000 },
-];
-
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-const MUNICIPALITIES: Record<string, string[]> = {
-  "Eastern Cape": [
-    "Buffalo City",
-    "Nelson Mandela Bay",
-    "Alfred Nzo",
-    "Amathole",
-    "Chris Hani",
-    "Joe Gqabi",
-    "O.R. Tambo",
-    "Sarah Baartman",
-  ],
-  "Free State": ["Mangaung", "Fezile Dabi", "Lejweleputswa", "Thabo Mofutsanyana", "Xhariep"],
-  Gauteng: ["City of Johannesburg", "City of Tshwane", "Ekurhuleni", "Sedibeng", "West Rand"],
-  "KwaZulu-Natal": [
-    "eThekwini",
-    "Amajuba",
-    "Harry Gwala",
-    "iLembe",
-    "King Cetshwayo",
-    "Ugu",
-    "uMgungundlovu",
-    "uMkhanyakude",
-    "uMzinyathi",
-    "uThukela",
-    "Zululand",
-  ],
-  Limpopo: ["Capricorn", "Mopani", "Sekhukhune", "Vhembe", "Waterberg"],
-  Mpumalanga: ["Ehlanzeni", "Gert Sibande", "Nkangala"],
-  "North West": [
-    "Bojanala Platinum",
-    "Dr Kenneth Kaunda",
-    "Dr Ruth Segomotsi Mompati",
-    "Ngaka Modiri Molema",
-  ],
-  "Northern Cape": [
-    "Frances Baard",
-    "John Taolo Gaetsewe",
-    "Namakwa",
-    "Pixley ka Seme",
-    "Z.F. Mgcawu",
-  ],
-  "Western Cape": [
-    "City of Cape Town",
-    "Cape Winelands",
-    "Central Karoo",
-    "Garden Route",
-    "Overberg",
-    "West Coast",
-  ],
-};
 
 const TOTAL_STEPS = 4;
 
@@ -116,7 +21,7 @@ function ProgressBar({ currentStep }: { currentStep: number }) {
         <div key={step} className="flex-1 flex items-center gap-2">
           <div
             className={`h-2 flex-1 rounded-full transition-colors ${
-              step <= currentStep ? "bg-teal-500" : "bg-slate-700"
+              step <= currentStep ? "bg-teal-500" : "bg-slate-300 dark:bg-slate-700"
             }`}
           />
         </div>
@@ -208,31 +113,31 @@ export default function OnboardingPage() {
   }
 
   const inputClass =
-    "w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors";
+    "w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors";
   const selectClass =
-    "w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-teal-500 transition-colors";
-  const labelClass = "block text-sm font-medium text-slate-300 mb-1.5";
+    "w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 transition-colors";
+  const labelClass = "block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5";
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
             <Shield className="h-8 w-8 text-teal-400" />
-            <span className="text-xl font-bold text-white">Comply SA</span>
+            <span className="text-xl font-bold text-slate-900 dark:text-white">Comply SA</span>
           </div>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
             Step {step} of {TOTAL_STEPS}
           </p>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-8 shadow-sm">
           <ProgressBar currentStep={step} />
 
-          <h2 className="text-xl font-bold text-white mb-6">{stepTitle()}</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-6">{stepTitle()}</h2>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 mb-6 text-sm">
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 rounded-lg px-4 py-3 mb-6 text-sm">
               {error}
             </div>
           )}
@@ -287,12 +192,14 @@ export default function OnboardingPage() {
             {step === 2 && (
               <>
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-slate-300">VAT Registered?</label>
+                  <label className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                    VAT Registered?
+                  </label>
                   <button
                     type="button"
                     onClick={() => setVatRegistered(!vatRegistered)}
                     className={`relative w-12 h-6 rounded-full transition-colors ${
-                      vatRegistered ? "bg-teal-500" : "bg-slate-600"
+                      vatRegistered ? "bg-teal-500" : "bg-slate-300 dark:bg-slate-600"
                     }`}
                   >
                     <div
@@ -398,7 +305,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={handleBack}
               disabled={step === 1}
-              className="flex items-center gap-2 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
@@ -439,12 +346,12 @@ function ToggleField({
 }) {
   return (
     <div className="flex items-center justify-between py-2">
-      <label className="text-sm font-medium text-slate-300 pr-4">{label}</label>
+      <label className="text-sm font-medium text-slate-600 dark:text-slate-300 pr-4">{label}</label>
       <button
         type="button"
         onClick={() => onChange(!value)}
         className={`relative w-12 h-6 rounded-full transition-colors shrink-0 ${
-          value ? "bg-teal-500" : "bg-slate-600"
+          value ? "bg-teal-500" : "bg-slate-300 dark:bg-slate-600"
         }`}
       >
         <div

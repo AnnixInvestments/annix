@@ -60,18 +60,18 @@ export default function Breadcrumbs() {
     <nav className="flex items-center gap-1.5 text-sm mb-4">
       <Link
         href="/comply-sa/dashboard"
-        className="text-slate-400 hover:text-white transition-colors"
+        className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
       >
         Home
       </Link>
       {showGroup && (
         <>
-          <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
-          <span className="text-slate-400">{navItem.group}</span>
+          <ChevronRight className="h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
+          <span className="text-slate-500 dark:text-slate-400">{navItem.group}</span>
         </>
       )}
-      <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
-      <span className="text-white font-medium">{navItem.label}</span>
+      <ChevronRight className="h-3.5 w-3.5 text-slate-400 dark:text-slate-600" />
+      <span className="text-slate-900 dark:text-white font-medium">{navItem.label}</span>
     </nav>
   );
 }

@@ -12,6 +12,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useState } from "react";
+import SetupWizard from "@/app/comply-sa/components/SetupWizard";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useComplySaDashboard, useToggleChecklist, useUploadDocument } from "@/app/lib/query/hooks";
 
@@ -23,31 +24,31 @@ const STATUS_CONFIG: Record<
   { color: string; bg: string; icon: React.ComponentType<{ className?: string }>; label: string }
 > = {
   compliant: {
-    color: "text-green-400",
+    color: "text-green-500 dark:text-green-400",
     bg: "bg-green-500/10 border-green-500/30",
     icon: CheckCircle,
     label: "Compliant",
   },
   warning: {
-    color: "text-yellow-400",
+    color: "text-yellow-500 dark:text-yellow-400",
     bg: "bg-yellow-500/10 border-yellow-500/30",
     icon: Clock,
     label: "Warning",
   },
   overdue: {
-    color: "text-red-400",
+    color: "text-red-500 dark:text-red-400",
     bg: "bg-red-500/10 border-red-500/30",
     icon: AlertCircle,
     label: "Overdue",
   },
   in_progress: {
-    color: "text-blue-400",
+    color: "text-blue-500 dark:text-blue-400",
     bg: "bg-blue-500/10 border-blue-500/30",
     icon: Loader2,
     label: "In Progress",
   },
   not_applicable: {
-    color: "text-slate-400",
+    color: "text-slate-500 dark:text-slate-400",
     bg: "bg-slate-500/10 border-slate-500/30",
     icon: CheckCircle,
     label: "N/A",
@@ -57,7 +58,7 @@ const STATUS_CONFIG: Record<
 function statusConfig(status: string) {
   return (
     STATUS_CONFIG[status] ?? {
-      color: "text-slate-400",
+      color: "text-slate-500 dark:text-slate-400",
       bg: "bg-slate-500/10 border-slate-500/30",
       icon: CheckCircle,
       label: status,
@@ -98,7 +99,7 @@ function ComplianceScoreRing({ score }: { score: number }) {
           fill="none"
           stroke="currentColor"
           strokeWidth="8"
-          className="text-slate-700"
+          className="text-slate-200 dark:text-slate-700"
         />
         <circle
           cx="50"
@@ -131,10 +132,10 @@ function SummaryCard({
   icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-slate-400">{label}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
           <p className={`text-3xl font-bold mt-1 ${color}`}>{count}</p>
         </div>
         <Icon className={`h-8 w-8 ${color} opacity-50`} />
@@ -147,20 +148,20 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
       <div className="flex flex-col sm:flex-row items-start gap-6">
-        <div className="w-28 h-28 rounded-full bg-slate-700" />
+        <div className="w-28 h-28 rounded-full bg-slate-200 dark:bg-slate-700" />
         <div className="flex-1 space-y-3">
-          <div className="h-6 bg-slate-700 rounded w-48" />
-          <div className="h-4 bg-slate-700 rounded w-32" />
+          <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-48" />
+          <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-32" />
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {Array.from({ length: 3 }, (_, i) => (
-          <div key={i} className="h-24 bg-slate-700 rounded-xl" />
+          <div key={i} className="h-24 bg-slate-200 dark:bg-slate-700 rounded-xl" />
         ))}
       </div>
       <div className="space-y-3">
         {Array.from({ length: 5 }, (_, i) => (
-          <div key={i} className="h-16 bg-slate-700 rounded-xl" />
+          <div key={i} className="h-16 bg-slate-200 dark:bg-slate-700 rounded-xl" />
         ))}
       </div>
     </div>
@@ -189,48 +190,52 @@ function RequirementCard({
   }
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-700/30 transition-colors"
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1">
-            <h3 className="text-sm font-semibold text-white truncate">{requirement.name}</h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+              {requirement.name}
+            </h3>
             <StatusBadge status={requirement.status} />
           </div>
           {requirement.nextDueDate && (
-            <p className="text-xs text-slate-400">Due: {formatDateZA(requirement.nextDueDate)}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Due: {formatDateZA(requirement.nextDueDate)}
+            </p>
           )}
           {totalSteps > 0 && (
             <div className="mt-2 flex items-center gap-3">
-              <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+              <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-teal-500 rounded-full transition-all"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <span className="text-xs text-slate-400 shrink-0">
+              <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">
                 {completedSteps}/{totalSteps}
               </span>
             </div>
           )}
         </div>
         {expanded ? (
-          <ChevronUp className="h-5 w-5 text-slate-400 shrink-0 ml-3" />
+          <ChevronUp className="h-5 w-5 text-slate-500 dark:text-slate-400 shrink-0 ml-3" />
         ) : (
-          <ChevronDown className="h-5 w-5 text-slate-400 shrink-0 ml-3" />
+          <ChevronDown className="h-5 w-5 text-slate-500 dark:text-slate-400 shrink-0 ml-3" />
         )}
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-700 p-4 space-y-4">
-          <p className="text-sm text-slate-400">{requirement.description}</p>
+        <div className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-4">
+          <p className="text-sm text-slate-500 dark:text-slate-400">{requirement.description}</p>
 
           {totalSteps > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2">
                 Checklist
               </h4>
               <div className="space-y-2">
@@ -240,13 +245,13 @@ function RequirementCard({
                       type="checkbox"
                       checked={item.completed}
                       onChange={() => onChecklistToggle(requirement.id, index)}
-                      className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
                     />
                     <span
                       className={`text-sm ${
                         item.completed
                           ? "text-slate-500 line-through"
-                          : "text-slate-300 group-hover:text-white"
+                          : "text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white"
                       }`}
                     >
                       {item.step}
@@ -258,13 +263,16 @@ function RequirementCard({
           )}
 
           <div>
-            <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2">
               Documents
             </h4>
             {requirement.documents.length > 0 ? (
               <div className="space-y-1">
                 {requirement.documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center gap-2 text-sm text-slate-400">
+                  <div
+                    key={doc.id}
+                    className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400"
+                  >
                     <FileText className="h-4 w-4" />
                     <span>{doc.name}</span>
                     <span className="text-xs text-slate-500">{formatDateZA(doc.uploadedAt)}</span>
@@ -318,6 +326,10 @@ export default function DashboardPage() {
 
   if (!data) return null;
 
+  if (data.requirements.length === 0) {
+    return <SetupWizard />;
+  }
+
   const categories = [...new Set(data.requirements.map((r) => r.category))];
 
   const groupedRequirements = categories.reduce(
@@ -333,8 +345,8 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row items-start gap-6">
         <ComplianceScoreRing score={data.complianceScore} />
         <div>
-          <h1 className="text-2xl font-bold text-white">{data.companyName}</h1>
-          <p className="text-slate-400 mt-1">Compliance Score</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{data.companyName}</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">Compliance Score</p>
         </div>
       </div>
 
@@ -360,14 +372,20 @@ export default function DashboardPage() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-white mb-3">Upcoming Deadlines</h2>
-        <div className="bg-slate-800 border border-slate-700 rounded-xl divide-y divide-slate-700">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">
+          Upcoming Deadlines
+        </h2>
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-200 dark:divide-slate-700">
           {data.upcomingDeadlines.length > 0 ? (
             data.upcomingDeadlines.map((deadline) => (
               <div key={deadline.id} className="flex items-center justify-between p-4">
                 <div>
-                  <p className="text-sm font-medium text-white">{deadline.requirementName}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{formatDateZA(deadline.dueDate)}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    {deadline.requirementName}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {formatDateZA(deadline.dueDate)}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span
@@ -376,7 +394,7 @@ export default function DashboardPage() {
                         ? "text-red-400"
                         : deadline.daysRemaining <= 30
                           ? "text-yellow-400"
-                          : "text-slate-400"
+                          : "text-slate-500 dark:text-slate-400"
                     }`}
                   >
                     {deadline.daysRemaining} days
@@ -392,11 +410,13 @@ export default function DashboardPage() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-white mb-3">All Requirements</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">
+          All Requirements
+        </h2>
         <div className="space-y-6">
           {categories.map((category) => (
             <div key={category}>
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              <h3 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                 {CATEGORY_LABELS[category] ?? category}
               </h3>
               <div className="space-y-2">
