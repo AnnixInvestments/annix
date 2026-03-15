@@ -52,22 +52,41 @@ export default function AuCocsPage() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfPreviewCocNumber, setPdfPreviewCocNumber] = useState<string | null>(null);
+  const [progressModal, setProgressModal] = useState<{
+    visible: boolean;
+    title: string;
+    status: "running" | "done" | "error";
+    message: string;
+  }>({ visible: false, title: "", status: "running", message: "" });
 
   const handleBulkAutoGenerate = async () => {
     try {
       setIsAutoGenerating(true);
+      setProgressModal({
+        visible: true,
+        title: "Auto-Generating CoCs",
+        status: "running",
+        message: "Checking draft CoCs and generating those that are ready...",
+      });
       const result = await auRubberApiClient.bulkAutoGenerateAuCocs();
-      if (result.generated > 0) {
-        showToast(
-          `Auto-generated ${result.generated} of ${result.checked} draft AU CoC(s)`,
-          "success",
-        );
-        await cocsQuery.refetch();
-      } else {
-        showToast(`Checked ${result.checked} draft AU CoC(s) — none ready for generation`, "info");
-      }
+      const summary =
+        result.generated > 0
+          ? `Auto-generated ${result.generated} of ${result.checked} draft CoC(s).`
+          : `Checked ${result.checked} draft CoC(s) — none ready for generation.`;
+      setProgressModal({
+        visible: true,
+        title: "Auto-Generation Complete",
+        status: "done",
+        message: summary,
+      });
+      await cocsQuery.refetch();
     } catch (err) {
-      showToast("Failed to auto-generate AU CoCs", "error");
+      setProgressModal({
+        visible: true,
+        title: "Auto-Generation Failed",
+        status: "error",
+        message: err instanceof Error ? err.message : "An unexpected error occurred.",
+      });
     } finally {
       setIsAutoGenerating(false);
     }
@@ -76,18 +95,30 @@ export default function AuCocsPage() {
   const handleRegenerateAll = async () => {
     try {
       setIsRegenerating(true);
+      setProgressModal({
+        visible: true,
+        title: "Regenerating CoCs",
+        status: "running",
+        message: "Regenerating all previously generated CoCs...",
+      });
       const result = await auRubberApiClient.regenerateAllGeneratedCocs();
-      if (result.regenerated > 0) {
-        showToast(
-          `Regenerated ${result.regenerated} of ${result.total} CoC(s)${result.failed > 0 ? `, ${result.failed} failed` : ""}`,
-          "success",
-        );
-        await cocsQuery.refetch();
-      } else {
-        showToast(`No CoCs were regenerated (${result.total} checked)`, "info");
-      }
+      const failedInfo =
+        result.failed > 0 ? ` ${result.failed} failed: ${result.errors.join("; ")}` : "";
+      const summary = `Regenerated ${result.regenerated} of ${result.total} CoC(s).${failedInfo}`;
+      setProgressModal({
+        visible: true,
+        title: "Regeneration Complete",
+        status: result.failed > 0 ? "error" : "done",
+        message: summary,
+      });
+      await cocsQuery.refetch();
     } catch (err) {
-      showToast("Failed to regenerate CoCs", "error");
+      setProgressModal({
+        visible: true,
+        title: "Regeneration Failed",
+        status: "error",
+        message: err instanceof Error ? err.message : "An unexpected error occurred.",
+      });
     } finally {
       setIsRegenerating(false);
     }
@@ -670,6 +701,73 @@ export default function AuCocsPage() {
               <div className="flex-1 min-h-0">
                 <iframe src={pdfPreviewUrl} className="w-full h-full rounded-b-lg" />
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {progressModal.visible && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">{progressModal.title}</h3>
+              <div className="space-y-4">
+                {progressModal.status === "running" && (
+                  <div className="flex items-center space-x-3">
+                    <Loader2 className="w-6 h-6 text-yellow-600 animate-spin" />
+                    <p className="text-sm text-gray-600">{progressModal.message}</p>
+                  </div>
+                )}
+                {progressModal.status === "done" && (
+                  <div className="flex items-start space-x-3">
+                    <svg
+                      className="w-6 h-6 text-green-500 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <p className="text-sm text-gray-600">{progressModal.message}</p>
+                  </div>
+                )}
+                {progressModal.status === "error" && (
+                  <div className="flex items-start space-x-3">
+                    <svg
+                      className="w-6 h-6 text-red-500 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                      />
+                    </svg>
+                    <p className="text-sm text-gray-600">{progressModal.message}</p>
+                  </div>
+                )}
+              </div>
+              {progressModal.status !== "running" && (
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={() =>
+                      setProgressModal({ visible: false, title: "", status: "running", message: "" })
+                    }
+                    className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

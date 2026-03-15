@@ -346,6 +346,21 @@ export class RubberAuCocService {
       this.logger.debug(`PDF created (${buffer.length} bytes), updating status...`);
       coc.status = AuCocStatus.GENERATED;
       coc.generatedPdfPath = `au-cocs/${filename}`;
+      if (
+        coc.readinessStatus === AuCocReadinessStatus.GENERATION_FAILED ||
+        coc.readinessStatus === AuCocReadinessStatus.READY_FOR_GENERATION
+      ) {
+        coc.readinessStatus = AuCocReadinessStatus.AUTO_GENERATED;
+        coc.readinessDetails = {
+          calendererCocId: coc.readinessDetails?.calendererCocId ?? null,
+          compounderCocId: coc.readinessDetails?.compounderCocId ?? null,
+          graphPdfPath: coc.readinessDetails?.graphPdfPath ?? null,
+          calendererApproved: coc.readinessDetails?.calendererApproved ?? false,
+          compounderApproved: coc.readinessDetails?.compounderApproved ?? false,
+          missingDocuments: [],
+          lastCheckedAt: nowISO(),
+        };
+      }
       await this.auCocRepository.save(coc);
 
       this.logger.log(`PDF generated and uploaded for AU CoC ${coc.cocNumber}`);
@@ -656,7 +671,12 @@ export class RubberAuCocService {
                 .toUpperCase();
               return (
                 cocOrderNumber.length > 0 &&
-                orderNumbers.some((on) => cocOrderNumber === on.toUpperCase())
+                orderNumbers.some(
+                  (on) =>
+                    cocOrderNumber === on.toUpperCase() ||
+                    cocOrderNumber.includes(on.toUpperCase()) ||
+                    on.toUpperCase().includes(cocOrderNumber),
+                )
               );
             });
             matched.forEach((m) => candidates.push(m));
@@ -673,7 +693,15 @@ export class RubberAuCocService {
             const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
               .trim()
               .toUpperCase();
-            return cocOrderNumber.length > 0 && poSegments.some((seg) => seg === cocOrderNumber);
+            return (
+              cocOrderNumber.length > 0 &&
+              poSegments.some(
+                (seg) =>
+                  seg === cocOrderNumber ||
+                  cocOrderNumber.includes(seg) ||
+                  seg.includes(cocOrderNumber),
+              )
+            );
           });
           poMatched.forEach((m) => candidates.push(m));
         }
@@ -729,8 +757,8 @@ export class RubberAuCocService {
           return candidateWithBatchData;
         }
 
-        this.logger.log(
-          `No candidates with batch data found for AU CoC ${coc.cocNumber}, using first candidate ${uniqueCandidates[0].id}`,
+        this.logger.warn(
+          `No candidates with batch data found for AU CoC ${coc.cocNumber} (${uniqueCandidates.length} candidates: ${uniqueCandidates.map((c) => `ID=${c.id} type=${c.cocType} order=${c.orderNumber}`).join(", ")}), using first candidate ${uniqueCandidates[0].id}`,
         );
         return uniqueCandidates[0];
       })();
@@ -741,7 +769,7 @@ export class RubberAuCocService {
           .filter(Boolean)
           .join(", ");
         this.logger.warn(
-          `No supplier CoC found for AU CoC ${coc.cocNumber} (DN: ${sourceDeliveryNote?.deliveryNoteNumber || "none"}, PO: ${coc.poNumber || "none"}, rolls: ${rollNums || "none"}) — lab data table will be empty`,
+          `No supplier CoC found for AU CoC ${coc.cocNumber} (DN: ${sourceDeliveryNote?.deliveryNoteNumber || "none"}, DN linked CoC: ${sourceDeliveryNote?.linkedCocId || "none"}, PO: ${coc.poNumber || "none"}, rolls: ${rollNums || "none"}, candidates found: ${uniqueCandidates.length}) — lab data table will be empty`,
         );
         return defaults;
       }
