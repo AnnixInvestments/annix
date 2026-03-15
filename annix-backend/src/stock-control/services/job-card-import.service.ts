@@ -101,6 +101,35 @@ function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[]
   return result;
 }
 
+const SAGE_NOISE_PATTERNS: RegExp[] = [
+  /^Date\s+Date\s+Date$/i,
+  /Sage\s*200\s*Evolution\s*\(Registered\s*to\b[^)]*\)\s*\d{4}\/\d{2}\/\d{2}\s*\d{2}:\d{2}:\d{2}/i,
+  /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}$/,
+  /^POLYMER\s+LINING\s+SYSTEMS\s+JOB\s+CARD\s+AND\s+MATERIAL\s+MOVEMENT$/i,
+  /^QTY\s+REQ\s+ROLL\/?/i,
+  /^Item\s+Code\s+Item\s+Description\s+Item\s+No\s+Quantity/i,
+  /^CUSTOMER\s+.+\s+Page\s+\d+\s+of\s+\d+$/i,
+  /^ORDER\s+NO\b.*\bJOB\s+FILE\s+NO\b.*\bDoc\b/i,
+  /^Sage\s*200\s*Evolution/i,
+  /^\d{4}\/\d{2}\/\d{2}\s*\d{2}:\d{2}:\d{2}\s*$/,
+];
+
+export function sanitizeNotes(notes: string | null | undefined): string | null {
+  if (!notes) return null;
+
+  const cleaned = notes
+    .split("\n")
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return false;
+      return !SAGE_NOISE_PATTERNS.some((pattern) => pattern.test(trimmed));
+    })
+    .join("\n")
+    .trim();
+
+  return cleaned || null;
+}
+
 const JT_DN_PATTERN = /(?:JT|DN|JT\/DN|JTDN)[\s\-#:]*([A-Z0-9-]+)/i;
 
 function detectJtDnNumber(row: JobCardImportRow): string | null {
@@ -785,7 +814,7 @@ export class JobCardImportService {
     existing.siteLocation = row.siteLocation || null;
     existing.contactPerson = row.contactPerson || null;
     existing.dueDate = row.dueDate || null;
-    existing.notes = row.notes || null;
+    existing.notes = sanitizeNotes(row.notes);
     existing.reference = row.reference || null;
     existing.customFields = customFields;
     existing.versionNumber = existing.versionNumber + 1;
@@ -828,7 +857,7 @@ export class JobCardImportService {
       siteLocation: row.siteLocation || parentJobCard.siteLocation,
       contactPerson: row.contactPerson || parentJobCard.contactPerson,
       dueDate: row.dueDate || null,
-      notes: row.notes || null,
+      notes: sanitizeNotes(row.notes),
       reference: row.reference || null,
       customFields,
       status: JobCardStatus.DRAFT,
@@ -1078,7 +1107,7 @@ export class JobCardImportService {
           siteLocation: row.siteLocation || null,
           contactPerson: row.contactPerson || null,
           dueDate: row.dueDate || null,
-          notes: row.notes || null,
+          notes: sanitizeNotes(row.notes),
           reference: row.reference || null,
           customFields,
           status: JobCardStatus.DRAFT,

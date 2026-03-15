@@ -12,6 +12,7 @@ import {
   StockAssessmentItem,
 } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
+import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
@@ -21,6 +22,7 @@ import {
   validPositiveNumber,
   validString,
 } from "./extraction-validation";
+import { sanitizeNotes } from "./job-card-import.service";
 import { M2CalculationService } from "./m2-calculation.service";
 
 interface AiCoatResult {
@@ -91,6 +93,8 @@ export class CoatingAnalysisService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockControlCompany)
     private readonly companyRepo: Repository<StockControlCompany>,
+    @InjectRepository(JobCardExtractionCorrection)
+    private readonly correctionRepo: Repository<JobCardExtractionCorrection>,
     private readonly aiChatService: AiChatService,
     private readonly m2CalculationService: M2CalculationService,
   ) {}
@@ -173,10 +177,11 @@ export class CoatingAnalysisService {
       const lineItemNotes = lineItems
         .map((li) => (li.notes || "").trim())
         .filter((n) => n.length > 0);
-      const combinedNotes = [jobCard.notes || "", ...noteLineItems, ...lineItemNotes]
-        .filter(Boolean)
-        .join("\n");
-      analysis.rawNotes = combinedNotes || jobCard.notes;
+      const combinedNotes =
+        sanitizeNotes(
+          [jobCard.notes || "", ...noteLineItems, ...lineItemNotes].filter(Boolean).join("\n"),
+        ) || "";
+      analysis.rawNotes = combinedNotes || sanitizeNotes(jobCard.notes);
 
       if (!combinedNotes.trim()) {
         analysis.extM2 = 0;
@@ -188,7 +193,11 @@ export class CoatingAnalysisService {
         return this.analysisRepo.save(analysis);
       }
 
-      const aiResult = await this.extractCoatingSpec(combinedNotes);
+      const correctionHints = await this.correctionHintsForCustomer(
+        companyId,
+        jobCard.customerName,
+      );
+      const aiResult = await this.extractCoatingSpec(combinedNotes, correctionHints);
 
       const hasInternalRubberLining = /INT\s*:\s*R\/L/i.test(combinedNotes);
       analysis.applicationType = aiResult.applicationType;
@@ -464,7 +473,10 @@ export class CoatingAnalysisService {
     );
   }
 
-  private async extractCoatingSpec(notes: string): Promise<AiExtractionResult> {
+  private async extractCoatingSpec(
+    notes: string,
+    correctionHints: string | null,
+  ): Promise<AiExtractionResult> {
     const messages: ChatMessage[] = [
       {
         role: "user",
@@ -472,7 +484,11 @@ export class CoatingAnalysisService {
       },
     ];
 
-    const { content: response } = await this.aiChatService.chat(messages, COATING_SYSTEM_PROMPT);
+    const systemPrompt = correctionHints
+      ? `${COATING_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : COATING_SYSTEM_PROMPT;
+
+    const { content: response } = await this.aiChatService.chat(messages, systemPrompt);
 
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -588,6 +604,98 @@ export class CoatingAnalysisService {
       .sort((a, b) => b.score - a.score);
 
     return scored.length > 0 ? scored[0].item : null;
+  }
+
+  async bulkReanalyse(companyId: number): Promise<{ processed: number; failed: number }> {
+    const draftJobCards = await this.jobCardRepo.find({
+      where: { companyId, status: "draft" as any },
+    });
+
+    const results = await draftJobCards.reduce(
+      async (accPromise, jc) => {
+        const acc = await accPromise;
+        try {
+          jc.notes = sanitizeNotes(jc.notes);
+          await this.jobCardRepo.save(jc);
+          await this.analyseJobCard(jc.id, companyId);
+          return { processed: acc.processed + 1, failed: acc.failed };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          this.logger.error(`Bulk re-analyse failed for JC ${jc.id}: ${message}`);
+          return { processed: acc.processed, failed: acc.failed + 1 };
+        }
+      },
+      Promise.resolve({ processed: 0, failed: 0 }),
+    );
+
+    this.logger.log(
+      `Bulk re-analyse complete: ${results.processed} processed, ${results.failed} failed`,
+    );
+    return results;
+  }
+
+  async corrections(companyId: number, jobCardId: number): Promise<JobCardExtractionCorrection[]> {
+    return this.correctionRepo.find({
+      where: { companyId, jobCardId },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async saveCorrection(
+    companyId: number,
+    jobCardId: number,
+    fieldName: string,
+    originalValue: string | null,
+    correctedValue: string,
+    correctedBy: number,
+  ): Promise<JobCardExtractionCorrection> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+    });
+
+    if (!jobCard) {
+      throw new NotFoundException(`Job card ${jobCardId} not found`);
+    }
+
+    const correction = this.correctionRepo.create({
+      companyId,
+      jobCardId,
+      customerName: jobCard.customerName,
+      fieldName,
+      originalValue,
+      correctedValue,
+      correctedBy,
+    });
+
+    const saved = await this.correctionRepo.save(correction);
+
+    this.logger.log(
+      `Correction saved for JC ${jobCardId}, field "${fieldName}" by user ${correctedBy}`,
+    );
+
+    return saved;
+  }
+
+  private async correctionHintsForCustomer(
+    companyId: number,
+    customerName: string | null,
+  ): Promise<string | null> {
+    if (!customerName) return null;
+
+    const recentCorrections = await this.correctionRepo.find({
+      where: { companyId, customerName },
+      order: { createdAt: "DESC" },
+      take: 30,
+    });
+
+    if (recentCorrections.length === 0) return null;
+
+    const hints = recentCorrections.map(
+      (c) =>
+        `- For field "${c.fieldName}": was corrected from "${c.originalValue}" to "${c.correctedValue}"`,
+    );
+
+    return `PREVIOUS CORRECTIONS FOR THIS CUSTOMER (learn from these):\n${hints.join("\n")}\n\nApply these patterns when extracting coating specifications. If coating specs were consistently corrected, pay extra attention to the specification format and product names.`;
   }
 
   private async markFailed(

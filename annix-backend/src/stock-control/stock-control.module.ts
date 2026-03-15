@@ -56,6 +56,7 @@ import { JobCardAttachment } from "./entities/job-card-attachment.entity";
 import { JobCardBackgroundCompletion } from "./entities/job-card-background-completion.entity";
 import { JobCardDataBook } from "./entities/job-card-data-book.entity";
 import { JobCardDocument } from "./entities/job-card-document.entity";
+import { JobCardExtractionCorrection } from "./entities/job-card-extraction-correction.entity";
 import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity";
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { JobCardVersion } from "./entities/job-card-version.entity";
@@ -201,6 +202,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       ChatConversationParticipant,
       WorkflowStepConfig,
       JobCardBackgroundCompletion,
+      JobCardExtractionCorrection,
     ]),
     EmailModule,
     JwtModule.registerAsync({

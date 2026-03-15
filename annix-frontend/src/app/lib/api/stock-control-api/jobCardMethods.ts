@@ -103,6 +103,26 @@ declare module "./base" {
       matches: { deliveryItemId: number; cpoItemId: number }[],
     ): Promise<{ success: boolean }>;
     downloadJobCardQrPdf(id: number): Promise<void>;
+    bulkReanalyseJobCards(): Promise<{ processed: number; failed: number }>;
+    jobCardCorrections(jobCardId: number): Promise<
+      {
+        id: number;
+        fieldName: string;
+        originalValue: string | null;
+        correctedValue: string;
+        createdAt: string;
+      }[]
+    >;
+    saveJobCardCorrection(
+      jobCardId: number,
+      data: { fieldName: string; originalValue: string | null; correctedValue: string },
+    ): Promise<{
+      id: number;
+      fieldName: string;
+      originalValue: string | null;
+      correctedValue: string;
+      createdAt: string;
+    }>;
   }
 }
 
@@ -360,4 +380,19 @@ proto.confirmDeliveryMatches = async function (jobCardId, matches) {
 
 proto.downloadJobCardQrPdf = async function (id) {
   return this.downloadBlob(`/stock-control/workflow/job-cards/${id}/print`, `job-card-${id}.pdf`);
+};
+
+proto.bulkReanalyseJobCards = async function () {
+  return this.request("/stock-control/job-cards/bulk-reanalyse", { method: "POST" });
+};
+
+proto.jobCardCorrections = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/corrections`);
+};
+
+proto.saveJobCardCorrection = async function (jobCardId, data) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/corrections`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 };

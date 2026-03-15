@@ -20,6 +20,15 @@ interface CoatingAnalysisTabProps {
   onTdsFileChange: (file: File | null) => void;
   isUploadingTds: boolean;
   onTdsUpload: () => void;
+  isAdmin: boolean;
+}
+
+interface ExtractionCorrection {
+  id: number;
+  fieldName: string;
+  originalValue: string | null;
+  correctedValue: string;
+  createdAt: string;
 }
 
 function EditableM2Field({
@@ -88,22 +97,63 @@ function EditableM2Field({
   );
 }
 
-export function CoatingAnalysisTab({
-  jobId,
-  coatingAnalysis,
-  isAnalysing,
-  onRunAnalysis,
-  onCoatingAnalysisChange,
-  pipingLossPct,
-  showTdsModal,
-  onShowTdsModal,
-  unverifiedProducts,
-  onUnverifiedProductsChange,
-  tdsFile,
-  onTdsFileChange,
-  isUploadingTds,
-  onTdsUpload,
-}: CoatingAnalysisTabProps) {
+export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
+  const {
+    jobId,
+    coatingAnalysis,
+    isAnalysing,
+    onRunAnalysis,
+    onCoatingAnalysisChange,
+    pipingLossPct,
+    showTdsModal,
+    onShowTdsModal,
+    unverifiedProducts,
+    onUnverifiedProductsChange,
+    tdsFile,
+    onTdsFileChange,
+    isUploadingTds,
+    onTdsUpload,
+    isAdmin,
+  } = props;
+
+  const [showTeachNix, setShowTeachNix] = useState(false);
+  const [corrections, setCorrections] = useState<ExtractionCorrection[]>([]);
+  const [correctionField, setCorrectionField] = useState("coatingSpec");
+  const [correctionValue, setCorrectionValue] = useState("");
+  const [isSavingCorrection, setIsSavingCorrection] = useState(false);
+
+  const loadCorrections = async () => {
+    try {
+      const data = await stockControlApiClient.jobCardCorrections(jobId);
+      setCorrections(data);
+    } catch (_err) {
+      setCorrections([]);
+    }
+  };
+
+  const handleOpenTeachNix = async () => {
+    setShowTeachNix(true);
+    await loadCorrections();
+  };
+
+  const handleSaveCorrection = async () => {
+    if (!correctionValue.trim()) return;
+    try {
+      setIsSavingCorrection(true);
+      const originalValue = coatingAnalysis?.rawNotes || null;
+      await stockControlApiClient.saveJobCardCorrection(jobId, {
+        fieldName: correctionField,
+        originalValue,
+        correctedValue: correctionValue.trim(),
+      });
+      setCorrectionValue("");
+      await loadCorrections();
+      onRunAnalysis();
+    } finally {
+      setIsSavingCorrection(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {coatingAnalysis &&
@@ -132,6 +182,19 @@ export function CoatingAnalysisTab({
                     className="text-xs px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
                   >
                     Accept Recommendation
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={handleOpenTeachNix}
+                    className="text-xs px-3 py-1 rounded border border-purple-300 text-purple-700 hover:bg-purple-50 relative"
+                  >
+                    Teach Nix
+                    {corrections.length > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-purple-600 rounded-full">
+                        {corrections.length}
+                      </span>
+                    )}
                   </button>
                 )}
                 <button
@@ -321,6 +384,115 @@ export function CoatingAnalysisTab({
                   ? "Re-analyse"
                   : "Run Coating Analysis"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {showTeachNix && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div
+            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+            onClick={() => setShowTeachNix(false)}
+          ></div>
+          <div className="fixed inset-y-0 right-0 max-w-lg w-full bg-white shadow-xl flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Teach Nix</h3>
+              <button
+                onClick={() => setShowTeachNix(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {coatingAnalysis?.rawNotes && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Raw Notes (what Nix received)
+                  </h4>
+                  <pre className="text-xs bg-gray-50 border border-gray-200 rounded p-3 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                    {coatingAnalysis.rawNotes}
+                  </pre>
+                </div>
+              )}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Provide Correct Value</h4>
+                <p className="text-xs text-gray-500 mb-3">
+                  Tell Nix what the correct coating specification should be. Future extractions for
+                  this customer will use this as a reference.
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">Field</label>
+                    <select
+                      value={correctionField}
+                      onChange={(e) => setCorrectionField(e.target.value)}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    >
+                      <option value="coatingSpec">Coating Specification</option>
+                      <option value="rubberSpec">Rubber / Lining Specification</option>
+                      <option value="notes">General Notes</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1">
+                      Correct Value
+                    </label>
+                    <textarea
+                      value={correctionValue}
+                      onChange={(e) => setCorrectionValue(e.target.value)}
+                      rows={4}
+                      placeholder="e.g. EXT : BLAST & PAINT PENGUARD EXPRESS MIO BUFF @ 240-250um + HARDTOP XP RED @ 70-85um"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    />
+                  </div>
+                  <button
+                    onClick={handleSaveCorrection}
+                    disabled={isSavingCorrection || !correctionValue.trim()}
+                    className="w-full px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  >
+                    {isSavingCorrection ? "Saving & Re-analysing..." : "Save & Re-analyse"}
+                  </button>
+                </div>
+              </div>
+              {corrections.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Previous Corrections ({corrections.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {corrections.map((c) => (
+                      <div
+                        key={c.id}
+                        className="text-xs border border-gray-200 rounded p-3 bg-gray-50"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-purple-700 capitalize">
+                            {c.fieldName.replace(/([A-Z])/g, " $1").trim()}
+                          </span>
+                          <span className="text-gray-400">
+                            {new Date(c.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {c.originalValue && (
+                          <div className="text-gray-500 line-through mb-0.5 truncate">
+                            {c.originalValue.slice(0, 100)}
+                          </div>
+                        )}
+                        <div className="text-gray-800">{c.correctedValue}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

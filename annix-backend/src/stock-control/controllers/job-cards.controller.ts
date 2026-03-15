@@ -112,6 +112,13 @@ export class JobCardsController {
     return results;
   }
 
+  @StockControlRoles("admin")
+  @Post("bulk-reanalyse")
+  @ApiOperation({ summary: "Re-analyse all draft job cards" })
+  async bulkReanalyse(@Req() req: any) {
+    return this.coatingAnalysisService.bulkReanalyse(req.user.companyId);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Job card by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {
@@ -250,6 +257,30 @@ export class JobCardsController {
       req.user.companyId,
       id,
       req.user.name || req.user.email || req.user.uid,
+    );
+  }
+
+  @Get(":id/corrections")
+  @ApiOperation({ summary: "List extraction corrections for a job card" })
+  async listCorrections(@Req() req: any, @Param("id") id: number) {
+    return this.coatingAnalysisService.corrections(req.user.companyId, id);
+  }
+
+  @StockControlRoles("admin")
+  @Post(":id/corrections")
+  @ApiOperation({ summary: "Save an extraction correction" })
+  async saveCorrection(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: { fieldName: string; originalValue: string | null; correctedValue: string },
+  ) {
+    return this.coatingAnalysisService.saveCorrection(
+      req.user.companyId,
+      id,
+      body.fieldName,
+      body.originalValue,
+      body.correctedValue,
+      req.user.id,
     );
   }
 

@@ -710,6 +710,7 @@ export default function JobCardDetailPage() {
               onTdsFileChange={coating.setTdsFile}
               isUploadingTds={coating.isUploadingTds}
               onTdsUpload={coating.handleTdsUpload}
+              isAdmin={userRole === "admin"}
             />
           </TabPanel>
 

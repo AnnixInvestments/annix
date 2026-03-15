@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useCreateJobCard,
@@ -20,6 +22,8 @@ const STATUS_TABS = ["all", "draft", "active", "completed", "cancelled"] as cons
 
 export default function JobCardsPage() {
   const router = useRouter();
+  const { user } = useStockControlAuth();
+  const isAdmin = user?.role === "admin";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -44,6 +48,8 @@ export default function JobCardsPage() {
     null,
   );
   const [isModalDragging, setIsModalDragging] = useState(false);
+  const [isBulkReanalysing, setIsBulkReanalysing] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ processed: number; failed: number } | null>(null);
   const modalFileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: jobCards = [], isLoading, error } = useJobCards(activeTab);
@@ -240,6 +246,24 @@ export default function JobCardsPage() {
             onChange={handleImportFileInput}
             className="hidden"
           />
+          {isAdmin && (
+            <button
+              onClick={async () => {
+                try {
+                  setIsBulkReanalysing(true);
+                  setBulkResult(null);
+                  const result = await stockControlApiClient.bulkReanalyseJobCards();
+                  setBulkResult(result);
+                } finally {
+                  setIsBulkReanalysing(false);
+                }
+              }}
+              disabled={isBulkReanalysing}
+              className="inline-flex items-center px-4 py-2 border border-purple-300 rounded-md shadow-sm text-sm font-medium text-purple-700 bg-white hover:bg-purple-50 disabled:opacity-50"
+            >
+              {isBulkReanalysing ? "Re-analysing..." : "Re-analyse All Draft"}
+            </button>
+          )}
           <button
             onClick={() => fileInputRef.current?.click()}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -270,6 +294,21 @@ export default function JobCardsPage() {
           </button>
         </div>
       </div>
+
+      {bulkResult && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 flex items-center justify-between">
+          <span className="text-sm text-purple-800">
+            Bulk re-analysis complete: {bulkResult.processed} processed
+            {bulkResult.failed > 0 ? `, ${bulkResult.failed} failed` : ""}
+          </span>
+          <button
+            onClick={() => setBulkResult(null)}
+            className="text-purple-600 hover:text-purple-800 text-sm"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
