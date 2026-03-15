@@ -9,6 +9,10 @@ import {
   RubberDeliveryNoteDto,
   UpdateDeliveryNoteDto,
 } from "./dto/rubber-coc.dto";
+import {
+  DOCUMENT_VERSION_STATUS_LABELS,
+  DocumentVersionStatus,
+} from "./entities/document-version.types";
 import { RubberAuCoc } from "./entities/rubber-au-coc.entity";
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
@@ -23,6 +27,7 @@ import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { ExtractedCocData, RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
+import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
 import { RubberStockService } from "./rubber-stock.service";
 
 const DELIVERY_NOTE_TYPE_LABELS: Record<DeliveryNoteType, string> = {
@@ -71,18 +76,26 @@ export class RubberDeliveryNoteService {
     private auCocRepository: Repository<RubberAuCoc>,
     private rubberStockService: RubberStockService,
     private auCocReadinessService: RubberAuCocReadinessService,
+    private versioningService: RubberDocumentVersioningService,
   ) {}
 
   async allDeliveryNotes(filters?: {
     deliveryNoteType?: DeliveryNoteType;
     status?: DeliveryNoteStatus;
     supplierCompanyId?: number;
+    includeAllVersions?: boolean;
   }): Promise<RubberDeliveryNoteDto[]> {
     const query = this.deliveryNoteRepository
       .createQueryBuilder("dn")
       .leftJoinAndSelect("dn.supplierCompany", "company")
       .leftJoinAndSelect("dn.linkedCoc", "coc")
       .orderBy("dn.created_at", "DESC");
+
+    if (!filters?.includeAllVersions) {
+      query.andWhere("dn.version_status = :versionStatus", {
+        versionStatus: DocumentVersionStatus.ACTIVE,
+      });
+    }
 
     if (filters?.deliveryNoteType) {
       query.andWhere("dn.delivery_note_type = :type", { type: filters.deliveryNoteType });
@@ -121,6 +134,15 @@ export class RubberDeliveryNoteService {
       throw new BadRequestException("Supplier company not found");
     }
 
+    const existingActive = dto.deliveryNoteNumber
+      ? await this.versioningService.existingActiveDeliveryNote(
+          dto.deliveryNoteNumber,
+          dto.supplierCompanyId,
+        )
+      : null;
+
+    const isDuplicate = existingActive !== null;
+
     const note = this.deliveryNoteRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       deliveryNoteType: dto.deliveryNoteType,
@@ -131,7 +153,18 @@ export class RubberDeliveryNoteService {
       documentPath: dto.documentPath ?? null,
       status: DeliveryNoteStatus.PENDING,
       createdBy: createdBy ?? null,
+      version: isDuplicate ? existingActive.version + 1 : 1,
+      previousVersionId: isDuplicate ? existingActive.id : null,
+      versionStatus: isDuplicate
+        ? DocumentVersionStatus.PENDING_AUTHORIZATION
+        : DocumentVersionStatus.ACTIVE,
     });
+
+    if (isDuplicate) {
+      this.logger.log(
+        `Duplicate delivery note detected: ${dto.deliveryNoteNumber} for supplier ${dto.supplierCompanyId} - creating v${note.version} pending authorization`,
+      );
+    }
 
     const saved = await this.deliveryNoteRepository.save(note);
     const result = await this.deliveryNoteRepository.findOne({
@@ -186,6 +219,25 @@ export class RubberDeliveryNoteService {
     }
     if (extractedData.customerReference && !note.customerReference) {
       note.customerReference = extractedData.customerReference;
+    }
+
+    if (
+      extractedData.deliveryNoteNumber &&
+      note.versionStatus === DocumentVersionStatus.ACTIVE &&
+      note.version === 1
+    ) {
+      const existingActive = await this.versioningService.existingActiveDeliveryNote(
+        extractedData.deliveryNoteNumber,
+        note.supplierCompanyId,
+      );
+      if (existingActive && existingActive.id !== note.id) {
+        note.version = existingActive.version + 1;
+        note.previousVersionId = existingActive.id;
+        note.versionStatus = DocumentVersionStatus.PENDING_AUTHORIZATION;
+        this.logger.log(
+          `Post-extraction duplicate detected: delivery note ${extractedData.deliveryNoteNumber} matches existing #${existingActive.id} - marking v${note.version} pending authorization`,
+        );
+      }
     }
 
     await this.deliveryNoteRepository.save(note);
@@ -537,6 +589,9 @@ export class RubberDeliveryNoteService {
       cocBatchNumbers: dto.cocBatchNumbers ?? null,
     });
 
+    const sg = await this.specificGravityForDeliveryNote(note);
+    this.calculateWeightDeviation(item, sg);
+
     const saved = await this.deliveryNoteItemRepository.save(item);
     return this.mapDeliveryNoteItemToDto(saved);
   }
@@ -587,6 +642,9 @@ export class RubberDeliveryNoteService {
     const createdItems: RubberDeliveryNoteItem[] = [...compoundItems, ...rollItems];
 
     if (createdItems.length > 0) {
+      const sg = await this.specificGravityForDeliveryNote(note);
+      createdItems.forEach((item) => this.calculateWeightDeviation(item, sg));
+
       const saved = await this.deliveryNoteItemRepository.save(createdItems);
       return saved.map((item) => this.mapDeliveryNoteItemToDto(item));
     }
@@ -771,10 +829,17 @@ export class RubberDeliveryNoteService {
       createdBy: note.createdBy,
       createdAt: note.createdAt.toISOString(),
       updatedAt: note.updatedAt.toISOString(),
+      version: note.version,
+      versionStatus: note.versionStatus,
+      versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[note.versionStatus],
+      previousVersionId: note.previousVersionId,
     };
   }
 
   private mapDeliveryNoteItemToDto(item: RubberDeliveryNoteItem): DeliveryNoteItemDto {
+    const theoreticalWeightKg = item.theoreticalWeightKg ? Number(item.theoreticalWeightKg) : null;
+    const weightDeviationPct = item.weightDeviationPct ? Number(item.weightDeviationPct) : null;
+
     return {
       id: item.id,
       firebaseUid: item.firebaseUid,
@@ -791,9 +856,46 @@ export class RubberDeliveryNoteService {
       compoundType: item.compoundType,
       quantity: item.quantity,
       cocBatchNumbers: item.cocBatchNumbers,
+      theoreticalWeightKg,
+      weightDeviationPct,
+      weightFlagged: weightDeviationPct !== null && Math.abs(weightDeviationPct) > 5,
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
     };
+  }
+
+  private calculateWeightDeviation(item: RubberDeliveryNoteItem, specificGravity: number): void {
+    const thicknessMm = item.thicknessMm ? Number(item.thicknessMm) : null;
+    const widthMm = item.widthMm ? Number(item.widthMm) : null;
+    const lengthM = item.lengthM ? Number(item.lengthM) : null;
+    const rollWeightKg = item.rollWeightKg ? Number(item.rollWeightKg) : null;
+
+    if (thicknessMm === null || widthMm === null || lengthM === null) {
+      return;
+    }
+
+    const theoretical = (thicknessMm / 1000) * (widthMm / 1000) * lengthM * specificGravity * 1000;
+    item.theoreticalWeightKg = (Math.round(theoretical * 1000) / 1000) as any;
+
+    if (rollWeightKg !== null && theoretical > 0) {
+      const deviation = ((rollWeightKg - theoretical) / theoretical) * 100;
+      item.weightDeviationPct = (Math.round(deviation * 100) / 100) as any;
+    }
+  }
+
+  private async specificGravityForDeliveryNote(note: RubberDeliveryNote): Promise<number> {
+    const DEFAULT_SG = 1.5;
+
+    const compoundCoding = await this.compoundCodingFromDeliveryNote(note);
+    if (!compoundCoding) return DEFAULT_SG;
+
+    const product = await this.productRepository.findOne({
+      where: { compoundFirebaseUid: compoundCoding.firebaseUid },
+    });
+    if (product?.specificGravity) {
+      return Number(product.specificGravity);
+    }
+    return DEFAULT_SG;
   }
 
   async autoLinkToSupplierCoc(deliveryNoteId: number): Promise<number | null> {

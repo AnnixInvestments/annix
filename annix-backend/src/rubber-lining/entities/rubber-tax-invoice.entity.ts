@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { DocumentVersionStatus } from "./document-version.types";
 import { RubberCompany } from "./rubber-company.entity";
 
 export enum TaxInvoiceType {
@@ -101,6 +102,24 @@ export class RubberTaxInvoice {
 
   @Column({ name: "posted_to_sage_at", type: "timestamp", nullable: true })
   postedToSageAt: Date | null;
+
+  @Column({ name: "version", type: "int", default: 1 })
+  version: number;
+
+  @Column({ name: "previous_version_id", type: "int", nullable: true })
+  previousVersionId: number | null;
+
+  @ManyToOne(() => RubberTaxInvoice, { nullable: true })
+  @JoinColumn({ name: "previous_version_id" })
+  previousVersion: RubberTaxInvoice | null;
+
+  @Column({
+    name: "version_status",
+    type: "varchar",
+    length: 30,
+    default: DocumentVersionStatus.ACTIVE,
+  })
+  versionStatus: DocumentVersionStatus;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

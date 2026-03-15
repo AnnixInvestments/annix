@@ -47,6 +47,7 @@ export function useAuRubberSupplierCocs(filters?: {
   cocType?: SupplierCocType;
   processingStatus?: CocProcessingStatus;
   supplierId?: number;
+  includeAllVersions?: boolean;
 }) {
   return useQuery<RubberSupplierCocDto[]>({
     queryKey: rubberKeys.supplierCocs.list(filters),
@@ -58,6 +59,7 @@ export function useAuRubberDeliveryNotes(filters?: {
   deliveryNoteType?: DeliveryNoteType;
   status?: DeliveryNoteStatus;
   supplierId?: number;
+  includeAllVersions?: boolean;
 }) {
   return useQuery<RubberDeliveryNoteDto[]>({
     queryKey: rubberKeys.deliveryNotes.list(filters),

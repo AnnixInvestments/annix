@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { DocumentVersionStatus } from "./document-version.types";
 import { RubberCompany } from "./rubber-company.entity";
 import { RubberSupplierCoc } from "./rubber-supplier-coc.entity";
 
@@ -133,6 +134,24 @@ export class RubberDeliveryNote {
 
   @Column({ name: "created_by", type: "varchar", length: 100, nullable: true })
   createdBy: string | null;
+
+  @Column({ name: "version", type: "int", default: 1 })
+  version: number;
+
+  @Column({ name: "previous_version_id", type: "int", nullable: true })
+  previousVersionId: number | null;
+
+  @ManyToOne(() => RubberDeliveryNote, { nullable: true })
+  @JoinColumn({ name: "previous_version_id" })
+  previousVersion: RubberDeliveryNote | null;
+
+  @Column({
+    name: "version_status",
+    type: "varchar",
+    length: 30,
+    default: DocumentVersionStatus.ACTIVE,
+  })
+  versionStatus: DocumentVersionStatus;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

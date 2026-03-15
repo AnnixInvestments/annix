@@ -51,8 +51,10 @@ export default function SupplierCocsPage() {
   const [logoObjectUrl, setLogoObjectUrl] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<CocProcessingStatus | "">("");
+  const [showAllVersions, setShowAllVersions] = useState(false);
   const cocsQuery = useAuRubberSupplierCocs({
     processingStatus: filterStatus || undefined,
+    includeAllVersions: showAllVersions || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
   const cocs = cocsQuery.data ?? [];
@@ -196,7 +198,7 @@ export default function SupplierCocsPage() {
   useEffect(() => {
     setCompounderPage(0);
     setCalendererPage(0);
-  }, [searchQuery, filterStatus]);
+  }, [searchQuery, filterStatus, showAllVersions]);
 
   useEffect(() => {
     if (!isAnalyzing) return;
@@ -422,6 +424,26 @@ export default function SupplierCocsPage() {
     }
   };
 
+  const handleAuthorizeVersion = async (id: number) => {
+    try {
+      await auRubberApiClient.authorizeVersion("supplier-cocs", id);
+      showToast("Version authorized successfully", "success");
+      cocsQuery.refetch();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to authorize version", "error");
+    }
+  };
+
+  const handleRejectVersion = async (id: number) => {
+    try {
+      await auRubberApiClient.rejectVersion("supplier-cocs", id);
+      showToast("Version rejected", "success");
+      cocsQuery.refetch();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to reject version", "error");
+    }
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -515,6 +537,15 @@ export default function SupplierCocsPage() {
               <option value="APPROVED">Approved</option>
             </select>
           </div>
+          <label className="flex items-center space-x-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showAllVersions}
+              onChange={(e) => setShowAllVersions(e.target.checked)}
+              className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Show All Versions</span>
+          </label>
         </div>
       </div>
 
@@ -637,85 +668,125 @@ export default function SupplierCocsPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {group.paginated.map((coc) => (
-                      <tr key={coc.id} className="hover:bg-gray-50">
-                        {hasApprovable && (
-                          <td className="px-4 py-4 w-10">
-                            {isApprovable(coc) && (
-                              <input
-                                type="checkbox"
-                                checked={selectedForApproval.has(coc.id)}
-                                onChange={() => toggleApprovalSelection(coc.id)}
-                                className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    {group.paginated.map((coc) => {
+                      const isInactive =
+                        coc.versionStatus === "SUPERSEDED" || coc.versionStatus === "REJECTED";
+                      const isPendingAuth = coc.versionStatus === "PENDING_AUTHORIZATION";
+                      return (
+                        <tr
+                          key={coc.id}
+                          className={`hover:bg-gray-50 ${isInactive ? "opacity-40" : ""}`}
+                        >
+                          {hasApprovable && (
+                            <td className="px-4 py-4 w-10">
+                              {isApprovable(coc) && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedForApproval.has(coc.id)}
+                                  onChange={() => toggleApprovalSelection(coc.id)}
+                                  className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                />
+                              )}
+                            </td>
+                          )}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {coc.productionDate ? formatDateZA(coc.productionDate) : "-"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center space-x-2">
+                              <Link
+                                href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
+                                className="text-yellow-600 hover:text-yellow-800 font-medium"
+                              >
+                                {coc.cocNumber || `COC-${coc.id}`}
+                              </Link>
+                              {coc.version > 1 && (
+                                <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                                  v{coc.version}
+                                </span>
+                              )}
+                              {isPendingAuth && (
+                                <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">
+                                  Awaiting Authorization
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {coc.compoundCode || "-"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {statusBadge(coc.processingStatus)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDateZA(coc.createdAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                            {isPendingAuth && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAuthorizeVersion(coc.id)}
+                                  className="text-green-600 hover:text-green-800 font-medium"
+                                >
+                                  Authorize
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRejectVersion(coc.id)}
+                                  className="text-amber-600 hover:text-amber-800 font-medium"
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                            {coc.graphPdfPath && (
+                              <button
+                                onClick={async () => {
+                                  const url = await auRubberApiClient.documentUrl(
+                                    coc.graphPdfPath!,
+                                  );
+                                  window.open(url, "_blank");
+                                }}
+                                className="text-blue-600 hover:text-blue-800 inline-flex items-center"
+                                title="View Rheometer Graph"
+                              >
+                                <LineChart className="w-4 h-4" />
+                              </button>
+                            )}
+                            <Link
+                              href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
+                              className="text-yellow-600 hover:text-yellow-800 inline-flex items-center"
+                              title="View CoC"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Link>
+                            <button
+                              onClick={() => handleReextract(coc.id)}
+                              disabled={reextractingId === coc.id}
+                              className="text-green-600 hover:text-green-800 inline-flex items-center disabled:opacity-50"
+                              title="Re-extract data"
+                            >
+                              <RefreshCw
+                                className={`w-4 h-4 ${reextractingId === coc.id ? "animate-spin" : ""}`}
                               />
+                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => {
+                                  setDeletingId(coc.id);
+                                  setShowDeleteModal(true);
+                                }}
+                                className="text-red-600 hover:text-red-800 inline-flex items-center"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             )}
                           </td>
-                        )}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {coc.productionDate ? formatDateZA(coc.productionDate) : "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Link
-                            href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
-                            className="text-yellow-600 hover:text-yellow-800 font-medium"
-                          >
-                            {coc.cocNumber || `COC-${coc.id}`}
-                          </Link>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {coc.compoundCode || "-"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {statusBadge(coc.processingStatus)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDateZA(coc.createdAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                          {coc.graphPdfPath && (
-                            <button
-                              onClick={async () => {
-                                const url = await auRubberApiClient.documentUrl(coc.graphPdfPath!);
-                                window.open(url, "_blank");
-                              }}
-                              className="text-blue-600 hover:text-blue-800 inline-flex items-center"
-                              title="View Rheometer Graph"
-                            >
-                              <LineChart className="w-4 h-4" />
-                            </button>
-                          )}
-                          <Link
-                            href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
-                            className="text-yellow-600 hover:text-yellow-800 inline-flex items-center"
-                            title="View CoC"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Link>
-                          <button
-                            onClick={() => handleReextract(coc.id)}
-                            disabled={reextractingId === coc.id}
-                            className="text-green-600 hover:text-green-800 inline-flex items-center disabled:opacity-50"
-                            title="Re-extract data"
-                          >
-                            <RefreshCw
-                              className={`w-4 h-4 ${reextractingId === coc.id ? "animate-spin" : ""}`}
-                            />
-                          </button>
-                          {isAdmin && (
-                            <button
-                              onClick={() => {
-                                setDeletingId(coc.id);
-                                setShowDeleteModal(true);
-                              }}
-                              className="text-red-600 hover:text-red-800 inline-flex items-center"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}

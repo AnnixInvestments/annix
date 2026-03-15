@@ -965,6 +965,18 @@ export default function DeliveryNoteDetailPage() {
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
+                      Theo. Weight
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Deviation
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
                       Linked Batches
                     </th>
                   </>
@@ -976,7 +988,10 @@ export default function DeliveryNoteDetailPage() {
                 const itemAreaSqM =
                   item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null;
                 return (
-                  <tr key={item.id} className="hover:bg-gray-50">
+                  <tr
+                    key={item.id}
+                    className={`hover:bg-gray-50 ${item.weightFlagged ? "bg-amber-50" : ""}`}
+                  >
                     {note.deliveryNoteType === "COMPOUND" ? (
                       <>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -1011,6 +1026,34 @@ export default function DeliveryNoteDetailPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {safeFixed(item.rollWeightKg, 2) || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {safeFixed(item.theoreticalWeightKg, 2) || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {item.weightDeviationPct != null ? (
+                            <span
+                              className={`inline-flex items-center ${item.weightFlagged ? "text-amber-700 font-semibold" : "text-gray-500"}`}
+                            >
+                              {item.weightFlagged && (
+                                <svg
+                                  className="w-4 h-4 mr-1 text-amber-500"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              )}
+                              {item.weightDeviationPct > 0 ? "+" : ""}
+                              {safeFixed(item.weightDeviationPct, 1)}%
+                            </span>
+                          ) : (
+                            "-"
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.linkedBatchIds?.length || 0}

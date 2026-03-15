@@ -1,4 +1,5 @@
 import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import { DocumentVersionStatus } from "../entities/document-version.types";
 import { AuCocStatus } from "../entities/rubber-au-coc.entity";
 import type { TestDataSummary } from "../entities/rubber-au-coc-item.entity";
 import { BatchPassFailStatus } from "../entities/rubber-compound-batch.entity";
@@ -38,6 +39,10 @@ export class RubberSupplierCocDto {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  version: number;
+  versionStatus: DocumentVersionStatus;
+  versionStatusLabel: string;
+  previousVersionId: number | null;
 }
 
 export class CreateSupplierCocDto {
@@ -216,6 +221,10 @@ export class RubberDeliveryNoteDto {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  version: number;
+  versionStatus: DocumentVersionStatus;
+  versionStatusLabel: string;
+  previousVersionId: number | null;
 }
 
 export class CreateDeliveryNoteDto {
@@ -319,6 +328,9 @@ export class DeliveryNoteItemDto {
   compoundType: string | null;
   quantity: number | null;
   cocBatchNumbers: string[] | null;
+  theoreticalWeightKg: number | null;
+  weightDeviationPct: number | null;
+  weightFlagged: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -148,6 +148,10 @@ import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-brand
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
+import {
+  RubberDocumentVersioningService,
+  VersionHistoryEntry,
+} from "./rubber-document-versioning.service";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberOtherStockService } from "./rubber-other-stock.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
@@ -208,6 +212,7 @@ export class RubberLiningController {
     private readonly sageConnectionService: SageConnectionService,
     private readonly rubberSageContactSyncService: RubberSageContactSyncService,
     private readonly rubberSageInvoicePostService: RubberSageInvoicePostService,
+    private readonly rubberDocumentVersioningService: RubberDocumentVersioningService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -1374,15 +1379,18 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiQuery({ name: "cocType", required: false, enum: SupplierCocType })
   @ApiQuery({ name: "processingStatus", required: false, enum: CocProcessingStatus })
   @ApiQuery({ name: "supplierCompanyId", required: false })
+  @ApiQuery({ name: "includeAllVersions", required: false })
   async supplierCocs(
     @Query("cocType") cocType?: SupplierCocType,
     @Query("processingStatus") processingStatus?: CocProcessingStatus,
     @Query("supplierCompanyId") supplierCompanyId?: string,
+    @Query("includeAllVersions") includeAllVersions?: string,
   ): Promise<RubberSupplierCocDto[]> {
     return this.rubberCocService.allSupplierCocs({
       cocType,
       processingStatus,
       supplierCompanyId: supplierCompanyId ? Number(supplierCompanyId) : undefined,
+      includeAllVersions: includeAllVersions === "true",
     });
   }
 
@@ -1623,15 +1631,18 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiQuery({ name: "deliveryNoteType", required: false, enum: DeliveryNoteType })
   @ApiQuery({ name: "status", required: false, enum: DeliveryNoteStatus })
   @ApiQuery({ name: "supplierCompanyId", required: false })
+  @ApiQuery({ name: "includeAllVersions", required: false })
   async deliveryNotes(
     @Query("deliveryNoteType") deliveryNoteType?: DeliveryNoteType,
     @Query("status") status?: DeliveryNoteStatus,
     @Query("supplierCompanyId") supplierCompanyId?: string,
+    @Query("includeAllVersions") includeAllVersions?: string,
   ): Promise<RubberDeliveryNoteDto[]> {
     return this.rubberDeliveryNoteService.allDeliveryNotes({
       deliveryNoteType,
       status,
       supplierCompanyId: supplierCompanyId ? Number(supplierCompanyId) : undefined,
+      includeAllVersions: includeAllVersions === "true",
     });
   }
 
@@ -2836,15 +2847,18 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiQuery({ name: "invoiceType", required: false })
   @ApiQuery({ name: "status", required: false })
   @ApiQuery({ name: "companyId", required: false })
+  @ApiQuery({ name: "includeAllVersions", required: false })
   async taxInvoices(
     @Query("invoiceType") invoiceType?: TaxInvoiceType,
     @Query("status") status?: TaxInvoiceStatus,
     @Query("companyId") companyId?: string,
+    @Query("includeAllVersions") includeAllVersions?: string,
   ): Promise<RubberTaxInvoiceDto[]> {
     return this.rubberTaxInvoiceService.allTaxInvoices({
       invoiceType,
       status,
       companyId: companyId ? Number(companyId) : undefined,
+      includeAllVersions: includeAllVersions === "true",
     });
   }
 
@@ -3255,5 +3269,92 @@ Formula: totalPrice = totalKg × salePricePerKg
       "Content-Length": csvBuffer.length,
     });
     res!.send(csvBuffer);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/tax-invoices/:id/authorize-version")
+  @ApiOperation({ summary: "Authorize a pending tax invoice version" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async authorizeTaxInvoiceVersion(
+    @Param("id") id: string,
+  ): Promise<{ authorizedId: number; supersededId: number | null }> {
+    return this.rubberDocumentVersioningService.authorizeVersion("tax-invoice", Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/tax-invoices/:id/reject-version")
+  @ApiOperation({ summary: "Reject a pending tax invoice version" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async rejectTaxInvoiceVersion(@Param("id") id: string): Promise<void> {
+    await this.rubberDocumentVersioningService.rejectVersion("tax-invoice", Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/tax-invoices/:id/version-history")
+  @ApiOperation({ summary: "Get tax invoice version history" })
+  @ApiParam({ name: "id", description: "Tax invoice ID" })
+  async taxInvoiceVersionHistory(@Param("id") id: string): Promise<VersionHistoryEntry[]> {
+    return this.rubberDocumentVersioningService.versionHistory("tax-invoice", Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id/authorize-version")
+  @ApiOperation({ summary: "Authorize a pending delivery note version" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async authorizeDeliveryNoteVersion(
+    @Param("id") id: string,
+  ): Promise<{ authorizedId: number; supersededId: number | null }> {
+    return this.rubberDocumentVersioningService.authorizeVersion("delivery-note", Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id/reject-version")
+  @ApiOperation({ summary: "Reject a pending delivery note version" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async rejectDeliveryNoteVersion(@Param("id") id: string): Promise<void> {
+    await this.rubberDocumentVersioningService.rejectVersion("delivery-note", Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/delivery-notes/:id/version-history")
+  @ApiOperation({ summary: "Get delivery note version history" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async deliveryNoteVersionHistory(@Param("id") id: string): Promise<VersionHistoryEntry[]> {
+    return this.rubberDocumentVersioningService.versionHistory("delivery-note", Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/supplier-cocs/:id/authorize-version")
+  @ApiOperation({ summary: "Authorize a pending supplier CoC version" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async authorizeSupplierCocVersion(
+    @Param("id") id: string,
+  ): Promise<{ authorizedId: number; supersededId: number | null }> {
+    return this.rubberDocumentVersioningService.authorizeVersion("supplier-coc", Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/supplier-cocs/:id/reject-version")
+  @ApiOperation({ summary: "Reject a pending supplier CoC version" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async rejectSupplierCocVersion(@Param("id") id: string): Promise<void> {
+    await this.rubberDocumentVersioningService.rejectVersion("supplier-coc", Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/supplier-cocs/:id/version-history")
+  @ApiOperation({ summary: "Get supplier CoC version history" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async supplierCocVersionHistory(@Param("id") id: string): Promise<VersionHistoryEntry[]> {
+    return this.rubberDocumentVersioningService.versionHistory("supplier-coc", Number(id));
   }
 }

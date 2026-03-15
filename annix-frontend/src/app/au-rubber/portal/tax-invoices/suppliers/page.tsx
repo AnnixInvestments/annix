@@ -1,6 +1,15 @@
 "use client";
 
-import { CheckCircle, Download, FileText, Send, Trash2, X } from "lucide-react";
+import {
+  CheckCircle,
+  Download,
+  FileText,
+  Send,
+  ShieldCheck,
+  ShieldX,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -59,6 +68,9 @@ export default function SupplierTaxInvoicesPage() {
   const [isBulkApproving, setIsBulkApproving] = useState(false);
   const [postingToSageId, setPostingToSageId] = useState<number | null>(null);
   const [isBulkPostingToSage, setIsBulkPostingToSage] = useState(false);
+  const [includeAllVersions, setIncludeAllVersions] = useState(false);
+  const [authorizingId, setAuthorizingId] = useState<number | null>(null);
+  const [rejectingId, setRejectingId] = useState<number | null>(null);
 
   const handlePostToSage = async (inv: RubberTaxInvoiceDto) => {
     try {
@@ -178,6 +190,39 @@ export default function SupplierTaxInvoicesPage() {
     }
   };
 
+  const handleAuthorizeVersion = async (inv: RubberTaxInvoiceDto) => {
+    try {
+      setAuthorizingId(inv.id);
+      await auRubberApiClient.authorizeVersion("tax-invoices", inv.id);
+      showToast(`Invoice ${inv.invoiceNumber} version authorized`, "success");
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to authorize version", "error");
+    } finally {
+      setAuthorizingId(null);
+    }
+  };
+
+  const handleRejectVersion = async (inv: RubberTaxInvoiceDto) => {
+    const confirmed = await confirm({
+      title: "Reject Version",
+      message: `Reject version of invoice ${inv.invoiceNumber}? This cannot be undone.`,
+      confirmLabel: "Reject",
+      variant: "danger",
+    });
+    if (!confirmed) return;
+    try {
+      setRejectingId(inv.id);
+      await auRubberApiClient.rejectVersion("tax-invoices", inv.id);
+      showToast(`Invoice ${inv.invoiceNumber} version rejected`, "success");
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to reject version", "error");
+    } finally {
+      setRejectingId(null);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setIsLoading(true);
@@ -185,6 +230,7 @@ export default function SupplierTaxInvoicesPage() {
         auRubberApiClient.taxInvoices({
           invoiceType: "SUPPLIER",
           status: filterStatus || undefined,
+          includeAllVersions: includeAllVersions || undefined,
         }),
         auRubberApiClient.companies(),
       ]);
@@ -204,7 +250,7 @@ export default function SupplierTaxInvoicesPage() {
 
   useEffect(() => {
     fetchData();
-  }, [filterStatus]);
+  }, [filterStatus, includeAllVersions]);
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -442,6 +488,15 @@ export default function SupplierTaxInvoicesPage() {
               <option value="APPROVED">Approved</option>
             </select>
           </div>
+          <label className="flex items-center space-x-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeAllVersions}
+              onChange={(e) => setIncludeAllVersions(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Show All Versions</span>
+          </label>
         </div>
       </div>
 
@@ -610,7 +665,10 @@ export default function SupplierTaxInvoicesPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedInvoices.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-gray-50">
+                  <tr
+                    key={inv.id}
+                    className={`hover:bg-gray-50 ${inv.versionStatus === "SUPERSEDED" || inv.versionStatus === "REJECTED" ? "opacity-40" : ""}`}
+                  >
                     {hasApprovable && (
                       <td className="px-2 py-3 w-8">
                         {inv.status === "EXTRACTED" && (
@@ -624,12 +682,19 @@ export default function SupplierTaxInvoicesPage() {
                       </td>
                     )}
                     <td className="px-3 py-3 whitespace-nowrap">
-                      <Link
-                        href={`/au-rubber/portal/tax-invoices/${inv.id}`}
-                        className="text-orange-600 text-sm font-medium hover:text-orange-800 hover:underline"
-                      >
-                        {inv.invoiceNumber}
-                      </Link>
+                      <span className="flex items-center gap-1.5">
+                        <Link
+                          href={`/au-rubber/portal/tax-invoices/${inv.id}`}
+                          className="text-orange-600 text-sm font-medium hover:text-orange-800 hover:underline"
+                        >
+                          {inv.invoiceNumber}
+                        </Link>
+                        {inv.version > 1 && (
+                          <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                            v{inv.version}
+                          </span>
+                        )}
+                      </span>
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
                       {inv.companyName || "-"}
@@ -655,6 +720,11 @@ export default function SupplierTaxInvoicesPage() {
                     <td className="px-3 py-3 whitespace-nowrap">
                       <span className="flex items-center gap-1">
                         {statusBadge(inv.status)}
+                        {inv.versionStatus === "PENDING_AUTHORIZATION" && (
+                          <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
+                            Awaiting Authorization
+                          </span>
+                        )}
                         {inv.postedToSageAt ? (
                           <span className="px-1.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
                             Posted
@@ -668,6 +738,34 @@ export default function SupplierTaxInvoicesPage() {
                     </td>
                     <td className="px-2 py-3 whitespace-nowrap text-right">
                       <span className="flex items-center justify-end gap-1">
+                        {inv.versionStatus === "PENDING_AUTHORIZATION" && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAuthorizeVersion(inv);
+                              }}
+                              disabled={authorizingId === inv.id}
+                              className="text-gray-400 hover:text-green-600 disabled:opacity-50"
+                              title="Authorize version"
+                            >
+                              <ShieldCheck className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRejectVersion(inv);
+                              }}
+                              disabled={rejectingId === inv.id}
+                              className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                              title="Reject version"
+                            >
+                              <ShieldX className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                         {inv.status === "APPROVED" && inv.sageInvoiceId === null && (
                           <button
                             type="button"

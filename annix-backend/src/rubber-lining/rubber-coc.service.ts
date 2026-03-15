@@ -10,6 +10,10 @@ import {
   RubberSupplierCocDto,
   UpdateSupplierCocDto,
 } from "./dto/rubber-coc.dto";
+import {
+  DOCUMENT_VERSION_STATUS_LABELS,
+  DocumentVersionStatus,
+} from "./entities/document-version.types";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { BatchPassFailStatus, RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
@@ -21,6 +25,7 @@ import {
 } from "./entities/rubber-supplier-coc.entity";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
+import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
 import { DEFAULT_SUPPLIER_NAMES } from "./rubber-lining.constants";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 
@@ -58,6 +63,7 @@ export class RubberCocService {
     private qualityTrackingService: RubberQualityTrackingService,
     private auCocReadinessService: RubberAuCocReadinessService,
     private deliveryNoteService: RubberDeliveryNoteService,
+    private versioningService: RubberDocumentVersioningService,
   ) {}
 
   private normalizeCocNumber(cocNumber: string): string {
@@ -68,11 +74,18 @@ export class RubberCocService {
     cocType?: SupplierCocType;
     processingStatus?: CocProcessingStatus;
     supplierCompanyId?: number;
+    includeAllVersions?: boolean;
   }): Promise<RubberSupplierCocDto[]> {
     const query = this.supplierCocRepository
       .createQueryBuilder("coc")
       .leftJoinAndSelect("coc.supplierCompany", "company")
       .orderBy("coc.created_at", "DESC");
+
+    if (!filters?.includeAllVersions) {
+      query.andWhere("coc.version_status = :versionStatus", {
+        versionStatus: DocumentVersionStatus.ACTIVE,
+      });
+    }
 
     if (filters?.cocType) {
       query.andWhere("coc.coc_type = :cocType", { cocType: filters.cocType });
@@ -232,6 +245,12 @@ export class RubberCocService {
       relations: ["supplierCompany"],
     });
     if (!coc) return null;
+
+    if (coc.versionStatus === DocumentVersionStatus.PENDING_AUTHORIZATION) {
+      throw new BadRequestException(
+        "This document version is awaiting authorization and cannot be approved",
+      );
+    }
 
     coc.processingStatus = CocProcessingStatus.APPROVED;
     coc.approvedAt = now().toJSDate();
@@ -428,53 +447,15 @@ export class RubberCocService {
     documentPath: string,
     extractedData: ExtractedCocData,
     createdBy?: string,
-  ): Promise<{ coc: RubberSupplierCocDto; wasUpdated: boolean }> {
+  ): Promise<{ coc: RubberSupplierCocDto; wasUpdated: boolean; requiresAuthorization: boolean }> {
     const normalizedCocNumber = this.normalizeCocNumber(cocNumber);
 
-    const existingCoc = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .leftJoinAndSelect("coc.supplierCompany", "supplierCompany")
-      .where("LOWER(TRIM(coc.cocNumber)) = LOWER(:cocNumber)", {
-        cocNumber: normalizedCocNumber,
-      })
-      .andWhere("coc.cocType = :cocType", { cocType })
-      .getOne();
+    const existingActive = await this.versioningService.existingActiveSupplierCoc(
+      normalizedCocNumber,
+      cocType,
+    );
 
-    if (existingCoc) {
-      this.logger.log(
-        `Duplicate CoC detected: ${normalizedCocNumber} (${cocType}) - updating existing CoC ${existingCoc.id}`,
-      );
-      existingCoc.documentPath = documentPath;
-      existingCoc.extractedData = extractedData;
-      existingCoc.processingStatus = CocProcessingStatus.EXTRACTED;
-      existingCoc.supplierCompanyId = supplierCompanyId;
-
-      if (extractedData.productionDate) {
-        existingCoc.productionDate = fromISO(extractedData.productionDate).toJSDate();
-      }
-      if (extractedData.compoundCode) {
-        existingCoc.compoundCode = extractedData.compoundCode;
-      }
-      if (extractedData.orderNumber) {
-        existingCoc.orderNumber = extractedData.orderNumber;
-      }
-      if (extractedData.ticketNumber) {
-        existingCoc.ticketNumber = extractedData.ticketNumber;
-      }
-
-      await this.supplierCocRepository.save(existingCoc);
-
-      const refreshed = await this.supplierCocRepository.findOne({
-        where: { id: existingCoc.id },
-        relations: ["supplierCompany"],
-      });
-
-      if (!refreshed) {
-        throw new BadRequestException("Failed to retrieve updated supplier CoC");
-      }
-      this.triggerAutoLinkDnsForCoc(refreshed);
-      return { coc: this.mapSupplierCocToDto(refreshed), wasUpdated: true };
-    }
+    const isDuplicate = existingActive !== null;
 
     const newCoc = this.supplierCocRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
@@ -491,7 +472,18 @@ export class RubberCocService {
       orderNumber: extractedData.orderNumber ?? null,
       ticketNumber: extractedData.ticketNumber ?? null,
       createdBy: createdBy ?? null,
+      version: isDuplicate ? existingActive.version + 1 : 1,
+      previousVersionId: isDuplicate ? existingActive.id : null,
+      versionStatus: isDuplicate
+        ? DocumentVersionStatus.PENDING_AUTHORIZATION
+        : DocumentVersionStatus.ACTIVE,
     });
+
+    if (isDuplicate) {
+      this.logger.log(
+        `Duplicate CoC detected: ${normalizedCocNumber} (${cocType}) - creating v${newCoc.version} pending authorization (previous: #${existingActive.id})`,
+      );
+    }
 
     const saved = await this.supplierCocRepository.save(newCoc);
     const result = await this.supplierCocRepository.findOne({
@@ -502,8 +494,16 @@ export class RubberCocService {
     if (!result) {
       throw new BadRequestException("Failed to retrieve created supplier CoC");
     }
-    this.triggerAutoLinkDnsForCoc(result);
-    return { coc: this.mapSupplierCocToDto(result), wasUpdated: false };
+
+    if (!isDuplicate) {
+      this.triggerAutoLinkDnsForCoc(result);
+    }
+
+    return {
+      coc: this.mapSupplierCocToDto(result),
+      wasUpdated: isDuplicate,
+      requiresAuthorization: isDuplicate,
+    };
   }
 
   async clearAllSupplierCocs(): Promise<{ deletedBatches: number; deletedCocs: number }> {
@@ -677,45 +677,36 @@ export class RubberCocService {
     cocId: number,
     cocNumber: string,
     cocType: SupplierCocType,
-  ): Promise<{ merged: boolean; keptCocId: number; deletedCocId: number | null }> {
+  ): Promise<{
+    merged: boolean;
+    keptCocId: number;
+    deletedCocId: number | null;
+    requiresAuthorization: boolean;
+  }> {
     const normalizedCocNumber = this.normalizeCocNumber(cocNumber);
 
-    const existingCoc = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("LOWER(TRIM(coc.cocNumber)) = LOWER(:cocNumber)", {
-        cocNumber: normalizedCocNumber,
-      })
-      .andWhere("coc.cocType = :cocType", { cocType })
-      .andWhere("coc.id != :cocId", { cocId })
-      .getOne();
+    const existingActive = await this.versioningService.existingActiveSupplierCoc(
+      normalizedCocNumber,
+      cocType,
+    );
 
-    if (!existingCoc) {
-      return { merged: false, keptCocId: cocId, deletedCocId: null };
+    if (!existingActive || existingActive.id === cocId) {
+      return { merged: false, keptCocId: cocId, deletedCocId: null, requiresAuthorization: false };
     }
 
     this.logger.log(
-      `Duplicate detected during post-extraction: CoC ${cocId} has same cocNumber ${normalizedCocNumber} as CoC ${existingCoc.id} - merging`,
+      `Duplicate detected during post-extraction: CoC ${cocId} has same cocNumber ${normalizedCocNumber} as CoC ${existingActive.id} - creating version`,
     );
 
     const newCoc = await this.supplierCocRepository.findOne({ where: { id: cocId } });
     if (newCoc) {
-      if (newCoc.documentPath && !existingCoc.documentPath) {
-        existingCoc.documentPath = newCoc.documentPath;
-      }
-      if (newCoc.extractedData) {
-        existingCoc.extractedData = {
-          ...(existingCoc.extractedData ?? {}),
-          ...newCoc.extractedData,
-        };
-      }
-      existingCoc.processingStatus = CocProcessingStatus.EXTRACTED;
-      await this.supplierCocRepository.save(existingCoc);
+      newCoc.version = existingActive.version + 1;
+      newCoc.previousVersionId = existingActive.id;
+      newCoc.versionStatus = DocumentVersionStatus.PENDING_AUTHORIZATION;
+      await this.supplierCocRepository.save(newCoc);
     }
 
-    await this.supplierCocRepository.delete(cocId);
-    this.logger.log(`Deleted duplicate CoC ${cocId}, kept CoC ${existingCoc.id}`);
-
-    return { merged: true, keptCocId: existingCoc.id, deletedCocId: cocId };
+    return { merged: true, keptCocId: cocId, deletedCocId: null, requiresAuthorization: true };
   }
 
   async linkCalendererToCompounderCocs(
@@ -939,6 +930,10 @@ export class RubberCocService {
       createdBy: coc.createdBy,
       createdAt: coc.createdAt.toISOString(),
       updatedAt: coc.updatedAt.toISOString(),
+      version: coc.version,
+      versionStatus: coc.versionStatus,
+      versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[coc.versionStatus],
+      previousVersionId: coc.previousVersionId,
     };
   }
 

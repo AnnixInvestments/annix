@@ -52,6 +52,7 @@ import { RubberBrandingService } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
+import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
 import { RubberEmailMonitorService } from "./rubber-email-monitor.service";
 import { RubberInboundEmailController } from "./rubber-inbound-email.controller";
 import { RubberInboundEmailService } from "./rubber-inbound-email.service";
@@ -138,6 +139,7 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
     RubberProductImportService,
     RubberOtherStockService,
     RubberTaxInvoiceService,
+    RubberDocumentVersioningService,
     RubberSageCocAdapterService,
     RubberSageContactSyncService,
     RubberSageInvoiceAdapterService,

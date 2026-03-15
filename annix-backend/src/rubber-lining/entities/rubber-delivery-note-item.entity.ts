@@ -90,6 +90,24 @@ export class RubberDeliveryNoteItem {
   @Column({ name: "coc_batch_numbers", type: "jsonb", nullable: true })
   cocBatchNumbers: string[] | null;
 
+  @Column({
+    name: "theoretical_weight_kg",
+    type: "decimal",
+    precision: 12,
+    scale: 3,
+    nullable: true,
+  })
+  theoreticalWeightKg: number | null;
+
+  @Column({
+    name: "weight_deviation_pct",
+    type: "decimal",
+    precision: 6,
+    scale: 2,
+    nullable: true,
+  })
+  weightDeviationPct: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

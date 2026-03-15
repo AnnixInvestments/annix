@@ -110,7 +110,9 @@ export default function StockControlDashboard() {
         <MyTasksWidget pendingApprovals={pendingApprovals ?? []} notifications={notifications} />
       )}
 
-      {widgetVisible("stats") && stats && <QuickStatsSection stats={stats} />}
+      {widgetVisible("stats") && stats && (
+        <QuickStatsSection stats={stats} navItemVisible={navItemVisible} />
+      )}
 
       {widgetVisible("workflow-lanes") && (
         <WorkflowLanesSection

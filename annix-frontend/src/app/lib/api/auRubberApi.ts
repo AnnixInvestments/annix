@@ -121,6 +121,10 @@ export interface RubberTaxInvoiceDto {
   numberOfRolls: number | null;
   unit: string | null;
   costPerUnit: number | null;
+  version: number;
+  versionStatus: string;
+  versionStatusLabel: string;
+  previousVersionId: number | null;
 }
 
 export interface MetricStats {
@@ -395,6 +399,10 @@ export interface RubberSupplierCocDto {
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+  version: number;
+  versionStatus: string;
+  versionStatusLabel: string;
+  previousVersionId: number | null;
 }
 
 export interface RubberCompoundBatchDto {
@@ -513,6 +521,10 @@ export interface RubberDeliveryNoteDto {
   auCocNumber: string | null;
   createdAt: string;
   updatedAt: string;
+  version: number;
+  versionStatus: string;
+  versionStatusLabel: string;
+  previousVersionId: number | null;
 }
 
 export interface RubberDeliveryNoteItemDto {
@@ -530,6 +542,9 @@ export interface RubberDeliveryNoteItemDto {
   compoundType: string | null;
   quantity: number | null;
   cocBatchNumbers: string[] | null;
+  theoreticalWeightKg: number | null;
+  weightDeviationPct: number | null;
+  weightFlagged: boolean;
   createdAt: string;
 }
 
@@ -1925,11 +1940,13 @@ class AuRubberApiClient {
     cocType?: SupplierCocType;
     processingStatus?: CocProcessingStatus;
     supplierId?: number;
+    includeAllVersions?: boolean;
   }): Promise<RubberSupplierCocDto[]> {
     const params = new URLSearchParams();
     if (filters?.cocType) params.set("cocType", filters.cocType);
     if (filters?.processingStatus) params.set("processingStatus", filters.processingStatus);
     if (filters?.supplierId) params.set("supplierId", String(filters.supplierId));
+    if (filters?.includeAllVersions) params.set("includeAllVersions", "true");
     const query = params.toString() ? `?${params.toString()}` : "";
     return this.request(`/rubber-lining/portal/supplier-cocs${query}`);
   }
@@ -2108,11 +2125,13 @@ class AuRubberApiClient {
     deliveryNoteType?: DeliveryNoteType;
     status?: DeliveryNoteStatus;
     supplierId?: number;
+    includeAllVersions?: boolean;
   }): Promise<RubberDeliveryNoteDto[]> {
     const params = new URLSearchParams();
     if (filters?.deliveryNoteType) params.set("deliveryNoteType", filters.deliveryNoteType);
     if (filters?.status) params.set("status", filters.status);
     if (filters?.supplierId) params.set("supplierId", String(filters.supplierId));
+    if (filters?.includeAllVersions) params.set("includeAllVersions", "true");
     const query = params.toString() ? `?${params.toString()}` : "";
     return this.request(`/rubber-lining/portal/delivery-notes${query}`);
   }
@@ -2892,11 +2911,13 @@ class AuRubberApiClient {
     invoiceType?: TaxInvoiceType;
     status?: TaxInvoiceStatus;
     companyId?: number;
+    includeAllVersions?: boolean;
   }): Promise<RubberTaxInvoiceDto[]> {
     const params = new URLSearchParams();
     if (filters?.invoiceType) params.set("invoiceType", filters.invoiceType);
     if (filters?.status) params.set("status", filters.status);
     if (filters?.companyId) params.set("companyId", String(filters.companyId));
+    if (filters?.includeAllVersions) params.set("includeAllVersions", "true");
     const qs = params.toString();
     return this.request(`/rubber-lining/portal/tax-invoices${qs ? `?${qs}` : ""}`);
   }
@@ -3180,6 +3201,40 @@ class AuRubberApiClient {
       method: "POST",
       body: JSON.stringify({ invoiceIds }),
     });
+  }
+
+  async authorizeVersion(
+    entityType: "tax-invoices" | "delivery-notes" | "supplier-cocs",
+    id: number,
+  ): Promise<{ authorizedId: number; supersededId: number | null }> {
+    return this.request(`/rubber-lining/portal/${entityType}/${id}/authorize-version`, {
+      method: "PUT",
+    });
+  }
+
+  async rejectVersion(
+    entityType: "tax-invoices" | "delivery-notes" | "supplier-cocs",
+    id: number,
+  ): Promise<void> {
+    return this.request(`/rubber-lining/portal/${entityType}/${id}/reject-version`, {
+      method: "PUT",
+    });
+  }
+
+  async versionHistory(
+    entityType: "tax-invoices" | "delivery-notes" | "supplier-cocs",
+    id: number,
+  ): Promise<
+    Array<{
+      id: number;
+      version: number;
+      versionStatus: string;
+      versionStatusLabel: string;
+      createdAt: string;
+      updatedAt: string;
+    }>
+  > {
+    return this.request(`/rubber-lining/portal/${entityType}/${id}/version-history`);
   }
 }
 

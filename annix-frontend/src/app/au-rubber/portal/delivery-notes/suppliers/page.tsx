@@ -36,9 +36,11 @@ export default function SupplierDeliveryNotesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<DeliveryNoteType | "">("");
   const [filterStatus, setFilterStatus] = useState<DeliveryNoteStatus | "">("");
+  const [showAllVersions, setShowAllVersions] = useState(false);
   const notesQuery = useAuRubberDeliveryNotes({
     deliveryNoteType: filterType || undefined,
     status: filterStatus || undefined,
+    includeAllVersions: showAllVersions || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
   const allCompanies = companiesQuery.data ?? [];
@@ -128,7 +130,27 @@ export default function SupplierDeliveryNotesPage() {
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, filterType, filterStatus]);
+  }, [searchQuery, filterType, filterStatus, showAllVersions]);
+
+  const handleAuthorizeVersion = async (id: number) => {
+    try {
+      await auRubberApiClient.authorizeVersion("delivery-notes", id);
+      showToast("Version authorized successfully", "success");
+      notesQuery.refetch();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to authorize version", "error");
+    }
+  };
+
+  const handleRejectVersion = async (id: number) => {
+    try {
+      await auRubberApiClient.rejectVersion("delivery-notes", id);
+      showToast("Version rejected", "success");
+      notesQuery.refetch();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to reject version", "error");
+    }
+  };
 
   const handleDeleteNote = async (id: number, dnNumber: string) => {
     if (!confirm(`Delete delivery note ${dnNumber}?`)) return;
@@ -365,6 +387,15 @@ export default function SupplierDeliveryNotesPage() {
               <option value="STOCK_CREATED">Stock Created</option>
             </select>
           </div>
+          <label className="flex items-center space-x-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showAllVersions}
+              onChange={(e) => setShowAllVersions(e.target.checked)}
+              className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Show All Versions</span>
+          </label>
         </div>
       </div>
 
@@ -504,76 +535,114 @@ export default function SupplierDeliveryNotesPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedNotes.map((note) => (
-                <tr key={note.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/au-rubber/portal/delivery-notes/${note.id}`}
-                      className="text-orange-600 hover:text-orange-800 font-medium"
-                    >
-                      {note.deliveryNoteNumber || `DN-${note.id}`}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {note.supplierCompanyName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {typeBadge(note.deliveryNoteType)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {notePoRef(note) || "-"}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {noteRollNumbers(note).length > 0 ? noteRollNumbers(note).join(", ") : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {note.deliveryDate ? formatDateZA(note.deliveryDate) : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{statusBadge(note.status)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {note.linkedCocId ? (
+              {paginatedNotes.map((note) => {
+                const isInactive =
+                  note.versionStatus === "SUPERSEDED" || note.versionStatus === "REJECTED";
+                const isPendingAuth = note.versionStatus === "PENDING_AUTHORIZATION";
+                return (
+                  <tr
+                    key={note.id}
+                    className={`hover:bg-gray-50 ${isInactive ? "opacity-40" : ""}`}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        <Link
+                          href={`/au-rubber/portal/delivery-notes/${note.id}`}
+                          className="text-orange-600 hover:text-orange-800 font-medium"
+                        >
+                          {note.deliveryNoteNumber || `DN-${note.id}`}
+                        </Link>
+                        {note.version > 1 && (
+                          <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
+                            v{note.version}
+                          </span>
+                        )}
+                        {isPendingAuth && (
+                          <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">
+                            Awaiting Authorization
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {note.supplierCompanyName || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {typeBadge(note.deliveryNoteType)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {notePoRef(note) || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {noteRollNumbers(note).length > 0 ? noteRollNumbers(note).join(", ") : "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {note.deliveryDate ? formatDateZA(note.deliveryDate) : "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">{statusBadge(note.status)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {note.linkedCocId ? (
+                        <Link
+                          href={`/au-rubber/portal/supplier-cocs/${note.linkedCocId}`}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          View CoC
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">Not linked</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                      {isPendingAuth && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleAuthorizeVersion(note.id)}
+                            className="text-green-600 hover:text-green-800 font-medium"
+                          >
+                            Authorize
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRejectVersion(note.id)}
+                            className="text-amber-600 hover:text-amber-800 font-medium"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
                       <Link
-                        href={`/au-rubber/portal/supplier-cocs/${note.linkedCocId}`}
-                        className="text-blue-600 hover:text-blue-800"
+                        href={`/au-rubber/portal/delivery-notes/${note.id}`}
+                        className="text-orange-600 hover:text-orange-800"
                       >
-                        View CoC
+                        View
                       </Link>
-                    ) : (
-                      <span className="text-gray-400">Not linked</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                    <Link
-                      href={`/au-rubber/portal/delivery-notes/${note.id}`}
-                      className="text-orange-600 hover:text-orange-800"
-                    >
-                      View
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleDeleteNote(note.id, note.deliveryNoteNumber || `DN-${note.id}`)
-                      }
-                      className="text-red-400 hover:text-red-600"
-                      title="Delete delivery note"
-                    >
-                      <svg
-                        className="w-4 h-4 inline"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDeleteNote(note.id, note.deliveryNoteNumber || `DN-${note.id}`)
+                        }
+                        className="text-red-400 hover:text-red-600"
+                        title="Delete delivery note"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                        <svg
+                          className="w-4 h-4 inline"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

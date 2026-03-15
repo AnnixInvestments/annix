@@ -2,6 +2,10 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { formatISODate, fromISO, generateUniqueId } from "../lib/datetime";
+import {
+  DOCUMENT_VERSION_STATUS_LABELS,
+  DocumentVersionStatus,
+} from "./entities/document-version.types";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
@@ -13,6 +17,7 @@ import {
   TaxInvoiceType,
 } from "./entities/rubber-tax-invoice.entity";
 import { RubberTaxInvoiceCorrection } from "./entities/rubber-tax-invoice-correction.entity";
+import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
 import { RubberStockService } from "./rubber-stock.service";
 
 const TAX_INVOICE_STATUS_LABELS: Record<TaxInvoiceStatus, string> = {
@@ -51,6 +56,10 @@ export interface RubberTaxInvoiceDto {
   numberOfRolls: number | null;
   unit: string | null;
   costPerUnit: number | null;
+  version: number;
+  versionStatus: DocumentVersionStatus;
+  versionStatusLabel: string;
+  previousVersionId: number | null;
 }
 
 export interface CreateTaxInvoiceDto {
@@ -95,17 +104,25 @@ export class RubberTaxInvoiceService {
     @InjectRepository(RubberProduct)
     private productRepository: Repository<RubberProduct>,
     private rubberStockService: RubberStockService,
+    private versioningService: RubberDocumentVersioningService,
   ) {}
 
   async allTaxInvoices(filters?: {
     invoiceType?: TaxInvoiceType;
     status?: TaxInvoiceStatus;
     companyId?: number;
+    includeAllVersions?: boolean;
   }): Promise<RubberTaxInvoiceDto[]> {
     const query = this.taxInvoiceRepository
       .createQueryBuilder("ti")
       .leftJoinAndSelect("ti.company", "company")
       .orderBy("ti.created_at", "DESC");
+
+    if (!filters?.includeAllVersions) {
+      query.andWhere("ti.version_status = :versionStatus", {
+        versionStatus: DocumentVersionStatus.ACTIVE,
+      });
+    }
 
     if (filters?.invoiceType) {
       query.andWhere("ti.invoice_type = :type", { type: filters.invoiceType });
@@ -140,6 +157,16 @@ export class RubberTaxInvoiceService {
       throw new BadRequestException("Company not found");
     }
 
+    const existingActive = dto.invoiceNumber
+      ? await this.versioningService.existingActiveTaxInvoice(
+          dto.invoiceNumber,
+          dto.companyId,
+          dto.invoiceType,
+        )
+      : null;
+
+    const isDuplicate = existingActive !== null;
+
     const invoice = this.taxInvoiceRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       invoiceNumber: dto.invoiceNumber,
@@ -151,7 +178,18 @@ export class RubberTaxInvoiceService {
       totalAmount: dto.totalAmount != null ? String(dto.totalAmount) : null,
       vatAmount: dto.vatAmount != null ? String(dto.vatAmount) : null,
       createdBy: createdBy ?? null,
+      version: isDuplicate ? existingActive.version + 1 : 1,
+      previousVersionId: isDuplicate ? existingActive.id : null,
+      versionStatus: isDuplicate
+        ? DocumentVersionStatus.PENDING_AUTHORIZATION
+        : DocumentVersionStatus.ACTIVE,
     });
+
+    if (isDuplicate) {
+      this.logger.log(
+        `Duplicate tax invoice detected: ${dto.invoiceNumber} for company ${dto.companyId} - creating v${invoice.version} pending authorization`,
+      );
+    }
 
     const saved = await this.taxInvoiceRepository.save(invoice);
     const result = await this.taxInvoiceRepository.findOne({
@@ -299,6 +337,12 @@ export class RubberTaxInvoiceService {
       relations: ["company"],
     });
     if (!invoice) return null;
+
+    if (invoice.versionStatus === DocumentVersionStatus.PENDING_AUTHORIZATION) {
+      throw new BadRequestException(
+        "This document version is awaiting authorization and cannot be approved",
+      );
+    }
 
     if (invoice.status === TaxInvoiceStatus.APPROVED) {
       return this.mapToDto(invoice);
@@ -483,25 +527,28 @@ export class RubberTaxInvoiceService {
       rollInfo.lengthM *
       specificGravity *
       1000;
-    const totalKg = rollWeightKg * quantity;
 
-    if (totalKg <= 0) {
+    if (rollWeightKg <= 0) {
       this.logger.warn(
         `Tax invoice ${invoice.invoiceNumber}: calculated roll weight is zero or negative`,
       );
       return;
     }
 
-    await this.rubberStockService.deductCompoundStockByCoding(
-      compoundCoding.id,
-      totalKg,
-      CompoundMovementReferenceType.CALENDARING,
-      invoice.id,
-      `Calendarer invoice ${invoice.invoiceNumber} (${quantity} roll${quantity !== 1 ? "s" : ""} × ${rollWeightKg.toFixed(1)} kg)`,
-    );
+    await Array.from({ length: quantity }).reduce(async (prev, _, idx) => {
+      await prev;
+      const rollNum = idx + 1;
+      return this.rubberStockService.deductCompoundStockByCoding(
+        compoundCoding.id,
+        rollWeightKg,
+        CompoundMovementReferenceType.CALENDARING,
+        invoice.id,
+        `Calendarer invoice ${invoice.invoiceNumber} (roll ${rollNum}/${quantity}, ${rollWeightKg.toFixed(1)} kg)`,
+      );
+    }, Promise.resolve());
 
     this.logger.log(
-      `Tax invoice ${invoice.invoiceNumber}: deducted ${totalKg.toFixed(1)} kg from ${compoundCode} (${quantity} rolls)`,
+      `Tax invoice ${invoice.invoiceNumber}: deducted ${(rollWeightKg * quantity).toFixed(1)} kg from ${compoundCode} (${quantity} individual roll movements)`,
     );
   }
 
@@ -685,6 +732,26 @@ export class RubberTaxInvoiceService {
     }
     invoice.status = TaxInvoiceStatus.EXTRACTED;
 
+    if (
+      data.invoiceNumber &&
+      invoice.versionStatus === DocumentVersionStatus.ACTIVE &&
+      invoice.version === 1
+    ) {
+      const existingActive = await this.versioningService.existingActiveTaxInvoice(
+        data.invoiceNumber,
+        invoice.companyId,
+        invoice.invoiceType,
+      );
+      if (existingActive && existingActive.id !== invoice.id) {
+        invoice.version = existingActive.version + 1;
+        invoice.previousVersionId = existingActive.id;
+        invoice.versionStatus = DocumentVersionStatus.PENDING_AUTHORIZATION;
+        this.logger.log(
+          `Post-extraction duplicate detected: tax invoice ${data.invoiceNumber} matches existing #${existingActive.id} - marking v${invoice.version} pending authorization`,
+        );
+      }
+    }
+
     await this.taxInvoiceRepository.save(invoice);
     return this.mapToDto(invoice);
   }
@@ -780,6 +847,10 @@ export class RubberTaxInvoiceService {
       numberOfRolls: productSummary.numberOfRolls,
       unit: productSummary.unit,
       costPerUnit: productSummary.costPerUnit,
+      version: invoice.version,
+      versionStatus: invoice.versionStatus,
+      versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[invoice.versionStatus],
+      previousVersionId: invoice.previousVersionId,
     };
   }
 

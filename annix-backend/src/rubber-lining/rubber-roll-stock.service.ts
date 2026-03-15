@@ -16,6 +16,7 @@ import {
   SellRollDto,
   UpdateRollStockDto,
 } from "./dto/rubber-coc.dto";
+import { DOCUMENT_VERSION_STATUS_LABELS } from "./entities/document-version.types";
 import { RubberAuCoc } from "./entities/rubber-au-coc.entity";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { BatchPassFailStatus, RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
@@ -640,6 +641,10 @@ export class RubberRollStockService {
       createdBy: coc.createdBy,
       createdAt: coc.createdAt.toISOString(),
       updatedAt: coc.updatedAt.toISOString(),
+      version: coc.version,
+      versionStatus: coc.versionStatus,
+      versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[coc.versionStatus],
+      previousVersionId: coc.previousVersionId,
     };
   }
 }
