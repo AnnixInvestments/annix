@@ -108,6 +108,12 @@ export function useRbacInviteUser() {
   });
 }
 
+export function useRbacSendAccessLink() {
+  return useMutation<{ message: string }, Error, { userId: number }>({
+    mutationFn: ({ userId }) => adminApiClient.rbacSendAccessLink(userId),
+  });
+}
+
 export function useRbacRoleProducts(roleId: number) {
   return useQuery<RbacRoleProductsResponse>({
     queryKey: rbacKeys.roles.products(roleId),

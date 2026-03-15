@@ -179,6 +179,18 @@ export class RbacController {
     return this.rbacService.inviteUser(dto, grantedById);
   }
 
+  @Post("users/:userId/send-access-link")
+  @ApiOperation({ summary: "Send access link email to a user" })
+  @ApiParam({ name: "userId", description: "User ID", example: 42 })
+  @ApiResponse({ status: 201, description: "Access link sent successfully" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  async sendAccessLink(
+    @Param("userId", ParseIntPipe) userId: number,
+  ): Promise<ApiMessageResponse> {
+    const result = await this.rbacService.sendAccessLink(userId);
+    return messageResponse(result.message);
+  }
+
   @Post("apps/:code/roles")
   @ApiOperation({ summary: "Create a new role for an app" })
   @ApiParam({ name: "code", description: "App code", example: "rfq-platform" })

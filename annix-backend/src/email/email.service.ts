@@ -502,6 +502,66 @@ export class EmailService {
     });
   }
 
+  async sendPlatformAccessEmail(
+    email: string,
+    userName: string,
+    appNames: string[],
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const appListHtml = appNames.map((name) => `<li>${name}</li>`).join("\n");
+    const appListText = appNames.map((name) => `- ${name}`).join("\n");
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Your Access Link - Annix Platform</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">Annix Platform</h1>
+          <p>Hi ${userName},</p>
+          <p>You have access to the following apps:</p>
+          <ul>${appListHtml}</ul>
+          <p style="margin: 30px 0;">
+            <a href="${frontendUrl}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Open Platform
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${frontendUrl}</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This email was sent by the Annix Platform.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Annix Platform
+
+      Hi ${userName},
+
+      You have access to the following apps:
+      ${appListText}
+
+      Open the platform: ${frontendUrl}
+
+      This email was sent by the Annix Platform.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "Your Access Link - Annix Platform",
+      html,
+      text,
+    });
+  }
+
   async sendStockControlAdminTransferEmail(
     email: string,
     token: string,

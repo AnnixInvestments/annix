@@ -36,6 +36,7 @@ export {
   useRbacRevokeAccess,
   useRbacRoleProducts,
   useRbacSearchUsers,
+  useRbacSendAccessLink,
   useRbacSetRoleProducts,
   useRbacUpdateAccess,
   useRbacUpdateRole,

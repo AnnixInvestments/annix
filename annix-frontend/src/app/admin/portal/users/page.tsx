@@ -13,6 +13,7 @@ import {
   useRbacApps,
   useRbacInviteUser,
   useRbacRevokeAccess,
+  useRbacSendAccessLink,
 } from "@/app/lib/query/hooks";
 import { AppToggleCard } from "./components/AppToggleCard";
 import { InviteUserModal } from "./components/InviteUserModal";
@@ -53,6 +54,7 @@ export default function AdminUsersPage() {
 
   const revokeMutation = useRbacRevokeAccess();
   const inviteMutation = useRbacInviteUser();
+  const sendLinkMutation = useRbacSendAccessLink();
 
   const isAdmin = admin?.roles?.includes("admin");
 
@@ -282,14 +284,44 @@ export default function AdminUsersPage() {
                       {selectedUser.email}
                     </p>
                   </div>
-                  <div className="text-right text-sm text-gray-500 dark:text-gray-400">
-                    <div>
-                      {selectedUser.lastLoginAt
-                        ? `Last login: ${formatDateZA(selectedUser.lastLoginAt)}`
-                        : "Never logged in"}
-                    </div>
-                    <div className="font-medium text-gray-700 dark:text-gray-300">
-                      {enabledAppCount} of {apps.length} enabled
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() =>
+                        sendLinkMutation.mutate(
+                          { userId: selectedUser.id },
+                          {
+                            onSuccess: (result) => showToast(result.message, "success"),
+                            onError: (err) => showToast(`Error: ${err.message}`, "error"),
+                          },
+                        )
+                      }
+                      disabled={sendLinkMutation.isPending}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-600 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <svg
+                        className="w-4 h-4 mr-1.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                        />
+                      </svg>
+                      {sendLinkMutation.isPending ? "Sending..." : "Send Link"}
+                    </button>
+                    <div className="text-right text-sm text-gray-500 dark:text-gray-400">
+                      <div>
+                        {selectedUser.lastLoginAt
+                          ? `Last login: ${formatDateZA(selectedUser.lastLoginAt)}`
+                          : "Never logged in"}
+                      </div>
+                      <div className="font-medium text-gray-700 dark:text-gray-300">
+                        {enabledAppCount} of {apps.length} enabled
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -1258,6 +1258,12 @@ class AdminApiClient {
     });
   }
 
+  async rbacSendAccessLink(userId: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/admin/rbac/users/${userId}/send-access-link`, {
+      method: "POST",
+    });
+  }
+
   async rbacCreateRole(appCode: string, dto: CreateRoleDto): Promise<RbacRoleResponse> {
     return this.request<RbacRoleResponse>(`/admin/rbac/apps/${encodeURIComponent(appCode)}/roles`, {
       method: "POST",

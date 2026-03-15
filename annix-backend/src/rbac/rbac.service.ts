@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
+import { EmailService } from "../email/email.service";
 import {
   StockControlRole,
   StockControlUser,
@@ -57,6 +58,7 @@ export class RbacService {
     @InjectRepository(StockControlUser)
     private readonly stockControlUserRepo: Repository<StockControlUser>,
     private readonly userSyncService: UserSyncService,
+    private readonly emailService: EmailService,
   ) {}
 
   async allApps(): Promise<App[]> {
@@ -717,6 +719,36 @@ export class RbacService {
       permissions: role.rolePermissions.map((rp) => rp.permission.code),
       userCount: countMap.get(role.id) ?? 0,
     }));
+  }
+
+  async sendAccessLink(userId: number): Promise<{ message: string }> {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    const accessRecords = await this.accessRepo.find({
+      where: { userId },
+      relations: ["app"],
+    });
+
+    const appNames = accessRecords
+      .filter((a) => a.app.isActive)
+      .map((a) => a.app.name);
+
+    const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+
+    const sent = await this.emailService.sendPlatformAccessEmail(
+      user.email,
+      userName,
+      appNames.length > 0 ? appNames : ["Annix Platform"],
+    );
+
+    if (!sent) {
+      throw new Error("Failed to send access link email");
+    }
+
+    return { message: `Access link sent to ${user.email}` };
   }
 
   private async setCustomPermissions(
