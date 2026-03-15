@@ -21,7 +21,10 @@ import {
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
-import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import {
+  ExtractedCocData,
+  RubberSupplierCoc,
+} from "./entities/rubber-supplier-coc.entity";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberStockService } from "./rubber-stock.service";
 
@@ -449,6 +452,27 @@ export class RubberDeliveryNoteService {
         where: { code: itemWithCompound.compoundType, codingType: ProductCodingType.COMPOUND },
       });
       if (coding) return coding;
+    }
+
+    if (note.linkedCoc?.extractedData) {
+      const cocData = note.linkedCoc.extractedData as ExtractedCocData | null;
+      const cocCompound = cocData?.compoundCode;
+      if (cocCompound) {
+        const strippedCode = cocCompound.replace(/-/g, "");
+        const coding = await this.productCodingRepository.findOne({
+          where: { code: strippedCode, codingType: ProductCodingType.COMPOUND },
+        });
+        if (coding) return coding;
+
+        const snMatch = strippedCode.match(/AU[A-Z]\d{2}[A-Z]{1,2}[A-Z]{2}[A-Z0-9]{2,3}/i);
+        if (snMatch) {
+          const code = snMatch[0].toUpperCase();
+          const existing = await this.productCodingRepository.findOne({
+            where: { code, codingType: ProductCodingType.COMPOUND },
+          });
+          if (existing) return existing;
+        }
+      }
     }
 
     return null;

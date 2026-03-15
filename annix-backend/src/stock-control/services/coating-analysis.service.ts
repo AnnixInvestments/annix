@@ -451,7 +451,7 @@ export class CoatingAnalysisService {
   ): Promise<{ extM2: number; intM2: number }> {
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
-      return /\d+\s*NB/i.test(desc) && /\d+\s*LG/i.test(desc);
+      return /\d+\s*NB/i.test(desc);
     });
 
     if (pipeItems.length === 0) {

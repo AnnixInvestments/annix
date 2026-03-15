@@ -14,6 +14,7 @@ import type {
   WorkflowStatus as WorkflowStatusData,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useInvalidateJobCards } from "@/app/lib/query/hooks";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
@@ -42,6 +43,7 @@ export default function JobCardDetailPage() {
   const user = authContext.user;
   const profile = authContext.profile;
   const { confirm, ConfirmDialog } = useConfirm();
+  const invalidateJobCardsList = useInvalidateJobCards();
   const jobId = Number(params.id);
 
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
@@ -212,6 +214,7 @@ export default function JobCardDetailPage() {
     try {
       setIsUpdatingStatus(true);
       await stockControlApiClient.updateJobCard(jobId, { status: newStatus });
+      invalidateJobCardsList();
       fetchData();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to update status"));
@@ -225,11 +228,13 @@ export default function JobCardDetailPage() {
       signatureDataUrl,
       comments,
     });
+    invalidateJobCardsList();
     fetchData();
   };
 
   const handleReject = async (reason: string) => {
     await stockControlApiClient.rejectWorkflowStep(jobId, reason);
+    invalidateJobCardsList();
     fetchData();
   };
 

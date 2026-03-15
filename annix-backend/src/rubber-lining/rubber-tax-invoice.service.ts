@@ -315,6 +315,29 @@ export class RubberTaxInvoiceService {
     return this.mapToDto(result!);
   }
 
+  async reprocessCompoundStock(id: number): Promise<RubberTaxInvoiceDto | null> {
+    const invoice = await this.taxInvoiceRepository.findOne({
+      where: { id },
+      relations: ["company"],
+    });
+    if (!invoice) return null;
+    if (invoice.status !== TaxInvoiceStatus.APPROVED) return this.mapToDto(invoice);
+    if (invoice.invoiceType !== TaxInvoiceType.SUPPLIER) return this.mapToDto(invoice);
+
+    await this.rubberStockService.deleteMovementsForReference(
+      CompoundMovementReferenceType.INVOICE_RECEIPT,
+      invoice.id,
+    );
+
+    await this.processCompoundStockIn(invoice);
+
+    const result = await this.taxInvoiceRepository.findOne({
+      where: { id },
+      relations: ["company"],
+    });
+    return this.mapToDto(result!);
+  }
+
   private async processCompoundStockIn(invoice: RubberTaxInvoice): Promise<void> {
     const alreadyProcessed = await this.rubberStockService.movementExistsForReference(
       CompoundMovementReferenceType.INVOICE_RECEIPT,
@@ -363,22 +386,62 @@ export class RubberTaxInvoiceService {
     const textToSearch =
       data.productSummary || data.lineItems?.map((item) => item.description).join(" ") || "";
 
-    const snCodeMatch = textToSearch.match(/AU[A-Z]\d{2}[A-Z]{1,2}[A-Z]{2}[A-Z0-9]{2,3}/i);
+    const strippedText = textToSearch.replace(/-/g, "");
+
+    const snCodeMatch = strippedText.match(/AU[A-Z]\d{2}[A-Z]{1,2}[A-Z]{2}[A-Z0-9]{2,3}/i);
     if (snCodeMatch) {
       const code = snCodeMatch[0].toUpperCase();
       const coding = await this.productCodingRepository.findOne({
         where: { code, codingType: ProductCodingType.COMPOUND },
       });
       if (coding) return coding;
+
+      const humanName = this.humanReadableCompoundName(code);
+      const newCoding = this.productCodingRepository.create({
+        code,
+        name: humanName,
+        codingType: ProductCodingType.COMPOUND,
+      });
+      const saved = await this.productCodingRepository.save(newCoding);
+      this.logger.log(
+        `Tax invoice ${invoice.invoiceNumber}: auto-created compound coding ${code} (${humanName})`,
+      );
+      return saved;
     }
 
-    const compoundCodes = await this.productCodingRepository.find({
-      where: { codingType: ProductCodingType.COMPOUND },
-    });
+    return null;
+  }
 
-    const upperText = textToSearch.toUpperCase();
-    const matched = compoundCodes.find((c) => upperText.includes(c.code.toUpperCase()));
-    return matched ?? null;
+  private humanReadableCompoundName(code: string): string {
+    const COLOR_MAP: Record<string, string> = {
+      R: "Red",
+      B: "Black",
+      G: "Grey",
+      W: "White",
+      N: "Natural",
+      Y: "Yellow",
+      O: "Orange",
+      GR: "Green",
+    };
+    const CURING_MAP: Record<string, string> = {
+      SC: "Steam Cured",
+      AC: "Autoclave Cured",
+      PC: "Press Cured",
+      RC: "Rotocure",
+    };
+
+    const match = code.match(/^AU([A-Z])(\d{2})([A-Z]{1,2})([A-Z]{2})/);
+    if (!match) return code;
+
+    const grade = match[1];
+    const shore = match[2];
+    const colorCode = match[3];
+    const curingCode = match[4];
+
+    const color = COLOR_MAP[colorCode] || colorCode;
+    const curing = CURING_MAP[curingCode] || curingCode;
+
+    return `SNR ${grade}-Grade ${shore} Shore ${color} ${curing}`;
   }
 
   private compoundQuantityKgFromInvoice(invoice: RubberTaxInvoice): number | null {

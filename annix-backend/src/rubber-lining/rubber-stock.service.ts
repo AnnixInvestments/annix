@@ -832,6 +832,29 @@ export class RubberStockService {
     return count > 0;
   }
 
+  async deleteMovementsForReference(
+    referenceType: CompoundMovementReferenceType,
+    referenceId: number,
+  ): Promise<void> {
+    const movements = await this.movementRepository.find({
+      where: { referenceType, referenceId },
+      relations: ["compoundStock"],
+    });
+
+    for (const movement of movements) {
+      const stock = movement.compoundStock;
+      if (stock) {
+        if (movement.movementType === CompoundMovementType.IN) {
+          stock.quantityKg = Math.max(0, Number(stock.quantityKg) - Number(movement.quantityKg));
+        } else {
+          stock.quantityKg = Number(stock.quantityKg) + Number(movement.quantityKg);
+        }
+        await this.compoundStockRepository.save(stock);
+      }
+      await this.movementRepository.remove(movement);
+    }
+  }
+
   private async checkAndCreateAutoOrder(stock: RubberCompoundStock): Promise<void> {
     const currentQty = Number(stock.quantityKg);
     const reorderPoint = Number(stock.reorderPointKg);
