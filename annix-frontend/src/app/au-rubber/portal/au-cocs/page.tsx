@@ -760,7 +760,12 @@ export default function AuCocsPage() {
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() =>
-                      setProgressModal({ visible: false, title: "", status: "running", message: "" })
+                      setProgressModal({
+                        visible: false,
+                        title: "",
+                        status: "running",
+                        message: "",
+                      })
                     }
                     className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700"
                   >

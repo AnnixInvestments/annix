@@ -36,22 +36,26 @@ export class FixSNRCompoundStockMapping1807000000037 implements MigrationInterfa
         if (stock.length > 0) {
           const compoundCode = stock[0].code;
           const isRubberTypeCode = [
-            "CR", "NBR", "NR", "EPDM", "SBR", "IIR", "CIIR", "CSM", "IRHD",
+            "CR",
+            "NBR",
+            "NR",
+            "EPDM",
+            "SBR",
+            "IIR",
+            "CIIR",
+            "CSM",
+            "IRHD",
           ].includes(compoundCode);
 
           if (isRubberTypeCode) {
-            const newQty = Math.max(
-              0,
-              Number(stock[0].quantity_kg) - Number(movement.quantity_kg),
-            );
+            const newQty = Math.max(0, Number(stock[0].quantity_kg) - Number(movement.quantity_kg));
             await queryRunner.query(
-              `UPDATE rubber_compound_stock SET quantity_kg = $1 WHERE id = $2`,
+              "UPDATE rubber_compound_stock SET quantity_kg = $1 WHERE id = $2",
               [newQty, movement.compound_stock_id],
             );
-            await queryRunner.query(
-              `DELETE FROM rubber_compound_movement WHERE id = $1`,
-              [movement.id],
-            );
+            await queryRunner.query("DELETE FROM rubber_compound_movement WHERE id = $1", [
+              movement.id,
+            ]);
           }
         }
       }

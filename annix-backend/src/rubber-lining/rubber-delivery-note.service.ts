@@ -21,10 +21,7 @@ import {
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
-import {
-  ExtractedCocData,
-  RubberSupplierCoc,
-} from "./entities/rubber-supplier-coc.entity";
+import { ExtractedCocData, RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberStockService } from "./rubber-stock.service";
 
