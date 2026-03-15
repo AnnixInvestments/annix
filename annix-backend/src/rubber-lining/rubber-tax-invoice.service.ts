@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { formatISODate, fromISO, generateUniqueId } from "../lib/datetime";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
+import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import {
   ExtractedTaxInvoiceData,
@@ -91,6 +92,8 @@ export class RubberTaxInvoiceService {
     private productCodingRepository: Repository<RubberProductCoding>,
     @InjectRepository(RubberTaxInvoiceCorrection)
     private correctionRepository: Repository<RubberTaxInvoiceCorrection>,
+    @InjectRepository(RubberProduct)
+    private productRepository: Repository<RubberProduct>,
     private rubberStockService: RubberStockService,
   ) {}
 
@@ -305,7 +308,12 @@ export class RubberTaxInvoiceService {
     await this.taxInvoiceRepository.save(invoice);
 
     if (invoice.invoiceType === TaxInvoiceType.SUPPLIER) {
-      await this.processCompoundStockIn(invoice);
+      const isCalendarer = await this.isCalendarerCompany(invoice.companyId);
+      if (isCalendarer) {
+        await this.processCalendarerRollDeduction(invoice);
+      } else {
+        await this.processCompoundStockIn(invoice);
+      }
     }
 
     const result = await this.taxInvoiceRepository.findOne({
@@ -328,8 +336,17 @@ export class RubberTaxInvoiceService {
       CompoundMovementReferenceType.INVOICE_RECEIPT,
       invoice.id,
     );
+    await this.rubberStockService.deleteMovementsForReference(
+      CompoundMovementReferenceType.CALENDARING,
+      invoice.id,
+    );
 
-    await this.processCompoundStockIn(invoice);
+    const isCalendarer = await this.isCalendarerCompany(invoice.companyId);
+    if (isCalendarer) {
+      await this.processCalendarerRollDeduction(invoice);
+    } else {
+      await this.processCompoundStockIn(invoice);
+    }
 
     const result = await this.taxInvoiceRepository.findOne({
       where: { id },
@@ -386,30 +403,182 @@ export class RubberTaxInvoiceService {
     const textToSearch =
       data.productSummary || data.lineItems?.map((item) => item.description).join(" ") || "";
 
-    const strippedText = textToSearch.replace(/-/g, "");
+    const snDashMatch = textToSearch.match(
+      /AU-([A-Z])(\d{2})-([A-Z]{1,2}(?:SC|AC|PC|RC))/i,
+    );
+    if (snDashMatch) {
+      const code = snDashMatch[0].replace(/-/g, "").toUpperCase();
+      return this.findOrCreateCompoundCoding(code, invoice.invoiceNumber);
+    }
 
-    const snCodeMatch = strippedText.match(/AU[A-Z]\d{2}[A-Z]{1,2}[A-Z]{2}[A-Z0-9]{2,3}/i);
+    const strippedText = textToSearch.replace(/-/g, "");
+    const snCodeMatch = strippedText.match(
+      /AU([A-Z])(\d{2})([A-Z]{1,2}(?:SC|AC|PC|RC))/i,
+    );
     if (snCodeMatch) {
       const code = snCodeMatch[0].toUpperCase();
-      const coding = await this.productCodingRepository.findOne({
-        where: { code, codingType: ProductCodingType.COMPOUND },
-      });
-      if (coding) return coding;
-
-      const humanName = this.humanReadableCompoundName(code);
-      const newCoding = this.productCodingRepository.create({
-        code,
-        name: humanName,
-        codingType: ProductCodingType.COMPOUND,
-      });
-      const saved = await this.productCodingRepository.save(newCoding);
-      this.logger.log(
-        `Tax invoice ${invoice.invoiceNumber}: auto-created compound coding ${code} (${humanName})`,
-      );
-      return saved;
+      return this.findOrCreateCompoundCoding(code, invoice.invoiceNumber);
     }
 
     return null;
+  }
+
+  private async findOrCreateCompoundCoding(
+    code: string,
+    invoiceNumber: string,
+  ): Promise<RubberProductCoding> {
+    const existing = await this.productCodingRepository.findOne({
+      where: { code, codingType: ProductCodingType.COMPOUND },
+    });
+    if (existing) return existing;
+
+    const humanName = this.humanReadableCompoundName(code);
+    const newCoding = this.productCodingRepository.create({
+      firebaseUid: `pg_${generateUniqueId()}`,
+      code,
+      name: humanName,
+      codingType: ProductCodingType.COMPOUND,
+    });
+    const saved = await this.productCodingRepository.save(newCoding);
+    this.logger.log(
+      `Tax invoice ${invoiceNumber}: auto-created compound coding ${code} (${humanName})`,
+    );
+    return saved;
+  }
+
+  private async isCalendarerCompany(companyId: number): Promise<boolean> {
+    const company = await this.companyRepository.findOne({ where: { id: companyId } });
+    if (!company) return false;
+    return company.name?.toLowerCase().includes("impilo") || false;
+  }
+
+  private async processCalendarerRollDeduction(invoice: RubberTaxInvoice): Promise<void> {
+    const alreadyProcessed = await this.rubberStockService.movementExistsForReference(
+      CompoundMovementReferenceType.CALENDARING,
+      invoice.id,
+    );
+    if (alreadyProcessed) return;
+
+    const data = invoice.extractedData;
+    if (!data) return;
+
+    const textToSearch =
+      data.productSummary || data.lineItems?.map((item) => item.description).join(" ") || "";
+
+    const rollInfo = this.parseCalendarerRollDescription(textToSearch);
+    if (!rollInfo) {
+      this.logger.warn(
+        `Tax invoice ${invoice.invoiceNumber}: could not parse calendarer roll description`,
+      );
+      return;
+    }
+
+    const compoundCode = this.compoundCodeFromRollInfo(rollInfo);
+    const compoundCoding = await this.findOrCreateCompoundCoding(
+      compoundCode,
+      invoice.invoiceNumber,
+    );
+
+    const specificGravity = await this.specificGravityForCoding(compoundCoding.id);
+    const quantity = data.productQuantity || rollInfo.quantity || 1;
+    const rollWeightKg =
+      (rollInfo.thicknessMm / 1000) *
+      (rollInfo.widthMm / 1000) *
+      rollInfo.lengthM *
+      specificGravity *
+      1000;
+    const totalKg = rollWeightKg * quantity;
+
+    if (totalKg <= 0) {
+      this.logger.warn(
+        `Tax invoice ${invoice.invoiceNumber}: calculated roll weight is zero or negative`,
+      );
+      return;
+    }
+
+    await this.rubberStockService.deductCompoundStockByCoding(
+      compoundCoding.id,
+      totalKg,
+      CompoundMovementReferenceType.CALENDARING,
+      invoice.id,
+      `Calendarer invoice ${invoice.invoiceNumber} (${quantity} roll${quantity !== 1 ? "s" : ""} × ${rollWeightKg.toFixed(1)} kg)`,
+    );
+
+    this.logger.log(
+      `Tax invoice ${invoice.invoiceNumber}: deducted ${totalKg.toFixed(1)} kg from ${compoundCode} (${quantity} rolls)`,
+    );
+  }
+
+  private parseCalendarerRollDescription(text: string): {
+    quantity: number;
+    curingMethod: string;
+    shore: number;
+    color: string;
+    thicknessMm: number;
+    widthMm: number;
+    lengthM: number;
+  } | null {
+    const match = text.match(
+      /(\d+)\s*rolls?\s*(Steam(?:\s*cure)?|Autoclave|Press|Rotocure)\s*(\d+)\s*(Black|Red|Grey|White|Natural|Yellow|Orange|Green)\s*(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)/i,
+    );
+    if (!match) return null;
+
+    return {
+      quantity: Number(match[1]),
+      curingMethod: match[2],
+      shore: Number(match[3]),
+      color: match[4],
+      thicknessMm: Number(match[5]),
+      widthMm: Number(match[6]),
+      lengthM: Number(match[7]),
+    };
+  }
+
+  private compoundCodeFromRollInfo(rollInfo: {
+    curingMethod: string;
+    shore: number;
+    color: string;
+  }): string {
+    const REVERSE_COLOR: Record<string, string> = {
+      red: "R",
+      black: "B",
+      grey: "G",
+      white: "W",
+      natural: "N",
+      yellow: "Y",
+      orange: "O",
+      green: "GR",
+    };
+
+    const curingLower = rollInfo.curingMethod.toLowerCase().replace(/\s+/g, "");
+    const curingCode =
+      curingLower.includes("steam") ? "SC"
+      : curingLower.includes("autoclave") ? "AC"
+      : curingLower.includes("press") ? "PC"
+      : curingLower.includes("rotocure") ? "RC"
+      : "SC";
+
+    const colorCode = REVERSE_COLOR[rollInfo.color.toLowerCase()] || rollInfo.color[0].toUpperCase();
+    const shore = String(rollInfo.shore).padStart(2, "0");
+
+    return `AUA${shore}${colorCode}${curingCode}`;
+  }
+
+  private async specificGravityForCoding(compoundCodingId: number): Promise<number> {
+    const DEFAULT_SG = 1.5;
+
+    const coding = await this.productCodingRepository.findOne({
+      where: { id: compoundCodingId },
+    });
+    if (!coding) return DEFAULT_SG;
+
+    const product = await this.productRepository.findOne({
+      where: { compoundFirebaseUid: coding.firebaseUid },
+    });
+    if (product?.specificGravity) {
+      return Number(product.specificGravity);
+    }
+    return DEFAULT_SG;
   }
 
   private humanReadableCompoundName(code: string): string {

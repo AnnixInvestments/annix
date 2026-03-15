@@ -37,6 +37,7 @@ interface CompoundSection {
   }[];
   linkedInvoices: Map<number, RubberTaxInvoiceDto>;
   linkedDeliveryNotes: Map<number, RubberDeliveryNoteDto>;
+  calendaredInvoices: Map<number, RubberTaxInvoiceDto>;
 }
 
 function rollsFromExtractedData(
@@ -182,6 +183,7 @@ function CompoundCard(props: {
             <DispatchedSection
               movements={section.dispatchedMovements}
               deliveryNotes={section.linkedDeliveryNotes}
+              calendaredInvoices={section.calendaredInvoices}
               totalDispatched={section.totalDispatched}
             />
           </div>
@@ -293,16 +295,17 @@ function CommittedSection(props: {
 function DispatchedSection(props: {
   movements: RubberCompoundMovementDto[];
   deliveryNotes: Map<number, RubberDeliveryNoteDto>;
+  calendaredInvoices: Map<number, RubberTaxInvoiceDto>;
   totalDispatched: number;
 }) {
-  const { movements, deliveryNotes, totalDispatched } = props;
+  const { movements, deliveryNotes, calendaredInvoices, totalDispatched } = props;
 
   return (
     <div>
       <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 border-b pb-2 flex items-center justify-between">
         <span className="flex items-center">
           <span className="w-2 h-2 rounded-full bg-red-500 mr-2" />
-          Dispatched (DNs)
+          Dispatched (DNs / Rolls)
         </span>
         <span className="text-red-600">{formatKg(totalDispatched)}</span>
       </h4>
@@ -312,6 +315,7 @@ function DispatchedSection(props: {
         <div className="space-y-2 max-h-80 overflow-y-auto">
           {movements.map((m) => {
             const dn = m.referenceId ? deliveryNotes.get(m.referenceId) : null;
+            const calInv = m.referenceId ? calendaredInvoices.get(m.referenceId) : null;
             const rolls = dn ? rollsFromExtractedData(dn.extractedData) : [];
 
             return (
@@ -328,8 +332,19 @@ function DispatchedSection(props: {
                     DN: {dn.deliveryNoteNumber || `#${dn.id}`} - {dn.supplierCompanyName || ""}
                   </Link>
                 )}
-                {!dn && m.referenceType && (
+                {calInv && (
+                  <Link
+                    href={`/au-rubber/portal/tax-invoices/${calInv.id}`}
+                    className="text-xs text-yellow-600 hover:underline"
+                  >
+                    {calInv.invoiceNumber} - {calInv.companyName || "Calendarer"}
+                  </Link>
+                )}
+                {!dn && !calInv && m.referenceType && (
                   <p className="text-xs text-gray-500">{m.referenceType.replace(/_/g, " ")}</p>
+                )}
+                {m.notes && m.referenceType === "CALENDARING" && (
+                  <p className="text-xs text-gray-500 mt-0.5">{m.notes}</p>
                 )}
                 {rolls.length > 0 && (
                   <div className="mt-1 ml-2 space-y-0.5">
@@ -455,10 +470,15 @@ export default function CompoundStocksPage() {
         });
 
         const linkedDeliveryNotes = new Map<number, RubberDeliveryNoteDto>();
+        const calendaredInvoices = new Map<number, RubberTaxInvoiceDto>();
         dispatchedMovements.forEach((m) => {
           if (m.referenceId && m.referenceType === "DELIVERY_DEDUCTION") {
             const dn = dnMap.get(m.referenceId);
             if (dn) linkedDeliveryNotes.set(m.referenceId, dn);
+          }
+          if (m.referenceId && m.referenceType === "CALENDARING") {
+            const inv = invoiceMap.get(m.referenceId);
+            if (inv) calendaredInvoices.set(m.referenceId, inv);
           }
         });
 
@@ -471,13 +491,11 @@ export default function CompoundStocksPage() {
             const product = productMap.get(item.productId);
             if (!product) return;
             const compoundMatch =
-              product.compoundName === stock.compoundName ||
-              (product.compoundFirebaseUid &&
-                stock.compoundCode &&
-                product.compoundName === stock.compoundName);
+              stock.compoundName != null && product.compoundName === stock.compoundName;
             if (!compoundMatch) return;
 
             const itemKg = item.totalKg || 0;
+            if (itemKg <= 0) return;
             committedKg += itemKg;
             committedOrders.push({
               orderId: order.id,
@@ -500,6 +518,7 @@ export default function CompoundStocksPage() {
           committedOrders,
           linkedInvoices,
           linkedDeliveryNotes,
+          calendaredInvoices,
         };
       });
 
