@@ -6,8 +6,6 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, ".."),
   transpilePackages: [
     "@annix/product-data",
-    "@tanstack/react-query",
-    "@tanstack/query-core",
   ],
 
   async rewrites() {
