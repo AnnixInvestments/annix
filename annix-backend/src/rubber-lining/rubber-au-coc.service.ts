@@ -9,7 +9,7 @@ import PDFDocument from "pdfkit";
 import sharp from "sharp";
 import { In, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
-import { formatDateZA, generateUniqueId, now } from "../lib/datetime";
+import { formatDateZA, generateUniqueId, now, nowISO } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
@@ -17,7 +17,12 @@ import {
   RubberAuCocItemDto,
   SendAuCocDto,
 } from "./dto/rubber-coc.dto";
-import { AuCocStatus, type ExtractedRollData, RubberAuCoc } from "./entities/rubber-au-coc.entity";
+import {
+  AuCocReadinessStatus,
+  AuCocStatus,
+  type ExtractedRollData,
+  RubberAuCoc,
+} from "./entities/rubber-au-coc.entity";
 import { RubberAuCocItem } from "./entities/rubber-au-coc-item.entity";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
@@ -299,6 +304,23 @@ export class RubberAuCocService {
         items.length > 0
           ? await this.preparePdfData(coc, items)
           : await this.preparePdfDataFromExtractedRolls(coc);
+      if (pdfData.batches.length === 0) {
+        coc.readinessStatus = AuCocReadinessStatus.GENERATION_FAILED;
+        coc.readinessDetails = {
+          calendererCocId: coc.readinessDetails?.calendererCocId ?? null,
+          compounderCocId: coc.readinessDetails?.compounderCocId ?? null,
+          graphPdfPath: coc.readinessDetails?.graphPdfPath ?? null,
+          calendererApproved: coc.readinessDetails?.calendererApproved ?? false,
+          compounderApproved: coc.readinessDetails?.compounderApproved ?? false,
+          missingDocuments: ["No batch test data found for lab analysis table"],
+          lastCheckedAt: nowISO(),
+        };
+        await this.auCocRepository.save(coc);
+        throw new BadRequestException(
+          "Cannot generate PDF: no batch test data found for laboratory analysis table",
+        );
+      }
+
       this.logger.debug("PDF data prepared, creating PDF...");
       const basePdf = await this.createPdf(pdfData);
       const filename = `${coc.cocNumber}.pdf`;
@@ -332,6 +354,36 @@ export class RubberAuCocService {
       this.logger.error(`Error generating PDF for AU CoC ${id}:`, error);
       throw error;
     }
+  }
+
+  async regenerateAllGeneratedCocs(): Promise<{
+    regenerated: number;
+    failed: number;
+    total: number;
+    errors: string[];
+  }> {
+    const cocs = await this.auCocRepository.find({
+      where: [{ status: AuCocStatus.GENERATED }, { status: AuCocStatus.SENT }],
+      order: { id: "ASC" },
+    });
+
+    const initial = { regenerated: 0, failed: 0, total: cocs.length, errors: [] as string[] };
+
+    return cocs.reduce(async (accPromise, coc) => {
+      const acc = await accPromise;
+      try {
+        await this.generatePdf(coc.id);
+        return { ...acc, regenerated: acc.regenerated + 1 };
+      } catch (error) {
+        const message = `CoC ${coc.cocNumber} (ID ${coc.id}): ${error instanceof Error ? error.message : String(error)}`;
+        this.logger.warn(`Failed to regenerate AU CoC: ${message}`);
+        return {
+          ...acc,
+          failed: acc.failed + 1,
+          errors: [...acc.errors, message],
+        };
+      }
+    }, Promise.resolve(initial));
   }
 
   async pdfBuffer(id: number): Promise<{ buffer: Buffer; filename: string }> {

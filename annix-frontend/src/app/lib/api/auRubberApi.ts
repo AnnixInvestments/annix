@@ -2178,6 +2178,17 @@ class AuRubberApiClient {
     });
   }
 
+  async regenerateAllGeneratedCocs(): Promise<{
+    regenerated: number;
+    failed: number;
+    total: number;
+    errors: string[];
+  }> {
+    return this.request("/rubber-lining/portal/au-cocs/bulk-regenerate", {
+      method: "POST",
+    });
+  }
+
   async extractDeliveryNote(id: number): Promise<RubberDeliveryNoteDto> {
     return this.request(`/rubber-lining/portal/delivery-notes/${id}/extract`, {
       method: "POST",
