@@ -261,22 +261,15 @@ export class RubberStockService {
 
     if (existing) {
       existing.quantityKg = Number(existing.quantityKg) + dto.quantityKg;
-      if (dto.minStockLevelKg !== undefined) {
-        existing.minStockLevelKg = dto.minStockLevelKg;
-      }
-      if (dto.reorderPointKg !== undefined) {
-        existing.reorderPointKg = dto.reorderPointKg;
-      }
-      if (dto.costPerKg !== undefined) {
-        existing.costPerKg = dto.costPerKg;
-      }
-      if (dto.locationId !== undefined) {
-        existing.locationId = dto.locationId ?? null;
-        existing.location = locationName;
-      }
-      if (dto.batchNumber !== undefined) {
-        existing.batchNumber = dto.batchNumber;
-      }
+      existing.minStockLevelKg = dto.minStockLevelKg ?? existing.minStockLevelKg;
+      existing.reorderPointKg = dto.reorderPointKg ?? existing.reorderPointKg;
+      existing.costPerKg =
+        dto.costPerKg !== undefined ? (dto.costPerKg ?? null) : existing.costPerKg;
+      existing.locationId =
+        dto.locationId !== undefined ? (dto.locationId ?? null) : existing.locationId;
+      existing.location = dto.locationId !== undefined ? locationName : existing.location;
+      existing.batchNumber =
+        dto.batchNumber !== undefined ? (dto.batchNumber ?? null) : existing.batchNumber;
       await this.compoundStockRepository.save(existing);
       stockId = existing.id;
     } else {
