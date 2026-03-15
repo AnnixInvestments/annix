@@ -129,9 +129,9 @@ export class FixCompoundStockMappingAndCalendarerDeductions1807000000038
 
       if (codingRow.length === 0) {
         await queryRunner.query(
-          `INSERT INTO rubber_product_coding (code, name, coding_type)
-           VALUES ($1, $2, 'COMPOUND')`,
-          [code, code],
+          `INSERT INTO rubber_product_coding (firebase_uid, code, name, coding_type)
+           VALUES ($1, $2, $3, 'COMPOUND')`,
+          [`pg_${Date.now()}-${Math.random().toString(36).slice(2, 11)}`, code, code],
         );
         codingRow = await queryRunner.query(
           `SELECT id FROM rubber_product_coding
@@ -276,9 +276,13 @@ export class FixCompoundStockMappingAndCalendarerDeductions1807000000038
 
       if (codingRow.length === 0) {
         await queryRunner.query(
-          `INSERT INTO rubber_product_coding (code, name, coding_type)
-           VALUES ($1, $2, 'COMPOUND')`,
-          [compoundCode, compoundCode],
+          `INSERT INTO rubber_product_coding (firebase_uid, code, name, coding_type)
+           VALUES ($1, $2, $3, 'COMPOUND')`,
+          [
+            `pg_${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+            compoundCode,
+            compoundCode,
+          ],
         );
         codingRow = await queryRunner.query(
           `SELECT id FROM rubber_product_coding
