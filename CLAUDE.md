@@ -156,6 +156,7 @@ const url = await this.storageService.presignedUrl(filePath, 3600);
 - **No pull requests**: This project commits directly to `main`
 - **No feature branches**: Unless explicitly requested for worktree-based parallel work
 - **Worktrees**: When used, cherry-pick the result onto `main` and clean up the worktree/branch
+- **Never use `EnterWorktree` in `@annix/claude-swarm` worktrees**: If `@annix/claude-swarm` has already placed this session in a worktree (branch starts with `claude/`), never use the `EnterWorktree` tool — just work directly on the current branch. `@annix/claude-swarm` manages the worktree lifecycle; creating a nested worktree puts commits on the wrong branch.
 
 ### Commit Process
 1. Stage changes with `git add`
