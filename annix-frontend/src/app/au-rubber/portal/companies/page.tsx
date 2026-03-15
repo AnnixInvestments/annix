@@ -9,9 +9,7 @@ export default function CompaniesPage() {
       <Breadcrumb items={[{ label: "Companies" }]} />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Companies</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Manage your supplier and customer companies
-        </p>
+        <p className="mt-1 text-sm text-gray-600">Manage your supplier and customer companies</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -24,8 +22,7 @@ export default function CompaniesPage() {
             <h2 className="text-lg font-semibold text-gray-900">Suppliers</h2>
           </div>
           <p className="text-sm text-gray-600">
-            Manage supplier companies, configure email addresses for COCs, STIs, and purchase
-            orders
+            Manage supplier companies, configure email addresses for COCs, STIs, and purchase orders
           </p>
         </Link>
 
@@ -38,8 +35,7 @@ export default function CompaniesPage() {
             <h2 className="text-lg font-semibold text-gray-900">Customers</h2>
           </div>
           <p className="text-sm text-gray-600">
-            Manage customer companies, configure email addresses for POs, COCs, CTIs, and
-            statements
+            Manage customer companies, configure email addresses for POs, COCs, CTIs, and statements
           </p>
         </Link>
       </div>
