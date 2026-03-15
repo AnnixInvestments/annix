@@ -2,9 +2,19 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class FixSNRCompoundStockMapping1807000000037 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    const tableExists = await queryRunner.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'rubber_tax_invoices'
+      ) AS exists
+    `);
+    if (!tableExists[0]?.exists) {
+      return;
+    }
+
     const invoiceRows = await queryRunner.query(`
       SELECT ti.id, ti.invoice_number, ti.extracted_data
-      FROM rubber_tax_invoice ti
+      FROM rubber_tax_invoices ti
       JOIN rubber_company rc ON ti.company_id = rc.id
       WHERE rc.company_name ILIKE '%S&N%'
         AND ti.status = 'APPROVED'
