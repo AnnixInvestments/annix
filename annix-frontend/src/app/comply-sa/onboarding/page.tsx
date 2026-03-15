@@ -112,6 +112,8 @@ export default function OnboardingPage() {
     }
   }
 
+  const municipalitiesForProvince = province ? MUNICIPALITIES[province] || [] : [];
+
   const inputClass =
     "w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors";
   const selectClass =
@@ -288,7 +290,7 @@ export default function OnboardingPage() {
                       className={selectClass}
                     >
                       <option value="">Select municipality</option>
-                      {(MUNICIPALITIES[province] || []).map((muni) => (
+                      {municipalitiesForProvince.map((muni) => (
                         <option key={muni} value={muni}>
                           {muni}
                         </option>

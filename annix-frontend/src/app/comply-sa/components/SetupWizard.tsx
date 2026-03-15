@@ -241,6 +241,8 @@ export default function SetupWizard() {
     return documentFiles.find((d) => d.key === key)?.file || null;
   }
 
+  const municipalitiesForProvince = province ? MUNICIPALITIES[province] || [] : [];
+
   async function handleProcess() {
     setError(null);
     setStep(5);
@@ -472,7 +474,7 @@ export default function SetupWizard() {
                       className={selectClass}
                     >
                       <option value="">Select municipality</option>
-                      {(MUNICIPALITIES[province] || []).map((muni) => (
+                      {municipalitiesForProvince.map((muni) => (
                         <option key={muni} value={muni}>
                           {muni}
                         </option>
