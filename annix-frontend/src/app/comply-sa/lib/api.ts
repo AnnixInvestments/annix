@@ -3,15 +3,21 @@ const BASE_URL =
     ? "/api/comply-sa"
     : `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3100"}/api/comply-sa`;
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
+function buildFetchInit(opts: RequestInit): RequestInit {
+  return {
+    ...opts,
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...options.headers,
+      ...opts.headers,
     },
-  });
+  };
+}
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const opts = options || {};
+  const url = `${BASE_URL}${path}`;
+  const response = await fetch(url, buildFetchInit(opts));
 
   if (response.status === 401 && !path.includes("/auth/")) {
     const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
@@ -20,20 +26,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     });
 
     if (refreshResponse.ok) {
-      const retryResponse = await fetch(`${BASE_URL}${path}`, {
-        ...options,
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...options.headers,
-        },
-      });
+      const secondResponse = await fetch(url, buildFetchInit(opts));
 
-      if (!retryResponse.ok) {
-        const errorData = await retryResponse.json().catch(() => ({}));
-        throw new Error(errorData.message ?? `Request failed: ${retryResponse.status}`);
+      if (!secondResponse.ok) {
+        const errorData = await secondResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || `Request failed: ${secondResponse.status}`);
       }
-      return retryResponse.json() as Promise<T>;
+      return secondResponse.json() as Promise<T>;
     }
 
     if (typeof window !== "undefined") {
