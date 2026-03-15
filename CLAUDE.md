@@ -174,6 +174,7 @@ const url = await this.storageService.presignedUrl(filePath, 3600);
 - **Workflow keywords**: Only use `closes #20`, `fixes #20`, or `resolves #20` when the ticket is actually complete and ready to close by the user
 - **No AI attribution**: Do not include AI attribution in commit messages
 - **Pre-push hook**: `.githooks/pre-push` automatically builds both apps and runs migrations before push
+- **Hook failures**: When a pre-push hook fails (e.g. lint error), fix the issue and amend the existing commit — do not create a new commit
 
 ### Database Schema Changes
 - **Never use `synchronize: true`**: All schema changes must go through TypeORM migrations

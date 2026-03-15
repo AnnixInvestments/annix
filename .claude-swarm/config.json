@@ -14,23 +14,35 @@
       "port": 3000
     }
   ],
+  "envDir": "annix-backend/configs",
   "profiles": {
-    "prod-db": {
-      "description": "Local app with production database (CAUTION: live data!)",
-      "apps": [
-        {
-          "name": "backend",
-          "start": { "mac": "./run-backend-prod-db.sh", "windows": ".\\run-backend-prod-db.ps1" },
-          "readyPattern": "Nest application successfully started",
-          "port": 4001
-        },
-        {
-          "name": "frontend",
-          "start": { "mac": "./run-frontend.sh", "windows": ".\\run-frontend.ps1" },
-          "readyPattern": "Ready in",
-          "port": 3000
-        }
-      ]
+    "prod": {
+      "description": "Production database + S3 + secrets (CAUTION: live data!)",
+      "env": {
+        "provider": "flyio",
+        "app": "annix-app",
+        "secrets": [
+          "DATABASE_HOST",
+          "DATABASE_PORT",
+          "DATABASE_USERNAME",
+          "DATABASE_PASSWORD",
+          "DATABASE_NAME",
+          "DATABASE_SSL",
+          "JWT_SECRET",
+          "DOCUMENT_ENCRYPTION_KEY",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY",
+          "AWS_REGION",
+          "AWS_S3_BUCKET",
+          "GEMINI_API_KEY",
+          "ANTHROPIC_API_KEY",
+          "TOKEN_ENCRYPTION_KEY"
+        ]
+      },
+      "localOverrides": {
+        "FRONTEND_URL": "http://localhost:3000",
+        "CORS_ORIGINS": "http://localhost:3000"
+      }
     }
   }
 }

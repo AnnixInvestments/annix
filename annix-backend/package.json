@@ -10,8 +10,6 @@
     "format": "biome format --write src test",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:dev:prod-db": "node ../scripts/start-with-config.js prod",
-    "start:dev:config": "node ../scripts/start-with-config.js",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
