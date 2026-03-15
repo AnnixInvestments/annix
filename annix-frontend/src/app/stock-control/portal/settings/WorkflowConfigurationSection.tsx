@@ -124,7 +124,12 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
       if (inserted.has(step.key)) return;
       inserted.add(step.key);
       result.push(step);
-      const followers = followersByKey[step.key] ?? [];
+      const followers = [...(followersByKey[step.key] ?? [])].sort((a, b) => {
+        if (a.isBackground !== b.isBackground) {
+          return a.isBackground ? -1 : 1;
+        }
+        return a.sortOrder - b.sortOrder;
+      });
       followers.forEach((f) => insertWithFollowers(f));
     };
 

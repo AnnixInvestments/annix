@@ -2,13 +2,17 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class FixSNRCompoundStockMapping1807000000037 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const tableExists = await queryRunner.query(`
+    const tablesExist = await queryRunner.query(`
       SELECT EXISTS (
         SELECT 1 FROM information_schema.tables
         WHERE table_name = 'rubber_tax_invoices'
-      ) AS exists
+      ) AS invoices_exist,
+      EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'rubber_compound_movement'
+      ) AS movements_exist
     `);
-    if (!tableExists[0]?.exists) {
+    if (!tablesExist[0]?.invoices_exist || !tablesExist[0]?.movements_exist) {
       return;
     }
 
@@ -16,7 +20,7 @@ export class FixSNRCompoundStockMapping1807000000037 implements MigrationInterfa
       SELECT ti.id, ti.invoice_number, ti.extracted_data
       FROM rubber_tax_invoices ti
       JOIN rubber_company rc ON ti.company_id = rc.id
-      WHERE rc.company_name ILIKE '%S&N%'
+      WHERE rc.name ILIKE '%S&N%'
         AND ti.status = 'APPROVED'
         AND ti.invoice_type = 'SUPPLIER'
         AND (
