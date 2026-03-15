@@ -222,7 +222,7 @@ export function OrderImportModal(props: OrderImportModalProps) {
               <div className="space-y-4">
                 <FileDropZone
                   onFilesSelected={handleFilesSelected}
-                  accept=".pdf,application/pdf,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.eml,message/rfc822"
+                  accept=".pdf,application/pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff,image/*,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.eml,message/rfc822"
                   multiple={true}
                   disabled={isAnalyzing}
                   className="border-2 border-dashed rounded-lg"

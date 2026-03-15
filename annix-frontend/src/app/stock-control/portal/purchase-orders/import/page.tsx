@@ -193,7 +193,7 @@ export default function CpoImportPage() {
                 ref={fileInputRef}
                 type="file"
                 className="hidden"
-                accept=".xlsx,.xls,.pdf"
+                accept=".xlsx,.xls,.pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff"
                 onChange={handleFileSelect}
               />
             </>

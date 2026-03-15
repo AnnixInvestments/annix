@@ -407,7 +407,7 @@ export function CoatingAnalysisTab({
                     <p className="mt-1 text-sm text-gray-600">Upload Technical Data Sheet (PDF)</p>
                     <input
                       type="file"
-                      accept=".pdf"
+                      accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff"
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0] || null;

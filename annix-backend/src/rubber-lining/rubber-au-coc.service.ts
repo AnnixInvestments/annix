@@ -614,6 +614,34 @@ export class RubberAuCocService {
           }
         }
 
+        if (coc.poNumber) {
+          const poSegments = coc.poNumber
+            .split("/")
+            .map((s) => s.trim().toUpperCase())
+            .filter(Boolean);
+
+          const allPoSupplierCocs = await this.supplierCocRepository
+            .createQueryBuilder("sc")
+            .where("sc.order_number IS NOT NULL")
+            .orderBy("sc.id", "DESC")
+            .getMany();
+
+          const poMatched =
+            allPoSupplierCocs.find((sc) => {
+              const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
+                .trim()
+                .toUpperCase();
+              return cocOrderNumber.length > 0 && poSegments.some((seg) => seg === cocOrderNumber);
+            }) || null;
+
+          if (poMatched) {
+            this.logger.log(
+              `Matched supplier CoC ${poMatched.id} (order: ${poMatched.orderNumber}) via PO number "${coc.poNumber}" for AU CoC ${coc.cocNumber}`,
+            );
+            return poMatched;
+          }
+        }
+
         return null;
       })();
 
@@ -623,7 +651,7 @@ export class RubberAuCocService {
           .filter(Boolean)
           .join(", ");
         this.logger.warn(
-          `No supplier CoC found for AU CoC ${coc.cocNumber} (DN: ${sourceDeliveryNote?.deliveryNoteNumber || "none"}, rolls: ${rollNums || "none"}) — lab data table will be empty`,
+          `No supplier CoC found for AU CoC ${coc.cocNumber} (DN: ${sourceDeliveryNote?.deliveryNoteNumber || "none"}, PO: ${coc.poNumber || "none"}, rolls: ${rollNums || "none"}) — lab data table will be empty`,
         );
         return defaults;
       }

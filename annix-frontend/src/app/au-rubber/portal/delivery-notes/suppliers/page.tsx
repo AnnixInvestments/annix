@@ -598,7 +598,7 @@ export default function SupplierDeliveryNotesPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    PDF Documents
+                    Documents (PDF, images)
                   </label>
                   <FileDropZone
                     onFilesSelected={(files) => setUploadFiles((prev) => [...prev, ...files])}

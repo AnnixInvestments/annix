@@ -1055,7 +1055,7 @@ export default function JobCardImportPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".xlsx,.xls,.pdf,.csv"
+                accept=".xlsx,.xls,.pdf,.csv,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff"
                 onChange={handleInputChange}
                 className="hidden"
               />
@@ -1102,7 +1102,7 @@ export default function JobCardImportPage() {
                   ref={drawingInputRef}
                   type="file"
                   multiple
-                  accept=".pdf"
+                  accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff"
                   onChange={(e) => {
                     if (e.target.files && e.target.files.length > 0) {
                       handleDrawingFilesUpload(Array.from(e.target.files));

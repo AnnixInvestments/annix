@@ -15,7 +15,7 @@ interface FileDropZoneProps {
 export function FileDropZone(props: FileDropZoneProps) {
   const {
     onFilesSelected,
-    accept = ".pdf,application/pdf",
+    accept = ".pdf,application/pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff,image/*",
     multiple = true,
     disabled = false,
     children,
@@ -124,7 +124,7 @@ export function FileDropZone(props: FileDropZoneProps) {
             {isDragging ? "Drop files here" : "Drag & drop files here"}
           </p>
           <p className="text-xs text-gray-500 mt-1">or click to browse</p>
-          <p className="text-xs text-gray-400 mt-2">PDF files only</p>
+          <p className="text-xs text-gray-400 mt-2">PDF, images, and documents</p>
         </div>
       )}
       {isDragging && (

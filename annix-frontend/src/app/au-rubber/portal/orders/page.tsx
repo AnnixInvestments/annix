@@ -308,7 +308,7 @@ export default function AuRubberOrdersPage() {
             <div className="flex items-start gap-4">
               <FileDropZone
                 onFilesSelected={handleFilesDropped}
-                accept=".pdf,application/pdf,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.eml,message/rfc822"
+                accept=".pdf,application/pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff,image/*,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.eml,message/rfc822"
                 multiple={true}
                 disabled={isAnalyzing}
                 className="flex-1 border-2 border-dashed rounded-lg"

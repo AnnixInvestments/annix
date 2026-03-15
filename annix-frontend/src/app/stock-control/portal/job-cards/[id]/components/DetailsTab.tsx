@@ -353,13 +353,13 @@ export function DetailsTab({
                   />
                 </svg>
                 <p className="mt-2 text-sm text-gray-600">
-                  Drop PDF or DXF drawings here or{" "}
+                  Drop PDF, DXF, or image files here or{" "}
                   <label className="text-teal-600 hover:text-teal-800 cursor-pointer">
                     browse
                     <input
                       type="file"
                       multiple
-                      accept=".pdf,.dxf"
+                      accept=".pdf,.dxf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff"
                       className="hidden"
                       onChange={(e) => {
                         if (e.target.files && e.target.files.length > 0) {

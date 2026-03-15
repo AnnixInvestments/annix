@@ -236,7 +236,7 @@ export default function JobCardsPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".xlsx,.xls,.pdf,.csv"
+            accept=".xlsx,.xls,.pdf,.csv,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff"
             onChange={handleImportFileInput}
             className="hidden"
           />
@@ -525,7 +525,7 @@ export default function JobCardsPage() {
               <input
                 ref={modalFileInputRef}
                 type="file"
-                accept=".xlsx,.xls,.pdf,.csv"
+                accept=".xlsx,.xls,.pdf,.csv,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff"
                 onChange={handleModalFileInput}
                 className="hidden"
               />

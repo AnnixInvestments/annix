@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Zap } from "lucide-react";
+import { Eye, Loader2, Zap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
@@ -43,6 +43,7 @@ export default function AuCocsPage() {
   const [sendEmail, setSendEmail] = useState("");
   const [showSendModal, setShowSendModal] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [previewingId, setPreviewingId] = useState<number | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -124,6 +125,18 @@ export default function AuCocsPage() {
       cocsQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to generate PDF", "error");
+    }
+  };
+
+  const handlePreview = async (coc: RubberAuCocDto) => {
+    try {
+      setPreviewingId(coc.id);
+      const blobUrl = await auRubberApiClient.auCocPdfBlobUrl(coc.id);
+      window.open(blobUrl, "_blank");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to preview PDF", "error");
+    } finally {
+      setPreviewingId(null);
     }
   };
 
@@ -456,8 +469,20 @@ export default function AuCocsPage() {
                         Generate PDF
                       </button>
                     )}
-                    {coc.status === "GENERATED" && (
+                    {(coc.status === "GENERATED" || (coc.status === "SENT" && coc.generatedPdfPath)) && (
                       <>
+                        <button
+                          onClick={() => handlePreview(coc)}
+                          disabled={previewingId === coc.id}
+                          className="inline-flex items-center text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                          title="View PDF in browser"
+                        >
+                          {previewingId === coc.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
                         <button
                           onClick={() => handleDownload(coc)}
                           disabled={downloadingId === coc.id}
@@ -465,24 +490,17 @@ export default function AuCocsPage() {
                         >
                           {downloadingId === coc.id ? "Downloading..." : "Download"}
                         </button>
-                        <button
-                          onClick={() => {
-                            setSendingId(coc.id);
-                            setShowSendModal(true);
-                          }}
-                          className="text-purple-600 hover:text-purple-800"
-                        >
-                          Send
-                        </button>
                       </>
                     )}
-                    {coc.status === "SENT" && coc.generatedPdfPath && (
+                    {coc.status === "GENERATED" && (
                       <button
-                        onClick={() => handleDownload(coc)}
-                        disabled={downloadingId === coc.id}
-                        className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                        onClick={() => {
+                          setSendingId(coc.id);
+                          setShowSendModal(true);
+                        }}
+                        className="text-purple-600 hover:text-purple-800"
                       >
-                        {downloadingId === coc.id ? "Downloading..." : "Download"}
+                        Send
                       </button>
                     )}
                     {isAdmin && (

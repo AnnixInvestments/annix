@@ -31,7 +31,7 @@ interface ProductImportModalProps {
 }
 
 const ACCEPTED_FILE_TYPES =
-  ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.pdf,application/pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff,image/*,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 function parseExcelClientSide(file: File): Promise<AnalyzedProductLine[]> {
   return new Promise((resolve, reject) => {
