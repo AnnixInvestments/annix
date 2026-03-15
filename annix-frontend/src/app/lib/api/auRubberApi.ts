@@ -1427,6 +1427,7 @@ class AuRubberApiClient {
 
   async createCompany(data: {
     name: string;
+    companyType?: string;
     code?: string;
     pricingTierId?: number;
     availableProducts?: string[];
@@ -1449,6 +1450,7 @@ class AuRubberApiClient {
     id: number,
     data: Partial<{
       name: string;
+      companyType?: string;
       code?: string;
       pricingTierId?: number;
       availableProducts?: string[];

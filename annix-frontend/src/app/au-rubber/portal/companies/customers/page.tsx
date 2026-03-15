@@ -631,17 +631,17 @@ export default function CustomersPage() {
       const payload = {
         name: formData.name,
         companyType: "CUSTOMER" as const,
-        code: formData.code || null,
-        pricingTierId: formData.pricingTierId || null,
-        vatNumber: formData.vatNumber || null,
-        registrationNumber: formData.registrationNumber || null,
+        code: formData.code || undefined,
+        pricingTierId: formData.pricingTierId || undefined,
+        vatNumber: formData.vatNumber || undefined,
+        registrationNumber: formData.registrationNumber || undefined,
         isCompoundOwner: formData.isCompoundOwner,
-        notes: formData.notes || null,
-        phone: formData.phone || null,
-        contactPerson: formData.contactPerson || null,
-        address: cleanedAddress,
+        notes: formData.notes || undefined,
+        phone: formData.phone || undefined,
+        contactPerson: formData.contactPerson || undefined,
+        address: cleanedAddress || undefined,
         availableProducts: formData.availableProducts,
-        emailConfig: Object.keys(emailConfig).length > 0 ? emailConfig : null,
+        emailConfig: Object.keys(emailConfig).length > 0 ? emailConfig : undefined,
       };
 
       if (editingCompany) {
