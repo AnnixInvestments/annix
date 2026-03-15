@@ -246,11 +246,6 @@ export class RubberStockService {
     const existing = await this.compoundStockRepository.findOne({
       where: { compoundCodingId: dto.compoundCodingId },
     });
-    if (existing) {
-      throw new BadRequestException(
-        "A stock entry already exists for this compound. Use 'Receive' to add stock.",
-      );
-    }
 
     let locationName: string | null = null;
     if (dto.locationId) {
@@ -262,21 +257,46 @@ export class RubberStockService {
       }
     }
 
-    const stock = this.compoundStockRepository.create({
-      firebaseUid: `pg_${generateUniqueId()}`,
-      compoundCodingId: dto.compoundCodingId,
-      quantityKg: dto.quantityKg,
-      minStockLevelKg: dto.minStockLevelKg ?? 0,
-      reorderPointKg: dto.reorderPointKg ?? 0,
-      costPerKg: dto.costPerKg ?? null,
-      locationId: dto.locationId ?? null,
-      location: locationName,
-      batchNumber: dto.batchNumber ?? null,
-    });
-    const savedStock = await this.compoundStockRepository.save(stock);
+    let stockId: number;
+
+    if (existing) {
+      existing.quantityKg = Number(existing.quantityKg) + dto.quantityKg;
+      if (dto.minStockLevelKg !== undefined) {
+        existing.minStockLevelKg = dto.minStockLevelKg;
+      }
+      if (dto.reorderPointKg !== undefined) {
+        existing.reorderPointKg = dto.reorderPointKg;
+      }
+      if (dto.costPerKg !== undefined) {
+        existing.costPerKg = dto.costPerKg;
+      }
+      if (dto.locationId !== undefined) {
+        existing.locationId = dto.locationId ?? null;
+        existing.location = locationName;
+      }
+      if (dto.batchNumber !== undefined) {
+        existing.batchNumber = dto.batchNumber;
+      }
+      await this.compoundStockRepository.save(existing);
+      stockId = existing.id;
+    } else {
+      const stock = this.compoundStockRepository.create({
+        firebaseUid: `pg_${generateUniqueId()}`,
+        compoundCodingId: dto.compoundCodingId,
+        quantityKg: dto.quantityKg,
+        minStockLevelKg: dto.minStockLevelKg ?? 0,
+        reorderPointKg: dto.reorderPointKg ?? 0,
+        costPerKg: dto.costPerKg ?? null,
+        locationId: dto.locationId ?? null,
+        location: locationName,
+        batchNumber: dto.batchNumber ?? null,
+      });
+      const savedStock = await this.compoundStockRepository.save(stock);
+      stockId = savedStock.id;
+    }
 
     const movement = this.movementRepository.create({
-      compoundStockId: savedStock.id,
+      compoundStockId: stockId,
       movementType: CompoundMovementType.IN,
       quantityKg: dto.quantityKg,
       referenceType: CompoundMovementReferenceType.OPENING_STOCK,
@@ -286,7 +306,7 @@ export class RubberStockService {
     await this.movementRepository.save(movement);
 
     const result = await this.compoundStockRepository.findOne({
-      where: { id: savedStock.id },
+      where: { id: stockId },
       relations: ["compoundCoding"],
     });
     return this.mapCompoundStockToDto(result!);
