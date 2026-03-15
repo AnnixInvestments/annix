@@ -547,7 +547,22 @@ export default function AuCocsPage() {
                     {coc.poNumber || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {coc.deliveryNoteRef || "-"}
+                    {coc.sourceDeliveryNoteId ? (
+                      <button
+                        onClick={() =>
+                          window.open(
+                            `/au-rubber/portal/delivery-notes/${coc.sourceDeliveryNoteId}`,
+                            `dn-${coc.sourceDeliveryNoteId}`,
+                            "width=1200,height=800,scrollbars=yes,resizable=yes",
+                          )
+                        }
+                        className="text-yellow-600 hover:text-yellow-800 hover:underline"
+                      >
+                        {coc.deliveryNoteRef || coc.sourceDeliveryNoteId}
+                      </button>
+                    ) : (
+                      coc.deliveryNoteRef || "-"
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {coc.items?.length || 0}
