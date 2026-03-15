@@ -41,6 +41,7 @@ interface AiExtractionResult {
 }
 
 const DEFAULT_SOLIDS_BY_VOLUME = 60;
+const DEFAULT_DFT_UM = 125;
 
 const COATING_SYSTEM_PROMPT = `You are an industrial coating specification parser. Extract coating details from job card notes.
 
@@ -530,8 +531,8 @@ export class CoatingAnalysisService {
   ): CoatDetail {
     const knownProduct = lookupCoatingProduct(coat.product);
     const hasDft = coat.minDftUm > 0 || coat.maxDftUm > 0;
-    const effectiveMinDft = hasDft ? coat.minDftUm : knownProduct?.defaultDftUm || coat.minDftUm;
-    const effectiveMaxDft = hasDft ? coat.maxDftUm : knownProduct?.defaultDftUm || coat.maxDftUm;
+    const effectiveMinDft = hasDft ? coat.minDftUm : knownProduct?.defaultDftUm || DEFAULT_DFT_UM;
+    const effectiveMaxDft = hasDft ? coat.maxDftUm : knownProduct?.defaultDftUm || DEFAULT_DFT_UM;
     const midDftUm = (effectiveMinDft + effectiveMaxDft) / 2;
     const volumeSolids = knownProduct
       ? knownProduct.volumeSolidsPercent

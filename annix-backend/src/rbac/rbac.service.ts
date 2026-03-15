@@ -732,9 +732,7 @@ export class RbacService {
       relations: ["app"],
     });
 
-    const appNames = accessRecords
-      .filter((a) => a.app.isActive)
-      .map((a) => a.app.name);
+    const appNames = accessRecords.filter((a) => a.app.isActive).map((a) => a.app.name);
 
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
 

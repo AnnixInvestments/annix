@@ -184,9 +184,7 @@ export class RbacController {
   @ApiParam({ name: "userId", description: "User ID", example: 42 })
   @ApiResponse({ status: 201, description: "Access link sent successfully" })
   @ApiResponse({ status: 404, description: "User not found" })
-  async sendAccessLink(
-    @Param("userId", ParseIntPipe) userId: number,
-  ): Promise<ApiMessageResponse> {
+  async sendAccessLink(@Param("userId", ParseIntPipe) userId: number): Promise<ApiMessageResponse> {
     const result = await this.rbacService.sendAccessLink(userId);
     return messageResponse(result.message);
   }

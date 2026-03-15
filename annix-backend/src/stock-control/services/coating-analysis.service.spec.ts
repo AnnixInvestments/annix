@@ -143,7 +143,7 @@ describe("CoatingAnalysisService", () => {
       expect(coat.coverageM2PerLiter).toBeCloseTo(expectedCoverage, 2);
     });
 
-    it("returns 0 litersRequired when midDft is 0", async () => {
+    it("falls back to default DFT when midDft is 0 and product is unknown", async () => {
       setupForCoatVolumeTest([
         {
           product: "TEST PAINT",
@@ -158,8 +158,10 @@ describe("CoatingAnalysisService", () => {
       const result = await service.analyseJobCard(1, 1);
       const coat = result.coats[0];
 
-      expect(coat.coverageM2PerLiter).toBe(0);
-      expect(coat.litersRequired).toBe(0);
+      const defaultDft = 125;
+      const expectedCoverage = ((70 * 10) / defaultDft) * 0.55;
+      expect(coat.coverageM2PerLiter).toBeCloseTo(expectedCoverage, 2);
+      expect(coat.litersRequired).toBeGreaterThan(0);
     });
   });
 

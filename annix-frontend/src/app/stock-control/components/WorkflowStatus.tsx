@@ -19,14 +19,14 @@ const WORKFLOW_STEPS = [
 
 const STATUS_MAP: Record<string, number> = {
   draft: 0,
-  document_uploaded: 1,
-  admin_approved: 2,
-  manager_approved: 3,
-  requisition_sent: 4,
-  stock_allocated: 5,
-  manager_final: 6,
-  ready_for_dispatch: 7,
-  dispatched: 8,
+  document_uploaded: 2,
+  admin_approved: 3,
+  manager_approved: 4,
+  requisition_sent: 5,
+  stock_allocated: 6,
+  manager_final: 7,
+  ready_for_dispatch: 8,
+  dispatched: 9,
 };
 
 type StepState = "completed" | "current" | "rejected" | "pending";

@@ -303,6 +303,15 @@ const COATING_PRODUCTS: CoatingProductSpec[] = [
     genericType: "epoxy",
     volumeSolidsPercent: 100,
   },
+
+  // ── Bitumen / Tar ────────────────────────────────────
+  {
+    name: "Black Bitumen",
+    aliases: ["blackbitumen", "bitumen", "bitumen paint", "black bitumen paint"],
+    genericType: "bitumen",
+    volumeSolidsPercent: 50,
+    defaultDftUm: 125,
+  },
 ];
 
 function normalizeProductName(name: string): string {

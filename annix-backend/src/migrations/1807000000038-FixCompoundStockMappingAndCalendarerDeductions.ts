@@ -69,18 +69,14 @@ export class FixCompoundStockMappingAndCalendarerDeductions1807000000038
         );
 
         if (stock.length > 0 && BASIC_RUBBER_CODES.includes(stock[0].code)) {
-          const newQty = Math.max(
-            0,
-            Number(stock[0].quantity_kg) - Number(movement.quantity_kg),
-          );
+          const newQty = Math.max(0, Number(stock[0].quantity_kg) - Number(movement.quantity_kg));
           await queryRunner.query(
             "UPDATE rubber_compound_stock SET quantity_kg = $1 WHERE id = $2",
             [newQty, movement.compound_stock_id],
           );
-          await queryRunner.query(
-            "DELETE FROM rubber_compound_movements WHERE id = $1",
-            [movement.id],
-          );
+          await queryRunner.query("DELETE FROM rubber_compound_movements WHERE id = $1", [
+            movement.id,
+          ]);
         }
       }
     }
@@ -106,18 +102,14 @@ export class FixCompoundStockMappingAndCalendarerDeductions1807000000038
 
       let code: string | null = null;
 
-      const dashMatch = textToSearch.match(
-        /AU-([A-Z])(\d{2})-([A-Z]{1,2}(?:SC|AC|PC|RC))/i,
-      );
+      const dashMatch = textToSearch.match(/AU-([A-Z])(\d{2})-([A-Z]{1,2}(?:SC|AC|PC|RC))/i);
       if (dashMatch) {
         code = dashMatch[0].replace(/-/g, "").toUpperCase();
       }
 
       if (!code) {
         const stripped = textToSearch.replace(/-/g, "");
-        const plainMatch = stripped.match(
-          /AU([A-Z])(\d{2})([A-Z]{1,2}(?:SC|AC|PC|RC))/i,
-        );
+        const plainMatch = stripped.match(/AU([A-Z])(\d{2})([A-Z]{1,2}(?:SC|AC|PC|RC))/i);
         if (plainMatch) {
           code = plainMatch[0].toUpperCase();
         }
@@ -168,7 +160,7 @@ export class FixCompoundStockMappingAndCalendarerDeductions1807000000038
       }
 
       let stockRow = await queryRunner.query(
-        `SELECT id FROM rubber_compound_stock WHERE compound_coding_id = $1`,
+        "SELECT id FROM rubber_compound_stock WHERE compound_coding_id = $1",
         [codingId],
       );
 
@@ -176,13 +168,10 @@ export class FixCompoundStockMappingAndCalendarerDeductions1807000000038
         await queryRunner.query(
           `INSERT INTO rubber_compound_stock (firebase_uid, compound_coding_id, quantity_kg, min_stock_level_kg, reorder_point_kg, cost_per_kg)
            VALUES ($1, $2, 0, 0, 0, NULL)`,
-          [
-            `pg_${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-            codingId,
-          ],
+          [`pg_${Date.now()}-${Math.random().toString(36).slice(2, 11)}`, codingId],
         );
         stockRow = await queryRunner.query(
-          `SELECT id FROM rubber_compound_stock WHERE compound_coding_id = $1`,
+          "SELECT id FROM rubber_compound_stock WHERE compound_coding_id = $1",
           [codingId],
         );
       }
@@ -255,15 +244,14 @@ export class FixCompoundStockMappingAndCalendarerDeductions1807000000038
             ? "PC"
             : "RC";
       const shore = String(rollMatch[3]).padStart(2, "0");
-      const colorCode =
-        REVERSE_COLOR[rollMatch[4].toLowerCase()] || rollMatch[4][0].toUpperCase();
+      const colorCode = REVERSE_COLOR[rollMatch[4].toLowerCase()] || rollMatch[4][0].toUpperCase();
       const thicknessMm = Number(rollMatch[5]);
       const widthMm = Number(rollMatch[6]);
       const lengthM = Number(rollMatch[7]);
 
       const compoundCode = `AUA${shore}${colorCode}${curingCode}`;
 
-      let sgResult = await queryRunner.query(
+      const sgResult = await queryRunner.query(
         `SELECT rp.specific_gravity
          FROM rubber_product rp
          JOIN rubber_product_coding rpc ON rp.compound_firebase_uid = rpc.firebase_uid
@@ -302,7 +290,7 @@ export class FixCompoundStockMappingAndCalendarerDeductions1807000000038
       const codingId = codingRow[0].id;
 
       let stockRow = await queryRunner.query(
-        `SELECT id FROM rubber_compound_stock WHERE compound_coding_id = $1`,
+        "SELECT id FROM rubber_compound_stock WHERE compound_coding_id = $1",
         [codingId],
       );
 
@@ -310,13 +298,10 @@ export class FixCompoundStockMappingAndCalendarerDeductions1807000000038
         await queryRunner.query(
           `INSERT INTO rubber_compound_stock (firebase_uid, compound_coding_id, quantity_kg, min_stock_level_kg, reorder_point_kg, cost_per_kg)
            VALUES ($1, $2, 0, 0, 0, NULL)`,
-          [
-            `pg_${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
-            codingId,
-          ],
+          [`pg_${Date.now()}-${Math.random().toString(36).slice(2, 11)}`, codingId],
         );
         stockRow = await queryRunner.query(
-          `SELECT id FROM rubber_compound_stock WHERE compound_coding_id = $1`,
+          "SELECT id FROM rubber_compound_stock WHERE compound_coding_id = $1",
           [codingId],
         );
       }
@@ -324,7 +309,7 @@ export class FixCompoundStockMappingAndCalendarerDeductions1807000000038
       const stockId = stockRow[0].id;
 
       await queryRunner.query(
-        `UPDATE rubber_compound_stock SET quantity_kg = quantity_kg - $1 WHERE id = $2`,
+        "UPDATE rubber_compound_stock SET quantity_kg = quantity_kg - $1 WHERE id = $2",
         [totalKg, stockId],
       );
 

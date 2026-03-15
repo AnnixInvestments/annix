@@ -403,18 +403,14 @@ export class RubberTaxInvoiceService {
     const textToSearch =
       data.productSummary || data.lineItems?.map((item) => item.description).join(" ") || "";
 
-    const snDashMatch = textToSearch.match(
-      /AU-([A-Z])(\d{2})-([A-Z]{1,2}(?:SC|AC|PC|RC))/i,
-    );
+    const snDashMatch = textToSearch.match(/AU-([A-Z])(\d{2})-([A-Z]{1,2}(?:SC|AC|PC|RC))/i);
     if (snDashMatch) {
       const code = snDashMatch[0].replace(/-/g, "").toUpperCase();
       return this.findOrCreateCompoundCoding(code, invoice.invoiceNumber);
     }
 
     const strippedText = textToSearch.replace(/-/g, "");
-    const snCodeMatch = strippedText.match(
-      /AU([A-Z])(\d{2})([A-Z]{1,2}(?:SC|AC|PC|RC))/i,
-    );
+    const snCodeMatch = strippedText.match(/AU([A-Z])(\d{2})([A-Z]{1,2}(?:SC|AC|PC|RC))/i);
     if (snCodeMatch) {
       const code = snCodeMatch[0].toUpperCase();
       return this.findOrCreateCompoundCoding(code, invoice.invoiceNumber);
@@ -551,14 +547,18 @@ export class RubberTaxInvoiceService {
     };
 
     const curingLower = rollInfo.curingMethod.toLowerCase().replace(/\s+/g, "");
-    const curingCode =
-      curingLower.includes("steam") ? "SC"
-      : curingLower.includes("autoclave") ? "AC"
-      : curingLower.includes("press") ? "PC"
-      : curingLower.includes("rotocure") ? "RC"
-      : "SC";
+    const curingCode = curingLower.includes("steam")
+      ? "SC"
+      : curingLower.includes("autoclave")
+        ? "AC"
+        : curingLower.includes("press")
+          ? "PC"
+          : curingLower.includes("rotocure")
+            ? "RC"
+            : "SC";
 
-    const colorCode = REVERSE_COLOR[rollInfo.color.toLowerCase()] || rollInfo.color[0].toUpperCase();
+    const colorCode =
+      REVERSE_COLOR[rollInfo.color.toLowerCase()] || rollInfo.color[0].toUpperCase();
     const shore = String(rollInfo.shore).padStart(2, "0");
 
     return `AUA${shore}${colorCode}${curingCode}`;
