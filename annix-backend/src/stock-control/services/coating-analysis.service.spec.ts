@@ -3,6 +3,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { CoatingAnalysisStatus, JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
+import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
@@ -51,6 +52,10 @@ describe("CoatingAnalysisService", () => {
         { provide: getRepositoryToken(JobCardLineItem), useValue: mockLineItemRepo },
         { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
         { provide: getRepositoryToken(StockControlCompany), useValue: mockCompanyRepo },
+        {
+          provide: getRepositoryToken(JobCardExtractionCorrection),
+          useValue: { find: jest.fn().mockResolvedValue([]) },
+        },
         { provide: AiChatService, useValue: mockAiChatService },
         { provide: M2CalculationService, useValue: mockM2CalculationService },
       ],
