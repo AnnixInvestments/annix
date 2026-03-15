@@ -538,6 +538,9 @@ export class RubberLiningService {
     company.registrationNumber = dto.registrationNumber || null;
     company.address = dto.address || null;
     company.notes = dto.notes || null;
+    company.phone = dto.phone || null;
+    company.contactPerson = dto.contactPerson || null;
+    company.emailConfig = dto.emailConfig || null;
 
     const saved = await this.companyRepository.save(company);
     const result = await this.companyRepository.findOne({
@@ -562,6 +565,9 @@ export class RubberLiningService {
       company.registrationNumber = dto.registrationNumber || null;
     if (dto.address !== undefined) company.address = dto.address || null;
     if (dto.notes !== undefined) company.notes = dto.notes || null;
+    if (dto.phone !== undefined) company.phone = dto.phone || null;
+    if (dto.contactPerson !== undefined) company.contactPerson = dto.contactPerson || null;
+    if (dto.emailConfig !== undefined) company.emailConfig = dto.emailConfig || null;
 
     await this.companyRepository.save(company);
     const result = await this.companyRepository.findOne({
@@ -1127,6 +1133,9 @@ export class RubberLiningService {
       registrationNumber: company.registrationNumber,
       address: company.address,
       notes: company.notes,
+      phone: company.phone,
+      contactPerson: company.contactPerson,
+      emailConfig: company.emailConfig,
     };
   }
 

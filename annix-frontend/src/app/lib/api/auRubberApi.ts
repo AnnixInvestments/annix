@@ -43,7 +43,10 @@ export type CompoundMovementReferenceType =
   | "MANUAL"
   | "STOCK_TAKE"
   | "COC_RECEIPT"
-  | "CALENDARING";
+  | "CALENDARING"
+  | "OPENING_STOCK"
+  | "INVOICE_RECEIPT"
+  | "DELIVERY_DEDUCTION";
 export type RubberProductionStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 export type RubberCompoundOrderStatus =
   | "PENDING"
@@ -1432,6 +1435,9 @@ class AuRubberApiClient {
     registrationNumber?: string;
     address?: Record<string, string>;
     notes?: string;
+    phone?: string;
+    contactPerson?: string;
+    emailConfig?: Record<string, string>;
   }): Promise<RubberCompanyDto> {
     return this.request("/rubber-lining/portal/companies", {
       method: "POST",
@@ -1451,6 +1457,9 @@ class AuRubberApiClient {
       registrationNumber?: string;
       address?: Record<string, string>;
       notes?: string;
+      phone?: string;
+      contactPerson?: string;
+      emailConfig?: Record<string, string>;
     }>,
   ): Promise<RubberCompanyDto> {
     return this.request(`/rubber-lining/portal/companies/${id}`, {

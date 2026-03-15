@@ -33,6 +33,9 @@ export interface RubberCompanyDto {
   registrationNumber: string | null;
   address: Record<string, string> | null;
   notes: string | null;
+  phone: string | null;
+  contactPerson: string | null;
+  emailConfig: Record<string, string> | null;
 }
 
 export interface RubberProductDto {
@@ -290,6 +293,9 @@ export const rubberPortalApi = {
     registrationNumber?: string;
     address?: Record<string, string>;
     notes?: string;
+    phone?: string;
+    contactPerson?: string;
+    emailConfig?: Record<string, string>;
   }): Promise<RubberCompanyDto> => {
     return request("/rubber-lining/portal/companies", {
       method: "POST",
@@ -310,6 +316,9 @@ export const rubberPortalApi = {
       registrationNumber?: string;
       address?: Record<string, string>;
       notes?: string;
+      phone?: string;
+      contactPerson?: string;
+      emailConfig?: Record<string, string>;
     }>,
   ): Promise<RubberCompanyDto> => {
     return request(`/rubber-lining/portal/companies/${id}`, {

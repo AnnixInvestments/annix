@@ -2,19 +2,10 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddDeliveryNoteExtractedApprovedStatuses1807000000019 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
-      DO $$ BEGIN
-        ALTER TYPE "delivery_note_status_enum" ADD VALUE IF NOT EXISTS 'EXTRACTED' AFTER 'PENDING';
-      EXCEPTION WHEN duplicate_object THEN NULL;
-      END $$
-    `);
-
-    await queryRunner.query(`
-      DO $$ BEGIN
-        ALTER TYPE "delivery_note_status_enum" ADD VALUE IF NOT EXISTS 'APPROVED' AFTER 'EXTRACTED';
-      EXCEPTION WHEN duplicate_object THEN NULL;
-      END $$
-    `);
+    await queryRunner.commitTransaction();
+    await queryRunner.query(`ALTER TYPE "delivery_note_status_enum" ADD VALUE IF NOT EXISTS 'EXTRACTED'`);
+    await queryRunner.query(`ALTER TYPE "delivery_note_status_enum" ADD VALUE IF NOT EXISTS 'APPROVED'`);
+    await queryRunner.startTransaction();
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

@@ -17,6 +17,10 @@ export const PAGE_PERMISSIONS: Record<string, string> = {
   "/au-rubber/portal/other-items": "other-items:view",
   "/au-rubber/portal/pricing-tiers": "pricing-tiers:view",
   "/au-rubber/portal/companies": "companies:view",
+  "/au-rubber/portal/companies/suppliers": "companies:view",
+  "/au-rubber/portal/companies/customers": "companies:view",
+  "/au-rubber/portal/companies/suppliers/statements": "companies:view",
+  "/au-rubber/portal/companies/customers/statements": "companies:view",
   "/au-rubber/portal/tax-invoices": "tax-invoices:view",
   "/au-rubber/portal/settings": "settings:manage",
 };

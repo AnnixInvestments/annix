@@ -6,46 +6,361 @@ import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
   type CreateCompoundOpeningStockDto,
+  type ExtractedDeliveryNoteData,
+  type ExtractedDeliveryNoteRoll,
   type ImportCompoundOpeningStockResultDto,
   type ImportCompoundOpeningStockRowDto,
+  type RubberCompoundMovementDto,
   type RubberCompoundStockDto,
+  type RubberDeliveryNoteDto,
+  type RubberTaxInvoiceDto,
   type StockLocationDto,
 } from "@/app/lib/api/auRubberApi";
-import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
+import type {
+  RubberOrderDto,
+  RubberProductCodingDto,
+  RubberProductDto,
+} from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
-import { ConfirmModal } from "../../components/ConfirmModal";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "../../components/TableComponents";
+import { TableLoadingState } from "../../components/TableComponents";
 
-type SortColumn = "compoundName" | "quantityKg" | "reorderPointKg" | "location";
+interface CompoundSection {
+  stock: RubberCompoundStockDto;
+  receivedMovements: RubberCompoundMovementDto[];
+  dispatchedMovements: RubberCompoundMovementDto[];
+  totalReceived: number;
+  totalDispatched: number;
+  committedKg: number;
+  committedOrders: {
+    orderId: number;
+    orderNumber: string;
+    companyName: string | null;
+    productTitle: string | null;
+    quantity: number | null;
+    totalKg: number;
+  }[];
+  linkedInvoices: Map<number, RubberTaxInvoiceDto>;
+  linkedDeliveryNotes: Map<number, RubberDeliveryNoteDto>;
+}
+
+function rollsFromExtractedData(
+  data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
+): ExtractedDeliveryNoteRoll[] {
+  if (!data) return [];
+  if (Array.isArray(data)) {
+    return data.flatMap((d) => d.rolls || []);
+  }
+  return data.rolls || [];
+}
+
+function formatKg(kg: number): string {
+  return `${kg.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
+}
+
+function StockBar(props: { actual: number; committed: number }) {
+  const { actual, committed } = props;
+  const available = actual - committed;
+  const maxVal = Math.max(actual, 1);
+  const committedPct = Math.min((committed / maxVal) * 100, 100);
+
+  return (
+    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+      <div className="h-full flex">
+        <div
+          className="bg-green-500 h-full"
+          style={{ width: `${Math.max(100 - committedPct, 0)}%` }}
+        />
+        {committed > 0 && (
+          <div
+            className="bg-amber-400 h-full"
+            style={{ width: `${committedPct}%` }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CompoundCard(props: { section: CompoundSection; isExpanded: boolean; onToggle: () => void }) {
+  const { section, isExpanded, onToggle } = props;
+  const { stock } = section;
+  const available = stock.quantityKg - section.committedKg;
+  const isLow = stock.isLowStock;
+
+  return (
+    <div className={`bg-white shadow rounded-lg overflow-hidden ${isLow ? "ring-2 ring-red-300" : ""}`}>
+      <button
+        onClick={onToggle}
+        className="w-full px-6 py-4 hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <svg
+              className={`w-5 h-5 text-gray-400 transform transition-transform ${isExpanded ? "rotate-90" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            <div className="text-left">
+              <span className="text-sm font-semibold text-gray-900">{stock.compoundName || "Unknown"}</span>
+              {stock.compoundCode && (
+                <span className="ml-2 text-xs text-gray-500">({stock.compoundCode})</span>
+              )}
+              {isLow && (
+                <span className="ml-2 px-2 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                  Low Stock
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center space-x-8">
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Actual SOH</p>
+              <p className={`text-sm font-bold ${isLow ? "text-red-600" : "text-gray-900"}`}>
+                {formatKg(stock.quantityKg)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Committed</p>
+              <p className="text-sm font-bold text-amber-600">
+                {formatKg(section.committedKg)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Available</p>
+              <p className={`text-sm font-bold ${available < 0 ? "text-red-600" : "text-green-600"}`}>
+                {formatKg(available)}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 px-9">
+          <StockBar actual={stock.quantityKg} committed={section.committedKg} />
+          <div className="flex items-center justify-between mt-1 text-xs text-gray-400">
+            <span>0 kg</span>
+            <div className="flex items-center space-x-4">
+              <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-green-500 mr-1" />Available</span>
+              <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-amber-400 mr-1" />Committed</span>
+            </div>
+            <span>{formatKg(stock.quantityKg)}</span>
+          </div>
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="border-t border-gray-200 px-6 py-4 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-sm text-gray-500">
+              {stock.location && <span>Location: {stock.location}</span>}
+              {stock.batchNumber && <span>| Batch: {stock.batchNumber}</span>}
+              <span>| Reorder: {formatKg(stock.reorderPointKg)}</span>
+            </div>
+            <Link
+              href={`/au-rubber/portal/compound-stocks/${stock.id}`}
+              className="text-sm text-yellow-600 hover:text-yellow-800 font-medium"
+            >
+              Manage Stock
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <ReceivedSection
+              movements={section.receivedMovements}
+              invoices={section.linkedInvoices}
+              totalReceived={section.totalReceived}
+            />
+            <CommittedSection
+              committedOrders={section.committedOrders}
+              totalCommitted={section.committedKg}
+            />
+            <DispatchedSection
+              movements={section.dispatchedMovements}
+              deliveryNotes={section.linkedDeliveryNotes}
+              totalDispatched={section.totalDispatched}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReceivedSection(props: {
+  movements: RubberCompoundMovementDto[];
+  invoices: Map<number, RubberTaxInvoiceDto>;
+  totalReceived: number;
+}) {
+  const { movements, invoices, totalReceived } = props;
+
+  return (
+    <div>
+      <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 border-b pb-2 flex items-center justify-between">
+        <span className="flex items-center">
+          <span className="w-2 h-2 rounded-full bg-green-500 mr-2" />
+          Received (S&N STIs)
+        </span>
+        <span className="text-green-600">{formatKg(totalReceived)}</span>
+      </h4>
+      {movements.length === 0 ? (
+        <p className="text-sm text-gray-500">No receipts recorded</p>
+      ) : (
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {movements.map((m) => {
+            const invoice = m.referenceId ? invoices.get(m.referenceId) : null;
+            return (
+              <div key={m.id} className="p-2 rounded border border-gray-100 bg-gray-50 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-green-700">+{formatKg(m.quantityKg)}</span>
+                  <span className="text-xs text-gray-400">{m.createdAt.split("T")[0]}</span>
+                </div>
+                {invoice && (
+                  <Link
+                    href={`/au-rubber/portal/tax-invoices/${invoice.id}`}
+                    className="text-xs text-yellow-600 hover:underline"
+                  >
+                    {invoice.invoiceNumber} - {invoice.companyName || "Unknown"}
+                  </Link>
+                )}
+                {!invoice && m.referenceType && (
+                  <p className="text-xs text-gray-500">{m.referenceType.replace(/_/g, " ")}</p>
+                )}
+                {m.batchNumber && <p className="text-xs text-gray-400">Batch: {m.batchNumber}</p>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommittedSection(props: {
+  committedOrders: CompoundSection["committedOrders"];
+  totalCommitted: number;
+}) {
+  const { committedOrders, totalCommitted } = props;
+
+  return (
+    <div>
+      <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 border-b pb-2 flex items-center justify-between">
+        <span className="flex items-center">
+          <span className="w-2 h-2 rounded-full bg-amber-400 mr-2" />
+          Committed (POs)
+        </span>
+        <span className="text-amber-600">{formatKg(totalCommitted)}</span>
+      </h4>
+      <p className="text-xs text-gray-400 mb-2">
+        Theoretical weight from active customer orders. Actual SOH only reduces when rolls are dispatched.
+      </p>
+      {committedOrders.length === 0 ? (
+        <p className="text-sm text-gray-500">No active commitments</p>
+      ) : (
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {committedOrders.map((co, idx) => (
+            <Link
+              key={`${co.orderId}-${idx}`}
+              href={`/au-rubber/portal/orders/${co.orderId}`}
+              className="block p-2 rounded border border-gray-100 bg-amber-50 text-sm hover:bg-amber-100 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-amber-700">{co.orderNumber}</span>
+                <span className="font-medium text-amber-700">{formatKg(co.totalKg)}</span>
+              </div>
+              <div className="flex items-center justify-between mt-0.5">
+                <span className="text-xs text-gray-500">{co.companyName || "Unknown customer"}</span>
+                <span className="text-xs text-gray-500">
+                  {co.quantity || 0} roll{(co.quantity || 0) !== 1 ? "s" : ""}
+                </span>
+              </div>
+              {co.productTitle && (
+                <p className="text-xs text-gray-400 mt-0.5">{co.productTitle}</p>
+              )}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DispatchedSection(props: {
+  movements: RubberCompoundMovementDto[];
+  deliveryNotes: Map<number, RubberDeliveryNoteDto>;
+  totalDispatched: number;
+}) {
+  const { movements, deliveryNotes, totalDispatched } = props;
+
+  return (
+    <div>
+      <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-3 border-b pb-2 flex items-center justify-between">
+        <span className="flex items-center">
+          <span className="w-2 h-2 rounded-full bg-red-500 mr-2" />
+          Dispatched (DNs)
+        </span>
+        <span className="text-red-600">{formatKg(totalDispatched)}</span>
+      </h4>
+      {movements.length === 0 ? (
+        <p className="text-sm text-gray-500">No dispatches recorded</p>
+      ) : (
+        <div className="space-y-2 max-h-80 overflow-y-auto">
+          {movements.map((m) => {
+            const dn = m.referenceId ? deliveryNotes.get(m.referenceId) : null;
+            const rolls = dn ? rollsFromExtractedData(dn.extractedData) : [];
+
+            return (
+              <div key={m.id} className="p-2 rounded border border-gray-100 bg-red-50 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-red-700">-{formatKg(m.quantityKg)}</span>
+                  <span className="text-xs text-gray-400">{m.createdAt.split("T")[0]}</span>
+                </div>
+                {dn && (
+                  <Link
+                    href={`/au-rubber/portal/delivery-notes/${dn.id}`}
+                    className="text-xs text-yellow-600 hover:underline"
+                  >
+                    DN: {dn.deliveryNoteNumber || `#${dn.id}`} - {dn.supplierCompanyName || ""}
+                  </Link>
+                )}
+                {!dn && m.referenceType && (
+                  <p className="text-xs text-gray-500">{m.referenceType.replace(/_/g, " ")}</p>
+                )}
+                {rolls.length > 0 && (
+                  <div className="mt-1 ml-2 space-y-0.5">
+                    {rolls.map((roll, ri) => (
+                      <div key={ri} className="flex items-center justify-between text-xs text-gray-500">
+                        <span>Roll {roll.rollNumber || ri + 1}</span>
+                        <div className="flex items-center space-x-3">
+                          {roll.weightKg !== undefined && <span>{roll.weightKg} kg</span>}
+                          {roll.deliveryDate && <span>{roll.deliveryDate}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {m.batchNumber && <p className="text-xs text-gray-400 mt-1">Batch: {m.batchNumber}</p>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CompoundStocksPage() {
   const { showToast } = useToast();
-  const [stocks, setStocks] = useState<RubberCompoundStockDto[]>([]);
-  const [compounds, setCompounds] = useState<RubberProductCodingDto[]>([]);
-  const [locations, setLocations] = useState<StockLocationDto[]>([]);
+
+  const [sections, setSections] = useState<CompoundSection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [sortColumn, setSortColumn] = useState<SortColumn>("compoundName");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [deleteStockId, setDeleteStockId] = useState<number | null>(null);
-  const [showReceiveModal, setShowReceiveModal] = useState(false);
-  const [receiveStockId, setReceiveStockId] = useState<number | null>(null);
-  const [receiveQty, setReceiveQty] = useState("");
-  const [receiveBatch, setReceiveBatch] = useState("");
-  const [receiveNotes, setReceiveNotes] = useState("");
-  const [isReceiving, setIsReceiving] = useState(false);
 
+  const [compounds, setCompounds] = useState<RubberProductCodingDto[]>([]);
+  const [locations, setLocations] = useState<StockLocationDto[]>([]);
   const [showOpeningStockModal, setShowOpeningStockModal] = useState(false);
   const [openingStockTab, setOpeningStockTab] = useState<"single" | "bulk">("single");
   const [openingStockForm, setOpeningStockForm] = useState<CreateCompoundOpeningStockDto>({
@@ -62,22 +377,119 @@ export default function CompoundStocksPage() {
   const [isSubmittingOpeningStock, setIsSubmittingOpeningStock] = useState(false);
   const [csvData, setCsvData] = useState<ImportCompoundOpeningStockRowDto[]>([]);
   const [csvFileName, setCsvFileName] = useState("");
-  const [importResult, setImportResult] = useState<ImportCompoundOpeningStockResultDto | null>(
-    null,
-  );
+  const [importResult, setImportResult] = useState<ImportCompoundOpeningStockResultDto | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [stocksData, compoundsData, locationsData] = await Promise.all([
+      const [
+        stocksData,
+        movementsData,
+        invoicesData,
+        deliveryNotesData,
+        ordersData,
+        productsData,
+        compoundsData,
+        locationsData,
+      ] = await Promise.all([
         auRubberApiClient.compoundStocks(),
+        auRubberApiClient.compoundMovements(),
+        auRubberApiClient.taxInvoices({ invoiceType: "SUPPLIER" }),
+        auRubberApiClient.deliveryNotes(),
+        auRubberApiClient.orders(),
+        auRubberApiClient.products(),
         auRubberApiClient.productCodings("COMPOUND"),
         auRubberApiClient.stockLocations(),
       ]);
-      setStocks(Array.isArray(stocksData) ? stocksData : []);
+
+      const stocks = Array.isArray(stocksData) ? stocksData : [];
+      const movements = Array.isArray(movementsData) ? movementsData : [];
+      const invoices = Array.isArray(invoicesData) ? invoicesData : [];
+      const deliveryNotes = Array.isArray(deliveryNotesData) ? deliveryNotesData : [];
+      const orders = Array.isArray(ordersData) ? ordersData : [];
+      const products = Array.isArray(productsData) ? productsData : [];
+
       setCompounds(Array.isArray(compoundsData) ? compoundsData : []);
       setLocations(Array.isArray(locationsData) ? locationsData : []);
+
+      const invoiceMap = new Map(invoices.map((inv) => [inv.id, inv]));
+      const dnMap = new Map(deliveryNotes.map((dn) => [dn.id, dn]));
+      const productMap = new Map(products.map((p) => [p.id, p]));
+
+      const activeOrders = orders.filter(
+        (o) => o.status >= 2 && o.status <= 5,
+      );
+
+      const builtSections: CompoundSection[] = stocks.map((stock) => {
+        const stockMovements = movements.filter((m) => m.compoundStockId === stock.id);
+        const receivedMovements = stockMovements
+          .filter((m) => m.movementType === "IN")
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        const dispatchedMovements = stockMovements
+          .filter((m) => m.movementType === "OUT")
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+        const totalReceived = receivedMovements.reduce((sum, m) => sum + m.quantityKg, 0);
+        const totalDispatched = dispatchedMovements.reduce((sum, m) => sum + m.quantityKg, 0);
+
+        const linkedInvoices = new Map<number, RubberTaxInvoiceDto>();
+        receivedMovements.forEach((m) => {
+          if (m.referenceId && (m.referenceType === "INVOICE_RECEIPT" || m.referenceType === "COC_RECEIPT")) {
+            const inv = invoiceMap.get(m.referenceId);
+            if (inv) linkedInvoices.set(m.referenceId, inv);
+          }
+        });
+
+        const linkedDeliveryNotes = new Map<number, RubberDeliveryNoteDto>();
+        dispatchedMovements.forEach((m) => {
+          if (m.referenceId && m.referenceType === "DELIVERY_DEDUCTION") {
+            const dn = dnMap.get(m.referenceId);
+            if (dn) linkedDeliveryNotes.set(m.referenceId, dn);
+          }
+        });
+
+        const committedOrders: CompoundSection["committedOrders"] = [];
+        let committedKg = 0;
+
+        activeOrders.forEach((order) => {
+          order.items.forEach((item) => {
+            if (!item.productId) return;
+            const product = productMap.get(item.productId);
+            if (!product) return;
+            const compoundMatch =
+              product.compoundName === stock.compoundName ||
+              (product.compoundFirebaseUid && stock.compoundCode && product.compoundName === stock.compoundName);
+            if (!compoundMatch) return;
+
+            const itemKg = item.totalKg || 0;
+            committedKg += itemKg;
+            committedOrders.push({
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              companyName: order.companyName,
+              productTitle: product.title,
+              quantity: item.quantity,
+              totalKg: itemKg,
+            });
+          });
+        });
+
+        return {
+          stock,
+          receivedMovements,
+          dispatchedMovements,
+          totalReceived,
+          totalDispatched,
+          committedKg,
+          committedOrders,
+          linkedInvoices,
+          linkedDeliveryNotes,
+        };
+      });
+
+      builtSections.sort((a, b) => (a.stock.compoundName || "").localeCompare(b.stock.compoundName || ""));
+      setSections(builtSections);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));
@@ -90,95 +502,39 @@ export default function CompoundStocksPage() {
     fetchData();
   }, []);
 
-  const handleSort = (column: SortColumn) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortColumn(column);
-      setSortDirection("asc");
-    }
-  };
-
-  const sortStocks = (stocksToSort: RubberCompoundStockDto[]): RubberCompoundStockDto[] => {
-    return [...stocksToSort].sort((a, b) => {
-      const direction = sortDirection === "asc" ? 1 : -1;
-      if (sortColumn === "compoundName") {
-        return direction * (a.compoundName || "").localeCompare(b.compoundName || "");
+  const toggleExpand = (id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
       }
-      if (sortColumn === "quantityKg") {
-        return direction * (a.quantityKg - b.quantityKg);
-      }
-      if (sortColumn === "reorderPointKg") {
-        return direction * (a.reorderPointKg - b.reorderPointKg);
-      }
-      if (sortColumn === "location") {
-        return direction * (a.location || "").localeCompare(b.location || "");
-      }
-      return 0;
+      return next;
     });
   };
 
-  const filteredStocks = sortStocks(
-    stocks.filter((stock) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        stock.compoundName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        stock.compoundCode?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesLowStock = !showLowStockOnly || stock.isLowStock;
-      return matchesSearch && matchesLowStock;
-    }),
-  );
-
-  const paginatedStocks = filteredStocks.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
-  );
-
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [searchQuery, showLowStockOnly]);
-
-  const handleDelete = async (id: number) => {
-    try {
-      await auRubberApiClient.deleteCompoundStock(id);
-      showToast("Compound stock deleted", "success");
-      setDeleteStockId(null);
-      fetchData();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete", "error");
-    }
+  const expandAll = () => {
+    setExpandedIds(new Set(filteredSections.map((s) => s.stock.id)));
   };
 
-  const handleReceive = async () => {
-    if (!receiveStockId || !receiveQty) {
-      showToast("Please enter quantity", "error");
-      return;
-    }
-    try {
-      setIsReceiving(true);
-      await auRubberApiClient.receiveCompound({
-        compoundStockId: receiveStockId,
-        quantityKg: Number(receiveQty),
-        batchNumber: receiveBatch || undefined,
-        notes: receiveNotes || undefined,
-      });
-      showToast("Compound received", "success");
-      setShowReceiveModal(false);
-      setReceiveStockId(null);
-      setReceiveQty("");
-      setReceiveBatch("");
-      setReceiveNotes("");
-      fetchData();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to receive", "error");
-    } finally {
-      setIsReceiving(false);
-    }
+  const collapseAll = () => {
+    setExpandedIds(new Set());
   };
 
-  const availableCompounds = compounds.filter(
-    (c) => !stocks.some((s) => s.compoundCodingId === c.id),
-  );
+  const filteredSections = sections.filter((s) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      s.stock.compoundName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.stock.compoundCode?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLowStock = !showLowStockOnly || s.stock.isLowStock;
+    return matchesSearch && matchesLowStock;
+  });
+
+  const totalActualSOH = filteredSections.reduce((sum, s) => sum + s.stock.quantityKg, 0);
+  const totalCommitted = filteredSections.reduce((sum, s) => sum + s.committedKg, 0);
+  const totalAvailable = totalActualSOH - totalCommitted;
+  const lowStockCount = sections.filter((s) => s.stock.isLowStock).length;
 
   const resetOpeningStockForm = () => {
     setOpeningStockForm({
@@ -257,7 +613,7 @@ export default function CompoundStocksPage() {
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
       const rows: ImportCompoundOpeningStockRowDto[] = lines.slice(1).map((line) => {
         const values = line.split(",").map((v) => v.trim());
-        const rowData: ImportCompoundOpeningStockRowDto = {
+        return {
           compoundCode: values[headers.indexOf("compound_code")] || "",
           quantityKg: Number(values[headers.indexOf("quantity_kg")]) || 0,
           costPerKg: values[headers.indexOf("cost_per_kg")]
@@ -272,7 +628,6 @@ export default function CompoundStocksPage() {
           location: values[headers.indexOf("location")] || null,
           batchNumber: values[headers.indexOf("batch_number")] || null,
         };
-        return rowData;
       });
       setCsvData(rows.filter((r) => r.compoundCode && r.quantityKg > 0));
     };
@@ -312,16 +667,19 @@ export default function CompoundStocksPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
-          <button
-            onClick={fetchData}
-            className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
-          >
-            Retry
-          </button>
+      <div className="space-y-6">
+        <Breadcrumb items={[{ label: "Compound Inventory" }]} />
+        <div className="flex items-center justify-center min-h-96">
+          <div className="text-center">
+            <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
+            <p className="text-gray-600">{error.message}</p>
+            <button
+              onClick={fetchData}
+              className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -332,9 +690,9 @@ export default function CompoundStocksPage() {
       <Breadcrumb items={[{ label: "Compound Inventory" }]} />
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Compound Inventory</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Compound Stock Overview</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Track rubber compound stock levels and manage inventory
+            Live compound stock levels with received, committed, and dispatched tracking
           </p>
         </div>
         <button
@@ -348,162 +706,98 @@ export default function CompoundStocksPage() {
         </button>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Search:</label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Compound name or code"
-              className="block w-56 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm rounded-md border"
-            />
-          </div>
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showLowStockOnly}
-              onChange={(e) => setShowLowStockOnly(e.target.checked)}
-              className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
-            />
-            <span className="text-sm font-medium text-gray-700">Low Stock Only</span>
-          </label>
+      {isLoading ? (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <TableLoadingState message="Loading compound stock data..." />
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white shadow rounded-lg p-5 border-l-4 border-yellow-500">
+              <p className="text-sm font-medium text-gray-500">Total Compounds</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{sections.length}</p>
+              {lowStockCount > 0 && (
+                <p className="text-xs text-red-600 mt-1">{lowStockCount} low stock</p>
+              )}
+            </div>
+            <div className="bg-white shadow rounded-lg p-5 border-l-4 border-green-500">
+              <p className="text-sm font-medium text-gray-500">Actual SOH</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{formatKg(totalActualSOH)}</p>
+            </div>
+            <div className="bg-white shadow rounded-lg p-5 border-l-4 border-amber-400">
+              <p className="text-sm font-medium text-gray-500">Committed (POs)</p>
+              <p className="text-2xl font-bold text-amber-600 mt-1">{formatKg(totalCommitted)}</p>
+            </div>
+            <div className={`bg-white shadow rounded-lg p-5 border-l-4 ${totalAvailable < 0 ? "border-red-500" : "border-blue-500"}`}>
+              <p className="text-sm font-medium text-gray-500">Available</p>
+              <p className={`text-2xl font-bold mt-1 ${totalAvailable < 0 ? "text-red-600" : "text-gray-900"}`}>
+                {formatKg(totalAvailable)}
+              </p>
+            </div>
+          </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        {isLoading ? (
-          <TableLoadingState message="Loading compound stocks..." />
-        ) : filteredStocks.length === 0 ? (
-          <TableEmptyState
-            icon={<TableIcons.document />}
-            title="No compound stocks found"
-            subtitle={
-              searchQuery || showLowStockOnly
-                ? "Try adjusting your filters"
-                : "Get started by adding opening stock"
-            }
-            action={
-              !searchQuery && !showLowStockOnly
-                ? { label: "Add Opening Stock", onClick: () => setShowOpeningStockModal(true) }
-                : undefined
-            }
-          />
-        ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("compoundName")}
+          <div className="bg-white shadow rounded-lg p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-gray-700">Search:</label>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Compound name or code"
+                  className="block w-56 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm rounded-md border"
+                />
+              </div>
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showLowStockOnly}
+                  onChange={(e) => setShowLowStockOnly(e.target.checked)}
+                  className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Low Stock Only</span>
+              </label>
+              <div className="flex-1" />
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={expandAll}
+                  className="text-sm text-gray-600 hover:text-gray-900 underline"
                 >
-                  Compound
-                  <SortIcon active={sortColumn === "compoundName"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("quantityKg")}
+                  Expand All
+                </button>
+                <span className="text-gray-300">|</span>
+                <button
+                  onClick={collapseAll}
+                  className="text-sm text-gray-600 hover:text-gray-900 underline"
                 >
-                  Quantity (kg)
-                  <SortIcon active={sortColumn === "quantityKg"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("reorderPointKg")}
-                >
-                  Reorder Point
-                  <SortIcon active={sortColumn === "reorderPointKg"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort("location")}
-                >
-                  Location
-                  <SortIcon active={sortColumn === "location"} direction={sortDirection} />
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Status
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedStocks.map((stock) => (
-                <tr
-                  key={stock.id}
-                  className={`hover:bg-gray-50 ${stock.isLowStock ? "bg-red-50" : ""}`}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/au-rubber/portal/compound-stocks/${stock.id}`}
-                      className="text-yellow-600 hover:text-yellow-800 font-medium"
-                    >
-                      {stock.compoundName || "N/A"}
-                    </Link>
-                    {stock.compoundCode && (
-                      <span className="ml-2 text-xs text-gray-500">({stock.compoundCode})</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {stock.quantityKg.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {stock.reorderPointKg.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {stock.location || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {stock.isLowStock ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                        Low Stock
-                      </span>
-                    ) : (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        OK
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                    <button
-                      onClick={() => {
-                        setReceiveStockId(stock.id);
-                        setShowReceiveModal(true);
-                      }}
-                      className="text-green-600 hover:text-green-900"
-                    >
-                      Receive
-                    </button>
-                    <button
-                      onClick={() => setDeleteStockId(stock.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
+                  Collapse All
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {filteredSections.length === 0 ? (
+            <div className="bg-white shadow rounded-lg p-12 text-center">
+              <p className="text-gray-500">
+                {searchQuery || showLowStockOnly
+                  ? "No compounds match your filters"
+                  : "No compound stocks found. Add opening stock to get started."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredSections.map((section) => (
+                <CompoundCard
+                  key={section.stock.id}
+                  section={section}
+                  isExpanded={expandedIds.has(section.stock.id)}
+                  onToggle={() => toggleExpand(section.stock.id)}
+                />
               ))}
-            </tbody>
-          </table>
-        )}
-        <Pagination
-          currentPage={currentPage}
-          totalItems={filteredStocks.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-          itemName="stocks"
-          onPageChange={setCurrentPage}
-        />
-      </div>
+            </div>
+          )}
+        </>
+      )}
 
       {showOpeningStockModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -602,9 +896,7 @@ export default function CompoundStocksPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Cost per kg (ZAR)
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700">Cost per kg (ZAR)</label>
                       <input
                         type="number"
                         step="0.01"
@@ -620,9 +912,7 @@ export default function CompoundStocksPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Min Stock Level (kg)
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700">Min Stock Level (kg)</label>
                       <input
                         type="number"
                         step="0.01"
@@ -638,9 +928,7 @@ export default function CompoundStocksPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Reorder Point (kg)
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700">Reorder Point (kg)</label>
                       <input
                         type="number"
                         step="0.01"
@@ -660,9 +948,7 @@ export default function CompoundStocksPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Location</label>
                       <select
-                        value={
-                          openingStockForm.locationId != null ? openingStockForm.locationId : ""
-                        }
+                        value={openingStockForm.locationId != null ? openingStockForm.locationId : ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -680,9 +966,7 @@ export default function CompoundStocksPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Batch Number
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700">Batch Number</label>
                       <input
                         type="text"
                         value={openingStockForm.batchNumber || ""}
@@ -791,26 +1075,17 @@ export default function CompoundStocksPage() {
                           <tbody className="bg-white divide-y divide-gray-200">
                             {csvData.slice(0, 10).map((row, idx) => (
                               <tr key={idx}>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.compoundCode}
-                                </td>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.quantityKg}
-                                </td>
+                                <td className="px-3 py-2 text-sm text-gray-900">{row.compoundCode}</td>
+                                <td className="px-3 py-2 text-sm text-gray-900">{row.quantityKg}</td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
                                   {row.costPerKg != null ? row.costPerKg : "-"}
                                 </td>
-                                <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.location || "-"}
-                                </td>
+                                <td className="px-3 py-2 text-sm text-gray-900">{row.location || "-"}</td>
                               </tr>
                             ))}
                             {csvData.length > 10 && (
                               <tr>
-                                <td
-                                  colSpan={4}
-                                  className="px-3 py-2 text-sm text-gray-500 text-center"
-                                >
+                                <td colSpan={4} className="px-3 py-2 text-sm text-gray-500 text-center">
                                   ...and {csvData.length - 10} more rows
                                 </td>
                               </tr>
@@ -860,79 +1135,6 @@ export default function CompoundStocksPage() {
           </div>
         </div>
       )}
-
-      {showReceiveModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-10"
-              onClick={() => setShowReceiveModal(false)}
-            />
-            <div className="relative z-20 bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Receive Compound</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Quantity (kg)</label>
-                  <input
-                    type="number"
-                    value={receiveQty}
-                    onChange={(e) => setReceiveQty(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="0"
-                    step="0.01"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Batch Number</label>
-                  <input
-                    type="text"
-                    value={receiveBatch}
-                    onChange={(e) => setReceiveBatch(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="Optional"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Notes</label>
-                  <textarea
-                    value={receiveNotes}
-                    onChange={(e) => setReceiveNotes(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    rows={2}
-                    placeholder="Optional"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowReceiveModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleReceive}
-                  disabled={isReceiving || !receiveQty}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
-                >
-                  {isReceiving ? "Receiving..." : "Receive"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <ConfirmModal
-        isOpen={deleteStockId !== null}
-        title="Delete Compound Stock"
-        message="Are you sure you want to delete this compound stock? This action cannot be undone."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        variant="danger"
-        onConfirm={() => deleteStockId && handleDelete(deleteStockId)}
-        onCancel={() => setDeleteStockId(null)}
-      />
     </div>
   );
 }

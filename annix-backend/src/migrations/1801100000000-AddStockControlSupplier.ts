@@ -27,7 +27,7 @@ export class AddStockControlSupplier1801100000000 implements MigrationInterface 
         "created_at" TIMESTAMP NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         CONSTRAINT "fk_stock_control_supplier_company"
-          FOREIGN KEY ("company_id") REFERENCES "stock_control_company"("id") ON DELETE CASCADE
+          FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE
       )
     `);
 

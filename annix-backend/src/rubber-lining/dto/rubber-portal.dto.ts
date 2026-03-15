@@ -96,6 +96,9 @@ export class RubberCompanyDto {
   registrationNumber: string | null;
   address: CompanyAddressDto | null;
   notes: string | null;
+  phone: string | null;
+  contactPerson: string | null;
+  emailConfig: Record<string, string> | null;
 }
 
 export class CreateRubberCompanyDto {
@@ -138,6 +141,18 @@ export class CreateRubberCompanyDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  contactPerson?: string | null;
+
+  @IsOptional()
+  @IsObject()
+  emailConfig?: Record<string, string> | null;
 }
 
 export class UpdateRubberCompanyDto {
@@ -181,6 +196,18 @@ export class UpdateRubberCompanyDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  contactPerson?: string | null;
+
+  @IsOptional()
+  @IsObject()
+  emailConfig?: Record<string, string> | null;
 }
 
 export class RubberProductDto {

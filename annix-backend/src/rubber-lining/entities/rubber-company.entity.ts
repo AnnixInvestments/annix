@@ -78,6 +78,15 @@ export class RubberCompany {
   @Column({ name: "notes", type: "text", nullable: true })
   notes: string | null;
 
+  @Column({ name: "phone", type: "varchar", length: 30, nullable: true })
+  phone: string | null;
+
+  @Column({ name: "contact_person", type: "varchar", length: 200, nullable: true })
+  contactPerson: string | null;
+
+  @Column({ name: "email_config", type: "jsonb", nullable: true })
+  emailConfig: Record<string, string> | null;
+
   @Column({ name: "sage_contact_id", type: "int", nullable: true })
   sageContactId: number | null;
 
