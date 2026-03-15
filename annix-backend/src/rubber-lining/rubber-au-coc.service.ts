@@ -498,7 +498,7 @@ export class RubberAuCocService {
       `SELECT nextval('rubber_au_coc_number_seq') as seq`,
     );
     const seq = result[0]?.seq || 1;
-    return `COC-${String(seq).padStart(5, "0")}`;
+    return `AU-COC-${String(seq).padStart(4, "0")}`;
   }
 
   private async preparePdfData(coc: RubberAuCoc, items: RubberAuCocItem[]): Promise<CocPdfData> {
@@ -602,9 +602,13 @@ export class RubberAuCocService {
           })
         : null;
 
-      const supplierCoc: RubberSupplierCoc | null = await (async () => {
+      const supplierCocCandidates: RubberSupplierCoc[] = await (async () => {
+        const candidates: RubberSupplierCoc[] = [];
+
         const fromDn = sourceDeliveryNote?.linkedCoc || null;
-        if (fromDn) return fromDn;
+        if (fromDn) {
+          candidates.push(fromDn);
+        }
 
         if (sourceDeliveryNote) {
           const siblingDn = await this.deliveryNoteRepository
@@ -625,9 +629,15 @@ export class RubberAuCocService {
             this.logger.log(
               `Found supplier CoC ${siblingDn.linkedCoc.id} via sibling DN ${siblingDn.id} for AU CoC ${coc.cocNumber}`,
             );
-            return siblingDn.linkedCoc;
+            candidates.push(siblingDn.linkedCoc);
           }
         }
+
+        const allSupplierCocs = await this.supplierCocRepository
+          .createQueryBuilder("coc")
+          .where("coc.order_number IS NOT NULL")
+          .orderBy("coc.id", "DESC")
+          .getMany();
 
         if (extractedRolls.length > 0) {
           const rollNums = extractedRolls.map((r) => r.rollNumber).filter(Boolean) as string[];
@@ -640,29 +650,16 @@ export class RubberAuCocService {
               `Extracted supplier order numbers ${JSON.stringify(orderNumbers)} from roll numbers ${JSON.stringify(rollNums)} for AU CoC ${coc.cocNumber}`,
             );
 
-            const allSupplierCocs = await this.supplierCocRepository
-              .createQueryBuilder("coc")
-              .where("coc.order_number IS NOT NULL")
-              .orderBy("coc.id", "DESC")
-              .getMany();
-
-            const matched =
-              allSupplierCocs.find((sc) => {
-                const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
-                  .trim()
-                  .toUpperCase();
-                return (
-                  cocOrderNumber.length > 0 &&
-                  orderNumbers.some((on) => cocOrderNumber === on.toUpperCase())
-                );
-              }) || null;
-
-            if (matched) {
-              this.logger.log(
-                `Matched supplier CoC ${matched.id} (type: ${matched.cocType}, order: ${matched.orderNumber}) via roll number prefix for AU CoC ${coc.cocNumber}`,
+            const matched = allSupplierCocs.filter((sc) => {
+              const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
+                .trim()
+                .toUpperCase();
+              return (
+                cocOrderNumber.length > 0 &&
+                orderNumbers.some((on) => cocOrderNumber === on.toUpperCase())
               );
-              return matched;
-            }
+            });
+            matched.forEach((m) => candidates.push(m));
           }
         }
 
@@ -672,29 +669,70 @@ export class RubberAuCocService {
             .map((s) => s.trim().toUpperCase())
             .filter(Boolean);
 
-          const allPoSupplierCocs = await this.supplierCocRepository
-            .createQueryBuilder("sc")
-            .where("sc.order_number IS NOT NULL")
-            .orderBy("sc.id", "DESC")
-            .getMany();
-
-          const poMatched =
-            allPoSupplierCocs.find((sc) => {
-              const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
-                .trim()
-                .toUpperCase();
-              return cocOrderNumber.length > 0 && poSegments.some((seg) => seg === cocOrderNumber);
-            }) || null;
-
-          if (poMatched) {
-            this.logger.log(
-              `Matched supplier CoC ${poMatched.id} (order: ${poMatched.orderNumber}) via PO number "${coc.poNumber}" for AU CoC ${coc.cocNumber}`,
-            );
-            return poMatched;
-          }
+          const poMatched = allSupplierCocs.filter((sc) => {
+            const cocOrderNumber = (sc.orderNumber || sc.extractedData?.orderNumber || "")
+              .trim()
+              .toUpperCase();
+            return cocOrderNumber.length > 0 && poSegments.some((seg) => seg === cocOrderNumber);
+          });
+          poMatched.forEach((m) => candidates.push(m));
         }
 
-        return null;
+        return candidates;
+      })();
+
+      const seenIds = new Set<number>();
+      const uniqueCandidates = supplierCocCandidates.filter((sc) => {
+        if (seenIds.has(sc.id)) return false;
+        seenIds.add(sc.id);
+        return true;
+      });
+
+      const supplierCoc: RubberSupplierCoc | null = await (async () => {
+        if (uniqueCandidates.length === 0) return null;
+
+        const candidateWithBatchData = await uniqueCandidates.reduce(
+          async (bestPromise, candidate) => {
+            const best = await bestPromise;
+            if (best) return best;
+
+            const hasBatches =
+              (await this.compoundBatchRepository.count({
+                where: { supplierCocId: candidate.id },
+              })) > 0;
+            if (hasBatches) return candidate;
+
+            const extractedBatches = candidate.extractedData?.batches || [];
+            if (extractedBatches.length > 0) return candidate;
+
+            const compounder = await this.findCompounderForCandidate(candidate);
+            if (compounder) {
+              const compounderHasBatches =
+                (await this.compoundBatchRepository.count({
+                  where: { supplierCocId: compounder.id },
+                })) > 0;
+              if (compounderHasBatches) return candidate;
+
+              const compounderExtracted = compounder.extractedData?.batches || [];
+              if (compounderExtracted.length > 0) return candidate;
+            }
+
+            return null;
+          },
+          Promise.resolve(null as RubberSupplierCoc | null),
+        );
+
+        if (candidateWithBatchData) {
+          this.logger.log(
+            `Selected supplier CoC ${candidateWithBatchData.id} (type: ${candidateWithBatchData.cocType}, order: ${candidateWithBatchData.orderNumber}) with batch data for AU CoC ${coc.cocNumber}`,
+          );
+          return candidateWithBatchData;
+        }
+
+        this.logger.log(
+          `No candidates with batch data found for AU CoC ${coc.cocNumber}, using first candidate ${uniqueCandidates[0].id}`,
+        );
+        return uniqueCandidates[0];
       })();
 
       if (!supplierCoc) {
@@ -866,6 +904,36 @@ export class RubberAuCocService {
       qualityConfig,
       graphPdfPath,
     };
+  }
+
+  private async findCompounderForCandidate(
+    candidate: RubberSupplierCoc,
+  ): Promise<RubberSupplierCoc | null> {
+    const linkedIds = candidate.extractedData?.linkedCompounderCocIds || [];
+    if (linkedIds.length > 0) {
+      const linked = await this.supplierCocRepository.findOne({
+        where: { id: linkedIds[0] },
+      });
+      if (linked) return linked;
+    }
+
+    if (candidate.orderNumber) {
+      const byOrder = await this.supplierCocRepository.findOne({
+        where: {
+          cocType: SupplierCocType.COMPOUNDER,
+          orderNumber: candidate.orderNumber,
+        },
+        order: { id: "DESC" },
+      });
+      if (byOrder) return byOrder;
+    }
+
+    const compoundCode = candidate.compoundCode;
+    if (compoundCode && compoundCode !== "Per Supplier CoC") {
+      return this.findCompounderByCompoundCode(compoundCode);
+    }
+
+    return null;
   }
 
   private async findCompounderByCompoundCode(

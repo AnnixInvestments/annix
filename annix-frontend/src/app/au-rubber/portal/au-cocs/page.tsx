@@ -14,7 +14,6 @@ import { formatDateZA } from "@/app/lib/datetime";
 import { useAuRubberAuCocs } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import {
-  ITEMS_PER_PAGE,
   Pagination,
   SortDirection,
   SortIcon,
@@ -37,6 +36,7 @@ export default function AuCocsPage() {
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number | "all">("all");
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [sendingId, setSendingId] = useState<number | null>(null);
@@ -133,14 +133,14 @@ export default function AuCocsPage() {
     }),
   );
 
-  const paginatedCocs = filteredCocs.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
-  );
+  const paginatedCocs =
+    pageSize === "all"
+      ? filteredCocs
+      : filteredCocs.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, filterStatus]);
+  }, [searchQuery, filterStatus, pageSize]);
 
   const handleGeneratePdf = async (id: number) => {
     try {
@@ -394,6 +394,24 @@ export default function AuCocsPage() {
               <option value="SENT">Sent</option>
             </select>
           </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Show:</label>
+            <select
+              value={pageSize === "all" ? "all" : String(pageSize)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setPageSize(val === "all" ? "all" : Number(val));
+                setCurrentPage(0);
+              }}
+              className="block w-24 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm rounded-md border"
+            >
+              <option value="all">All</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -577,13 +595,15 @@ export default function AuCocsPage() {
             </tbody>
           </table>
         )}
-        <Pagination
-          currentPage={currentPage}
-          totalItems={filteredCocs.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-          itemName="certificates"
-          onPageChange={setCurrentPage}
-        />
+        {pageSize !== "all" && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredCocs.length}
+            itemsPerPage={pageSize}
+            itemName="certificates"
+            onPageChange={setCurrentPage}
+          />
+        )}
       </div>
 
       {showSendModal && (
