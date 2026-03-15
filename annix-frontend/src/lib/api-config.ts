@@ -36,7 +36,7 @@ export const resolveBaseUrl = (originHint?: string | null) => {
 export function browserBaseUrl(): string {
   if (typeof window !== "undefined") {
     const envValue = process.env.NEXT_PUBLIC_API_URL;
-    if (envValue && envValue.startsWith("http") && envValue !== window.location.origin) {
+    if (envValue?.startsWith("http") && envValue !== window.location.origin) {
       return `${window.location.origin}/api`;
     }
     return resolveBaseUrl(window.location.origin);

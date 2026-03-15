@@ -469,7 +469,8 @@ export default function AuCocsPage() {
                         Generate PDF
                       </button>
                     )}
-                    {(coc.status === "GENERATED" || (coc.status === "SENT" && coc.generatedPdfPath)) && (
+                    {(coc.status === "GENERATED" ||
+                      (coc.status === "SENT" && coc.generatedPdfPath)) && (
                       <>
                         <button
                           onClick={() => handlePreview(coc)}
