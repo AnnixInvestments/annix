@@ -16,11 +16,7 @@ import {
   type RubberTaxInvoiceDto,
   type StockLocationDto,
 } from "@/app/lib/api/auRubberApi";
-import type {
-  RubberOrderDto,
-  RubberProductCodingDto,
-  RubberProductDto,
-} from "@/app/lib/api/rubberPortalApi";
+import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { TableLoadingState } from "../../components/TableComponents";
 
@@ -71,28 +67,28 @@ function StockBar(props: { actual: number; committed: number }) {
           style={{ width: `${Math.max(100 - committedPct, 0)}%` }}
         />
         {committed > 0 && (
-          <div
-            className="bg-amber-400 h-full"
-            style={{ width: `${committedPct}%` }}
-          />
+          <div className="bg-amber-400 h-full" style={{ width: `${committedPct}%` }} />
         )}
       </div>
     </div>
   );
 }
 
-function CompoundCard(props: { section: CompoundSection; isExpanded: boolean; onToggle: () => void }) {
+function CompoundCard(props: {
+  section: CompoundSection;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
   const { section, isExpanded, onToggle } = props;
   const { stock } = section;
   const available = stock.quantityKg - section.committedKg;
   const isLow = stock.isLowStock;
 
   return (
-    <div className={`bg-white shadow rounded-lg overflow-hidden ${isLow ? "ring-2 ring-red-300" : ""}`}>
-      <button
-        onClick={onToggle}
-        className="w-full px-6 py-4 hover:bg-gray-50 transition-colors"
-      >
+    <div
+      className={`bg-white shadow rounded-lg overflow-hidden ${isLow ? "ring-2 ring-red-300" : ""}`}
+    >
+      <button onClick={onToggle} className="w-full px-6 py-4 hover:bg-gray-50 transition-colors">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <svg
@@ -104,7 +100,9 @@ function CompoundCard(props: { section: CompoundSection; isExpanded: boolean; on
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
             <div className="text-left">
-              <span className="text-sm font-semibold text-gray-900">{stock.compoundName || "Unknown"}</span>
+              <span className="text-sm font-semibold text-gray-900">
+                {stock.compoundName || "Unknown"}
+              </span>
               {stock.compoundCode && (
                 <span className="ml-2 text-xs text-gray-500">({stock.compoundCode})</span>
               )}
@@ -124,13 +122,13 @@ function CompoundCard(props: { section: CompoundSection; isExpanded: boolean; on
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">Committed</p>
-              <p className="text-sm font-bold text-amber-600">
-                {formatKg(section.committedKg)}
-              </p>
+              <p className="text-sm font-bold text-amber-600">{formatKg(section.committedKg)}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">Available</p>
-              <p className={`text-sm font-bold ${available < 0 ? "text-red-600" : "text-green-600"}`}>
+              <p
+                className={`text-sm font-bold ${available < 0 ? "text-red-600" : "text-green-600"}`}
+              >
                 {formatKg(available)}
               </p>
             </div>
@@ -141,8 +139,14 @@ function CompoundCard(props: { section: CompoundSection; isExpanded: boolean; on
           <div className="flex items-center justify-between mt-1 text-xs text-gray-400">
             <span>0 kg</span>
             <div className="flex items-center space-x-4">
-              <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-green-500 mr-1" />Available</span>
-              <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-amber-400 mr-1" />Committed</span>
+              <span className="flex items-center">
+                <span className="w-2 h-2 rounded-full bg-green-500 mr-1" />
+                Available
+              </span>
+              <span className="flex items-center">
+                <span className="w-2 h-2 rounded-full bg-amber-400 mr-1" />
+                Committed
+              </span>
             </div>
             <span>{formatKg(stock.quantityKg)}</span>
           </div>
@@ -252,7 +256,8 @@ function CommittedSection(props: {
         <span className="text-amber-600">{formatKg(totalCommitted)}</span>
       </h4>
       <p className="text-xs text-gray-400 mb-2">
-        Theoretical weight from active customer orders. Actual SOH only reduces when rolls are dispatched.
+        Theoretical weight from active customer orders. Actual SOH only reduces when rolls are
+        dispatched.
       </p>
       {committedOrders.length === 0 ? (
         <p className="text-sm text-gray-500">No active commitments</p>
@@ -269,14 +274,14 @@ function CommittedSection(props: {
                 <span className="font-medium text-amber-700">{formatKg(co.totalKg)}</span>
               </div>
               <div className="flex items-center justify-between mt-0.5">
-                <span className="text-xs text-gray-500">{co.companyName || "Unknown customer"}</span>
+                <span className="text-xs text-gray-500">
+                  {co.companyName || "Unknown customer"}
+                </span>
                 <span className="text-xs text-gray-500">
                   {co.quantity || 0} roll{(co.quantity || 0) !== 1 ? "s" : ""}
                 </span>
               </div>
-              {co.productTitle && (
-                <p className="text-xs text-gray-400 mt-0.5">{co.productTitle}</p>
-              )}
+              {co.productTitle && <p className="text-xs text-gray-400 mt-0.5">{co.productTitle}</p>}
             </Link>
           ))}
         </div>
@@ -329,7 +334,10 @@ function DispatchedSection(props: {
                 {rolls.length > 0 && (
                   <div className="mt-1 ml-2 space-y-0.5">
                     {rolls.map((roll, ri) => (
-                      <div key={ri} className="flex items-center justify-between text-xs text-gray-500">
+                      <div
+                        key={ri}
+                        className="flex items-center justify-between text-xs text-gray-500"
+                      >
                         <span>Roll {roll.rollNumber || ri + 1}</span>
                         <div className="flex items-center space-x-3">
                           {roll.weightKg !== undefined && <span>{roll.weightKg} kg</span>}
@@ -339,7 +347,9 @@ function DispatchedSection(props: {
                     ))}
                   </div>
                 )}
-                {m.batchNumber && <p className="text-xs text-gray-400 mt-1">Batch: {m.batchNumber}</p>}
+                {m.batchNumber && (
+                  <p className="text-xs text-gray-400 mt-1">Batch: {m.batchNumber}</p>
+                )}
               </div>
             );
           })}
@@ -377,7 +387,9 @@ export default function CompoundStocksPage() {
   const [isSubmittingOpeningStock, setIsSubmittingOpeningStock] = useState(false);
   const [csvData, setCsvData] = useState<ImportCompoundOpeningStockRowDto[]>([]);
   const [csvFileName, setCsvFileName] = useState("");
-  const [importResult, setImportResult] = useState<ImportCompoundOpeningStockResultDto | null>(null);
+  const [importResult, setImportResult] = useState<ImportCompoundOpeningStockResultDto | null>(
+    null,
+  );
   const [isImporting, setIsImporting] = useState(false);
 
   const fetchData = async () => {
@@ -417,9 +429,7 @@ export default function CompoundStocksPage() {
       const dnMap = new Map(deliveryNotes.map((dn) => [dn.id, dn]));
       const productMap = new Map(products.map((p) => [p.id, p]));
 
-      const activeOrders = orders.filter(
-        (o) => o.status >= 2 && o.status <= 5,
-      );
+      const activeOrders = orders.filter((o) => o.status >= 2 && o.status <= 5);
 
       const builtSections: CompoundSection[] = stocks.map((stock) => {
         const stockMovements = movements.filter((m) => m.compoundStockId === stock.id);
@@ -435,7 +445,10 @@ export default function CompoundStocksPage() {
 
         const linkedInvoices = new Map<number, RubberTaxInvoiceDto>();
         receivedMovements.forEach((m) => {
-          if (m.referenceId && (m.referenceType === "INVOICE_RECEIPT" || m.referenceType === "COC_RECEIPT")) {
+          if (
+            m.referenceId &&
+            (m.referenceType === "INVOICE_RECEIPT" || m.referenceType === "COC_RECEIPT")
+          ) {
             const inv = invoiceMap.get(m.referenceId);
             if (inv) linkedInvoices.set(m.referenceId, inv);
           }
@@ -459,7 +472,9 @@ export default function CompoundStocksPage() {
             if (!product) return;
             const compoundMatch =
               product.compoundName === stock.compoundName ||
-              (product.compoundFirebaseUid && stock.compoundCode && product.compoundName === stock.compoundName);
+              (product.compoundFirebaseUid &&
+                stock.compoundCode &&
+                product.compoundName === stock.compoundName);
             if (!compoundMatch) return;
 
             const itemKg = item.totalKg || 0;
@@ -488,7 +503,9 @@ export default function CompoundStocksPage() {
         };
       });
 
-      builtSections.sort((a, b) => (a.stock.compoundName || "").localeCompare(b.stock.compoundName || ""));
+      builtSections.sort((a, b) =>
+        (a.stock.compoundName || "").localeCompare(b.stock.compoundName || ""),
+      );
       setSections(builtSections);
       setError(null);
     } catch (err) {
@@ -728,9 +745,13 @@ export default function CompoundStocksPage() {
               <p className="text-sm font-medium text-gray-500">Committed (POs)</p>
               <p className="text-2xl font-bold text-amber-600 mt-1">{formatKg(totalCommitted)}</p>
             </div>
-            <div className={`bg-white shadow rounded-lg p-5 border-l-4 ${totalAvailable < 0 ? "border-red-500" : "border-blue-500"}`}>
+            <div
+              className={`bg-white shadow rounded-lg p-5 border-l-4 ${totalAvailable < 0 ? "border-red-500" : "border-blue-500"}`}
+            >
               <p className="text-sm font-medium text-gray-500">Available</p>
-              <p className={`text-2xl font-bold mt-1 ${totalAvailable < 0 ? "text-red-600" : "text-gray-900"}`}>
+              <p
+                className={`text-2xl font-bold mt-1 ${totalAvailable < 0 ? "text-red-600" : "text-gray-900"}`}
+              >
                 {formatKg(totalAvailable)}
               </p>
             </div>
@@ -896,7 +917,9 @@ export default function CompoundStocksPage() {
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Cost per kg (ZAR)</label>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Cost per kg (ZAR)
+                      </label>
                       <input
                         type="number"
                         step="0.01"
@@ -912,7 +935,9 @@ export default function CompoundStocksPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Min Stock Level (kg)</label>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Min Stock Level (kg)
+                      </label>
                       <input
                         type="number"
                         step="0.01"
@@ -928,7 +953,9 @@ export default function CompoundStocksPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Reorder Point (kg)</label>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Reorder Point (kg)
+                      </label>
                       <input
                         type="number"
                         step="0.01"
@@ -948,7 +975,9 @@ export default function CompoundStocksPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Location</label>
                       <select
-                        value={openingStockForm.locationId != null ? openingStockForm.locationId : ""}
+                        value={
+                          openingStockForm.locationId != null ? openingStockForm.locationId : ""
+                        }
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -966,7 +995,9 @@ export default function CompoundStocksPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Batch Number</label>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Batch Number
+                      </label>
                       <input
                         type="text"
                         value={openingStockForm.batchNumber || ""}
@@ -1075,17 +1106,26 @@ export default function CompoundStocksPage() {
                           <tbody className="bg-white divide-y divide-gray-200">
                             {csvData.slice(0, 10).map((row, idx) => (
                               <tr key={idx}>
-                                <td className="px-3 py-2 text-sm text-gray-900">{row.compoundCode}</td>
-                                <td className="px-3 py-2 text-sm text-gray-900">{row.quantityKg}</td>
+                                <td className="px-3 py-2 text-sm text-gray-900">
+                                  {row.compoundCode}
+                                </td>
+                                <td className="px-3 py-2 text-sm text-gray-900">
+                                  {row.quantityKg}
+                                </td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
                                   {row.costPerKg != null ? row.costPerKg : "-"}
                                 </td>
-                                <td className="px-3 py-2 text-sm text-gray-900">{row.location || "-"}</td>
+                                <td className="px-3 py-2 text-sm text-gray-900">
+                                  {row.location || "-"}
+                                </td>
                               </tr>
                             ))}
                             {csvData.length > 10 && (
                               <tr>
-                                <td colSpan={4} className="px-3 py-2 text-sm text-gray-500 text-center">
+                                <td
+                                  colSpan={4}
+                                  className="px-3 py-2 text-sm text-gray-500 text-center"
+                                >
                                   ...and {csvData.length - 10} more rows
                                 </td>
                               </tr>

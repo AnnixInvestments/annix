@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class BackfillCompoundStockFromDocuments1807000000033
-  implements MigrationInterface
-{
+export class BackfillCompoundStockFromDocuments1807000000033 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       INSERT INTO rubber_compound_stock (firebase_uid, compound_coding_id, quantity_kg, min_stock_level_kg, reorder_point_kg, cost_per_kg)
@@ -73,7 +71,7 @@ export class BackfillCompoundStockFromDocuments1807000000033
           END IF;
 
           IF v_qty IS NULL OR v_qty <= 0 THEN
-            SELECT (regexp_matches(v_text, '(\d[\d,.]*)\s*kg', 'i'))[1]
+            SELECT (regexp_matches(v_text, '(\\d[\\d,.]*)\\s*kg', 'i'))[1]
             INTO v_code;
             IF v_code IS NOT NULL THEN
               v_qty := replace(v_code, ',', '')::numeric;

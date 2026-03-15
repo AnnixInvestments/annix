@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberTaxInvoiceDto } from "@/app/lib/api/auRubberApi";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../../../components/Breadcrumb";
-import {
-  TableLoadingState,
-} from "../../../../components/TableComponents";
+import { TableLoadingState } from "../../../../components/TableComponents";
 
 interface CompanyStatement {
   company: RubberCompanyDto;
@@ -70,7 +68,11 @@ export default function CustomerStatementsPage() {
     return (
       <div className="space-y-6">
         <Breadcrumb
-          items={[{ label: "Companies" }, { label: "Customers", href: "/au-rubber/portal/companies/customers" }, { label: "Statements" }]}
+          items={[
+            { label: "Companies" },
+            { label: "Customers", href: "/au-rubber/portal/companies/customers" },
+            { label: "Statements" },
+          ]}
         />
         <div className="flex items-center justify-center min-h-96">
           <div className="text-center">
@@ -85,7 +87,11 @@ export default function CustomerStatementsPage() {
   return (
     <div className="space-y-6">
       <Breadcrumb
-        items={[{ label: "Companies" }, { label: "Customers", href: "/au-rubber/portal/companies/customers" }, { label: "Statements" }]}
+        items={[
+          { label: "Companies" },
+          { label: "Customers", href: "/au-rubber/portal/companies/customers" },
+          { label: "Statements" },
+        ]}
       />
       <div className="flex items-center justify-between">
         <div>
@@ -116,7 +122,9 @@ export default function CustomerStatementsPage() {
             </div>
             <div className="bg-white shadow rounded-lg p-5 border-l-4 border-blue-500">
               <p className="text-sm font-medium text-gray-500">Total Excl. VAT</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(grandTotal - grandVatTotal)}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {formatCurrency(grandTotal - grandVatTotal)}
+              </p>
             </div>
             <div className="bg-white shadow rounded-lg p-5 border-l-4 border-blue-500">
               <p className="text-sm font-medium text-gray-500">Total Incl. VAT</p>
@@ -130,7 +138,10 @@ export default function CustomerStatementsPage() {
               const statementEmail = statement.company.emailConfig?.outgoingStatementEmail || null;
 
               return (
-                <div key={statement.company.id} className="bg-white shadow rounded-lg overflow-hidden">
+                <div
+                  key={statement.company.id}
+                  className="bg-white shadow rounded-lg overflow-hidden"
+                >
                   <button
                     onClick={() => setExpandedCompanyId(isExpanded ? null : statement.company.id)}
                     className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
@@ -142,12 +153,21 @@ export default function CustomerStatementsPage() {
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                       <div className="text-left">
-                        <span className="text-sm font-semibold text-gray-900">{statement.company.name}</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {statement.company.name}
+                        </span>
                         {statement.company.code && (
-                          <span className="ml-2 text-xs text-gray-500">({statement.company.code})</span>
+                          <span className="ml-2 text-xs text-gray-500">
+                            ({statement.company.code})
+                          </span>
                         )}
                         {statementEmail && (
                           <p className="text-xs text-gray-400 mt-0.5">{statementEmail}</p>
@@ -156,10 +176,14 @@ export default function CustomerStatementsPage() {
                     </div>
                     <div className="flex items-center space-x-6">
                       <div className="text-right">
-                        <span className="text-xs text-gray-500">{statement.invoices.length} invoices</span>
+                        <span className="text-xs text-gray-500">
+                          {statement.invoices.length} invoices
+                        </span>
                       </div>
                       <div className="text-right">
-                        <span className="text-sm font-bold text-gray-900">{formatCurrency(statement.total)}</span>
+                        <span className="text-sm font-bold text-gray-900">
+                          {formatCurrency(statement.total)}
+                        </span>
                       </div>
                     </div>
                   </button>
@@ -169,19 +193,34 @@ export default function CustomerStatementsPage() {
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            >
                               Invoice #
                             </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            >
                               Date
                             </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            >
                               Status
                             </th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            >
                               VAT
                             </th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            >
                               Total
                             </th>
                           </tr>
@@ -201,26 +240,37 @@ export default function CustomerStatementsPage() {
                                 {invoice.invoiceDate || "-"}
                               </td>
                               <td className="px-6 py-3 whitespace-nowrap">
-                                <span className={`px-2 text-xs font-semibold rounded-full ${
-                                  invoice.status === "APPROVED" ? "bg-green-100 text-green-800" :
-                                  invoice.status === "EXTRACTED" ? "bg-blue-100 text-blue-800" :
-                                  "bg-yellow-100 text-yellow-800"
-                                }`}>
+                                <span
+                                  className={`px-2 text-xs font-semibold rounded-full ${
+                                    invoice.status === "APPROVED"
+                                      ? "bg-green-100 text-green-800"
+                                      : invoice.status === "EXTRACTED"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : "bg-yellow-100 text-yellow-800"
+                                  }`}
+                                >
                                   {invoice.statusLabel}
                                 </span>
                               </td>
                               <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
-                                {invoice.vatAmount !== null ? formatCurrency(Number(invoice.vatAmount)) : "-"}
+                                {invoice.vatAmount !== null
+                                  ? formatCurrency(Number(invoice.vatAmount))
+                                  : "-"}
                               </td>
                               <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                                {invoice.totalAmount !== null ? formatCurrency(Number(invoice.totalAmount)) : "-"}
+                                {invoice.totalAmount !== null
+                                  ? formatCurrency(Number(invoice.totalAmount))
+                                  : "-"}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                         <tfoot className="bg-gray-50">
                           <tr>
-                            <td colSpan={3} className="px-6 py-3 text-sm font-semibold text-gray-900">
+                            <td
+                              colSpan={3}
+                              className="px-6 py-3 text-sm font-semibold text-gray-900"
+                            >
                               Total
                             </td>
                             <td className="px-6 py-3 text-sm font-semibold text-gray-900 text-right">
