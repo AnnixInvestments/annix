@@ -165,6 +165,7 @@ const url = await this.storageService.presignedUrl(filePath, 3600);
 4. **ASK**: "May I commit with this message?"
 5. Wait for explicit "yes" before running `git commit`
 6. Only push to remote when user explicitly approves
+7. **NEVER auto-push**: After committing, do NOT push unless the user explicitly says "push" in their message. "commit and push" means both; "commit" means commit only. After resolving merge conflicts, rebasing, or amending, do NOT push — wait for user instruction. When in doubt, ask.
 
 ### Commit Standards
 - **Complete features only**: Each commit should represent a complete, logical feature - not intermediate iterations

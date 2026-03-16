@@ -269,6 +269,15 @@ export default function InvoiceDetailPage() {
   };
 
   const canEdit = user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
+  const canAdjustPrice = user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
+
+  const handleAdjustPrice = async (itemId: number, newPrice: number) => {
+    await stockControlApiClient.updateInvoiceItem(invoiceId, itemId, {
+      unitPrice: newPrice,
+    });
+    await fetchInvoice();
+    await fetchPriceSummary();
+  };
 
   if (isLoading) {
     return (
@@ -749,6 +758,8 @@ export default function InvoiceDetailPage() {
               <PriceUpdateReview
                 priceSummary={priceSummary}
                 onApprove={() => setShowApprovalModal(true)}
+                canAdjustPrice={canAdjustPrice}
+                onAdjustPrice={handleAdjustPrice}
               />
             </div>
           )}

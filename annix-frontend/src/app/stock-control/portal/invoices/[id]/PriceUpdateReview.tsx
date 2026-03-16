@@ -1,20 +1,48 @@
 "use client";
 
+import { useState } from "react";
 import type { PriceChangeSummary } from "@/app/lib/api/stockControlApi";
 
 interface PriceUpdateReviewProps {
   priceSummary: PriceChangeSummary;
   onApprove: () => void;
+  canAdjustPrice?: boolean;
+  onAdjustPrice?: (itemId: number, newPrice: number) => Promise<void>;
 }
 
 export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
-  const { priceSummary, onApprove } = props;
+  const { priceSummary, onApprove, canAdjustPrice, onAdjustPrice } = props;
   const { items, totalOldValue, totalNewValue } = priceSummary;
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editPrice, setEditPrice] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const totalChangePercent =
     totalOldValue > 0 ? ((totalNewValue - totalOldValue) / totalOldValue) * 100 : 0;
 
   const itemsNeedingApproval = items.filter((item) => item.needsApproval);
   const hasSignificantChanges = itemsNeedingApproval.length > 0;
+
+  const startEditingPrice = (itemId: number, currentPrice: number) => {
+    setEditingId(itemId);
+    setEditPrice(String(currentPrice));
+  };
+
+  const cancelEditingPrice = () => {
+    setEditingId(null);
+    setEditPrice("");
+  };
+
+  const savePrice = async (itemId: number) => {
+    if (!onAdjustPrice) return;
+    setIsSaving(true);
+    try {
+      await onAdjustPrice(itemId, Number(editPrice));
+      setEditingId(null);
+      setEditPrice("");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (items.length === 0) {
     return <div className="text-center py-4 text-gray-500 text-sm">No price updates to review</div>;
@@ -88,12 +116,19 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
               <th className="px-2 py-1 text-right text-gray-500 font-medium">Unit</th>
               <th className="px-2 py-1 text-right text-gray-500 font-medium">Total</th>
               <th className="px-2 py-1 text-right text-gray-500 font-medium">%</th>
+              {canAdjustPrice && (
+                <th className="px-2 py-1 text-center text-gray-500 font-medium w-16" />
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {items.map((item) => {
               const qty = Number(item.quantity || 0);
-              const lineTotal = qty * Number(item.newPrice || 0);
+              const isEditingRow = editingId === item.id;
+              const displayPrice = isEditingRow
+                ? Number(editPrice || 0)
+                : Number(item.newPrice || 0);
+              const lineTotal = qty * displayPrice;
 
               return (
                 <tr key={item.id} className={item.needsApproval ? "bg-yellow-50" : ""}>
@@ -105,7 +140,19 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                   </td>
                   <td className="px-2 py-2 text-right text-gray-500">{qty}</td>
                   <td className="px-2 py-2 text-right text-gray-900 font-medium">
-                    R{Number(item.newPrice || 0).toFixed(2)}
+                    {isEditingRow ? (
+                      <input
+                        type="number"
+                        value={editPrice}
+                        onChange={(e) => setEditPrice(e.target.value)}
+                        className="w-20 px-1 py-0.5 text-xs border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                        min={0}
+                        step="0.01"
+                        autoFocus
+                      />
+                    ) : (
+                      `R${Number(item.newPrice || 0).toFixed(2)}`
+                    )}
                   </td>
                   <td className="px-2 py-2 text-right text-gray-900 font-medium">
                     R{lineTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
@@ -118,6 +165,45 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                     {Number(item.changePercent || 0) > 0 ? "+" : ""}
                     {Number(item.changePercent || 0).toFixed(1)}%
                   </td>
+                  {canAdjustPrice && (
+                    <td className="px-2 py-2 text-center">
+                      {isEditingRow ? (
+                        <div className="flex items-center gap-1 justify-center">
+                          <button
+                            type="button"
+                            onClick={() => savePrice(item.id)}
+                            disabled={isSaving}
+                            className="px-1.5 py-0.5 text-[10px] font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                          >
+                            {isSaving ? "..." : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEditingPrice}
+                            className="px-1.5 py-0.5 text-[10px] text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => startEditingPrice(item.id, Number(item.newPrice || 0))}
+                          className="p-1 text-gray-400 hover:text-teal-600 transition-colors"
+                          title="Adjust price"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
