@@ -122,8 +122,10 @@ export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
               <img
                 src={state.url}
                 alt={state.filename || "Document"}
-                className="max-w-full max-h-[70vh] object-contain"
+                className="max-w-full max-h-[70vh] object-contain select-none"
                 style={imageViewerTransform(viewer.state)}
+                onMouseDown={viewer.handleMouseDown}
+                draggable={false}
               />
             ) : state.url && state.mimeType === "application/pdf" ? (
               <iframe

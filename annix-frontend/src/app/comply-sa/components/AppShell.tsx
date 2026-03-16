@@ -26,10 +26,10 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import AmixLogo from "@/app/components/AmixLogo";
-import { ThemeToggle } from "@/app/components/ThemeToggle";
 import Breadcrumbs from "@/app/comply-sa/components/Breadcrumbs";
 import HelpLinks from "@/app/comply-sa/components/HelpLinks";
+import AmixLogo from "@/app/components/AmixLogo";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 

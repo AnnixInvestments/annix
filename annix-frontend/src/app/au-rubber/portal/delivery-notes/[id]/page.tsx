@@ -1215,8 +1215,10 @@ export default function DeliveryNoteDetailPage() {
                   <img
                     src={podPageUrl}
                     alt={`POD Page ${podPageNumber}`}
-                    className="max-w-full max-h-[calc(90vh-120px)] w-auto h-auto mx-auto object-contain"
+                    className="max-w-full max-h-[calc(90vh-120px)] w-auto h-auto mx-auto object-contain select-none"
                     style={imageViewerTransform(podViewer.state)}
+                    onMouseDown={podViewer.handleMouseDown}
+                    draggable={false}
                   />
                 ) : (
                   <div className="text-center py-12 text-gray-500">Failed to load POD page</div>

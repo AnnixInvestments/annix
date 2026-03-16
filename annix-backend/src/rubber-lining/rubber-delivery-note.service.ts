@@ -884,17 +884,25 @@ export class RubberDeliveryNoteService {
   }
 
   private async specificGravityForDeliveryNote(note: RubberDeliveryNote): Promise<number> {
-    const DEFAULT_SG = 1.5;
+    const DEFAULT_SG = 1.05;
+
+    const extractedSg = note.extractedData?.rolls
+      ?.map((r) => r.specificGravity)
+      .find((sg) => sg !== null && sg !== undefined && sg > 0);
+    if (extractedSg) {
+      return extractedSg;
+    }
 
     const compoundCoding = await this.compoundCodingFromDeliveryNote(note);
-    if (!compoundCoding) return DEFAULT_SG;
-
-    const product = await this.productRepository.findOne({
-      where: { compoundFirebaseUid: compoundCoding.firebaseUid },
-    });
-    if (product?.specificGravity) {
-      return Number(product.specificGravity);
+    if (compoundCoding) {
+      const product = await this.productRepository.findOne({
+        where: { compoundFirebaseUid: compoundCoding.firebaseUid },
+      });
+      if (product?.specificGravity) {
+        return Number(product.specificGravity);
+      }
     }
+
     return DEFAULT_SG;
   }
 

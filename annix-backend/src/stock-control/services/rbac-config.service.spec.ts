@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { StockControlRbacConfig } from "../entities/stock-control-rbac-config.entity";
+import { ActionPermissionService } from "./action-permission.service";
 import { RbacConfigService } from "./rbac-config.service";
 
 describe("RbacConfigService", () => {
@@ -24,6 +25,10 @@ describe("RbacConfigService", () => {
       providers: [
         RbacConfigService,
         { provide: getRepositoryToken(StockControlRbacConfig), useValue: mockRepo },
+        {
+          provide: ActionPermissionService,
+          useValue: { permissionsForCompany: jest.fn().mockResolvedValue({}) },
+        },
       ],
     }).compile();
 

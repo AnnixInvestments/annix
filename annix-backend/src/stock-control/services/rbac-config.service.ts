@@ -34,12 +34,16 @@ export class RbacConfigService {
   async navConfig(companyId: number): Promise<Record<string, string[]>> {
     const rows = await this.rbacRepo.find({ where: { companyId } });
 
-    const config: Record<string, string[]> = rows.length > 0
-      ? rows.reduce((acc, row) => {
-          const existing = acc[row.navKey] || [];
-          return { ...acc, [row.navKey]: [...existing, row.role] };
-        }, {} as Record<string, string[]>)
-      : {};
+    const config: Record<string, string[]> =
+      rows.length > 0
+        ? rows.reduce(
+            (acc, row) => {
+              const existing = acc[row.navKey] || [];
+              return { ...acc, [row.navKey]: [...existing, row.role] };
+            },
+            {} as Record<string, string[]>,
+          )
+        : {};
 
     Object.keys(DEFAULT_NAV_CONFIG).forEach((key) => {
       if (!config[key]) {

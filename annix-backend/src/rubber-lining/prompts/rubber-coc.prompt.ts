@@ -244,7 +244,9 @@ Return a JSON object with this structure:
       "thicknessMm": number or null (typically 3-20mm),
       "widthMm": number or null (typically 800-1600mm),
       "lengthM": number or null (typically 5, 10, or 12.5 meters),
-      "weightKg": number or null (actual roll weight - MUST extract this),
+      "weightKg": number or null (actual INDIVIDUAL roll weight - MUST extract this from the roll listing, NOT the spec weight),
+      "areaSqM": number or null,
+      "specificGravity": number or null (e.g., 1.04, 1.05 - from "@ X.XX S.G" or "S.G's" in the description),
       "deliveryNoteNumber": string or null (DN number from THIS roll's page),
       "deliveryDate": string or null (PRINTED date from THIS roll's page in YYYY-MM-DD),
       "customerName": string or null (customer name from THIS roll's page),
@@ -253,10 +255,22 @@ Return a JSON object with this structure:
   ]
 }
 
+CRITICAL - MULTIPLE ROLLS PER LINE ITEM:
+- A single line item may have MULTIPLE rolls listed under it
+- The "Quantity" column shows how many rolls exist for that line item (e.g., "2.00" means 2 rolls)
+- Below the compound description line, EACH roll is listed with its own number and weight:
+  "Roll No & Weights -"
+  "187-41524 - 68KG"
+  "187-41525 - 67KG"
+- You MUST create a SEPARATE entry in the rolls array for EACH individual roll
+- The weightKg for each roll is the INDIVIDUAL weight printed next to that roll number (e.g., 68KG, 67KG)
+- Do NOT use the "per Roll" weight from the description line (e.g., "62.40Kg per Roll") - that is a specification weight, not the actual roll weight
+- The actual weights are always listed individually below each line item
+
 Guidelines:
-- Each delivery note page typically has ONE roll
+- A single page may contain MULTIPLE line items, each with MULTIPLE rolls - extract them ALL
 - Parse the compound code (e.g., RSCA40-20.950.125) to get thickness (20), width (950), length (12.5)
-- The roll number appears with its weight (e.g., "154-41210 - 258Kg") - ALWAYS extract the weight
+- The roll number appears with its weight (e.g., "154-41210 - 258Kg") - ALWAYS extract the INDIVIDUAL weight
 - Correct obvious OCR errors: if a roll number starts with 5XX-XXXXX and other rolls start with 1XX-XXXXX, correct to 1XX-XXXXX
 - CRITICAL: Create one entry in the rolls array for EACH roll across ALL pages
 - For each roll, capture the DN number, PRINTED date, and customer from THAT specific page
@@ -264,7 +278,8 @@ Guidelines:
 - NEVER extract dates from stamps, signatures, or handwritten notes at the bottom of pages
 - All rolls from the same document should have the SAME delivery date (the header date)
 - WEIGHT IS REQUIRED: Every roll entry MUST have weightKg populated - never leave it null if weight text exists
-- Check each page carefully for the weight value - it's always printed near the roll number
+- The weight next to each roll number is the ACTUAL weight, not the spec weight from the description
+- Check each page carefully for ALL roll numbers and their individual weights
 - Return ONLY the JSON object, no additional text`;
 
 export function compounderCocExtractionPrompt(pdfText: string): string {

@@ -269,7 +269,8 @@ export default function InvoiceDetailPage() {
   };
 
   const canEdit = user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
-  const canAdjustPrice = user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
+  const canAdjustPrice =
+    user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
 
   const handleAdjustPrice = async (itemId: number, newPrice: number) => {
     await stockControlApiClient.updateInvoiceItem(invoiceId, itemId, {

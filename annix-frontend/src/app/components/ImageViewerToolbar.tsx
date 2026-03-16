@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 export interface ImageViewerState {
   scale: number;
   rotation: number;
+  panX: number;
+  panY: number;
 }
 
 const SCALE_MIN = 0.5;
@@ -12,7 +14,18 @@ const SCALE_MAX = 3.0;
 const SCALE_STEP = 0.25;
 
 export function useImageViewer(initialScale = 1.0) {
-  const [state, setState] = useState<ImageViewerState>({ scale: initialScale, rotation: 0 });
+  const [state, setState] = useState<ImageViewerState>({
+    scale: initialScale,
+    rotation: 0,
+    panX: 0,
+    panY: 0,
+  });
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    startPanX: number;
+    startPanY: number;
+  } | null>(null);
 
   const zoomIn = useCallback(() => {
     setState((prev) => ({
@@ -36,17 +49,52 @@ export function useImageViewer(initialScale = 1.0) {
   }, []);
 
   const reset = useCallback(() => {
-    setState({ scale: initialScale, rotation: 0 });
+    setState({ scale: initialScale, rotation: 0, panX: 0, panY: 0 });
   }, [initialScale]);
 
-  return { state, zoomIn, zoomOut, rotateClockwise, reset };
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (state.scale <= 1.0) return;
+      e.preventDefault();
+      dragRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startPanX: state.panX,
+        startPanY: state.panY,
+      };
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!dragRef.current) return;
+        const dx = moveEvent.clientX - dragRef.current.startX;
+        const dy = moveEvent.clientY - dragRef.current.startY;
+        setState((prev) => ({
+          ...prev,
+          panX: dragRef.current!.startPanX + dx,
+          panY: dragRef.current!.startPanY + dy,
+        }));
+      };
+
+      const handleMouseUp = () => {
+        dragRef.current = null;
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [state.scale, state.panX, state.panY],
+  );
+
+  return { state, zoomIn, zoomOut, rotateClockwise, reset, handleMouseDown };
 }
 
 export function imageViewerTransform(state: ImageViewerState): React.CSSProperties {
   return {
-    transform: `scale(${state.scale}) rotate(${state.rotation}deg)`,
+    transform: `translate(${state.panX}px, ${state.panY}px) scale(${state.scale}) rotate(${state.rotation}deg)`,
     transformOrigin: "center center",
-    transition: "transform 0.2s ease",
+    transition: state.panX === 0 && state.panY === 0 ? "transform 0.2s ease" : "none",
+    cursor: state.scale > 1.0 ? "grab" : "default",
   };
 }
 
