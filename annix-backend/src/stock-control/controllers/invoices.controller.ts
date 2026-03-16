@@ -194,7 +194,7 @@ export class InvoicesController {
     return this.invoiceService.priceChangeSummary(req.user.companyId, id);
   }
 
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("accounts", "manager", "admin")
   @PermissionKey("invoices.approve")
   @Post(":id/approve")
   @ApiOperation({ summary: "Approve and apply price updates" })

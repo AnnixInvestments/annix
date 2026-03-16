@@ -517,13 +517,14 @@ export function InvoiceNextAction({
   }
 
   if (extractionStatus === "awaiting_approval") {
+    const canApproveRole =
+      userRole === "accounts" || userRole === "manager" || userRole === "admin";
     if (hasPriceChanges) {
-      const canApproveRole = userRole === "manager" || userRole === "admin";
       return (
         <NextActionBanner
           icon={priceIcon}
-          message="Manager approval required for price changes"
-          detail="This invoice contains price updates that need manager review before applying."
+          message="Approval required for price changes"
+          detail="This invoice contains price updates that need review before applying."
           actionLabel={canApproveRole ? "Review & Approve" : null}
           onAction={canApproveRole ? onApprove : null}
           variant="warning"
@@ -535,8 +536,8 @@ export function InvoiceNextAction({
         icon={checkIcon}
         message="Review prices and approve"
         detail="Invoice items have been matched. Review and approve to update stock prices."
-        actionLabel={userRole === "manager" || userRole === "admin" ? "Approve" : null}
-        onAction={userRole === "manager" || userRole === "admin" ? onApprove : null}
+        actionLabel={canApproveRole ? "Approve" : null}
+        onAction={canApproveRole ? onApprove : null}
         variant="action"
       />
     );
