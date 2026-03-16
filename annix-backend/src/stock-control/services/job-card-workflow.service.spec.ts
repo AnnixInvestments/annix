@@ -167,22 +167,17 @@ describe("JobCardWorkflowService", () => {
     });
   });
 
-  describe("admin can approve any step", () => {
-    it("admin approves manager step", async () => {
+  describe("admin role-based approval restrictions", () => {
+    it("admin cannot approve manager step", async () => {
       const jobCard = makeJobCard(JobCardWorkflowStatus.ADMIN_APPROVED);
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
 
-      await expect(
-        service.approveStep(1, 1, makeUser(StockControlRole.ADMIN), {}),
-      ).resolves.toBeDefined();
-
-      expect(mockJobCardRepo.update).toHaveBeenCalledWith(
-        { id: 1, companyId: 1, workflowStatus: JobCardWorkflowStatus.ADMIN_APPROVED },
-        { workflowStatus: JobCardWorkflowStatus.MANAGER_APPROVED },
+      await expect(service.approveStep(1, 1, makeUser(StockControlRole.ADMIN), {})).rejects.toThrow(
+        ForbiddenException,
       );
     });
 
-    it("admin approves storeman step", async () => {
+    it("admin can approve storeman step", async () => {
       const jobCard = makeJobCard(JobCardWorkflowStatus.REQUISITION_SENT);
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
 
@@ -348,9 +343,8 @@ describe("JobCardWorkflowService", () => {
         expect.objectContaining({
           statuses: expect.arrayContaining([
             JobCardWorkflowStatus.DOCUMENT_UPLOADED,
-            JobCardWorkflowStatus.ADMIN_APPROVED,
-            JobCardWorkflowStatus.MANAGER_APPROVED,
-            JobCardWorkflowStatus.STOCK_ALLOCATED,
+            JobCardWorkflowStatus.REQUISITION_SENT,
+            JobCardWorkflowStatus.READY_FOR_DISPATCH,
           ]),
         }),
       );

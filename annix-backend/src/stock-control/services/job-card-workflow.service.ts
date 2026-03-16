@@ -393,7 +393,19 @@ export class JobCardWorkflowService {
     }
 
     const requiredRole = this.roleForStep(currentStep);
-    return user.role === requiredRole || user.role === StockControlRole.ADMIN;
+
+    if (user.role === StockControlRole.ADMIN) {
+      const adminApprovableSteps: WorkflowStep[] = [
+        WorkflowStep.DOCUMENT_UPLOAD,
+        WorkflowStep.ADMIN_APPROVAL,
+        WorkflowStep.STOCK_ALLOCATION,
+        WorkflowStep.READY_FOR_DISPATCH,
+        WorkflowStep.DISPATCHED,
+      ];
+      return adminApprovableSteps.includes(currentStep);
+    }
+
+    return user.role === requiredRole;
   }
 
   async initializeWorkflow(
@@ -479,6 +491,19 @@ export class JobCardWorkflowService {
     const requiredRole = this.roleForStep(step);
 
     if (role === StockControlRole.ADMIN) {
+      const adminApprovableSteps: WorkflowStep[] = [
+        WorkflowStep.DOCUMENT_UPLOAD,
+        WorkflowStep.ADMIN_APPROVAL,
+        WorkflowStep.STOCK_ALLOCATION,
+        WorkflowStep.READY_FOR_DISPATCH,
+        WorkflowStep.DISPATCHED,
+      ];
+
+      if (!adminApprovableSteps.includes(step)) {
+        throw new ForbiddenException(
+          `Admin cannot approve step ${step}. Required role: ${requiredRole}`,
+        );
+      }
       return;
     }
 
@@ -577,9 +602,8 @@ export class JobCardWorkflowService {
     if (role === StockControlRole.ADMIN) {
       return [
         JobCardWorkflowStatus.DOCUMENT_UPLOADED,
-        JobCardWorkflowStatus.ADMIN_APPROVED,
-        JobCardWorkflowStatus.MANAGER_APPROVED,
-        JobCardWorkflowStatus.STOCK_ALLOCATED,
+        JobCardWorkflowStatus.REQUISITION_SENT,
+        JobCardWorkflowStatus.READY_FOR_DISPATCH,
       ];
     }
 

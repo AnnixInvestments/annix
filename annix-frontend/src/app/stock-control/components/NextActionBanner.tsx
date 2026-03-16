@@ -260,25 +260,38 @@ function resolveJobCardPrompt(
   }
 
   if (currentStatus === "manager_approved") {
+    if (canApprove && (userRole === "manager" || userRole === "admin")) {
+      return {
+        icon: clipboardIcon,
+        message: "Send requisition",
+        detail:
+          "Manager has approved. Run a coating analysis if needed, then approve to send the requisition.",
+        actionLabel: "Review & Approve",
+        actionType: "approve",
+        actionHref: null,
+        variant: "action",
+      };
+    }
     return {
-      icon: clipboardIcon,
-      message: "Run coating analysis",
-      detail: "Manager has approved. Run a coating analysis to determine material requirements.",
+      icon: clockIcon,
+      message: "Awaiting requisition",
+      detail: "Manager has approved. Waiting for the requisition to be sent.",
       actionLabel: null,
       actionType: null,
       actionHref: null,
-      variant: "action",
+      variant: "info",
     };
   }
 
   if (currentStatus === "requisition_sent") {
-    if (userRole === "storeman" || userRole === "admin") {
+    if (canApprove && (userRole === "storeman" || userRole === "admin")) {
       return {
         icon: boxIcon,
-        message: "Allocate stock to this job",
-        detail: "Requisition has been sent. Allocate the required stock items.",
-        actionLabel: null,
-        actionType: null,
+        message: "Allocate stock and approve",
+        detail:
+          "Requisition has been sent. Allocate the required stock items, then approve to continue.",
+        actionLabel: "Review & Approve",
+        actionType: "approve",
         actionHref: null,
         variant: "action",
       };
@@ -318,14 +331,25 @@ function resolveJobCardPrompt(
   }
 
   if (currentStatus === "manager_final") {
+    if (canApprove && (userRole === "storeman" || userRole === "admin")) {
+      return {
+        icon: truckIcon,
+        message: "Ready for dispatch approval",
+        detail: "Final manager sign-off complete. Approve to mark as ready for dispatch.",
+        actionLabel: "Review & Approve",
+        actionType: "approve",
+        actionHref: null,
+        variant: "action",
+      };
+    }
     return {
-      icon: truckIcon,
-      message: "Mark as ready for dispatch",
-      detail: "Final approval complete. This job is ready to be dispatched.",
+      icon: clockIcon,
+      message: "Awaiting dispatch readiness",
+      detail: "Final approval complete. Waiting for warehouse to confirm dispatch readiness.",
       actionLabel: null,
       actionType: null,
       actionHref: null,
-      variant: "action",
+      variant: "info",
     };
   }
 

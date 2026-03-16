@@ -51,8 +51,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
         await onApprove(dataUrl, comments || undefined);
         onClose();
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Approval failed. Please try again.";
+        const message = err instanceof Error ? err.message : "Approval failed. Please try again.";
         setError(message);
       } finally {
         setIsSubmitting(false);
@@ -72,8 +71,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
       await onReject(rejectReason);
       onClose();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Rejection failed. Please try again.";
+      const message = err instanceof Error ? err.message : "Rejection failed. Please try again.";
       setError(message);
     } finally {
       setIsSubmitting(false);

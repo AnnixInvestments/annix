@@ -253,9 +253,25 @@ export default function JobCardDetailPage() {
   };
 
   const currentStatus = workflowStatus?.currentStatus || null;
-  const canApprove = workflowStatus?.canApprove || false;
   const currentStep = workflowStatus?.currentStep || null;
   const userRole = user?.role || null;
+
+  const canApprove = useMemo(() => {
+    if (!currentStep || !userRole) return false;
+
+    const stepRoleMap: Record<string, string[]> = {
+      admin_approval: ["admin"],
+      manager_approval: ["manager"],
+      requisition_sent: ["manager"],
+      stock_allocation: ["storeman", "admin"],
+      manager_final: ["manager"],
+      ready_for_dispatch: ["storeman", "admin"],
+      dispatched: ["storeman", "admin"],
+    };
+
+    const allowedRoles = stepRoleMap[currentStep] || [];
+    return allowedRoles.includes(userRole);
+  }, [currentStep, userRole]);
   const pipingLossPct = profile?.pipingLossFactorPct || 45;
 
   const validLineItemCount = useMemo(
