@@ -90,49 +90,71 @@ export function TableEmptyState(props: TableEmptyStateProps) {
   );
 }
 
+export const PAGE_SIZE_OPTIONS = [25, 50, 100, 200, 0] as const;
+export type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
+
 export interface PaginationProps {
   currentPage: number;
   totalItems: number;
   itemsPerPage: number;
   itemName: string;
   onPageChange: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
 }
 
 export function Pagination(props: PaginationProps) {
-  const { currentPage, totalItems, itemsPerPage, itemName, onPageChange } = props;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const { currentPage, totalItems, itemsPerPage, itemName, onPageChange, onPageSizeChange } = props;
+  const showAll = itemsPerPage === 0 || itemsPerPage >= totalItems;
+  const effectivePerPage = showAll ? totalItems : itemsPerPage;
+  const totalPages = showAll ? 1 : Math.ceil(totalItems / effectivePerPage);
 
-  if (totalItems <= itemsPerPage) {
-    return null;
-  }
-
-  const startItem = currentPage * itemsPerPage + 1;
-  const endItem = Math.min((currentPage + 1) * itemsPerPage, totalItems);
+  const startItem = showAll ? 1 : currentPage * effectivePerPage + 1;
+  const endItem = showAll ? totalItems : Math.min((currentPage + 1) * effectivePerPage, totalItems);
 
   return (
     <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-      <div className="text-sm text-gray-500">
-        Showing {startItem} to {endItem} of {totalItems} {itemName}
-      </div>
-      <div className="flex items-center space-x-2">
-        <button
-          onClick={() => onPageChange(Math.max(0, currentPage - 1))}
-          disabled={currentPage === 0}
-          className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Previous
-        </button>
-        <span className="text-sm text-gray-700">
-          Page {currentPage + 1} of {totalPages}
+      <div className="flex items-center gap-4">
+        <span className="text-sm text-gray-500">
+          Showing {startItem} to {endItem} of {totalItems} {itemName}
         </span>
-        <button
-          onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
-          disabled={currentPage >= totalPages - 1}
-          className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Next
-        </button>
+        {onPageSizeChange && (
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              onPageSizeChange(Number(e.target.value));
+              onPageChange(0);
+            }}
+            className="text-sm border border-gray-300 rounded-md px-2 py-1 text-gray-700 focus:ring-yellow-500 focus:border-yellow-500"
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size === 0 ? "All" : size}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
+      {totalPages > 1 && (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => onPageChange(Math.max(0, currentPage - 1))}
+            disabled={currentPage === 0}
+            className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-700">
+            Page {currentPage + 1} of {totalPages}
+          </span>
+          <button
+            onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
+            disabled={currentPage >= totalPages - 1}
+            className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -140,7 +162,7 @@ export function Pagination(props: PaginationProps) {
 export const TABLE_HEADER_CLASSES =
   "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100";
 export const TABLE_CELL_CLASSES = "px-6 py-4 whitespace-nowrap";
-export const ITEMS_PER_PAGE = 15;
+export const ITEMS_PER_PAGE = 25;
 
 interface IconProps {
   className?: string;

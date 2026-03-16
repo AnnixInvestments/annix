@@ -48,6 +48,7 @@ export default function CompoundOrdersPage() {
   const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RubberCompoundOrderStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showNewModal, setShowNewModal] = useState(false);
@@ -110,14 +111,15 @@ export default function CompoundOrdersPage() {
     });
   };
 
+  const effectivePageSize = pageSize === 0 ? orders.length : pageSize;
   const paginatedOrders = sortOrders(orders).slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [statusFilter]);
+  }, [statusFilter, pageSize]);
 
   const handleCreate = async () => {
     if (!newCompoundStockId || !newQuantity) {
@@ -404,9 +406,10 @@ export default function CompoundOrdersPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={orders.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="orders"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
 

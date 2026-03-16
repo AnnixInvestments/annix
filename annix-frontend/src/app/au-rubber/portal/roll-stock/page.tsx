@@ -41,6 +41,7 @@ export default function RollStockPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<RollStockStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showReserveModal, setShowReserveModal] = useState(false);
@@ -146,14 +147,15 @@ export default function RollStockPage() {
     }),
   );
 
+  const effectivePageSize = pageSize === 0 ? filteredRolls.length : pageSize;
   const paginatedRolls = filteredRolls.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, filterStatus]);
+  }, [searchQuery, filterStatus, pageSize]);
 
   const handleReserve = async () => {
     if (!reserveRollId || !reserveCustomerId) {
@@ -572,9 +574,10 @@ export default function RollStockPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={filteredRolls.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="rolls"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
 

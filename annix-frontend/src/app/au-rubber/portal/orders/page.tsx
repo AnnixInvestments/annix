@@ -77,6 +77,7 @@ export default function AuRubberOrdersPage() {
   const [deleteOrderId, setDeleteOrderId] = useState<number | null>(null);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
@@ -202,15 +203,16 @@ export default function AuRubberOrdersPage() {
     }),
   );
 
+  const effectivePageSize = pageSize === 0 ? filteredOrders.length : pageSize;
   const paginatedOrders = filteredOrders.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
     setSelectedOrders(new Set());
-  }, [searchQuery, companyFilter, dateFrom, dateTo, statusFilter]);
+  }, [searchQuery, companyFilter, dateFrom, dateTo, statusFilter, pageSize]);
 
   const handleCreateOrder = async () => {
     try {
@@ -586,9 +588,10 @@ export default function AuRubberOrdersPage() {
           <Pagination
             currentPage={currentPage}
             totalItems={filteredOrders.length}
-            itemsPerPage={ITEMS_PER_PAGE}
+            itemsPerPage={pageSize}
             itemName="orders"
             onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
           />
         </div>
 

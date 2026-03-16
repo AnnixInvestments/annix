@@ -41,6 +41,7 @@ export default function QualityTrackingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<QualityStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("lastBatchDate");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
@@ -105,14 +106,15 @@ export default function QualityTrackingPage() {
     }),
   );
 
+  const effectivePageSize = pageSize === 0 ? filteredSummaries.length : pageSize;
   const paginatedSummaries = filteredSummaries.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, filterStatus]);
+  }, [searchQuery, filterStatus, pageSize]);
 
   const trendIcon = (trend: TrendDirection) => {
     if (trend === "up") return <ArrowUp className="w-3 h-3 text-green-500 inline" />;
@@ -393,9 +395,10 @@ export default function QualityTrackingPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={filteredSummaries.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="compounds"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
     </div>

@@ -55,6 +55,7 @@ export default function CustomerDeliveryNotesPage() {
   const isLoading = notesQuery.isLoading;
   const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("deliveryDate");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -153,14 +154,15 @@ export default function CustomerDeliveryNotesPage() {
     }),
   );
 
+  const effectivePageSize = pageSize === 0 ? filteredNotes.length : pageSize;
   const paginatedNotes = filteredNotes.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, filterType, filterStatus]);
+  }, [searchQuery, filterType, filterStatus, pageSize]);
 
   const handleFilesSelected = async (files: File[]) => {
     console.log("[CustomerDN] handleFilesSelected called with", files.length, "files");
@@ -192,9 +194,20 @@ export default function CustomerDeliveryNotesPage() {
     setIsUploading(true);
 
     try {
+      const modifiedAnalysis = {
+        ...analysisResult,
+        groups: analysisResult.groups.map((group, idx) => {
+          const override = overrides[idx];
+          if (override?.lineItems) {
+            return { ...group, allLineItems: override.lineItems };
+          }
+          return group;
+        }),
+      };
+
       const result = await auRubberApiClient.createCustomerDnsFromAnalysis(
         analysisFiles,
-        analysisResult,
+        modifiedAnalysis,
         overrides,
       );
       showToast(`Created ${result.deliveryNoteIds.length} delivery note(s)`, "success");
@@ -680,9 +693,10 @@ export default function CustomerDeliveryNotesPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={filteredNotes.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="notes"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
 

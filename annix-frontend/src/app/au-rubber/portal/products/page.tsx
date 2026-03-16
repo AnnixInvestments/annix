@@ -86,6 +86,7 @@ export default function AuRubberProductsPage() {
   const [compoundFilter, setCompoundFilter] = useState("");
   const [deleteProductId, setDeleteProductId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [sortColumn, setSortColumn] = useState<SortColumn>("title");
@@ -184,15 +185,16 @@ export default function AuRubberProductsPage() {
     }),
   );
 
+  const effectivePageSize = pageSize === 0 ? filteredProducts.length : pageSize;
   const paginatedProducts = filteredProducts.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
     setSelectedProducts(new Set());
-  }, [searchQuery, typeFilter, compoundFilter]);
+  }, [searchQuery, typeFilter, compoundFilter, pageSize]);
 
   const handleDelete = async (id: number) => {
     try {
@@ -563,9 +565,10 @@ export default function AuRubberProductsPage() {
           <Pagination
             currentPage={currentPage}
             totalItems={filteredProducts.length}
-            itemsPerPage={ITEMS_PER_PAGE}
+            itemsPerPage={pageSize}
             itemName="products"
             onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
           />
         </div>
 

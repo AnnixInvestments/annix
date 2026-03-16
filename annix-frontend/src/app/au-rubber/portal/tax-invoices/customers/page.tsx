@@ -43,6 +43,7 @@ export default function CustomerTaxInvoicesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<TaxInvoiceStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("invoiceDate");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -248,16 +249,17 @@ export default function CustomerTaxInvoicesPage() {
     }),
   );
 
+  const effectivePageSize = pageSize === 0 ? filteredInvoices.length : pageSize;
   const paginatedInvoices = filteredInvoices.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   const hasApprovable = paginatedInvoices.some((inv) => inv.status === "EXTRACTED");
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, filterStatus]);
+  }, [searchQuery, filterStatus, pageSize]);
 
   const handleFilesSelected = (files: File[]) => {
     setUploadFiles((prev) => [...prev, ...files]);
@@ -660,9 +662,10 @@ export default function CustomerTaxInvoicesPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={filteredInvoices.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="invoices"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
 

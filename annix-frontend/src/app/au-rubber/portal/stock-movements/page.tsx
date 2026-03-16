@@ -73,6 +73,7 @@ export default function StockMovementsPage() {
   const [typeFilter, setTypeFilter] = useState<CompoundMovementType | "">("");
   const [referenceFilter, setReferenceFilter] = useState<CompoundMovementReferenceType | "">("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
@@ -128,14 +129,15 @@ export default function StockMovementsPage() {
     });
   };
 
+  const effectivePageSize = pageSize === 0 ? movements.length : pageSize;
   const paginatedMovements = sortMovements(movements).slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [compoundFilter, typeFilter, referenceFilter]);
+  }, [compoundFilter, typeFilter, referenceFilter, pageSize]);
 
   const clearFilters = () => {
     setCompoundFilter("");
@@ -344,9 +346,10 @@ export default function StockMovementsPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={movements.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="movements"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
     </div>

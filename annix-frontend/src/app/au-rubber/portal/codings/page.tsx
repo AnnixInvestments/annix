@@ -124,6 +124,7 @@ export default function AuRubberCodingsPage() {
     name: "",
   });
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
 
   const fetchCodings = async (type: CodingType) => {
     try {
@@ -159,9 +160,10 @@ export default function AuRubberCodingsPage() {
     }
   }, [selectedTab]);
 
+  const effectivePageSize = pageSize === 0 ? codings.length : pageSize;
   const paginatedCodings = codings.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   const openNewModal = () => {
@@ -224,6 +226,10 @@ export default function AuRubberCodingsPage() {
     setSelectedTab(tab);
     setCurrentPage(0);
   };
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [pageSize]);
 
   const currentTypeInfo = selectedType ? CODING_TYPES.find((t) => t.value === selectedType) : null;
 
@@ -417,9 +423,10 @@ export default function AuRubberCodingsPage() {
               <Pagination
                 currentPage={currentPage}
                 totalItems={codings.length}
-                itemsPerPage={ITEMS_PER_PAGE}
+                itemsPerPage={pageSize}
                 itemName={currentTypeInfo ? currentTypeInfo.label.toLowerCase() : "codings"}
                 onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
               />
             </div>
           </>

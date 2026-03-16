@@ -25,6 +25,7 @@ export default function StockLocationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("displayOrder");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [deleteLocationId, setDeleteLocationId] = useState<number | null>(null);
@@ -91,14 +92,15 @@ export default function StockLocationsPage() {
     }),
   );
 
+  const effectivePageSize = pageSize === 0 ? filteredLocations.length : pageSize;
   const paginatedLocations = filteredLocations.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery]);
+  }, [searchQuery, pageSize]);
 
   const openNewModal = () => {
     setEditLocation(null);
@@ -324,9 +326,10 @@ export default function StockLocationsPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={filteredLocations.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="locations"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
 

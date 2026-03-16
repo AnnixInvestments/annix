@@ -67,7 +67,9 @@ export default function SupplierCocsPage() {
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
   const [compounderPage, setCompounderPage] = useState(0);
+  const [compounderPageSize, setCompounderPageSize] = useState(ITEMS_PER_PAGE);
   const [calendererPage, setCalendererPage] = useState(0);
+  const [calendererPageSize, setCalendererPageSize] = useState(ITEMS_PER_PAGE);
   const [compounderSort, setCompounderSort] = useState<{
     column: SortColumn;
     direction: SortDirection;
@@ -194,19 +196,23 @@ export default function SupplierCocsPage() {
     calendererSort,
   );
 
+  const effectiveCompounderPageSize =
+    compounderPageSize === 0 ? compounderCocs.length : compounderPageSize;
   const paginatedCompounder = compounderCocs.slice(
-    compounderPage * ITEMS_PER_PAGE,
-    (compounderPage + 1) * ITEMS_PER_PAGE,
+    compounderPage * effectiveCompounderPageSize,
+    (compounderPage + 1) * effectiveCompounderPageSize,
   );
+  const effectiveCalendererPageSize =
+    calendererPageSize === 0 ? calendererCocs.length : calendererPageSize;
   const paginatedCalenderer = calendererCocs.slice(
-    calendererPage * ITEMS_PER_PAGE,
-    (calendererPage + 1) * ITEMS_PER_PAGE,
+    calendererPage * effectiveCalendererPageSize,
+    (calendererPage + 1) * effectiveCalendererPageSize,
   );
 
   useEffect(() => {
     setCompounderPage(0);
     setCalendererPage(0);
-  }, [searchQuery, filterStatus, showAllVersions]);
+  }, [searchQuery, filterStatus, showAllVersions, compounderPageSize, calendererPageSize]);
 
   useEffect(() => {
     if (!isAnalyzing) return;
@@ -572,6 +578,8 @@ export default function SupplierCocsPage() {
             page: compounderPage,
             setPage: setCompounderPage,
             sort: compounderSort,
+            pageSize: compounderPageSize,
+            setPageSize: setCompounderPageSize,
           },
           {
             label: "Calenderer (Impilo Industries)",
@@ -582,6 +590,8 @@ export default function SupplierCocsPage() {
             page: calendererPage,
             setPage: setCalendererPage,
             sort: calendererSort,
+            pageSize: calendererPageSize,
+            setPageSize: setCalendererPageSize,
           },
         ].map((group) => {
           const hasApprovable = group.items.some(isApprovable);
@@ -806,9 +816,10 @@ export default function SupplierCocsPage() {
               <Pagination
                 currentPage={group.page}
                 totalItems={group.items.length}
-                itemsPerPage={ITEMS_PER_PAGE}
+                itemsPerPage={group.pageSize}
                 itemName="CoCs"
                 onPageChange={group.setPage}
+                onPageSizeChange={group.setPageSize}
               />
             </div>
           );

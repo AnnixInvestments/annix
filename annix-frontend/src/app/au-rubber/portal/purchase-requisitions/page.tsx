@@ -58,6 +58,7 @@ export default function PurchaseRequisitionsPage() {
   const [statusFilter, setStatusFilter] = useState<RequisitionStatus | "">("");
   const [sourceFilter, setSourceFilter] = useState<RequisitionSourceType | "">("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [cancelReqId, setCancelReqId] = useState<number | null>(null);
@@ -142,14 +143,15 @@ export default function PurchaseRequisitionsPage() {
     }),
   );
 
+  const effectivePageSize = pageSize === 0 ? filteredRequisitions.length : pageSize;
   const paginatedRequisitions = filteredRequisitions.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, statusFilter, sourceFilter]);
+  }, [searchQuery, statusFilter, sourceFilter, pageSize]);
 
   const handleCancel = async (id: number) => {
     try {
@@ -486,9 +488,10 @@ export default function PurchaseRequisitionsPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={filteredRequisitions.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="requisitions"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
 

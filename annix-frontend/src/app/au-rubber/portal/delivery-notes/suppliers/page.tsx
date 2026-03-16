@@ -53,6 +53,7 @@ export default function SupplierDeliveryNotesPage() {
   const isLoading = notesQuery.isLoading;
   const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("deliveryDate");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -139,14 +140,15 @@ export default function SupplierDeliveryNotesPage() {
     }),
   );
 
+  const effectivePageSize = pageSize === 0 ? filteredNotes.length : pageSize;
   const paginatedNotes = filteredNotes.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, filterType, filterStatus, showAllVersions]);
+  }, [searchQuery, filterType, filterStatus, showAllVersions, pageSize]);
 
   const handleAuthorizeVersion = async (id: number) => {
     try {
@@ -671,9 +673,10 @@ export default function SupplierDeliveryNotesPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={filteredNotes.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="notes"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
 

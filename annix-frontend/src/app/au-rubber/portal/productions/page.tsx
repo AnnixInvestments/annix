@@ -46,6 +46,7 @@ export default function ProductionsPage() {
   const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RubberProductionStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [cancelId, setCancelId] = useState<number | null>(null);
@@ -93,14 +94,15 @@ export default function ProductionsPage() {
     });
   };
 
+  const effectivePageSize = pageSize === 0 ? productions.length : pageSize;
   const paginatedProductions = sortProductions(productions).slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [statusFilter]);
+  }, [statusFilter, pageSize]);
 
   const handleStart = async (id: number) => {
     try {
@@ -339,9 +341,10 @@ export default function ProductionsPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={productions.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="productions"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
 

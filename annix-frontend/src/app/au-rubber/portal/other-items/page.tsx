@@ -48,6 +48,7 @@ export default function OtherItemsPage() {
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [sortColumn, setSortColumn] = useState<SortColumn>("itemName");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
@@ -156,14 +157,15 @@ export default function OtherItemsPage() {
     }),
   );
 
+  const effectivePageSize = pageSize === 0 ? filteredItems.length : pageSize;
   const paginatedItems = filteredItems.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
+    currentPage * effectivePageSize,
+    (currentPage + 1) * effectivePageSize,
   );
 
   useEffect(() => {
     setCurrentPage(0);
-  }, [searchQuery, showLowStockOnly, categoryFilter]);
+  }, [searchQuery, showLowStockOnly, categoryFilter, pageSize]);
 
   const resetItemForm = () => {
     setItemForm({
@@ -566,9 +568,10 @@ export default function OtherItemsPage() {
         <Pagination
           currentPage={currentPage}
           totalItems={filteredItems.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={pageSize}
           itemName="items"
           onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
         />
       </div>
 

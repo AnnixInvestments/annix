@@ -6,13 +6,16 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
+  Plus,
   RefreshCw,
+  Trash2,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import type {
   AnalyzeCustomerDnsResult,
   CustomerDnGroup,
+  CustomerDnLineItem,
   CustomerDnOverride,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
@@ -34,6 +37,7 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
       customerId: group.customerId || null,
       customerReference: group.customerReference || null,
       deliveryDate: group.deliveryDate || null,
+      lineItems: group.allLineItems.map((item) => ({ ...item })),
     })),
   );
   const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set([0]));
@@ -54,6 +58,54 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
     );
   };
 
+  const updateLineItem = (
+    groupIndex: number,
+    itemIndex: number,
+    field: keyof CustomerDnLineItem,
+    value: unknown,
+  ) => {
+    setOverrides((prev) =>
+      prev.map((o, gi) => {
+        if (gi !== groupIndex) return o;
+        const items = [...(o.lineItems || [])];
+        items[itemIndex] = { ...items[itemIndex], [field]: value === "" ? null : value };
+        return { ...o, lineItems: items };
+      }),
+    );
+  };
+
+  const addLineItem = (groupIndex: number) => {
+    setOverrides((prev) =>
+      prev.map((o, gi) => {
+        if (gi !== groupIndex) return o;
+        const items = [...(o.lineItems || [])];
+        const lastItem = items[items.length - 1];
+        const newItem: CustomerDnLineItem = {
+          lineNumber: items.length + 1,
+          compoundType: lastItem?.compoundType || null,
+          thicknessMm: lastItem?.thicknessMm || null,
+          widthMm: lastItem?.widthMm || null,
+          lengthM: lastItem?.lengthM || null,
+          quantity: 1,
+          rollWeightKg: null,
+          rollNumber: null,
+          cocBatchNumbers: null,
+        };
+        return { ...o, lineItems: [...items, newItem] };
+      }),
+    );
+  };
+
+  const removeLineItem = (groupIndex: number, itemIndex: number) => {
+    setOverrides((prev) =>
+      prev.map((o, gi) => {
+        if (gi !== groupIndex) return o;
+        const items = (o.lineItems || []).filter((_, idx) => idx !== itemIndex);
+        return { ...o, lineItems: items };
+      }),
+    );
+  };
+
   const validGroups = analysis.groups.filter((_, index) => overrides[index]?.customerId);
 
   const handleConfirm = async () => {
@@ -64,7 +116,7 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+        <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-medium text-gray-900">Customer Delivery Note Analysis</h3>
@@ -101,6 +153,11 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
                   isExpanded={expandedGroups.has(groupIndex)}
                   onToggle={() => toggleGroup(groupIndex)}
                   onUpdateOverride={(field, value) => updateOverride(groupIndex, field, value)}
+                  onUpdateLineItem={(itemIndex, field, value) =>
+                    updateLineItem(groupIndex, itemIndex, field, value)
+                  }
+                  onAddLineItem={() => addLineItem(groupIndex)}
+                  onRemoveLineItem={(itemIndex) => removeLineItem(groupIndex, itemIndex)}
                   isExisting={
                     Array.isArray(analysis.existingDnNumbers) &&
                     analysis.existingDnNumbers.includes(group.deliveryNoteNumber)
@@ -166,6 +223,9 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
   );
 }
 
+const inputClass =
+  "block w-full rounded border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs border px-1.5 py-1";
+
 interface GroupCardProps {
   group: CustomerDnGroup;
   groupIndex: number;
@@ -175,19 +235,25 @@ interface GroupCardProps {
   isExisting: boolean;
   onToggle: () => void;
   onUpdateOverride: (field: keyof CustomerDnOverride, value: unknown) => void;
+  onUpdateLineItem: (itemIndex: number, field: keyof CustomerDnLineItem, value: unknown) => void;
+  onAddLineItem: () => void;
+  onRemoveLineItem: (itemIndex: number) => void;
 }
 
 function GroupCard({
   group,
-  groupIndex,
   override,
   customers,
   isExpanded,
   isExisting,
   onToggle,
   onUpdateOverride,
+  onUpdateLineItem,
+  onAddLineItem,
+  onRemoveLineItem,
 }: GroupCardProps) {
   const isValid = !!override.customerId;
+  const lineItems = override.lineItems || group.allLineItems;
 
   return (
     <div
@@ -206,7 +272,9 @@ function GroupCard({
           <div className="flex items-center space-x-3">
             <div className="flex items-center">
               <FileText className="h-5 w-5 text-blue-500 mr-2" />
-              <span className="font-medium text-gray-900">{group.deliveryNoteNumber}</span>
+              <span className="font-medium text-gray-900">
+                {override.deliveryNoteNumber || group.deliveryNoteNumber}
+              </span>
             </div>
             {override.customerReference && (
               <span className="text-sm text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
@@ -219,7 +287,7 @@ function GroupCard({
               </span>
             )}
             <span className="text-sm text-gray-500">
-              {group.allLineItems.length} line item{group.allLineItems.length !== 1 ? "s" : ""}
+              {lineItems.length} line item{lineItems.length !== 1 ? "s" : ""}
             </span>
           </div>
         </div>
@@ -274,7 +342,9 @@ function GroupCard({
                 ))}
               </select>
               {group.customerName && !override.customerId && (
-                <p className="mt-1 text-xs text-yellow-600">Detected: "{group.customerName}"</p>
+                <p className="mt-1 text-xs text-yellow-600">
+                  Detected: &quot;{group.customerName}&quot;
+                </p>
               )}
             </div>
             <div>
@@ -301,50 +371,160 @@ function GroupCard({
           </div>
 
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Line Items</h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-medium text-gray-700">Line Items</h4>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddLineItem();
+                }}
+                className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add Row
+              </button>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      #
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Roll #
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                       Compound
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Dims (mm)
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Thick
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Width
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Length
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                       Qty
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Weight
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Weight (kg)
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      CoC Batches
-                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-8" />
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {group.allLineItems.map((item, itemIndex) => (
-                    <tr key={itemIndex}>
-                      <td className="px-3 py-2 whitespace-nowrap text-gray-500">
-                        {item.lineNumber || itemIndex + 1}
+                  {lineItems.map((item, itemIndex) => (
+                    <tr key={itemIndex} className="hover:bg-gray-50">
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="text"
+                          value={item.rollNumber || ""}
+                          onChange={(e) =>
+                            onUpdateLineItem(itemIndex, "rollNumber", e.target.value)
+                          }
+                          className={inputClass}
+                          placeholder="e.g., 187-41524"
+                        />
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap font-medium">
-                        {item.compoundType || "-"}
+                      <td className="px-2 py-1.5">
+                        <input
+                          type="text"
+                          value={item.compoundType || ""}
+                          onChange={(e) =>
+                            onUpdateLineItem(itemIndex, "compoundType", e.target.value)
+                          }
+                          className={inputClass}
+                          placeholder="SC38"
+                        />
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {item.thicknessMm || "-"} x {item.widthMm || "-"}
-                        {item.lengthM ? ` x ${item.lengthM}m` : ""}
+                      <td className="px-2 py-1.5 w-16">
+                        <input
+                          type="number"
+                          value={item.thicknessMm ?? ""}
+                          onChange={(e) =>
+                            onUpdateLineItem(
+                              itemIndex,
+                              "thicknessMm",
+                              e.target.value ? Number(e.target.value) : null,
+                            )
+                          }
+                          className={inputClass}
+                          step="any"
+                        />
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">{item.quantity || "-"}</td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {item.rollWeightKg ? `${item.rollWeightKg} kg` : "-"}
+                      <td className="px-2 py-1.5 w-20">
+                        <input
+                          type="number"
+                          value={item.widthMm ?? ""}
+                          onChange={(e) =>
+                            onUpdateLineItem(
+                              itemIndex,
+                              "widthMm",
+                              e.target.value ? Number(e.target.value) : null,
+                            )
+                          }
+                          className={inputClass}
+                          step="any"
+                        />
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {item.cocBatchNumbers?.join(", ") || "-"}
+                      <td className="px-2 py-1.5 w-20">
+                        <input
+                          type="number"
+                          value={item.lengthM ?? ""}
+                          onChange={(e) =>
+                            onUpdateLineItem(
+                              itemIndex,
+                              "lengthM",
+                              e.target.value ? Number(e.target.value) : null,
+                            )
+                          }
+                          className={inputClass}
+                          step="any"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5 w-16">
+                        <input
+                          type="number"
+                          value={item.quantity ?? ""}
+                          onChange={(e) =>
+                            onUpdateLineItem(
+                              itemIndex,
+                              "quantity",
+                              e.target.value ? Number(e.target.value) : null,
+                            )
+                          }
+                          className={inputClass}
+                          min="1"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5 w-20">
+                        <input
+                          type="number"
+                          value={item.rollWeightKg ?? ""}
+                          onChange={(e) =>
+                            onUpdateLineItem(
+                              itemIndex,
+                              "rollWeightKg",
+                              e.target.value ? Number(e.target.value) : null,
+                            )
+                          }
+                          className={inputClass}
+                          step="any"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRemoveLineItem(itemIndex);
+                          }}
+                          className="text-red-400 hover:text-red-600 p-0.5"
+                          title="Remove row"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </td>
                     </tr>
                   ))}
