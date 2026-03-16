@@ -3,17 +3,25 @@
 import { useState } from "react";
 import type { PriceChangeSummary } from "@/app/lib/api/stockControlApi";
 
+interface ItemEdits {
+  quantity?: string;
+  unitPrice?: string;
+}
+
 interface PriceUpdateReviewProps {
   priceSummary: PriceChangeSummary;
   onApprove: () => void;
   canAdjustPrice?: boolean;
-  onAdjustPrice?: (itemId: number, newPrice: number) => Promise<void>;
+  onAdjustItem?: (
+    itemId: number,
+    updates: { quantity?: number; unitPrice?: number },
+  ) => Promise<void>;
 }
 
 export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
-  const { priceSummary, onApprove, canAdjustPrice, onAdjustPrice } = props;
+  const { priceSummary, onApprove, canAdjustPrice, onAdjustItem } = props;
   const { items, totalOldValue, totalNewValue } = priceSummary;
-  const [editingPrices, setEditingPrices] = useState<Record<number, string>>({});
+  const [editingItems, setEditingItems] = useState<Record<number, ItemEdits>>({});
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
   const totalChangePercent =
     totalOldValue > 0 ? ((totalNewValue - totalOldValue) / totalOldValue) * 100 : 0;
@@ -21,28 +29,55 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
   const itemsNeedingApproval = items.filter((item) => item.needsApproval);
   const hasSignificantChanges = itemsNeedingApproval.length > 0;
 
-  const startEditingPrice = (itemId: number, currentPrice: number) => {
-    setEditingPrices((prev) => ({ ...prev, [itemId]: String(currentPrice) }));
+  const startEditing = (item: PriceChangeSummary["items"][0]) => {
+    setEditingItems((prev) => ({
+      ...prev,
+      [item.id]: {
+        quantity: String(item.quantity),
+        unitPrice: String(item.newPrice),
+      },
+    }));
   };
 
-  const cancelEditingPrice = (itemId: number) => {
-    setEditingPrices((prev) => {
+  const cancelEditing = (itemId: number) => {
+    setEditingItems((prev) => {
       const { [itemId]: _, ...rest } = prev;
       return rest;
     });
   };
 
-  const savePrice = async (itemId: number) => {
-    if (!onAdjustPrice) return;
-    const price = editingPrices[itemId];
-    if (price === undefined) return;
+  const updateEditField = (itemId: number, field: keyof ItemEdits, value: string) => {
+    setEditingItems((prev) => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], [field]: value },
+    }));
+  };
+
+  const saveItem = async (itemId: number, originalItem: PriceChangeSummary["items"][0]) => {
+    if (!onAdjustItem) return;
+    const edits = editingItems[itemId];
+    if (!edits) return;
+
+    const updates: { quantity?: number; unitPrice?: number } = {};
+    const newQty = Number(edits.quantity);
+    const newPrice = Number(edits.unitPrice);
+
+    if (newQty !== originalItem.quantity) {
+      updates.quantity = newQty;
+    }
+    if (newPrice !== originalItem.newPrice) {
+      updates.unitPrice = newPrice;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      cancelEditing(itemId);
+      return;
+    }
+
     setSavingIds((prev) => new Set([...prev, itemId]));
     try {
-      await onAdjustPrice(itemId, Number(price));
-      setEditingPrices((prev) => {
-        const { [itemId]: _, ...rest } = prev;
-        return rest;
-      });
+      await onAdjustItem(itemId, updates);
+      cancelEditing(itemId);
     } finally {
       setSavingIds((prev) => {
         const next = new Set(prev);
@@ -131,12 +166,15 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {items.map((item) => {
-              const qty = Number(item.quantity || 0);
-              const isEditingRow = editingPrices[item.id] !== undefined;
+              const edits = editingItems[item.id];
+              const isEditingRow = edits !== undefined;
+              const displayQty = isEditingRow
+                ? Number(edits.quantity || 0)
+                : Number(item.quantity || 0);
               const displayPrice = isEditingRow
-                ? Number(editingPrices[item.id] || 0)
+                ? Number(edits.unitPrice || 0)
                 : Number(item.newPrice || 0);
-              const lineTotal = qty * displayPrice;
+              const lineTotal = displayQty * displayPrice;
               const isRowSaving = savingIds.has(item.id);
 
               return (
@@ -147,15 +185,26 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                   >
                     {item.stockItemName}
                   </td>
-                  <td className="px-2 py-2 text-right text-gray-500">{qty}</td>
+                  <td className="px-2 py-2 text-right text-gray-500">
+                    {isEditingRow ? (
+                      <input
+                        type="number"
+                        value={edits.quantity}
+                        onChange={(e) => updateEditField(item.id, "quantity", e.target.value)}
+                        className="w-14 px-1 py-0.5 text-xs border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                        min={0}
+                        step="1"
+                      />
+                    ) : (
+                      Number(item.quantity || 0)
+                    )}
+                  </td>
                   <td className="px-2 py-2 text-right text-gray-900 font-medium">
                     {isEditingRow ? (
                       <input
                         type="number"
-                        value={editingPrices[item.id]}
-                        onChange={(e) =>
-                          setEditingPrices((prev) => ({ ...prev, [item.id]: e.target.value }))
-                        }
+                        value={edits.unitPrice}
+                        onChange={(e) => updateEditField(item.id, "unitPrice", e.target.value)}
                         className="w-20 px-1 py-0.5 text-xs border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
                         min={0}
                         step="0.01"
@@ -182,7 +231,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                         <div className="flex items-center gap-1 justify-center">
                           <button
                             type="button"
-                            onClick={() => savePrice(item.id)}
+                            onClick={() => saveItem(item.id, item)}
                             disabled={isRowSaving}
                             className="px-1.5 py-0.5 text-[10px] font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
                           >
@@ -190,7 +239,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                           </button>
                           <button
                             type="button"
-                            onClick={() => cancelEditingPrice(item.id)}
+                            onClick={() => cancelEditing(item.id)}
                             className="px-1.5 py-0.5 text-[10px] text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
                           >
                             Cancel
@@ -199,9 +248,9 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => startEditingPrice(item.id, Number(item.newPrice || 0))}
+                          onClick={() => startEditing(item)}
                           className="p-1 text-gray-400 hover:text-teal-600 transition-colors"
-                          title="Adjust price"
+                          title="Edit item"
                         >
                           <svg
                             className="w-3.5 h-3.5"

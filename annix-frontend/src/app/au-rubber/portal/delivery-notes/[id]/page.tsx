@@ -409,9 +409,10 @@ export default function DeliveryNoteDetailPage() {
         items={[
           {
             label: "Delivery Notes",
-            href: note.deliveryNoteType === "ROLL"
-              ? "/au-rubber/portal/delivery-notes/customers"
-              : "/au-rubber/portal/delivery-notes/suppliers",
+            href:
+              note.deliveryNoteType === "ROLL"
+                ? "/au-rubber/portal/delivery-notes/customers"
+                : "/au-rubber/portal/delivery-notes/suppliers",
           },
           { label: note.deliveryNoteNumber || `DN-${note.id}` },
         ]}

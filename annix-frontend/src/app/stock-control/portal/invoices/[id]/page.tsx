@@ -272,10 +272,11 @@ export default function InvoiceDetailPage() {
   const canAdjustPrice =
     user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
 
-  const handleAdjustPrice = async (itemId: number, newPrice: number) => {
-    await stockControlApiClient.updateInvoiceItem(invoiceId, itemId, {
-      unitPrice: newPrice,
-    });
+  const handleAdjustItem = async (
+    itemId: number,
+    updates: { quantity?: number; unitPrice?: number },
+  ) => {
+    await stockControlApiClient.updateInvoiceItem(invoiceId, itemId, updates);
     await fetchInvoice();
     await fetchPriceSummary();
   };
@@ -760,7 +761,7 @@ export default function InvoiceDetailPage() {
                 priceSummary={priceSummary}
                 onApprove={() => setShowApprovalModal(true)}
                 canAdjustPrice={canAdjustPrice}
-                onAdjustPrice={handleAdjustPrice}
+                onAdjustItem={handleAdjustItem}
               />
             </div>
           )}
