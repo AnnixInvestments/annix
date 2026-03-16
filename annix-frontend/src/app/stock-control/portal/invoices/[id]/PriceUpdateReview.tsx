@@ -13,9 +13,8 @@ interface PriceUpdateReviewProps {
 export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
   const { priceSummary, onApprove, canAdjustPrice, onAdjustPrice } = props;
   const { items, totalOldValue, totalNewValue } = priceSummary;
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editPrice, setEditPrice] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const [editingPrices, setEditingPrices] = useState<Record<number, string>>({});
+  const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
   const totalChangePercent =
     totalOldValue > 0 ? ((totalNewValue - totalOldValue) / totalOldValue) * 100 : 0;
 
@@ -23,24 +22,33 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
   const hasSignificantChanges = itemsNeedingApproval.length > 0;
 
   const startEditingPrice = (itemId: number, currentPrice: number) => {
-    setEditingId(itemId);
-    setEditPrice(String(currentPrice));
+    setEditingPrices((prev) => ({ ...prev, [itemId]: String(currentPrice) }));
   };
 
-  const cancelEditingPrice = () => {
-    setEditingId(null);
-    setEditPrice("");
+  const cancelEditingPrice = (itemId: number) => {
+    setEditingPrices((prev) => {
+      const { [itemId]: _, ...rest } = prev;
+      return rest;
+    });
   };
 
   const savePrice = async (itemId: number) => {
     if (!onAdjustPrice) return;
-    setIsSaving(true);
+    const price = editingPrices[itemId];
+    if (price === undefined) return;
+    setSavingIds((prev) => new Set([...prev, itemId]));
     try {
-      await onAdjustPrice(itemId, Number(editPrice));
-      setEditingId(null);
-      setEditPrice("");
+      await onAdjustPrice(itemId, Number(price));
+      setEditingPrices((prev) => {
+        const { [itemId]: _, ...rest } = prev;
+        return rest;
+      });
     } finally {
-      setIsSaving(false);
+      setSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
     }
   };
 
@@ -124,11 +132,12 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
           <tbody className="divide-y divide-gray-100">
             {items.map((item) => {
               const qty = Number(item.quantity || 0);
-              const isEditingRow = editingId === item.id;
+              const isEditingRow = editingPrices[item.id] !== undefined;
               const displayPrice = isEditingRow
-                ? Number(editPrice || 0)
+                ? Number(editingPrices[item.id] || 0)
                 : Number(item.newPrice || 0);
               const lineTotal = qty * displayPrice;
+              const isRowSaving = savingIds.has(item.id);
 
               return (
                 <tr key={item.id} className={item.needsApproval ? "bg-yellow-50" : ""}>
@@ -143,8 +152,10 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                     {isEditingRow ? (
                       <input
                         type="number"
-                        value={editPrice}
-                        onChange={(e) => setEditPrice(e.target.value)}
+                        value={editingPrices[item.id]}
+                        onChange={(e) =>
+                          setEditingPrices((prev) => ({ ...prev, [item.id]: e.target.value }))
+                        }
                         className="w-20 px-1 py-0.5 text-xs border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
                         min={0}
                         step="0.01"
@@ -172,14 +183,14 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
                           <button
                             type="button"
                             onClick={() => savePrice(item.id)}
-                            disabled={isSaving}
+                            disabled={isRowSaving}
                             className="px-1.5 py-0.5 text-[10px] font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
                           >
-                            {isSaving ? "..." : "Save"}
+                            {isRowSaving ? "..." : "Save"}
                           </button>
                           <button
                             type="button"
-                            onClick={cancelEditingPrice}
+                            onClick={() => cancelEditingPrice(item.id)}
                             className="px-1.5 py-0.5 text-[10px] text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
                           >
                             Cancel
