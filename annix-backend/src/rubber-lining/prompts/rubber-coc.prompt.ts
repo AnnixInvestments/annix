@@ -396,19 +396,23 @@ Return a JSON object with this structure:
 }
 
 PROOF OF DELIVERY (POD) PAGES - CRITICAL:
-Some pages in a multi-page PDF are NOT delivery notes — they are signed Proof of Delivery receipts.
+Some pages in a multi-page PDF are NOT delivery notes — they are standalone Proof of Delivery receipt pages.
+A POD page is a SEPARATE DOCUMENT from the delivery note. It does NOT have product line items, roll numbers, or quantities.
 POD pages typically contain:
-- "Goods Received Date", "Received by", "Signature", "Date Entered"
-- A company stamp or handwritten signatures
-- A DN number that matches an actual delivery note in the same PDF
-- A 5-digit internal document number (e.g., 23954, 23978) which is NOT a DN number
+- A 5-digit internal document number (e.g., 23954, 23978) as the main identifier — this is NOT a DN number
+- Fields like "Goods Received Date", "Received by", "Signature", "Date Entered"
+- A company stamp or handwritten signatures confirming receipt
+- Sometimes a reference to a DN number (e.g., "1307") but NO product/roll details
+
+IMPORTANT: A delivery note page that has "Received in good order" or signature fields at the bottom is still a DELIVERY NOTE, not a POD. If the page has product descriptions, quantities, roll numbers, or compound details, it is a delivery note — even if it also has signatures. Only classify a page as a POD if it is a standalone receipt with NO product line items.
+
 DO NOT create a separate delivery note entry for POD pages. Instead, add each POD page to the "podPages" array.
 POD pages are always scanned immediately AFTER the delivery note they belong to. Use page order to determine which DN a POD relates to.
 If the POD page shows a recognizable DN number (e.g., "1307"), set "relatedDnNumber" to that number. Otherwise set it to null and the system will use page order.
 
 Guidelines:
 - SCAN THROUGH THE ENTIRE DOCUMENT - pages may be delivery notes, PODs, or duplicates
-- POD/receipt pages (signed delivery confirmations) must go in the "podPages" array, NOT in "deliveryNotes"
+- POD/receipt pages (standalone receipt documents with NO product details) must go in the "podPages" array, NOT in "deliveryNotes"
 - If two pages show the same DN (e.g., customer copy + supplier copy), only return it ONCE
 - Parse dates from DD/MM/YYYY or YYYY/MM/DD to YYYY-MM-DD format
 - Extract compound codes and parse their components where possible
@@ -479,11 +483,16 @@ Some pages may be handwritten customer copies with a simpler format:
 - Extract what is legible; skip pages that are completely unreadable
 
 PROOF OF DELIVERY (POD) PAGES - CRITICAL:
-Some pages are NOT delivery notes — they are signed Proof of Delivery receipts.
+Some pages are NOT delivery notes — they are standalone Proof of Delivery receipt pages.
+A POD page is a SEPARATE DOCUMENT from the delivery note. It does NOT have product line items, roll numbers, or quantities.
 POD pages typically show:
-- "Goods Received Date", "Received by", "Signature", "Date Entered"
-- A company stamp or handwritten signatures
-- Sometimes a 5-digit internal document number (e.g., 23954, 23978) — this is NOT a DN number
+- A 5-digit internal document number (e.g., 23954, 23978) as the main identifier — this is NOT a DN number
+- Fields like "Goods Received Date", "Received by", "Signature", "Date Entered"
+- A company stamp or handwritten signatures confirming receipt
+- Sometimes a reference to a DN number but NO product/roll details
+
+IMPORTANT: A delivery note page that has "Received in good order" or signature fields at the bottom is still a DELIVERY NOTE, not a POD. If the page has product descriptions, quantities, roll numbers, or compound details, it is a delivery note — even if it also has signatures. Only classify a page as a POD if it is a standalone receipt with NO product line items.
+
 DO NOT create a separate delivery note entry for POD pages. Instead, add each POD page to the "podPages" array.
 POD pages are always scanned immediately AFTER the delivery note they belong to. Use page order to determine which DN a POD relates to.
 If the POD page shows a recognizable DN number (e.g., "1307"), set "relatedDnNumber" to that number. Otherwise set it to null.
@@ -523,8 +532,9 @@ Return a JSON object with this structure:
 }
 
 IMPORTANT:
-- Pages may be delivery notes, PODs (signed receipts), or duplicates. Only extract actual delivery notes into "deliveryNotes".
-- POD pages (signatures, "Goods Received", stamps, 5-digit document numbers) go in "podPages", NOT "deliveryNotes".
+- Pages may be delivery notes, PODs (standalone receipt documents), or duplicates. Only extract actual delivery notes into "deliveryNotes".
+- POD pages are standalone receipt documents with a 5-digit document number and NO product line items. They go in "podPages", NOT "deliveryNotes".
+- A delivery note with signature fields at the bottom is still a delivery note, NOT a POD. PODs have no product details.
 - If a page is upside down, still try to read it.
 - If two pages show the same DN (e.g., customer copy + supplier copy), only return it ONCE.
 - Parse roll dimensions like "20x950x12.5" or "8x800x12.5" into thicknessMm, widthMm, lengthM.
