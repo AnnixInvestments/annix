@@ -122,11 +122,11 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
 
     const insert = (step: WorkflowStepConfig) => {
       if (inserted.has(step.key)) return;
+      inserted.add(step.key);
       const parentKey = triggerKey(step);
       if (parentKey && allStepsByKey[parentKey]) {
         insert(allStepsByKey[parentKey]);
       }
-      inserted.add(step.key);
       result.push(step);
       const followers = [...(followersByKey[step.key] ?? [])].sort((a, b) => {
         if (a.isBackground !== b.isBackground) {
