@@ -327,8 +327,19 @@ FORMAT 1 - AU INDUSTRIES DELIVERY NOTE (outgoing):
   "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m, 249.37kg per Roll @ 1.05 S.G's"
   - RSCA40 = Roll Stock Cured A40 (A grade, 40 Shore hardness)
   - 20 = thickness in mm, 950 = width in mm, 125 = length (12.5m)
-- Roll No & Weight line: "154-41210 - 258Kg"
-- Quantity column shows qty (typically 1.00)
+- Roll No & Weights listed BELOW the description, one per line: "154-41210 - 258Kg"
+- Quantity column on the far right shows total number of rolls for that line (e.g., 2.00 means 2 rolls)
+- CRITICAL: When quantity > 1, MULTIPLE roll numbers and weights are listed below the description.
+  Each roll MUST become its own separate lineItem in the output. For example:
+  Description: "BSCA38-6.800.125 - Black A38 SC - 6mm x 800mm x 12.5m, 62.40Kg per Roll S.G 1.04"  Qty: 2.00
+  Roll No & Weights:
+    187-41524 - 68KG
+    187-41525 - 67KG
+  This produces TWO lineItems:
+    { "rollNumber": "187-41524", "actualWeightKg": 68, "widthMm": 800, ... }
+    { "rollNumber": "187-41525", "actualWeightKg": 67, "widthMm": 800, ... }
+  The "62.40Kg per Roll" in the description is the THEORETICAL weight, not the actual weight.
+  The actual weight is the number next to each roll number (68KG, 67KG).
 
 FORMAT 2 - SUPPLIER DELIVERY NOTE (incoming, e.g., Impilo Industries):
 - Header shows supplier company name and "DELIVERY NOTE" title
@@ -383,7 +394,9 @@ Guidelines:
 - Parse dates from DD/MM/YYYY or YYYY/MM/DD to YYYY-MM-DD format
 - Extract compound codes and parse their components where possible
 - Parse dimension strings like "20x950x12.5" into thicknessMm, widthMm, lengthM
-- Each delivery note typically has one roll/line item, but may have multiple
+- CRITICAL: Create ONE lineItem per PHYSICAL ROLL, not one per product description line.
+  If a description line has Quantity 2 with two roll numbers listed, output TWO lineItems sharing the same dimensions but each with their own rollNumber and actualWeightKg.
+  The actualWeightKg for each roll is the weight listed next to that roll number, NOT the "per Roll" weight from the description (that is the theoretical weight).
 - For Impilo/supplier DNs: return ONE line item per physical roll, NOT one per stock code. Combine roll number, weight, compound, and dimensions from the different stock code lines.
 - Return ONLY the JSON object, no additional text`;
 
@@ -402,8 +415,16 @@ The header contains a box/table with fields arranged horizontally:
 └─────────────────────────────────────────────────────────────────┘
 - FROM: AU INDUSTRIES (PTY) LTD (the supplier)
 - TO: Customer name and address
-- Product description: "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m"
-- Roll number and weight: "154-41210 - 258Kg"
+- Product description: "RSCA40-20.950.125 - Red A40 SC - 20mm x 950mm x 12.5m, 249.37kg per Roll @ 1.05 S.G's"
+- Roll numbers and weights listed BELOW description, one per line: "154-41210 - 258Kg"
+- Quantity column (far right) shows total number of rolls for that line (e.g., 2.00 = 2 rolls)
+- CRITICAL: When quantity > 1, MULTIPLE roll numbers with individual weights are listed.
+  Each roll MUST become its own separate lineItem. For example with Qty 2.00:
+    187-41524 - 68KG
+    187-41525 - 67KG
+  → TWO lineItems, each with their own rollNumber and actualWeightKg (68, 67).
+  The "per Roll" weight in the description is THEORETICAL, not actual.
+  The actual weight is next to each individual roll number.
 
 DOCUMENT FORMAT 2 - SUPPLIER DELIVERY NOTE (incoming, e.g., Impilo Industries):
 Header shows supplier company name and "DELIVERY NOTE" title.
@@ -472,6 +493,9 @@ IMPORTANT:
 - If two pages show the same DN (e.g., customer copy + supplier copy), only return it ONCE.
 - Parse roll dimensions like "20x950x12.5" or "8x800x12.5" into thicknessMm, widthMm, lengthM.
 - Parse dates from DD/MM/YYYY or YYYY/MM/DD to ISO YYYY-MM-DD format.
+- CRITICAL: Create ONE lineItem per PHYSICAL ROLL, not one per product description line.
+  If a description line has Quantity 2 with two roll numbers listed, output TWO lineItems sharing the same dimensions but each with their own rollNumber and actualWeightKg.
+  The actualWeightKg for each roll is the weight listed next to that roll number, NOT the "per Roll" weight from the description (that is theoretical).
 - For Impilo/supplier DNs: return ONE line item per physical roll, NOT one per stock code. Combine roll number, weight, compound, and dimensions from the different stock code lines. Ignore all zero-quantity lines.
 
 Return ONLY the JSON object, no additional text.`;
