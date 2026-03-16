@@ -1175,8 +1175,9 @@ class AdminApiClient {
     filters?: BroadcastFilterDto,
   ): Promise<{ broadcasts: BroadcastDetailDto[]; total: number }> {
     const params = new URLSearchParams();
-    if (filters?.status) params.append("status", filters.status);
-    if (filters?.targetAudience) params.append("targetAudience", filters.targetAudience);
+    if (filters?.includeExpired) params.append("includeExpired", "true");
+    if (filters?.priority) params.append("priority", filters.priority);
+    if (filters?.unreadOnly) params.append("unreadOnly", "true");
     if (filters?.page) params.append("page", filters.page.toString());
     if (filters?.limit) params.append("limit", filters.limit.toString());
 
@@ -1543,18 +1544,21 @@ export interface ConversationParticipant {
 export interface ConversationSummaryDto {
   id: number;
   subject: string;
-  type: "direct" | "group";
-  status: "active" | "archived" | "closed";
-  participants: ConversationParticipant[];
+  conversationType: string;
+  relatedEntityType: string;
+  relatedEntityId: number | null;
+  participantNames: string[];
   lastMessageAt: string | null;
   lastMessagePreview: string | null;
   unreadCount: number;
+  isArchived: boolean;
   createdAt: string;
+  status?: "active" | "archived" | "closed";
+  participants?: ConversationParticipant[];
 }
 
 export interface ConversationDetailDto extends ConversationSummaryDto {
-  relatedEntityType?: string;
-  relatedEntityId?: number;
+  messages?: MessageDto[];
 }
 
 export interface MessageAttachment {
@@ -1588,8 +1592,9 @@ export interface SendMessageDto {
 }
 
 export interface BroadcastFilterDto {
-  status?: string;
-  targetAudience?: string;
+  includeExpired?: boolean;
+  priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  unreadOnly?: boolean;
   page?: number;
   limit?: number;
 }
@@ -1597,26 +1602,27 @@ export interface BroadcastFilterDto {
 export interface BroadcastDetailDto {
   id: number;
   title: string;
+  contentPreview: string;
   content: string;
-  targetAudience: "all" | "customers" | "suppliers" | "admins";
-  status: "draft" | "scheduled" | "sent" | "cancelled";
-  scheduledAt: string | null;
-  sentAt: string | null;
-  readCount: number;
+  targetAudience: "ALL" | "CUSTOMERS" | "SUPPLIERS" | "SPECIFIC";
+  priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  expiresAt: string | null;
+  isRead: boolean;
+  sentByName: string;
   totalRecipients: number;
-  createdBy: {
-    id: number;
-    firstName: string;
-    lastName: string;
-  };
+  readCount: number;
+  emailSentCount: number;
   createdAt: string;
 }
 
 export interface CreateBroadcastDto {
   title: string;
   content: string;
-  targetAudience: "all" | "customers" | "suppliers" | "admins";
-  scheduledAt?: string;
+  targetAudience: "ALL" | "CUSTOMERS" | "SUPPLIERS" | "SPECIFIC";
+  specificUserIds?: number[];
+  priority?: "LOW" | "NORMAL" | "HIGH" | "URGENT";
+  expiresAt?: string;
+  sendEmail?: boolean;
 }
 
 export interface MetricsFilterDto {

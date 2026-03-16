@@ -8,9 +8,7 @@ import { formatDateZA } from "@/app/lib/datetime";
 type TabType = "conversations" | "broadcasts";
 
 function ConversationCard({ conversation }: { conversation: ConversationSummaryDto }) {
-  const participantNames = conversation.participants
-    .map((p) => `${p.firstName} ${p.lastName}`)
-    .join(", ");
+  const participantNames = (conversation.participantNames || []).join(", ");
 
   return (
     <Link
@@ -41,14 +39,12 @@ function ConversationCard({ conversation }: { conversation: ConversationSummaryD
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
           <span
             className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-              conversation.status === "active"
-                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                : conversation.status === "archived"
-                  ? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+              conversation.isArchived
+                ? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
             }`}
           >
-            {conversation.status}
+            {conversation.isArchived ? "archived" : "active"}
           </span>
           {conversation.lastMessageAt && (
             <span className="text-xs text-gray-400">
@@ -73,7 +69,7 @@ function BroadcastCard({ broadcast }: { broadcast: BroadcastDetailDto }) {
             {broadcast.title}
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-2">
-            {broadcast.content}
+            {broadcast.contentPreview || broadcast.content}
           </p>
           <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
             <span className="flex items-center gap-1">
@@ -95,24 +91,25 @@ function BroadcastCard({ broadcast }: { broadcast: BroadcastDetailDto }) {
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
           <span
             className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-              broadcast.status === "sent"
-                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                : broadcast.status === "scheduled"
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                  : broadcast.status === "draft"
-                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                    : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+              broadcast.priority === "URGENT"
+                ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                : broadcast.priority === "HIGH"
+                  ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                  : broadcast.priority === "LOW"
+                    ? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                    : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
             }`}
           >
-            {broadcast.status}
+            {broadcast.priority.toLowerCase()}
           </span>
           <span className="text-xs text-gray-400">
-            {broadcast.sentAt
-              ? formatDateZA(broadcast.sentAt)
-              : broadcast.scheduledAt
-                ? `Scheduled: ${formatDateZA(broadcast.scheduledAt)}`
-                : formatDateZA(broadcast.createdAt)}
+            {formatDateZA(broadcast.createdAt)}
           </span>
+          {broadcast.sentByName && (
+            <span className="text-xs text-gray-400">
+              by {broadcast.sentByName}
+            </span>
+          )}
         </div>
       </div>
     </Link>
@@ -195,8 +192,8 @@ export default function GlobalMessagesPage() {
         adminApiClient.broadcasts({ limit: 50 }),
       ]);
 
-      setConversations(conversationsRes.conversations);
-      setBroadcasts(broadcastsRes.broadcasts);
+      setConversations(conversationsRes?.conversations || []);
+      setBroadcasts(broadcastsRes?.broadcasts || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load messages");
     } finally {
