@@ -120,8 +120,12 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     const result: WorkflowStepConfig[] = [];
     const inserted = new Set<string>();
 
-    const insertWithFollowers = (step: WorkflowStepConfig) => {
+    const insert = (step: WorkflowStepConfig) => {
       if (inserted.has(step.key)) return;
+      const parentKey = triggerKey(step);
+      if (parentKey && allStepsByKey[parentKey]) {
+        insert(allStepsByKey[parentKey]);
+      }
       inserted.add(step.key);
       result.push(step);
       const followers = [...(followersByKey[step.key] ?? [])].sort((a, b) => {
@@ -130,28 +134,17 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
         }
         return a.sortOrder - b.sortOrder;
       });
-      followers.forEach((f) => insertWithFollowers(f));
+      followers.forEach((f) => insert(f));
     };
 
-    const roots = [...stepConfigs, ...backgroundSteps].filter((s) => {
-      const parent = triggerKey(s);
-      return !parent || !allStepsByKey[parent];
-    });
-
-    roots
+    [...backgroundSteps, ...stepConfigs]
       .sort((a, b) => {
         if (a.isBackground !== b.isBackground) {
           return a.isBackground ? -1 : 1;
         }
         return a.sortOrder - b.sortOrder;
       })
-      .forEach((root) => insertWithFollowers(root));
-
-    [...stepConfigs, ...backgroundSteps].forEach((s) => {
-      if (!inserted.has(s.key)) {
-        insertWithFollowers(s);
-      }
-    });
+      .forEach((s) => insert(s));
 
     return result;
   })();

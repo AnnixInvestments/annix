@@ -134,7 +134,11 @@ export class ComplySaComplianceService {
 
         const checklist = steps.map((step, index) => {
           const cp = progress.find((p) => p.stepIndex === index);
-          return { step, completed: cp?.completed ?? false };
+          return {
+            step,
+            completed: cp?.completed || false,
+            aiVerified: cp?.notes?.startsWith("AI-verified") || false,
+          };
         });
 
         return {
@@ -221,6 +225,76 @@ export class ComplySaComplianceService {
     return saved;
   }
 
+  async completeChecklistStepsFromAi(
+    companyId: number,
+    requirementId: number,
+    stepIndices: number[],
+    reasoning: string,
+  ): Promise<void> {
+    const requirement = await this.requirementRepository.findOne({
+      where: { id: requirementId },
+    });
+
+    if (requirement === null || requirement.checklistSteps === null) {
+      return;
+    }
+
+    const existingProgress = await this.checklistRepository.find({
+      where: { companyId, requirementId },
+    });
+
+    const existingByIndex = existingProgress.reduce(
+      (acc, cp) => ({ ...acc, [cp.stepIndex]: cp }),
+      {} as Record<number, ComplySaChecklistProgress>,
+    );
+
+    await Promise.all(
+      stepIndices.map(async (stepIndex) => {
+        const existing = existingByIndex[stepIndex];
+
+        if (existing?.completed) {
+          return;
+        }
+
+        const stepLabel =
+          stepIndex < requirement.checklistSteps!.length
+            ? requirement.checklistSteps![stepIndex]
+            : `Step ${stepIndex + 1}`;
+
+        if (existing) {
+          existing.completed = true;
+          existing.completedAt = now().toJSDate();
+          existing.completedByUserId = null;
+          existing.notes = `AI-verified: ${reasoning}`;
+          await this.checklistRepository.save(existing);
+        } else {
+          const progress = this.checklistRepository.create({
+            companyId,
+            requirementId,
+            stepIndex,
+            stepLabel,
+            completed: true,
+            completedAt: now().toJSDate(),
+            completedByUserId: null,
+            notes: `AI-verified: ${reasoning}`,
+          });
+          await this.checklistRepository.save(progress);
+        }
+      }),
+    );
+
+    await this.autoCompleteStatus(companyId, requirementId, null);
+
+    const auditEntry = this.auditLogRepository.create({
+      companyId,
+      action: "ai_checklist_complete",
+      entityType: "compliance_checklist",
+      entityId: requirementId,
+      details: { stepIndices, reasoning },
+    });
+    await this.auditLogRepository.save(auditEntry);
+  }
+
   async toggleChecklistStep(
     companyId: number,
     requirementId: number,
@@ -289,7 +363,7 @@ export class ComplySaComplianceService {
   private async autoCompleteStatus(
     companyId: number,
     requirementId: number,
-    userId: number,
+    userId: number | null,
   ): Promise<void> {
     const requirement = await this.requirementRepository.findOne({
       where: { id: requirementId },

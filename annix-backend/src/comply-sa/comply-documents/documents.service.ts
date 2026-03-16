@@ -2,6 +2,8 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
+import { ComplySaAiService } from "../ai/ai.service";
+import { ComplySaComplianceService } from "../compliance/compliance.service";
 import { ComplySaDocument } from "./entities/document.entity";
 
 const PRESIGNED_URL_TTL_SECONDS = 3600;
@@ -15,6 +17,8 @@ export class ComplySaDocumentsService {
     private readonly documentRepository: Repository<ComplySaDocument>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    private readonly aiService: ComplySaAiService,
+    private readonly complianceService: ComplySaComplianceService,
   ) {}
 
   async upload(
@@ -42,7 +46,38 @@ export class ComplySaDocumentsService {
       uploadedByUserId: userId,
     });
 
-    return this.documentRepository.save(document);
+    const saved = await this.documentRepository.save(document);
+
+    if (requirementId !== null) {
+      this.analyzeDocumentForChecklist(saved).catch((error) =>
+        this.logger.error(
+          `AI checklist analysis failed for document ${saved.id}: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
+    }
+
+    return saved;
+  }
+
+  private async analyzeDocumentForChecklist(document: ComplySaDocument): Promise<void> {
+    const result = await this.aiService.analyzeDocumentForChecklist(
+      document.filePath,
+      document.mimeType,
+      document.sizeBytes,
+      document.requirementId!,
+    );
+
+    if (result.completedStepIndices.length > 0) {
+      await this.complianceService.completeChecklistStepsFromAi(
+        document.companyId,
+        document.requirementId!,
+        result.completedStepIndices,
+        result.reasoning,
+      );
+      this.logger.log(
+        `AI auto-completed steps [${result.completedStepIndices.join(", ")}] for requirement ${document.requirementId}: ${result.reasoning}`,
+      );
+    }
   }
 
   async documentsForCompany(companyId: number): Promise<ComplySaDocument[]> {

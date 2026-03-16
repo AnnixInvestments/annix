@@ -92,6 +92,9 @@ export function useUploadDocument() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: complySaKeys.documents.all });
       queryClient.invalidateQueries({ queryKey: complySaKeys.compliance.dashboard() });
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: complySaKeys.compliance.dashboard() });
+      }, 8000);
     },
   });
 }

@@ -95,7 +95,7 @@ export function dashboard(): Promise<{
     status: string;
     description: string;
     nextDueDate: string | null;
-    checklist: Array<{ step: string; completed: boolean }>;
+    checklist: Array<{ step: string; completed: boolean; aiVerified: boolean }>;
     documents: Array<{ id: string; name: string; uploadedAt: string }>;
   }>;
 }> {

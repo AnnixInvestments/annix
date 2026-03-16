@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   AlertTriangle,
+  Bot,
   CheckCircle,
   ChevronDown,
   ChevronUp,
@@ -14,7 +15,7 @@ import {
 import { useState } from "react";
 import SetupWizard from "@/app/comply-sa/components/SetupWizard";
 import { formatDateZA } from "@/app/lib/datetime";
-import { useComplySaDashboard, useToggleChecklist, useUploadDocument } from "@/app/lib/query/hooks";
+import { useComplySaDashboard, useUploadDocument } from "@/app/lib/query/hooks";
 
 type DashboardData = NonNullable<ReturnType<typeof useComplySaDashboard>["data"]>;
 type Requirement = DashboardData["requirements"][number];
@@ -170,11 +171,9 @@ function LoadingSkeleton() {
 
 function RequirementCard({
   requirement,
-  onChecklistToggle,
   onDocumentUpload,
 }: {
   requirement: Requirement;
-  onChecklistToggle: (reqId: string, stepIndex: number) => void;
   onDocumentUpload: (reqId: string, file: File) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -240,23 +239,32 @@ function RequirementCard({
               </h4>
               <div className="space-y-2">
                 {requirement.checklist.map((item, index) => (
-                  <label key={index} className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={item.completed}
-                      onChange={() => onChecklistToggle(requirement.id, index)}
-                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-teal-500 focus:ring-teal-500 focus:ring-offset-0"
-                    />
+                  <div key={index} className="flex items-center gap-3">
+                    <div
+                      className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                        item.completed
+                          ? "bg-teal-500 border-teal-500"
+                          : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+                      }`}
+                    >
+                      {item.completed && <CheckCircle className="h-3 w-3 text-white" />}
+                    </div>
                     <span
                       className={`text-sm ${
                         item.completed
                           ? "text-slate-500 line-through"
-                          : "text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white"
+                          : "text-slate-600 dark:text-slate-300"
                       }`}
                     >
                       {item.step}
                     </span>
-                  </label>
+                    {item.aiVerified && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-500 border border-purple-500/20">
+                        <Bot className="h-2.5 w-2.5" />
+                        AI
+                      </span>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -303,12 +311,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function DashboardPage() {
   const { data, isLoading, error } = useComplySaDashboard();
-  const toggleChecklist = useToggleChecklist();
   const uploadDocument = useUploadDocument();
-
-  function handleChecklistToggle(reqId: string, stepIndex: number) {
-    toggleChecklist.mutate({ requirementId: reqId, stepIndex });
-  }
 
   function handleDocumentUpload(reqId: string, file: File) {
     uploadDocument.mutate({ file, requirementId: reqId });
@@ -424,7 +427,6 @@ export default function DashboardPage() {
                   <RequirementCard
                     key={req.id}
                     requirement={req}
-                    onChecklistToggle={handleChecklistToggle}
                     onDocumentUpload={handleDocumentUpload}
                   />
                 ))}

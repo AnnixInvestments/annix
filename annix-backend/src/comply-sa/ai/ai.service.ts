@@ -1,8 +1,10 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { ComplySaCompany } from "../companies/entities/company.entity";
+import { ComplySaComplianceRequirement } from "../compliance/entities/compliance-requirement.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { formatDateZA, fromJSDate } from "../lib/datetime";
 
@@ -11,6 +13,28 @@ export interface ChatResponse {
   relatedRequirements: string[];
   providerUsed: string;
 }
+
+export interface DocumentAnalysisResult {
+  completedStepIndices: number[];
+  reasoning: string;
+}
+
+type SupportedMediaType =
+  | "image/jpeg"
+  | "image/png"
+  | "image/gif"
+  | "image/webp"
+  | "application/pdf";
+
+const SUPPORTED_MEDIA_TYPES: ReadonlySet<string> = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+]);
+
+const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
 
 const SYSTEM_PROMPT = [
   "You are the Comply SA compliance assistant, an expert on South African business compliance and regulations.",
@@ -43,6 +67,10 @@ export class ComplySaAiService {
     private readonly companyRepository: Repository<ComplySaCompany>,
     @InjectRepository(ComplySaComplianceStatus)
     private readonly statusRepository: Repository<ComplySaComplianceStatus>,
+    @InjectRepository(ComplySaComplianceRequirement)
+    private readonly requirementRepository: Repository<ComplySaComplianceRequirement>,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
   ) {}
 
@@ -113,6 +141,99 @@ export class ComplySaAiService {
         relatedRequirements,
         providerUsed: "none",
       };
+    }
+  }
+
+  async analyzeDocumentForChecklist(
+    filePath: string,
+    mimeType: string | null,
+    sizeBytes: number | null,
+    requirementId: number,
+  ): Promise<DocumentAnalysisResult> {
+    const emptyResult: DocumentAnalysisResult = { completedStepIndices: [], reasoning: "" };
+
+    if (mimeType === null || !SUPPORTED_MEDIA_TYPES.has(mimeType)) {
+      this.logger.log(`Skipping AI analysis for unsupported mime type: ${mimeType}`);
+      return emptyResult;
+    }
+
+    if (sizeBytes !== null && sizeBytes > MAX_DOCUMENT_SIZE_BYTES) {
+      this.logger.log(`Skipping AI analysis for oversized document: ${sizeBytes} bytes`);
+      return emptyResult;
+    }
+
+    const requirement = await this.requirementRepository.findOne({
+      where: { id: requirementId },
+    });
+
+    if (
+      requirement === null ||
+      requirement.checklistSteps === null ||
+      requirement.checklistSteps.length === 0
+    ) {
+      return emptyResult;
+    }
+
+    const fileBuffer = await this.storageService.download(filePath);
+    const base64 = fileBuffer.toString("base64");
+
+    const numberedSteps = requirement.checklistSteps
+      .map((step, index) => `${index}: "${step}"`)
+      .join("\n");
+
+    const prompt = [
+      `A company has uploaded a document linked to the compliance requirement: "${requirement.name}".`,
+      `Description: ${requirement.description}`,
+      "",
+      "The requirement has these checklist steps:",
+      numberedSteps,
+      "",
+      "Analyze the uploaded document and determine which checklist steps this document provides evidence of completion for.",
+      "",
+      'Return JSON only: { "completedStepIndices": [0, 2], "reasoning": "brief explanation" }',
+      "",
+      "Rules:",
+      "- Only mark steps where the document provides clear evidence of completion",
+      "- A filed return or receipt satisfies submission/payment steps",
+      "- A registration certificate satisfies registration steps",
+      "- Be conservative - only mark steps with strong evidence",
+      "- Return an empty array if the document does not clearly satisfy any steps",
+    ].join("\n");
+
+    const systemPrompt = [
+      "You are a South African compliance document analyst.",
+      "You analyze uploaded documents against compliance checklist steps and determine which steps the document satisfies.",
+      "You must respond with valid JSON only, no markdown formatting.",
+    ].join("\n");
+
+    try {
+      const result = await this.aiChatService.chatWithImage(
+        base64,
+        mimeType as SupportedMediaType,
+        prompt,
+        systemPrompt,
+      );
+
+      const cleaned = result.content
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .trim();
+      const parsed = JSON.parse(cleaned) as { completedStepIndices?: number[]; reasoning?: string };
+
+      const validIndices = (parsed.completedStepIndices || []).filter(
+        (idx): idx is number =>
+          typeof idx === "number" && idx >= 0 && idx < requirement.checklistSteps!.length,
+      );
+
+      return {
+        completedStepIndices: validIndices,
+        reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : "",
+      };
+    } catch (error) {
+      this.logger.error(
+        `AI document analysis failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return emptyResult;
     }
   }
 

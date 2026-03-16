@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { StockControlRbacConfig } from "../entities/stock-control-rbac-config.entity";
+import { ActionPermissionService } from "./action-permission.service";
 
 const DEFAULT_NAV_CONFIG: Record<string, string[]> = {
   dashboard: ["viewer", "storeman", "accounts", "manager", "admin"],
@@ -18,28 +19,27 @@ const DEFAULT_NAV_CONFIG: Record<string, string[]> = {
 
 const IMMUTABLE_NAV_KEYS = ["settings"];
 
+const NAV_TO_ACTION_KEYS: Record<string, string[]> = {
+  "issue-stock": ["issuance.issue", "issuance.undo"],
+};
+
 @Injectable()
 export class RbacConfigService {
   constructor(
     @InjectRepository(StockControlRbacConfig)
     private readonly rbacRepo: Repository<StockControlRbacConfig>,
+    private readonly actionPermissionService: ActionPermissionService,
   ) {}
 
   async navConfig(companyId: number): Promise<Record<string, string[]>> {
     const rows = await this.rbacRepo.find({ where: { companyId } });
 
-    if (rows.length === 0) {
-      return { ...DEFAULT_NAV_CONFIG };
-    }
-
-    const config: Record<string, string[]> = {};
-
-    rows.forEach((row) => {
-      if (!config[row.navKey]) {
-        config[row.navKey] = [];
-      }
-      config[row.navKey].push(row.role);
-    });
+    const config: Record<string, string[]> = rows.length > 0
+      ? rows.reduce((acc, row) => {
+          const existing = acc[row.navKey] || [];
+          return { ...acc, [row.navKey]: [...existing, row.role] };
+        }, {} as Record<string, string[]>)
+      : {};
 
     Object.keys(DEFAULT_NAV_CONFIG).forEach((key) => {
       if (!config[key]) {
@@ -49,6 +49,18 @@ export class RbacConfigService {
 
     IMMUTABLE_NAV_KEYS.forEach((key) => {
       config[key] = [...DEFAULT_NAV_CONFIG[key]];
+    });
+
+    const actionPerms = await this.actionPermissionService.permissionsForCompany(companyId);
+    Object.entries(NAV_TO_ACTION_KEYS).forEach(([navKey, actionKeys]) => {
+      const navRoles = config[navKey] || [];
+      const additionalRoles = actionKeys
+        .flatMap((ak) => actionPerms[ak] || [])
+        .filter((role) => !navRoles.includes(role));
+
+      if (additionalRoles.length > 0) {
+        config[navKey] = [...navRoles, ...new Set(additionalRoles)];
+      }
     });
 
     return config;
