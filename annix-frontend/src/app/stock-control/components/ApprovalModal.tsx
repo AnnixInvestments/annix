@@ -23,6 +23,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [isLoadingSignature, setIsLoadingSignature] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -44,12 +45,15 @@ export function ApprovalModal(props: ApprovalModalProps) {
   const handleApprove = useCallback(
     async (signatureDataUrl?: string) => {
       setIsSubmitting(true);
+      setError(null);
       try {
         const dataUrl = signatureDataUrl || undefined;
         await onApprove(dataUrl, comments || undefined);
         onClose();
-      } catch (error) {
-        console.error("Approval failed:", error);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Approval failed. Please try again.";
+        setError(message);
       } finally {
         setIsSubmitting(false);
       }
@@ -63,11 +67,14 @@ export function ApprovalModal(props: ApprovalModalProps) {
     }
 
     setIsSubmitting(true);
+    setError(null);
     try {
       await onReject(rejectReason);
       onClose();
-    } catch (error) {
-      console.error("Rejection failed:", error);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Rejection failed. Please try again.";
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -77,6 +84,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
     setMode("choice");
     setComments("");
     setRejectReason("");
+    setError(null);
     onClose();
   }, [onClose]);
 
@@ -167,6 +175,12 @@ export function ApprovalModal(props: ApprovalModalProps) {
 
                 {isSubmitting && (
                   <div className="text-center text-gray-500">Processing approval...</div>
+                )}
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                    {error}
+                  </div>
                 )}
               </div>
             )}
