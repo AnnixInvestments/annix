@@ -419,6 +419,26 @@ export class RubberInboundEmailService {
           `Identified supplier from document: ${supplierMapping.company.name} (${supplierMapping.cocType})`,
         );
 
+        try {
+          const actualType = await this.classifyDocumentType(documentText, attachment.filename);
+          if (actualType === "coc") {
+            this.logger.log(
+              `Rerouting ${attachment.filename} from ${documentType} to CoC based on content (supplier: ${supplierMapping.company.name})`,
+            );
+            await this.processCocAttachments([attachment], emailData, result);
+            return;
+          }
+          if (actualType !== documentType) {
+            this.logger.log(
+              `Reclassifying ${attachment.filename} from ${documentType} to ${actualType} based on content`,
+            );
+          }
+        } catch (classifyError) {
+          this.logger.warn(
+            `Content classification failed for ${attachment.filename}, keeping as ${documentType}: ${classifyError.message}`,
+          );
+        }
+
         const storageResult = await this.saveAttachment(
           attachment,
           supplierMapping.company.id,
@@ -736,6 +756,19 @@ export class RubberInboundEmailService {
     const textLower = pdfText.toLowerCase();
     const filenameLower = filename.toLowerCase();
 
+    const cocKeywords = [
+      "certificate of conformance",
+      "certificate of compliance",
+      "certificate of quality",
+      "test certificate",
+      "test report",
+      "shore hardness",
+      "tensile strength",
+      "specific gravity",
+      "elongation at break",
+      "hardness irhd",
+    ];
+    const cocFilenameKeywords = ["coc", "cert", "certificate", "test_report", "test-report"];
     const taxInvoiceKeywords = [
       "tax invoice",
       "invoice number",
@@ -767,6 +800,14 @@ export class RubberInboundEmailService {
       "waybill",
       "packing",
     ];
+
+    if (
+      cocKeywords.some((kw) => textLower.includes(kw)) ||
+      cocFilenameKeywords.some((kw) => filenameLower.includes(kw))
+    ) {
+      this.logger.log(`Rule-based classification: coc (file: ${filename})`);
+      return "coc";
+    }
 
     if (
       taxInvoiceKeywords.some((kw) => textLower.includes(kw)) ||
@@ -2199,9 +2240,8 @@ ${truncatedText}`;
     const dnOrder = deliveryNotes
       .map((dn, idx) => ({
         dnNumber: dn.deliveryNoteNumber,
-        maxPage: dn.sourcePages && dn.sourcePages.length > 0
-          ? Math.max(...dn.sourcePages)
-          : idx + 1,
+        maxPage:
+          dn.sourcePages && dn.sourcePages.length > 0 ? Math.max(...dn.sourcePages) : idx + 1,
       }))
       .filter((entry) => entry.dnNumber !== null);
 

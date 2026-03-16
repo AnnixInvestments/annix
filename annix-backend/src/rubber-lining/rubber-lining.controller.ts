@@ -3385,9 +3385,8 @@ Formula: totalPrice = totalKg × salePricePerKg
     const dnPageNumbers = deliveryNotes
       .map((dn, idx) => ({
         dnNumber: dn.deliveryNoteNumber || null,
-        maxPage: dn.sourcePages && dn.sourcePages.length > 0
-          ? Math.max(...dn.sourcePages)
-          : idx + 1,
+        maxPage:
+          dn.sourcePages && dn.sourcePages.length > 0 ? Math.max(...dn.sourcePages) : idx + 1,
       }))
       .filter((entry) => entry.dnNumber === targetDnNumber)
       .map((entry) => entry.maxPage);

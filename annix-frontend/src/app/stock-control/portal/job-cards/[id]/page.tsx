@@ -257,7 +257,9 @@ export default function JobCardDetailPage() {
   const userRole = user?.role || null;
 
   const canApprove = useMemo(() => {
-    if (!currentStep || !userRole) return false;
+    if (!currentStep || !userRole || !workflowStatus) return false;
+
+    if (workflowStatus.jobCardStatus !== "active") return false;
 
     const stepRoleMap: Record<string, string[]> = {
       admin_approval: ["admin"],
@@ -270,8 +272,16 @@ export default function JobCardDetailPage() {
     };
 
     const allowedRoles = stepRoleMap[currentStep] || [];
-    return allowedRoles.includes(userRole);
-  }, [currentStep, userRole]);
+    if (!allowedRoles.includes(userRole)) return false;
+
+    const assignedUsers = workflowStatus.stepAssignments?.[currentStep];
+    if (assignedUsers && assignedUsers.length > 0 && user) {
+      const assignedNames = assignedUsers.map((u) => u.name);
+      if (!assignedNames.includes(user.name)) return false;
+    }
+
+    return true;
+  }, [currentStep, userRole, workflowStatus, user]);
   const pipingLossPct = profile?.pipingLossFactorPct || 45;
 
   const validLineItemCount = useMemo(
@@ -495,7 +505,11 @@ export default function JobCardDetailPage() {
       {workflowStatus && currentStatus !== "draft" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <WorkflowStatus currentStatus={currentStatus!} approvals={approvals} />
+            <WorkflowStatus
+              currentStatus={currentStatus!}
+              approvals={approvals}
+              stepAssignments={workflowStatus.stepAssignments || {}}
+            />
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Workflow Actions</h3>
@@ -517,6 +531,10 @@ export default function JobCardDetailPage() {
                 {currentStatus === "dispatched" ? (
                   <p className="text-green-600 font-medium">
                     This job card has been fully dispatched.
+                  </p>
+                ) : workflowStatus.jobCardStatus !== "active" ? (
+                  <p className="text-amber-600 font-medium">
+                    This job card must be activated before workflow steps can be approved.
                   </p>
                 ) : (
                   <p>Awaiting action from another role.</p>

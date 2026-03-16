@@ -139,13 +139,29 @@ function RejectionTooltip(props: RejectionTooltipProps) {
   );
 }
 
+interface StepAssignmentUser {
+  name: string;
+  isPrimary: boolean;
+}
+
+const assignedNameForStep = (
+  stepKey: string,
+  stepAssignments: Record<string, StepAssignmentUser[]>,
+): string | null => {
+  const users = stepAssignments[stepKey];
+  if (!users || users.length === 0) return null;
+  const primary = users.find((u) => u.isPrimary);
+  return primary ? primary.name : users[0].name;
+};
+
 interface WorkflowStepperProps {
   currentStatus: string;
   approvals: JobCardApproval[];
+  stepAssignments: Record<string, StepAssignmentUser[]>;
 }
 
 export function WorkflowStepper(props: WorkflowStepperProps) {
-  const { currentStatus, approvals } = props;
+  const { currentStatus, approvals, stepAssignments } = props;
   const currentStepIndex = STATUS_MAP[currentStatus] ?? 0;
   const approvalByStep = buildApprovalMap(approvals);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
@@ -171,8 +187,21 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
             const approval = approvalByStep[step.key];
             const isLast = index === WORKFLOW_STEPS.length - 1;
 
+            const assignedName =
+              state === "current" || state === "pending"
+                ? assignedNameForStep(step.key, stepAssignments)
+                : null;
+
             return (
               <div key={step.key} className="flex-1 flex flex-col items-center relative">
+                {assignedName && (
+                  <p className="text-[10px] text-gray-500 mb-1 truncate max-w-[80px] font-medium">
+                    {assignedName}
+                  </p>
+                )}
+                {!assignedName && (state === "current" || state === "pending") && (
+                  <p className="text-[10px] text-transparent mb-1">&nbsp;</p>
+                )}
                 <div className="flex items-center w-full">
                   {index > 0 && (
                     <div
@@ -278,6 +307,10 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
             const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
             const approval = approvalByStep[step.key];
             const isLast = index === WORKFLOW_STEPS.length - 1;
+            const mobileAssignedName =
+              state === "current" || state === "pending"
+                ? assignedNameForStep(step.key, stepAssignments)
+                : null;
 
             return (
               <div key={step.key} className="relative pb-6 last:pb-0">
@@ -349,6 +382,10 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
                         </span>
                       )}
                     </div>
+
+                    {mobileAssignedName && (state === "current" || state === "pending") && (
+                      <p className="mt-0.5 text-xs text-gray-500">Assigned: {mobileAssignedName}</p>
+                    )}
 
                     {approval && state === "completed" && (
                       <div className="mt-1 text-xs text-gray-500">

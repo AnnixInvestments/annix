@@ -3,13 +3,14 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
 import { JobCardApproval } from "../entities/job-card-approval.entity";
 import { JobCardDocument } from "../entities/job-card-document.entity";
 import { StockControlRole } from "../entities/stock-control-user.entity";
 import { JobCardWorkflowService } from "./job-card-workflow.service";
 import { RequisitionService } from "./requisition.service";
 import { SignatureService } from "./signature.service";
+import { WorkflowAssignmentService } from "./workflow-assignment.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 import { WorkflowStepConfigService } from "./workflow-step-config.service";
 
@@ -77,6 +78,11 @@ describe("JobCardWorkflowService", () => {
     backgroundStepsForTrigger: jest.fn().mockResolvedValue([]),
   };
 
+  const mockAssignmentService = {
+    hasExplicitAssignments: jest.fn().mockResolvedValue(false),
+    assignedUserIdsForStep: jest.fn().mockResolvedValue([]),
+  };
+
   const mockAuditService = {
     log: jest.fn().mockResolvedValue(undefined),
   };
@@ -85,8 +91,14 @@ describe("JobCardWorkflowService", () => {
     return { id: 1, companyId: 1, name: "Test User", role };
   }
 
-  function makeJobCard(status: JobCardWorkflowStatus) {
-    return { id: 1, companyId: 1, jobNumber: "JC-001", workflowStatus: status };
+  function makeJobCard(workflowStatus: JobCardWorkflowStatus) {
+    return {
+      id: 1,
+      companyId: 1,
+      jobNumber: "JC-001",
+      status: JobCardStatus.ACTIVE,
+      workflowStatus,
+    };
   }
 
   beforeEach(async () => {
@@ -101,6 +113,7 @@ describe("JobCardWorkflowService", () => {
         { provide: WorkflowNotificationService, useValue: mockNotificationService },
         { provide: RequisitionService, useValue: mockRequisitionService },
         { provide: WorkflowStepConfigService, useValue: mockStepConfigService },
+        { provide: WorkflowAssignmentService, useValue: mockAssignmentService },
         { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();

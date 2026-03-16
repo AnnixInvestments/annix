@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Not, Repository } from "typeorm";
-import { formatISODate, fromISO, generateUniqueId } from "../lib/datetime";
+import { formatISODate, generateUniqueId } from "../lib/datetime";
 import {
   CreateDeliveryNoteDto,
   CreateDeliveryNoteItemDto,

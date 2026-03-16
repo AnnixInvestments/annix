@@ -1402,6 +1402,8 @@ export interface WorkflowStatus {
   currentStep: string | null;
   canApprove: boolean;
   requiredRole: string | null;
+  jobCardStatus: string;
+  stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
 }
 
 export interface DispatchScan {

@@ -14,7 +14,7 @@ import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
 import {
   ApprovalStatus,
   JobCardApproval,
@@ -24,6 +24,7 @@ import { JobCardDocument, JobCardDocumentType } from "../entities/job-card-docum
 import { StockControlRole } from "../entities/stock-control-user.entity";
 import { RequisitionService } from "./requisition.service";
 import { SignatureService } from "./signature.service";
+import { WorkflowAssignmentService } from "./workflow-assignment.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 import { WorkflowStepConfigService } from "./workflow-step-config.service";
 
@@ -57,6 +58,7 @@ export class JobCardWorkflowService {
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
     private readonly stepConfigService: WorkflowStepConfigService,
+    private readonly assignmentService: WorkflowAssignmentService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -127,7 +129,15 @@ export class JobCardWorkflowService {
       throw new BadRequestException("Job card is not in an approvable state");
     }
 
+    if (jobCard.status !== JobCardStatus.ACTIVE) {
+      throw new BadRequestException(
+        "Job card must be activated before workflow steps can be approved",
+      );
+    }
+
     this.validateUserCanApprove(user.role, currentStep);
+
+    await this.validateUserIsAssigned(user, currentStep);
 
     await this.notificationService.markJobCardNotificationsAsRead(user.id, jobCardId);
 
@@ -316,16 +326,32 @@ export class JobCardWorkflowService {
     currentStep: WorkflowStep | null;
     canApprove: boolean;
     requiredRole: StockControlRole | null;
+    jobCardStatus: JobCardStatus;
+    stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
   }> {
     const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
     const currentStep = this.currentStepForStatus(jobCard.workflowStatus);
     const requiredRole = currentStep ? this.roleForStep(currentStep) : null;
 
+    const allAssignments = await this.assignmentService.allAssignments(companyId);
+    const stepAssignments = allAssignments.reduce(
+      (acc, sa) => ({
+        ...acc,
+        [sa.step]: sa.users.map((u) => ({
+          name: u.name,
+          isPrimary: sa.primaryUserId === u.id,
+        })),
+      }),
+      {} as Record<string, { name: string; isPrimary: boolean }[]>,
+    );
+
     return {
       currentStatus: jobCard.workflowStatus,
       currentStep,
-      canApprove: currentStep !== null,
+      canApprove: currentStep !== null && jobCard.status === JobCardStatus.ACTIVE,
       requiredRole,
+      jobCardStatus: jobCard.status,
+      stepAssignments,
     };
   }
 
@@ -381,6 +407,10 @@ export class JobCardWorkflowService {
       return false;
     }
 
+    if (jobCard.status !== JobCardStatus.ACTIVE) {
+      return false;
+    }
+
     const currentStep = this.currentStepForStatus(jobCard.workflowStatus);
     if (!currentStep) {
       return false;
@@ -396,10 +426,26 @@ export class JobCardWorkflowService {
         WorkflowStep.READY_FOR_DISPATCH,
         WorkflowStep.DISPATCHED,
       ];
-      return adminApprovableSteps.includes(currentStep);
+      if (!adminApprovableSteps.includes(currentStep)) {
+        return false;
+      }
+    } else if (user.role !== requiredRole) {
+      return false;
     }
 
-    return user.role === requiredRole;
+    const hasExplicit = await this.assignmentService.hasExplicitAssignments(
+      user.companyId,
+      currentStep,
+    );
+    if (hasExplicit) {
+      const assignedIds = await this.assignmentService.assignedUserIdsForStep(
+        user.companyId,
+        currentStep,
+      );
+      return assignedIds.includes(user.id);
+    }
+
+    return true;
   }
 
   async initializeWorkflow(
@@ -479,6 +525,22 @@ export class JobCardWorkflowService {
     });
 
     return this.approvalRepo.save(approval);
+  }
+
+  private async validateUserIsAssigned(user: UserContext, step: WorkflowStep): Promise<void> {
+    const hasExplicit = await this.assignmentService.hasExplicitAssignments(user.companyId, step);
+
+    if (!hasExplicit) {
+      return;
+    }
+
+    const assignedIds = await this.assignmentService.assignedUserIdsForStep(user.companyId, step);
+
+    if (!assignedIds.includes(user.id)) {
+      throw new ForbiddenException(
+        "You are not assigned to this workflow step. Only the assigned person can approve.",
+      );
+    }
   }
 
   private validateUserCanApprove(role: StockControlRole, step: WorkflowStep): void {
