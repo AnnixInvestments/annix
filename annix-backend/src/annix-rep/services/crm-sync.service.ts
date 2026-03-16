@@ -69,7 +69,7 @@ export class CrmSyncService {
     this.encryptionKey = this.configService.get<string>("TOKEN_ENCRYPTION_KEY") ?? "";
   }
 
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES, { name: "fieldflow:crm-sync" })
   async runScheduledSync(): Promise<void> {
     this.logger.log("Running scheduled CRM sync");
 

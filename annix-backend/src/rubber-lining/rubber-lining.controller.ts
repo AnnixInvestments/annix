@@ -3393,9 +3393,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (dnPageNumbers.length === 0) return [];
 
     const maxDnPage = Math.max(...dnPageNumbers);
-    const allDnPages = new Set(
-      deliveryNotes.map((_dn, idx) => idx + 1),
-    );
+    const allDnPages = new Set(deliveryNotes.map((_dn, idx) => idx + 1));
 
     return podPages
       .filter((pod) => {

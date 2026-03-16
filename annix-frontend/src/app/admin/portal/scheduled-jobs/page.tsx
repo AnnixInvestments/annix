@@ -32,6 +32,11 @@ function friendlyCron(cron: string): string {
     "0 */6 * * *": "Every 6 hours",
     "0 2 * * *": "Daily 2am",
     "0 3 * * *": "Daily 3am",
+    "0 5 * * *": "Daily 5am",
+    "0 6 * * *": "Daily 6am",
+    "0 7 * * *": "Daily 7am",
+    "0 8 * * *": "Daily 8am",
+    "0 9 * * *": "Daily 9am",
   };
   return map[cron] || cron;
 }
@@ -44,6 +49,17 @@ function formatDate(iso: string | null): string {
     timeStyle: "medium",
   });
 }
+
+const MODULE_COLORS: Record<string, string> = {
+  FieldFlow: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+  "CV Assistant": "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+  "Comply SA": "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300",
+  "AU Rubber": "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+  "Stock Control": "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300",
+  Customers: "bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300",
+  "Inbound Email": "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300",
+  "Secure Docs": "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300",
+};
 
 function JobRow(props: { job: ScheduledJobDto }) {
   const job = props.job;
@@ -74,10 +90,19 @@ function JobRow(props: { job: ScheduledJobDto }) {
     );
   };
 
+  const moduleColor =
+    MODULE_COLORS[job.module] || "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300";
+
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
-      <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-200">
-        {job.name}
+      <td className="px-4 py-3 text-sm">
+        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${moduleColor}`}>
+          {job.module}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-sm">
+        <div className="font-medium text-gray-900 dark:text-gray-200">{job.description}</div>
+        <div className="text-xs text-gray-400 dark:text-gray-500">{job.name}</div>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-sm">
         <span
@@ -156,6 +181,8 @@ function JobRow(props: { job: ScheduledJobDto }) {
 export default function ScheduledJobsPage() {
   const { data: jobs, isLoading } = useScheduledJobs();
 
+  const sortedJobs = (jobs || []).toSorted((a, b) => a.module.localeCompare(b.module));
+
   return (
     <div className="space-y-6">
       <div>
@@ -171,39 +198,45 @@ export default function ScheduledJobsPage() {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
             <thead className="bg-gray-50 dark:bg-slate-700/50">
               <tr>
-                {["Job Name", "Status", "Frequency", "Last Run", "Next Run", "Actions"].map(
-                  (header) => (
-                    <th
-                      key={header}
-                      className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
-                    >
-                      {header}
-                    </th>
-                  ),
-                )}
+                {[
+                  "Module",
+                  "Description",
+                  "Status",
+                  "Frequency",
+                  "Last Run",
+                  "Next Run",
+                  "Actions",
+                ].map((header) => (
+                  <th
+                    key={header}
+                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
+                  >
+                    {header}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     Loading...
                   </td>
                 </tr>
-              ) : !jobs || jobs.length === 0 ? (
+              ) : sortedJobs.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     No scheduled jobs found
                   </td>
                 </tr>
               ) : (
-                jobs.map((job) => <JobRow key={job.name} job={job} />)
+                sortedJobs.map((job) => <JobRow key={job.name} job={job} />)
               )}
             </tbody>
           </table>

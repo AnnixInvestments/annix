@@ -88,7 +88,7 @@ export class ComplySaRegulatoryService {
     return this.regulatoryUpdateRepository.save(update);
   }
 
-  @Cron("0 5 * * *", { timeZone: "Africa/Johannesburg" })
+  @Cron("0 5 * * *", { name: "comply-sa:regulatory-sync", timeZone: "Africa/Johannesburg" })
   async syncRegulatoryUpdates(): Promise<void> {
     this.logger.log("Starting daily regulatory update sync");
     const startedAt = now();

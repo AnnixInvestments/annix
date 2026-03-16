@@ -193,7 +193,7 @@ export class CvNotificationService {
     }
   }
 
-  @Cron(CronExpression.EVERY_WEEK)
+  @Cron(CronExpression.EVERY_WEEK, { name: "cv-assistant:weekly-digests" })
   async sendWeeklyDigests(): Promise<void> {
     const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 
@@ -261,7 +261,7 @@ export class CvNotificationService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  @Cron(CronExpression.EVERY_DAY_AT_9AM, { name: "cv-assistant:job-alerts" })
   async sendCandidateJobAlerts(): Promise<void> {
     const oneDayAgo = DateTime.now().minus({ days: 1 }).toJSDate();
 

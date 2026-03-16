@@ -496,7 +496,7 @@ export class CpoService {
     return this.calloffRepo.save(record);
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  @Cron(CronExpression.EVERY_DAY_AT_8AM, { name: "stock-control:uninvoiced-arrivals" })
   async uninvoicedArrivalCheck(): Promise<void> {
     this.logger.log("Running daily CPO uninvoiced arrival check...");
 

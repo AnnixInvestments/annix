@@ -48,7 +48,7 @@ export class ComplySaNotificationsService {
     this.twilioWhatsappNumber = this.configService.get<string>("TWILIO_WHATSAPP_NUMBER") ?? null;
   }
 
-  @Cron("0 6 * * *", { timeZone: "Africa/Johannesburg" })
+  @Cron("0 6 * * *", { name: "comply-sa:deadline-notifications", timeZone: "Africa/Johannesburg" })
   async processDeadlineNotifications(): Promise<void> {
     try {
       const statusesWithDueDates = await this.statusRepository.find({
@@ -220,7 +220,7 @@ export class ComplySaNotificationsService {
     }
   }
 
-  @Cron("0 7 * * *", { timeZone: "Africa/Johannesburg" })
+  @Cron("0 7 * * *", { name: "comply-sa:document-expiry", timeZone: "Africa/Johannesburg" })
   async processDocumentExpiryWarnings(): Promise<void> {
     try {
       const today = now();

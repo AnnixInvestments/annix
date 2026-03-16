@@ -54,9 +54,7 @@ export class SageRateLimiter {
     if (b.minuteTimestamps.length >= SAGE_MAX_REQUESTS_PER_MINUTE) {
       const oldestMinute = b.minuteTimestamps[0] ?? currentMs;
       const waitMs = 60_000 - (currentMs - oldestMinute) + 100;
-      this.logger.warn(
-        `Sage per-minute limit reached for ${companyKey}. Waiting ${waitMs}ms.`,
-      );
+      this.logger.warn(`Sage per-minute limit reached for ${companyKey}. Waiting ${waitMs}ms.`);
       await this.delay(waitMs);
       b.minuteTimestamps = this.pruneTimestamps(b.minuteTimestamps, 60_000, nowMillis());
     }

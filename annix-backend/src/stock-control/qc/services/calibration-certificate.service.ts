@@ -174,7 +174,7 @@ export class CalibrationCertificateService {
     });
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  @Cron(CronExpression.EVERY_DAY_AT_8AM, { name: "stock-control:calibration-expiry" })
   async checkExpiryNotifications(): Promise<void> {
     this.logger.log("Running daily calibration certificate expiry check...");
 

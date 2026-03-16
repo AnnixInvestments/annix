@@ -21,7 +21,7 @@ export class MeetingSchedulerService {
     }
   }
 
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES, { name: "fieldflow:sync-meetings" })
   async syncCompletedMeetings(): Promise<void> {
     if (!this.enabled) return;
 
@@ -45,7 +45,7 @@ export class MeetingSchedulerService {
     }
   }
 
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES, { name: "fieldflow:download-recordings" })
   async downloadPendingRecordings(): Promise<void> {
     if (!this.enabled) return;
 
@@ -67,7 +67,7 @@ export class MeetingSchedulerService {
     });
   }
 
-  @Cron(CronExpression.EVERY_HOUR)
+  @Cron(CronExpression.EVERY_HOUR, { name: "fieldflow:refresh-tokens" })
   async refreshExpiringTokens(): Promise<void> {
     if (!this.enabled) return;
 
@@ -97,7 +97,7 @@ export class MeetingSchedulerService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: "fieldflow:weekly-full-sync" })
   async weeklyFullSync(): Promise<void> {
     if (!this.enabled) return;
 
@@ -127,7 +127,7 @@ export class MeetingSchedulerService {
     this.logger.log("Weekly full sync completed");
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_3AM)
+  @Cron(CronExpression.EVERY_DAY_AT_3AM, { name: "fieldflow:cleanup-old-records" })
   async cleanupOldRecords(): Promise<void> {
     if (!this.enabled) return;
 

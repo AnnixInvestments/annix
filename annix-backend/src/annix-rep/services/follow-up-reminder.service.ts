@@ -20,7 +20,7 @@ export class FollowUpReminderService {
     private readonly emailService: EmailService,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  @Cron(CronExpression.EVERY_DAY_AT_8AM, { name: "fieldflow:daily-reminders" })
   async sendDailyReminders(): Promise<void> {
     this.logger.log("Starting daily follow-up reminder job");
 

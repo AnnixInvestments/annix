@@ -45,7 +45,7 @@ export class EmailMonitorService implements OnModuleInit {
     }
   }
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_10_MINUTES, { name: "cv-assistant:poll-emails" })
   async pollEmails(): Promise<void> {
     if (!this.isMonitoringConfigured || this.isPolling) {
       return;

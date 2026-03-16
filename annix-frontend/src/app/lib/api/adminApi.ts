@@ -1797,6 +1797,8 @@ export interface RbacRoleProductsResponse {
 
 export interface ScheduledJobDto {
   name: string;
+  description: string;
+  module: string;
   active: boolean;
   cronTime: string;
   lastExecution: string | null;

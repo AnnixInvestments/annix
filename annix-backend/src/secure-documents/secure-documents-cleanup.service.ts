@@ -20,7 +20,7 @@ export class SecureDocumentsCleanupService {
     private readonly secureDocumentsService: SecureDocumentsService,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: "secure-docs:cleanup-deleted" })
   async cleanupDeletedFolders(): Promise<void> {
     this.logger.log("Starting scheduled cleanup of deleted entity folders");
 

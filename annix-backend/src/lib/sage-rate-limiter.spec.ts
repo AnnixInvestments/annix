@@ -60,9 +60,7 @@ describe("SageRateLimiter", () => {
       bucket.minuteTimestamps = [];
       bucket.lastRequestMs = baseTime;
 
-      await expect(limiter.waitForSlot("maxed-co")).rejects.toThrow(
-        /daily rate limit exceeded/i,
-      );
+      await expect(limiter.waitForSlot("maxed-co")).rejects.toThrow(/daily rate limit exceeded/i);
     });
   });
 

@@ -19,7 +19,7 @@ export class CertificateExpiryService {
     private readonly emailService: EmailService,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  @Cron(CronExpression.EVERY_DAY_AT_8AM, { name: "customers:bee-expiry-check" })
   async checkBeeExpiryNotifications(): Promise<void> {
     this.logger.log("Running daily BEE certificate expiry check...");
 

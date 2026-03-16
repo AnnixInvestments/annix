@@ -21,7 +21,7 @@ export class PopiaService {
     private readonly storageService: IStorageService,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: "cv-assistant:purge-inactive" })
   async purgeInactiveCandidates(): Promise<{ purged: number }> {
     const cutoffDate = DateTime.now().minus({ months: PopiaService.RETENTION_MONTHS }).toJSDate();
 

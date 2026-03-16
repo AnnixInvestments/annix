@@ -23,7 +23,7 @@ export class JobIngestionService {
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
   ) {}
 
-  @Cron(CronExpression.EVERY_HOUR)
+  @Cron(CronExpression.EVERY_HOUR, { name: "cv-assistant:poll-job-sources" })
   async pollSources(): Promise<void> {
     const sources = await this.sourceRepo.find({ where: { enabled: true } });
 
