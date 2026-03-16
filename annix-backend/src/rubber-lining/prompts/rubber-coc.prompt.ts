@@ -371,6 +371,7 @@ Return a JSON object with this structure:
       "customerReference": string or null (PO/reference/order number),
       "deliveryDate": string or null (ISO format YYYY-MM-DD),
       "customerName": string or null (the recipient company name),
+      "sourcePages": [number] (1-based PDF page numbers where this DN appears, e.g., [1] or [1, 2] for multi-page DNs),
       "lineItems": [
         {
           "compoundCode": string or null (e.g., "RSCA40-20.950.125", "TOLLRAWMATAUSC38RED"),
@@ -509,6 +510,7 @@ Return a JSON object with this structure:
       "customerReference": string or null (PO/reference/order number),
       "deliveryDate": string or null (ISO format YYYY-MM-DD),
       "customerName": string or null (the customer/recipient company),
+      "sourcePages": [number] (1-based PDF page numbers where this DN appears, e.g., [1] or [1, 2] for multi-page DNs),
       "lineItems": [
         {
           "compoundCode": string or null,

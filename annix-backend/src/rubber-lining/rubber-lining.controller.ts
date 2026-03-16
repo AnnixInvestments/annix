@@ -3386,14 +3386,23 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (directMatches.length > 0) return directMatches;
 
     const dnPageNumbers = deliveryNotes
-      .map((dn, idx) => ({ dnNumber: dn.deliveryNoteNumber || null, pageNumber: idx + 1 }))
+      .map((dn, idx) => ({
+        dnNumber: dn.deliveryNoteNumber || null,
+        maxPage: dn.sourcePages && dn.sourcePages.length > 0
+          ? Math.max(...dn.sourcePages)
+          : idx + 1,
+      }))
       .filter((entry) => entry.dnNumber === targetDnNumber)
-      .map((entry) => entry.pageNumber);
+      .map((entry) => entry.maxPage);
 
     if (dnPageNumbers.length === 0) return [];
 
     const maxDnPage = Math.max(...dnPageNumbers);
-    const allDnPages = new Set(deliveryNotes.map((_dn, idx) => idx + 1));
+    const allDnPages = new Set(
+      deliveryNotes.map((dn, idx) =>
+        dn.sourcePages && dn.sourcePages.length > 0 ? Math.max(...dn.sourcePages) : idx + 1,
+      ),
+    );
 
     return podPages
       .filter((pod) => {

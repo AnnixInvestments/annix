@@ -104,6 +104,7 @@ export interface AnalyzedCustomerDnFile {
   customerName: string | null;
   customerId: number | null;
   pageInfo: { currentPage: number | null; totalPages: number | null } | null;
+  sourcePages: number[] | null;
   lineItems: Array<{
     lineNumber: number | null;
     compoundType: string | null;
@@ -2011,6 +2012,8 @@ ${truncatedText}`;
             totalPages?: number;
           } | null;
 
+          const sourcePages = (extractedData.sourcePages as number[]) || null;
+
           const filenameWithIndex =
             deliveryNotesFromFile.length > 1
               ? `${file.originalname} (DN ${dnIndex + 1}/${deliveryNotesFromFile.length})`
@@ -2031,6 +2034,7 @@ ${truncatedText}`;
                     totalPages: pageInfo.totalPages || null,
                   }
                 : null,
+              sourcePages,
               lineItems,
               pdfText: "",
             },
@@ -2063,7 +2067,10 @@ ${truncatedText}`;
       allPodPages,
       analyzedFiles
         .filter((f) => f.deliveryNoteNumber)
-        .map((f) => ({ deliveryNoteNumber: f.deliveryNoteNumber })),
+        .map((f) => ({
+          deliveryNoteNumber: f.deliveryNoteNumber,
+          sourcePages: f.sourcePages || undefined,
+        })),
     );
 
     const groupsWithPods = groups.map((group) => ({
@@ -2185,12 +2192,17 @@ ${truncatedText}`;
 
   private resolvePodPageNumbersByOrder(
     podPages: Array<{ pageNumber: number; relatedDnNumber: string | null }>,
-    deliveryNotes: Array<{ deliveryNoteNumber?: string | null }>,
+    deliveryNotes: Array<{ deliveryNoteNumber?: string | null; sourcePages?: number[] }>,
   ): Record<string, number[]> {
     if (!podPages || podPages.length === 0) return {};
 
     const dnOrder = deliveryNotes
-      .map((dn, idx) => ({ dnNumber: dn.deliveryNoteNumber, pageNumber: idx + 1 }))
+      .map((dn, idx) => ({
+        dnNumber: dn.deliveryNoteNumber,
+        maxPage: dn.sourcePages && dn.sourcePages.length > 0
+          ? Math.max(...dn.sourcePages)
+          : idx + 1,
+      }))
       .filter((entry) => entry.dnNumber !== null);
 
     return podPages.reduce(
@@ -2198,8 +2210,8 @@ ${truncatedText}`;
         const targetDn = pod.relatedDnNumber
           ? dnOrder.find((dn) => dn.dnNumber === pod.relatedDnNumber)?.dnNumber
           : dnOrder
-              .filter((dn) => dn.pageNumber < pod.pageNumber)
-              .sort((a, b) => b.pageNumber - a.pageNumber)[0]?.dnNumber;
+              .filter((dn) => dn.maxPage < pod.pageNumber)
+              .sort((a, b) => b.maxPage - a.maxPage)[0]?.dnNumber;
 
         if (!targetDn) return result;
 

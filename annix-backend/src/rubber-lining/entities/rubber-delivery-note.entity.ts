@@ -74,6 +74,7 @@ export interface ExtractedCustomerDeliveryNoteData {
   deliveryDate?: string;
   customerName?: string;
   pageInfo?: { currentPage?: number; totalPages?: number };
+  sourcePages?: number[];
   lineItems?: ExtractedCustomerDeliveryNoteLineItem[];
 }
 

@@ -38,7 +38,11 @@ import {
 import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
-import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import {
+  PermissionKey,
+  StockControlRoleGuard,
+  StockControlRoles,
+} from "../guards/stock-control-role.guard";
 import { BackgroundStepService } from "../services/background-step.service";
 import { DispatchService } from "../services/dispatch.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
@@ -306,7 +310,8 @@ export class WorkflowController {
   }
 
   @Get("job-cards/:id/print")
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("receiving-clerk", "manager", "admin")
+  @PermissionKey("job-cards.print")
   @ApiOperation({ summary: "Download signed job card PDF" })
   async printJobCard(@Req() req: any, @Param("id") id: number, @Res() res: Response) {
     this.logger.log(`Print request received for job card ${id} by user ${req.user.id}`);
