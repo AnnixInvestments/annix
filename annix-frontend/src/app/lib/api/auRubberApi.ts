@@ -565,6 +565,7 @@ export interface AnalyzedCustomerDnFile {
     lengthM: number | null;
     quantity: number | null;
     rollWeightKg: number | null;
+    rollNumber: string | null;
     cocBatchNumbers: string[] | null;
   }>;
   pdfText: string;
@@ -591,11 +592,14 @@ export interface AnalyzeCustomerDnsResult {
   existingDnNumbers?: string[];
 }
 
+export type CustomerDnLineItem = AnalyzedCustomerDnFile["lineItems"][number];
+
 export interface CustomerDnOverride {
   deliveryNoteNumber?: string | null;
   customerId?: number | null;
   customerReference?: string | null;
   deliveryDate?: string | null;
+  lineItems?: CustomerDnLineItem[];
 }
 
 export interface RubberRollStockDto {

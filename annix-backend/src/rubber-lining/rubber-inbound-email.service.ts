@@ -2252,6 +2252,7 @@ ${truncatedText}`;
               lengthM: lineItem.lengthM,
               quantity: lineItem.quantity,
               rollWeightKg: lineItem.rollWeightKg,
+              rollNumber: lineItem.rollNumber,
               cocBatchNumbers: lineItem.cocBatchNumbers,
             });
           }, Promise.resolve());
