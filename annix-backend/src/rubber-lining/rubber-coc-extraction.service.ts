@@ -5,6 +5,7 @@ import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
 import { nowMillis } from "../lib/datetime";
 import {
   ExtractedCustomerDeliveryNoteData,
+  ExtractedCustomerDeliveryNotePodPage,
   ExtractedCustomerDeliveryNotesResult,
   ExtractedDeliveryNoteData,
 } from "./entities/rubber-delivery-note.entity";
@@ -303,6 +304,7 @@ export class RubberCocExtractionService {
   async extractCustomerDeliveryNote(pdfText: string): Promise<{
     data: ExtractedCustomerDeliveryNoteData;
     deliveryNotes: ExtractedCustomerDeliveryNoteData[];
+    podPages: ExtractedCustomerDeliveryNotePodPage[];
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
@@ -324,14 +326,18 @@ export class RubberCocExtractionService {
 
     const rawData = response.data as unknown as ExtractedCustomerDeliveryNotesResult;
     const deliveryNotes = rawData?.deliveryNotes || [];
+    const podPages = rawData?.podPages || [];
 
-    this.logger.log(`Found ${deliveryNotes.length} delivery notes in document`);
+    this.logger.log(
+      `Found ${deliveryNotes.length} delivery notes and ${podPages.length} POD pages in document`,
+    );
 
     const firstNote = deliveryNotes[0] || {};
 
     return {
       data: firstNote as ExtractedCustomerDeliveryNoteData,
       deliveryNotes,
+      podPages,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };
@@ -340,6 +346,7 @@ export class RubberCocExtractionService {
   async extractCustomerDeliveryNoteFromImages(pdfBuffer: Buffer): Promise<{
     data: ExtractedCustomerDeliveryNoteData;
     deliveryNotes: ExtractedCustomerDeliveryNoteData[];
+    podPages: ExtractedCustomerDeliveryNotePodPage[];
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
@@ -365,8 +372,11 @@ export class RubberCocExtractionService {
 
     const rawData = response.data as unknown as ExtractedCustomerDeliveryNotesResult;
     const deliveryNotes = rawData?.deliveryNotes || [];
+    const podPages = rawData?.podPages || [];
 
-    this.logger.log(`Found ${deliveryNotes.length} delivery notes in document via OCR`);
+    this.logger.log(
+      `Found ${deliveryNotes.length} delivery notes and ${podPages.length} POD pages in document via OCR`,
+    );
     deliveryNotes.forEach((dn, idx) => {
       this.logger.log(
         `DN ${idx + 1}: number=${dn.deliveryNoteNumber}, ref=${dn.customerReference}, date=${dn.deliveryDate}`,
@@ -378,6 +388,7 @@ export class RubberCocExtractionService {
     return {
       data: firstNote as ExtractedCustomerDeliveryNoteData,
       deliveryNotes,
+      podPages,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };

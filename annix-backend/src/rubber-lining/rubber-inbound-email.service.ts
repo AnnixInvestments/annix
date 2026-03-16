@@ -1072,7 +1072,19 @@ ${truncatedText}`;
                 })),
             );
 
+            const podPageNumbers = this.resolvePodPageNumbersByOrder(
+              customerResult.podPages,
+              customerResult.deliveryNotes,
+            );
             const dnMetadata = customerResult.deliveryNotes[0];
+            const dnNumber = dnMetadata?.deliveryNoteNumber || null;
+            if (dnNumber && podPageNumbers[dnNumber]) {
+              await this.deliveryNoteService.setPodPageNumbers(
+                deliveryNoteId,
+                podPageNumbers[dnNumber],
+              );
+            }
+
             return {
               deliveryNoteNumber: dnMetadata?.deliveryNoteNumber ?? null,
               deliveryDate: dnMetadata?.deliveryDate ?? null,
@@ -1915,8 +1927,9 @@ ${truncatedText}`;
           `Analyzing customer DN file ${i + 1}/${files.length}: ${file.originalname}`,
         );
 
-        const { deliveryNotesFromFile, newErrors } = await (async (): Promise<{
+        const { deliveryNotesFromFile, podPagesFromFile, newErrors } = await (async (): Promise<{
           deliveryNotesFromFile: Array<Record<string, unknown>>;
+          podPagesFromFile: Array<{ pageNumber: number; relatedDnNumber: string | null }>;
           newErrors: string[];
         }> => {
           try {
@@ -1930,16 +1943,17 @@ ${truncatedText}`;
               await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(file.buffer);
             const notes = extraction.deliveryNotes as Array<Record<string, unknown>>;
             this.logger.log(
-              `Extracted ${notes.length} customer DN(s) from ${file.originalname} via OCR`,
+              `Extracted ${notes.length} customer DN(s) and ${extraction.podPages.length} POD page(s) from ${file.originalname} via OCR`,
             );
             return {
               deliveryNotesFromFile: notes.length > 0 ? notes : [{}],
+              podPagesFromFile: extraction.podPages,
               newErrors: [],
             };
           } catch (error) {
             const errorMsg = `Failed to extract from ${file.originalname}: ${error.message}`;
             this.logger.error(errorMsg);
-            return { deliveryNotesFromFile: [{}], newErrors: [errorMsg] };
+            return { deliveryNotesFromFile: [{}], podPagesFromFile: [], newErrors: [errorMsg] };
           }
         })();
 
@@ -2030,20 +2044,34 @@ ${truncatedText}`;
             ...new Set([...acc.unmatchedCustomerNames, ...dnFiles.flatMap((d) => d.unmatched)]),
           ],
           extractionErrors: [...acc.extractionErrors, ...newErrors],
+          allPodPages: [...acc.allPodPages, ...podPagesFromFile],
         };
       },
       Promise.resolve({
         analyzedFiles: [] as AnalyzedCustomerDnFile[],
         unmatchedCustomerNames: [] as string[],
         extractionErrors: [] as string[],
+        allPodPages: [] as Array<{ pageNumber: number; relatedDnNumber: string | null }>,
       }),
     );
 
-    const { analyzedFiles, unmatchedCustomerNames, extractionErrors } = fileResults;
+    const { analyzedFiles, unmatchedCustomerNames, extractionErrors, allPodPages } = fileResults;
 
     const groups = this.groupCustomerDnsByNumber(analyzedFiles);
 
-    const dnNumbersWithCustomers = groups
+    const podPagesByDn = this.resolvePodPageNumbersByOrder(
+      allPodPages,
+      analyzedFiles
+        .filter((f) => f.deliveryNoteNumber)
+        .map((f) => ({ deliveryNoteNumber: f.deliveryNoteNumber })),
+    );
+
+    const groupsWithPods = groups.map((group) => ({
+      ...group,
+      podPageNumbers: podPagesByDn[group.deliveryNoteNumber] || [],
+    }));
+
+    const dnNumbersWithCustomers = groupsWithPods
       .filter((g) => g.deliveryNoteNumber && g.customerId)
       .map((g) => ({ number: g.deliveryNoteNumber, customerId: g.customerId! }));
 
@@ -2059,7 +2087,7 @@ ${truncatedText}`;
     const existingDnNumbers = existingChecks.filter((dn): dn is string => dn !== null);
 
     this.logger.log(
-      `Analysis complete: ${analyzedFiles.length} files, ${groups.length} groups, ${extractionErrors.length} errors, ${existingDnNumbers.length} existing DNs`,
+      `Analysis complete: ${analyzedFiles.length} files, ${groupsWithPods.length} groups, ${extractionErrors.length} errors, ${existingDnNumbers.length} existing DNs, ${allPodPages.length} POD pages`,
     );
 
     if (extractionErrors.length > 0) {
@@ -2068,7 +2096,7 @@ ${truncatedText}`;
 
     return {
       files: analyzedFiles,
-      groups,
+      groups: groupsWithPods,
       unmatchedCustomerNames,
       existingDnNumbers,
     };
@@ -2153,6 +2181,35 @@ ${truncatedText}`;
         return a.fileIndex - b.fileIndex;
       }),
     }));
+  }
+
+  private resolvePodPageNumbersByOrder(
+    podPages: Array<{ pageNumber: number; relatedDnNumber: string | null }>,
+    deliveryNotes: Array<{ deliveryNoteNumber?: string | null }>,
+  ): Record<string, number[]> {
+    if (!podPages || podPages.length === 0) return {};
+
+    const dnOrder = deliveryNotes
+      .map((dn, idx) => ({ dnNumber: dn.deliveryNoteNumber, pageNumber: idx + 1 }))
+      .filter((entry) => entry.dnNumber !== null);
+
+    return podPages.reduce(
+      (result, pod) => {
+        const targetDn = pod.relatedDnNumber
+          ? dnOrder.find((dn) => dn.dnNumber === pod.relatedDnNumber)?.dnNumber
+          : dnOrder
+              .filter((dn) => dn.pageNumber < pod.pageNumber)
+              .sort((a, b) => b.pageNumber - a.pageNumber)[0]?.dnNumber;
+
+        if (!targetDn) return result;
+
+        return {
+          ...result,
+          [targetDn]: [...(result[targetDn] || []), pod.pageNumber],
+        };
+      },
+      {} as Record<string, number[]>,
+    );
   }
 
   async createCustomerDnsFromAnalysis(
@@ -2256,6 +2313,14 @@ ${truncatedText}`;
               cocBatchNumbers: lineItem.cocBatchNumbers,
             });
           }, Promise.resolve());
+
+          const podPageNumbers = (group as unknown as { podPageNumbers?: number[] }).podPageNumbers;
+          if (podPageNumbers && podPageNumbers.length > 0) {
+            await this.deliveryNoteService.setPodPageNumbers(dnId, podPageNumbers);
+            this.logger.log(
+              `Stored ${podPageNumbers.length} POD page number(s) for DN ${dnId}: [${podPageNumbers.join(", ")}]`,
+            );
+          }
 
           this.logger.log(
             `${existingDn ? "Overwrote" : "Created"} customer DN ${dnId} (${deliveryNoteNumber}) with ${group.allLineItems.length} line items`,

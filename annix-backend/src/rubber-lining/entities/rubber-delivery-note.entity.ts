@@ -77,8 +77,14 @@ export interface ExtractedCustomerDeliveryNoteData {
   lineItems?: ExtractedCustomerDeliveryNoteLineItem[];
 }
 
+export interface ExtractedCustomerDeliveryNotePodPage {
+  pageNumber: number;
+  relatedDnNumber: string | null;
+}
+
 export interface ExtractedCustomerDeliveryNotesResult {
   deliveryNotes: ExtractedCustomerDeliveryNoteData[];
+  podPages?: ExtractedCustomerDeliveryNotePodPage[];
 }
 
 @Entity("rubber_delivery_notes")
@@ -153,6 +159,9 @@ export class RubberDeliveryNote {
     default: DocumentVersionStatus.ACTIVE,
   })
   versionStatus: DocumentVersionStatus;
+
+  @Column({ name: "pod_page_numbers", type: "jsonb", nullable: true })
+  podPageNumbers: number[] | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -386,6 +386,12 @@ Return a JSON object with this structure:
         }
       ]
     }
+  ],
+  "podPages": [
+    {
+      "pageNumber": number (1-based page number of the POD page),
+      "relatedDnNumber": string or null (the DN number this POD belongs to, if identifiable)
+    }
   ]
 }
 
@@ -396,12 +402,13 @@ POD pages typically contain:
 - A company stamp or handwritten signatures
 - A DN number that matches an actual delivery note in the same PDF
 - A 5-digit internal document number (e.g., 23954, 23978) which is NOT a DN number
-DO NOT create a separate delivery note entry for POD pages. SKIP them entirely.
-If a POD page has a recognizable DN number (e.g., "1307"), you may associate it with that DN, but do NOT create a new entry with the 5-digit document number.
+DO NOT create a separate delivery note entry for POD pages. Instead, add each POD page to the "podPages" array.
+POD pages are always scanned immediately AFTER the delivery note they belong to. Use page order to determine which DN a POD relates to.
+If the POD page shows a recognizable DN number (e.g., "1307"), set "relatedDnNumber" to that number. Otherwise set it to null and the system will use page order.
 
 Guidelines:
 - SCAN THROUGH THE ENTIRE DOCUMENT - pages may be delivery notes, PODs, or duplicates
-- Skip POD/receipt pages (signed delivery confirmations) — they are NOT separate delivery notes
+- POD/receipt pages (signed delivery confirmations) must go in the "podPages" array, NOT in "deliveryNotes"
 - If two pages show the same DN (e.g., customer copy + supplier copy), only return it ONCE
 - Parse dates from DD/MM/YYYY or YYYY/MM/DD to YYYY-MM-DD format
 - Extract compound codes and parse their components where possible
@@ -477,8 +484,9 @@ POD pages typically show:
 - "Goods Received Date", "Received by", "Signature", "Date Entered"
 - A company stamp or handwritten signatures
 - Sometimes a 5-digit internal document number (e.g., 23954, 23978) — this is NOT a DN number
-DO NOT create a separate delivery note entry for POD pages. SKIP them entirely.
-They are delivery confirmation receipts, not actual delivery notes with roll/product data.
+DO NOT create a separate delivery note entry for POD pages. Instead, add each POD page to the "podPages" array.
+POD pages are always scanned immediately AFTER the delivery note they belong to. Use page order to determine which DN a POD relates to.
+If the POD page shows a recognizable DN number (e.g., "1307"), set "relatedDnNumber" to that number. Otherwise set it to null.
 
 REFERENCE/PO NUMBER EXTRACTION - CRITICAL:
 Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "ORDER No.", "ORDER:", "YOUR REF:", "CUSTOMER REF:"
@@ -505,12 +513,18 @@ Return a JSON object with this structure:
         }
       ]
     }
+  ],
+  "podPages": [
+    {
+      "pageNumber": number (1-based page number),
+      "relatedDnNumber": string or null (DN number this POD belongs to)
+    }
   ]
 }
 
 IMPORTANT:
-- Pages may be delivery notes, PODs (signed receipts), or duplicates. Only extract actual delivery notes.
-- SKIP Proof of Delivery (POD) pages — they have signatures, "Goods Received", stamps, and 5-digit document numbers. These are NOT delivery notes.
+- Pages may be delivery notes, PODs (signed receipts), or duplicates. Only extract actual delivery notes into "deliveryNotes".
+- POD pages (signatures, "Goods Received", stamps, 5-digit document numbers) go in "podPages", NOT "deliveryNotes".
 - If a page is upside down, still try to read it.
 - If two pages show the same DN (e.g., customer copy + supplier copy), only return it ONCE.
 - Parse roll dimensions like "20x950x12.5" or "8x800x12.5" into thicknessMm, widthMm, lengthM.

@@ -129,7 +129,12 @@ import {
   CompoundMovementType,
 } from "./entities/rubber-compound-movement.entity";
 import { RubberCompoundOrderStatus } from "./entities/rubber-compound-order.entity";
-import { DeliveryNoteStatus, DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
+import {
+  DeliveryNoteStatus,
+  DeliveryNoteType,
+  ExtractedCustomerDeliveryNoteData,
+  ExtractedCustomerDeliveryNotePodPage,
+} from "./entities/rubber-delivery-note.entity";
 import { RubberOrderStatus } from "./entities/rubber-order.entity";
 import { ProductCodingType } from "./entities/rubber-product-coding.entity";
 import { RubberProductionStatus } from "./entities/rubber-production.entity";
@@ -1750,6 +1755,15 @@ Formula: totalPrice = totalKg × salePricePerKg
             })),
         );
 
+        const podPageNumbers = this.resolvePodPageNumbers(
+          customerResult.podPages,
+          customerResult.deliveryNotes,
+          note.deliveryNoteNumber,
+        );
+        if (podPageNumbers.length > 0) {
+          await this.rubberDeliveryNoteService.setPodPageNumbers(Number(id), podPageNumbers);
+        }
+
         const currentDnNumber = note.deliveryNoteNumber;
         const matchingDn = customerResult.deliveryNotes.find(
           (dn) => dn.deliveryNoteNumber === currentDnNumber,
@@ -3356,5 +3370,41 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiParam({ name: "id", description: "Supplier CoC ID" })
   async supplierCocVersionHistory(@Param("id") id: string): Promise<VersionHistoryEntry[]> {
     return this.rubberDocumentVersioningService.versionHistory("supplier-coc", Number(id));
+  }
+
+  private resolvePodPageNumbers(
+    podPages: ExtractedCustomerDeliveryNotePodPage[],
+    deliveryNotes: ExtractedCustomerDeliveryNoteData[],
+    targetDnNumber: string | null,
+  ): number[] {
+    if (!podPages || podPages.length === 0) return [];
+
+    const directMatches = podPages
+      .filter((pod) => pod.relatedDnNumber === targetDnNumber)
+      .map((pod) => pod.pageNumber);
+
+    if (directMatches.length > 0) return directMatches;
+
+    const dnPageNumbers = deliveryNotes
+      .map((dn, idx) => ({ dnNumber: dn.deliveryNoteNumber || null, pageNumber: idx + 1 }))
+      .filter((entry) => entry.dnNumber === targetDnNumber)
+      .map((entry) => entry.pageNumber);
+
+    if (dnPageNumbers.length === 0) return [];
+
+    const maxDnPage = Math.max(...dnPageNumbers);
+    const allDnPages = new Set(
+      deliveryNotes.map((_dn, idx) => idx + 1),
+    );
+
+    return podPages
+      .filter((pod) => {
+        if (pod.relatedDnNumber && pod.relatedDnNumber !== targetDnNumber) return false;
+        const nextDnPage = Array.from(allDnPages)
+          .filter((p) => p > maxDnPage)
+          .sort((a, b) => a - b)[0];
+        return pod.pageNumber > maxDnPage && (!nextDnPage || pod.pageNumber < nextDnPage);
+      })
+      .map((pod) => pod.pageNumber);
   }
 }

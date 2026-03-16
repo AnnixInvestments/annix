@@ -525,6 +525,7 @@ export interface RubberDeliveryNoteDto {
   versionStatus: string;
   versionStatusLabel: string;
   previousVersionId: number | null;
+  podPageNumbers: number[] | null;
 }
 
 export interface RubberDeliveryNoteItemDto {

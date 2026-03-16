@@ -683,6 +683,12 @@ export class RubberDeliveryNoteService {
     return this.mapDeliveryNoteToDto(note);
   }
 
+  async setPodPageNumbers(id: number, podPageNumbers: number[]): Promise<void> {
+    await this.deliveryNoteRepository.update(id, {
+      podPageNumbers: podPageNumbers.length > 0 ? podPageNumbers : null,
+    });
+  }
+
   async findOrCreateCompanyByName(
     name: string,
     companyType: "supplier" | "customer",
@@ -833,6 +839,7 @@ export class RubberDeliveryNoteService {
       versionStatus: note.versionStatus,
       versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[note.versionStatus],
       previousVersionId: note.previousVersionId,
+      podPageNumbers: note.podPageNumbers || null,
     };
   }
 

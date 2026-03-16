@@ -225,6 +225,7 @@ export class RubberDeliveryNoteDto {
   versionStatus: DocumentVersionStatus;
   versionStatusLabel: string;
   previousVersionId: number | null;
+  podPageNumbers: number[] | null;
 }
 
 export class CreateDeliveryNoteDto {
