@@ -358,16 +358,28 @@ FORMAT 2 - SUPPLIER DELIVERY NOTE (incoming, e.g., Impilo Industries):
 - Customer name appears as "COD [CUSTOMER NAME]" in address block
 - Sales Order Number at footer (e.g., SO185032)
 
+FORMAT 3 - S&N RUBBER DELIVERY NOTE (calendered products):
+- Header shows "S&N RUBBER" / "CALENDERED PRODUCTS" with "DELIVERY NOTE" and "No:" (the DN number, e.g., 3053)
+- Fields: Date (DD-MM-YYYY), Invoice No., Dispatch Method, Waybill No., Customer O/No. (THIS IS THE PO REFERENCE)
+- TO: section has the customer/delivery address
+- PRODUCT CODE field describes compound and dimensions: "AU-C50NBRSC (6mm x 800mm x 12.5M)"
+  Parse as: compoundCode="AU-C50NBRSC", thicknessMm=6, widthMm=800, lengthM=12.5
+- Table has THREE column groups repeated across the page: PROD DATE | RUN No | ROLL No | QUANTITY
+- CRITICAL: Each row is ONE physical roll. "ROLL No" is the roll number (simple integers: 1, 2, 3, 4).
+  "QUANTITY" is the WEIGHT IN KG (e.g., 72, 69, 74), NOT a count. Set actualWeightKg from this, quantity=1.
+- ALL dimensions come from the PRODUCT CODE field, not the table
+- Each page is typically a SEPARATE delivery note with its own DN number
+
 CUSTOMER REFERENCE / PO NUMBER EXTRACTION - CRITICAL:
-- Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "P.O.:", "PO NUMBER:", "ORDER No.", "ORDER:", "YOUR REF:", "CUSTOMER REF:"
+- Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "P.O.:", "PO NUMBER:", "ORDER No.", "ORDER:", "YOUR REF:", "CUSTOMER REF:", "Customer O/No.:"
 - The reference/PO is often near the top of the document in the header area
-- Extract the FULL reference string (e.g., "PL7776/PO6719", "PO-12345", "162")
+- Extract the FULL reference string (e.g., "PL7776/PO6719", "PO-12345", "162", "189")
 
 Return a JSON object with this structure:
 {
   "deliveryNotes": [
     {
-      "deliveryNoteNumber": string (e.g., "1298", "D08422"),
+      "deliveryNoteNumber": string (e.g., "1298", "D08422", "3053"),
       "customerReference": string or null (PO/reference/order number),
       "deliveryDate": string or null (ISO format YYYY-MM-DD),
       "customerName": string or null (the recipient company name),
@@ -483,6 +495,45 @@ Some pages may be handwritten customer copies with a simpler format:
 - Quantity and description columns with handwritten entries
 - Extract what is legible; skip pages that are completely unreadable
 
+DOCUMENT FORMAT 4 - S&N RUBBER DELIVERY NOTE (calendered products):
+Yellow paper form with "S&N RUBBER" logo and "CALENDERED PRODUCTS" subtitle at the top.
+The right side has a "DELIVERY NOTE" header with "No:" followed by the DN number (e.g., 3053, 3057).
+Below the header are fields:
+- Date: (e.g., 12-03-2026 in DD-MM-YYYY format)
+- Invoice No.:
+- Dispatch Method: (e.g., TRITON)
+- Waybill No.: (e.g., 7008730)
+- Customer O/No.: (THIS IS THE CUSTOMER REFERENCE / PO NUMBER, e.g., 189)
+- DELIVERY ADDRESS: with "TO:" for the customer name/address
+
+The PRODUCT CODE is written as a single line describing the compound and dimensions, e.g.:
+  "AU-C50NBRSC (6mm x 800mm x 12.5M)"
+  Parse this as: compoundCode="AU-C50NBRSC", thicknessMm=6, widthMm=800, lengthM=12.5
+  Or "AU-C50NBRSC (6... x 800mm x 12.5M)" — same parsing.
+
+The main table has THREE groups of columns repeated across the page:
+┌───────────┬────────┬─────────┬──────────┐ × 3 groups
+│ PROD DATE │ RUN No │ ROLL No │ QUANTITY │
+└───────────┴────────┴─────────┴──────────┘
+CRITICAL PARSING RULES FOR S&N RUBBER:
+- Each filled ROW in any column group is ONE physical roll
+- "ROLL No" contains the roll's sequential number (simple integers like 1, 2, 3, 4, 5, 6, 7, 8)
+  These are the actual roll numbers to extract as rollNumber (as strings: "1", "2", etc.)
+- "QUANTITY" contains the WEIGHT IN KG for that roll (e.g., 72, 69, 74, 71)
+  This goes into actualWeightKg, NOT into quantity. Set quantity=1 for each row.
+- "RUN No" and "PROD DATE" are production metadata
+- ALL dimensions (thicknessMm, widthMm, lengthM) come from the PRODUCT CODE field, NOT from the table
+- The table may be partially filled — only extract rows that have data
+- Read ALL three column groups across the page (left, middle, right) — rolls may span across groups
+- Each PAGE is typically a SEPARATE delivery note with its own DN number
+- The document may appear rotated/landscape — still extract all data
+
+Example: Page with DN No: 3053, Customer O/No.: 189, Date: 12-03-2026
+  Product Code: AU-C50NBRSC (6mm x 800mm x 12.5M)
+  Table rows: Roll 1 = 72kg, Roll 2 = 69kg, Roll 3 = 74kg, Roll 4 = 71kg
+  → ONE deliveryNote with deliveryNoteNumber="3053", customerReference="189", 4 lineItems each with
+    thicknessMm=6, widthMm=800, lengthM=12.5, quantity=1, and their respective rollNumber and actualWeightKg.
+
 PROOF OF DELIVERY (POD) PAGES - CRITICAL:
 Some pages are NOT delivery notes — they are standalone Proof of Delivery receipt pages.
 A POD page is a SEPARATE DOCUMENT from the delivery note. It does NOT have product line items, roll numbers, or quantities.
@@ -499,7 +550,7 @@ POD pages are always scanned immediately AFTER the delivery note they belong to.
 If the POD page shows a recognizable DN number (e.g., "1307"), set "relatedDnNumber" to that number. Otherwise set it to null.
 
 REFERENCE/PO NUMBER EXTRACTION - CRITICAL:
-Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "ORDER No.", "ORDER:", "YOUR REF:", "CUSTOMER REF:"
+Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "ORDER No.", "ORDER:", "YOUR REF:", "CUSTOMER REF:", "Customer O/No.:"
 Extract the FULL reference string.
 
 Return a JSON object with this structure:

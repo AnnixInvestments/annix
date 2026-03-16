@@ -1751,6 +1751,7 @@ Formula: totalPrice = totalKg × salePricePerKg
               deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
               deliveryDate: dn.deliveryDate ?? null,
               customerName: dn.customerName ?? null,
+              customerReference: dn.customerReference ?? null,
               pageNumber: dnIdx + 1,
             })),
         );
@@ -1770,16 +1771,12 @@ Formula: totalPrice = totalKg × salePricePerKg
         );
         const dnMetadata = matchingDn || customerResult.deliveryNotes[0];
 
-        const filteredRolls = currentDnNumber
-          ? allRolls.filter((roll) => roll.deliveryNoteNumber === currentDnNumber)
-          : allRolls;
-
         return {
           deliveryNoteNumber: dnMetadata?.deliveryNoteNumber,
           deliveryDate: dnMetadata?.deliveryDate,
           customerName: dnMetadata?.customerName,
           customerReference: dnMetadata?.customerReference,
-          rolls: filteredRolls.length > 0 ? filteredRolls : allRolls,
+          rolls: allRolls,
         };
       } else {
         const pdfText = await (async () => {
