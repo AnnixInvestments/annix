@@ -273,7 +273,6 @@ export function PhotoCapture(props: PhotoCaptureProps) {
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/png,image/heic,image/heif,image/webp"
-        capture="environment"
         onChange={handleFileChange}
         className="hidden"
       />

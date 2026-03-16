@@ -21,7 +21,14 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn = "compoundCode" | "batchCount" | "lastBatchDate" | "shoreA" | "tc90" | "tensile" | "status";
+type SortColumn =
+  | "compoundCode"
+  | "batchCount"
+  | "lastBatchDate"
+  | "shoreA"
+  | "tc90"
+  | "tensile"
+  | "status";
 
 export default function QualityTrackingPage() {
   const { showToast } = useToast();
