@@ -17,6 +17,7 @@ export interface ChatResponse {
 export interface DocumentAnalysisResult {
   completedStepIndices: number[];
   reasoning: string;
+  vatSubmissionCycle?: "odd" | "even" | null;
 }
 
 type SupportedMediaType =
@@ -181,6 +182,24 @@ export class ComplySaAiService {
       .map((step, index) => `${index}: "${step}"`)
       .join("\n");
 
+    const isVatRelated =
+      requirement.code === "SARS_VAT_RETURNS" || requirement.code === "SARS_VAT_REGISTRATION";
+
+    const vatInstructions = isVatRelated
+      ? [
+          "",
+          "IMPORTANT: This is a VAT-related document. Also determine the company's VAT submission cycle.",
+          "In South Africa, VAT-registered companies submit VAT201 returns bi-monthly - either in odd months (Jan, Mar, May, Jul, Sep, Nov) or even months (Feb, Apr, Jun, Aug, Oct, Dec).",
+          'Look for any indication of the submission period/cycle in the document. A VAT201 return filed in January, March, May etc. means the company is on "odd" months. Filed in February, April, June etc. means "even" months.',
+          "A VAT registration notice may explicitly state the tax period category (Category A odd or even).",
+          'Include "vatSubmissionCycle": "odd" or "even" in your response if you can determine it, or null if unclear.',
+        ]
+      : [];
+
+    const responseFormat = isVatRelated
+      ? '{ "completedStepIndices": [0, 2], "reasoning": "brief explanation", "vatSubmissionCycle": "odd" }'
+      : '{ "completedStepIndices": [0, 2], "reasoning": "brief explanation" }';
+
     const prompt = [
       `A company has uploaded a document linked to the compliance requirement: "${requirement.name}".`,
       `Description: ${requirement.description}`,
@@ -190,7 +209,7 @@ export class ComplySaAiService {
       "",
       "Analyze the uploaded document and determine which checklist steps this document provides evidence of completion for.",
       "",
-      'Return JSON only: { "completedStepIndices": [0, 2], "reasoning": "brief explanation" }',
+      `Return JSON only: ${responseFormat}`,
       "",
       "Rules:",
       "- Only mark steps where the document provides clear evidence of completion",
@@ -198,6 +217,7 @@ export class ComplySaAiService {
       "- A registration certificate satisfies registration steps",
       "- Be conservative - only mark steps with strong evidence",
       "- Return an empty array if the document does not clearly satisfy any steps",
+      ...vatInstructions,
     ].join("\n");
 
     const systemPrompt = [
@@ -218,16 +238,26 @@ export class ComplySaAiService {
         .replace(/```json\s*/g, "")
         .replace(/```\s*/g, "")
         .trim();
-      const parsed = JSON.parse(cleaned) as { completedStepIndices?: number[]; reasoning?: string };
+      const parsed = JSON.parse(cleaned) as {
+        completedStepIndices?: number[];
+        reasoning?: string;
+        vatSubmissionCycle?: string;
+      };
 
       const validIndices = (parsed.completedStepIndices || []).filter(
         (idx): idx is number =>
           typeof idx === "number" && idx >= 0 && idx < requirement.checklistSteps!.length,
       );
 
+      const vatCycle =
+        parsed.vatSubmissionCycle === "odd" || parsed.vatSubmissionCycle === "even"
+          ? parsed.vatSubmissionCycle
+          : null;
+
       return {
         completedStepIndices: validIndices,
         reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : "",
+        vatSubmissionCycle: vatCycle,
       };
     } catch (error) {
       this.logger.error(

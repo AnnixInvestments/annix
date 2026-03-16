@@ -401,4 +401,44 @@ export class ComplySaComplianceService {
       }
     }
   }
+
+  async updateVatSubmissionCycle(companyId: number, cycle: "odd" | "even"): Promise<void> {
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
+
+    if (company === null || company.vatSubmissionCycle === cycle) {
+      return;
+    }
+
+    company.vatSubmissionCycle = cycle;
+    await this.companyRepository.save(company);
+
+    this.logger.log(`Updated VAT submission cycle for company ${companyId} to ${cycle}`);
+
+    const vatRequirement = await this.requirementRepository.findOne({
+      where: { code: "SARS_VAT_RETURNS" },
+    });
+
+    if (vatRequirement !== null) {
+      const status = await this.statusRepository.findOne({
+        where: { companyId, requirementId: vatRequirement.id },
+      });
+
+      if (status !== null) {
+        const nextDueDate = this.deadlineService.calculateNextDueDate(vatRequirement, company);
+        status.nextDueDate = nextDueDate;
+        await this.statusRepository.save(status);
+      }
+    }
+
+    const auditEntry = this.auditLogRepository.create({
+      companyId,
+      action: "vat_cycle_detected",
+      entityType: "company",
+      entityId: companyId,
+      details: { vatSubmissionCycle: cycle, source: "ai_document_analysis" },
+    });
+    await this.auditLogRepository.save(auditEntry);
+  }
 }

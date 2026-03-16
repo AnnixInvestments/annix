@@ -47,6 +47,9 @@ export class ComplySaCompany {
   @Column({ name: "vat_number", type: "varchar", length: 20, nullable: true })
   vatNumber!: string | null;
 
+  @Column({ name: "vat_submission_cycle", type: "varchar", length: 10, nullable: true })
+  vatSubmissionCycle!: "odd" | "even" | null;
+
   @Column({ name: "imports_exports", type: "boolean", default: false })
   importsExports!: boolean;
 

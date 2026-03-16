@@ -78,6 +78,13 @@ export class ComplySaDocumentsService {
         `AI auto-completed steps [${result.completedStepIndices.join(", ")}] for requirement ${document.requirementId}: ${result.reasoning}`,
       );
     }
+
+    if (result.vatSubmissionCycle) {
+      await this.complianceService.updateVatSubmissionCycle(
+        document.companyId,
+        result.vatSubmissionCycle,
+      );
+    }
   }
 
   async documentsForCompany(companyId: number): Promise<ComplySaDocument[]> {

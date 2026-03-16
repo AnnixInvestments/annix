@@ -57,7 +57,7 @@ export class ComplySaDeadlineService {
     } else if (rule.type === "fixed_dates") {
       return this.fixedDates(rule, today);
     } else if (rule.type === "bi_monthly") {
-      return this.biMonthly(rule, today);
+      return this.biMonthly(rule, today, company);
     } else {
       return null;
     }
@@ -114,17 +114,18 @@ export class ComplySaDeadlineService {
     return futureDates[0].toJSDate();
   }
 
-  private biMonthly(rule: BiMonthlyRule, today: DateTime): Date {
+  private biMonthly(rule: BiMonthlyRule, today: DateTime, company: ComplySaCompany): Date {
+    const cycle = company.vatSubmissionCycle || "even";
+    const isSubmissionMonth = cycle === "odd" ? today.month % 2 !== 0 : today.month % 2 === 0;
+
     const currentDay = today.set({ day: rule.day });
 
-    if (currentDay > today && today.month % 2 !== 0) {
+    if (isSubmissionMonth && currentDay > today) {
       return currentDay.toJSDate();
+    } else if (isSubmissionMonth) {
+      return currentDay.plus({ months: 2 }).toJSDate();
     } else {
-      const nextBiMonth =
-        today.month % 2 === 0
-          ? today.set({ day: rule.day }).plus({ months: 1 })
-          : today.set({ day: rule.day }).plus({ months: 2 });
-      return nextBiMonth.toJSDate();
+      return currentDay.plus({ months: 1 }).toJSDate();
     }
   }
 }

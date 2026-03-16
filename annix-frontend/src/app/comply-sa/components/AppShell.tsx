@@ -26,10 +26,10 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import AmixLogo from "@/app/components/AmixLogo";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 import Breadcrumbs from "@/app/comply-sa/components/Breadcrumbs";
 import HelpLinks from "@/app/comply-sa/components/HelpLinks";
-import { COMPLY_SA_VERSION } from "@/app/comply-sa/config/version";
-import { ThemeToggle } from "@/app/components/ThemeToggle";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
@@ -109,10 +109,8 @@ function DropdownMenu({
       <button
         type="button"
         onClick={onToggle}
-        className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-          active
-            ? "text-teal-600 dark:text-teal-400"
-            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+        className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+          active ? "bg-[#FFA500] text-[#323288]" : "text-[#FFA500] hover:bg-[#4a4da3]"
         }`}
       >
         {group.label}
@@ -273,66 +271,64 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
-      <header className="sticky top-0 z-40 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-        <div className="flex items-center justify-between px-4 py-3 lg:px-6 max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              aria-label="Toggle menu"
-              className="lg:hidden text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-            <Link href="/comply-sa/dashboard" className="flex items-center gap-2">
-              <Shield className="h-6 w-6 text-teal-400" />
-              <span className="text-lg font-bold text-slate-900 dark:text-white">Comply SA</span>
-              <span className="text-xs text-slate-400 dark:text-slate-500 font-normal">
-                v{COMPLY_SA_VERSION}
-              </span>
-            </Link>
-          </div>
-
-          <div ref={navRef} className="hidden lg:flex items-center gap-1">
-            {TOP_LEVEL_LINKS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isRouteActive(pathname, item.href)
-                    ? "text-teal-600 dark:text-teal-400"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
+      <header className="sticky top-0 z-50 shadow-lg" style={{ backgroundColor: "#323288" }}>
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                aria-label="Toggle menu"
+                className="lg:hidden text-white/70 hover:text-white"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
-                {item.label}
+                <Menu className="h-6 w-6" />
+              </button>
+              <Link
+                href="/"
+                className="flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
+              >
+                <AmixLogo size="sm" showText useSignatureFont />
               </Link>
-            ))}
+            </div>
 
-            {DROPDOWN_GROUPS.map((group) => (
-              <DropdownMenu
-                key={group.label}
-                group={group}
-                pathname={pathname}
-                isOpen={openDropdown === group.label}
-                onToggle={() => handleDropdownToggle(group.label)}
-              />
-            ))}
-          </div>
+            <div ref={navRef} className="hidden lg:flex items-center gap-1">
+              {TOP_LEVEL_LINKS.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                    isRouteActive(pathname, item.href)
+                      ? "bg-[#FFA500] text-[#323288]"
+                      : "text-[#FFA500] hover:bg-[#4a4da3]"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
 
-          <div className="flex items-center gap-2">
-            <ThemeToggle
-              className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
-              iconClassName="w-5 h-5 text-slate-500 dark:text-slate-400"
-            />
-            <button
-              type="button"
-              aria-label="Log out"
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-sm transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
+              {DROPDOWN_GROUPS.map((group) => (
+                <DropdownMenu
+                  key={group.label}
+                  group={group}
+                  pathname={pathname}
+                  isOpen={openDropdown === group.label}
+                  onToggle={() => handleDropdownToggle(group.label)}
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <button
+                type="button"
+                aria-label="Log out"
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-white/70 hover:text-white text-sm transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
