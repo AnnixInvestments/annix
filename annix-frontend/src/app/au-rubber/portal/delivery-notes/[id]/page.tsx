@@ -407,7 +407,12 @@ export default function DeliveryNoteDetailPage() {
     <div className="space-y-6">
       <Breadcrumb
         items={[
-          { label: "Delivery Notes", href: "/au-rubber/portal/delivery-notes" },
+          {
+            label: "Delivery Notes",
+            href: note.deliveryNoteType === "ROLL"
+              ? "/au-rubber/portal/delivery-notes/customers"
+              : "/au-rubber/portal/delivery-notes/suppliers",
+          },
           { label: note.deliveryNoteNumber || `DN-${note.id}` },
         ]}
       />
