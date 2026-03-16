@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { fromJSDate, now } from "../../lib/datetime";
+import { sageRateLimiter } from "../../lib/sage-rate-limiter";
 import { ComplySaSageConnection } from "./sage-connection.entity";
 
 export interface SageCompanyInfo {
@@ -148,11 +149,12 @@ export class SageService {
 
   async syncCompanyInfo(companyId: number): Promise<SageCompanyInfo> {
     const accessToken = await this.validAccessToken(companyId);
+    const companyKey = `comply-sa-${companyId}`;
     const response = await this.sageApiRequest<{
       name: string;
       company_registration_number: string | null;
       tax_number: string | null;
-    }>(accessToken, "/business");
+    }>(accessToken, "/business", companyKey);
 
     return {
       tradingName: response.name ?? null,
@@ -163,21 +165,22 @@ export class SageService {
 
   async syncFinancialData(companyId: number): Promise<SageFinancialData> {
     const accessToken = await this.validAccessToken(companyId);
+    const companyKey = `comply-sa-${companyId}`;
 
-    const [salesInvoices, payrollEntries] = await Promise.all([
-      this.sageApiRequest<{ $total: number }>(
-        accessToken,
-        "/sales_invoices?attributes=total_amount&items_per_page=1",
-      ),
-      this.sageApiRequest<{ $total: number }>(
-        accessToken,
-        "/payroll_entries?attributes=total_cost&items_per_page=1",
-      ).catch(() => null),
-    ]);
+    const salesInvoices = await this.sageApiRequest<{ $total: number }>(
+      accessToken,
+      "/sales_invoices?attributes=total_amount&items_per_page=1",
+      companyKey,
+    );
+    const payrollEntries = await this.sageApiRequest<{ $total: number }>(
+      accessToken,
+      "/payroll_entries?attributes=total_cost&items_per_page=1",
+      companyKey,
+    ).catch(() => null);
 
     const turnoverResponse = await this.sageApiRequest<{
       $items: Array<{ total_amount: string }>;
-    }>(accessToken, "/sales_invoices?attributes=total_amount&items_per_page=200");
+    }>(accessToken, "/sales_invoices?attributes=total_amount&items_per_page=200", companyKey);
 
     const annualTurnover = turnoverResponse.$items.reduce(
       (sum, invoice) => sum + Number.parseFloat(invoice.total_amount || "0"),
@@ -193,10 +196,11 @@ export class SageService {
 
   async syncContacts(companyId: number): Promise<SageContactSummary> {
     const accessToken = await this.validAccessToken(companyId);
+    const companyKey = `comply-sa-${companyId}`;
     const response = await this.sageApiRequest<{
       $total: number;
       $items: Array<{ contact_type_ids: string[] }>;
-    }>(accessToken, "/contacts?items_per_page=200");
+    }>(accessToken, "/contacts?items_per_page=200", companyKey);
 
     const employeeContacts = response.$items.filter((contact) =>
       contact.contact_type_ids.includes("EMPLOYEE"),
@@ -215,11 +219,9 @@ export class SageService {
   }> {
     this.logger.log(`Starting full Sage sync for company ${companyId}`);
 
-    const [companyInfo, financialData, contacts] = await Promise.all([
-      this.syncCompanyInfo(companyId),
-      this.syncFinancialData(companyId),
-      this.syncContacts(companyId),
-    ]);
+    const companyInfo = await this.syncCompanyInfo(companyId);
+    const financialData = await this.syncFinancialData(companyId);
+    const contacts = await this.syncContacts(companyId);
 
     const connection = await this.connectionRepository.findOne({ where: { companyId } });
     if (connection !== null) {
@@ -303,7 +305,13 @@ export class SageService {
     return response.json();
   }
 
-  private async sageApiRequest<T>(accessToken: string, endpoint: string): Promise<T> {
+  private async sageApiRequest<T>(
+    accessToken: string,
+    endpoint: string,
+    companyKey?: string,
+  ): Promise<T> {
+    await sageRateLimiter.waitForSlot(companyKey ?? "comply-sa-default");
+
     const url = `${SAGE_API_BASE}${endpoint}`;
 
     const response = await fetch(url, {

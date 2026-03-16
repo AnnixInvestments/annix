@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { sageRateLimiter } from "../lib/sage-rate-limiter";
 
 const SAGE_BASE_URL = "https://accounting.sageone.co.za/api/2.0.0";
 
@@ -88,7 +89,7 @@ export class SageApiService {
     path: string,
     username: string,
     password: string,
-    options?: { method?: string; body?: unknown },
+    options?: { method?: string; body?: unknown; companyKey?: string },
   ): Promise<T> {
     const key = this.apiKey();
     if (!key) {
@@ -96,6 +97,9 @@ export class SageApiService {
         "SAGE_API_KEY not configured — request an API key from Sage and set it as a Fly.io secret",
       );
     }
+
+    const rateLimitKey = options?.companyKey ?? username;
+    await sageRateLimiter.waitForSlot(rateLimitKey);
 
     const method = options?.method ?? "GET";
     const separator = path.includes("?") ? "&" : "?";
