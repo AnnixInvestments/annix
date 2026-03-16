@@ -3,8 +3,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { sageRateLimiter } from "../../../lib/sage-rate-limiter";
 import { fromJSDate, now } from "../../lib/datetime";
-import { sageRateLimiter } from "../../lib/sage-rate-limiter";
 import { ComplySaSageConnection } from "./sage-connection.entity";
 
 export interface SageCompanyInfo {
