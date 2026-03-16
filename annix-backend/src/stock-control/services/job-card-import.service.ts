@@ -865,7 +865,7 @@ export class JobCardImportService {
       versionNumber: 1,
       parentJobCardId: parentJobCard.id,
       jtDnNumber,
-      workflowCeiling: JobCardWorkflowStatus.REQUISITION_SENT,
+      workflowCeiling: null,
       cpoId: parentJobCard.cpoId,
       isCpoCalloff: true,
       companyId,
