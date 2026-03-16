@@ -644,7 +644,7 @@ export default function DeliveryNoteDetailPage() {
                     PO/Ref
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    POD
+                    Page
                   </th>
                 </tr>
               </thead>
@@ -855,18 +855,8 @@ export default function DeliveryNoteDetailPage() {
                                   "-"
                                 )}
                               </td>
-                              <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                {note?.documentPath && roll.pageNumber ? (
-                                  <button
-                                    onClick={() => handleViewPod(roll.pageNumber!)}
-                                    className="text-blue-600 hover:text-blue-800 font-medium"
-                                    title={`View page ${roll.pageNumber}`}
-                                  >
-                                    View
-                                  </button>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                {roll.pageNumber || "-"}
                               </td>
                             </tr>
                           );

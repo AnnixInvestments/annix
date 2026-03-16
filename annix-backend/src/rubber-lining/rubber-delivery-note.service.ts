@@ -585,7 +585,7 @@ export class RubberDeliveryNoteService {
       lengthM: dto.lengthM ?? null,
       linkedBatchIds: [],
       compoundType: dto.compoundType ?? null,
-      quantity: dto.quantity ?? null,
+      quantity: dto.quantity ? Math.round(dto.quantity) : null,
       cocBatchNumbers: dto.cocBatchNumbers ?? null,
     });
 
