@@ -69,6 +69,9 @@ export class RubberCompoundMovement {
   @Column({ name: "notes", type: "text", nullable: true })
   notes: string | null;
 
+  @Column({ name: "movement_date", type: "date", nullable: true })
+  movementDate: Date | null;
+
   @Column({ name: "created_by", type: "varchar", length: 100, nullable: true })
   createdBy: string | null;
 

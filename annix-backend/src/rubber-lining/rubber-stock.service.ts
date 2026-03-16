@@ -294,6 +294,7 @@ export class RubberStockService {
       quantityKg: dto.quantityKg,
       referenceType: CompoundMovementReferenceType.OPENING_STOCK,
       batchNumber: dto.batchNumber ?? null,
+      movementDate: dto.date ? fromISO(dto.date).toJSDate() : null,
       notes: dto.notes ?? "Opening stock entry",
     });
     await this.movementRepository.save(movement);
@@ -447,6 +448,7 @@ export class RubberStockService {
       movementType,
       quantityKg: Math.abs(difference),
       referenceType: CompoundMovementReferenceType.STOCK_TAKE,
+      movementDate: dto.date ? fromISO(dto.date).toJSDate() : null,
       notes:
         dto.notes ?? `Stock adjusted from ${oldQty.toFixed(3)} to ${dto.quantityKg.toFixed(3)} kg`,
     });
@@ -955,6 +957,7 @@ export class RubberStockService {
       referenceType: movement.referenceType,
       referenceId: movement.referenceId,
       batchNumber: movement.batchNumber,
+      movementDate: movement.movementDate ? movement.movementDate.toISOString().split("T")[0] : null,
       notes: movement.notes,
       createdBy: movement.createdBy,
       createdAt: movement.createdAt.toISOString(),

@@ -396,6 +396,7 @@ export default function CompoundStocksPage() {
     reorderPointKg: 0,
     locationId: null,
     batchNumber: null,
+    date: null,
     notes: null,
   });
   const [compoundInput, setCompoundInput] = useState("");
@@ -990,7 +991,7 @@ export default function CompoundStocksPage() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Location</label>
                       <select
@@ -1028,6 +1029,20 @@ export default function CompoundStocksPage() {
                         }
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                         placeholder="Optional"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Date</label>
+                      <input
+                        type="date"
+                        value={openingStockForm.date || ""}
+                        onChange={(e) =>
+                          setOpeningStockForm({
+                            ...openingStockForm,
+                            date: e.target.value || null,
+                          })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                       />
                     </div>
                   </div>

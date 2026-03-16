@@ -661,6 +661,7 @@ export interface CreateCompoundOpeningStockDto {
   reorderPointKg?: number;
   locationId?: number | null;
   batchNumber?: string | null;
+  date?: string | null;
   notes?: string | null;
 }
 

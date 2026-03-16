@@ -707,6 +707,10 @@ export class CreateCompoundOpeningStockDto {
 
   @IsOptional()
   @IsString()
+  date?: string | null;
+
+  @IsOptional()
+  @IsString()
   notes?: string | null;
 }
 
@@ -765,6 +769,7 @@ export class RubberCompoundMovementDto {
   referenceType: CompoundMovementReferenceType;
   referenceId: number | null;
   batchNumber: string | null;
+  movementDate: string | null;
   notes: string | null;
   createdBy: string | null;
   createdAt: string;
@@ -792,6 +797,10 @@ export class AdjustCompoundDto {
 
   @IsNumber()
   quantityKg: number;
+
+  @IsOptional()
+  @IsString()
+  date?: string | null;
 
   @IsOptional()
   @IsString()
