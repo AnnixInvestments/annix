@@ -389,8 +389,20 @@ Return a JSON object with this structure:
   ]
 }
 
+PROOF OF DELIVERY (POD) PAGES - CRITICAL:
+Some pages in a multi-page PDF are NOT delivery notes — they are signed Proof of Delivery receipts.
+POD pages typically contain:
+- "Goods Received Date", "Received by", "Signature", "Date Entered"
+- A company stamp or handwritten signatures
+- A DN number that matches an actual delivery note in the same PDF
+- A 5-digit internal document number (e.g., 23954, 23978) which is NOT a DN number
+DO NOT create a separate delivery note entry for POD pages. SKIP them entirely.
+If a POD page has a recognizable DN number (e.g., "1307"), you may associate it with that DN, but do NOT create a new entry with the 5-digit document number.
+
 Guidelines:
-- SCAN THROUGH THE ENTIRE DOCUMENT - each page is typically a separate delivery note
+- SCAN THROUGH THE ENTIRE DOCUMENT - pages may be delivery notes, PODs, or duplicates
+- Skip POD/receipt pages (signed delivery confirmations) — they are NOT separate delivery notes
+- If two pages show the same DN (e.g., customer copy + supplier copy), only return it ONCE
 - Parse dates from DD/MM/YYYY or YYYY/MM/DD to YYYY-MM-DD format
 - Extract compound codes and parse their components where possible
 - Parse dimension strings like "20x950x12.5" into thicknessMm, widthMm, lengthM
@@ -459,6 +471,15 @@ Some pages may be handwritten customer copies with a simpler format:
 - Quantity and description columns with handwritten entries
 - Extract what is legible; skip pages that are completely unreadable
 
+PROOF OF DELIVERY (POD) PAGES - CRITICAL:
+Some pages are NOT delivery notes — they are signed Proof of Delivery receipts.
+POD pages typically show:
+- "Goods Received Date", "Received by", "Signature", "Date Entered"
+- A company stamp or handwritten signatures
+- Sometimes a 5-digit internal document number (e.g., 23954, 23978) — this is NOT a DN number
+DO NOT create a separate delivery note entry for POD pages. SKIP them entirely.
+They are delivery confirmation receipts, not actual delivery notes with roll/product data.
+
 REFERENCE/PO NUMBER EXTRACTION - CRITICAL:
 Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "ORDER No.", "ORDER:", "YOUR REF:", "CUSTOMER REF:"
 Extract the FULL reference string.
@@ -488,7 +509,8 @@ Return a JSON object with this structure:
 }
 
 IMPORTANT:
-- Each page/image is typically a SEPARATE delivery note. Extract data from ALL pages.
+- Pages may be delivery notes, PODs (signed receipts), or duplicates. Only extract actual delivery notes.
+- SKIP Proof of Delivery (POD) pages — they have signatures, "Goods Received", stamps, and 5-digit document numbers. These are NOT delivery notes.
 - If a page is upside down, still try to read it.
 - If two pages show the same DN (e.g., customer copy + supplier copy), only return it ONCE.
 - Parse roll dimensions like "20x950x12.5" or "8x800x12.5" into thicknessMm, widthMm, lengthM.
