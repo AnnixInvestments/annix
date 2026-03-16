@@ -23,7 +23,7 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn = "itemCode" | "itemName" | "quantity" | "category" | "location";
+type SortColumn = "itemCode" | "itemName" | "quantity" | "category" | "reorderPoint" | "location";
 
 const UNIT_OF_MEASURE_OPTIONS: { value: OtherStockUnitOfMeasure; label: string }[] = [
   { value: "EACH", label: "Each" },
@@ -130,6 +130,9 @@ export default function OtherItemsPage() {
       }
       if (sortColumn === "category") {
         return direction * (a.category || "").localeCompare(b.category || "");
+      }
+      if (sortColumn === "reorderPoint") {
+        return direction * ((a.reorderPoint || 0) - (b.reorderPoint || 0));
       }
       if (sortColumn === "location") {
         return direction * (a.location || "").localeCompare(b.location || "");
@@ -468,8 +471,14 @@ export default function OtherItemsPage() {
                     <SortIcon active={sortColumn === "quantity"} direction={sortDirection} />
                   </div>
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Reorder Point
+                <th
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("reorderPoint")}
+                >
+                  <div className="flex items-center justify-end">
+                    Reorder Point
+                    <SortIcon active={sortColumn === "reorderPoint"} direction={sortDirection} />
+                  </div>
                 </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"

@@ -24,7 +24,13 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn = "requisitionNumber" | "sourceType" | "status" | "totalQuantityKg" | "createdAt";
+type SortColumn =
+  | "requisitionNumber"
+  | "sourceType"
+  | "status"
+  | "items"
+  | "totalQuantityKg"
+  | "createdAt";
 
 const statusColors: Record<RequisitionStatus, string> = {
   PENDING: "bg-yellow-100 text-yellow-800",
@@ -112,6 +118,9 @@ export default function PurchaseRequisitionsPage() {
       }
       if (sortColumn === "status") {
         return direction * a.status.localeCompare(b.status);
+      }
+      if (sortColumn === "items") {
+        return direction * (a.items.length - b.items.length);
       }
       if (sortColumn === "totalQuantityKg") {
         return direction * (a.totalQuantityKg - b.totalQuantityKg);
@@ -382,9 +391,11 @@ export default function PurchaseRequisitionsPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("items")}
                 >
                   Items
+                  <SortIcon active={sortColumn === "items"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"

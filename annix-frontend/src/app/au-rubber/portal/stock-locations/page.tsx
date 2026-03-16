@@ -15,7 +15,7 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn = "name" | "displayOrder" | "active";
+type SortColumn = "name" | "description" | "displayOrder" | "active";
 
 export default function StockLocationsPage() {
   const { showToast } = useToast();
@@ -67,6 +67,9 @@ export default function StockLocationsPage() {
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "name") {
         return direction * a.name.localeCompare(b.name);
+      }
+      if (sortColumn === "description") {
+        return direction * (a.description || "").localeCompare(b.description || "");
       }
       if (sortColumn === "displayOrder") {
         return direction * (a.displayOrder - b.displayOrder);
@@ -246,9 +249,11 @@ export default function StockLocationsPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("description")}
                 >
                   Description
+                  <SortIcon active={sortColumn === "description"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"

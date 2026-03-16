@@ -21,7 +21,7 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn = "compoundCode" | "batchCount" | "lastBatchDate" | "status";
+type SortColumn = "compoundCode" | "batchCount" | "lastBatchDate" | "shoreA" | "tc90" | "tensile" | "status";
 
 export default function QualityTrackingPage() {
   const { showToast } = useToast();
@@ -70,6 +70,15 @@ export default function QualityTrackingPage() {
         const dateA = a.lastBatchDate || "";
         const dateB = b.lastBatchDate || "";
         return direction * dateA.localeCompare(dateB);
+      }
+      if (sortColumn === "shoreA") {
+        return direction * ((a.shoreA?.latestValue || 0) - (b.shoreA?.latestValue || 0));
+      }
+      if (sortColumn === "tc90") {
+        return direction * ((a.tc90?.latestValue || 0) - (b.tc90?.latestValue || 0));
+      }
+      if (sortColumn === "tensile") {
+        return direction * ((a.tensile?.latestValue || 0) - (b.tensile?.latestValue || 0));
       }
       if (sortColumn === "status") {
         const statusOrder: Record<QualityStatus, number> = { critical: 0, warning: 1, normal: 2 };
@@ -279,21 +288,27 @@ export default function QualityTrackingPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("shoreA")}
                 >
                   Shore A
+                  <SortIcon active={sortColumn === "shoreA"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("tc90")}
                 >
                   TC90
+                  <SortIcon active={sortColumn === "tc90"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("tensile")}
                 >
                   Tensile
+                  <SortIcon active={sortColumn === "tensile"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"

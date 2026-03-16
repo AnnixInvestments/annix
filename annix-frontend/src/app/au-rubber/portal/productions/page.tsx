@@ -21,7 +21,13 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn = "productionNumber" | "productTitle" | "quantity" | "status" | "createdAt";
+type SortColumn =
+  | "productionNumber"
+  | "productTitle"
+  | "compoundName"
+  | "quantity"
+  | "status"
+  | "createdAt";
 
 const statusColor = (status: RubberProductionStatus) => {
   const colors: Record<RubberProductionStatus, string> = {
@@ -230,8 +236,12 @@ export default function ProductionsPage() {
                   Qty
                   <SortIcon active={sortColumn === "quantity"} direction={sortDirection} />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("compoundName")}
+                >
                   Compound
+                  <SortIcon active={sortColumn === "compoundName"} direction={sortDirection} />
                 </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
