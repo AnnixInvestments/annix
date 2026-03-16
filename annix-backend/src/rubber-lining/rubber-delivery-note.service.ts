@@ -147,7 +147,7 @@ export class RubberDeliveryNoteService {
       firebaseUid: `pg_${generateUniqueId()}`,
       deliveryNoteType: dto.deliveryNoteType,
       deliveryNoteNumber: dto.deliveryNoteNumber,
-      deliveryDate: dto.deliveryDate ? fromISO(dto.deliveryDate).toJSDate() : null,
+      deliveryDate: dto.deliveryDate || null,
       customerReference: dto.customerReference ?? null,
       supplierCompanyId: dto.supplierCompanyId,
       documentPath: dto.documentPath ?? null,
@@ -186,7 +186,7 @@ export class RubberDeliveryNoteService {
 
     if (dto.deliveryNoteNumber !== undefined) note.deliveryNoteNumber = dto.deliveryNoteNumber;
     if (dto.deliveryDate !== undefined) {
-      note.deliveryDate = dto.deliveryDate ? fromISO(dto.deliveryDate).toJSDate() : null;
+      note.deliveryDate = (dto.deliveryDate as unknown as Date) || null;
     }
     if (dto.status !== undefined) note.status = dto.status;
     if (dto.linkedCocId !== undefined) note.linkedCocId = dto.linkedCocId;
@@ -215,7 +215,7 @@ export class RubberDeliveryNoteService {
       note.deliveryNoteNumber = extractedData.deliveryNoteNumber;
     }
     if (extractedData.deliveryDate && !note.deliveryDate) {
-      note.deliveryDate = fromISO(extractedData.deliveryDate).toJSDate();
+      note.deliveryDate = extractedData.deliveryDate as unknown as Date;
     }
     if (extractedData.customerReference && !note.customerReference) {
       note.customerReference = extractedData.customerReference;
@@ -268,7 +268,7 @@ export class RubberDeliveryNoteService {
       note.deliveryNoteNumber = enrichedData.deliveryNoteNumber;
     }
     if (enrichedData.deliveryDate) {
-      note.deliveryDate = fromISO(enrichedData.deliveryDate).toJSDate();
+      note.deliveryDate = enrichedData.deliveryDate as unknown as Date;
     }
     if (enrichedData.customerReference !== undefined) {
       note.customerReference = enrichedData.customerReference || null;
@@ -755,7 +755,7 @@ export class RubberDeliveryNoteService {
 
         if (index === 0) {
           note.deliveryNoteNumber = dnNumber;
-          note.deliveryDate = deliveryDate ? fromISO(deliveryDate).toJSDate() : note.deliveryDate;
+          note.deliveryDate = deliveryDate ? (deliveryDate as unknown as Date) : note.deliveryDate;
           note.status = DeliveryNoteStatus.EXTRACTED;
           note.extractedData = {
             ...extractedData,
@@ -771,7 +771,7 @@ export class RubberDeliveryNoteService {
           firebaseUid: `pg_${generateUniqueId()}`,
           deliveryNoteType: note.deliveryNoteType,
           deliveryNoteNumber: dnNumber,
-          deliveryDate: deliveryDate ? fromISO(deliveryDate).toJSDate() : null,
+          deliveryDate: deliveryDate ? (deliveryDate as unknown as Date) : null,
           customerReference: note.customerReference,
           supplierCompanyId: note.supplierCompanyId,
           documentPath: note.documentPath,
