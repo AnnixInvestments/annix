@@ -21,7 +21,13 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn = "orderNumber" | "compoundName" | "quantityKg" | "status" | "createdAt";
+type SortColumn =
+  | "orderNumber"
+  | "compoundName"
+  | "quantityKg"
+  | "status"
+  | "supplierName"
+  | "createdAt";
 
 const statusColor = (status: RubberCompoundOrderStatus) => {
   const colors: Record<RubberCompoundOrderStatus, string> = {
@@ -97,6 +103,8 @@ export default function CompoundOrdersPage() {
         return direction * (a.compoundName || "").localeCompare(b.compoundName || "");
       if (sortColumn === "quantityKg") return direction * (a.quantityKg - b.quantityKg);
       if (sortColumn === "status") return direction * a.status.localeCompare(b.status);
+      if (sortColumn === "supplierName")
+        return direction * (a.supplierName || "").localeCompare(b.supplierName || "");
       if (sortColumn === "createdAt") return direction * a.createdAt.localeCompare(b.createdAt);
       return 0;
     });
@@ -299,8 +307,12 @@ export default function CompoundOrdersPage() {
                   Status
                   <SortIcon active={sortColumn === "status"} direction={sortDirection} />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("supplierName")}
+                >
                   Supplier
+                  <SortIcon active={sortColumn === "supplierName"} direction={sortDirection} />
                 </th>
                 <th
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"

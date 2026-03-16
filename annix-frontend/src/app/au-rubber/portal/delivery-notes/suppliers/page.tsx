@@ -28,8 +28,11 @@ type SortColumn =
   | "deliveryNoteNumber"
   | "supplierCompanyName"
   | "deliveryNoteType"
+  | "poRef"
+  | "rollNumbers"
   | "status"
-  | "deliveryDate";
+  | "deliveryDate"
+  | "linkedCoc";
 
 export default function SupplierDeliveryNotesPage() {
   const { showToast } = useToast();
@@ -103,8 +106,21 @@ export default function SupplierDeliveryNotesPage() {
       if (sortColumn === "status") {
         return direction * a.status.localeCompare(b.status);
       }
+      if (sortColumn === "poRef") {
+        return direction * notePoRef(a).localeCompare(notePoRef(b));
+      }
+      if (sortColumn === "rollNumbers") {
+        return (
+          direction * noteRollNumbers(a).join(", ").localeCompare(noteRollNumbers(b).join(", "))
+        );
+      }
       if (sortColumn === "deliveryDate") {
         return direction * (a.deliveryDate || "").localeCompare(b.deliveryDate || "");
+      }
+      if (sortColumn === "linkedCoc") {
+        const aLinked = a.linkedCocId ? 1 : 0;
+        const bLinked = b.linkedCocId ? 1 : 0;
+        return direction * (aLinked - bLinked);
       }
       return 0;
     });
@@ -497,15 +513,19 @@ export default function SupplierDeliveryNotesPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("poRef")}
                 >
                   PO / Ref
+                  <SortIcon active={sortColumn === "poRef"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("rollNumbers")}
                 >
                   Roll Numbers
+                  <SortIcon active={sortColumn === "rollNumbers"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"
@@ -525,9 +545,11 @@ export default function SupplierDeliveryNotesPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("linkedCoc")}
                 >
                   Linked CoC
+                  <SortIcon active={sortColumn === "linkedCoc"} direction={sortDirection} />
                 </th>
                 <th scope="col" className="relative px-6 py-3">
                   <span className="sr-only">Actions</span>

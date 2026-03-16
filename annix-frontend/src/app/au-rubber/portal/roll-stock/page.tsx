@@ -24,7 +24,13 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn = "rollNumber" | "compoundName" | "weightKg" | "status" | "createdAt";
+type SortColumn =
+  | "rollNumber"
+  | "compoundName"
+  | "weightKg"
+  | "status"
+  | "soldToCompanyName"
+  | "createdAt";
 
 export default function RollStockPage() {
   const { showToast } = useToast();
@@ -118,6 +124,9 @@ export default function RollStockPage() {
       }
       if (sortColumn === "status") {
         return direction * a.status.localeCompare(b.status);
+      }
+      if (sortColumn === "soldToCompanyName") {
+        return direction * (a.soldToCompanyName || "").localeCompare(b.soldToCompanyName || "");
       }
       if (sortColumn === "createdAt") {
         return direction * a.createdAt.localeCompare(b.createdAt);
@@ -477,9 +486,11 @@ export default function RollStockPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("soldToCompanyName")}
                 >
                   Customer
+                  <SortIcon active={sortColumn === "soldToCompanyName"} direction={sortDirection} />
                 </th>
                 <th scope="col" className="relative px-6 py-3">
                   <span className="sr-only">Actions</span>

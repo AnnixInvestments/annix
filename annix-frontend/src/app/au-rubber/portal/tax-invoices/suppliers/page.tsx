@@ -42,7 +42,8 @@ type SortColumn =
   | "totalAmount"
   | "productDescription"
   | "numberOfRolls"
-  | "costPerUnit";
+  | "costPerUnit"
+  | "unit";
 
 export default function SupplierTaxInvoicesPage() {
   const { showToast } = useToast();
@@ -287,6 +288,9 @@ export default function SupplierTaxInvoicesPage() {
       }
       if (sortColumn === "costPerUnit") {
         return direction * ((a.costPerUnit || 0) - (b.costPerUnit || 0));
+      }
+      if (sortColumn === "unit") {
+        return direction * (a.unit || "").localeCompare(b.unit || "");
       }
       return 0;
     });
@@ -629,9 +633,11 @@ export default function SupplierTaxInvoicesPage() {
                   </th>
                   <th
                     scope="col"
-                    className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("unit")}
                   >
                     Unit
+                    <SortIcon active={sortColumn === "unit"} direction={sortDirection} />
                   </th>
                   <th
                     scope="col"

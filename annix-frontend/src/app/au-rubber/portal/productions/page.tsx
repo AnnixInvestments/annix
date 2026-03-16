@@ -21,13 +21,7 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn =
-  | "productionNumber"
-  | "productTitle"
-  | "compoundName"
-  | "quantity"
-  | "status"
-  | "createdAt";
+type SortColumn = "productionNumber" | "productTitle" | "quantity" | "status" | "createdAt";
 
 const statusColor = (status: RubberProductionStatus) => {
   const colors: Record<RubberProductionStatus, string> = {

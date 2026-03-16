@@ -25,7 +25,13 @@ import { formatDateZA } from "@/app/lib/datetime";
 
 const CustomerSageExportModal = lazy(() => import("../CustomerSageExportModal"));
 
-type SortColumn = "invoiceNumber" | "companyName" | "status" | "invoiceDate" | "totalAmount";
+type SortColumn =
+  | "invoiceNumber"
+  | "companyName"
+  | "status"
+  | "invoiceDate"
+  | "totalAmount"
+  | "vatAmount";
 
 export default function CustomerTaxInvoicesPage() {
   const { showToast } = useToast();
@@ -224,6 +230,9 @@ export default function CustomerTaxInvoicesPage() {
       }
       if (sortColumn === "totalAmount") {
         return direction * ((a.totalAmount || 0) - (b.totalAmount || 0));
+      }
+      if (sortColumn === "vatAmount") {
+        return direction * ((a.vatAmount || 0) - (b.vatAmount || 0));
       }
       return 0;
     });

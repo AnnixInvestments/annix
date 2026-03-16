@@ -102,13 +102,9 @@ function BroadcastCard({ broadcast }: { broadcast: BroadcastDetailDto }) {
           >
             {broadcast.priority.toLowerCase()}
           </span>
-          <span className="text-xs text-gray-400">
-            {formatDateZA(broadcast.createdAt)}
-          </span>
+          <span className="text-xs text-gray-400">{formatDateZA(broadcast.createdAt)}</span>
           {broadcast.sentByName && (
-            <span className="text-xs text-gray-400">
-              by {broadcast.sentByName}
-            </span>
+            <span className="text-xs text-gray-400">by {broadcast.sentByName}</span>
           )}
         </div>
       </div>

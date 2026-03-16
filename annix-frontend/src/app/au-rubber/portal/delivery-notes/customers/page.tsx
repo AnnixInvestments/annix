@@ -31,9 +31,12 @@ import { useAuRubberCompanies, useAuRubberDeliveryNotes } from "@/app/lib/query/
 type SortColumn =
   | "deliveryNoteNumber"
   | "supplierCompanyName"
+  | "customerReference"
+  | "rollNumbers"
   | "deliveryNoteType"
   | "status"
-  | "deliveryDate";
+  | "deliveryDate"
+  | "auCocNumber";
 
 export default function CustomerDeliveryNotesPage() {
   const router = useRouter();
@@ -84,6 +87,19 @@ export default function CustomerDeliveryNotesPage() {
     }
   };
 
+  const extractedDataSingle = (
+    data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
+  ): ExtractedDeliveryNoteData | null => {
+    if (!data) return null;
+    if (Array.isArray(data)) return data[0] ?? null;
+    return data;
+  };
+
+  const noteRollNumbers = (note: RubberDeliveryNoteDto): string[] => {
+    const ed = extractedDataSingle(note.extractedData);
+    return (ed?.rolls || []).map((r) => r.rollNumber).filter(Boolean);
+  };
+
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -102,6 +118,14 @@ export default function CustomerDeliveryNotesPage() {
       if (sortColumn === "supplierCompanyName") {
         return direction * (a.supplierCompanyName || "").localeCompare(b.supplierCompanyName || "");
       }
+      if (sortColumn === "customerReference") {
+        return direction * (a.customerReference || "").localeCompare(b.customerReference || "");
+      }
+      if (sortColumn === "rollNumbers") {
+        const aRolls = noteRollNumbers(a).join(", ");
+        const bRolls = noteRollNumbers(b).join(", ");
+        return direction * aRolls.localeCompare(bRolls);
+      }
       if (sortColumn === "deliveryNoteType") {
         return direction * a.deliveryNoteType.localeCompare(b.deliveryNoteType);
       }
@@ -110,6 +134,9 @@ export default function CustomerDeliveryNotesPage() {
       }
       if (sortColumn === "deliveryDate") {
         return direction * (a.deliveryDate || "").localeCompare(b.deliveryDate || "");
+      }
+      if (sortColumn === "auCocNumber") {
+        return direction * (a.auCocNumber || "").localeCompare(b.auCocNumber || "");
       }
       return 0;
     });
@@ -297,19 +324,6 @@ export default function CustomerDeliveryNotesPage() {
         {type}
       </span>
     );
-  };
-
-  const extractedDataSingle = (
-    data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
-  ): ExtractedDeliveryNoteData | null => {
-    if (!data) return null;
-    if (Array.isArray(data)) return data[0] ?? null;
-    return data;
-  };
-
-  const noteRollNumbers = (note: RubberDeliveryNoteDto): string[] => {
-    const ed = extractedDataSingle(note.extractedData);
-    return (ed?.rolls || []).map((r) => r.rollNumber).filter(Boolean);
   };
 
   if (error) {
@@ -522,15 +536,19 @@ export default function CustomerDeliveryNotesPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("customerReference")}
                 >
                   Customer Ref
+                  <SortIcon active={sortColumn === "customerReference"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("rollNumbers")}
                 >
                   Roll Numbers
+                  <SortIcon active={sortColumn === "rollNumbers"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"
@@ -558,9 +576,11 @@ export default function CustomerDeliveryNotesPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("auCocNumber")}
                 >
                   AU CoC
+                  <SortIcon active={sortColumn === "auCocNumber"} direction={sortDirection} />
                 </th>
                 <th scope="col" className="relative px-6 py-3">
                   <span className="sr-only">Actions</span>

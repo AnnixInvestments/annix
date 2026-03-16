@@ -957,9 +957,7 @@ export class RubberStockService {
       referenceType: movement.referenceType,
       referenceId: movement.referenceId,
       batchNumber: movement.batchNumber,
-      movementDate: movement.movementDate
-        ? movement.movementDate.toISOString().split("T")[0]
-        : null,
+      movementDate: movement.movementDate ? String(movement.movementDate).split("T")[0] : null,
       notes: movement.notes,
       createdBy: movement.createdBy,
       createdAt: movement.createdAt.toISOString(),

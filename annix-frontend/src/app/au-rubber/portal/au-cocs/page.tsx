@@ -22,7 +22,14 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn = "cocNumber" | "customerCompanyName" | "status" | "createdAt";
+type SortColumn =
+  | "cocNumber"
+  | "customerCompanyName"
+  | "poNumber"
+  | "deliveryNoteRef"
+  | "rolls"
+  | "status"
+  | "createdAt";
 
 export default function AuCocsPage() {
   const { showToast } = useToast();
@@ -144,6 +151,15 @@ export default function AuCocsPage() {
       }
       if (sortColumn === "status") {
         return direction * a.status.localeCompare(b.status);
+      }
+      if (sortColumn === "poNumber") {
+        return direction * (a.poNumber || "").localeCompare(b.poNumber || "");
+      }
+      if (sortColumn === "deliveryNoteRef") {
+        return direction * (a.deliveryNoteRef || "").localeCompare(b.deliveryNoteRef || "");
+      }
+      if (sortColumn === "rolls") {
+        return direction * ((a.items?.length || 0) - (b.items?.length || 0));
       }
       if (sortColumn === "createdAt") {
         return direction * a.createdAt.localeCompare(b.createdAt);
@@ -492,21 +508,27 @@ export default function AuCocsPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("poNumber")}
                 >
                   PO Number
+                  <SortIcon active={sortColumn === "poNumber"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("deliveryNoteRef")}
                 >
                   DN Ref
+                  <SortIcon active={sortColumn === "deliveryNoteRef"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("rolls")}
                 >
                   Rolls
+                  <SortIcon active={sortColumn === "rolls"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"

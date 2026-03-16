@@ -21,7 +21,14 @@ import {
   TableLoadingState,
 } from "../../components/TableComponents";
 
-type SortColumn = "compoundName" | "movementType" | "quantityKg" | "referenceType" | "createdAt";
+type SortColumn =
+  | "compoundName"
+  | "movementType"
+  | "quantityKg"
+  | "referenceType"
+  | "batchNumber"
+  | "notes"
+  | "createdAt";
 
 const typeColor = (type: CompoundMovementType) => {
   const colors: Record<CompoundMovementType, string> = {
@@ -113,6 +120,9 @@ export default function StockMovementsPage() {
       if (sortColumn === "quantityKg") return direction * (a.quantityKg - b.quantityKg);
       if (sortColumn === "referenceType")
         return direction * a.referenceType.localeCompare(b.referenceType);
+      if (sortColumn === "batchNumber")
+        return direction * (a.batchNumber || "").localeCompare(b.batchNumber || "");
+      if (sortColumn === "notes") return direction * (a.notes || "").localeCompare(b.notes || "");
       if (sortColumn === "createdAt") return direction * a.createdAt.localeCompare(b.createdAt);
       return 0;
     });
@@ -265,11 +275,19 @@ export default function StockMovementsPage() {
                   Reference
                   <SortIcon active={sortColumn === "referenceType"} direction={sortDirection} />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("batchNumber")}
+                >
                   Batch
+                  <SortIcon active={sortColumn === "batchNumber"} direction={sortDirection} />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("notes")}
+                >
                   Notes
+                  <SortIcon active={sortColumn === "notes"} direction={sortDirection} />
                 </th>
               </tr>
             </thead>

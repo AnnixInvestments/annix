@@ -16,7 +16,7 @@ import {
   TableLoadingState,
 } from "../../../components/TableComponents";
 
-type SortColumn = "name" | "code" | "isCompoundOwner" | "products";
+type SortColumn = "name" | "code" | "contact" | "emailConfig" | "isCompoundOwner" | "products";
 
 interface SupplierFormData {
   name: string;
@@ -554,6 +554,12 @@ export default function SuppliersPage() {
     const direction = sortDirection === "asc" ? 1 : -1;
     if (sortColumn === "name") return direction * a.name.localeCompare(b.name);
     if (sortColumn === "code") return direction * (a.code || "").localeCompare(b.code || "");
+    if (sortColumn === "contact") return direction * (a.phone || "").localeCompare(b.phone || "");
+    if (sortColumn === "emailConfig")
+      return (
+        direction *
+        (Object.keys(a.emailConfig || {}).length - Object.keys(b.emailConfig || {}).length)
+      );
     if (sortColumn === "isCompoundOwner")
       return direction * (Number(a.isCompoundOwner) - Number(b.isCompoundOwner));
     if (sortColumn === "products")
@@ -737,15 +743,19 @@ export default function SuppliersPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("contact")}
                 >
                   Contact
+                  <SortIcon active={sortColumn === "contact"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("emailConfig")}
                 >
                   Email Config
+                  <SortIcon active={sortColumn === "emailConfig"} direction={sortDirection} />
                 </th>
                 <th
                   scope="col"

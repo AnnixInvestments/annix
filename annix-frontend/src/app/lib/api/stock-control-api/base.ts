@@ -10,6 +10,7 @@ export class StockControlApiClient {
   accessToken: string | null = null;
   refreshToken: string | null = null;
   rememberMe: boolean = true;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
@@ -208,6 +209,17 @@ export class StockControlApiClient {
   async refreshAccessToken(): Promise<boolean> {
     if (!this.refreshToken) return false;
 
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this.executeRefresh();
+    const result = await this.refreshPromise;
+    this.refreshPromise = null;
+    return result;
+  }
+
+  private async executeRefresh(): Promise<boolean> {
     try {
       const response = await fetch(`${this.baseURL}/stock-control/auth/refresh`, {
         method: "POST",

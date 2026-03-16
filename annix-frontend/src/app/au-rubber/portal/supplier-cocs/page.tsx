@@ -42,7 +42,12 @@ interface AnalysisResult {
   graphPdfs: number[];
 }
 
-type SortColumn = "productionDate" | "cocNumber" | "processingStatus" | "createdAt";
+type SortColumn =
+  | "productionDate"
+  | "cocNumber"
+  | "compoundCode"
+  | "processingStatus"
+  | "createdAt";
 
 export default function SupplierCocsPage() {
   const { showToast } = useToast();
@@ -157,6 +162,9 @@ export default function SupplierCocsPage() {
       }
       if (sort.column === "cocNumber") {
         return direction * (a.cocNumber || "").localeCompare(b.cocNumber || "");
+      }
+      if (sort.column === "compoundCode") {
+        return direction * (a.compoundCode || "").localeCompare(b.compoundCode || "");
       }
       if (sort.column === "processingStatus") {
         return direction * a.processingStatus.localeCompare(b.processingStatus);
@@ -636,9 +644,14 @@ export default function SupplierCocsPage() {
                       </th>
                       <th
                         scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort(group.section, "compoundCode")}
                       >
                         Compound
+                        <SortIcon
+                          active={group.sort.column === "compoundCode"}
+                          direction={group.sort.direction}
+                        />
                       </th>
                       <th
                         scope="col"
