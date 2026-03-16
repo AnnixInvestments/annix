@@ -441,7 +441,7 @@ function GroupCard({
                       <td className="px-2 py-1.5 w-16">
                         <input
                           type="number"
-                          value={item.thicknessMm ?? ""}
+                          value={item.thicknessMm || ""}
                           onChange={(e) =>
                             onUpdateLineItem(
                               itemIndex,
@@ -456,7 +456,7 @@ function GroupCard({
                       <td className="px-2 py-1.5 w-20">
                         <input
                           type="number"
-                          value={item.widthMm ?? ""}
+                          value={item.widthMm || ""}
                           onChange={(e) =>
                             onUpdateLineItem(
                               itemIndex,
@@ -471,7 +471,7 @@ function GroupCard({
                       <td className="px-2 py-1.5 w-20">
                         <input
                           type="number"
-                          value={item.lengthM ?? ""}
+                          value={item.lengthM || ""}
                           onChange={(e) =>
                             onUpdateLineItem(
                               itemIndex,
@@ -486,7 +486,7 @@ function GroupCard({
                       <td className="px-2 py-1.5 w-16">
                         <input
                           type="number"
-                          value={item.quantity ?? ""}
+                          value={item.quantity || ""}
                           onChange={(e) =>
                             onUpdateLineItem(
                               itemIndex,
@@ -501,7 +501,7 @@ function GroupCard({
                       <td className="px-2 py-1.5 w-20">
                         <input
                           type="number"
-                          value={item.rollWeightKg ?? ""}
+                          value={item.rollWeightKg || ""}
                           onChange={(e) =>
                             onUpdateLineItem(
                               itemIndex,
