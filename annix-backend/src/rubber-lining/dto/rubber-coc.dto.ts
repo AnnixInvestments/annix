@@ -36,6 +36,7 @@ export class RubberSupplierCocDto {
   approvedBy: string | null;
   approvedAt: string | null;
   linkedDeliveryNoteId: number | null;
+  linkedCalenderRollCocId: number | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -154,6 +155,56 @@ export class CreateCompoundBatchDto {
   @IsOptional()
   @IsNumber()
   compoundStockId?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  shoreAHardness?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  specificGravity?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  reboundPercent?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  tearStrengthKnM?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  tensileStrengthMpa?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  elongationPercent?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  rheometerSMin?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  rheometerSMax?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  rheometerTs2?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  rheometerTc90?: number | null;
+
+  @IsOptional()
+  @IsEnum(BatchPassFailStatus)
+  passFailStatus?: BatchPassFailStatus | null;
+}
+
+export class UpdateCompoundBatchDto {
+  @IsOptional()
+  @IsString()
+  batchNumber?: string;
 
   @IsOptional()
   @IsNumber()

@@ -32,6 +32,7 @@ import { RubberQualityTrackingService } from "./rubber-quality-tracking.service"
 const COC_TYPE_LABELS: Record<SupplierCocType, string> = {
   [SupplierCocType.COMPOUNDER]: "Compounder",
   [SupplierCocType.CALENDARER]: "Calendarer",
+  [SupplierCocType.CALENDER_ROLL]: "Calender Roll",
 };
 
 const PROCESSING_STATUS_LABELS: Record<CocProcessingStatus, string> = {
@@ -204,6 +205,10 @@ export class RubberCocService {
 
     if (coc.cocType === SupplierCocType.CALENDARER) {
       this.autoLinkCalendererToCompounder(coc);
+    }
+
+    if (coc.cocType === SupplierCocType.CALENDER_ROLL) {
+      this.autoLinkCalenderRollToCalenderer(coc);
     }
 
     this.triggerAutoLinkDnsForCoc(coc);
@@ -606,6 +611,43 @@ export class RubberCocService {
     return this.mapCompoundBatchToDto(result);
   }
 
+  async updateCompoundBatch(
+    id: number,
+    dto: import("./dto/rubber-coc.dto").UpdateCompoundBatchDto,
+  ): Promise<RubberCompoundBatchDto> {
+    const batch = await this.compoundBatchRepository.findOne({
+      where: { id },
+      relations: ["compoundStock", "compoundStock.compoundCoding"],
+    });
+    if (!batch) {
+      throw new BadRequestException("Compound batch not found");
+    }
+
+    if (dto.batchNumber !== undefined) batch.batchNumber = dto.batchNumber;
+    if (dto.shoreAHardness !== undefined) batch.shoreAHardness = dto.shoreAHardness;
+    if (dto.specificGravity !== undefined) batch.specificGravity = dto.specificGravity;
+    if (dto.reboundPercent !== undefined) batch.reboundPercent = dto.reboundPercent;
+    if (dto.tearStrengthKnM !== undefined) batch.tearStrengthKnM = dto.tearStrengthKnM;
+    if (dto.tensileStrengthMpa !== undefined) batch.tensileStrengthMpa = dto.tensileStrengthMpa;
+    if (dto.elongationPercent !== undefined) batch.elongationPercent = dto.elongationPercent;
+    if (dto.rheometerSMin !== undefined) batch.rheometerSMin = dto.rheometerSMin;
+    if (dto.rheometerSMax !== undefined) batch.rheometerSMax = dto.rheometerSMax;
+    if (dto.rheometerTs2 !== undefined) batch.rheometerTs2 = dto.rheometerTs2;
+    if (dto.rheometerTc90 !== undefined) batch.rheometerTc90 = dto.rheometerTc90;
+    if (dto.passFailStatus !== undefined) batch.passFailStatus = dto.passFailStatus;
+
+    await this.compoundBatchRepository.save(batch);
+    return this.mapCompoundBatchToDto(batch);
+  }
+
+  async deleteCompoundBatch(id: number): Promise<void> {
+    const batch = await this.compoundBatchRepository.findOne({ where: { id } });
+    if (!batch) {
+      throw new BadRequestException("Compound batch not found");
+    }
+    await this.compoundBatchRepository.remove(batch);
+  }
+
   async batchById(id: number): Promise<RubberCompoundBatchDto | null> {
     const batch = await this.compoundBatchRepository.findOne({
       where: { id },
@@ -817,6 +859,35 @@ export class RubberCocService {
       });
   }
 
+  private autoLinkCalenderRollToCalenderer(calenderRollCoc: RubberSupplierCoc): void {
+    const orderNumber =
+      calenderRollCoc.orderNumber || calenderRollCoc.extractedData?.orderNumber || null;
+
+    if (!orderNumber) return;
+
+    this.supplierCocRepository
+      .createQueryBuilder("coc")
+      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
+      .andWhere("coc.order_number = :orderNumber", { orderNumber })
+      .orderBy("coc.id", "DESC")
+      .getOne()
+      .then(async (calendererCoc) => {
+        if (calendererCoc) {
+          await this.supplierCocRepository.update(calenderRollCoc.id, {
+            linkedCalenderRollCocId: calendererCoc.id,
+          });
+          this.logger.log(
+            `Auto-linked calender roll CoC ${calenderRollCoc.id} to calenderer CoC ${calendererCoc.id} via order number ${orderNumber}`,
+          );
+        }
+      })
+      .catch((error) => {
+        this.logger.error(
+          `Auto-link calender roll CoC ${calenderRollCoc.id} to calenderer failed: ${error.message}`,
+        );
+      });
+  }
+
   private async findCompounderByCompoundCode(
     calendererCompoundCode: string,
   ): Promise<RubberSupplierCoc | null> {
@@ -927,6 +998,7 @@ export class RubberCocService {
       approvedBy: coc.approvedBy,
       approvedAt: coc.approvedAt ? coc.approvedAt.toISOString() : null,
       linkedDeliveryNoteId: coc.linkedDeliveryNoteId,
+      linkedCalenderRollCocId: coc.linkedCalenderRollCocId ?? null,
       createdBy: coc.createdBy,
       createdAt: coc.createdAt.toISOString(),
       updatedAt: coc.updatedAt.toISOString(),

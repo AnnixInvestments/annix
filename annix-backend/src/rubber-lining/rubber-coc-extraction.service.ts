@@ -13,10 +13,12 @@ import { ExtractedCocData, SupplierCocType } from "./entities/rubber-supplier-co
 import { ExtractedTaxInvoiceData } from "./entities/rubber-tax-invoice.entity";
 import {
   CALENDARER_COC_SYSTEM_PROMPT,
+  CALENDER_ROLL_COC_SYSTEM_PROMPT,
   COMPOUNDER_COC_SYSTEM_PROMPT,
   CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
   CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
   calendererCocExtractionPrompt,
+  calenderRollCocExtractionPrompt,
   compounderCocExtractionPrompt,
   customerDeliveryNoteExtractionPrompt,
   DELIVERY_NOTE_SYSTEM_PROMPT,
@@ -273,6 +275,99 @@ export class RubberCocExtractionService {
     };
   }
 
+  async extractCalenderRollCoc(pdfText: string): Promise<{
+    data: ExtractedCocData;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = nowMillis();
+    this.logger.log("Extracting calender roll CoC data...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const response = await this.callGemini(
+      CALENDER_ROLL_COC_SYSTEM_PROMPT,
+      calenderRollCocExtractionPrompt(pdfText),
+      "calender-roll-coc-extraction",
+    );
+
+    const processingTimeMs = nowMillis() - startTime;
+    this.logger.log(`Calender roll CoC extracted in ${processingTimeMs}ms`);
+
+    const rawData = response.data as Record<string, unknown>;
+    const pages = (rawData.pages || []) as Array<Record<string, unknown>>;
+    const specs = (rawData.specifications || {}) as Record<string, unknown>;
+
+    const allRolls = pages.flatMap((page) =>
+      ((page.rolls || []) as Array<{ rollNumber: string; shoreA?: number | null }>).map(
+        (roll) => roll,
+      ),
+    );
+
+    const rollNumbers = allRolls.map((r) => r.rollNumber);
+    const rollRange = this.formatRollRange(rollNumbers);
+    const firstPage = pages[0] || {};
+    const dnNumber = firstPage.deliveryNoteNumber as string | null;
+    const cocNumber = dnNumber ? `DN${dnNumber}-R${rollRange}` : `R${rollRange}`;
+
+    const extractedData: ExtractedCocData = {
+      cocNumber,
+      compoundCode: (rawData.compoundCode as string) || null,
+      compoundDescription: (rawData.calenderRollDescription as string) || null,
+      productionDate: (firstPage.productionDate as string) || null,
+      orderNumber: (firstPage.purchaseOrderNumber as string) || null,
+      rollNumbers,
+      deliveryNoteNumber: dnNumber || null,
+      waybillNumber: (firstPage.waybillNumber as string) || null,
+      preparedBy: (rawData.preparedBy as string) || null,
+      approvedByName: (rawData.approvedByName as string) || null,
+      documentDate: (rawData.documentDate as string) || null,
+      rolls: allRolls,
+      sharedDensity: (firstPage.sharedDensity as number) || null,
+      sharedTensile: (firstPage.sharedTensile as number) || null,
+      sharedElongation: (firstPage.sharedElongation as number) || null,
+      shoreANominal: (specs.shoreANominal as number) || null,
+      shoreALimits: (specs.shoreALimits as string) || null,
+      densityNominal: (specs.densityNominal as number) || null,
+      densityLimits: (specs.densityLimits as string) || null,
+      tensileNominal: (specs.tensileNominal as number) || null,
+      tensileLimits: (specs.tensileLimits as string) || null,
+      elongationNominal: (specs.elongationNominal as number) || null,
+      elongationLimits: (specs.elongationLimits as string) || null,
+      approverNames: [rawData.preparedBy as string, rawData.approvedByName as string].filter(
+        Boolean,
+      ),
+    };
+
+    if (pages.length > 1) {
+      const additionalRollData = pages.slice(1).map((page) => ({
+        deliveryNoteNumber: (page.deliveryNoteNumber as string) || null,
+        waybillNumber: (page.waybillNumber as string) || null,
+        productionDate: (page.productionDate as string) || null,
+        sharedDensity: (page.sharedDensity as number) || null,
+        sharedTensile: (page.sharedTensile as number) || null,
+        sharedElongation: (page.sharedElongation as number) || null,
+        rolls: (page.rolls || []) as Array<{ rollNumber: string; shoreA?: number | null }>,
+      }));
+
+      this.logger.log(
+        `Multi-page calender roll CoC: ${pages.length} pages, ${allRolls.length} total rolls`,
+      );
+
+      (extractedData as Record<string, unknown>).additionalPages = additionalRollData;
+    }
+
+    this.logger.log(`Generated Calender Roll CoC number: ${cocNumber}`);
+
+    return {
+      data: extractedData,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
   async extractDeliveryNote(pdfText: string): Promise<{
     data: ExtractedDeliveryNoteData;
     tokensUsed?: number;
@@ -476,9 +571,13 @@ export class RubberCocExtractionService {
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
-    return cocType === SupplierCocType.COMPOUNDER
-      ? this.extractCompounderCoc(pdfText)
-      : this.extractCalendererCoc(pdfText);
+    if (cocType === SupplierCocType.COMPOUNDER) {
+      return this.extractCompounderCoc(pdfText);
+    } else if (cocType === SupplierCocType.CALENDER_ROLL) {
+      return this.extractCalenderRollCoc(pdfText);
+    } else {
+      return this.extractCalendererCoc(pdfText);
+    }
   }
 
   private async callGemini(

@@ -54,7 +54,7 @@ export type RubberCompoundOrderStatus =
   | "ORDERED"
   | "RECEIVED"
   | "CANCELLED";
-export type SupplierCocType = "COMPOUNDER" | "CALENDARER";
+export type SupplierCocType = "COMPOUNDER" | "CALENDARER" | "CALENDER_ROLL";
 export type CocProcessingStatus = "PENDING" | "EXTRACTED" | "NEEDS_REVIEW" | "APPROVED";
 export type DeliveryNoteType = "COMPOUND" | "ROLL";
 export type DeliveryNoteStatus = "PENDING" | "EXTRACTED" | "APPROVED" | "LINKED" | "STOCK_CREATED";
@@ -396,6 +396,7 @@ export interface RubberSupplierCocDto {
   approvedBy: string | null;
   approvedAt: string | null;
   linkedDeliveryNoteId: number | null;
+  linkedCalenderRollCocId: number | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -2141,6 +2142,35 @@ class AuRubberApiClient {
     return this.request("/rubber-lining/portal/compound-batches", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  async updateCompoundBatch(
+    id: number,
+    data: {
+      batchNumber?: string;
+      shoreAHardness?: number | null;
+      specificGravity?: number | null;
+      reboundPercent?: number | null;
+      tearStrengthKnM?: number | null;
+      tensileStrengthMpa?: number | null;
+      elongationPercent?: number | null;
+      rheometerSMin?: number | null;
+      rheometerSMax?: number | null;
+      rheometerTs2?: number | null;
+      rheometerTc90?: number | null;
+      passFailStatus?: string | null;
+    },
+  ): Promise<RubberCompoundBatchDto> {
+    return this.request(`/rubber-lining/portal/compound-batches/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCompoundBatch(id: number): Promise<void> {
+    return this.request(`/rubber-lining/portal/compound-batches/${id}`, {
+      method: "DELETE",
     });
   }
 

@@ -1595,6 +1595,28 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Put("portal/compound-batches/:id")
+  @ApiOperation({ summary: "Update a compound batch" })
+  @ApiParam({ name: "id", description: "Compound Batch ID" })
+  async updateCompoundBatch(
+    @Param("id") id: string,
+    @Body() dto: import("./dto/rubber-coc.dto").UpdateCompoundBatchDto,
+  ) {
+    return this.rubberCocService.updateCompoundBatch(Number(id), dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/compound-batches/:id")
+  @ApiOperation({ summary: "Delete a compound batch" })
+  @ApiParam({ name: "id", description: "Compound Batch ID" })
+  async deleteCompoundBatch(@Param("id") id: string) {
+    await this.rubberCocService.deleteCompoundBatch(Number(id));
+    return { success: true };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/supplier-cocs/:id/link-compounder")
   @ApiOperation({ summary: "Link calendarer CoC to compounder CoCs based on batch numbers" })
   @ApiParam({ name: "id", description: "Calendarer CoC ID" })

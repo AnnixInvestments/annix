@@ -70,11 +70,17 @@ export default function SupplierCocsPage() {
   const [compounderPageSize, setCompounderPageSize] = useState(ITEMS_PER_PAGE);
   const [calendererPage, setCalendererPage] = useState(0);
   const [calendererPageSize, setCalendererPageSize] = useState(ITEMS_PER_PAGE);
+  const [calenderRollPage, setCalenderRollPage] = useState(0);
+  const [calenderRollPageSize, setCalenderRollPageSize] = useState(ITEMS_PER_PAGE);
   const [compounderSort, setCompounderSort] = useState<{
     column: SortColumn;
     direction: SortDirection;
   }>({ column: "productionDate", direction: "desc" });
   const [calendererSort, setCalendererSort] = useState<{
+    column: SortColumn;
+    direction: SortDirection;
+  }>({ column: "productionDate", direction: "desc" });
+  const [calenderRollSort, setCalenderRollSort] = useState<{
     column: SortColumn;
     direction: SortDirection;
   }>({ column: "productionDate", direction: "desc" });
@@ -126,6 +132,7 @@ export default function SupplierCocsPage() {
     const supplierNames: Record<SupplierCocType, string[]> = {
       COMPOUNDER: ["S&N Rubber", "S&N", "SN Rubber"],
       CALENDARER: ["Impilo", "Impilo Rubber"],
+      CALENDER_ROLL: ["S&N Rubber", "S&N", "SN Rubber"],
     };
     const matchNames = supplierNames[type];
     const match = companies.find((c) =>
@@ -143,9 +150,13 @@ export default function SupplierCocsPage() {
     }
   }, [uploadType, companies]);
 
-  const handleSort = (section: "compounder" | "calenderer", column: SortColumn) => {
-    const setter = section === "compounder" ? setCompounderSort : setCalendererSort;
-    const current = section === "compounder" ? compounderSort : calendererSort;
+  const handleSort = (section: "compounder" | "calenderer" | "calenderRoll", column: SortColumn) => {
+    const sortMap = {
+      compounder: { setter: setCompounderSort, current: compounderSort },
+      calenderer: { setter: setCalendererSort, current: calendererSort },
+      calenderRoll: { setter: setCalenderRollSort, current: calenderRollSort },
+    };
+    const { setter, current } = sortMap[section];
     if (current.column === column) {
       setter({ column, direction: current.direction === "asc" ? "desc" : "asc" });
     } else {
@@ -195,6 +206,10 @@ export default function SupplierCocsPage() {
     baseFiltered.filter((c) => c.cocType === "CALENDARER"),
     calendererSort,
   );
+  const calenderRollCocs = sortCocs(
+    baseFiltered.filter((c) => c.cocType === "CALENDER_ROLL"),
+    calenderRollSort,
+  );
 
   const effectiveCompounderPageSize =
     compounderPageSize === 0 ? compounderCocs.length : compounderPageSize;
@@ -208,11 +223,18 @@ export default function SupplierCocsPage() {
     calendererPage * effectiveCalendererPageSize,
     (calendererPage + 1) * effectiveCalendererPageSize,
   );
+  const effectiveCalenderRollPageSize =
+    calenderRollPageSize === 0 ? calenderRollCocs.length : calenderRollPageSize;
+  const paginatedCalenderRoll = calenderRollCocs.slice(
+    calenderRollPage * effectiveCalenderRollPageSize,
+    (calenderRollPage + 1) * effectiveCalenderRollPageSize,
+  );
 
   useEffect(() => {
     setCompounderPage(0);
     setCalendererPage(0);
-  }, [searchQuery, filterStatus, showAllVersions, compounderPageSize, calendererPageSize]);
+    setCalenderRollPage(0);
+  }, [searchQuery, filterStatus, showAllVersions, compounderPageSize, calendererPageSize, calenderRollPageSize]);
 
   useEffect(() => {
     if (!isAnalyzing) return;
@@ -346,6 +368,7 @@ export default function SupplierCocsPage() {
     const colors: Record<SupplierCocType, string> = {
       COMPOUNDER: "bg-purple-100 text-purple-800",
       CALENDARER: "bg-indigo-100 text-indigo-800",
+      CALENDER_ROLL: "bg-amber-100 text-amber-800",
     };
     return (
       <span
@@ -592,6 +615,18 @@ export default function SupplierCocsPage() {
             sort: calendererSort,
             pageSize: calendererPageSize,
             setPageSize: setCalendererPageSize,
+          },
+          {
+            label: "Calender Roll (S&N Rubber)",
+            badge: "bg-amber-100 text-amber-800",
+            section: "calenderRoll" as const,
+            items: calenderRollCocs,
+            paginated: paginatedCalenderRoll,
+            page: calenderRollPage,
+            setPage: setCalenderRollPage,
+            sort: calenderRollSort,
+            pageSize: calenderRollPageSize,
+            setPageSize: setCalenderRollPageSize,
           },
         ].map((group) => {
           const hasApprovable = group.items.some(isApprovable);
@@ -881,6 +916,7 @@ export default function SupplierCocsPage() {
                   >
                     <option value="COMPOUNDER">Compounder (S&N Rubber)</option>
                     <option value="CALENDARER">Calendarer (Impilo)</option>
+                    <option value="CALENDER_ROLL">Calender Roll (S&N Rubber)</option>
                   </select>
                 </div>
                 <div>

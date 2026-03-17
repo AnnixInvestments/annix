@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText, Pencil } from "lucide-react";
+import { Download, FileText, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -34,6 +34,9 @@ export default function SupplierCocDetailPage() {
     orderNumber: "",
     ticketNumber: "",
   });
+  const [editingBatchId, setEditingBatchId] = useState<number | null>(null);
+  const [editBatchFields, setEditBatchFields] = useState<Record<string, string>>({});
+  const [isSavingBatch, setIsSavingBatch] = useState(false);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
 
   const cocId = Number(params.id);
@@ -138,6 +141,51 @@ export default function SupplierCocDetailPage() {
     }
   };
 
+  const startEditingBatch = (batch: RubberCompoundBatchDto) => {
+    setEditingBatchId(batch.id);
+    setEditBatchFields({
+      batchNumber: batch.batchNumber || "",
+      shoreAHardness: batch.shoreAHardness != null ? String(batch.shoreAHardness) : "",
+      specificGravity: batch.specificGravity != null ? String(batch.specificGravity) : "",
+      tensileStrengthMpa: batch.tensileStrengthMpa != null ? String(batch.tensileStrengthMpa) : "",
+      elongationPercent: batch.elongationPercent != null ? String(batch.elongationPercent) : "",
+      tearStrengthKnM: batch.tearStrengthKnM != null ? String(batch.tearStrengthKnM) : "",
+    });
+  };
+
+  const handleSaveBatch = async () => {
+    if (editingBatchId === null) return;
+    try {
+      setIsSavingBatch(true);
+      const parseNum = (val: string): number | null => (val.trim() === "" ? null : Number(val));
+      await auRubberApiClient.updateCompoundBatch(editingBatchId, {
+        batchNumber: editBatchFields.batchNumber || undefined,
+        shoreAHardness: parseNum(editBatchFields.shoreAHardness),
+        specificGravity: parseNum(editBatchFields.specificGravity),
+        tensileStrengthMpa: parseNum(editBatchFields.tensileStrengthMpa),
+        elongationPercent: parseNum(editBatchFields.elongationPercent),
+        tearStrengthKnM: parseNum(editBatchFields.tearStrengthKnM),
+      });
+      showToast("Batch updated", "success");
+      setEditingBatchId(null);
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to update batch", "error");
+    } finally {
+      setIsSavingBatch(false);
+    }
+  };
+
+  const handleDeleteBatch = async (batchId: number) => {
+    try {
+      await auRubberApiClient.deleteCompoundBatch(batchId);
+      showToast("Batch deleted", "success");
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to delete batch", "error");
+    }
+  };
+
   const statusBadge = (status: CocProcessingStatus) => {
     const colors: Record<CocProcessingStatus, string> = {
       PENDING: "bg-gray-100 text-gray-800",
@@ -217,13 +265,18 @@ export default function SupplierCocDetailPage() {
           </div>
         </div>
         <div className="flex space-x-3">
-          {coc.processingStatus === "PENDING" && (
+          {coc.processingStatus !== "APPROVED" && (
             <button
               onClick={handleExtract}
               disabled={isExtracting}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
             >
-              {isExtracting ? "Extracting..." : "Extract Data"}
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${isExtracting ? "animate-spin" : ""}`} />
+              {isExtracting
+                ? "Extracting..."
+                : coc.processingStatus === "PENDING"
+                  ? "Extract Data"
+                  : "Re-extract"}
             </button>
           )}
           {(coc.processingStatus === "EXTRACTED" || coc.processingStatus === "NEEDS_REVIEW") && (
@@ -444,113 +497,228 @@ export default function SupplierCocDetailPage() {
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">Compound Batches</h2>
           </div>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Batch
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Shore A
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Specific Gravity
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Tensile (MPa)
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Elongation (%)
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Tear (kN/m)
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Status
-                </th>
-                {coc.cocType === "CALENDARER" && (
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    S&N CoC
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Batch
                   </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {batches.map((batch) => (
-                <tr key={batch.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {batch.batchNumber}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.shoreAHardness ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.specificGravity ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.tensileStrengthMpa ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.elongationPercent ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.tearStrengthKnM ?? "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        batch.passFailStatus === "PASS"
-                          ? "bg-green-100 text-green-800"
-                          : batch.passFailStatus === "FAIL"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {batch.passFailStatusLabel}
-                    </span>
-                  </td>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Shore A
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Specific Gravity
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tensile (MPa)
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Elongation (%)
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tear (kN/m)
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
                   {coc.cocType === "CALENDARER" && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {batch.supplierCocId && batch.supplierCocId !== cocId ? (
-                        <Link
-                          href={`/au-rubber/portal/supplier-cocs/${batch.supplierCocId}`}
-                          className="text-yellow-600 hover:text-yellow-800 font-medium"
-                        >
-                          {batch.supplierCocNumber || `CoC-${batch.supplierCocId}`}
-                        </Link>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      S&N CoC
+                    </th>
+                  )}
+                  {coc.processingStatus !== "APPROVED" && (
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {batches.map((batch) => {
+                  const isEditingRow = editingBatchId === batch.id;
+                  if (isEditingRow) {
+                    return (
+                      <tr key={batch.id} className="bg-yellow-50">
+                        <td className="px-4 py-2">
+                          <input
+                            type="text"
+                            value={editBatchFields.batchNumber}
+                            onChange={(e) =>
+                              setEditBatchFields({
+                                ...editBatchFields,
+                                batchNumber: e.target.value,
+                              })
+                            }
+                            className="w-16 rounded border-gray-300 text-sm"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={editBatchFields.shoreAHardness}
+                            onChange={(e) =>
+                              setEditBatchFields({
+                                ...editBatchFields,
+                                shoreAHardness: e.target.value,
+                              })
+                            }
+                            className="w-16 rounded border-gray-300 text-sm"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="number"
+                            step="0.001"
+                            value={editBatchFields.specificGravity}
+                            onChange={(e) =>
+                              setEditBatchFields({
+                                ...editBatchFields,
+                                specificGravity: e.target.value,
+                              })
+                            }
+                            className="w-20 rounded border-gray-300 text-sm"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editBatchFields.tensileStrengthMpa}
+                            onChange={(e) =>
+                              setEditBatchFields({
+                                ...editBatchFields,
+                                tensileStrengthMpa: e.target.value,
+                              })
+                            }
+                            className="w-20 rounded border-gray-300 text-sm"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={editBatchFields.elongationPercent}
+                            onChange={(e) =>
+                              setEditBatchFields({
+                                ...editBatchFields,
+                                elongationPercent: e.target.value,
+                              })
+                            }
+                            className="w-20 rounded border-gray-300 text-sm"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={editBatchFields.tearStrengthKnM}
+                            onChange={(e) =>
+                              setEditBatchFields({
+                                ...editBatchFields,
+                                tearStrengthKnM: e.target.value,
+                              })
+                            }
+                            className="w-20 rounded border-gray-300 text-sm"
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-500">
+                          {batch.passFailStatusLabel || "-"}
+                        </td>
+                        {coc.cocType === "CALENDARER" && (
+                          <td className="px-4 py-2 text-sm text-gray-500">-</td>
+                        )}
+                        <td className="px-4 py-2 text-right whitespace-nowrap">
+                          <button
+                            onClick={handleSaveBatch}
+                            disabled={isSavingBatch}
+                            className="text-sm text-green-600 hover:text-green-800 font-medium mr-2 disabled:opacity-50"
+                          >
+                            {isSavingBatch ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            onClick={() => setEditingBatchId(null)}
+                            disabled={isSavingBatch}
+                            className="text-sm text-gray-500 hover:text-gray-700"
+                          >
+                            Cancel
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return (
+                    <tr key={batch.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {batch.batchNumber}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {batch.shoreAHardness ?? "-"}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {batch.specificGravity ?? "-"}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {batch.tensileStrengthMpa ?? "-"}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {batch.elongationPercent ?? "-"}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {batch.tearStrengthKnM ?? "-"}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            batch.passFailStatus === "PASS"
+                              ? "bg-green-100 text-green-800"
+                              : batch.passFailStatus === "FAIL"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {batch.passFailStatusLabel}
+                        </span>
+                      </td>
+                      {coc.cocType === "CALENDARER" && (
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          {batch.supplierCocId && batch.supplierCocId !== cocId ? (
+                            <Link
+                              href={`/au-rubber/portal/supplier-cocs/${batch.supplierCocId}`}
+                              className="text-yellow-600 hover:text-yellow-800 font-medium"
+                            >
+                              {batch.supplierCocNumber || `CoC-${batch.supplierCocId}`}
+                            </Link>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                      )}
+                      {coc.processingStatus !== "APPROVED" && (
+                        <td className="px-4 py-4 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => startEditingBatch(batch)}
+                            className="text-gray-400 hover:text-gray-600 mr-2"
+                            title="Edit batch"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBatch(batch.id)}
+                            className="text-red-400 hover:text-red-600"
+                            title="Delete batch"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

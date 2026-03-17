@@ -13,6 +13,7 @@ import { RubberCompany } from "./rubber-company.entity";
 export enum SupplierCocType {
   COMPOUNDER = "COMPOUNDER",
   CALENDARER = "CALENDARER",
+  CALENDER_ROLL = "CALENDER_ROLL",
 }
 
 export enum CocProcessingStatus {
@@ -73,6 +74,26 @@ export interface ExtractedCocData {
   linkedCompounderCocIds?: number[];
   compoundCodingId?: number | null;
   parsedCompoundInfo?: Record<string, any> | null;
+  deliveryNoteNumber?: string | null;
+  waybillNumber?: string | null;
+  rolls?: Array<{
+    rollNumber: string;
+    shoreA?: number | null;
+  }>;
+  sharedDensity?: number | null;
+  sharedTensile?: number | null;
+  sharedElongation?: number | null;
+  shoreANominal?: number | null;
+  shoreALimits?: string | null;
+  densityNominal?: number | null;
+  densityLimits?: string | null;
+  tensileNominal?: number | null;
+  tensileLimits?: string | null;
+  elongationNominal?: number | null;
+  elongationLimits?: string | null;
+  preparedBy?: string | null;
+  approvedByName?: string | null;
+  documentDate?: string | null;
 }
 
 @Entity("rubber_supplier_cocs")
@@ -140,6 +161,13 @@ export class RubberSupplierCoc {
 
   @Column({ name: "linked_delivery_note_id", type: "int", nullable: true })
   linkedDeliveryNoteId: number | null;
+
+  @Column({ name: "linked_calender_roll_coc_id", type: "int", nullable: true })
+  linkedCalenderRollCocId: number | null;
+
+  @ManyToOne(() => RubberSupplierCoc, { nullable: true })
+  @JoinColumn({ name: "linked_calender_roll_coc_id" })
+  linkedCalenderRollCoc: RubberSupplierCoc | null;
 
   @Column({ name: "exported_to_sage_at", type: "timestamp", nullable: true })
   exportedToSageAt: Date | null;
