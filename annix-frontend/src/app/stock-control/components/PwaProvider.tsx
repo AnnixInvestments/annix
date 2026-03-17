@@ -100,6 +100,15 @@ export function PwaProvider(props: { children: React.ReactNode }) {
       return;
     }
 
+    if (window.location.hostname === "localhost") {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations
+          .filter((r) => r.scope.includes("/stock-control"))
+          .forEach((r) => r.unregister());
+      });
+      return;
+    }
+
     const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isInStandaloneMode =
       window.matchMedia("(display-mode: standalone)").matches ||

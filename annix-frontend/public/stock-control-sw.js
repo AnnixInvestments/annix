@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const STATIC_CACHE_NAME = `stock-control-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE_NAME = `stock-control-dynamic-${CACHE_VERSION}`;
 const API_CACHE_NAME = `stock-control-api-${CACHE_VERSION}`;
@@ -62,14 +62,6 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (request.method !== "GET") {
-    if (
-      request.method === "POST" ||
-      request.method === "PATCH" ||
-      request.method === "DELETE" ||
-      request.method === "PUT"
-    ) {
-      event.respondWith(handleMutationRequest(request));
-    }
     return;
   }
 
@@ -99,11 +91,6 @@ self.addEventListener("fetch", (event) => {
 });
 
 async function handleStaticAsset(request) {
-  const cached = await caches.match(request);
-  if (cached) {
-    return cached;
-  }
-
   try {
     const response = await fetch(request);
     if (response.ok) {
@@ -112,6 +99,10 @@ async function handleStaticAsset(request) {
     }
     return response;
   } catch (error) {
+    const cached = await caches.match(request);
+    if (cached) {
+      return cached;
+    }
     console.error("Static asset fetch failed:", error);
     throw error;
   }

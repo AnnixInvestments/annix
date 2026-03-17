@@ -40,11 +40,11 @@ import {
   StockControlRoles,
 } from "../guards/stock-control-role.guard";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
-import { sanitizeNotes } from "../services/job-card-import.service";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
 import { JobCardService } from "../services/job-card.service";
+import { sanitizeNotes } from "../services/job-card-import.service";
 import { JobCardVersionService } from "../services/job-card-version.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { RequisitionService } from "../services/requisition.service";
