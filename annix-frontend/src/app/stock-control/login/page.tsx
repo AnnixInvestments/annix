@@ -13,6 +13,7 @@ function StockControlLoginContent() {
   const adminTransferToken = searchParams.get("admin-transfer");
   const { login, isAuthenticated, isLoading: authLoading, profile } = useStockControlAuth();
 
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -21,6 +22,7 @@ function StockControlLoginContent() {
   const transferProcessedRef = useRef(false);
 
   useEffect(() => {
+    setMounted(true);
     const savedEmail = localStorage.getItem("stockControlRememberedEmail");
     const savedRemember = localStorage.getItem("stockControlRememberMe") === "true";
     if (savedEmail) {
@@ -100,13 +102,10 @@ function StockControlLoginContent() {
     }
   };
 
-  if (authLoading) {
+  if (!mounted || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-300 mx-auto"></div>
-          <p className="mt-4 text-white">Loading...</p>
-        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-300" />
       </div>
     );
   }
