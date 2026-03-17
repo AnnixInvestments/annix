@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -25,6 +25,15 @@ export default function SupplierCocDetailPage() {
   const [error, setError] = useState<Error | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editFields, setEditFields] = useState({
+    cocNumber: "",
+    compoundCode: "",
+    productionDate: "",
+    orderNumber: "",
+    ticketNumber: "",
+  });
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
 
   const cocId = Number(params.id);
@@ -93,6 +102,39 @@ export default function SupplierCocDetailPage() {
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to approve CoC", "error");
       setIsApproving(false);
+    }
+  };
+
+  const startEditing = () => {
+    if (!coc) return;
+    setEditFields({
+      cocNumber: coc.cocNumber || "",
+      compoundCode: coc.compoundCode || "",
+      productionDate: coc.productionDate ? coc.productionDate.split("T")[0] : "",
+      orderNumber: coc.orderNumber || "",
+      ticketNumber: coc.ticketNumber || "",
+    });
+    setIsEditing(true);
+  };
+
+  const handleSaveDetails = async () => {
+    if (!coc) return;
+    try {
+      setIsSaving(true);
+      await auRubberApiClient.updateSupplierCoc(cocId, {
+        cocNumber: editFields.cocNumber || null,
+        compoundCode: editFields.compoundCode || null,
+        productionDate: editFields.productionDate || null,
+        orderNumber: editFields.orderNumber || null,
+        ticketNumber: editFields.ticketNumber || null,
+      });
+      showToast("CoC details updated", "success");
+      setIsEditing(false);
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to update CoC", "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -233,67 +275,152 @@ export default function SupplierCocDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">CoC Details</h2>
-          <dl className="grid grid-cols-2 gap-4">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Supplier</dt>
-              <dd className="mt-1 text-sm text-gray-900">{coc.supplierCompanyName || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">CoC Type</dt>
-              <dd className="mt-1 text-sm text-gray-900">{coc.cocTypeLabel}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Compound Code</dt>
-              <dd className="mt-1 text-sm text-gray-900">{coc.compoundCode || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Production Date</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {coc.productionDate ? formatDateZA(coc.productionDate) : "-"}
-              </dd>
-            </div>
-            {coc.cocType === "CALENDARER" && (
-              <>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Order Number</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{coc.orderNumber || "-"}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Ticket Number</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{coc.ticketNumber || "-"}</dd>
-                </div>
-              </>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-gray-900">CoC Details</h2>
+            {!isEditing && coc.processingStatus !== "APPROVED" && (
+              <button
+                onClick={startEditing}
+                className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                Edit
+              </button>
             )}
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Created</dt>
-              <dd className="mt-1 text-sm text-gray-900">{formatDateTimeZA(coc.createdAt)}</dd>
-            </div>
-            {coc.approvedAt && (
+          </div>
+          {isEditing ? (
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <dt className="text-sm font-medium text-gray-500">Approved</dt>
+                <label className="block text-sm font-medium text-gray-500">CoC Number</label>
+                <input
+                  type="text"
+                  value={editFields.cocNumber}
+                  onChange={(e) => setEditFields({ ...editFields, cocNumber: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Compound Code</label>
+                <input
+                  type="text"
+                  value={editFields.compoundCode}
+                  onChange={(e) => setEditFields({ ...editFields, compoundCode: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Production Date</label>
+                <input
+                  type="date"
+                  value={editFields.productionDate}
+                  onChange={(e) => setEditFields({ ...editFields, productionDate: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
+                />
+              </div>
+              {coc.cocType === "CALENDARER" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">Order Number</label>
+                    <input
+                      type="text"
+                      value={editFields.orderNumber}
+                      onChange={(e) =>
+                        setEditFields({ ...editFields, orderNumber: e.target.value })
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">Ticket Number</label>
+                    <input
+                      type="text"
+                      value={editFields.ticketNumber}
+                      onChange={(e) =>
+                        setEditFields({ ...editFields, ticketNumber: e.target.value })
+                      }
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
+                    />
+                  </div>
+                </>
+              )}
+              <div className="col-span-2 flex space-x-3 pt-2">
+                <button
+                  onClick={handleSaveDetails}
+                  disabled={isSaving}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50"
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSaving}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <dl className="grid grid-cols-2 gap-4">
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Supplier</dt>
+                <dd className="mt-1 text-sm text-gray-900">{coc.supplierCompanyName || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">CoC Type</dt>
+                <dd className="mt-1 text-sm text-gray-900">{coc.cocTypeLabel}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Compound Code</dt>
+                <dd className="mt-1 text-sm text-gray-900">{coc.compoundCode || "-"}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Production Date</dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  {formatDateTimeZA(coc.approvedAt)}
-                  {coc.approvedBy && (
-                    <span className="text-gray-500 ml-1">by {coc.approvedBy}</span>
-                  )}
+                  {coc.productionDate ? formatDateZA(coc.productionDate) : "-"}
                 </dd>
               </div>
-            )}
-            {coc.linkedDeliveryNoteId && (
+              {coc.cocType === "CALENDARER" && (
+                <>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Order Number</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{coc.orderNumber || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Ticket Number</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{coc.ticketNumber || "-"}</dd>
+                  </div>
+                </>
+              )}
               <div>
-                <dt className="text-sm font-medium text-gray-500">Linked Delivery Note</dt>
-                <dd className="mt-1 text-sm">
-                  <Link
-                    href={`/au-rubber/portal/delivery-notes/${coc.linkedDeliveryNoteId}`}
-                    className="text-yellow-600 hover:text-yellow-800"
-                  >
-                    View Delivery Note
-                  </Link>
-                </dd>
+                <dt className="text-sm font-medium text-gray-500">Created</dt>
+                <dd className="mt-1 text-sm text-gray-900">{formatDateTimeZA(coc.createdAt)}</dd>
               </div>
-            )}
-          </dl>
+              {coc.approvedAt && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Approved</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {formatDateTimeZA(coc.approvedAt)}
+                    {coc.approvedBy && (
+                      <span className="text-gray-500 ml-1">by {coc.approvedBy}</span>
+                    )}
+                  </dd>
+                </div>
+              )}
+              {coc.linkedDeliveryNoteId && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Linked Delivery Note</dt>
+                  <dd className="mt-1 text-sm">
+                    <Link
+                      href={`/au-rubber/portal/delivery-notes/${coc.linkedDeliveryNoteId}`}
+                      className="text-yellow-600 hover:text-yellow-800"
+                    >
+                      View Delivery Note
+                    </Link>
+                  </dd>
+                </div>
+              )}
+            </dl>
+          )}
         </div>
 
         {coc.extractedData && Object.keys(coc.extractedData).length > 0 && (

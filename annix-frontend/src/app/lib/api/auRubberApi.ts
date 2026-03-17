@@ -2064,6 +2064,22 @@ class AuRubberApiClient {
     return response.json();
   }
 
+  async updateSupplierCoc(
+    id: number,
+    data: {
+      cocNumber?: string | null;
+      compoundCode?: string | null;
+      productionDate?: string | null;
+      orderNumber?: string | null;
+      ticketNumber?: string | null;
+    },
+  ): Promise<RubberSupplierCocDto> {
+    return this.request(`/rubber-lining/portal/supplier-cocs/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
   async extractSupplierCoc(id: number): Promise<RubberSupplierCocDto> {
     return this.request(`/rubber-lining/portal/supplier-cocs/${id}/extract`, {
       method: "POST",
