@@ -1,6 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { SchedulerRegistry } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
 import { CronTime } from "cron";
+import { Repository } from "typeorm";
+import { ScheduledJobOverride } from "./entities/scheduled-job-override.entity";
 
 export interface ScheduledJobDto {
   name: string;
@@ -104,36 +107,80 @@ const JOB_METADATA: Record<string, { description: string; module: string }> = {
 };
 
 @Injectable()
-export class AdminScheduledJobsService {
+export class AdminScheduledJobsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AdminScheduledJobsService.name);
 
-  constructor(private readonly schedulerRegistry: SchedulerRegistry) {}
+  constructor(
+    private readonly schedulerRegistry: SchedulerRegistry,
+    @InjectRepository(ScheduledJobOverride)
+    private readonly overrideRepo: Repository<ScheduledJobOverride>,
+  ) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    const overrides = await this.overrideRepo.find();
+
+    overrides.forEach((override) => {
+      try {
+        const job = this.schedulerRegistry.getCronJob(override.jobName);
+
+        if (override.cronExpression) {
+          job.setTime(new CronTime(override.cronExpression));
+          this.logger.log(
+            `Restored frequency for ${override.jobName}: ${override.cronExpression}`,
+          );
+        }
+
+        if (override.active) {
+          job.start();
+        } else {
+          job.stop();
+          this.logger.log(`Restored paused state for ${override.jobName}`);
+        }
+      } catch {
+        this.logger.warn(`Skipping override for unknown job: ${override.jobName}`);
+      }
+    });
+
+    if (overrides.length > 0) {
+      this.logger.log(`Applied ${overrides.length} scheduled job override(s) from database`);
+    }
+  }
 
   allJobs(): ScheduledJobDto[] {
     const cronJobs = this.schedulerRegistry.getCronJobs();
     return Array.from(cronJobs.entries()).map(([name, job]) => this.jobToDto(name, job));
   }
 
-  pauseJob(name: string): ScheduledJobDto {
+  async pauseJob(name: string): Promise<ScheduledJobDto> {
     const job = this.schedulerRegistry.getCronJob(name);
     job.stop();
+    await this.overrideRepo.save({ jobName: name, active: false });
     this.logger.log(`Paused cron job: ${name}`);
     return this.jobToDto(name, job);
   }
 
-  resumeJob(name: string): ScheduledJobDto {
+  async resumeJob(name: string): Promise<ScheduledJobDto> {
     const job = this.schedulerRegistry.getCronJob(name);
     job.start();
+    await this.overrideRepo.save({ jobName: name, active: true });
     this.logger.log(`Resumed cron job: ${name}`);
     return this.jobToDto(name, job);
   }
 
-  updateFrequency(name: string, cronExpression: string): ScheduledJobDto {
+  async updateFrequency(name: string, cronExpression: string): Promise<ScheduledJobDto> {
     const job = this.schedulerRegistry.getCronJob(name);
     job.setTime(new CronTime(cronExpression));
     if (job.isActive) {
       job.start();
     }
+
+    const existing = await this.overrideRepo.findOne({ where: { jobName: name } });
+    await this.overrideRepo.save({
+      jobName: name,
+      active: existing?.active ?? job.isActive,
+      cronExpression,
+    });
+
     this.logger.log(`Updated cron job ${name} to: ${cronExpression}`);
     return this.jobToDto(name, job);
   }

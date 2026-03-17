@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import type { ScheduledJobDto } from "@/app/lib/api/adminApi";
 import {
   usePauseJob,
@@ -11,34 +10,89 @@ import {
 
 const PRESET_FREQUENCIES = [
   { label: "Every minute", value: "* * * * *" },
-  { label: "Every 5 min", value: "*/5 * * * *" },
-  { label: "Every 10 min", value: "*/10 * * * *" },
-  { label: "Every 30 min", value: "*/30 * * * *" },
+  { label: "Every 5 minutes", value: "*/5 * * * *" },
+  { label: "Every 10 minutes", value: "*/10 * * * *" },
+  { label: "Every 30 minutes", value: "*/30 * * * *" },
   { label: "Every hour", value: "0 * * * *" },
   { label: "Every 2 hours", value: "0 */2 * * *" },
   { label: "Every 6 hours", value: "0 */6 * * *" },
-  { label: "Daily 2am", value: "0 2 * * *" },
-  { label: "Daily 3am", value: "0 3 * * *" },
+  { label: "Daily at 2am", value: "0 2 * * *" },
+  { label: "Daily at 3am", value: "0 3 * * *" },
+  { label: "Daily at 4am", value: "0 4 * * *" },
+  { label: "Daily at 5am", value: "0 5 * * *" },
+  { label: "Daily at 6am", value: "0 6 * * *" },
+  { label: "Daily at 7am", value: "0 7 * * *" },
+  { label: "Daily at 8am", value: "0 8 * * *" },
+  { label: "Daily at 9am", value: "0 9 * * *" },
+  { label: "Daily at 10am", value: "0 10 * * *" },
+  { label: "Weekly (Sunday midnight)", value: "0 0 * * 0" },
 ];
 
 function friendlyCron(cron: string): string {
-  const map: Record<string, string> = {
-    "* * * * *": "Every minute",
-    "*/5 * * * *": "Every 5 min",
-    "*/10 * * * *": "Every 10 min",
-    "*/30 * * * *": "Every 30 min",
-    "0 * * * *": "Every hour",
-    "0 */2 * * *": "Every 2 hours",
-    "0 */6 * * *": "Every 6 hours",
-    "0 2 * * *": "Daily 2am",
-    "0 3 * * *": "Daily 3am",
-    "0 5 * * *": "Daily 5am",
-    "0 6 * * *": "Daily 6am",
-    "0 7 * * *": "Daily 7am",
-    "0 8 * * *": "Daily 8am",
-    "0 9 * * *": "Daily 9am",
-  };
-  return map[cron] || cron;
+  const normalized = cron.replace(/^0\s+/, "").trim();
+  const sixFieldMatch = cron.match(/^(\d+)\s+(.+)$/);
+  const fiveField = sixFieldMatch ? sixFieldMatch[2] : cron;
+
+  const preset = PRESET_FREQUENCIES.find((p) => p.value === fiveField);
+  if (preset) {
+    return preset.label;
+  }
+
+  const parts = fiveField.split(/\s+/);
+  if (parts.length !== 5) {
+    return cron;
+  }
+
+  const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+
+  if (dayOfWeek !== "*" && month === "*" && dayOfMonth === "*" && hour !== "*" && minute !== "*") {
+    const dayNames: Record<string, string> = {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday",
+      "7": "Sunday",
+    };
+    const dayName = dayNames[dayOfWeek] || `day ${dayOfWeek}`;
+    return `Weekly ${dayName} at ${formatHourMinute(hour, minute)}`;
+  }
+
+  if (month === "*" && dayOfMonth === "*" && dayOfWeek === "*") {
+    if (hour === "*" && minute.startsWith("*/")) {
+      return `Every ${minute.slice(2)} minutes`;
+    }
+    if (hour === "*" && minute === "0") {
+      return "Every hour";
+    }
+    if (hour.startsWith("*/") && minute === "0") {
+      return `Every ${hour.slice(2)} hours`;
+    }
+    if (hour.includes("-") && minute === "0") {
+      return `Hourly (${hour})`;
+    }
+    if (!hour.includes("*") && !hour.includes("/")) {
+      return `Daily at ${formatHourMinute(hour, minute)}`;
+    }
+  }
+
+  return normalized;
+}
+
+function formatHourMinute(hour: string, minute: string): string {
+  const h = Number.parseInt(hour, 10);
+  const m = Number.parseInt(minute, 10);
+  if (Number.isNaN(h)) {
+    return `${hour}:${minute.padStart(2, "0")}`;
+  }
+  const suffix = h >= 12 ? "pm" : "am";
+  const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  if (m === 0) {
+    return `${displayHour}${suffix}`;
+  }
+  return `${displayHour}:${String(m).padStart(2, "0")}${suffix}`;
 }
 
 function formatDate(iso: string | null): string {
@@ -61,10 +115,15 @@ const MODULE_COLORS: Record<string, string> = {
   "Secure Docs": "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300",
 };
 
+function currentCronToPresetValue(cronTime: string): string {
+  const sixFieldMatch = cronTime.match(/^(\d+)\s+(.+)$/);
+  const fiveField = sixFieldMatch ? sixFieldMatch[2] : cronTime;
+  const match = PRESET_FREQUENCIES.find((p) => p.value === fiveField);
+  return match ? match.value : fiveField;
+}
+
 function JobRow(props: { job: ScheduledJobDto }) {
   const job = props.job;
-  const [editingFrequency, setEditingFrequency] = useState(false);
-  const [selectedCron, setSelectedCron] = useState(job.cronTime);
 
   const pauseMutation = usePauseJob();
   const resumeMutation = useResumeJob();
@@ -81,13 +140,8 @@ function JobRow(props: { job: ScheduledJobDto }) {
     }
   };
 
-  const handleSaveFrequency = () => {
-    frequencyMutation.mutate(
-      { name: job.name, cronExpression: selectedCron },
-      {
-        onSuccess: () => setEditingFrequency(false),
-      },
-    );
+  const handleFrequencyChange = (newCron: string) => {
+    frequencyMutation.mutate({ name: job.name, cronExpression: newCron });
   };
 
   const moduleColor =
@@ -115,45 +169,19 @@ function JobRow(props: { job: ScheduledJobDto }) {
           {job.active ? "Active" : "Paused"}
         </span>
       </td>
-      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-        {editingFrequency ? (
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedCron}
-              onChange={(e) => setSelectedCron(e.target.value)}
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-            >
-              {PRESET_FREQUENCIES.map((preset) => (
-                <option key={preset.value} value={preset.value}>
-                  {preset.label}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleSaveFrequency}
-              disabled={isMutating}
-              className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => {
-                setEditingFrequency(false);
-                setSelectedCron(job.cronTime);
-              }}
-              className="rounded bg-gray-200 px-2 py-1 text-xs text-gray-700 hover:bg-gray-300 dark:bg-slate-600 dark:text-gray-300"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setEditingFrequency(true)}
-            className="text-blue-600 hover:underline dark:text-blue-400"
-          >
-            {friendlyCron(job.cronTime)}
-          </button>
-        )}
+      <td className="whitespace-nowrap px-4 py-3 text-sm">
+        <select
+          value={currentCronToPresetValue(job.cronTime)}
+          onChange={(e) => handleFrequencyChange(e.target.value)}
+          disabled={isMutating}
+          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200"
+        >
+          {PRESET_FREQUENCIES.map((preset) => (
+            <option key={preset.value} value={preset.value}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
         {formatDate(job.lastExecution)}
@@ -189,7 +217,7 @@ export default function ScheduledJobsPage() {
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Scheduled Jobs</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Monitor and manage background cron jobs. Pausing a job prevents it from running until
-          resumed. Frequency changes take effect immediately but reset on deploy.
+          resumed. All changes persist across deployments.
         </p>
       </div>
 
