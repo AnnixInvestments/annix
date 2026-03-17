@@ -74,6 +74,7 @@ export default function DeliveryNoteDetailPage() {
   const podViewer = useImageViewer();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isCustomerDn, setIsCustomerDn] = useState(false);
 
   const noteId = Number(params.id);
 
@@ -92,6 +93,9 @@ export default function DeliveryNoteDetailPage() {
       setNote(noteData);
       setItems(Array.isArray(itemsData) ? itemsData : []);
       setAvailableCocs(Array.isArray(cocsData) ? cocsData : []);
+      const companies = Array.isArray(companiesData) ? companiesData : [];
+      const noteCompany = companies.find((c) => c.id === noteData.supplierCompanyId);
+      setIsCustomerDn(noteCompany?.companyType === "CUSTOMER");
       setError(null);
       setEditedData(null);
       setHasUnsavedChanges(false);
@@ -177,6 +181,46 @@ export default function DeliveryNoteDetailPage() {
     setHasUnsavedChanges(true);
   };
 
+  const handleAddRow = (dnIdx: number) => {
+    if (!editedData) return;
+    const newData = [...editedData];
+    const existing = newData[dnIdx];
+    const lastRoll = existing.rolls?.length ? existing.rolls[existing.rolls.length - 1] : null;
+    const newRoll: EditableRoll = {
+      rollNumber: "",
+      thicknessMm: lastRoll?.thicknessMm || undefined,
+      widthMm: lastRoll?.widthMm || undefined,
+      lengthM: lastRoll?.lengthM || undefined,
+      weightKg: undefined,
+      deliveryNoteNumber: lastRoll?.deliveryNoteNumber || note?.deliveryNoteNumber || undefined,
+      deliveryDate: lastRoll?.deliveryDate || note?.deliveryDate || undefined,
+      customerName: lastRoll?.customerName || existing.customerName || undefined,
+      customerReference: lastRoll?.customerReference || existing.customerReference || undefined,
+      isEdited: true,
+    };
+    newData[dnIdx] = {
+      ...existing,
+      rolls: [...(existing.rolls || []), newRoll],
+      isEdited: true,
+    };
+    setEditedData(newData);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleRemoveRow = (dnIdx: number, rollIdx: number) => {
+    if (!editedData) return;
+    const newData = [...editedData];
+    const rolls = newData[dnIdx].rolls;
+    if (!rolls || rolls.length <= 1) return;
+    newData[dnIdx] = {
+      ...newData[dnIdx],
+      rolls: rolls.filter((_, idx) => idx !== rollIdx),
+      isEdited: true,
+    };
+    setEditedData(newData);
+    setHasUnsavedChanges(true);
+  };
+
   const handleSaveCorrections = async () => {
     if (!editedData || !note) return;
 
@@ -196,6 +240,7 @@ export default function DeliveryNoteDetailPage() {
               deliveryNoteNumber: roll.deliveryNoteNumber,
               deliveryDate: roll.deliveryDate,
               customerName: roll.customerName,
+              customerReference: roll.customerReference,
               pageNumber: roll.pageNumber,
             });
           });
@@ -408,11 +453,10 @@ export default function DeliveryNoteDetailPage() {
       <Breadcrumb
         items={[
           {
-            label: "Delivery Notes",
-            href:
-              note.deliveryNoteType === "ROLL"
-                ? "/au-rubber/portal/delivery-notes/customers"
-                : "/au-rubber/portal/delivery-notes/suppliers",
+            label: isCustomerDn ? "Customer Delivery Notes" : "Supplier Delivery Notes",
+            href: isCustomerDn
+              ? "/au-rubber/portal/delivery-notes/customers"
+              : "/au-rubber/portal/delivery-notes/suppliers",
           },
           { label: note.deliveryNoteNumber || `DN-${note.id}` },
         ]}
@@ -646,6 +690,9 @@ export default function DeliveryNoteDetailPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Page
                   </th>
+                  {isEditing && (
+                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10" />
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -858,6 +905,30 @@ export default function DeliveryNoteDetailPage() {
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                                 {roll.pageNumber || "-"}
                               </td>
+                              {isEditing && (
+                                <td className="px-2 py-3 whitespace-nowrap">
+                                  <button
+                                    onClick={() => handleRemoveRow(dnIdx, rollIdx)}
+                                    disabled={(dn.rolls || []).length <= 1}
+                                    className="text-red-400 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                    title="Remove row"
+                                  >
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                      />
+                                    </svg>
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           );
                         })
@@ -884,6 +955,29 @@ export default function DeliveryNoteDetailPage() {
                 )}
               </tbody>
             </table>
+            {isEditing && (
+              <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+                <button
+                  onClick={() => handleAddRow(0)}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-yellow-700 bg-yellow-50 border border-yellow-300 rounded-md hover:bg-yellow-100"
+                >
+                  <svg
+                    className="w-4 h-4 mr-1.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                  Add Row
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

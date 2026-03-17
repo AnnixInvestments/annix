@@ -438,6 +438,7 @@ export interface ExtractedDeliveryNoteRoll {
   deliveryNoteNumber?: string;
   deliveryDate?: string;
   customerName?: string;
+  customerReference?: string;
   pageNumber?: number;
 }
 
