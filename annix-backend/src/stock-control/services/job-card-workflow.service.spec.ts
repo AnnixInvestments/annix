@@ -7,6 +7,7 @@ import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-c
 import { JobCardApproval } from "../entities/job-card-approval.entity";
 import { JobCardDocument } from "../entities/job-card-document.entity";
 import { StockControlRole } from "../entities/stock-control-user.entity";
+import { BackgroundStepService } from "./background-step.service";
 import { JobCardWorkflowService } from "./job-card-workflow.service";
 import { RequisitionService } from "./requisition.service";
 import { SignatureService } from "./signature.service";
@@ -83,6 +84,10 @@ describe("JobCardWorkflowService", () => {
     assignedUserIdsForStep: jest.fn().mockResolvedValue([]),
   };
 
+  const mockBackgroundStepService = {
+    statusForJobCard: jest.fn().mockResolvedValue([]),
+  };
+
   const mockAuditService = {
     log: jest.fn().mockResolvedValue(undefined),
   };
@@ -114,6 +119,7 @@ describe("JobCardWorkflowService", () => {
         { provide: RequisitionService, useValue: mockRequisitionService },
         { provide: WorkflowStepConfigService, useValue: mockStepConfigService },
         { provide: WorkflowAssignmentService, useValue: mockAssignmentService },
+        { provide: BackgroundStepService, useValue: mockBackgroundStepService },
         { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();

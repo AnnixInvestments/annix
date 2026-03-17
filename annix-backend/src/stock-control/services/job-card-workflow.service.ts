@@ -22,6 +22,7 @@ import {
 } from "../entities/job-card-approval.entity";
 import { JobCardDocument, JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlRole } from "../entities/stock-control-user.entity";
+import { BackgroundStepService } from "./background-step.service";
 import { RequisitionService } from "./requisition.service";
 import { SignatureService } from "./signature.service";
 import { WorkflowAssignmentService } from "./workflow-assignment.service";
@@ -59,6 +60,7 @@ export class JobCardWorkflowService {
     private readonly requisitionService: RequisitionService,
     private readonly stepConfigService: WorkflowStepConfigService,
     private readonly assignmentService: WorkflowAssignmentService,
+    private readonly backgroundStepService: BackgroundStepService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -328,12 +330,26 @@ export class JobCardWorkflowService {
     requiredRole: StockControlRole | null;
     jobCardStatus: JobCardStatus;
     stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
+    foregroundSteps: Array<{ key: string; label: string; sortOrder: number }>;
+    backgroundSteps: Array<{
+      stepKey: string;
+      label: string;
+      triggerAfterStep: string | null;
+      completedAt: string | null;
+      completedByName: string | null;
+      notes: string | null;
+    }>;
   }> {
     const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
     const currentStep = this.currentStepForStatus(jobCard.workflowStatus);
     const requiredRole = currentStep ? this.roleForStep(currentStep) : null;
 
-    const allAssignments = await this.assignmentService.allAssignments(companyId);
+    const [allAssignments, fgConfigs, bgStatuses] = await Promise.all([
+      this.assignmentService.allAssignments(companyId),
+      this.stepConfigService.orderedSteps(companyId),
+      this.backgroundStepService.statusForJobCard(companyId, jobCardId),
+    ]);
+
     const stepAssignments = allAssignments.reduce(
       (acc, sa) => ({
         ...acc,
@@ -345,6 +361,12 @@ export class JobCardWorkflowService {
       {} as Record<string, { name: string; isPrimary: boolean }[]>,
     );
 
+    const foregroundSteps = fgConfigs.map((s) => ({
+      key: s.key,
+      label: s.label,
+      sortOrder: s.sortOrder,
+    }));
+
     return {
       currentStatus: jobCard.workflowStatus,
       currentStep,
@@ -352,6 +374,8 @@ export class JobCardWorkflowService {
       requiredRole,
       jobCardStatus: jobCard.status,
       stepAssignments,
+      foregroundSteps,
+      backgroundSteps: bgStatuses,
     };
   }
 

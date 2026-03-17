@@ -1404,6 +1404,15 @@ export interface WorkflowStatus {
   requiredRole: string | null;
   jobCardStatus: string;
   stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
+  foregroundSteps: Array<{ key: string; label: string; sortOrder: number }>;
+  backgroundSteps: Array<{
+    stepKey: string;
+    label: string;
+    triggerAfterStep: string | null;
+    completedAt: string | null;
+    completedByName: string | null;
+    notes: string | null;
+  }>;
 }
 
 export interface DispatchScan {
