@@ -149,10 +149,9 @@ export default function CpoDetailPage() {
     );
   }
 
-  const overallPct =
-    cpo.totalQuantity > 0
-      ? Math.min(100, Math.round((cpo.fulfilledQuantity / cpo.totalQuantity) * 100))
-      : 0;
+  const totalQty = Number(cpo.totalQuantity) || 0;
+  const fulfilledQty = Number(cpo.fulfilledQuantity) || 0;
+  const overallPct = totalQty > 0 ? Math.min(100, Math.round((fulfilledQty / totalQty) * 100)) : 0;
 
   const sortedItems = [...(cpo.items || [])].sort((a, b) => a.sortOrder - b.sortOrder);
 
