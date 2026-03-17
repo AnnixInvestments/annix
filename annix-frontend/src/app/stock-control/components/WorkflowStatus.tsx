@@ -2,7 +2,7 @@
 
 import { Check, Circle, Clock, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { JobCardApproval } from "@/app/lib/api/stockControlApi";
+import { BackgroundStepStatus, JobCardApproval } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
 
 const WORKFLOW_STEPS = [
@@ -158,10 +158,211 @@ interface WorkflowStepperProps {
   currentStatus: string;
   approvals: JobCardApproval[];
   stepAssignments: Record<string, StepAssignmentUser[]>;
+  backgroundSteps?: BackgroundStepStatus[];
+  currentUserName?: string | null;
+  onCompleteBackgroundStep?: (stepKey: string) => void;
+  completingStepKey?: string | null;
+}
+
+const backgroundStepsForTrigger = (
+  backgroundSteps: BackgroundStepStatus[],
+  triggerKey: string,
+): BackgroundStepStatus[] => backgroundSteps.filter((bs) => bs.triggerAfterStep === triggerKey);
+
+const STEP_ACTION_LABELS: Record<string, string> = {
+  quality_check: "Confirm Quality Checked",
+  quality_inspection: "Confirm Inspection Done",
+  documentation_review: "Confirm Docs Reviewed",
+  safety_check: "Confirm Safety Cleared",
+  coating_inspection: "Confirm Coating Inspected",
+  material_verification: "Confirm Material Verified",
+  client_notification: "Confirm Client Notified",
+  packaging: "Confirm Packed",
+  labelling: "Confirm Labelled",
+  weighing: "Confirm Weighed",
+  photography: "Confirm Photos Taken",
+  certificate_generation: "Confirm Certificate Generated",
+  loading: "Confirm Loaded",
+};
+
+const actionLabelForStep = (stepKey: string, label: string): string =>
+  STEP_ACTION_LABELS[stepKey] || `Complete ${label}`;
+
+const isUserAssignedToStep = (
+  stepKey: string,
+  currentUserName: string | null,
+  stepAssignments: Record<string, StepAssignmentUser[]>,
+): boolean => {
+  if (!currentUserName) return false;
+  const assigned = stepAssignments[stepKey];
+  if (!assigned || assigned.length === 0) return true;
+  return assigned.some((u) => u.name === currentUserName);
+};
+
+function BackgroundBranch(branchProps: {
+  steps: BackgroundStepStatus[];
+  currentStepIndex: number;
+  triggerIndex: number;
+  currentUserName: string | null;
+  stepAssignments: Record<string, StepAssignmentUser[]>;
+  onComplete?: (stepKey: string) => void;
+  completingStepKey?: string | null;
+}) {
+  const {
+    steps,
+    currentStepIndex,
+    triggerIndex,
+    currentUserName,
+    stepAssignments,
+    onComplete,
+    completingStepKey,
+  } = branchProps;
+  const triggerCompleted = triggerIndex < currentStepIndex;
+
+  return (
+    <div className="mt-2 ml-3 pl-3 border-l-2 border-dashed border-gray-300 space-y-1.5">
+      {steps.map((bs) => {
+        const isComplete = bs.completedAt !== null;
+        const isActive = triggerCompleted && !isComplete;
+        const canComplete =
+          isActive && isUserAssignedToStep(bs.stepKey, currentUserName, stepAssignments);
+        const isCompleting = completingStepKey === bs.stepKey;
+
+        return (
+          <div key={bs.stepKey} className="flex items-center gap-2">
+            <div
+              className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                isComplete
+                  ? "bg-green-500"
+                  : isActive
+                    ? "bg-teal-100 border-2 border-teal-500"
+                    : "bg-gray-100 border border-gray-300"
+              }`}
+            >
+              {isComplete && <Check className="h-3 w-3 text-white" />}
+              {isActive && <Clock className="h-3 w-3 text-teal-600" />}
+              {!isComplete && !isActive && <Circle className="h-2 w-2 text-gray-400" />}
+            </div>
+            <div className="min-w-0 flex items-center gap-2">
+              <span
+                className={`text-[11px] font-medium ${
+                  isComplete ? "text-green-700" : isActive ? "text-teal-600" : "text-gray-400"
+                }`}
+              >
+                {bs.label}
+              </span>
+              {isComplete && bs.completedByName && (
+                <span className="text-[10px] text-gray-400">
+                  {bs.completedByName}
+                  {bs.completedAt ? ` - ${formatDateLongZA(bs.completedAt)}` : ""}
+                </span>
+              )}
+              {canComplete && onComplete && (
+                <button
+                  type="button"
+                  onClick={() => onComplete(bs.stepKey)}
+                  disabled={isCompleting}
+                  className="px-2 py-0.5 text-[10px] font-semibold rounded bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isCompleting ? "Saving..." : actionLabelForStep(bs.stepKey, bs.label)}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MobileBackgroundBranch(mobileBranchProps: {
+  steps: BackgroundStepStatus[];
+  currentStepIndex: number;
+  triggerIndex: number;
+  currentUserName: string | null;
+  stepAssignments: Record<string, StepAssignmentUser[]>;
+  onComplete?: (stepKey: string) => void;
+  completingStepKey?: string | null;
+}) {
+  const {
+    steps,
+    currentStepIndex,
+    triggerIndex,
+    currentUserName,
+    stepAssignments,
+    onComplete,
+    completingStepKey,
+  } = mobileBranchProps;
+  const triggerCompleted = triggerIndex < currentStepIndex;
+
+  return (
+    <div className="ml-12 mt-1 mb-2 pl-3 border-l-2 border-dashed border-gray-300 space-y-2">
+      {steps.map((bs) => {
+        const isComplete = bs.completedAt !== null;
+        const isActive = triggerCompleted && !isComplete;
+        const canComplete =
+          isActive && isUserAssignedToStep(bs.stepKey, currentUserName, stepAssignments);
+        const isCompleting = completingStepKey === bs.stepKey;
+
+        return (
+          <div key={bs.stepKey} className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  isComplete
+                    ? "bg-green-500"
+                    : isActive
+                      ? "bg-teal-100 border-2 border-teal-500"
+                      : "bg-gray-100 border border-gray-300"
+                }`}
+              >
+                {isComplete && <Check className="h-3 w-3 text-white" />}
+                {isActive && <Clock className="h-3 w-3 text-teal-600" />}
+                {!isComplete && !isActive && <Circle className="h-2 w-2 text-gray-400" />}
+              </div>
+              <div className="min-w-0">
+                <span
+                  className={`text-xs font-medium ${
+                    isComplete ? "text-green-700" : isActive ? "text-teal-600" : "text-gray-400"
+                  }`}
+                >
+                  {bs.label}
+                </span>
+                {isComplete && bs.completedByName && (
+                  <p className="text-[10px] text-gray-400">
+                    {bs.completedByName}
+                    {bs.completedAt ? ` - ${formatDateLongZA(bs.completedAt)}` : ""}
+                  </p>
+                )}
+              </div>
+            </div>
+            {canComplete && onComplete && (
+              <button
+                type="button"
+                onClick={() => onComplete(bs.stepKey)}
+                disabled={isCompleting}
+                className="ml-8 px-3 py-1 text-xs font-semibold rounded bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {isCompleting ? "Saving..." : actionLabelForStep(bs.stepKey, bs.label)}
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function WorkflowStepper(props: WorkflowStepperProps) {
-  const { currentStatus, approvals, stepAssignments } = props;
+  const {
+    currentStatus,
+    approvals,
+    stepAssignments,
+    backgroundSteps = [],
+    currentUserName = null,
+    onCompleteBackgroundStep,
+    completingStepKey = null,
+  } = props;
   const currentStepIndex = STATUS_MAP[currentStatus] ?? 0;
   const approvalByStep = buildApprovalMap(approvals);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
@@ -186,6 +387,7 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
             const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
             const approval = approvalByStep[step.key];
             const isLast = index === WORKFLOW_STEPS.length - 1;
+            const branchSteps = backgroundStepsForTrigger(backgroundSteps, step.key);
 
             const assignedName =
               state === "current" || state === "pending"
@@ -295,6 +497,18 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
                     </p>
                   )}
                 </div>
+
+                {branchSteps.length > 0 && (
+                  <BackgroundBranch
+                    steps={branchSteps}
+                    currentStepIndex={currentStepIndex}
+                    triggerIndex={index}
+                    currentUserName={currentUserName}
+                    stepAssignments={stepAssignments}
+                    onComplete={onCompleteBackgroundStep}
+                    completingStepKey={completingStepKey}
+                  />
+                )}
               </div>
             );
           })}
@@ -307,6 +521,7 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
             const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
             const approval = approvalByStep[step.key];
             const isLast = index === WORKFLOW_STEPS.length - 1;
+            const branchSteps = backgroundStepsForTrigger(backgroundSteps, step.key);
             const mobileAssignedName =
               state === "current" || state === "pending"
                 ? assignedNameForStep(step.key, stepAssignments)
@@ -423,6 +638,18 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
                     )}
                   </div>
                 </div>
+
+                {branchSteps.length > 0 && (
+                  <MobileBackgroundBranch
+                    steps={branchSteps}
+                    currentStepIndex={currentStepIndex}
+                    triggerIndex={index}
+                    currentUserName={currentUserName}
+                    stepAssignments={stepAssignments}
+                    onComplete={onCompleteBackgroundStep}
+                    completingStepKey={completingStepKey}
+                  />
+                )}
               </div>
             );
           })}

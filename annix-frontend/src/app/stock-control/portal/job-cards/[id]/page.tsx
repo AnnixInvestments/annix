@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
+  BackgroundStepStatus,
   JobCard,
   JobCardApproval,
   Requisition,
@@ -70,6 +71,8 @@ export default function JobCardDetailPage() {
   const [rejectingAllocationId, setRejectingAllocationId] = useState<number | null>(null);
   const [isDownloadingQr, setIsDownloadingQr] = useState(false);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
+  const [backgroundSteps, setBackgroundSteps] = useState<BackgroundStepStatus[]>([]);
+  const [completingStepKey, setCompletingStepKey] = useState<string | null>(null);
   const [deliveryJobCards, setDeliveryJobCards] = useState<JobCard[]>([]);
 
   const fetchData = useCallback(async () => {
@@ -105,6 +108,11 @@ export default function JobCardDetailPage() {
         .approvalHistory(jobId)
         .then((data) => setApprovals(data))
         .catch(() => setApprovals([]));
+
+      stockControlApiClient
+        .backgroundStepsForJobCard(jobId)
+        .then((data) => setBackgroundSteps(data))
+        .catch(() => setBackgroundSteps([]));
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load job card"));
     } finally {
@@ -236,6 +244,18 @@ export default function JobCardDetailPage() {
     await stockControlApiClient.rejectWorkflowStep(jobId, reason);
     invalidateJobCardsList();
     fetchData();
+  };
+
+  const handleCompleteBackgroundStep = async (stepKey: string) => {
+    try {
+      setCompletingStepKey(stepKey);
+      await stockControlApiClient.completeBackgroundStep(jobId, stepKey);
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to complete background step"));
+    } finally {
+      setCompletingStepKey(null);
+    }
   };
 
   const openApprovalModal = (stepName: string) => {
@@ -509,6 +529,10 @@ export default function JobCardDetailPage() {
               currentStatus={currentStatus!}
               approvals={approvals}
               stepAssignments={workflowStatus.stepAssignments || {}}
+              backgroundSteps={backgroundSteps}
+              currentUserName={user?.name || null}
+              onCompleteBackgroundStep={handleCompleteBackgroundStep}
+              completingStepKey={completingStepKey}
             />
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-6">
