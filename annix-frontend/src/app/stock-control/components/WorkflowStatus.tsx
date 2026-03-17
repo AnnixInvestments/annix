@@ -348,6 +348,23 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
   const hasBranches = branches.length > 0 || docUploadStep !== null;
 
+  const branchLanes = useMemo(() => {
+    const laneEnds: number[] = [];
+    return branches.reduce<Record<string, number>>((acc, branch) => {
+      const effectiveStart = branch.triggerFgIdx;
+      const effectiveEnd = branch.nextFgIdx;
+      const laneIdx = laneEnds.findIndex((end) => end <= effectiveStart);
+      if (laneIdx >= 0) {
+        laneEnds[laneIdx] = effectiveEnd;
+        return { ...acc, [branch.triggerFgKey]: laneIdx };
+      }
+      laneEnds.push(effectiveEnd);
+      return { ...acc, [branch.triggerFgKey]: laneEnds.length - 1 };
+    }, {});
+  }, [branches]);
+
+  const laneCount = branches.length > 0 ? Math.max(...Object.values(branchLanes)) + 1 : 0;
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -692,17 +709,19 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         })()}
 
       {branches.length > 0 && (
-        <div className="mt-2 space-y-1">
+        <div className="mt-2 relative" style={{ height: `${laneCount * 52}px` }}>
           {branches.map((branch) => {
             const pos = branchPositions[branch.triggerFgKey];
+            const lane = branchLanes[branch.triggerFgKey] || 0;
 
             return (
               <div
                 key={`bg-row-${branch.triggerFgKey}`}
-                className="flex items-center"
+                className="absolute flex items-center"
                 style={{
-                  marginLeft: pos ? `${pos.left}px` : "0",
-                  marginRight: pos ? `${pos.right}px` : "0",
+                  left: pos ? `${pos.left}px` : "0",
+                  right: pos ? `${pos.right}px` : "0",
+                  top: `${lane * 52}px`,
                 }}
               >
                 {branch.bgSteps.map((bg) => {
