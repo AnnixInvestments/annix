@@ -1,5 +1,6 @@
 "use client";
 
+import { isSABoltGradeEquivalent } from "@/app/lib/config/rfq/boltGradeRecommendations";
 import { flangeFaceGasketCompatibility } from "@/app/lib/config/rfq/gasketRecommendations";
 
 export interface BoltRecommendation {
@@ -91,25 +92,65 @@ export function FastenersGasketsSection(props: FastenersGasketsSectionProps) {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
               >
                 <option value="">Select bolt grade...</option>
-                <optgroup label="Carbon Steel (Standard Temperature)">
-                  <option value="B7/2H">ASTM A193 B7 / A194 2H (Standard, -40°C to 400°C)</option>
-                  <option value="B7/2H-HDG">ASTM A193 B7 / A194 2H - Hot Dip Galvanized</option>
-                  <option value="B16/4">ASTM A193 B16 / A194 4 (High Temperature, to 540°C)</option>
+                <optgroup label="ASTM — Carbon Steel Hex Bolt & Nut">
+                  <option value="B7/2H">
+                    ASTM A193 B7 / A194 2H — Hex Bolt & Heavy Hex Nut (-40°C to 400°C)
+                  </option>
+                  <option value="B7/2H-HDG">
+                    ASTM A193 B7 / A194 2H — Hex Bolt & Nut, Hot Dip Galvanized
+                  </option>
+                  <option value="B16/4">
+                    ASTM A193 B16 / A194 4 — Hex Bolt & Heavy Hex Nut (High Temp, to 540°C)
+                  </option>
                 </optgroup>
-                <optgroup label="Low Temperature Service">
-                  <option value="B7M/2HM">ASTM A320 B7M / A194 2HM (-100°C to 200°C)</option>
-                  <option value="L7/7">ASTM A320 L7 / A194 7 (-100°C to 200°C)</option>
-                  <option value="L7M/7M">ASTM A320 L7M / A194 7M (-100°C to 200°C)</option>
-                  <option value="L43/7">ASTM A320 L43 / A194 7 (to -100°C)</option>
+                <optgroup label="ASTM — Low Temperature Hex Bolt & Nut">
+                  <option value="B7M/2HM">
+                    ASTM A320 B7M / A194 2HM — Hex Bolt & Heavy Hex Nut (-100°C to 200°C)
+                  </option>
+                  <option value="L7/7">
+                    ASTM A320 L7 / A194 7 — Hex Bolt & Heavy Hex Nut (-100°C to 200°C)
+                  </option>
+                  <option value="L7M/7M">
+                    ASTM A320 L7M / A194 7M — Hex Bolt & Heavy Hex Nut (-100°C to 200°C)
+                  </option>
+                  <option value="L43/7">
+                    ASTM A320 L43 / A194 7 — Hex Bolt & Heavy Hex Nut (to -100°C)
+                  </option>
                 </optgroup>
-                <optgroup label="Stainless Steel">
-                  <option value="B8/8">ASTM A193 B8 / A194 8 (304 SS)</option>
-                  <option value="B8M/8M">ASTM A193 B8M / A194 8M (316 SS)</option>
-                  <option value="B8C/8C">ASTM A193 B8C / A194 8C (347 SS)</option>
-                  <option value="B8T/8T">ASTM A193 B8T / A194 8T (321 SS)</option>
+                <optgroup label="ASTM — Stainless Steel Hex Bolt & Nut">
+                  <option value="B8/8">ASTM A193 B8 / A194 8 — Hex Bolt & Nut (304 SS)</option>
+                  <option value="B8M/8M">ASTM A193 B8M / A194 8M — Hex Bolt & Nut (316 SS)</option>
+                  <option value="B8C/8C">ASTM A193 B8C / A194 8C — Hex Bolt & Nut (347 SS)</option>
+                  <option value="B8T/8T">ASTM A193 B8T / A194 8T — Hex Bolt & Nut (321 SS)</option>
+                </optgroup>
+                <optgroup label="SA / ISO — Carbon Steel Hex Bolt & Nut (SANS 1700 / ISO 898)">
+                  <option value="4.6/5">
+                    ISO 898 Class 4.6 Bolt / Class 5 Nut — Hex Bolt & Nut (General Purpose)
+                  </option>
+                  <option value="8.8/8">
+                    ISO 898 Class 8.8 Bolt / Class 8 Nut — Hex Bolt & Nut (High Strength)
+                  </option>
+                  <option value="10.9/10">
+                    ISO 898 Class 10.9 Bolt / Class 10 Nut — Hex Bolt & Nut (Very High Strength)
+                  </option>
+                  <option value="12.9/12">
+                    ISO 898 Class 12.9 Bolt / Class 12 Nut — Hex Bolt & Nut (Ultra High Strength)
+                  </option>
+                  <option value="8.8/8-HDG">
+                    ISO 898 Class 8.8 / Class 8 — Hex Bolt & Nut, Hot Dip Galvanized
+                  </option>
+                </optgroup>
+                <optgroup label="SA / ISO — Stainless Steel Hex Bolt & Nut (ISO 3506)">
+                  <option value="A2-70">ISO 3506 A2-70 — Hex Bolt & Nut (304 SS, 700 MPa)</option>
+                  <option value="A4-70">ISO 3506 A4-70 — Hex Bolt & Nut (316 SS, 700 MPa)</option>
+                  <option value="A4-80">
+                    ISO 3506 A4-80 — Hex Bolt & Nut (316 SS, 800 MPa, High Strength)
+                  </option>
                 </optgroup>
                 <optgroup label="High Alloy / Special">
-                  <option value="B8S/8S">ASTM A193 B8S / A194 8S (Duplex 2205)</option>
+                  <option value="B8S/8S">
+                    ASTM A193 B8S / A194 8S — Hex Bolt & Nut (Duplex 2205)
+                  </option>
                   <option value="Monel">Monel 400/K-500</option>
                   <option value="Inconel">Inconel 625/718</option>
                 </optgroup>
@@ -157,7 +198,7 @@ export function FastenersGasketsSection(props: FastenersGasketsSectionProps) {
                 )}
               {globalSpecs?.boltGrade &&
                 boltRecommendation &&
-                globalSpecs.boltGrade !== boltRecommendation.grade &&
+                !isSABoltGradeEquivalent(globalSpecs.boltGrade, boltRecommendation.grade) &&
                 globalSpecs?.workingTemperatureC !== undefined && (
                   <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
                     <div className="flex items-start gap-2">

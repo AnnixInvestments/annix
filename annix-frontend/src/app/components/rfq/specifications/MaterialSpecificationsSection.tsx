@@ -4,8 +4,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { ArSteelWarningBanner } from "@/app/components/rfq/warnings/ArSteelWarningBanner";
 import { materialValidationApi, type ValidPressureClassInfo } from "@/app/lib/api/client";
+import {
+  FLANGE_FACE_OPTIONS,
+  recommendFlangeFace,
+} from "@/app/lib/config/rfq/gasketRecommendations";
 import { log } from "@/app/lib/logger";
-import { FLANGE_FACE_OPTIONS, recommendFlangeFace } from "@/app/lib/config/rfq/gasketRecommendations";
 import {
   checkSuitabilityFromCache,
   findMaterialLimits,

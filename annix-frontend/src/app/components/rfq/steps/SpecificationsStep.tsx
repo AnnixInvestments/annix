@@ -2180,65 +2180,63 @@ export default function SpecificationsStep(props: {
                     })()}
 
                     {/* Flange Face - RF/FF/RTJ */}
-                    {globalSpecs?.flangeStandardId &&
-                      globalSpecs.flangeStandardId !== "PE" && (
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-900 mb-1">
-                            Flange Face *
-                            {globalSpecs?.gasketType &&
-                              recommendFlangeFace(globalSpecs.gasketType) !==
-                                globalSpecs?.flangeFace &&
-                              globalSpecs?.flangeFace && (
-                                <span className="ml-1 text-xs text-amber-600 font-normal">
-                                  (Override)
-                                </span>
-                              )}
-                          </label>
-                          <select
-                            value={globalSpecs?.flangeFace || ""}
-                            onChange={(e) =>
-                              onUpdateGlobalSpecs({
-                                ...globalSpecs,
-                                flangeFace:
-                                  (e.target.value as "RF" | "FF" | "RTJ") || undefined,
-                              })
-                            }
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
-                            required
-                          >
-                            <option value="">Select face...</option>
-                            {FLANGE_FACE_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                          {!globalSpecs?.flangeFace && globalSpecs?.gasketType && (
-                            <div className="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded text-xs">
-                              <p className="text-blue-800">
-                                <span className="font-medium">
-                                  Recommended: {recommendFlangeFace(globalSpecs.gasketType)}
-                                </span>
-                                <span className="text-blue-600 ml-1">
-                                  - based on gasket selection
-                                </span>
-                              </p>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  onUpdateGlobalSpecs({
-                                    ...globalSpecs,
-                                    flangeFace: recommendFlangeFace(globalSpecs.gasketType),
-                                  })
-                                }
-                                className="mt-1 px-2 py-0.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                              >
-                                Apply
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                    {globalSpecs?.flangeStandardId && globalSpecs.flangeStandardId !== "PE" && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 mb-1">
+                          Flange Face *
+                          {globalSpecs?.gasketType &&
+                            recommendFlangeFace(globalSpecs.gasketType) !==
+                              globalSpecs?.flangeFace &&
+                            globalSpecs?.flangeFace && (
+                              <span className="ml-1 text-xs text-amber-600 font-normal">
+                                (Override)
+                              </span>
+                            )}
+                        </label>
+                        <select
+                          value={globalSpecs?.flangeFace || ""}
+                          onChange={(e) =>
+                            onUpdateGlobalSpecs({
+                              ...globalSpecs,
+                              flangeFace: (e.target.value as "RF" | "FF" | "RTJ") || undefined,
+                            })
+                          }
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                          required
+                        >
+                          <option value="">Select face...</option>
+                          {FLANGE_FACE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        {!globalSpecs?.flangeFace && globalSpecs?.gasketType && (
+                          <div className="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded text-xs">
+                            <p className="text-blue-800">
+                              <span className="font-medium">
+                                Recommended: {recommendFlangeFace(globalSpecs.gasketType)}
+                              </span>
+                              <span className="text-blue-600 ml-1">
+                                - based on gasket selection
+                              </span>
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onUpdateGlobalSpecs({
+                                  ...globalSpecs,
+                                  flangeFace: recommendFlangeFace(globalSpecs.gasketType),
+                                })
+                              }
+                              className="mt-1 px-2 py-0.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                            >
+                              Apply
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </>

@@ -493,12 +493,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                               }`}
                             >
                               {state === "completed" && <Check className="h-3 w-3 text-white" />}
-                              {state === "active" && (
-                                <Clock className="h-3 w-3 text-amber-600" />
-                              )}
-                              {state === "pending" && (
-                                <Circle className="h-2 w-2 text-gray-400" />
-                              )}
+                              {state === "active" && <Clock className="h-3 w-3 text-amber-600" />}
+                              {state === "pending" && <Circle className="h-2 w-2 text-gray-400" />}
                             </div>
 
                             <div className="mt-1.5 text-center">
@@ -525,9 +521,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                                   disabled={isCompleting}
                                   className="mt-0.5 px-2 py-0.5 text-[9px] font-semibold rounded bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                                 >
-                                  {isCompleting
-                                    ? "..."
-                                    : actionLabelForStep(bg.stepKey, bg.label)}
+                                  {isCompleting ? "..." : actionLabelForStep(bg.stepKey, bg.label)}
                                 </button>
                               )}
                             </div>
