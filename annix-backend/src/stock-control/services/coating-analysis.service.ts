@@ -187,6 +187,7 @@ export class CoatingAnalysisService {
       if (!combinedNotes.trim()) {
         analysis.extM2 = 0;
         analysis.intM2 = 0;
+        analysis.hasInternalLining = false;
         analysis.status = CoatingAnalysisStatus.ANALYSED;
         analysis.coats = [];
         analysis.stockAssessment = [];
@@ -200,9 +201,14 @@ export class CoatingAnalysisService {
       );
       const aiResult = await this.extractCoatingSpec(combinedNotes, correctionHints);
 
-      const hasInternalRubberLining = /INT\s*:\s*R\/L/i.test(combinedNotes);
+      const hasInternalRubberLining =
+        /INT\s*:\s*R\/L/i.test(combinedNotes) ||
+        /\bR\/L\b/i.test(combinedNotes) ||
+        /\brubber\s+lin(?:ing|er)\b/i.test(combinedNotes) ||
+        /\bINT\s*:.*(?:rubber|lining|lagging|nitrile|neoprene|butadiene)/i.test(combinedNotes);
       analysis.applicationType = aiResult.applicationType;
       analysis.surfacePrep = hasInternalRubberLining ? "sa3_blast" : aiResult.surfacePrep;
+      analysis.hasInternalLining = hasInternalRubberLining;
 
       const hasExt = aiResult.coats.some((c) => c.area === "external");
       const hasInt = aiResult.coats.some((c) => c.area === "internal");
@@ -462,16 +468,32 @@ export class CoatingAnalysisService {
     const descriptions = pipeItems.map((li) => li.itemDescription || li.itemCode || "");
     const results = await this.m2CalculationService.calculateM2ForItems(descriptions);
 
-    return pipeItems.reduce(
-      (totals, li, idx) => {
+    const itemsToUpdate: JobCardLineItem[] = [];
+    const totals = pipeItems.reduce(
+      (acc, li, idx) => {
         const result = results[idx];
         const qty = Number(li.quantity) || 1;
         const ext = (result.externalM2 || 0) * qty;
         const int = (result.internalM2 || 0) * qty;
-        return { extM2: totals.extM2 + ext, intM2: totals.intM2 + int };
+
+        if (result.externalM2 && result.externalM2 > 0 && (li.m2 === null || li.m2 === 0)) {
+          li.m2 = Math.round(result.externalM2 * 10000) / 10000;
+          itemsToUpdate.push(li);
+        }
+
+        return { extM2: acc.extM2 + ext, intM2: acc.intM2 + int };
       },
       { extM2: 0, intM2: 0 },
     );
+
+    if (itemsToUpdate.length > 0) {
+      await this.lineItemRepo.save(itemsToUpdate);
+      this.logger.log(
+        `Updated m² on ${itemsToUpdate.length} line item(s) from pipe dimension calculation`,
+      );
+    }
+
+    return totals;
   }
 
   private async extractCoatingSpec(

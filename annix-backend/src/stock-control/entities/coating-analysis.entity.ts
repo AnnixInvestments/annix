@@ -69,6 +69,9 @@ export class JobCardCoatingAnalysis {
   @Column({ name: "stock_assessment", type: "jsonb", default: [] })
   stockAssessment: StockAssessmentItem[];
 
+  @Column({ name: "has_internal_lining", type: "boolean", default: false })
+  hasInternalLining: boolean;
+
   @Column({ name: "raw_notes", type: "text", nullable: true })
   rawNotes: string | null;
 

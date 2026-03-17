@@ -235,18 +235,21 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   onCoatingAnalysisChange(updated);
                 }}
               />
-              <EditableM2Field
-                label="Int m²"
-                value={coatingAnalysis.intM2}
-                onSave={async (val) => {
-                  const updated = await stockControlApiClient.updateCoatingSurfaceArea(
-                    jobId,
-                    coatingAnalysis.extM2,
-                    val,
-                  );
-                  onCoatingAnalysisChange(updated);
-                }}
-              />
+              {(coatingAnalysis.hasInternalLining ||
+                coatingAnalysis.coats.some((c) => c.area === "internal")) && (
+                <EditableM2Field
+                  label="Int m²"
+                  value={coatingAnalysis.intM2}
+                  onSave={async (val) => {
+                    const updated = await stockControlApiClient.updateCoatingSurfaceArea(
+                      jobId,
+                      coatingAnalysis.extM2,
+                      val,
+                    );
+                    onCoatingAnalysisChange(updated);
+                  }}
+                />
+              )}
             </div>
             <table className="min-w-full text-sm">
               <thead>

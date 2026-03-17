@@ -433,6 +433,7 @@ export interface CoatingAnalysis {
   surfacePrep: string | null;
   extM2: number;
   intM2: number;
+  hasInternalLining: boolean;
   coats: CoatDetail[];
   stockAssessment: StockAssessmentItem[];
   rawNotes: string | null;
