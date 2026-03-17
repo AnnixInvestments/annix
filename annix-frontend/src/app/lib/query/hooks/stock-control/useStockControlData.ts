@@ -4,6 +4,7 @@ import type {
   CostByJob,
   CpoCalloffBreakdown,
   CpoCalloffRecord,
+  CpoDeliveryHistory,
   CpoFulfillmentReportItem,
   CpoOverdueInvoiceItem,
   CustomerPurchaseOrder,
@@ -295,6 +296,14 @@ export function useCpoCalloffRecords(cpoId: number) {
       const data = await stockControlApiClient.cpoCalloffRecords(cpoId);
       return Array.isArray(data) ? data : [];
     },
+    enabled: !!cpoId,
+  });
+}
+
+export function useCpoDeliveryHistory(cpoId: number) {
+  return useQuery<CpoDeliveryHistory>({
+    queryKey: stockControlKeys.cpos.deliveryHistory(cpoId),
+    queryFn: () => stockControlApiClient.cpoDeliveryHistory(cpoId),
     enabled: !!cpoId,
   });
 }

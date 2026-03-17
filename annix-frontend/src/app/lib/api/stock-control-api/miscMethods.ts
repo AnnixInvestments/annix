@@ -2,6 +2,7 @@ import { StockControlApiClient } from "./base";
 import type {
   CpoCalloffBreakdown,
   CpoCalloffRecord,
+  CpoDeliveryHistory,
   CpoFulfillmentReportItem,
   CpoImportResult,
   CpoOverdueInvoiceItem,
@@ -46,6 +47,7 @@ declare module "./base" {
     updateCpoStatus(id: number, status: string): Promise<CustomerPurchaseOrder>;
     deleteCpo(id: number): Promise<void>;
     cpoCalloffRecords(cpoId: number): Promise<CpoCalloffRecord[]>;
+    cpoDeliveryHistory(cpoId: number): Promise<CpoDeliveryHistory>;
     updateCalloffRecordStatus(recordId: number, status: string): Promise<CpoCalloffRecord>;
     cpoFulfillmentReport(): Promise<CpoFulfillmentReportItem[]>;
     cpoCalloffBreakdown(): Promise<CpoCalloffBreakdown>;
@@ -140,6 +142,10 @@ proto.deleteCpo = async function (id) {
 
 proto.cpoCalloffRecords = async function (cpoId) {
   return this.request(`/stock-control/cpos/${cpoId}/calloff-records`);
+};
+
+proto.cpoDeliveryHistory = async function (cpoId) {
+  return this.request(`/stock-control/cpos/${cpoId}/delivery-history`);
 };
 
 proto.updateCalloffRecordStatus = async function (recordId, status) {

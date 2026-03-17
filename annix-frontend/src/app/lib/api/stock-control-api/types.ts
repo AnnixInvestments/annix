@@ -1711,6 +1711,30 @@ export interface CustomerPurchaseOrder {
   updatedAt: string;
 }
 
+export interface CpoDeliveryHistoryItem {
+  jobCardId: number;
+  jobNumber: string;
+  jtDnNumber: string | null;
+  status: string;
+  importedAt: string;
+  items: { itemCode: string | null; description: string | null; quantity: number }[];
+  totalQuantity: number;
+}
+
+export interface CpoRunningTotal {
+  itemCode: string | null;
+  description: string | null;
+  ordered: number;
+  fulfilled: number;
+  remaining: number;
+  deliveries: { jtDnNumber: string | null; quantity: number; date: string }[];
+}
+
+export interface CpoDeliveryHistory {
+  deliveries: CpoDeliveryHistoryItem[];
+  runningTotals: CpoRunningTotal[];
+}
+
 export interface GlobalSearchResultItem {
   id: number;
   type: "job_card" | "stock_item" | "staff" | "delivery_note" | "invoice" | "purchase_order";

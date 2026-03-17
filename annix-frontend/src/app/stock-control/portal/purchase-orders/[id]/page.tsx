@@ -7,6 +7,7 @@ import type { CpoCalloffRecord } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import {
   useCpoCalloffRecords,
+  useCpoDeliveryHistory,
   useCpoDetail,
   useUpdateCalloffRecordStatus,
   useUpdateCpoStatus,
@@ -78,6 +79,7 @@ export default function CpoDetailPage() {
 
   const { data: cpo, isLoading: isLoadingCpo, error: cpoError } = useCpoDetail(id);
   const { data: calloffRecords = [] } = useCpoCalloffRecords(id);
+  const { data: deliveryHistory } = useCpoDeliveryHistory(id);
 
   const updateCpoStatusMutation = useUpdateCpoStatus();
   const updateCalloffRecordStatusMutation = useUpdateCalloffRecordStatus();
@@ -393,6 +395,126 @@ export default function CpoDetailPage() {
           </div>
         </div>
       )}
+
+      {deliveryHistory &&
+        deliveryHistory.runningTotals.length > 0 &&
+        deliveryHistory.deliveries.length > 0 && (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">
+                Delivery History ({deliveryHistory.deliveries.length} JT
+                {deliveryHistory.deliveries.length !== 1 ? "s" : ""})
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Item
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ordered
+                    </th>
+                    {deliveryHistory.deliveries.map((d) => (
+                      <th
+                        key={d.jobCardId}
+                        className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        <Link
+                          href={`/stock-control/portal/job-cards/${d.jobCardId}`}
+                          className="text-teal-600 hover:text-teal-800"
+                        >
+                          {d.jtDnNumber || d.jobNumber}
+                        </Link>
+                        <div className="text-[10px] text-gray-400 font-normal normal-case">
+                          {formatDateZA(d.importedAt)}
+                        </div>
+                      </th>
+                    ))}
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total Fulfilled
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Outstanding
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {deliveryHistory.runningTotals.map((rt, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-6 py-3 text-sm text-gray-900">
+                        <span className="font-mono font-medium">{rt.itemCode || "-"}</span>
+                        {rt.description && (
+                          <span className="ml-2 text-gray-500 text-xs truncate max-w-[200px] inline-block align-bottom">
+                            {rt.description}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-900 text-right font-medium">
+                        {rt.ordered}
+                      </td>
+                      {deliveryHistory.deliveries.map((d) => {
+                        const delivery = rt.deliveries.find((rd) => rd.jtDnNumber === d.jtDnNumber);
+                        return (
+                          <td key={d.jobCardId} className="px-4 py-3 text-sm text-right">
+                            {delivery ? (
+                              <span className="font-medium text-teal-700">{delivery.quantity}</span>
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">
+                        {rt.fulfilled}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-right font-semibold">
+                        <span className={rt.remaining > 0 ? "text-amber-600" : "text-green-600"}>
+                          {rt.remaining}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-50">
+                  <tr>
+                    <td className="px-6 py-3 text-sm font-semibold text-gray-900">Total</td>
+                    <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">
+                      {deliveryHistory.runningTotals.reduce((sum, rt) => sum + rt.ordered, 0)}
+                    </td>
+                    {deliveryHistory.deliveries.map((d) => (
+                      <td
+                        key={d.jobCardId}
+                        className="px-4 py-3 text-sm text-right font-semibold text-teal-700"
+                      >
+                        {d.totalQuantity || "-"}
+                      </td>
+                    ))}
+                    <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">
+                      {deliveryHistory.runningTotals.reduce((sum, rt) => sum + rt.fulfilled, 0)}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-right font-semibold">
+                      {(() => {
+                        const totalRemaining = deliveryHistory.runningTotals.reduce(
+                          (sum, rt) => sum + rt.remaining,
+                          0,
+                        );
+                        return (
+                          <span
+                            className={totalRemaining > 0 ? "text-amber-600" : "text-green-600"}
+                          >
+                            {totalRemaining}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">

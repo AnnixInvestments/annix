@@ -673,9 +673,7 @@ export class JobCardImportService {
       )
       .join("\n");
 
-    const correctionHints = companyId
-      ? await this.correctionHintsForCompany(companyId)
-      : "";
+    const correctionHints = companyId ? await this.correctionHintsForCompany(companyId) : "";
 
     const messages: ChatMessage[] = [
       {

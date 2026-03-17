@@ -470,6 +470,117 @@ export class CpoService {
     });
   }
 
+  async deliveryHistoryForCpo(
+    companyId: number,
+    cpoId: number,
+  ): Promise<{
+    deliveries: {
+      jobCardId: number;
+      jobNumber: string;
+      jtDnNumber: string | null;
+      status: string;
+      importedAt: string;
+      items: { itemCode: string | null; description: string | null; quantity: number }[];
+      totalQuantity: number;
+    }[];
+    runningTotals: {
+      itemCode: string | null;
+      description: string | null;
+      ordered: number;
+      fulfilled: number;
+      remaining: number;
+      deliveries: { jtDnNumber: string | null; quantity: number; date: string }[];
+    }[];
+  }> {
+    const cpo = await this.cpoRepo.findOne({
+      where: { id: cpoId, companyId },
+      relations: ["items"],
+    });
+
+    if (!cpo) {
+      throw new NotFoundException(`CPO ${cpoId} not found`);
+    }
+
+    const linkedJobCards = await this.jobCardRepo.find({
+      where: { cpoId, companyId },
+      relations: ["lineItems"],
+      order: { createdAt: "ASC" },
+    });
+
+    const deliveries = linkedJobCards.map((jc) => {
+      const matchedItems = (jc.lineItems || [])
+        .filter((li) => {
+          const code = (li.itemCode || "").trim().toLowerCase();
+          const desc = (li.itemDescription || "").trim().toLowerCase();
+          return cpo.items.some((ci) => {
+            const ciCode = (ci.itemCode || "").trim().toLowerCase();
+            const ciDesc = (ci.itemDescription || "").trim().toLowerCase();
+            return (ciCode && code && ciCode === code) || (ciDesc && desc && ciDesc === desc);
+          });
+        })
+        .map((li) => ({
+          itemCode: li.itemCode,
+          description: li.itemDescription,
+          quantity: Number(li.quantity) || 0,
+        }));
+
+      const totalQuantity = matchedItems.reduce((sum, item) => sum + item.quantity, 0);
+
+      return {
+        jobCardId: jc.id,
+        jobNumber: jc.jobNumber,
+        jtDnNumber: jc.jtDnNumber,
+        status: jc.status,
+        importedAt: fromJSDate(jc.createdAt).toISO() || "",
+        items: matchedItems,
+        totalQuantity,
+      };
+    });
+
+    const runningTotals = cpo.items
+      .filter((ci) => Number(ci.quantityOrdered) > 0)
+      .map((ci) => {
+        const ciCode = (ci.itemCode || "").trim().toLowerCase();
+        const ciDesc = (ci.itemDescription || "").trim().toLowerCase();
+
+        const itemDeliveries = deliveries
+          .map((d) => {
+            const matchedQty = d.items
+              .filter((di) => {
+                const diCode = (di.itemCode || "").trim().toLowerCase();
+                const diDesc = (di.description || "").trim().toLowerCase();
+                return (
+                  (ciCode && diCode && ciCode === diCode) || (ciDesc && diDesc && ciDesc === diDesc)
+                );
+              })
+              .reduce((sum, di) => sum + di.quantity, 0);
+
+            if (matchedQty === 0) return null;
+
+            return {
+              jtDnNumber: d.jtDnNumber,
+              quantity: matchedQty,
+              date: d.importedAt || "",
+            };
+          })
+          .filter((d): d is NonNullable<typeof d> => d !== null);
+
+        const ordered = Number(ci.quantityOrdered) || 0;
+        const fulfilled = itemDeliveries.reduce((sum, d) => sum + d.quantity, 0);
+
+        return {
+          itemCode: ci.itemCode,
+          description: ci.itemDescription,
+          ordered,
+          fulfilled,
+          remaining: Math.max(0, ordered - fulfilled),
+          deliveries: itemDeliveries,
+        };
+      });
+
+    return { deliveries, runningTotals };
+  }
+
   async updateCalloffStatus(
     companyId: number,
     recordId: number,

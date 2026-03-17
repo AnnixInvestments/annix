@@ -34,6 +34,7 @@ export {
   useCostByJobReport,
   useCpoCalloffBreakdown,
   useCpoCalloffRecords,
+  useCpoDeliveryHistory,
   useCpoDetail,
   useCpoFulfillmentReport,
   useCpoOverdueInvoices,

@@ -151,6 +151,13 @@ export class CpoController {
     return this.cpoService.calloffRecordsForCpo(req.user.companyId, id);
   }
 
+  @Get(":id/delivery-history")
+  @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
+  @ApiOperation({ summary: "Delivery history with JT breakdown and running totals" })
+  async deliveryHistory(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
+    return this.cpoService.deliveryHistoryForCpo(req.user.companyId, id);
+  }
+
   @Get(":id/overdue-records")
   @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
   @ApiOperation({ summary: "List overdue (uninvoiced 21+ days) call-off records for a CPO" })

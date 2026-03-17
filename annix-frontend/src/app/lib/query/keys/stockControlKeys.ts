@@ -63,6 +63,8 @@ export const stockControlKeys = {
     list: (status?: string) => [...stockControlKeys.cpos.all, "list", status ?? "all"] as const,
     detail: (id: number) => [...stockControlKeys.cpos.all, "detail", id] as const,
     calloffRecords: (id: number) => [...stockControlKeys.cpos.all, "calloff-records", id] as const,
+    deliveryHistory: (id: number) =>
+      [...stockControlKeys.cpos.all, "delivery-history", id] as const,
   },
   calibration: {
     all: ["stock-control", "calibration"] as const,
