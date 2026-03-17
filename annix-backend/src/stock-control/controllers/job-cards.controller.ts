@@ -44,7 +44,7 @@ import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
 import { JobCardService } from "../services/job-card.service";
-import { sanitizeNotes } from "../services/job-card-import.service";
+import { JobCardImportService, sanitizeNotes } from "../services/job-card-import.service";
 import { JobCardVersionService } from "../services/job-card-version.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { RequisitionService } from "../services/requisition.service";
@@ -63,6 +63,7 @@ export class JobCardsController {
     private readonly drawingExtractionService: DrawingExtractionService,
     private readonly workflowService: JobCardWorkflowService,
     private readonly cpoService: CpoService,
+    private readonly jobCardImportService: JobCardImportService,
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(RubberDimensionOverride)
@@ -261,6 +262,25 @@ export class JobCardsController {
     );
   }
 
+  @StockControlRoles("admin")
+  @Patch(":id/coating-analysis/coats/:index")
+  @ApiOperation({ summary: "Update a coat line DFT values" })
+  async updateCoat(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("index") index: number,
+    @Body() body: { minDftUm?: number; maxDftUm?: number },
+  ) {
+    return this.coatingAnalysisService.updateCoat(req.user.companyId, id, Number(index), body);
+  }
+
+  @StockControlRoles("admin")
+  @Delete(":id/coating-analysis/coats/:index")
+  @ApiOperation({ summary: "Remove a coat line" })
+  async removeCoat(@Req() req: any, @Param("id") id: number, @Param("index") index: number) {
+    return this.coatingAnalysisService.removeCoat(req.user.companyId, id, Number(index));
+  }
+
   @Get(":id/corrections")
   @ApiOperation({ summary: "List extraction corrections for a job card" })
   async listCorrections(@Req() req: any, @Param("id") id: number) {
@@ -283,6 +303,20 @@ export class JobCardsController {
       body.correctedValue,
       req.user.id,
     );
+  }
+
+  @StockControlRoles("admin", "accounts")
+  @Post(":id/re-extract")
+  @ApiOperation({ summary: "Re-extract line items from source file with improved validation" })
+  async reExtract(@Req() req: any, @Param("id") id: number) {
+    const result = await this.jobCardImportService.reExtractLineItems(req.user.companyId, id);
+
+    this.coatingAnalysisService.analyseJobCards([id], req.user.companyId).catch((err) => {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.error(`Background coating analysis failed after re-extract: ${message}`);
+    });
+
+    return result;
   }
 
   @StockControlRoles("admin", "accounts")

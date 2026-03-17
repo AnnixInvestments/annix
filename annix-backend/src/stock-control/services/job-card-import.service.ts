@@ -1,8 +1,9 @@
-import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
@@ -273,6 +274,7 @@ export class JobCardImportService {
     @Inject(forwardRef(() => CpoService))
     private readonly cpoService: CpoService,
     private readonly versionService: JobCardVersionService,
+    @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
   private async correctionHintsForCompany(companyId: number): Promise<string> {
@@ -810,6 +812,71 @@ export class JobCardImportService {
         companyId,
       }),
     );
+  }
+
+  private extractLineItemsFromGrid(
+    grid: string[][],
+    mapping: ImportMappingConfig,
+  ): LineItemImportRow[] {
+    const li = mapping.lineItems;
+    if (!li.itemCode && !li.itemDescription) return [];
+
+    const startRow = li.itemCode?.startRow || li.itemDescription?.startRow || 0;
+    const endRow = li.itemCode?.endRow || li.itemDescription?.endRow || grid.length - 1;
+
+    const cellValue = (row: string[], fm: FieldMapping | null): string =>
+      fm !== null && row.length > fm.column ? (row[fm.column] || "").trim() : "";
+
+    return grid.slice(startRow, endRow + 1).map((row) => ({
+      itemCode: cellValue(row, li.itemCode),
+      itemDescription: cellValue(row, li.itemDescription),
+      itemNo: cellValue(row, li.itemNo),
+      quantity: cellValue(row, li.quantity),
+      jtNo: cellValue(row, li.jtNo),
+    }));
+  }
+
+  async reExtractLineItems(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<{ replaced: number; newCount: number }> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+    });
+    if (!jobCard) {
+      throw new NotFoundException("Job card not found");
+    }
+    if (!jobCard.sourceFilePath) {
+      throw new NotFoundException("Job card has no source file to re-extract from");
+    }
+
+    const buffer = await this.storageService.download(jobCard.sourceFilePath);
+    const mimetype = jobCard.sourceFileName?.toLowerCase().endsWith(".pdf")
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    const { grid } = await this.parseFile(buffer, mimetype, jobCard.sourceFileName || undefined);
+    if (grid.length === 0) {
+      throw new NotFoundException("Could not extract data from source file");
+    }
+
+    const mapping = await this.autoDetectMapping(grid, companyId);
+
+    const rawLineItems = this.extractLineItemsFromGrid(grid, mapping);
+    const oldCount = await this.lineItemRepo.count({ where: { jobCardId } });
+
+    await this.lineItemRepo.delete({ jobCardId });
+
+    const entities = this.buildLineItemEntities(rawLineItems, jobCardId, companyId);
+    if (entities.length > 0) {
+      await this.lineItemRepo.save(entities);
+    }
+
+    this.logger.log(
+      `Re-extracted line items for job card ${jobCardId}: ${oldCount} -> ${entities.length}`,
+    );
+
+    return { replaced: oldCount, newCount: entities.length };
   }
 
   private async archiveAndOverwrite(

@@ -302,6 +302,66 @@ export class CoatingAnalysisService {
     return this.analysisRepo.save(analysis);
   }
 
+  async updateCoat(
+    companyId: number,
+    jobCardId: number,
+    coatIndex: number,
+    updates: { minDftUm?: number; maxDftUm?: number },
+  ): Promise<JobCardCoatingAnalysis> {
+    const analysis = await this.analysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
+    if (!analysis) {
+      throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
+    }
+
+    const coats = analysis.coats || [];
+    if (coatIndex < 0 || coatIndex >= coats.length) {
+      throw new NotFoundException(`Coat index ${coatIndex} out of range`);
+    }
+
+    const coat = coats[coatIndex];
+    if (updates.minDftUm !== undefined) coat.minDftUm = updates.minDftUm;
+    if (updates.maxDftUm !== undefined) coat.maxDftUm = updates.maxDftUm;
+
+    const retentionFactor = await this.lossFactorForCompany(companyId);
+    const m2ForCoat = coat.area === "internal" ? analysis.intM2 : analysis.extM2;
+    coats[coatIndex] = this.calculateCoatVolume(coat, m2ForCoat, retentionFactor);
+    analysis.coats = coats;
+
+    const stockAssessment = await this.assessStock(coats, companyId);
+    analysis.stockAssessment = stockAssessment;
+
+    return this.analysisRepo.save(analysis);
+  }
+
+  async removeCoat(
+    companyId: number,
+    jobCardId: number,
+    coatIndex: number,
+  ): Promise<JobCardCoatingAnalysis> {
+    const analysis = await this.analysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
+    if (!analysis) {
+      throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
+    }
+
+    const coats = analysis.coats || [];
+    if (coatIndex < 0 || coatIndex >= coats.length) {
+      throw new NotFoundException(`Coat index ${coatIndex} out of range`);
+    }
+
+    analysis.coats = [...coats.slice(0, coatIndex), ...coats.slice(coatIndex + 1)];
+
+    const stockAssessment = await this.assessStock(analysis.coats, companyId);
+    analysis.stockAssessment = stockAssessment;
+
+    return this.analysisRepo.save(analysis);
+  }
+
   async unverifiedProducts(
     companyId: number,
     jobCardId: number,

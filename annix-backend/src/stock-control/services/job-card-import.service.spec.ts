@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { JobCard, JobCardStatus } from "../entities/job-card.entity";
 import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
@@ -81,6 +82,10 @@ describe("JobCardImportService", () => {
         { provide: DrawingExtractionService, useValue: mockDrawingExtractionService },
         { provide: CpoService, useValue: mockCpoService },
         { provide: JobCardVersionService, useValue: mockVersionService },
+        {
+          provide: STORAGE_SERVICE,
+          useValue: { download: jest.fn(), upload: jest.fn(), presignedUrl: jest.fn() },
+        },
       ],
     }).compile();
 

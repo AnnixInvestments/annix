@@ -21,6 +21,7 @@ interface CoatingAnalysisTabProps {
   isUploadingTds: boolean;
   onTdsUpload: () => void;
   isAdmin: boolean;
+  sourceFileUrl: string | null;
 }
 
 interface ExtractionCorrection {
@@ -114,6 +115,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
     isUploadingTds,
     onTdsUpload,
     isAdmin,
+    sourceFileUrl,
   } = props;
 
   const [showTeachNix, setShowTeachNix] = useState(false);
@@ -121,6 +123,11 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
   const [correctionField, setCorrectionField] = useState("coatingSpec");
   const [correctionValue, setCorrectionValue] = useState("");
   const [isSavingCorrection, setIsSavingCorrection] = useState(false);
+  const [editingDft, setEditingDft] = useState<number | null>(null);
+  const [dftMin, setDftMin] = useState("");
+  const [dftMax, setDftMax] = useState("");
+  const [savingDft, setSavingDft] = useState(false);
+  const [removingCoat, setRemovingCoat] = useState<number | null>(null);
 
   const loadCorrections = async () => {
     try {
@@ -151,6 +158,34 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
       onRunAnalysis();
     } finally {
       setIsSavingCorrection(false);
+    }
+  };
+
+  const handleSaveDft = async (idx: number) => {
+    const parsedMin = parseFloat(dftMin);
+    const parsedMax = parseFloat(dftMax);
+    if (Number.isNaN(parsedMin) || Number.isNaN(parsedMax) || parsedMin < 0 || parsedMax < 0)
+      return;
+    try {
+      setSavingDft(true);
+      const updated = await stockControlApiClient.updateCoatingCoat(jobId, idx, {
+        minDftUm: parsedMin,
+        maxDftUm: parsedMax,
+      });
+      onCoatingAnalysisChange(updated);
+      setEditingDft(null);
+    } finally {
+      setSavingDft(false);
+    }
+  };
+
+  const handleRemoveCoat = async (idx: number) => {
+    try {
+      setRemovingCoat(idx);
+      const updated = await stockControlApiClient.removeCoatingCoat(jobId, idx);
+      onCoatingAnalysisChange(updated);
+    } finally {
+      setRemovingCoat(null);
     }
   };
 
@@ -262,7 +297,8 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   <th className="text-right py-2 pr-4 font-medium text-gray-500">
                     Coverage (m&#178;/L)
                   </th>
-                  <th className="text-right py-2 font-medium text-gray-500">Litres Req.</th>
+                  <th className="text-right py-2 pr-4 font-medium text-gray-500">Litres Req.</th>
+                  {isAdmin && <th className="text-right py-2 font-medium text-gray-500 w-16"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -291,14 +327,128 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                       )}
                     </td>
                     <td className="py-2 pr-4 text-right text-gray-900">
-                      {coat.minDftUm}-{coat.maxDftUm}
+                      {isAdmin && editingDft === idx ? (
+                        <div className="flex items-center justify-end space-x-1">
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            className="w-16 px-1 py-0.5 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            value={dftMin}
+                            onChange={(e) => setDftMin(e.target.value)}
+                            disabled={savingDft}
+                            autoFocus
+                          />
+                          <span>-</span>
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            className="w-16 px-1 py-0.5 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
+                            value={dftMax}
+                            onChange={(e) => setDftMax(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleSaveDft(idx);
+                              if (e.key === "Escape") setEditingDft(null);
+                            }}
+                            disabled={savingDft}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveDft(idx)}
+                            disabled={savingDft}
+                            className="text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                            title="Save"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingDft(null)}
+                            className="text-gray-400 hover:text-gray-600"
+                            title="Cancel"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : isAdmin ? (
+                        <button
+                          type="button"
+                          className="hover:text-teal-600 hover:underline cursor-pointer"
+                          onClick={() => {
+                            setDftMin(String(coat.minDftUm));
+                            setDftMax(String(coat.maxDftUm));
+                            setEditingDft(idx);
+                          }}
+                          title="Click to edit DFT"
+                        >
+                          {coat.minDftUm}-{coat.maxDftUm}
+                        </button>
+                      ) : (
+                        <span>
+                          {coat.minDftUm}-{coat.maxDftUm}
+                        </span>
+                      )}
                     </td>
                     <td className="py-2 pr-4 text-right text-gray-900">
                       {coat.coverageM2PerLiter}
                     </td>
-                    <td className="py-2 text-right font-semibold text-gray-900">
+                    <td className="py-2 pr-4 text-right font-semibold text-gray-900">
                       {coat.litersRequired === 0 ? "\u2014" : coat.litersRequired}
                     </td>
+                    {isAdmin && (
+                      <td className="py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCoat(idx)}
+                          disabled={removingCoat === idx}
+                          className="text-gray-400 hover:text-red-600 disabled:text-gray-300"
+                          title="Remove coat line"
+                        >
+                          {removingCoat === idx ? (
+                            <div className="w-4 h-4 animate-spin rounded-full border-b-2 border-red-500"></div>
+                          ) : (
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -397,7 +547,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
             className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
             onClick={() => setShowTeachNix(false)}
           ></div>
-          <div className="fixed inset-y-0 right-0 max-w-lg w-full bg-white shadow-xl flex flex-col">
+          <div className="fixed inset-y-0 right-0 max-w-2xl w-full bg-white shadow-xl flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Teach Nix</h3>
               <button
@@ -415,6 +565,24 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {sourceFileUrl && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Original Document</h4>
+                  <iframe
+                    src={sourceFileUrl}
+                    className="w-full h-96 border border-gray-200 rounded"
+                    title="Original uploaded document"
+                  />
+                  <a
+                    href={sourceFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-block text-xs text-teal-600 hover:text-teal-800"
+                  >
+                    Open in new tab
+                  </a>
+                </div>
+              )}
               {coatingAnalysis?.rawNotes && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-700 mb-2">

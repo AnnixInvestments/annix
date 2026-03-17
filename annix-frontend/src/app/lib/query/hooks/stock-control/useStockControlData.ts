@@ -726,6 +726,16 @@ export function useUpdateJobCardStatus() {
   });
 }
 
+export function useReExtractLineItems() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (jobCardId: number) => stockControlApiClient.reExtractJobCardLineItems(jobCardId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
+    },
+  });
+}
+
 export function useApproveWorkflowStep() {
   const queryClient = useQueryClient();
   return useMutation({

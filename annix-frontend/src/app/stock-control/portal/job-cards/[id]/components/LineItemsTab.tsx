@@ -1,7 +1,9 @@
 "use client";
 
 import type React from "react";
+import { useState } from "react";
 import type { JobCard, JobCardAttachment } from "@/app/lib/api/stockControlApi";
+import { useReExtractLineItems } from "@/app/lib/query/hooks";
 import { isValidLineItem } from "../lib/helpers";
 
 interface LineItemsTabProps {
@@ -9,10 +11,28 @@ interface LineItemsTabProps {
   attachments: JobCardAttachment[];
 }
 
-export function LineItemsTab({ jobCard, attachments }: LineItemsTabProps) {
+export function LineItemsTab(props: LineItemsTabProps) {
+  const { jobCard, attachments } = props;
+  const reExtract = useReExtractLineItems();
+  const [reExtractResult, setReExtractResult] = useState<string | null>(null);
+
   if (!jobCard.lineItems || jobCard.lineItems.length === 0) {
     return null;
   }
+
+  const handleReExtract = () => {
+    setReExtractResult(null);
+    reExtract.mutate(jobCard.id, {
+      onSuccess: (result) => {
+        setReExtractResult(
+          `Re-extracted: ${result.replaced} items replaced with ${result.newCount} items`,
+        );
+      },
+      onError: (err) => {
+        setReExtractResult(`Error: ${err instanceof Error ? err.message : "Re-extraction failed"}`);
+      },
+    });
+  };
 
   return (
     <div className="bg-white shadow rounded-lg overflow-x-auto">
@@ -22,6 +42,23 @@ export function LineItemsTab({ jobCard, attachments }: LineItemsTabProps) {
           <span className="text-sm text-gray-500">
             {jobCard.lineItems.filter(isValidLineItem).length} items
           </span>
+          {jobCard.sourceFilePath && (
+            <button
+              type="button"
+              onClick={handleReExtract}
+              disabled={reExtract.isPending}
+              className="px-2 py-1 text-xs font-medium rounded bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-50"
+            >
+              {reExtract.isPending ? "Re-extracting..." : "Re-extract"}
+            </button>
+          )}
+          {reExtractResult && (
+            <span
+              className={`text-xs ${reExtractResult.startsWith("Error") ? "text-red-600" : "text-green-600"}`}
+            >
+              {reExtractResult}
+            </span>
+          )}
         </div>
         {attachments.some(
           (a) =>

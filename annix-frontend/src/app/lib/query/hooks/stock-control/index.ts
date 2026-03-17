@@ -87,6 +87,7 @@ export {
   useMarkNotificationAsRead,
   useMovementHistoryReport,
   useRecentIssuances,
+  useReExtractLineItems,
   useRejectOverAllocation,
   useRejectWorkflowStep,
   useReportDepartments,

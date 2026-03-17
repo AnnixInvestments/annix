@@ -19,7 +19,17 @@ export const INVALID_LINE_ITEM_PATTERNS = [
   /^remarks$/i,
   /^comments$/i,
   /^notes$/i,
+  /^item\s*code\s+item\s*desc/i,
+  /^item\s*code\s+description/i,
+  /^adhesives?\s*\d*$/i,
 ];
+
+const NOISE_ONLY_PATTERN = /^[\d\s]+$/;
+
+const PAINT_COATING_NOISE_PATTERN =
+  /^[\d\s]+(RTT|C\d{2,3}|RED|BLUE|GREEN|WHITE|BLACK|GREY|GRAY|YELLOW)\b/i;
+
+const BARE_NUMBER_SEQUENCE_PATTERN = /^(\d{2,5}\s+){2,}/;
 
 export function isValidLineItem(li: LineItemImportRow): boolean {
   const itemCode = (li.itemCode || "").trim();
@@ -38,10 +48,24 @@ export function isValidLineItem(li: LineItemImportRow): boolean {
   }
 
   const qty = li.quantity ? parseFloat(li.quantity) : null;
-  const hasNoData = !description && !li.itemNo && !li.jtNo && (qty === null || Number.isNaN(qty));
+  const hasQty = qty !== null && !Number.isNaN(qty) && qty > 0;
+  const hasDescription = description.length > 0;
+  const hasItemNo = (li.itemNo || "").trim().length > 0;
+  const hasJtNo = (li.jtNo || "").trim().length > 0;
+  const hasNoData = !hasDescription && !hasItemNo && !hasJtNo && !hasQty;
+
   if (hasNoData && itemCode) {
-    const looksLikeLabel = /^[A-Za-z\s]+$/.test(itemCode) && itemCode.length < 30;
-    if (looksLikeLabel) {
+    return false;
+  }
+
+  if (!hasDescription && !hasQty && !hasJtNo && itemCode) {
+    if (NOISE_ONLY_PATTERN.test(itemCode)) {
+      return false;
+    }
+    if (PAINT_COATING_NOISE_PATTERN.test(itemCode)) {
+      return false;
+    }
+    if (BARE_NUMBER_SEQUENCE_PATTERN.test(itemCode)) {
       return false;
     }
   }

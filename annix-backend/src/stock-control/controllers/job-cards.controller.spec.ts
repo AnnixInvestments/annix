@@ -10,6 +10,7 @@ import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
 import { JobCardService } from "../services/job-card.service";
+import { JobCardImportService } from "../services/job-card-import.service";
 import { JobCardVersionService } from "../services/job-card-version.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { RequisitionService } from "../services/requisition.service";
@@ -111,6 +112,10 @@ describe("JobCardsController", () => {
         { provide: DrawingExtractionService, useValue: mockDrawingExtractionService },
         { provide: JobCardWorkflowService, useValue: mockWorkflowService },
         { provide: CpoService, useValue: mockCpoService },
+        {
+          provide: JobCardImportService,
+          useValue: { reExtractLineItems: jest.fn() },
+        },
         { provide: getRepositoryToken(StockItem), useValue: stockItemRepo },
         { provide: getRepositoryToken(RubberDimensionOverride), useValue: dimensionOverrideRepo },
         { provide: getRepositoryToken(StockMovement), useValue: stockMovementRepo },

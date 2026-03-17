@@ -805,6 +805,7 @@ export default function JobCardDetailPage() {
               isUploadingTds={coating.isUploadingTds}
               onTdsUpload={coating.handleTdsUpload}
               isAdmin={userRole === "admin"}
+              sourceFileUrl={jobCard?.sourceFilePath || null}
             />
           </TabPanel>
 

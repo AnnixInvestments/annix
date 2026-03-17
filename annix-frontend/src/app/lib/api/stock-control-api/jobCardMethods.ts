@@ -123,7 +123,14 @@ declare module "./base" {
       correctedValue: string;
       createdAt: string;
     }>;
+    reExtractJobCardLineItems(jobCardId: number): Promise<{ replaced: number; newCount: number }>;
     reExtractJobCardNotes(jobCardId: number): Promise<{ notes: string | null }>;
+    updateCoatingCoat(
+      jobCardId: number,
+      coatIndex: number,
+      updates: { minDftUm?: number; maxDftUm?: number },
+    ): Promise<CoatingAnalysis>;
+    removeCoatingCoat(jobCardId: number, coatIndex: number): Promise<CoatingAnalysis>;
   }
 }
 
@@ -398,8 +405,27 @@ proto.saveJobCardCorrection = async function (jobCardId, data) {
   });
 };
 
+proto.reExtractJobCardLineItems = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/re-extract`, {
+    method: "POST",
+  });
+};
+
 proto.reExtractJobCardNotes = async function (jobCardId) {
   return this.request(`/stock-control/job-cards/${jobCardId}/re-extract-notes`, {
     method: "POST",
+  });
+};
+
+proto.updateCoatingCoat = async function (jobCardId, coatIndex, updates) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/coats/${coatIndex}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+};
+
+proto.removeCoatingCoat = async function (jobCardId, coatIndex) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/coats/${coatIndex}`, {
+    method: "DELETE",
   });
 };
