@@ -125,9 +125,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
 
         if (override.cronExpression) {
           job.setTime(new CronTime(override.cronExpression));
-          this.logger.log(
-            `Restored frequency for ${override.jobName}: ${override.cronExpression}`,
-          );
+          this.logger.log(`Restored frequency for ${override.jobName}: ${override.cronExpression}`);
         }
 
         if (override.active) {

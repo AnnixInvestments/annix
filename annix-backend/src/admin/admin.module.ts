@@ -4,7 +4,6 @@ import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AuditModule } from "../audit/audit.module";
 import { AuditLog } from "../audit/entities/audit-log.entity";
-import { ScheduledJobOverride } from "./entities/scheduled-job-override.entity";
 import { CustomerOnboarding } from "../customer/entities/customer-onboarding.entity";
 import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { CustomerSession } from "../customer/entities/customer-session.entity";
@@ -37,6 +36,7 @@ import { AdminRfqService } from "./admin-rfq.service";
 import { AdminScheduledJobsController } from "./admin-scheduled-jobs.controller";
 import { AdminScheduledJobsService } from "./admin-scheduled-jobs.service";
 import { AdminSession } from "./entities/admin-session.entity";
+import { ScheduledJobOverride } from "./entities/scheduled-job-override.entity";
 import { AdminAuthGuard } from "./guards/admin-auth.guard";
 
 @Module({
